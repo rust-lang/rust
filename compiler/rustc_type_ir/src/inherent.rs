@@ -14,7 +14,8 @@ use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, UpcastFrom,
+    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, Ty as IrTy,
+    UpcastFrom,
 };
 
 pub trait Ty<I: Interner<Ty = Self>>:
@@ -55,7 +56,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn new_alias(interner: I, kind: ty::AliasTyKind, alias_ty: ty::AliasTy<I>) -> Self;
 
     fn new_projection_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self {
-        Ty::new_alias(
+        Self::new_alias(
             interner,
             ty::AliasTyKind::Projection,
             ty::AliasTy::new_from_args(interner, def_id, args),
@@ -67,7 +68,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
         def_id: I::DefId,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> Self {
-        Ty::new_alias(
+        Self::new_alias(
             interner,
             ty::AliasTyKind::Projection,
             ty::AliasTy::new(interner, def_id, args),
@@ -108,7 +109,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_slice(interner: I, ty: Self) -> Self;
 
-    fn new_tup(interner: I, tys: &[I::Ty]) -> Self;
+    fn new_tup(interner: I, tys: &[IrTy<I>]) -> Self;
 
     fn new_tup_from_iter<It, T>(interner: I, iter: It) -> T::Output
     where
@@ -121,7 +122,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_pat(interner: I, ty: Self, pat: I::Pat) -> Self;
 
-    fn new_unsafe_binder(interner: I, ty: ty::Binder<I, I::Ty>) -> Self;
+    fn new_unsafe_binder(interner: I, ty: ty::Binder<I, IrTy<I>>) -> Self;
 
     fn tuple_fields(self) -> I::Tys;
 
@@ -158,7 +159,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
         self.kind().fn_sig(interner)
     }
 
-    fn discriminant_ty(self, interner: I) -> I::Ty;
+    fn discriminant_ty(self, interner: I) -> IrTy<I>;
 
     fn is_known_rigid(self) -> bool {
         self.kind().is_known_rigid()
@@ -198,11 +199,11 @@ pub trait Ty<I: Interner<Ty = Self>>:
 }
 
 pub trait Tys<I: Interner<Tys = Self>>:
-    Copy + Debug + Hash + Eq + SliceLike<Item = I::Ty> + TypeFoldable<I> + Default
+    Copy + Debug + Hash + Eq + SliceLike<Item = IrTy<I>> + TypeFoldable<I> + Default
 {
     fn inputs(self) -> I::FnInputTys;
 
-    fn output(self) -> I::Ty;
+    fn output(self) -> IrTy<I>;
 }
 
 pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
@@ -290,7 +291,7 @@ pub trait Const<I: Interner<Const = Self>>:
 }
 
 pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
-    fn ty(self) -> I::Ty;
+    fn ty(self) -> IrTy<I>;
     fn valtree(self) -> I::ValTree;
 }
 
@@ -310,7 +311,7 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     + IntoKind<Kind = ty::GenericArgKind<I>>
     + TypeVisitable<I>
     + Relate<I>
-    + From<I::Ty>
+    + From<IrTy<I>>
     + From<I::Region>
     + From<I::Const>
     + From<I::Term>
@@ -323,11 +324,11 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
         }
     }
 
-    fn as_type(&self) -> Option<I::Ty> {
+    fn as_type(&self) -> Option<IrTy<I>> {
         if let ty::GenericArgKind::Type(ty) = self.kind() { Some(ty) } else { None }
     }
 
-    fn expect_ty(&self) -> I::Ty {
+    fn expect_ty(&self) -> IrTy<I> {
         self.as_type().expect("expected a type")
     }
 
@@ -359,11 +360,11 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
 pub trait Term<I: Interner<Term = Self>>:
     Copy + Debug + Hash + Eq + IntoKind<Kind = ty::TermKind<I>> + TypeFoldable<I> + Relate<I>
 {
-    fn as_type(&self) -> Option<I::Ty> {
+    fn as_type(&self) -> Option<IrTy<I>> {
         if let ty::TermKind::Ty(ty) = self.kind() { Some(ty) } else { None }
     }
 
-    fn expect_ty(&self) -> I::Ty {
+    fn expect_ty(&self) -> IrTy<I> {
         self.as_type().expect("expected a type, but found a const")
     }
 
@@ -413,7 +414,7 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
         target: I::GenericArgs,
     ) -> I::GenericArgs;
 
-    fn type_at(self, i: usize) -> I::Ty;
+    fn type_at(self, i: usize) -> IrTy<I>;
 
     fn region_at(self, i: usize) -> I::Region;
 
@@ -459,7 +460,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitPredicate<I>>
-    + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
+    + UpcastFrom<I, ty::OutlivesPredicate<I, IrTy<I>>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
     + Elaboratable<I>
@@ -578,7 +579,7 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     /// Returns the type of the struct tail.
     ///
     /// Expects the `AdtDef` to be a struct. If it is not, then this will panic.
-    fn struct_tail_ty(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
+    fn struct_tail_ty(self, interner: I) -> Option<ty::EarlyBinder<I, IrTy<I>>>;
 
     fn is_phantom_data(self) -> bool;
 
@@ -591,13 +592,13 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     ) -> Option<FieldInfo<I>>;
 
     // FIXME: perhaps use `all_fields` and expose `FieldDef`.
-    fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
+    fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = IrTy<I>>>;
 
     fn sizedness_constraint(
         self,
         interner: I,
         sizedness: SizedTraitKind,
-    ) -> Option<ty::EarlyBinder<I, I::Ty>>;
+    ) -> Option<ty::EarlyBinder<I, IrTy<I>>>;
 
     fn is_fundamental(self) -> bool;
 

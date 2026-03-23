@@ -14,10 +14,12 @@ use rustc_type_ir_macros::{
 
 use self::TyKind::*;
 pub use self::closure::*;
+#[cfg_attr(feature = "nightly", allow(rustc::non_glob_import_of_type_ir_inherent))]
+use crate::inherent::Ty as _;
 use crate::inherent::*;
 #[cfg(feature = "nightly")]
 use crate::visit::TypeVisitable;
-use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
+use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, Ty, UintTy};
 
 mod closure;
 
@@ -100,7 +102,7 @@ pub enum TyKind<I: Interner> {
     Str,
 
     /// An array with the given length. Written as `[T; N]`.
-    Array(I::Ty, I::Const),
+    Array(Ty<I>, I::Const),
 
     /// A pattern newtype.
     ///
@@ -109,17 +111,17 @@ pub enum TyKind<I: Interner> {
     /// Only `Copy` and `Clone` will automatically get implemented for pattern types.
     /// Auto-traits treat this as if it were an aggregate with a single nested type.
     /// Only supports integer range patterns for now.
-    Pat(I::Ty, I::Pat),
+    Pat(Ty<I>, I::Pat),
 
     /// The pointee of an array slice. Written as `[T]`.
-    Slice(I::Ty),
+    Slice(Ty<I>),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
-    RawPtr(I::Ty, Mutability),
+    RawPtr(Ty<I>, Mutability),
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
-    Ref(I::Region, I::Ty, Mutability),
+    Ref(I::Region, Ty<I>, Mutability),
 
     /// The anonymous type of a function declaration/definition.
     ///
@@ -469,18 +471,18 @@ impl<I: Interner> AliasTy<I> {
         matches!(self.kind(interner), AliasTyKind::Opaque)
     }
 
-    pub fn to_ty(self, interner: I) -> I::Ty {
-        Ty::new_alias(interner, self.kind(interner), self)
+    pub fn to_ty(self, interner: I) -> Ty<I> {
+        I::Ty::new_alias(interner, self.kind(interner), self)
     }
 }
 
 /// The following methods work only with (trait) associated type projections.
 impl<I: Interner> AliasTy<I> {
-    pub fn self_ty(self) -> I::Ty {
+    pub fn self_ty(self) -> Ty<I> {
         self.args.type_at(0)
     }
 
-    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: Ty<I>) -> Self {
         AliasTy::new(
             interner,
             self.def_id,
@@ -735,7 +737,7 @@ impl fmt::Debug for InferTy {
 )]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 pub struct TypeAndMut<I: Interner> {
-    pub ty: I::Ty,
+    pub ty: Ty<I>,
     pub mutbl: Mutability,
 }
 
@@ -765,7 +767,7 @@ impl<I: Interner> FnSig<I> {
         self.inputs_and_output.inputs()
     }
 
-    pub fn output(self) -> I::Ty {
+    pub fn output(self) -> Ty<I> {
         self.inputs_and_output.output()
     }
 
@@ -783,7 +785,7 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
 
     #[inline]
     #[track_caller]
-    pub fn input(self, index: usize) -> ty::Binder<I, I::Ty> {
+    pub fn input(self, index: usize) -> ty::Binder<I, Ty<I>> {
         self.map_bound(|fn_sig| fn_sig.inputs().get(index).unwrap())
     }
 
@@ -792,7 +794,7 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
     }
 
     #[inline]
-    pub fn output(self) -> ty::Binder<I, I::Ty> {
+    pub fn output(self) -> ty::Binder<I, Ty<I>> {
         self.map_bound(|fn_sig| fn_sig.output())
     }
 
@@ -856,21 +858,21 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
 }
 
 // FIXME: this is a distinct type because we need to define `Encode`/`Decode`
-// impls in this crate for `Binder<I, I::Ty>`.
+// impls in this crate for `Binder<I, Ty<I>>`.
 #[derive_where(Clone, Copy, PartialEq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
-pub struct UnsafeBinderInner<I: Interner>(ty::Binder<I, I::Ty>);
+pub struct UnsafeBinderInner<I: Interner>(ty::Binder<I, Ty<I>>);
 
 impl<I: Interner> Eq for UnsafeBinderInner<I> {}
 
-impl<I: Interner> From<ty::Binder<I, I::Ty>> for UnsafeBinderInner<I> {
-    fn from(value: ty::Binder<I, I::Ty>) -> Self {
+impl<I: Interner> From<ty::Binder<I, Ty<I>>> for UnsafeBinderInner<I> {
+    fn from(value: ty::Binder<I, Ty<I>>) -> Self {
         UnsafeBinderInner(value)
     }
 }
 
-impl<I: Interner> From<UnsafeBinderInner<I>> for ty::Binder<I, I::Ty> {
+impl<I: Interner> From<UnsafeBinderInner<I>> for ty::Binder<I, Ty<I>> {
     fn from(value: UnsafeBinderInner<I>) -> Self {
         value.0
     }
@@ -883,7 +885,7 @@ impl<I: Interner> fmt::Debug for UnsafeBinderInner<I> {
 }
 
 impl<I: Interner> Deref for UnsafeBinderInner<I> {
-    type Target = ty::Binder<I, I::Ty>;
+    type Target = ty::Binder<I, Ty<I>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -894,7 +896,7 @@ impl<I: Interner> Deref for UnsafeBinderInner<I> {
 impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E>
     for UnsafeBinderInner<I>
 where
-    I::Ty: rustc_serialize::Encodable<E>,
+    Ty<I>: rustc_serialize::Encodable<E>,
     I::BoundVarKinds: rustc_serialize::Encodable<E>,
 {
     fn encode(&self, e: &mut E) {
@@ -907,7 +909,7 @@ where
 impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D>
     for UnsafeBinderInner<I>
 where
-    I::Ty: TypeVisitable<I> + rustc_serialize::Decodable<D>,
+    Ty<I>: TypeVisitable<I> + rustc_serialize::Decodable<D>,
     I::BoundVarKinds: rustc_serialize::Decodable<D>,
 {
     fn decode(decoder: &mut D) -> Self {
@@ -937,7 +939,7 @@ impl<I: Interner> FnSigTys<I> {
         self.inputs_and_output.inputs()
     }
 
-    pub fn output(self) -> I::Ty {
+    pub fn output(self) -> Ty<I> {
         self.inputs_and_output.output()
     }
 }
@@ -960,7 +962,7 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
 
     #[inline]
     #[track_caller]
-    pub fn input(self, index: usize) -> ty::Binder<I, I::Ty> {
+    pub fn input(self, index: usize) -> ty::Binder<I, Ty<I>> {
         self.map_bound(|sig_tys| sig_tys.inputs().get(index).unwrap())
     }
 
@@ -969,7 +971,7 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
     }
 
     #[inline]
-    pub fn output(self) -> ty::Binder<I, I::Ty> {
+    pub fn output(self) -> ty::Binder<I, Ty<I>> {
         self.map_bound(|sig_tys| sig_tys.output())
     }
 }

@@ -1,9 +1,11 @@
 use rustc_type_ir::data_structures::{HashMap, ensure_sufficient_stack};
+#[cfg_attr(feature = "nightly", allow(rustc::non_glob_import_of_type_ir_inherent))]
+use rustc_type_ir::inherent::Ty as _;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalParamEnvCacheEntry, CanonicalVarKind, Flags, InferCtxtLike,
-    Interner, PlaceholderConst, PlaceholderType, TypeFlags, TypeFoldable, TypeFolder,
+    Interner, PlaceholderConst, PlaceholderType, Ty, TypeFlags, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
 };
 
@@ -78,7 +80,7 @@ pub(super) struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner
 
     /// We can simply cache based on the ty itself, because we use
     /// `ty::BoundVarIndexKind::Canonical`.
-    cache: HashMap<I::Ty, I::Ty>,
+    cache: HashMap<Ty<I>, Ty<I>>,
 }
 
 impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
@@ -316,7 +318,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         (max_universe, self.variables, var_kinds)
     }
 
-    fn inner_fold_ty(&mut self, t: I::Ty) -> I::Ty {
+    fn inner_fold_ty(&mut self, t: Ty<I>) -> Ty<I> {
         let kind = match t.kind() {
             ty::Infer(i) => match i {
                 ty::TyVar(vid) => {
@@ -400,7 +402,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
         let var = self.get_or_insert_bound_var(t, kind);
 
-        Ty::new_canonical_bound(self.cx(), var)
+        I::Ty::new_canonical_bound(self.cx(), var)
     }
 }
 
@@ -475,7 +477,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
         Region::new_canonical_bound(self.cx(), var)
     }
 
-    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
+    fn fold_ty(&mut self, t: Ty<I>) -> Ty<I> {
         if !t.flags().intersects(NEEDS_CANONICAL) {
             t
         } else if let Some(&ty) = self.cache.get(&t) {

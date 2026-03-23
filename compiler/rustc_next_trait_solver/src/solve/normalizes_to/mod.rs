@@ -4,10 +4,14 @@ mod inherent;
 mod opaque_types;
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
+#[cfg_attr(feature = "nightly", allow(rustc::non_glob_import_of_type_ir_inherent))]
+use rustc_type_ir::inherent::Ty as _;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
-use rustc_type_ir::{self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Upcast as _};
+use rustc_type_ir::{
+    self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Ty, Upcast as _,
+};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
@@ -125,7 +129,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn self_ty(self) -> I::Ty {
+    fn self_ty(self) -> Ty<I> {
         self.self_ty()
     }
 
@@ -133,7 +137,7 @@ where
         self.alias.trait_ref(cx)
     }
 
-    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
+    fn with_replaced_self_ty(self, cx: I, self_ty: Ty<I>) -> Self {
         self.with_replaced_self_ty(cx, self_ty)
     }
 
@@ -263,7 +267,7 @@ where
 
             let error_response = |ecx: &mut EvalCtxt<'_, D>, guar| {
                 let error_term = match goal.predicate.alias.kind(cx) {
-                    ty::AliasTermKind::ProjectionTy => Ty::new_error(cx, guar).into(),
+                    ty::AliasTermKind::ProjectionTy => I::Ty::new_error(cx, guar).into(),
                     ty::AliasTermKind::ProjectionConst => Const::new_error(cx, guar).into(),
                     kind => panic!("expected projection, found {kind:?}"),
                 };
@@ -641,11 +645,11 @@ where
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never
-            | ty::Foreign(..) => Ty::new_unit(cx),
+            | ty::Foreign(..) => I::Ty::new_unit(cx),
 
-            ty::Error(e) => Ty::new_error(cx, e),
+            ty::Error(e) => I::Ty::new_error(cx, e),
 
-            ty::Str | ty::Slice(_) => Ty::new_usize(cx),
+            ty::Str | ty::Slice(_) => I::Ty::new_usize(cx),
 
             ty::Dynamic(_, _) => {
                 let dyn_metadata = cx.require_lang_item(SolverLangItem::DynMetadata);
@@ -666,7 +670,7 @@ where
                             [I::GenericArg::from(goal.predicate.self_ty())],
                         );
                         ecx.add_goal(GoalSource::Misc, goal.with(cx, sized_predicate));
-                        ecx.instantiate_normalizes_to_term(goal, Ty::new_unit(cx).into());
+                        ecx.instantiate_normalizes_to_term(goal, I::Ty::new_unit(cx).into());
                         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     });
                 // In case the dummy alias-bound candidate does not apply, we instead treat this projection
@@ -683,16 +687,16 @@ where
             }
 
             ty::Adt(def, args) if def.is_struct() => match def.struct_tail_ty(cx) {
-                None => Ty::new_unit(cx),
+                None => I::Ty::new_unit(cx),
                 Some(tail_ty) => {
-                    Ty::new_projection(cx, metadata_def_id, [tail_ty.instantiate(cx, args)])
+                    I::Ty::new_projection(cx, metadata_def_id, [tail_ty.instantiate(cx, args)])
                 }
             },
-            ty::Adt(_, _) => Ty::new_unit(cx),
+            ty::Adt(_, _) => I::Ty::new_unit(cx),
 
             ty::Tuple(elements) => match elements.last() {
-                None => Ty::new_unit(cx),
-                Some(tail_ty) => Ty::new_projection(cx, metadata_def_id, [tail_ty]),
+                None => I::Ty::new_unit(cx),
+                Some(tail_ty) => I::Ty::new_projection(cx, metadata_def_id, [tail_ty]),
             },
 
             ty::UnsafeBinder(_) => {
@@ -803,10 +807,10 @@ where
             let expected_ty = ecx.next_ty_infer();
             // Take `AsyncIterator<Item = I>` and turn it into the corresponding
             // coroutine yield ty `Poll<Option<I>>`.
-            let wrapped_expected_ty = Ty::new_adt(
+            let wrapped_expected_ty = I::Ty::new_adt(
                 cx,
                 cx.adt_def(cx.require_adt_lang_item(SolverAdtLangItem::Poll)),
-                cx.mk_args(&[Ty::new_adt(
+                cx.mk_args(&[I::Ty::new_adt(
                     cx,
                     cx.adt_def(cx.require_adt_lang_item(SolverAdtLangItem::Option)),
                     cx.mk_args(&[expected_ty.into()]),

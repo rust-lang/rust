@@ -1,9 +1,11 @@
 use core::panic;
 
 use rustc_type_ir::data_structures::IndexMap;
+#[cfg_attr(feature = "nightly", allow(rustc::non_glob_import_of_type_ir_inherent))]
+use rustc_type_ir::inherent::Ty as _;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
-    self as ty, InferCtxtLike, Interner, PlaceholderConst, PlaceholderRegion, PlaceholderType,
+    self as ty, InferCtxtLike, Interner, PlaceholderConst, PlaceholderRegion, PlaceholderType, Ty,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
@@ -113,7 +115,7 @@ where
         }
     }
 
-    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
+    fn fold_ty(&mut self, t: Ty<I>) -> Ty<I> {
         match t.kind() {
             ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), _)
                 if debruijn.as_usize() + 1
@@ -130,7 +132,7 @@ where
                 let universe = self.universe_for(debruijn);
                 let p = PlaceholderType::new(universe, bound_ty);
                 self.mapped_types.insert(p, bound_ty);
-                Ty::new_placeholder(self.cx(), p)
+                I::Ty::new_placeholder(self.cx(), p)
             }
             _ if t.has_vars_bound_at_or_above(self.current_index) => t.super_fold_with(self),
             _ => t,
