@@ -32,7 +32,7 @@ where
 {
     // Elaborating the `&'a str: Trait<T>` where-bound results in a
     // `&'a str: Sized` where-bound. We do not want to prefer this
-    // over the builtin impl. 
+    // over the builtin impl.
     is_sized(x);
 }
 ```
@@ -77,7 +77,7 @@ fn foo<'a, T: Trait<'a>>() {
 ```
 
 We also need this as shadowed impls can result in currently ambiguous solver cycles: [trait-system-refactor-initiative#76].
-Without preference we'd be forced to fail with ambiguity
+Without preference, we'd be forced to fail with ambiguity
 errors if the where-bound results in region constraints to avoid incompleteness.
 ```rust
 trait Super {
@@ -98,7 +98,7 @@ where
 fn overflow<T: Trait>() {
     // We can use the elaborated `Super<SuperAssoc = Self::TraitAssoc>` where-bound
     // to prove the where-bound of the `T: Trait` implementation. This currently results in
-    // overflow. 
+    // overflow.
     let x: <T as Trait>::TraitAssoc;
 }
 ```
@@ -106,7 +106,7 @@ fn overflow<T: Trait>() {
 This preference causes a lot of issues.
 See [#24066].
 Most of the
-issues are caused by preferring where-bounds over impls even if the where-bound guides type inference:
+issues are caused by preferring where-bounds over impls even, if the where-bound guides type inference:
 ```rust
 trait Trait<T> {
     fn call_me(&self, x: T) {}
@@ -180,8 +180,8 @@ where
 
 Global where-bounds are either fully implied by an impl or unsatisfiable.
 If they are unsatisfiable, we don't really care what happens.
-If a where-bound is fully implied then using the impl to prove the trait goal cannot result in additional constraints.
-For trait goals this is only useful for where-bounds which use `'static`:
+If a where-bound is fully implied, then using the impl to prove the trait goal cannot result in additional constraints.
+For trait goals, this is only useful for where-bounds which use `'static`:
 
 ```rust
 trait A {
@@ -195,7 +195,7 @@ where
     x.test();
 }
 ```
-More importantly, by using impls here we prevent global where-bounds from shadowing impls when normalizing associated types.
+More importantly, by using impls here, we prevent global where-bounds from shadowing impls when normalizing associated types.
 There are no known issues from preferring impls over global where-bounds.
 
 #### Why still consider global where-bounds
