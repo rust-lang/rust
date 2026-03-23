@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/51947>
 //@ build-pass
 
 #![crate_type = "lib"]
