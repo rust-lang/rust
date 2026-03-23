@@ -408,7 +408,7 @@ where
 
     /// Recursively evaluates `goal`, returning whether any inference vars have
     /// been constrained and the certainty of the result.
-    pub(super) fn evaluate_goal(
+    fn evaluate_goal(
         &mut self,
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
@@ -1018,8 +1018,7 @@ where
         variance: ty::Variance,
         rhs: T,
     ) -> Result<(), NoSolution> {
-        let goals = self.relate_and_get_goals(param_env, lhs, variance, rhs)?;
-
+        let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
         for &goal in goals.iter() {
             let source = match goal.predicate.kind().skip_binder() {
                 ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {
@@ -1040,37 +1039,13 @@ where
     /// If possible, try using `eq` instead which automatically handles nested
     /// goals correctly.
     #[instrument(level = "trace", skip(self, param_env), ret)]
-    pub(super) fn relate_and_get_goals<T: Relate<I>>(
-        &mut self,
+    pub(super) fn eq_and_get_goals<T: Relate<I>>(
+        &self,
         param_env: I::ParamEnv,
         lhs: T,
-        variance: ty::Variance,
         rhs: T,
     ) -> Result<Vec<Goal<I, I::Predicate>>, NoSolution> {
-        let cx = self.cx();
-        let delegate = self.delegate;
-        let origin_span = self.origin_span;
-
-        let mut normalize = |alias: ty::AliasTy<I>| {
-            let inference_var = self.next_ty_infer();
-
-            let goal = Goal::new(
-                cx,
-                param_env,
-                ty::PredicateKind::AliasRelate(
-                    alias.to_ty(cx).into(),
-                    inference_var.into(),
-                    ty::AliasRelationDirection::Equate,
-                ),
-            );
-
-            // Ignore the result. If we can't eagerly normalize, returning the inference variable is enough.
-            let _ = self.evaluate_goal(GoalSource::TypeRelating, goal, None);
-
-            self.resolve_vars_if_possible(inference_var)
-        };
-
-        Ok(delegate.relate(param_env, lhs, variance, rhs, origin_span, &mut normalize)?)
+        Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs, self.origin_span)?)
     }
 
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(

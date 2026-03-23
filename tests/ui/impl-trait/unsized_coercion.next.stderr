@@ -1,0 +1,11 @@
+error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
+  --> $DIR/unsized_coercion.rs:14:17
+   |
+LL |         let x = hello();
+   |                 ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Trait`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
