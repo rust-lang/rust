@@ -2,251 +2,212 @@
 
 use core::num::imp::flt2dec;
 use std::mem::MaybeUninit;
-use std::str;
+use std::string::String;
 
 use flt2dec::strategy::{dragon, grisu};
 use flt2dec::{DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, decode};
 use rand::distr::{Distribution, Uniform};
 
-pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
+// Bits 0u16..0x7C00 cover the positive finite-range,
+// with 1u16..0x7C00 for non-zero.
+const F16_POS_FIN_RANGE: std::ops::Range<u16> = 1..0x7C00;
+
+// Bits 0u32..0x7F80_0000 cover the positive finite-range,
+// with 1u32..0x7F80_0000 for non-zero.
+const F32_POS_FIN_RANGE: std::ops::Range<u32> = 1..0x7F80_000;
+
+// Bits 0u64..0x7FF0_0000_0000_0000 cover the positive finite-range,
+// with 1u64..0x7FF0_0000_0000_0000 for non-zero.
+const F64_POS_FIN_RANGE: std::ops::Range<u64> = 1..0x7FF0_0000_0000_0000;
+
+fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
         FullDecoded::Finite(decoded) => decoded,
         full_decoded => panic!("expected finite, got {full_decoded:?} instead"),
     }
 }
 
-fn iterate<F, G, V>(func: &str, k: usize, n: usize, mut f: F, mut g: G, mut v: V) -> (usize, usize)
+/// Verifies whether `format_short` of Grisu and Dragon both have the same
+/// outcome for n `Decoded` values from `v`. The return counts the number of
+/// values (from `v`) omitted due to a `None` return from Grisu.
+fn n_short_equiv<V>(n: usize, mut v: V) -> usize
 where
-    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
-    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
     V: FnMut(usize) -> Decoded,
 {
-    assert!(k <= 1024);
-
-    let mut npassed = 0; // f(x) = Some(g(x))
-    let mut nignored = 0; // f(x) = None
-
+    let mut omitted = 0;
     for i in 0..n {
-        if (i & 0xfffff) == 0 {
-            println!(
-                "in progress, {:x}/{:x} (ignored={} passed={} failed={})",
-                i,
-                n,
-                nignored,
-                npassed,
-                i - nignored - npassed
-            );
+        if (i & 0xf_ffff) == 0 {
+            println!("did {i} out of {n}, with {omitted} omitted");
         }
+        let dec = v(i);
 
-        let decoded = v(i);
-        let mut buf1 = [MaybeUninit::new(0); 1024];
-        if let Some((buf1, e1)) = f(&decoded, &mut buf1[..k]) {
-            let mut buf2 = [MaybeUninit::new(0); 1024];
-            let (buf2, e2) = g(&decoded, &mut buf2[..k]);
-            if e1 == e2 && buf1 == buf2 {
-                npassed += 1;
-            } else {
-                println!(
-                    "equivalence test failed, {:x}/{:x}: {:?} f(i)={}e{} g(i)={}e{}",
-                    i,
-                    n,
-                    decoded,
-                    str::from_utf8(buf1).unwrap(),
-                    e1,
-                    str::from_utf8(buf2).unwrap(),
-                    e2
+        let mut grisu_buf = [MaybeUninit::new(b'_'); MAX_SIG_DIGITS];
+        let mut dragon_buf = [MaybeUninit::new(b'_'); MAX_SIG_DIGITS];
+        if let Some(grisu_return) = grisu::format_short(&dec, &mut grisu_buf) {
+            let dragon_return = dragon::format_short(&dec, &mut dragon_buf);
+            if grisu_return != dragon_return {
+                panic!(
+                    "grisu got ({}, {}) while dragon got ({}, {}) for {:?}",
+                    String::from_utf8_lossy(grisu_return.0),
+                    grisu_return.1,
+                    String::from_utf8_lossy(dragon_return.0),
+                    dragon_return.1,
+                    dec,
                 );
             }
         } else {
-            nignored += 1;
+            omitted += 1;
         }
     }
-    println!(
-        "{}({}): done, ignored={} passed={} failed={}",
-        func,
-        k,
-        nignored,
-        npassed,
-        n - nignored - npassed
-    );
-    assert!(
-        nignored + npassed == n,
-        "{}({}): {} out of {} values returns an incorrect value!",
-        func,
-        k,
-        n - nignored - npassed,
-        n
-    );
-    (npassed, nignored)
+    omitted
 }
 
-#[cfg(target_has_reliable_f16)]
-pub fn f16_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
+/// Verifies whether `format_fixed` of Grisu and Dragon both have the same
+/// outcome for n `Decoded` values from `v`. The return counts the number of
+/// values (from `v`) omitted due to a `None` return from Grisu.
+fn n_fixed_equiv<V>(n: usize, bufn: usize, mut v: V) -> usize
 where
-    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
-    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
+    V: FnMut(usize) -> Decoded,
 {
-    let mut rng = crate::test_rng();
-    let f16_range = Uniform::new(0x0001u16, 0x7c00).unwrap();
-    iterate("f16_random_equivalence_test", k, n, f, g, |_| {
-        let x = f16::from_bits(f16_range.sample(&mut rng));
-        decode_finite(x)
-    });
-}
+    const BUF_CAP: usize = 64;
+    assert!(bufn <= BUF_CAP, "just increase capacity when needed");
+    const RESOLUTION: i16 = i16::MIN; // unlimited
 
-pub fn f32_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
-where
-    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
-    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
-{
-    let mut rng = crate::test_rng();
-    let f32_range = Uniform::new(0x0000_0001u32, 0x7f80_0000).unwrap();
-    iterate("f32_random_equivalence_test", k, n, f, g, |_| {
-        let x = f32::from_bits(f32_range.sample(&mut rng));
-        decode_finite(x)
-    });
-}
+    let mut omitted = 0;
+    for i in 0..n {
+        if (i & 0xf_ffff) == 0 {
+            println!("did {i} out of {n}, with {omitted} omitted");
+        }
+        let dec = v(i);
 
-pub fn f64_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
-where
-    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
-    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
-{
-    let mut rng = crate::test_rng();
-    let f64_range = Uniform::new(0x0000_0000_0000_0001u64, 0x7ff0_0000_0000_0000).unwrap();
-    iterate("f64_random_equivalence_test", k, n, f, g, |_| {
-        let x = f64::from_bits(f64_range.sample(&mut rng));
-        decode_finite(x)
-    });
-}
-
-#[cfg(target_has_reliable_f16)]
-pub fn f16_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
-where
-    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
-    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
-{
-    // Unlike the other float types, `f16` is small enough that these exhaustive tests
-    // can run in less than a second so we don't need to ignore it.
-
-    // iterate from 0x0001 to 0x7bff, i.e., all finite ranges
-    let (npassed, nignored) =
-        iterate("f16_exhaustive_equivalence_test", k, 0x7bff, f, g, |i: usize| {
-            let x = f16::from_bits(i as u16 + 1);
-            decode_finite(x)
-        });
-    assert_eq!((npassed, nignored), (29735, 2008));
-}
-
-pub fn f32_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
-where
-    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
-    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
-{
-    // we have only 2^23 * (2^8 - 1) - 1 = 2,139,095,039 positive finite f32 values,
-    // so why not simply testing all of them?
-    //
-    // this is of course very stressful (and thus should be behind an `#[ignore]` attribute),
-    // but with `-C opt-level=3 -C lto` this only takes about an hour or so.
-
-    // iterate from 0x0000_0001 to 0x7f7f_ffff, i.e., all finite ranges
-    let (npassed, nignored) =
-        iterate("f32_exhaustive_equivalence_test", k, 0x7f7f_ffff, f, g, |i: usize| {
-            let x = f32::from_bits(i as u32 + 1);
-            decode_finite(x)
-        });
-    assert_eq!((npassed, nignored), (2121451881, 17643158));
+        let mut grisu_buf = [MaybeUninit::new(b'_'); BUF_CAP];
+        let mut dragon_buf = [MaybeUninit::new(b'_'); BUF_CAP];
+        if let Some(grisu_return) = grisu::format_fixed(&dec, &mut grisu_buf[..bufn], RESOLUTION) {
+            let dragon_return = dragon::format_fixed(&dec, &mut dragon_buf[..bufn], RESOLUTION);
+            if grisu_return != dragon_return {
+                panic!(
+                    "grisu got ({}, {}) while dragon got ({}, {}) for {:?} with a {}-byte buffer",
+                    String::from_utf8_lossy(grisu_return.0),
+                    grisu_return.1,
+                    String::from_utf8_lossy(dragon_return.0),
+                    dragon_return.1,
+                    dec,
+                    bufn,
+                );
+            }
+        } else {
+            omitted += 1;
+        }
+    }
+    omitted
 }
 
 #[test]
-fn shortest_random_equivalence_test() {
-    use dragon::format_short as fallback;
+#[cfg(target_has_reliable_f16)]
+fn test_short_f16_random_equiv() {
     // Miri is too slow
     let n = if cfg!(miri) { 10 } else { 10_000 };
 
-    f64_random_equivalence_test(grisu::format_short, fallback, MAX_SIG_DIGITS, n);
-    f32_random_equivalence_test(grisu::format_short, fallback, MAX_SIG_DIGITS, n);
-    #[cfg(target_has_reliable_f16)]
-    f16_random_equivalence_test(grisu::format_short, fallback, MAX_SIG_DIGITS, n);
+    let mut rng = crate::test_rng();
+    let u = Uniform::new(F16_POS_FIN_RANGE.start, F16_POS_FIN_RANGE.end).unwrap();
+    n_short_equiv(n, |_| {
+        let x = f16::from_bits(u.sample(&mut rng));
+        decode_finite(x)
+    });
 }
 
+#[test]
+fn test_short_f32_random_equiv() {
+    // Miri is too slow
+    let n = if cfg!(miri) { 10 } else { 10_000 };
+
+    let mut rng = crate::test_rng();
+    let u = Uniform::new(F32_POS_FIN_RANGE.start, F32_POS_FIN_RANGE.end).unwrap();
+    n_short_equiv(n, |_| {
+        let x = f32::from_bits(u.sample(&mut rng));
+        decode_finite(x)
+    });
+}
+
+#[test]
+fn test_short_f64_random_equiv() {
+    // Miri is too slow
+    let n = if cfg!(miri) { 10 } else { 10_000 };
+
+    let mut rng = crate::test_rng();
+    let u = Uniform::new(F64_POS_FIN_RANGE.start, F64_POS_FIN_RANGE.end).unwrap();
+    n_short_equiv(n, |_| {
+        let x = f64::from_bits(u.sample(&mut rng));
+        decode_finite(x)
+    });
+}
+
+/// Unlike the other float types, `f16` is small enough that these exhaustive tests
+/// can run in less than a second so we don't need to ignore it.
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is to slow
 #[cfg(target_has_reliable_f16)]
-fn shortest_f16_exhaustive_equivalence_test() {
-    // see the f32 version
-    use dragon::format_short as fallback;
-    f16_exhaustive_equivalence_test(grisu::format_short, fallback, MAX_SIG_DIGITS);
+fn test_short_f16_exhaustive_equiv() {
+    let omitted = n_short_equiv(F16_POS_FIN_RANGE.len(), |i: usize| {
+        let x = f16::from_bits(F16_POS_FIN_RANGE.start + i as u16);
+        decode_finite(x)
+    });
+    assert_eq!(omitted, 2008, "number of inputs in {F16_POS_FIN_RANGE:?} not covered by Grisu");
 }
 
 #[test]
-#[ignore] // it is too expensive
-fn shortest_f32_exhaustive_equivalence_test() {
-    // it is hard to directly test the optimality of the output, but we can at least test if
-    // two different algorithms agree to each other.
-    //
-    // this reports the progress and the number of f32 values returned `None`.
-    // with `--nocapture` (and plenty of time and appropriate rustc flags), this should print:
-    // `done, ignored=17643158 passed=2121451881 failed=0`.
-
-    use dragon::format_short as fallback;
-    f32_exhaustive_equivalence_test(grisu::format_short, fallback, MAX_SIG_DIGITS);
-}
-
-#[test]
-#[ignore] // it is too expensive
-fn shortest_f64_hard_random_equivalence_test() {
-    // this again probably has to use appropriate rustc flags.
-
-    use dragon::format_short as fallback;
-    f64_random_equivalence_test(grisu::format_short, fallback, MAX_SIG_DIGITS, 100_000_000);
+#[ignore] // takes about 40 seconds to run
+#[cfg_attr(miri, ignore)] // Miri is to slow
+fn test_short_f32_exhaustive_equiv() {
+    let omitted = n_short_equiv(F32_POS_FIN_RANGE.len(), |i: usize| {
+        let x = f32::from_bits(F32_POS_FIN_RANGE.start + i as u32);
+        decode_finite(x)
+    });
+    assert_eq!(omitted, 17643158, "number of inputs in {F32_POS_FIN_RANGE:?} not covered by Grisu");
 }
 
 #[test]
 #[cfg(target_has_reliable_f16)]
-fn exact_f16_random_equivalence_test() {
-    use dragon::format_fixed as fallback;
+fn test_fixed_f16_random_equiv() {
     // Miri is too slow
     let n = if cfg!(miri) { 3 } else { 1_000 };
 
-    for k in 1..21 {
-        f16_random_equivalence_test(
-            |d, buf| grisu::format_fixed(d, buf, i16::MIN),
-            |d, buf| fallback(d, buf, i16::MIN),
-            k,
-            n,
-        );
+    for bufn in 1..21 {
+        let mut rng = crate::test_rng();
+        let f16_range = Uniform::new(F16_POS_FIN_RANGE.start, F16_POS_FIN_RANGE.end).unwrap();
+        n_fixed_equiv(n, bufn, |_| {
+            let x = f16::from_bits(f16_range.sample(&mut rng));
+            decode_finite(x)
+        });
     }
 }
 
 #[test]
-fn exact_f32_random_equivalence_test() {
-    use dragon::format_fixed as fallback;
+fn test_fixed_f32_random_equiv() {
     // Miri is too slow
     let n = if cfg!(miri) { 3 } else { 1_000 };
 
-    for k in 1..21 {
-        f32_random_equivalence_test(
-            |d, buf| grisu::format_fixed(d, buf, i16::MIN),
-            |d, buf| fallback(d, buf, i16::MIN),
-            k,
-            n,
-        );
+    for bufn in 1..21 {
+        let mut rng = crate::test_rng();
+        let f32_range = Uniform::new(F32_POS_FIN_RANGE.start, F32_POS_FIN_RANGE.end).unwrap();
+        n_fixed_equiv(n, bufn, |_| {
+            let x = f32::from_bits(f32_range.sample(&mut rng));
+            decode_finite(x)
+        });
     }
 }
 
 #[test]
-fn exact_f64_random_equivalence_test() {
-    use dragon::format_fixed as fallback;
+fn test_fixed_f64_random_equiv() {
     // Miri is too slow
     let n = if cfg!(miri) { 2 } else { 1_000 };
 
-    for k in 1..21 {
-        f64_random_equivalence_test(
-            |d, buf| grisu::format_fixed(d, buf, i16::MIN),
-            |d, buf| fallback(d, buf, i16::MIN),
-            k,
-            n,
-        );
+    for bufn in 1..21 {
+        let mut rng = crate::test_rng();
+        let f64_range = Uniform::new(F64_POS_FIN_RANGE.start, F64_POS_FIN_RANGE.end).unwrap();
+        n_fixed_equiv(n, bufn, |_| {
+            let x = f64::from_bits(f64_range.sample(&mut rng));
+            decode_finite(x)
+        });
     }
 }
