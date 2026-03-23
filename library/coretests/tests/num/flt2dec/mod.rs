@@ -1,6 +1,6 @@
 use core::num::imp::flt2dec::{
-    DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, Sign, decode, round_up, to_exact_exp_str,
-    to_exact_fixed_str, to_shortest_exp_str, to_shortest_str,
+    DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, Sign, UNLIMITED_RESOLUTION, decode,
+    round_up, to_exact_exp_str, to_exact_fixed_str, to_shortest_exp_str, to_shortest_str,
 };
 use core::num::imp::fmt::{Formatted, Part};
 use std::mem::MaybeUninit;
@@ -60,7 +60,7 @@ macro_rules! check_shortest {
 macro_rules! try_exact {
     ($f:ident($decoded:expr) => $buf:expr, $expected:expr, $expectedk:expr;
                                 $fmt:expr, $($key:ident = $val:expr),*) => ({
-        let (buf, k) = $f($decoded, &mut $buf[..$expected.len()], i16::MIN);
+        let (buf, k) = $f($decoded, &mut $buf[..$expected.len()], UNLIMITED_RESOLUTION);
         assert!((buf, k) == ($expected, $expectedk),
                 $fmt, actual = (str::from_utf8(buf).unwrap(), k),
                       expected = (str::from_utf8($expected).unwrap(), $expectedk),
