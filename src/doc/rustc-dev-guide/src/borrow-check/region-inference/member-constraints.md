@@ -114,7 +114,7 @@ is, they describe multiple choices that we must select from. E.g., in
 our example constraint `'0 member of ['a, 'b, 'static]`, it might be
 that `'0` is equal to `'a`, `'b`, *or* `'static`.
 How can we pick the correct one?
- What we currently do is to look for a *minimal choice*
+What we currently do is to look for a *minimal choice*
 -- if we find one, then we will grow `'0` to be equal to that minimal choice.
 To find that minimal choice, we take two factors into
 consideration: lower and upper bounds.
