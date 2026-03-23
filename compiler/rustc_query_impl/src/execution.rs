@@ -380,7 +380,6 @@ fn check_feedable_consistency<'tcx, C: QueryCache>(
     }
 }
 
-// Fast path for when incr. comp. is off.
 #[inline(always)]
 fn execute_job_non_incr<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
@@ -396,6 +395,8 @@ fn execute_job_non_incr<'tcx, C: QueryCache>(
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
     // Sanity: Fingerprint the key and the result to assert they don't contain anything unhashable.
+    // (There is no corresponding sanity check in `execute_job_incr` because it fingerprints the
+    // key and result as part of its normal operation.)
     if cfg!(debug_assertions) {
         let _ = key.to_fingerprint(tcx);
         if let Some(hash_value_fn) = query.hash_value_fn {
