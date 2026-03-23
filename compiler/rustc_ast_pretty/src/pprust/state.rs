@@ -1786,6 +1786,23 @@ impl<'a> State<'a> {
         }
     }
 
+    /// Print a pattern, parenthesizing it if it is an or-pattern (`A | B`).
+    ///
+    /// Or-patterns have the lowest precedence among patterns, so they need
+    /// parentheses when nested inside `@` bindings, `&` references, or `box`
+    /// patterns — otherwise `x @ A | B` parses as `(x @ A) | B`, `&A | B`
+    /// parses as `(&A) | B`, etc.
+    fn print_pat_paren_if_or(&mut self, pat: &ast::Pat) {
+        let needs_paren = matches!(pat.kind, PatKind::Or(..));
+        if needs_paren {
+            self.popen();
+        }
+        self.print_pat(pat);
+        if needs_paren {
+            self.pclose();
+        }
+    }
+
     fn print_pat(&mut self, pat: &ast::Pat) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
@@ -1813,7 +1830,7 @@ impl<'a> State<'a> {
                 if let Some(p) = sub {
                     self.space();
                     self.word_space("@");
-                    self.print_pat(p);
+                    self.print_pat_paren_if_or(p);
                 }
             }
             PatKind::TupleStruct(qself, path, elts) => {
@@ -1885,7 +1902,7 @@ impl<'a> State<'a> {
             }
             PatKind::Box(inner) => {
                 self.word("box ");
-                self.print_pat(inner);
+                self.print_pat_paren_if_or(inner);
             }
             PatKind::Deref(inner) => {
                 self.word("deref!");
@@ -1909,7 +1926,7 @@ impl<'a> State<'a> {
                     self.print_pat(inner);
                     self.pclose();
                 } else {
-                    self.print_pat(inner);
+                    self.print_pat_paren_if_or(inner);
                 }
             }
             PatKind::Expr(e) => self.print_expr(e, FixupContext::default()),
