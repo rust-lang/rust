@@ -15,7 +15,6 @@ use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_middle::query::{QueryCache, QuerySystem, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 
-pub use crate::dep_kind_vtables::make_dep_kind_vtables;
 pub use crate::execution::{CollectActiveJobsKind, collect_active_query_jobs};
 pub use crate::job::{QueryJobMap, break_query_cycles, print_query_stack};
 
@@ -53,6 +52,7 @@ pub fn query_system<'tcx>(
     QuerySystem {
         arenas: Default::default(),
         query_vtables,
+        dep_kind_vtables: dep_kind_vtables::make_dep_kind_vtables(),
         on_disk_cache,
         local_providers,
         extern_providers,

@@ -1,6 +1,5 @@
-use rustc_middle::arena::Arena;
 use rustc_middle::bug;
-use rustc_middle::dep_graph::{DepKindVTable, DepNodeKey, KeyFingerprintStyle};
+use rustc_middle::dep_graph::{DepKind, DepKindVTable, DepNodeKey, KeyFingerprintStyle};
 use rustc_middle::query::QueryCache;
 
 use crate::GetQueryVTable;
@@ -145,15 +144,13 @@ macro_rules! define_dep_kind_vtables {
             )*
         }
     ) => {{
-        // The small number of non-query vtables: `Null`, `Red`, etc.
-        let nq_vtables = [
+        [
+            // The small number of non-query vtables: `Null`, `Red`, etc.
             $(
                 non_query::$nq_name(),
             )*
-        ];
 
-        // The large number of query vtables.
-        let q_vtables: [DepKindVTable<'tcx>; _] = [
+            // The large number of query vtables.
             $(
                 $crate::dep_kind_vtables::make_dep_kind_vtable_for_query::<
                     $crate::query_impl::$name::VTableGetter,
@@ -163,17 +160,11 @@ macro_rules! define_dep_kind_vtables {
                     $no_force,
                 )
             ),*
-        ];
-
-        (nq_vtables, q_vtables)
+        ]
     }}
 }
 
 // Create an array of vtables, one for each dep kind (non-query and query).
-pub fn make_dep_kind_vtables<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindVTable<'tcx>] {
-    let (nq_vtables, q_vtables) =
-        rustc_middle::queries::rustc_with_all_queries! { define_dep_kind_vtables! };
-
-    // Non-query vtables must come before query vtables, to match the order of `DepKind`.
-    arena.alloc_from_iter(nq_vtables.into_iter().chain(q_vtables.into_iter()))
+pub(crate) fn make_dep_kind_vtables<'tcx>() -> [DepKindVTable<'tcx>; DepKind::NUM_VARIANTS] {
+    rustc_middle::queries::rustc_with_all_queries! { define_dep_kind_vtables! }
 }

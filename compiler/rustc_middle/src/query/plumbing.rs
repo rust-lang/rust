@@ -8,7 +8,7 @@ use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_errors::Diag;
 use rustc_span::Span;
 
-use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepKindVTable, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
@@ -150,6 +150,7 @@ impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
 pub struct QuerySystem<'tcx> {
     pub arenas: WorkerLocal<QueryArenas<'tcx>>,
     pub query_vtables: QueryVTables<'tcx>,
+    pub dep_kind_vtables: [DepKindVTable<'tcx>; DepKind::NUM_VARIANTS],
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by

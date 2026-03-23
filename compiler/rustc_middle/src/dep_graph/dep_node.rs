@@ -47,8 +47,8 @@
 //!
 //! [dependency graph]: https://rustc-dev-guide.rust-lang.org/query.html
 
-use std::fmt;
 use std::hash::Hash;
+use std::{fmt, mem};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{StableHasher, StableOrd, ToStableHashKey};
@@ -66,11 +66,23 @@ use crate::ty::{TyCtxt, tls};
 impl DepKind {
     #[inline]
     pub(crate) fn from_u16(u: u16) -> Self {
+        // Statically assert that every u16 up to `DepKind::MAX` can be transmuted
+        // into a `DepKind` that round-trips back to that number.
+        const _: () = {
+            assert!(DepKind::MAX as usize + 1 == DepKind::NUM_VARIANTS);
+            let mut i = 0;
+            while i <= DepKind::MAX {
+                let dep_kind = unsafe { mem::transmute::<u16, DepKind>(i) };
+                assert!(dep_kind as u16 == i);
+                i += 1;
+            }
+        };
+
         if u > Self::MAX {
             panic!("Invalid DepKind {u}");
         }
-        // SAFETY: See comment on DEP_KIND_NUM_VARIANTS
-        unsafe { std::mem::transmute(u) }
+        // SAFETY: See the static assertion above.
+        unsafe { mem::transmute(u) }
     }
 
     #[inline]
@@ -85,7 +97,7 @@ impl DepKind {
 
     /// This is the highest value a `DepKind` can have. It's used during encoding to
     /// pack information into the unused bits.
-    pub(crate) const MAX: u16 = DEP_KIND_NUM_VARIANTS - 1;
+    pub(crate) const MAX: u16 = (DepKind::NUM_VARIANTS - 1) as u16;
 }
 
 /// Combination of a [`DepKind`] and a key fingerprint that uniquely identifies
@@ -297,24 +309,10 @@ macro_rules! define_dep_nodes {
             $( $(#[$q_attr])* $q_name, )*
         }
 
-        // This computes the number of dep kind variants. Along the way, it sanity-checks that the
-        // discriminants of the variants have been assigned consecutively from 0 so that they can
-        // be used as a dense index, and that all discriminants fit in a `u16`.
-        pub(crate) const DEP_KIND_NUM_VARIANTS: u16 = {
-            let deps = &[
-                $(DepKind::$nq_name,)*
-                $(DepKind::$q_name,)*
-            ];
-            let mut i = 0;
-            while i < deps.len() {
-                if i != deps[i].as_usize() {
-                    panic!();
-                }
-                i += 1;
-            }
-            assert!(deps.len() <= u16::MAX as usize);
-            deps.len() as u16
-        };
+        impl DepKind {
+            /// The total number of variants in [`DepKind`].
+            pub const NUM_VARIANTS: usize = ${count($nq_name)} + ${count($q_name)};
+        }
 
         pub(super) fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
             match label {

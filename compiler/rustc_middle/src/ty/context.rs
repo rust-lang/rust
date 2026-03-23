@@ -52,7 +52,7 @@ use tracing::{debug, instrument};
 
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
-use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
+use crate::dep_graph::{DepGraph, DepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
@@ -800,7 +800,6 @@ pub struct GlobalCtxt<'tcx> {
     untracked: Untracked,
 
     pub query_system: QuerySystem<'tcx>,
-    pub(crate) dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
 
     // Internal caches for metadata decoding. No need to track deps on this.
     pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -1023,7 +1022,6 @@ impl<'tcx> TyCtxt<'tcx> {
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
         untracked: Untracked,
         dep_graph: DepGraph,
-        dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
         query_system: QuerySystem<'tcx>,
         hooks: crate::hooks::Providers,
         current_gcx: CurrentGcx,
@@ -1053,7 +1051,6 @@ impl<'tcx> TyCtxt<'tcx> {
             consts: common_consts,
             untracked,
             query_system,
-            dep_kind_vtables,
             ty_rcache: Default::default(),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
