@@ -393,7 +393,7 @@
 //! when processing an iterator.  That might be returning `None` like `next` and
 //! `nth`, could be a more complex strategy like returning an `Err` with a
 //! partial result on exhaustion, and many other things are possible as well.
-//! The is most important if you take `&mut` iterators directly, but because
+//! This is most important if you take `&mut` iterators directly, but because
 //! [`Iterator::by_ref`] exists your caller may want to know whether you hit
 //! exhaustion even if you took ownership of the iterator.
 //!
