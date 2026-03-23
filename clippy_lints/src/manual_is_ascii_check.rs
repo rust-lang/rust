@@ -91,6 +91,13 @@ enum CharRange {
 
 impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if !matches!(
+            expr.kind,
+            ExprKind::Match(_, [_, ..], _) | ExprKind::MethodCall(_, _, [_], _)
+        ) {
+            return;
+        }
+
         if !self.msrv.meets(cx, msrvs::IS_ASCII_DIGIT) {
             return;
         }
@@ -99,8 +106,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             return;
         }
 
-        let (arg, span, range) = if let Some(macro_call) = matching_root_macro_call(cx, expr.span, sym::matches_macro)
-            && let ExprKind::Match(recv, [arm, ..], _) = expr.kind
+        let (arg, span, range) = if let ExprKind::Match(recv, [arm, ..], _) = expr.kind
+            && let Some(macro_call) = matching_root_macro_call(cx, expr.span, sym::matches_macro)
         {
             let recv = peel_ref_operators(cx, recv);
             let range = check_pat(&arm.pat.kind);
