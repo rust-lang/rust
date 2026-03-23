@@ -38,31 +38,6 @@ impl From<ty::ConstVid> for TermVid {
 }
 
 impl<'tcx> InferCtxt<'tcx> {
-    fn check_generalized_alias_normalizes_to_tyvar<R: PredicateEmittingRelation<Self>>(
-        &self,
-        relation: &mut R,
-        source_ty: Ty<'tcx>,
-    ) -> Option<Ty<'tcx>> {
-        if !self.next_trait_solver()
-            || matches!(relation.structurally_relate_aliases(), StructurallyRelateAliases::Yes)
-        {
-            return None;
-        }
-
-        // If we get an alias
-        let ty::Alias(_, alias) = source_ty.kind() else {
-            return None;
-        };
-
-        if alias.has_escaping_bound_vars() {
-            return None;
-        }
-
-        let normalized_alias = relation.try_eagerly_normalize_alias(*alias);
-
-        normalized_alias.is_ty_var().then_some(normalized_alias)
-    }
-
     /// The idea is that we should ensure that the type variable `target_vid`
     /// is equal to, a subtype of, or a supertype of `source_ty`.
     ///
@@ -76,7 +51,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// `TypeRelation`. Do not use this, and instead please use `At::eq`, for all
     /// other usecases (i.e. setting the value of a type var).
     #[instrument(level = "debug", skip(self, relation))]
-    pub fn instantiate_ty_var<R: PredicateEmittingRelation<Self>>(
+    pub fn instantiate_ty_var<R: PredicateEmittingRelation<InferCtxt<'tcx>>>(
         &self,
         relation: &mut R,
         target_is_expected: bool,
@@ -86,31 +61,30 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> RelateResult<'tcx, ()> {
         debug_assert!(self.inner.borrow_mut().type_variables().probe(target_vid).is_unknown());
 
-        let generalized_ty =
-            match self.check_generalized_alias_normalizes_to_tyvar(relation, source_ty) {
-                Some(tyvar) => tyvar,
-                None => {
-                    // Generalize `source_ty` depending on the current variance. As an example, assume
-                    // `?target <: &'x ?1`, where `'x` is some free region and `?1` is an inference
-                    // variable.
-                    //
-                    // Then the `generalized_ty` would be `&'?2 ?3`, where `'?2` and `?3` are fresh
-                    // region/type inference variables.
-                    //
-                    // We then relate `generalized_ty <: source_ty`, adding constraints like `'x: '?2` and
-                    // `?1 <: ?3`.
-                    let generalizer = self.generalize(
-                        relation.span(),
-                        relation.structurally_relate_aliases(),
-                        target_vid,
-                        instantiation_variance,
-                        source_ty,
-                        &mut |alias| relation.try_eagerly_normalize_alias(alias),
-                    )?;
+        // Generalize `source_ty` depending on the current variance. As an example, assume
+        // `?target <: &'x ?1`, where `'x` is some free region and `?1` is an inference
+        // variable.
+        //
+        // Then the `generalized_ty` would be `&'?2 ?3`, where `'?2` and `?3` are fresh
+        // region/type inference variables.
+        //
+        // We then relate `generalized_ty <: source_ty`, adding constraints like `'x: '?2` and
+        // `?1 <: ?3`.
+        let Generalization { value_may_be_infer: generalized_ty } = self.generalize(
+            relation.span(),
+            relation.structurally_relate_aliases(),
+            target_vid,
+            instantiation_variance,
+            source_ty,
+            &mut |alias| relation.try_eagerly_normalize_alias(alias),
+        )?;
 
-                    generalizer.value_may_be_infer
-                }
-            };
+        // Constrain `b_vid` to the generalized type `generalized_ty`.
+        if let &ty::Infer(ty::TyVar(generalized_vid)) = generalized_ty.kind() {
+            self.inner.borrow_mut().type_variables().equate(target_vid, generalized_vid);
+        } else {
+            self.inner.borrow_mut().type_variables().instantiate(target_vid, generalized_ty);
+        }
 
         // Finally, relate `generalized_ty` to `source_ty`, as described in previous comment.
         //
@@ -118,10 +92,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // relations wind up attributed to the same spans. We need
         // to associate causes/spans with each of the relations in
         // the stack to get this right.
-        if let &ty::Infer(ty::TyVar(generalized_vid)) = generalized_ty.kind() {
-            // Constrain `b_vid` to the generalized type variable.
-            self.inner.borrow_mut().type_variables().equate(target_vid, generalized_vid);
-
+        if generalized_ty.is_ty_var() {
             // This happens for cases like `<?0 as Trait>::Assoc == ?0`.
             // We can't instantiate `?0` here as that would result in a
             // cyclic type. We instead delay the unification in case
@@ -162,9 +133,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
             }
         } else {
-            // Constrain `b_vid` to the generalized type `generalized_ty`.
-            self.inner.borrow_mut().type_variables().instantiate(target_vid, generalized_ty);
-
             // NOTE: The `instantiation_variance` is not the same variance as
             // used by the relation. When instantiating `b`, `target_is_expected`
             // is flipped and the `instantiation_variance` is also flipped. To
