@@ -732,10 +732,6 @@ pub enum BuiltinLintDiag {
         local_crate: Symbol,
     },
     AttributeLint(AttributeLintKind),
-    UnreachableCfg {
-        span: Span,
-        wildcard_span: Option<Span>,
-    },
 }
 
 #[derive(Debug, HashStable_Generic)]

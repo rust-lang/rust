@@ -27,9 +27,26 @@ pub(crate) struct ItemFollowingInnerAttr {
 }
 
 #[derive(Diagnostic)]
+#[diag("unreachable configuration predicate")]
+pub(crate) struct UnreachableCfgSelectPredicate {
+    #[label("this configuration predicate is never reached")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("most attributes are not supported in `where` clauses")]
 #[help("only `#[cfg]` and `#[cfg_attr]` are supported")]
 pub(crate) struct UnsupportedAttributesInWhere {
     #[primary_span]
     pub span: MultiSpan,
+}
+
+#[derive(Diagnostic)]
+#[diag("unreachable configuration predicate")]
+pub(crate) struct UnreachableCfgSelectPredicateWildcard {
+    #[label("this configuration predicate is never reached")]
+    pub span: Span,
+
+    #[label("always matches")]
+    pub wildcard_span: Span,
 }

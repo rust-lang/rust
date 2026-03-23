@@ -3710,23 +3710,6 @@ pub(crate) struct UnknownCrateTypesSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("unreachable configuration predicate")]
-pub(crate) struct UnreachableCfgSelectPredicate {
-    #[label("this configuration predicate is never reached")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("unreachable configuration predicate")]
-pub(crate) struct UnreachableCfgSelectPredicateWildcard {
-    #[label("this configuration predicate is never reached")]
-    pub span: Span,
-
-    #[label("always matches")]
-    pub wildcard_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("positional format arguments are not allowed here")]
 #[help(
     "only named format arguments with the name of one of the generic types are allowed in this context"

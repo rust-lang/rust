@@ -224,13 +224,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
                 }
                 .into_diag(dcx, level)
             }
-            BuiltinLintDiag::UnreachableCfg { span, wildcard_span } => match wildcard_span {
-                Some(wildcard_span) => {
-                    lints::UnreachableCfgSelectPredicateWildcard { span, wildcard_span }
-                        .into_diag(dcx, level)
-                }
-                None => lints::UnreachableCfgSelectPredicate { span }.into_diag(dcx, level),
-            },
 
             BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
                 lints::UnusedCrateDependency { extern_crate, local_crate }.into_diag(dcx, level)
