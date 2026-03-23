@@ -59,6 +59,26 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn type_bound(&self, bound: ast::Type) -> ast::TypeBound {
+        make::type_bound(bound).clone_for_update()
+    }
+
+    pub fn type_bound_list(
+        &self,
+        bounds: impl IntoIterator<Item = ast::TypeBound>,
+    ) -> Option<ast::TypeBoundList> {
+        let (bounds, input) = iterator_input(bounds);
+        let ast = make::type_bound_list(bounds)?.clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input, ast.bounds().map(|b| b.syntax().clone()));
+            builder.finish(&mut mapping);
+        }
+
+        Some(ast)
+    }
+
     pub fn type_param(
         &self,
         name: ast::Name,
@@ -1757,6 +1777,10 @@ impl SyntaxFactory {
         }
 
         ast
+    }
+
+    pub fn assoc_item_list_empty(&self) -> ast::AssocItemList {
+        make::assoc_item_list(None).clone_for_update()
     }
 
     pub fn attr_outer(&self, meta: ast::Meta) -> ast::Attr {
