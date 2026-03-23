@@ -9,7 +9,6 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make,
         syntax_factory::SyntaxFactory,
     },
 };
@@ -68,41 +67,46 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         AssistId::refactor_rewrite("desugar_try_expr_match"),
         "Replace try expression with match",
         target,
-        |edit| {
+        |builder| {
+            let make = SyntaxFactory::with_mappings();
+            let mut editor = builder.make_editor(try_expr.syntax());
+
             let sad_pat = match try_enum {
-                TryEnum::Option => make::path_pat(make::ext::ident_path("None")),
-                TryEnum::Result => make::tuple_struct_pat(
-                    make::ext::ident_path("Err"),
-                    iter::once(make::path_pat(make::ext::ident_path("err"))),
-                )
-                .into(),
+                TryEnum::Option => make.path_pat(make.ident_path("None")),
+                TryEnum::Result => make
+                    .tuple_struct_pat(
+                        make.ident_path("Err"),
+                        iter::once(make.path_pat(make.ident_path("err"))),
+                    )
+                    .into(),
             };
             let sad_expr = match try_enum {
-                TryEnum::Option => {
-                    make::expr_return(Some(make::expr_path(make::ext::ident_path("None"))))
-                }
-                TryEnum::Result => make::expr_return(Some(
-                    make::expr_call(
-                        make::expr_path(make::ext::ident_path("Err")),
-                        make::arg_list(iter::once(make::expr_path(make::ext::ident_path("err")))),
+                TryEnum::Option => make.expr_return(Some(make.expr_path(make.ident_path("None")))),
+                TryEnum::Result => make.expr_return(Some(
+                    make.expr_call(
+                        make.expr_path(make.ident_path("Err")),
+                        make.arg_list(iter::once(make.expr_path(make.ident_path("err")))),
                     )
                     .into(),
                 )),
             };
 
-            let happy_arm = make::match_arm(
-                try_enum.happy_pattern(make::ident_pat(false, false, make::name("it")).into()),
+            let happy_arm = make.match_arm(
+                try_enum.happy_pattern(make.ident_pat(false, false, make.name("it")).into()),
                 None,
-                make::expr_path(make::ext::ident_path("it")),
+                make.expr_path(make.ident_path("it")),
             );
-            let sad_arm = make::match_arm(sad_pat, None, sad_expr);
+            let sad_arm = make.match_arm(sad_pat, None, sad_expr.into());
 
-            let match_arm_list = make::match_arm_list([happy_arm, sad_arm]);
+            let match_arm_list = make.match_arm_list([happy_arm, sad_arm]);
 
-            let expr_match = make::expr_match(expr.clone(), match_arm_list)
+            let expr_match = make
+                .expr_match(expr.clone(), match_arm_list)
                 .indent(IndentLevel::from_node(try_expr.syntax()));
 
-            edit.replace_ast::<ast::Expr>(try_expr.clone().into(), expr_match.into());
+            editor.replace(try_expr.syntax(), expr_match.syntax());
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );
 

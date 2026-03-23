@@ -2,7 +2,7 @@ use hir::{Name, sym};
 use ide_db::{famous_defs::FamousDefs, syntax_helpers::suggest_name};
 use syntax::{
     AstNode,
-    ast::{self, HasAttrs, HasLoopBody, edit::IndentLevel, make, syntax_factory::SyntaxFactory},
+    ast::{self, HasAttrs, HasLoopBody, edit::IndentLevel, syntax_factory::SyntaxFactory},
     syntax_editor::Position,
 };
 
@@ -57,13 +57,13 @@ pub(crate) fn convert_for_loop_to_while_let(
             {
                 (expr, Some(make.name_ref(method.as_str())))
             } else if let ast::Expr::RefExpr(_) = iterable {
-                (make::expr_paren(iterable).into(), Some(make.name_ref("into_iter")))
+                (make.expr_paren(iterable).into(), Some(make.name_ref("into_iter")))
             } else {
                 (iterable, Some(make.name_ref("into_iter")))
             };
 
             let iterable = if let Some(method) = method {
-                make::expr_method_call(iterable, method, make::arg_list([])).into()
+                make.expr_method_call(iterable, method, make.arg_list([])).into()
             } else {
                 iterable
             };
@@ -89,17 +89,18 @@ pub(crate) fn convert_for_loop_to_while_let(
                 for_loop.syntax(),
                 &mut editor,
                 for_loop.attrs().map(|it| it.clone_for_update()),
+                &make,
             );
 
             editor.insert(
                 Position::before(for_loop.syntax()),
-                make::tokens::whitespace(format!("\n{indent}").as_str()),
+                make.whitespace(format!("\n{indent}").as_str()),
             );
             editor.insert(Position::before(for_loop.syntax()), mut_expr.syntax());
 
-            let opt_pat = make.tuple_struct_pat(make::ext::ident_path("Some"), [pat]);
+            let opt_pat = make.tuple_struct_pat(make.ident_path("Some"), [pat]);
             let iter_next_expr = make.expr_method_call(
-                make.expr_path(make::ext::ident_path(&tmp_var)),
+                make.expr_path(make.ident_path(&tmp_var)),
                 make.name_ref("next"),
                 make.arg_list([]),
             );

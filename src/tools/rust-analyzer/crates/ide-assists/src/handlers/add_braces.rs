@@ -84,6 +84,7 @@ fn get_replacement_node(ctx: &AssistContext<'_>) -> Option<(ParentType, ast::Exp
             match parent {
                 ast::LetStmt(it) => it.initializer()?,
                 ast::LetExpr(it) => it.expr()?,
+                ast::BinExpr(it) => it.rhs()?,
                 ast::Static(it) => it.body()?,
                 ast::Const(it) => it.body()?,
                 _ => return None,
@@ -174,6 +175,70 @@ fn foo() {
         n + 100
     };
 }
+"#,
+        );
+
+        check_assist(
+            add_braces,
+            r#"
+fn foo() {
+    let x;
+    x =$0 n + 100;
+}
+"#,
+            r#"
+fn foo() {
+    let x;
+    x = {
+        n + 100
+    };
+}
+"#,
+        );
+
+        check_assist(
+            add_braces,
+            r#"
+fn foo() {
+    if let x =$0 n + 100 {}
+}
+"#,
+            r#"
+fn foo() {
+    if let x = {
+        n + 100
+    } {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn suggest_add_braces_for_const_initializer() {
+        check_assist(
+            add_braces,
+            r#"
+const X: i32 =$0 1 + 2;
+"#,
+            r#"
+const X: i32 = {
+    1 + 2
+};
+"#,
+        );
+    }
+
+    #[test]
+    fn suggest_add_braces_for_static_initializer() {
+        check_assist(
+            add_braces,
+            r#"
+static X: i32 $0= 1 + 2;
+"#,
+            r#"
+static X: i32 = {
+    1 + 2
+};
 "#,
         );
     }
