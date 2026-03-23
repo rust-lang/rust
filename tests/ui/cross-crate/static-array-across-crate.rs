@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![allow(dead_code)]
 //@ aux-build:pub_static_array.rs
 

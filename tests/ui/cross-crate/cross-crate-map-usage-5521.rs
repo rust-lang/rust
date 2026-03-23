@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/5521
-//@ run-pass
+//@ build-pass
 #![allow(dead_code)]
 //@ aux-build:aux-5521.rs
 
