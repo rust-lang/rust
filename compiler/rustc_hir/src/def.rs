@@ -604,6 +604,13 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// **Not bound to a specific namespace.**
     Err,
+
+    /// The resolution for a virtual module in a namespaced crate. E.g. `my_api`
+    /// in the namespaced crate `my_api::utils` when `my_api` isn't part of the
+    /// extern prelude.
+    ///
+    /// **Belongs to the type namespace.**
+    VirtualMod(Symbol),
 }
 
 impl<Id> IntoDiagArg for Res<Id> {
@@ -838,6 +845,7 @@ impl<Id> Res<Id> {
             | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..)
             | Res::ToolMod
+            | Res::VirtualMod(..)
             | Res::NonMacroAttr(..)
             | Res::Err => None,
         }
@@ -869,6 +877,7 @@ impl<Id> Res<Id> {
             Res::Local(..) => "local variable",
             Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => "self type",
             Res::ToolMod => "tool module",
+            Res::VirtualMod(..) => "virtual module for namespaced crate",
             Res::NonMacroAttr(attr_kind) => attr_kind.descr(),
             Res::Err => "unresolved item",
         }
@@ -895,6 +904,7 @@ impl<Id> Res<Id> {
                 Res::SelfTyAlias { alias_to, is_trait_impl }
             }
             Res::ToolMod => Res::ToolMod,
+            Res::VirtualMod(sym) => Res::VirtualMod(sym),
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
         }
@@ -911,6 +921,7 @@ impl<Id> Res<Id> {
                 Res::SelfTyAlias { alias_to, is_trait_impl }
             }
             Res::ToolMod => Res::ToolMod,
+            Res::VirtualMod(sym) => Res::VirtualMod(sym),
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
         })
@@ -936,9 +947,11 @@ impl<Id> Res<Id> {
     pub fn ns(&self) -> Option<Namespace> {
         match self {
             Res::Def(kind, ..) => kind.ns(),
-            Res::PrimTy(..) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::ToolMod => {
-                Some(Namespace::TypeNS)
-            }
+            Res::PrimTy(..)
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
+            | Res::ToolMod
+            | Res::VirtualMod(..) => Some(Namespace::TypeNS),
             Res::SelfCtor(..) | Res::Local(..) => Some(Namespace::ValueNS),
             Res::NonMacroAttr(..) => Some(Namespace::MacroNS),
             Res::Err => None,
