@@ -15,10 +15,10 @@ impl<T> Box<T> {
 pub trait PointeeSized {}
 
 #[lang = "size_of_val"]
-pub trait MetaSized: PointeeSized {}
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-pub trait Sized: MetaSized {}
+pub trait Sized: SizeOfVal {}
 
 #[doc(notable_trait)]
 pub trait FakeIterator {}

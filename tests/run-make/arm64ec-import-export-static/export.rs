@@ -8,9 +8,9 @@
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 #[lang = "size_of_val"]
-pub trait MetaSized: PointeeSized {}
+pub trait SizeOfVal: PointeeSized {}
 #[lang = "sized"]
-pub trait Sized: MetaSized {}
+pub trait Sized: SizeOfVal {}
 #[lang = "sync"]
 trait Sync {}
 impl Sync for i32 {}

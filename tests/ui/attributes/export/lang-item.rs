@@ -9,7 +9,7 @@ pub trait PointeeSized {}
 
 #[lang = "size_of_val"]
 //~^ ERROR lang items are not allowed in stable dylibs
-pub trait MetaSized: PointeeSized {}
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
 //~^ ERROR lang items are not allowed in stable dylibs

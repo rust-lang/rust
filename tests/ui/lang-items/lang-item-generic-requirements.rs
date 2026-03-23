@@ -8,10 +8,10 @@
 pub trait MyPointeeSized {}
 
 #[lang = "size_of_val"]
-pub trait MyMetaSized: MyPointeeSized {}
+pub trait MySizeOfVal: MyPointeeSized {}
 
 #[lang = "sized"]
-trait MySized: MyMetaSized {}
+trait MySized: MySizeOfVal {}
 
 #[lang = "add"]
 trait MyAdd<'a, T> {}

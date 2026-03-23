@@ -16,10 +16,10 @@
 trait PointeeSized: ?Leak {}
 
 #[lang = "size_of_val"]
-trait MetaSized: PointeeSized + ?Leak {}
+trait SizeOfVal: PointeeSized + ?Leak {}
 
 #[lang = "sized"]
-trait Sized: MetaSized + ?Leak {}
+trait Sized: SizeOfVal + ?Leak {}
 
 #[lang = "copy"]
 pub trait Copy: ?Leak {}

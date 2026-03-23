@@ -23,10 +23,10 @@ unsafe extern "C" fn _Unwind_Resume() {
 pub trait PointeeSized {}
 
 #[lang = "size_of_val"]
-pub trait MetaSized: PointeeSized {}
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-pub trait Sized: MetaSized {}
+pub trait Sized: SizeOfVal {}
 
 #[lang = "destruct"]
 pub trait Destruct {}
@@ -56,14 +56,14 @@ impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a mut U
 impl<T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<*const U> for *const T {}
 // *mut T -> *mut U
 impl<T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<*mut U> for *mut T {}
-impl<T: MetaSized + Unsize<U>, U: MetaSized> DispatchFromDyn<Box<U, ()>> for Box<T, ()> {}
+impl<T: SizeOfVal + Unsize<U>, U: SizeOfVal> DispatchFromDyn<Box<U, ()>> for Box<T, ()> {}
 
 #[lang = "legacy_receiver"]
 pub trait LegacyReceiver {}
 
 impl<T: PointeeSized> LegacyReceiver for &T {}
 impl<T: PointeeSized> LegacyReceiver for &mut T {}
-impl<T: MetaSized> LegacyReceiver for Box<T> {}
+impl<T: SizeOfVal> LegacyReceiver for Box<T> {}
 
 #[lang = "receiver"]
 trait Receiver {}

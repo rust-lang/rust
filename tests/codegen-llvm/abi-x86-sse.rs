@@ -17,10 +17,10 @@
 #![crate_type = "lib"]
 
 #[lang = "sized"]
-trait Sized: MetaSized {}
+trait Sized: SizeOfVal {}
 
 #[lang = "size_of_val"]
-trait MetaSized: PointeeSized {}
+trait SizeOfVal: PointeeSized {}
 
 #[lang = "pointee_sized"]
 trait PointeeSized {}

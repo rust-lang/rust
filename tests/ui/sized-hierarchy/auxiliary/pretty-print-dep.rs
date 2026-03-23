@@ -1,6 +1,6 @@
 #![feature(sized_hierarchy)]
 
-use std::marker::{MetaSized, PointeeSized};
+use std::marker::{SizeOfVal, PointeeSized};
 
 pub trait SizedTr {}
 
@@ -10,9 +10,9 @@ pub trait NegSizedTr {}
 
 impl<T: ?Sized> NegSizedTr for T {}
 
-pub trait MetaSizedTr {}
+pub trait SizeOfValTr {}
 
-impl<T: MetaSized> MetaSizedTr for T {}
+impl<T: SizeOfVal> SizeOfValTr for T {}
 
 pub trait PointeeSizedTr: PointeeSized {}
 

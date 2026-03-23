@@ -155,7 +155,7 @@ unsafe impl<T: Sync + PointeeSized> Send for &T {}
 // and we know that the supertraits are always implemented if the subtrait is just by looking at
 // the builtin impls.
 #[rustc_coinductive]
-pub trait Sized: MetaSized {
+pub trait Sized: SizeOfVal {
     // Empty.
 }
 
@@ -169,10 +169,10 @@ pub trait Sized: MetaSized {
 #[fundamental]
 #[rustc_specialization_trait]
 #[rustc_deny_explicit_impl]
-// `MetaSized` being coinductive, despite having supertraits, is okay for the same reasons as
+// `SizeOfVal` being coinductive, despite having supertraits, is okay for the same reasons as
 // `Sized` above.
 #[rustc_coinductive]
-pub trait MetaSized: PointeeSized {
+pub trait SizeOfVal: PointeeSized {
     // Empty
 }
 

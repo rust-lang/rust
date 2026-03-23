@@ -1,7 +1,7 @@
 //@ compile-flags: --crate-type=lib
 #![feature(sized_hierarchy)]
 
-use std::marker::{MetaSized, PointeeSized};
+use std::marker::{SizeOfVal, PointeeSized};
 
 pub trait Tr: PointeeSized {}
 impl Tr for u32 {}
@@ -18,16 +18,16 @@ pub fn neg_sized() -> Box<impl Tr + ?Sized> {
     if true {
         let x = neg_sized();
         let y: Box<dyn Tr> = x;
-//~^ ERROR: the size for values of type `impl Tr + MetaSized` cannot be known
+//~^ ERROR: the size for values of type `impl Tr + SizeOfVal` cannot be known
     }
     Box::new(1u32)
 }
 
-pub fn metasized() -> Box<impl Tr + MetaSized> {
+pub fn sizeofval() -> Box<impl Tr + SizeOfVal> {
     if true {
-        let x = metasized();
+        let x = sizeofval();
         let y: Box<dyn Tr> = x;
-//~^ ERROR: the size for values of type `impl Tr + MetaSized` cannot be known
+//~^ ERROR: the size for values of type `impl Tr + SizeOfVal` cannot be known
     }
     Box::new(1u32)
 }

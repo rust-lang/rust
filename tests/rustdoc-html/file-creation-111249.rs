@@ -8,13 +8,13 @@
 pub trait PointeeSized {}
 
 #[lang = "size_of_val"]
-pub trait MetaSized: PointeeSized {}
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-pub trait Sized: MetaSized {}
+pub trait Sized: SizeOfVal {}
 
 //@ files "foo" "['all.html', 'visible', 'index.html', 'sidebar-items.js', 'hidden', \
-//        'struct.Bar.html', 'trait.Sized.html', 'trait.MetaSized.html', 'trait.PointeeSized.html']"
+//        'struct.Bar.html', 'trait.Sized.html', 'trait.SizeOfVal.html', 'trait.PointeeSized.html']"
 //@ files "foo/visible" "['trait.Foo.html', 'index.html', 'sidebar-items.js']"
 //@ files "foo/hidden" "['inner']"
 //@ files "foo/hidden/inner" "['trait.Foo.html']"

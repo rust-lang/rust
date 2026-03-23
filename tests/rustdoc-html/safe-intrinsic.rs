@@ -9,10 +9,10 @@
 pub trait PointeeSized {}
 
 #[lang = "size_of_val"]
-pub trait MetaSized: PointeeSized {}
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-pub trait Sized: MetaSized {}
+pub trait Sized: SizeOfVal {}
 
 //@ has 'foo/fn.abort.html'
 //@ has - '//pre[@class="rust item-decl"]' 'pub fn abort() -> !'
