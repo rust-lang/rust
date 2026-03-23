@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use crate::ci::CiEnv;
@@ -38,7 +38,7 @@ pub enum PathFreshness {
     /// "Local" essentially means "not-upstream" here.
     /// `upstream` is the latest upstream merge commit that made modifications to the
     /// set of paths.
-    HasLocalModifications { upstream: String },
+    HasLocalModifications { upstream: String, modifications: Vec<PathBuf> },
     /// No upstream commit was found.
     /// This should not happen in most reasonable circumstances, but one never knows.
     MissingUpstream,
@@ -134,21 +134,34 @@ pub fn check_path_modifications(
     // However, that should be equivalent to checking if something has changed
     // from the latest upstream commit *that modified `target_paths`*, and
     // with this approach we do not need to invoke git an additional time.
-    if has_changed_since(git_dir, &upstream_sha, target_paths) {
-        Ok(PathFreshness::HasLocalModifications { upstream: upstream_sha })
+    let modifications = changes_since(git_dir, &upstream_sha, target_paths)?;
+    if !modifications.is_empty() {
+        Ok(PathFreshness::HasLocalModifications { upstream: upstream_sha, modifications })
     } else {
         Ok(PathFreshness::LastModifiedUpstream { upstream: upstream_sha })
     }
 }
 
 /// Returns true if any of the passed `paths` have changed since the `base` commit.
-pub fn has_changed_since(git_dir: &Path, base: &str, paths: &[&str]) -> bool {
-    run_git_diff_index(Some(git_dir), |cmd| {
-        cmd.args(["--quiet", base, "--"]).args(paths);
+pub fn changes_since(git_dir: &Path, base: &str, paths: &[&str]) -> Result<Vec<PathBuf>, String> {
+    use std::io::BufRead;
 
-        // Exit code 0 => no changes
-        // Exit code 1 => some changes were detected
-        !cmd.status().expect("cannot run git diff-index").success()
+    run_git_diff_index(Some(git_dir), |cmd| {
+        cmd.args([base, "--name-only", "--"]).args(paths);
+
+        let output = cmd.stderr(Stdio::inherit()).output().expect("cannot run git diff-index");
+        if !output.status.success() {
+            return Err(format!("failed to run: {cmd:?}: {:?}", output.status));
+        }
+
+        output
+            .stdout
+            .lines()
+            .map(|res| match res {
+                Ok(line) => Ok(PathBuf::from(line)),
+                Err(e) => Err(format!("invalid UTF-8 in diff-index: {e:?}")),
+            })
+            .collect()
     })
 }
 
