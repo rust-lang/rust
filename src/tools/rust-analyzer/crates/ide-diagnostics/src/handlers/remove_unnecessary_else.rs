@@ -48,7 +48,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<
     let mut indent = IndentLevel::from_node(if_expr.syntax());
     let has_parent_if_expr = if_expr.syntax().parent().and_then(ast::IfExpr::cast).is_some();
     if has_parent_if_expr {
-        indent = indent + 1;
+        indent += 1;
     }
     let else_replacement = match if_expr.else_branch()? {
         ast::ElseBranch::Block(block) => block

@@ -21,7 +21,7 @@ help: the trait `Trait` is not implemented for `MultipleCandidates`
    |
 LL | struct MultipleCandidates;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
-help: the following other types implement trait `Trait`
+help: `MultipleCandidates` implements trait `Trait`
   --> $DIR/inductive-cycle-but-err.rs:26:1
    |
 LL | / impl Trait for MultipleCandidates

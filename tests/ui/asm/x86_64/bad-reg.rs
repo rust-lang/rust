@@ -22,9 +22,9 @@ fn main() {
         asm!("", in("foo") foo);
         //~^ ERROR invalid register `foo`: unknown register
         asm!("{:z}", in(reg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `z` for this register class
         asm!("{:r}", in(xmm_reg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `r` for this register class
         asm!("{:a}", const 0);
         //~^ ERROR asm template modifiers are not allowed for `const` arguments
         asm!("{:a}", sym main);

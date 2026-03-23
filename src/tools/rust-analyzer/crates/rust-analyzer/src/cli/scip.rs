@@ -52,6 +52,7 @@ impl flags::Scip {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: true,
+            num_worker_threads: self.num_threads.unwrap_or_else(num_cpus::get_physical),
             proc_macro_processes: config.proc_macro_num_processes(),
         };
         let cargo_config = config.cargo(None);

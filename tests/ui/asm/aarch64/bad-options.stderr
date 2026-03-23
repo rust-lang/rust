@@ -78,7 +78,7 @@ error: invalid ABI for `clobber_abi`
 LL |         asm!("", clobber_abi("foo"));
    |                  ^^^^^^^^^^^^^^^^^^
    |
-   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`
+   = note: the following ABIs are supported on this target: `C`, `system`, and `efiapi`
 
 error: aborting due to 13 previous errors
 

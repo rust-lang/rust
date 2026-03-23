@@ -165,14 +165,6 @@ macro_rules! define_queries {
                         #[cfg(not($cache_on_disk))]
                         try_load_from_disk_fn: |_tcx, _key, _prev_index, _index| None,
 
-                        #[cfg($cache_on_disk)]
-                        is_loadable_from_disk_fn: |tcx, key, index| -> bool {
-                            rustc_middle::queries::_cache_on_disk_if_fns::$name(tcx, key) &&
-                                $crate::plumbing::loadable_from_disk(tcx, index)
-                        },
-                        #[cfg(not($cache_on_disk))]
-                        is_loadable_from_disk_fn: |_tcx, _key, _index| false,
-
                         // The default just emits `err` and then aborts.
                         // `from_cycle_error::specialize_query_vtables` overwrites this default for
                         // certain queries.

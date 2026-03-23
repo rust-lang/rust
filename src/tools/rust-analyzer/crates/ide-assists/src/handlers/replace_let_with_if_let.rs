@@ -86,8 +86,8 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
 }
 
 fn let_expr_needs_paren(expr: &ast::Expr) -> bool {
-    let fake_expr_let =
-        ast::make::expr_let(ast::make::tuple_pat(None).into(), ast::make::ext::expr_unit());
+    let make = SyntaxFactory::without_mappings();
+    let fake_expr_let = make.expr_let(make.tuple_pat(None).into(), make.expr_unit());
     let Some(fake_expr) = fake_expr_let.expr() else {
         stdx::never!();
         return false;

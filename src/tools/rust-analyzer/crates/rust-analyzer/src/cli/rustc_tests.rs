@@ -103,6 +103,7 @@ impl Tester {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
+            num_worker_threads: 1,
             proc_macro_processes: 1,
         };
         let (db, _vfs, _proc_macro) =

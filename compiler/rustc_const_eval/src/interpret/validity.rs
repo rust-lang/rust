@@ -128,7 +128,6 @@ enum ExpectedKind {
     Reference,
     Box,
     RawPtr,
-    InitScalar,
     Bool,
     Char,
     Float,
@@ -143,7 +142,6 @@ impl fmt::Display for ExpectedKind {
             ExpectedKind::Reference => "expected a reference",
             ExpectedKind::Box => "expected a box",
             ExpectedKind::RawPtr => "expected a raw pointer",
-            ExpectedKind::InitScalar => "expected initialized scalar value",
             ExpectedKind::Bool => "expected a boolean",
             ExpectedKind::Char => "expected a unicode scalar value",
             ExpectedKind::Float => "expected a floating point number",
@@ -1478,7 +1476,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
             BackendRepr::Scalar(scalar_layout) => {
                 if !scalar_layout.is_uninit_valid() {
                     // There is something to check here.
-                    let scalar = self.read_scalar(val, ExpectedKind::InitScalar)?;
+                    // We read directly via `ecx` since the read cannot fail -- we already read
+                    // this field above when recursing into the field.
+                    let scalar = self.ecx.read_scalar(val)?;
                     self.visit_scalar(scalar, scalar_layout)?;
                 }
             }
@@ -1487,8 +1487,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // FIXME: find a way to also check ScalarPair when one side can be uninit but
                 // the other must be init.
                 if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
-                    let (a, b) =
-                        self.read_immediate(val, ExpectedKind::InitScalar)?.to_scalar_pair();
+                    // We read directly via `ecx` since the read cannot fail -- we already read
+                    // this field above when recursing into the field.
+                    let (a, b) = self.ecx.read_immediate(val)?.to_scalar_pair();
                     self.visit_scalar(a, a_layout)?;
                     self.visit_scalar(b, b_layout)?;
                 }
