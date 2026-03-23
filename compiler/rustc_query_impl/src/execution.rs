@@ -686,13 +686,6 @@ pub(crate) fn force_query<'tcx, C: QueryCache>(
     key: C::Key,
     dep_node: DepNode,
 ) {
-    // We may be concurrently trying both execute and force a query.
-    // Ensure that only one of them runs the query.
-    if let Some((_, index)) = query.cache.lookup(&key) {
-        tcx.prof.query_cache_hit(index.into());
-        return;
-    }
-
     ensure_sufficient_stack(|| {
         try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
     });
