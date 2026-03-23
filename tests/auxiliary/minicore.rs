@@ -48,7 +48,7 @@ macro_rules! impl_marker_trait {
 )]
 pub trait PointeeSized {}
 
-#[lang = "meta_sized"]
+#[lang = "size_of_val"]
 #[diagnostic::on_unimplemented(
     message = "the size for values of type `{Self}` cannot be known",
     label = "doesn't have a known size"

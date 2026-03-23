@@ -7,7 +7,7 @@
 // This is needed because of #![no_core]:
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
-#[lang = "meta_sized"]
+#[lang = "size_of_val"]
 pub trait MetaSized: PointeeSized {}
 #[lang = "sized"]
 pub trait Sized: MetaSized {}

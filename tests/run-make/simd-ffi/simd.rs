@@ -55,7 +55,7 @@ pub fn bar(a: i32x4, b: i32x4) -> i32x4 {
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
-#[lang = "meta_sized"]
+#[lang = "size_of_val"]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]

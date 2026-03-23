@@ -2,7 +2,7 @@
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 
 #[lang = "sized"] pub trait Sized: MetaSized {}
-#[lang = "meta_sized"] pub trait MetaSized: PointeeSized {}
+#[lang = "size_of_val"] pub trait MetaSized: PointeeSized {}
 #[lang = "pointee_sized"] pub trait PointeeSized {}
 #[lang="copy"] pub trait Copy {}
 

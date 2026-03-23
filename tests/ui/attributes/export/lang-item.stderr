@@ -7,8 +7,8 @@ LL | #[lang = "pointee_sized"]
 error: lang items are not allowed in stable dylibs
   --> $DIR/lang-item.rs:10:1
    |
-LL | #[lang = "meta_sized"]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+LL | #[lang = "size_of_val"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lang items are not allowed in stable dylibs
   --> $DIR/lang-item.rs:14:1

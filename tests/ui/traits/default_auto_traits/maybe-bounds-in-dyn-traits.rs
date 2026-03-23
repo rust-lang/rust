@@ -15,7 +15,7 @@
 #[lang = "pointee_sized"]
 trait PointeeSized: ?Leak {}
 
-#[lang = "meta_sized"]
+#[lang = "size_of_val"]
 trait MetaSized: PointeeSized + ?Leak {}
 
 #[lang = "sized"]

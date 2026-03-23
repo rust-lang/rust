@@ -22,7 +22,7 @@ unsafe extern "C" fn _Unwind_Resume() {
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
-#[lang = "meta_sized"]
+#[lang = "size_of_val"]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]

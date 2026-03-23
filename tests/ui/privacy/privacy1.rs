@@ -5,7 +5,7 @@
 #[lang = "sized"]
 pub trait Sized: MetaSized {}
 
-#[lang = "meta_sized"]
+#[lang = "size_of_val"]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "pointee_sized"]
