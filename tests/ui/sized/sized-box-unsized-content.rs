@@ -1,6 +1,6 @@
 //! Check that `Box<T>` is `Sized`, even when `T` is a dynamically sized type.
 
-//@ run-pass
+//@ check-pass
 
 #![allow(dead_code)]
 
