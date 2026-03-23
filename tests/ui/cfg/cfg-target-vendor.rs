@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ reference: cfg.target_vendor.def
 //@ reference: cfg.target_vendor.values
 #[cfg(target_vendor = "unknown")]
