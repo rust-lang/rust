@@ -355,51 +355,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
     }
 }
 
-/// This state determines how generalization treats aliases.
-///
-/// Based on which state we're in, we treat them either as rigid or normalizable,
-/// which might change depending on what types the generalization visitor encounters.
-/// See `handle_alias_ty` for the logic of how we change states.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum GeneralizerState {
     /// Treat aliases as potentially normalizable.
-    ///
-    /// This is the default state that generalization starts in, unless we're
-    /// treating aliases as rigid. It also means we're not currently inside an
-    /// alias, since then we change the state to `IncompletelyRelateAliasArgs`.
     Default,
-    /// We enter this state when we're generalizing the arguments of a
-    /// potentially normalizeable alias.
-    ///
-    /// The behavior here is different between the old and the new solver:
-    ///
-    /// In the old solver, the difference between this and `Default` is needed to
-    /// correctly handle `<T as Bar<<?0 as Foo>::Assoc>::Assoc == ?0`. That
-    /// equality can hold by either normalizing the outer or the inner
-    /// associated type. In the old solver, we always structurally relate
-    /// aliases. If we we encounter an occurs check failure, we propagate the
-    /// failure to the outermost alias, for which we then emit a `Projection`
-    /// goal instead.
-    ///
-    /// In the new solver, we rarely get into this state.
-    /// When we encounter aliases we instead attempt to normalize them, and treat
-    /// them as rigid using `ShallowStructurallyRelate`. Only when an alias has
-    /// escaping bound variables do we continue with similar logic to the old
-    /// solver, except now we also explicitly relate the type and consts in the
-    /// arguments of aliases while in this mode.
-    ///
-    /// FIXME: Because we relate the type and consts in the arguments of aliases
-    ///        while in this mode, this is incomplete.
-    IncompletelyRelateAliasArgs,
-    /// During generalization, when we encounter aliases, we will first attempt
-    /// to normalize them when we're using the next trait solver. We can now
-    /// treat the normalized alias as rigid, but only for "one layer", hence
-    /// shallow. New aliases encountered inside the arguments of the outer alias
-    /// should once again be related as normal.
+    IncompletelyRelateHigherRankedAlias,
+    /// Only one layer
     ShallowStructurallyRelateAliases,
-    /// Treat aliases as rigid when relating them.
-    ///
-    /// This corresponds to `relation.structurally_relate_aliases()`.
     StructurallyRelateAliases,
 }
 
@@ -438,10 +400,11 @@ struct Generalizer<'me, 'tcx> {
     /// some other type. What will be the variance at this point?
     ambient_variance: ty::Variance,
 
-    /// This field keeps track of how we treat aliases during generalization.
+    /// This is set once we're generalizing the arguments of an alias.
     ///
-    /// Refer to [`GeneralizerState`]'s docs for more information about the
-    /// all the possible values this can have, and when we use which.
+    /// This is necessary to correctly handle
+    /// `<T as Bar<<?0 as Foo>::Assoc>::Assoc == ?0`. This equality can
+    /// hold by either normalizing the outer or the inner associated type.
     state: GeneralizerState,
 
     cache: SsoHashMap<(Ty<'tcx>, ty::Variance, GeneralizerState), Ty<'tcx>>,
@@ -520,11 +483,11 @@ impl<'tcx> Generalizer<'_, 'tcx> {
 
                 return res;
             }
-            GeneralizerState::Default | GeneralizerState::IncompletelyRelateAliasArgs => {}
+            GeneralizerState::Default | GeneralizerState::IncompletelyRelateHigherRankedAlias => {}
         }
 
         let previous_state =
-            mem::replace(&mut self.state, GeneralizerState::IncompletelyRelateAliasArgs);
+            mem::replace(&mut self.state, GeneralizerState::IncompletelyRelateHigherRankedAlias);
         let result = match self.relate(alias, alias) {
             Ok(alias) => Ok(alias.to_ty(self.cx())),
             Err(e) => match previous_state {
@@ -541,7 +504,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
                     debug!("generalization failure in alias");
                     Ok(self.next_ty_var_for_alias())
                 }
-                GeneralizerState::IncompletelyRelateAliasArgs => return Err(e),
+                GeneralizerState::IncompletelyRelateHigherRankedAlias => return Err(e),
 
                 // Early return.
                 GeneralizerState::ShallowStructurallyRelateAliases
@@ -650,7 +613,6 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             // of each other. This is currently only used for diagnostics.
                             // To see why, see the docs in the `type_variables` module.
                             inner.type_variables().sub_unify(vid, new_var_id);
-
                             // If we're in the new solver and create a new inference
                             // variable inside of an alias we eagerly constrain that
                             // inference variable to prevent unexpected ambiguity errors.
@@ -670,13 +632,13 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                                 && !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
                             {
                                 match self.state {
-                                    GeneralizerState::IncompletelyRelateAliasArgs => {
+                                    GeneralizerState::IncompletelyRelateHigherRankedAlias => {
                                         inner.type_variables().equate(vid, new_var_id);
                                     }
-                                    GeneralizerState::Default
-                                    | GeneralizerState::ShallowStructurallyRelateAliases
-                                    | GeneralizerState::StructurallyRelateAliases => {}
                                 }
+                                GeneralizerState::Default
+                                | GeneralizerState::ShallowStructurallyRelateAliases
+                                | GeneralizerState::StructurallyRelateAliases => {}
                             }
 
                             debug!("replacing original vid={:?} with new={:?}", vid, new_var_id);
@@ -803,13 +765,13 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                                 && !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
                             {
                                 match self.state {
-                                    GeneralizerState::IncompletelyRelateAliasArgs => {
+                                    GeneralizerState::IncompletelyRelateHigherRankedAlias => {
                                         variable_table.union(vid, new_var_id);
                                     }
-                                    GeneralizerState::Default
-                                    | GeneralizerState::ShallowStructurallyRelateAliases
-                                    | GeneralizerState::StructurallyRelateAliases => {}
                                 }
+                                GeneralizerState::Default
+                                | GeneralizerState::ShallowStructurallyRelateAliases
+                                | GeneralizerState::StructurallyRelateAliases => {}
                             }
                             Ok(ty::Const::new_var(self.cx(), new_var_id))
                         }

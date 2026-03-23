@@ -3,7 +3,8 @@
 
 //@ revisions: next old
 //@[next] compile-flags: -Znext-solver
-//@ check-pass
+//@[old] check-pass
+//@[next] check-pass
 
 trait Trait {}
 

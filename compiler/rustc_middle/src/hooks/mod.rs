@@ -130,12 +130,7 @@ declare_hooks! {
     ) -> Ty<'tcx>;
 }
 
-/// The `try_eagerly_normalize_alias` hook passes an `Infcx` from where it's called (in `rustc_infer`)
-/// to where it's provided (in `rustc_trait_selection`).
-/// Both of those crates have that type available, but `rustc_middle` does not.
-/// Instead we pass this type-erased `Infcx` and transmute on both sides.
-///
-/// Has to be `repr(transparent)` so we can transmute a `&'a Infcx<'tcx>` to this struct.
+// `repr(transparent)` so we can transmute a `&'a Infcx<'tcx>` to this struct.
 #[repr(transparent)]
 pub struct TypeErasedInfcx<'a, 'tcx> {
     _infcx: *const (),
