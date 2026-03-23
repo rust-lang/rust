@@ -163,7 +163,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SubtypeFormat(usize, usize),
             OtherKind,
             SizedTrait,
-            MetaSizedTrait,
+            SizeOfValTrait,
             PointeeSizedTrait,
             Coerce,
             WellFormed,
@@ -189,8 +189,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => {
                     ErrorSortKey::SizedTrait
                 }
-                _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => {
-                    ErrorSortKey::MetaSizedTrait
+                _ if maybe_sizedness_did == self.tcx.lang_items().size_of_val_trait() => {
+                    ErrorSortKey::SizeOfValTrait
                 }
                 _ if maybe_sizedness_did == self.tcx.lang_items().pointee_sized_trait() => {
                     ErrorSortKey::PointeeSizedTrait
@@ -490,7 +490,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
     let mut pretty_predicates = Vec::with_capacity(predicates.len());
 
     let sized_trait = tcx.lang_items().sized_trait();
-    let meta_sized_trait = tcx.lang_items().meta_sized_trait();
+    let size_of_val_trait = tcx.lang_items().size_of_val_trait();
 
     for (p, _) in predicates {
         // Accumulate the sizedness bounds for each self ty.
@@ -500,7 +500,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
             if Some(trait_clause.def_id()) == sized_trait {
                 sizedness_of.sized = true;
                 continue;
-            } else if Some(trait_clause.def_id()) == meta_sized_trait {
+            } else if Some(trait_clause.def_id()) == size_of_val_trait {
                 sizedness_of.meta_sized = true;
                 continue;
             }
