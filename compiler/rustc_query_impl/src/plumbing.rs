@@ -23,7 +23,7 @@ use crate::error::{QueryOverflow, QueryOverflowNote};
 use crate::execution::all_inactive;
 use crate::job::find_dep_kind_root;
 use crate::query_impl::for_each_query_vtable;
-use crate::{CollectActiveJobsKind, GetQueryVTable, collect_active_query_jobs};
+use crate::{CollectActiveJobsKind, collect_active_query_jobs};
 
 fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
     let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::Full);
@@ -151,15 +151,15 @@ fn verify_query_key_hashes_inner<'tcx, C: QueryCache>(
     });
 }
 
-/// Implementation of [`DepKindVTable::promote_from_disk_fn`] for queries.
-pub(crate) fn promote_from_disk_inner<'tcx, Q: GetQueryVTable<'tcx>>(
+/// Inner implementation of [`DepKindVTable::promote_from_disk_fn`] for queries.
+pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
+    query: &'tcx QueryVTable<'tcx, C>,
     dep_node: DepNode,
 ) {
-    let query = Q::query_vtable(tcx);
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
-    let key = <Q::Cache as QueryCache>::Key::try_recover_key(tcx, &dep_node).unwrap_or_else(|| {
+    let key = C::Key::try_recover_key(tcx, &dep_node).unwrap_or_else(|| {
         panic!(
             "Failed to recover key for {dep_node:?} with key fingerprint {}",
             dep_node.key_fingerprint
