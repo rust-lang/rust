@@ -3,8 +3,10 @@ use std::borrow::Cow;
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir};
 use rustc_session::config::FmtDebug;
+use rustc_session::lint;
 use rustc_span::{ByteSymbol, DesugaringKind, Ident, Span, Symbol, sym};
 
 use super::LoweringContext;
@@ -116,63 +118,89 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             fmt = self.inline_literals(fmt);
         }
 
-        // --- Crater instrumentation: collect stats before dedup ---
-        let before = collect_format_args_stats(&fmt);
-        let args_before_dedup = before.total_args;
+        // --- Crater instrumentation ---
+        // Only emit for the root crate.  Cargo passes
+        // `--cap-lints allow` when compiling dependencies,
+        // so we use that signal to skip them -- just as
+        // cargo suppresses dependency warnings.
+        let before = (self.tcx.sess.opts.lint_cap
+            != Some(lint::Allow))
+        .then(|| collect_format_args_stats(&fmt));
 
         fmt = self.dedup_captured_places(fmt);
 
-        // --- Crater instrumentation: collect stats after dedup ---
-        let args_after_dedup = fmt.arguments.all_args().len();
-        let deduped_by_opt = args_before_dedup.saturating_sub(args_after_dedup);
-        let not_deduped = before.duplicate_captures.saturating_sub(deduped_by_opt);
+        if let Some(before) = before {
+            let args_after_dedup =
+                fmt.arguments.all_args().len();
+            let deduped_by_opt = before
+                .total_args
+                .saturating_sub(args_after_dedup);
+            let not_deduped =
+                before
+                    .duplicate_captures
+                    .saturating_sub(deduped_by_opt);
 
-        // Classify duplicated captures by resolution.
-        let (const_dups, constparam_dups, other_dups) =
-            self.classify_dup_captures(&fmt);
+            // Classify remaining duplicated captures by
+            // name resolution.
+            let (const_dups, constparam_dups, other_dups) =
+                self.classify_dup_captures(&fmt);
 
-        // The "old world" (current stable) arg count: all captures with the
-        // same name were deduplicated, so we count unique captures only.
-        let args_old_world = before.positional + before.named + before.unique_captures;
-        // Size estimates (bytes, assuming 64-bit: rt::Argument = 16 bytes).
-        let size_no_dedup = before.total_args * 16;
-        let size_old_world = args_old_world * 16;
-        let size_with_opt = args_after_dedup * 16;
+            let krate =
+                self.tcx.crate_name(LOCAL_CRATE);
 
-        eprintln!(
-            "[FMTARGS] {{\
-            \"p\":{},\"ph\":{},\"wa\":{},\"pa\":{},\
-            \"a\":{},\"pos\":{},\"named\":{},\"cap\":{},\
-            \"ucap\":{},\"dup\":{},\"const\":{},\"constparam\":{},\"other_dup\":{},\
-            \"d2\":{},\"d3\":{},\"d4p\":{},\
-            \"deduped\":{},\"remaining\":{},\
-            \"a_old\":{},\"a_opt\":{},\
-            \"sz_no_dedup\":{},\"sz_old\":{},\"sz_opt\":{}\
-            }}",
-            before.pieces,
-            before.placeholders,
-            before.width_args,
-            before.precision_args,
-            before.total_args,
-            before.positional,
-            before.named,
-            before.captured,
-            before.unique_captures,
-            before.duplicate_captures,
-            const_dups,
-            constparam_dups,
-            other_dups,
-            before.dup_2x,
-            before.dup_3x,
-            before.dup_4plus,
-            deduped_by_opt,
-            not_deduped,
-            args_old_world,
-            args_after_dedup,
-            size_no_dedup,
-            size_old_world,
-            size_with_opt,
-        );
+            // The "old world" (current stable) arg count:
+            // all captures with the same name were
+            // deduplicated, so we count unique captures
+            // only.
+            let args_old_world = before.positional
+                + before.named
+                + before.unique_captures;
+            // Size estimates (bytes, assuming 64-bit:
+            // rt::Argument = 16 bytes).
+            let size_no_dedup = before.total_args * 16;
+            let size_old_world = args_old_world * 16;
+            let size_with_opt = args_after_dedup * 16;
+
+            eprintln!(
+                "[FMTARGS] {{\
+                \"crate\":\"{krate}\",\
+                \"p\":{},\"ph\":{},\"wa\":{},\"pa\":{},\
+                \"a\":{},\"pos\":{},\"named\":{},\
+                \"cap\":{},\
+                \"ucap\":{},\"dup\":{},\
+                \"const\":{},\"constparam\":{},\
+                \"other_dup\":{},\
+                \"d2\":{},\"d3\":{},\"d4p\":{},\
+                \"deduped\":{},\"remaining\":{},\
+                \"a_old\":{},\"a_opt\":{},\
+                \"sz_no_dedup\":{},\"sz_old\":{},\
+                \"sz_opt\":{}\
+                }}",
+                before.pieces,
+                before.placeholders,
+                before.width_args,
+                before.precision_args,
+                before.total_args,
+                before.positional,
+                before.named,
+                before.captured,
+                before.unique_captures,
+                before.duplicate_captures,
+                const_dups,
+                constparam_dups,
+                other_dups,
+                before.dup_2x,
+                before.dup_3x,
+                before.dup_4plus,
+                deduped_by_opt,
+                not_deduped,
+                args_old_world,
+                args_after_dedup,
+                size_no_dedup,
+                size_old_world,
+                size_with_opt,
+            );
+        }
 
         expand_format_args(self, sp, &fmt, allow_const)
     }
