@@ -10,33 +10,33 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::bug;
 use rustc_middle::queries::{QueryVTables, TaggedQueryKey};
-use rustc_middle::query::CycleError;
+use rustc_middle::query::Cycle;
 use rustc_middle::query::erase::erase_val;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
 
-use crate::job::report_cycle;
+use crate::job::create_cycle_error;
 
 pub(crate) fn specialize_query_vtables<'tcx>(vtables: &mut QueryVTables<'tcx>) {
-    vtables.fn_sig.value_from_cycle_error = |tcx, key, _, err| {
+    vtables.fn_sig.handle_cycle_error_fn = |tcx, key, _, err| {
         let guar = err.delay_as_bug();
         erase_val(fn_sig(tcx, key, guar))
     };
 
-    vtables.check_representability.value_from_cycle_error =
+    vtables.check_representability.handle_cycle_error_fn =
         |tcx, _, cycle, _err| check_representability(tcx, cycle);
 
-    vtables.check_representability_adt_ty.value_from_cycle_error =
+    vtables.check_representability_adt_ty.handle_cycle_error_fn =
         |tcx, _, cycle, _err| check_representability(tcx, cycle);
 
-    vtables.variances_of.value_from_cycle_error = |tcx, key, _, err| {
+    vtables.variances_of.handle_cycle_error_fn = |tcx, key, _, err| {
         let _guar = err.delay_as_bug();
         erase_val(variances_of(tcx, key))
     };
 
-    vtables.layout_of.value_from_cycle_error = |tcx, _, cycle, err| {
+    vtables.layout_of.handle_cycle_error_fn = |tcx, _, cycle, err| {
         let _guar = err.delay_as_bug();
         erase_val(Err(layout_of(tcx, cycle)))
     }
@@ -72,10 +72,10 @@ fn fn_sig<'tcx>(
     )))
 }
 
-fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>) -> ! {
+fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> ! {
     let mut item_and_field_ids = Vec::new();
     let mut representable_ids = FxHashSet::default();
-    for frame in &cycle_error.cycle {
+    for frame in &cycle.frames {
         if let TaggedQueryKey::check_representability(def_id) = frame.tagged_key
             && tcx.def_kind(def_id) == DefKind::Field
         {
@@ -88,7 +88,7 @@ fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>
             item_and_field_ids.push((item_id.expect_local(), field_id));
         }
     }
-    for frame in &cycle_error.cycle {
+    for frame in &cycle.frames {
         if let TaggedQueryKey::check_representability_adt_ty(key) = frame.tagged_key
             && let Some(adt) = key.ty_adt_def()
             && let Some(def_id) = adt.did().as_local()
@@ -127,14 +127,11 @@ fn search_for_cycle_permutation<Q, T>(
     otherwise()
 }
 
-fn layout_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    cycle_error: CycleError<'tcx>,
-) -> &'tcx ty::layout::LayoutError<'tcx> {
+fn layout_of<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> &'tcx ty::layout::LayoutError<'tcx> {
     let diag = search_for_cycle_permutation(
-        &cycle_error.cycle,
-        |cycle| {
-            if let TaggedQueryKey::layout_of(key) = cycle[0].tagged_key
+        &cycle.frames,
+        |frames| {
+            if let TaggedQueryKey::layout_of(key) = frames[0].tagged_key
                 && let ty::Coroutine(def_id, _) = key.value.kind()
                 && let Some(def_id) = def_id.as_local()
                 && let def_kind = tcx.def_kind(def_id)
@@ -158,7 +155,7 @@ fn layout_of<'tcx>(
                     tcx.def_kind_descr_article(def_kind, def_id.to_def_id()),
                     tcx.def_kind_descr(def_kind, def_id.to_def_id()),
                 );
-                for (i, frame) in cycle.iter().enumerate() {
+                for (i, frame) in frames.iter().enumerate() {
                     let TaggedQueryKey::layout_of(frame_key) = frame.tagged_key else {
                         continue;
                     };
@@ -169,7 +166,7 @@ fn layout_of<'tcx>(
                         continue;
                     };
                     let frame_span =
-                        frame.tagged_key.default_span(tcx, cycle[(i + 1) % cycle.len()].span);
+                        frame.tagged_key.default_span(tcx, frames[(i + 1) % frames.len()].span);
                     if frame_span.is_dummy() {
                         continue;
                     }
@@ -203,7 +200,7 @@ fn layout_of<'tcx>(
                 ControlFlow::Continue(())
             }
         },
-        || report_cycle(tcx, &cycle_error),
+        || create_cycle_error(tcx, &cycle),
     );
 
     let guar = diag.emit();
