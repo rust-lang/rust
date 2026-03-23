@@ -97,5 +97,17 @@ error: function call inside of `expect`
 LL |     format_capture_and_value.expect(&format!("{error_code}, {}", 1));
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{error_code}, {}", 1))`
 
-error: aborting due to 16 previous errors
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:153:32
+   |
+LL |     let _c = char::from_u32(x).expect(&format!("Illegal: {x}")[..]);
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", &format!("Illegal: {x}")[..]))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:157:32
+   |
+LL |     let _c = char::from_u32(x).expect(&s.to_lowercase()[..2]);
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", &s.to_lowercase()[..2]))`
+
+error: aborting due to 18 previous errors
 
