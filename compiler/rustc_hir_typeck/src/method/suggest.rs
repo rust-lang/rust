@@ -2291,8 +2291,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             fn_sig,
                         );
                         let name = inherent_method.name();
+                        let inputs = fn_sig.inputs();
+                        let expected_inputs =
+                            if inherent_method.is_method() { &inputs[1..] } else { inputs };
                         if let Some(ref args) = call_args
-                            && fn_sig.inputs()[1..]
+                            && expected_inputs
                                 .iter()
                                 .eq_by(args, |expected, found| self.may_coerce(*expected, *found))
                         {
