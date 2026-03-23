@@ -415,74 +415,118 @@ macro_rules! uint_impl {
             return intrinsics::rotate_right(self, n);
         }
 
-        /// Performs a left funnel shift (concatenates `self` with `rhs`, with `self`
-        /// making up the most significant half, then shifts the combined value left
-        /// by `n`, and most significant half is extracted to produce the result).
+        /// Performs a left funnel shift.
         ///
-        /// Please note this isn't the same operation as the `<<` shifting operator or
-        /// [`rotate_left`](Self::rotate_left), although `a.funnel_shl(a, n)` is *equivalent*
-        /// to `a.rotate_left(n)`.
+        /// This operation can be thought of as concatenating `self` and `right` into an
+        /// integer twice the size of
+        #[doc = concat!("`", stringify!($SelfT) , "`,")]
+        /// performing a left shift by `n`, and returning the **upper half** of the result.
+        ///
+        /// The name comes from "funneling" a wider integer to a narrower integer.
         ///
         /// # Panics
         ///
-        /// If `n` is greater than or equal to the number of bits in `self`
+        /// This function will panic if `n` is greater than or equal to the number of
+        /// bits in `self`.
         ///
         /// # Examples
         ///
-        /// Basic usage:
-        ///
         /// ```
         /// #![feature(funnel_shifts)]
-        #[doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let m = ", $fshl_result, ";")]
         ///
-        #[doc = concat!("assert_eq!(a.funnel_shl(b, ", $rot, "), m);")]
+        #[doc = concat!("let a = ", $rot_op, "_", stringify!($SelfT), ";")]
+        #[doc = concat!("let b = ", $fsh_op, "_", stringify!($SelfT), ";")]
+        ///
+        #[doc = concat!("assert_eq!(a.funnel_shl(b, ", $rot, "), ", $fshl_result, ");")]
+        ///
+        /// // Using zeros as the right operand acts as a normal shift
+        #[doc = concat!("assert_eq!(a.funnel_shl(0, ", $rot, "), a << ", $rot, ");")]
+        ///
+        /// // Shifting by 0 returns `self` unchanged
+        #[doc = concat!("assert_eq!(a.funnel_shl(0, 0), a);")]
+        ///
+        /// // Using the same value as the right operand acts as a rotate
+        #[doc = concat!("assert_eq!(a.funnel_shl(a, ", $rot, "), a.rotate_left(", $rot, "));")]
+        /// ```
+        ///
+        /// Note that while `funnel_shl` can act as a rotate, it does not allow for
+        /// rotating by an unbounded amount like [`rotate_left`](Self::rotate_left) does:
+        ///
+        /// ```should_panic
+        /// #![feature(funnel_shifts)]
+        ///
+        #[doc = concat!("let a = ", stringify!($SelfT), "::MAX;")]
+        /// // Okay
+        #[doc = concat!("let _ = a.rotate_left(", stringify!($SelfT), "::BITS);")]
+        /// // Panics
+        #[doc = concat!("let _ = a.funnel_shl(a, ", stringify!($SelfT), "::BITS);")]
         /// ```
         #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
         #[unstable(feature = "funnel_shifts", issue = "145686")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        pub const fn funnel_shl(self, rhs: Self, n: u32) -> Self {
+        pub const fn funnel_shl(self, right: Self, n: u32) -> Self {
             assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
             // SAFETY: just checked that `shift` is in-range
-            unsafe { intrinsics::unchecked_funnel_shl(self, rhs, n) }
+            unsafe { intrinsics::unchecked_funnel_shl(self, right, n) }
         }
 
-        /// Performs a right funnel shift (concatenates `self` and `rhs`, with `self`
-        /// making up the most significant half, then shifts the combined value right
-        /// by `n`, and least significant half is extracted to produce the result).
+        /// Performs a right funnel shift.
         ///
-        /// Please note this isn't the same operation as the `>>` shifting operator or
-        /// [`rotate_right`](Self::rotate_right), although `a.funnel_shr(a, n)` is *equivalent*
-        /// to `a.rotate_right(n)`.
+        /// This operation can be thought of as concatenating `self` and `right` into an
+        /// integer twice the size of
+        #[doc = concat!("`", stringify!($SelfT) , "`,")]
+        /// performing a right shift by `n`, and returning the **lower half** of the result.
+        ///
+        /// The name comes from "funneling" a wider integer to a narrower integer.
         ///
         /// # Panics
         ///
-        /// If `n` is greater than or equal to the number of bits in `self`
+        /// This function will panic if `n` is greater than or equal to the number of
+        /// bits in `self`.
         ///
         /// # Examples
         ///
-        /// Basic usage:
-        ///
         /// ```
         /// #![feature(funnel_shifts)]
-        #[doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let m = ", $fshr_result, ";")]
         ///
-        #[doc = concat!("assert_eq!(a.funnel_shr(b, ", $rot, "), m);")]
+        #[doc = concat!("let a = ", $rot_op, "_", stringify!($SelfT), ";")]
+        #[doc = concat!("let b = ", $fsh_op, "_", stringify!($SelfT), ";")]
+        ///
+        #[doc = concat!("assert_eq!(a.funnel_shr(b, ", $rot, "), ", $fshr_result, ");")]
+        ///
+        /// // Using zeros as the high operand acts as a normal shift
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".funnel_shr(a, ", $rot, "), a >> ", $rot, ");")]
+        ///
+        /// // Shifting by 0 returns `right` unchanged
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".funnel_shr(a, 0), a);")]
+        ///
+        /// // Using the same value as the right operand acts as a rotate
+        #[doc = concat!("assert_eq!(a.funnel_shr(a, ", $rot, "), a.rotate_right(", $rot, "));")]
+        /// ```
+        ///
+        /// Note that while `funnel_shr` can act as a rotate, it does not allow for
+        /// rotating by an unbounded amount like [`rotate_right`](Self::rotate_right) does:
+        ///
+        /// ```should_panic
+        /// #![feature(funnel_shifts)]
+        ///
+        #[doc = concat!("let a = ", stringify!($SelfT), "::MAX;")]
+        /// // Okay
+        #[doc = concat!("let _ = a.rotate_right(", stringify!($SelfT), "::BITS);")]
+        /// // Panics
+        #[doc = concat!("let _ = a.funnel_shr(a, ", stringify!($SelfT), "::BITS);")]
         /// ```
         #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
         #[unstable(feature = "funnel_shifts", issue = "145686")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        pub const fn funnel_shr(self, rhs: Self, n: u32) -> Self {
+        pub const fn funnel_shr(self, right: Self, n: u32) -> Self {
             assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
             // SAFETY: just checked that `shift` is in-range
-            unsafe { intrinsics::unchecked_funnel_shr(self, rhs, n) }
+            unsafe { intrinsics::unchecked_funnel_shr(self, right, n) }
         }
 
         /// Performs a carry-less multiplication, returning the lower bits.
