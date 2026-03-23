@@ -1535,8 +1535,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         alias: ty::AliasTy<'tcx>,
     ) -> Ty<'tcx> {
-        let erased =
-            unsafe { mem::transmute::<&'a InferCtxt<'tcx>, TypeErasedInfcx<'a, 'tcx>>(self) };
+        let erased = unsafe { mem::transmute::<_, TypeErasedInfcx<'a, 'tcx>>(self) };
         self.tcx.try_eagerly_normalize_alias(erased, param_env, span, alias)
     }
 
