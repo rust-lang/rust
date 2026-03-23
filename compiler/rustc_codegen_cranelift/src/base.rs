@@ -434,6 +434,50 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             source_info.span,
                         )
                     }
+                    AssertKind::Overflow(binop, lhs, rhs) => {
+                        let tcx = fx.tcx;
+                        let is_signed = lhs.ty(fx.mir, tcx).is_signed();
+
+                        use rustc_hir::LangItem::*;
+                        let lang = match (binop, is_signed) {
+                            (mir::BinOp::Add, true) => PanicAddOverflowSigned,
+                            (mir::BinOp::Add, false) => PanicAddOverflowUnsigned,
+                            (mir::BinOp::Sub, true) => PanicSubOverflowSigned,
+                            (mir::BinOp::Sub, false) => PanicSubOverflowUnsigned,
+                            (mir::BinOp::Mul, true) => PanicMulOverflowSigned,
+                            (mir::BinOp::Mul, false) => PanicMulOverflowUnsigned,
+                            (mir::BinOp::Div, true) => PanicDivOverflowSigned,
+                            (mir::BinOp::Div, false) => PanicDivOverflowUnsigned,
+                            (mir::BinOp::Rem, true) => PanicRemOverflowSigned,
+                            (mir::BinOp::Rem, false) => PanicRemOverflowUnsigned,
+                            (mir::BinOp::Shl, true) => PanicShlOverflowSigned,
+                            (mir::BinOp::Shl, false) => PanicShlOverflowUnsigned,
+                            (mir::BinOp::Shr, true) => PanicShrOverflowSigned,
+                            (mir::BinOp::Shr, false) => PanicShrOverflowUnsigned,
+                            _ => bug!("binop {:?} should not have overflow assert", binop),
+                        };
+
+                        let lhs = codegen_operand(fx, lhs).load_scalar(fx);
+                        let rhs = codegen_operand(fx, rhs).load_scalar(fx);
+
+                        let i128_ty = tcx.types.i128;
+                        let clif_128_ty = fx.clif_type(i128_ty).unwrap();
+
+                        let lhs =
+                            clif_int_or_float_cast(fx, lhs, is_signed, clif_128_ty, is_signed);
+                        let rhs =
+                            clif_int_or_float_cast(fx, rhs, is_signed, clif_128_ty, is_signed);
+
+                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+
+                        codegen_panic_inner(
+                            fx,
+                            lang,
+                            &[lhs, rhs, location],
+                            *unwind,
+                            source_info.span,
+                        )
+                    }
                     _ => {
                         let location = fx.get_caller_location(source_info).load_scalar(fx);
 
