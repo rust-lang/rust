@@ -407,8 +407,18 @@ pub(crate) fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedM
             op.complete(p, ASM_CONST);
             op_n.complete(p, ASM_OPERAND_NAMED);
         } else if p.eat_contextual_kw(T![sym]) {
+            // test asm_sym_paren
+            // fn foo() {
+            //     builtin#asm("", f = sym (foo::bar));
+            // }
             dir_spec.abandon(p);
-            paths::type_path(p);
+            if p.at(T!['(']) {
+                p.bump(T!['(']);
+                paths::type_path(p);
+                p.expect(T![')']);
+            } else {
+                paths::type_path(p);
+            }
             op.complete(p, ASM_SYM);
             op_n.complete(p, ASM_OPERAND_NAMED);
         } else if allow_templates {

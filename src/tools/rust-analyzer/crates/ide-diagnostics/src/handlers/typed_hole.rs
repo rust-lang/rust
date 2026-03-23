@@ -442,4 +442,30 @@ fn rdtscp() -> u64 {
 }"#,
         );
     }
+
+    #[test]
+    fn asm_sym_with_macro_expr_fragment() {
+        // Regression test for issue #21582
+        // When `$e:expr` captures a path and is used in `sym $e`, the path gets
+        // wrapped in parentheses during macro expansion due to invisible delimiters.
+        // This should not cause false positive typed-hole errors.
+        check_diagnostics(
+            r#"
+//- minicore: asm
+macro_rules! m {
+    ($e:expr) => {
+        core::arch::asm!("/*{f}*/", f = sym $e, out("ax") _)
+    };
+}
+
+fn generic<T>() {}
+
+fn main() {
+    unsafe {
+        m!(generic::<i32>);
+    }
+}
+"#,
+        );
+    }
 }
