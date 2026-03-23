@@ -1,5 +1,5 @@
-use rustc_errors::DiagArgFromDisplay;
 use rustc_errors::codes::*;
+use rustc_errors::{DiagArgFromDisplay, DiagSymbolList};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
@@ -191,10 +191,10 @@ pub(crate) struct ClobberAbiNotSupported {
 #[derive(Diagnostic)]
 #[note("the following ABIs are supported on this target: {$supported_abis}")]
 #[diag("invalid ABI for `clobber_abi`")]
-pub(crate) struct InvalidAbiClobberAbi {
+pub(crate) struct InvalidAbiClobberAbi<'a> {
     #[primary_span]
     pub abi_span: Span,
-    pub supported_abis: String,
+    pub supported_abis: DiagSymbolList<&'a str>,
 }
 
 #[derive(Diagnostic)]
@@ -215,17 +215,18 @@ pub(crate) struct InvalidRegisterClass {
     #[primary_span]
     pub op_span: Span,
     pub reg_class: Symbol,
-    pub supported_register_classes: String,
+    pub supported_register_classes: DiagSymbolList<Symbol>,
 }
 
 #[derive(Diagnostic)]
-#[diag("invalid asm template modifier for this register class")]
+#[diag("invalid asm template modifier `{$modifier}` for this register class")]
 pub(crate) struct InvalidAsmTemplateModifierRegClass {
     #[primary_span]
     #[label("template modifier")]
     pub placeholder_span: Span,
     #[label("argument")]
     pub op_span: Span,
+    pub modifier: String,
     #[subdiagnostic]
     pub sub: InvalidAsmTemplateModifierRegClassSub,
 }
@@ -235,7 +236,7 @@ pub(crate) enum InvalidAsmTemplateModifierRegClassSub {
     #[note(
         "the `{$class_name}` register class supports the following template modifiers: {$modifiers}"
     )]
-    SupportModifier { class_name: Symbol, modifiers: String },
+    SupportModifier { class_name: Symbol, modifiers: DiagSymbolList<char> },
     #[note("the `{$class_name}` register class does not support template modifiers")]
     DoesNotSupportModifier { class_name: Symbol },
 }
