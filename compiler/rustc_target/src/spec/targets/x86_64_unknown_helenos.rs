@@ -4,7 +4,7 @@ pub(crate) fn target() -> Target {
     let mut base = base::helenos::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
     base.linker = Some("amd64-helenos-gcc".into());
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
 

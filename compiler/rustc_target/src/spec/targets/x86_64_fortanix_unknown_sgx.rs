@@ -63,7 +63,7 @@ pub(crate) fn target() -> Target {
         abi: Abi::Fortanix,
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
-        max_atomic_width: Some(64),
+        max_atomic_width: Some(128),
         cpu: "x86-64".into(),
         plt_by_default: false,
         features: "+rdrand,+rdseed,+lvi-cfi,+lvi-load-hardening".into(),

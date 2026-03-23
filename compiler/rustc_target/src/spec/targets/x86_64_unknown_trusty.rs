@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::X86_64,
         options: TargetOptions {
             executables: true,
-            max_atomic_width: Some(64),
+            max_atomic_width: Some(128),
             panic_strategy: PanicStrategy::Abort,
             os: Os::Trusty,
             link_self_contained: LinkSelfContainedDefault::InferredForMusl,

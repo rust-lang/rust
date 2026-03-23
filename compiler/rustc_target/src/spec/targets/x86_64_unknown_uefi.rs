@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
     base.entry_abi = CanonAbi::X86(X86Call::Win64);
 
     // We disable MMX and SSE for now, even though UEFI allows using them. Problem is, you have to

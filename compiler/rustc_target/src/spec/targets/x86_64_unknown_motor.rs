@@ -5,7 +5,7 @@ use crate::spec::{
 pub(crate) fn target() -> Target {
     let mut base = base::motor::opts();
     base.cpu = "x86-64".into();
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
     base.code_model = Some(CodeModel::Small);
 
     // We want fully static relocatable binaries. It was surprisingly

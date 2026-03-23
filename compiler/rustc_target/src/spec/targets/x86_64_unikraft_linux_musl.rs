@@ -19,7 +19,7 @@ pub(crate) fn target() -> Target {
             cpu: "x86-64".into(),
             plt_by_default: false,
             pre_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]),
-            max_atomic_width: Some(64),
+            max_atomic_width: Some(128),
             stack_probes: StackProbeType::Inline,
             ..base::unikraft_linux_musl::opts()
         },
