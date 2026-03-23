@@ -94,7 +94,7 @@ can be accessed directly through `Deref::deref`.
 The parallel iterators provided by the [`rayon`] crate are easy ways to
 implement parallelism.
 In the current implementation of the parallel compiler,
-we use a custom [fork][rustc-rayon] of `rayon` to run tasks in parallel.
+we use [a custom fork of `rayon`][rustc-rayon] to run tasks in parallel.
 
 Some iterator functions are implemented to run loops in parallel
 when `parallel-compiler` is true.
