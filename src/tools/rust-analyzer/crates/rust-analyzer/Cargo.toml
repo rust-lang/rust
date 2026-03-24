@@ -94,6 +94,8 @@ test-utils.workspace = true
 test-fixture.workspace = true
 syntax-bridge.workspace = true
 
+intern = { path = "../intern", features = ["prevent-gc"] }
+
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["stdx/force-always-assert"]
