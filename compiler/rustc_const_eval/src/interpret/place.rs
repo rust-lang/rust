@@ -418,7 +418,7 @@ where
     }
 
     /// Take a value, which represents a (thin or wide) reference, and make it a place.
-    /// Alignment is just based on the type. This is the inverse of `mplace_to_ref()`.
+    /// Alignment is just based on the type. This is the inverse of `mplace_to_ptr()`.
     ///
     /// Only call this if you are sure the place is "valid" (aligned and inbounds), or do not
     /// want to ever use the place for memory access!
@@ -441,7 +441,7 @@ where
     /// Turn a mplace into a (thin or wide) mutable raw pointer, pointing to the same space.
     /// `align` information is lost!
     /// This is the inverse of `ref_to_mplace`.
-    pub fn mplace_to_ref(
+    pub fn mplace_to_ptr(
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
