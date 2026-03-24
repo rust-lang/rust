@@ -5,7 +5,6 @@
 #![feature(with_negative_coherence)]
 #![feature(min_specialization)]
 #![feature(generic_const_exprs)]
-//~^ WARNING the feature `generic_const_exprs` is incomplete
 
 #![crate_type = "lib"]
 trait Trait {}

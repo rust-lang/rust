@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
 
 trait Default {
     type Id;
