@@ -901,7 +901,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         let fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, ty::List::empty())?;
 
-        let arg = self.mplace_to_ptr(&place)?;
+        let arg = self.mplace_to_mut_ref(&place)?;
+
         let ret = MPlaceTy::fake_alloc_zst(self.layout_of(self.tcx.types.unit)?);
 
         self.init_fn_call(

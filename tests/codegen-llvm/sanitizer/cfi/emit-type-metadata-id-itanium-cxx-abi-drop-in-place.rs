@@ -9,9 +9,9 @@
 
 #![crate_type = "lib"]
 
-// CHECK-LABEL: define{{.*}}4core3ptr13drop_in_placeDNtNtB4_6marker4Send
+// CHECK-LABEL: define{{.*}}4core3ptr13drop_in_place18drop_in_place_glueDNtNtB6_6marker4Send
 // CHECK-SAME:  {{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-// CHECK:       call i1 @llvm.type.test(ptr {{%.+}}, metadata !"_ZTSFvPu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops4drop4Dropu6regionEE")
+// CHECK:       call i1 @llvm.type.test(ptr {{%.+}}, metadata !"_ZTSFvU3mutu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops4drop4Dropu6regionEEE")
 
 struct EmptyDrop;
 // CHECK-NOT: define{{.*}}4core3ptr{{[0-9]+}}drop_in_place$LT${{.*}}EmptyDrop$GT${{.*}}!type ![[TYPE1]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
@@ -28,4 +28,4 @@ pub fn foo() {
     let _ = Box::new(PresentDrop) as Box<dyn Send>;
 }
 
-// CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvPu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops4drop4Dropu6regionEE"}
+// CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvU3mutu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops4drop4Dropu6regionEEE"}
