@@ -24,6 +24,7 @@ use rustc_middle::lint::LevelAndSource;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode};
 use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintExpectationId, LintId};
 use rustc_session::{DynLintStore, Session};

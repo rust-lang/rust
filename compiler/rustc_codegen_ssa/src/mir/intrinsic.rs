@@ -1,5 +1,6 @@
 use rustc_abi::{Align, WrappingRange};
 use rustc_middle::mir::SourceInfo;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;

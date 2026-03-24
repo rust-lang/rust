@@ -13,20 +13,12 @@ use rustc_hir::{self as hir, AmbigArg, LangItem, PredicateOrigin, WherePredicate
 use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
+use crate::ty::util::{TyKindRef, TyUtil};
 use crate::ty::{
     self, AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Instance, Opaque,
     PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
-
-impl IntoDiagArg for Ty<'_> {
-    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
-        ty::tls::with(|tcx| {
-            let ty = tcx.short_string(self, path);
-            DiagArgValue::Str(std::borrow::Cow::Owned(ty))
-        })
-    }
-}
 
 impl IntoDiagArg for Instance<'_> {
     fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
@@ -41,9 +33,15 @@ into_diag_arg_using_display! {
     ty::Region<'_>,
 }
 
-impl<'tcx> Ty<'tcx> {
+pub trait TyDiagnostics<'tcx> {
+    fn is_primitive_ty(self) -> bool;
+    fn is_simple_ty(self) -> bool;
+    fn is_simple_text(self) -> bool;
+}
+
+impl<'tcx> TyDiagnostics<'tcx> for Ty<'tcx> {
     /// Similar to `Ty::is_primitive`, but also considers inferred numeric values to be primitive.
-    pub fn is_primitive_ty(self) -> bool {
+    fn is_primitive_ty(self) -> bool {
         matches!(
             self.kind(),
             Bool | Char
@@ -62,7 +60,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Whether the type is succinctly representable as a type instead of just referred to with a
     /// description in error messages. This is used in the main error message.
-    pub fn is_simple_ty(self) -> bool {
+    fn is_simple_ty(self) -> bool {
         match self.kind() {
             Bool
             | Char
@@ -86,7 +84,7 @@ impl<'tcx> Ty<'tcx> {
     /// description in error messages. This is used in the primary span label. Beyond what
     /// `is_simple_ty` includes, it also accepts ADTs with no type arguments and references to
     /// ADTs with no type arguments.
-    pub fn is_simple_text(self) -> bool {
+    fn is_simple_text(self) -> bool {
         match self.kind() {
             Adt(_, args) => args.non_erasable_generics().next().is_none(),
             Ref(_, ty, _) => ty.is_simple_text(),

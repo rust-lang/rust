@@ -24,6 +24,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::traits::ObligationCause;
 use crate::ty::normalize_erasing_regions::NormalizationError;
+use crate::ty::util::{TyKindRef, TyUtil};
 use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt};
 
 #[extension(pub trait IntegerExt)]
@@ -376,8 +377,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     &ObligationCause::dummy(),
                     |ty| match tcx.try_normalize_erasing_regions(typing_env, ty) {
                         Ok(ty) => ty,
-                        Err(e) => Ty::new_error_with_message(
-                            tcx,
+                        Err(e) => tcx.new_error_with_message(
                             DUMMY_SP,
                             format!(
                                 "normalization failed for {} but no errors reported",
@@ -723,13 +723,10 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx> {
     }
 }
 
-impl<'tcx, C> TyAbiInterface<'tcx, C> for Ty<'tcx>
-where
-    C: HasTyCtxt<'tcx> + HasTypingEnv<'tcx>,
-{
+impl<'tcx> TyAbiInterface<'tcx, LayoutCx<'tcx>> for Ty<'tcx> {
     fn ty_and_layout_for_variant(
         this: TyAndLayout<'tcx>,
-        cx: &C,
+        cx: &LayoutCx<'tcx>,
         variant_index: VariantIdx,
     ) -> TyAndLayout<'tcx> {
         let layout = match this.variants {
@@ -771,7 +768,11 @@ where
         TyAndLayout { ty: this.ty, layout }
     }
 
-    fn ty_and_layout_field(this: TyAndLayout<'tcx>, cx: &C, i: usize) -> TyAndLayout<'tcx> {
+    fn ty_and_layout_field(
+        this: TyAndLayout<'tcx>,
+        cx: &LayoutCx<'tcx>,
+        i: usize,
+    ) -> TyAndLayout<'tcx> {
         enum TyMaybeWithLayout<'tcx> {
             Ty(Ty<'tcx>),
             TyAndLayout(TyAndLayout<'tcx>),
@@ -969,7 +970,7 @@ where
     /// This will recurse into fields of ADTs to find the inner pointer.
     fn ty_and_layout_pointee_info_at(
         this: TyAndLayout<'tcx>,
-        cx: &C,
+        cx: &LayoutCx<'tcx>,
         offset: Size,
     ) -> Option<PointeeInfo> {
         let tcx = cx.tcx();

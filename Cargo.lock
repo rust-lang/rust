@@ -4292,6 +4292,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "rustc_type_ir",
  "tempfile",
  "tracing",
 ]
@@ -4579,6 +4580,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_span",
  "rustc_thread_pool",
+ "rustc_type_ir",
  "tracing",
 ]
 

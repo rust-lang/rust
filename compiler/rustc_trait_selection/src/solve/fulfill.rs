@@ -9,6 +9,7 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     TypingMode,

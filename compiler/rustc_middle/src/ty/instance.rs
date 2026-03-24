@@ -15,6 +15,7 @@ use crate::error;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::print::{FmtPrinter, Print};
+use crate::ty::util::TyKindRef;
 use crate::ty::{
     self, AssocContainer, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,

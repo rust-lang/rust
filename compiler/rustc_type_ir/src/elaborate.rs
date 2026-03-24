@@ -6,7 +6,7 @@ use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::outlives::{Component, push_outlives_components};
-use crate::{self as ty, Interner, Upcast as _};
+use crate::{self as ty, Interner, Ty, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
 /// are implied by a source predicate. Currently, this basically means

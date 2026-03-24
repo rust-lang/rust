@@ -1,6 +1,7 @@
 // Not in interpret to make sure we do not use private implementation details
 
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;

@@ -4,6 +4,7 @@ use rustc_ast::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::GenericParamDefKind;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::{bug, ty};
 use rustc_span::sym::{self};
 use rustc_span::symbol::kw;

@@ -15,6 +15,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{MaybeStorageLive, always_storage_live_locals};

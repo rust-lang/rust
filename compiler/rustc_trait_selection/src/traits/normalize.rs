@@ -11,6 +11,7 @@ use rustc_infer::traits::{
 use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
     TypeVisitableExt, TypingMode,

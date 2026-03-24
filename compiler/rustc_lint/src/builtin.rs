@@ -33,6 +33,7 @@ use rustc_middle::bug;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
 // hardwired lints from rustc_lint_defs
 pub use rustc_session::lint::builtin::*;

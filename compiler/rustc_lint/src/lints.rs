@@ -13,7 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::inhabitedness::InhabitedPredicate;
+use rustc_middle::ty::inhabitedness::{InhabitedPredicate, TyInhabitedHelpers};
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::edition::Edition;

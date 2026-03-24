@@ -44,7 +44,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         let ty = self.fcx.typeck_results.borrow().expr_ty_adjusted(expr);
         let ty = self.fcx.try_structurally_resolve_type(expr.span, ty);
         if ty.has_non_region_infer() {
-            Ty::new_misc_error(self.tcx())
+            self.tcx().new_misc_error()
         } else {
             self.tcx().erase_and_anonymize_regions(ty)
         }

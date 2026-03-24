@@ -12,6 +12,7 @@ use rustc_middle::mir::{
     Operand, Place, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_span::{DesugaringKind, Span, kw, sym};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;

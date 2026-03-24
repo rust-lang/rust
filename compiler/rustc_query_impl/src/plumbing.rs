@@ -12,9 +12,8 @@ use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
 use rustc_middle::query::{QueryCache, QueryJobId, QueryMode, QueryVTable, erase};
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
+use rustc_middle::ty::{TyCtxt, TyEncoder as _};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::LOCAL_CRATE;

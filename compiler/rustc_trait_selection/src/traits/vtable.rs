@@ -5,6 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::traits::util::PredicateSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Upcast, VtblEntry,
 };

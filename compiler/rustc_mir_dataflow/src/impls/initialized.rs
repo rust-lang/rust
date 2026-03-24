@@ -7,7 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::{
     self, Body, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges,
 };
-use rustc_middle::ty::util::Discr;
+use rustc_middle::ty::util::{Discr, TyKindRef};
 use rustc_middle::ty::{self, TyCtxt};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};

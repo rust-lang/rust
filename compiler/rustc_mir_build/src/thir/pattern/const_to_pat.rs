@@ -12,6 +12,8 @@ use rustc_infer::traits::Obligation;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::span_bug;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
+use rustc_middle::ty::error::TyErrorHelpers;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span};

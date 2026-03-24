@@ -2,6 +2,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 use rustc_type_ir::data_structures::DelayedMap;
 
+use crate::ty::util::TyKindRef;
 use crate::ty::{
     self, Binder, BoundTy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,

@@ -36,6 +36,7 @@ use rustc_infer::infer::{
 };
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{
     self, ParamEnv, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypingMode, fold_regions,
 };

@@ -3,6 +3,7 @@
 use rustc_middle::middle::region::TempLifetime;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_middle::ty::util::TyUtil;
 use tracing::{debug, instrument};
 
 use crate::builder::expr::category::Category;

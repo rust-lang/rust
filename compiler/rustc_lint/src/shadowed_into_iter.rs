@@ -1,4 +1,5 @@
 use rustc_hir::{self as hir, LangItem};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, impl_lint_pass};

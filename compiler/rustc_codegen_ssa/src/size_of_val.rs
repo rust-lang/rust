@@ -4,6 +4,7 @@ use rustc_abi::{Align, WrappingRange};
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, trace};

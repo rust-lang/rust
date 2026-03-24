@@ -25,7 +25,7 @@ use super::{
 };
 use crate::ich::StableHashingContext;
 use crate::mir::interpret::ErrorHandled;
-use crate::ty::util::{Discr, IntTypeExt};
+use crate::ty::util::{Discr, IntTypeExt, TyKindRef};
 use crate::ty::{self, ConstKind};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
@@ -207,6 +207,12 @@ impl<'tcx> AdtDef<'tcx> {
         self.0.0.repr
     }
 
+    /// Asserts this is a struct or union and returns its unique variant.
+    pub fn non_enum_variant(self) -> &'tcx VariantDef {
+        assert!(self.is_struct() || self.is_union());
+        self.variant(FIRST_VARIANT)
+    }
+
     pub fn field_representing_type_info(
         self,
         tcx: TyCtxt<'tcx>,
@@ -266,6 +272,22 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self.repr().packed()
     }
 
+    fn is_box(self) -> bool {
+        self.is_box()
+    }
+
+    fn is_pin(self) -> bool {
+        self.is_pin()
+    }
+
+    fn is_enum(self) -> bool {
+        self.is_enum()
+    }
+
+    fn is_union(self) -> bool {
+        self.is_union()
+    }
+
     fn struct_tail_ty(self, interner: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
         Some(interner.type_of(self.non_enum_variant().tail_opt()?.did))
     }
@@ -284,6 +306,10 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         args: ty::GenericArgsRef<'tcx>,
     ) -> Option<FieldInfo<TyCtxt<'tcx>>> {
         self.field_representing_type_info(tcx, args)
+    }
+
+    fn has_unsafe_fields(self) -> bool {
+        self.all_fields().any(|field| field.safety.is_unsafe())
     }
 
     fn all_field_tys(
@@ -312,6 +338,35 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
             hir::Constness::Const => AdtDestructorKind::Const,
             hir::Constness::NotConst => AdtDestructorKind::NotConst,
         })
+    }
+
+    /// Asserts this is a struct or union and returns its unique variant.
+    fn non_enum_variant(self) -> &'tcx VariantDef {
+        self.non_enum_variant()
+    }
+
+    fn repr_is_simd(self) -> bool {
+        self.0.0.repr.simd()
+    }
+
+    fn scalable_element_cnt(self) -> Option<u16> {
+        if let Some(ty::ScalableElt::ElementCount(element_count)) = self.repr().scalable {
+            Some(element_count)
+        } else {
+            None
+        }
+    }
+
+    fn discriminant_for_variant(self, tcx: TyCtxt<'tcx>, variant_index: VariantIdx) -> Discr<'tcx> {
+        self.discriminant_for_variant(tcx, variant_index)
+    }
+
+    fn variant_range(self) -> Range<VariantIdx> {
+        self.variant_range()
+    }
+
+    fn repr_discr_type_to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        self.repr().discr_type().to_ty(tcx)
     }
 }
 
@@ -531,12 +586,6 @@ impl<'tcx> AdtDef<'tcx> {
     /// Returns `true` if this type has a destructor.
     pub fn has_dtor(self, tcx: TyCtxt<'tcx>) -> bool {
         self.destructor(tcx).is_some()
-    }
-
-    /// Asserts this is a struct or union and returns its unique variant.
-    pub fn non_enum_variant(self) -> &'tcx VariantDef {
-        assert!(self.is_struct() || self.is_union());
-        self.variant(FIRST_VARIANT)
     }
 
     #[inline]

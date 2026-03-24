@@ -5,6 +5,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{
     self, ClosureKind, GenericArgsRef, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
 };

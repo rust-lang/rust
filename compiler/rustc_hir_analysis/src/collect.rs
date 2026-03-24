@@ -32,7 +32,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::util::{Discr, IntTypeExt};
+use rustc_middle::ty::util::{Discr, IntTypeExt, TyKindRef};
 use rustc_middle::ty::{
     self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, fold_regions,
 };
@@ -343,7 +343,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         if !self.tcx.dcx().has_stashed_diagnostic(span, StashKey::ItemNoType) {
             self.report_placeholder_type_error(vec![span], vec![]);
         }
-        Ty::new_error_with_message(self.tcx(), span, "bad placeholder type")
+        self.tcx().new_error_with_message(span, "bad placeholder type")
     }
 
     fn ct_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
@@ -540,7 +540,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                         self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
                 {
                     infer_replacements.push((a.span, suggested_ty.to_string()));
-                    return Ty::new_error_with_message(tcx, a.span, suggested_ty.to_string());
+                    return tcx.new_error_with_message(a.span, suggested_ty.to_string());
                 }
 
                 self.lowerer().lower_ty(a)
@@ -554,7 +554,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                         self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, None)
                 {
                     infer_replacements.push((output.span, suggested_ty.to_string()));
-                    Ty::new_error_with_message(tcx, output.span, suggested_ty.to_string())
+                    tcx.new_error_with_message(output.span, suggested_ty.to_string())
                 } else {
                     self.lower_ty(output)
                 }

@@ -1,5 +1,6 @@
 use bitflags::bitflags;
 
+use crate::ty::util::TyKindRef;
 use crate::ty::{self, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 
 pub struct OffloadMetadata {

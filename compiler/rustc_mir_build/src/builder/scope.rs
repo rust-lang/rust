@@ -90,6 +90,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind};
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
 use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::rustc::RustcPatCtxt;

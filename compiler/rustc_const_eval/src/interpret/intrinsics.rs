@@ -11,6 +11,7 @@ use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{FloatTy, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};

@@ -7,6 +7,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::bug;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, GenericArgsRef, RePlaceholder, Region, TyCtxt};
 use tracing::{debug, instrument};
 

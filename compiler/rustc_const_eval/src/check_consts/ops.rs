@@ -10,6 +10,7 @@ use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::CallSource;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{
     self, AssocContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef,
     Ty, suggest_constraining_type_param,

@@ -2,6 +2,7 @@ use std::mem;
 
 use rustc_index::IndexVec;
 use rustc_middle::mir::*;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use smallvec::{SmallVec, smallvec};

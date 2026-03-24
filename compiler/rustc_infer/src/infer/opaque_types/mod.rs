@@ -4,6 +4,7 @@ use rustc_middle::bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, BottomUpFolder, OpaqueTypeKey, ProvisionalHiddenType, Ty, TyCtxt, TypeFoldable,
     TypeVisitableExt,

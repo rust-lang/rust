@@ -11,6 +11,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::query::Providers;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
@@ -640,7 +641,7 @@ fn receiver_is_dispatchable<'tcx>(
     // the type `U` in the query
     // use a bogus type parameter to mimic a forall(U) query using u32::MAX for now.
     let unsized_self_ty: Ty<'tcx> =
-        Ty::new_param(tcx, u32::MAX, rustc_span::sym::RustaceansAreAwesome);
+        Ty::new_param(tcx, ty::ParamTy::new(u32::MAX, rustc_span::sym::RustaceansAreAwesome));
 
     // `Receiver[Self => U]`
     let unsized_receiver_ty =

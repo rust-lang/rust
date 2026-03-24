@@ -11,6 +11,7 @@ use rustc_hir::{MatchSource, Node};
 use rustc_middle::traits::{MatchExpressionArmCause, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
 use rustc_span::{Span, sym};
 use tracing::debug;

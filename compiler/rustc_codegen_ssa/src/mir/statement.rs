@@ -1,4 +1,5 @@
 use rustc_middle::mir::{self, NonDivergingIntrinsic, StmtDebugInfo};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::{bug, span_bug, ty};
 use tracing::instrument;
 

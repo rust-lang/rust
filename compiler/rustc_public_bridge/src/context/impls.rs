@@ -13,7 +13,7 @@ use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::print::{
     with_forced_trimmed_paths, with_no_trimmed_paths, with_resolve_crate_name,
 };
-use rustc_middle::ty::util::Discr;
+use rustc_middle::ty::util::{Discr, TyKindRef};
 use rustc_middle::ty::{
     AdtDef, AdtKind, AssocItem, Binder, ClosureKind, CoroutineArgsExt, EarlyBinder,
     ExistentialTraitRef, FnSig, GenericArgsRef, Instance, InstanceKind, IntrinsicDef, List,

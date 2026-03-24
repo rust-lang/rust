@@ -9,6 +9,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{self, AdtDef, Ty};
 use rustc_middle::{bug, mir};
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};

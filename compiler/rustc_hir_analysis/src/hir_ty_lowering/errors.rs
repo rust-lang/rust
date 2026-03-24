@@ -12,6 +12,7 @@ use rustc_hir::{self as hir, HirId};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, AdtDef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt,
     suggest_constraining_type_param,

@@ -25,6 +25,7 @@ use rustc_middle::mir::{
     Terminator, TerminatorKind, VarBindingForm, VarDebugInfoContents,
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{
     self, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
     suggest_constraining_type_params,

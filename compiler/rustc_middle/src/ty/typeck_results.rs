@@ -22,6 +22,7 @@ use crate::infer::canonical::Canonical;
 use crate::mir::FakeReadCause;
 use crate::thir::DerefPatBorrowMode;
 use crate::traits::ObligationCause;
+use crate::ty::util::TyKindRef;
 use crate::ty::{
     self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs,
     GenericArgsRef, Ty, UserArgs, tls,

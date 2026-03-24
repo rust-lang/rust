@@ -638,7 +638,7 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
             }
         })
     }
-    fn type_at(self, i: usize) -> <DbInterner<'db> as rustc_type_ir::Interner>::Ty {
+    fn type_at(self, i: usize) -> rustc_type_ir::Ty<DbInterner<'db>> {
         self.get(i)
             .and_then(|g| g.as_type())
             .unwrap_or_else(|| Ty::new_error(DbInterner::conjure(), ErrorGuaranteed))

@@ -3,6 +3,7 @@ use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::sym;

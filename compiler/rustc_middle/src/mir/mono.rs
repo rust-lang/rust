@@ -21,6 +21,7 @@ use crate::dep_graph::dep_node::{make_compile_codegen_unit, make_compile_mono_it
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use crate::ich::StableHashingContext;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::ty::util::TyKindRef;
 use crate::ty::{self, GenericArgs, Instance, InstanceKind, SymbolName, Ty, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.

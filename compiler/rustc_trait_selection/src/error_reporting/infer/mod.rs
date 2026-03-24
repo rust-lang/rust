@@ -62,11 +62,12 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::traits::PatternOriginExpr;
-use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
+use rustc_middle::ty::error::{ExpectedFound, TyErrorHelpers, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
-    self, List, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt,
+    self, List, ParamEnv, Region, Ty, TyCtxt, TyDiagnostics, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt,
 };
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
 use tracing::{debug, instrument};

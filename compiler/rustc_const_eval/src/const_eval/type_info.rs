@@ -7,6 +7,7 @@ use rustc_ast::Mutability;
 use rustc_hir::LangItem;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Const, FnHeader, FnSigTys, ScalarInt, Ty, TyCtxt};
 use rustc_span::{Symbol, sym};
 

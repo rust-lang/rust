@@ -37,6 +37,7 @@ use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput, Ty, TyCtxt,
     TypeSuperFoldable, TypeVisitableExt, TypingMode, Upcast, const_lit_matches_ty, fold_regions,
@@ -765,7 +766,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             self.lowerer.ty_infer(Some(param), self.span).into()
                         } else {
                             // We've already errored above about the mismatch.
-                            Ty::new_misc_error(tcx).into()
+                            tcx.new_misc_error().into()
                         }
                     }
                     GenericParamDefKind::Const { has_default, .. } => {

@@ -1,4 +1,5 @@
 use rustc_middle::bug;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, Const, DelayedMap, FallibleTypeFolder, InferConst, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,

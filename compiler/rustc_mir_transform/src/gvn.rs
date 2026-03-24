@@ -104,6 +104,7 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexVec, newtype_index};
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
@@ -1621,8 +1622,10 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     }
 
     fn pointers_have_same_metadata(&self, left_ptr_ty: Ty<'tcx>, right_ptr_ty: Ty<'tcx>) -> bool {
-        let left_meta_ty = left_ptr_ty.pointee_metadata_ty_or_projection(self.tcx);
-        let right_meta_ty = right_ptr_ty.pointee_metadata_ty_or_projection(self.tcx);
+        let left_meta_ty =
+            left_ptr_ty.pointee_metadata_ty_or_projection(&ObligationCause::dummy(), self.tcx);
+        let right_meta_ty =
+            right_ptr_ty.pointee_metadata_ty_or_projection(&ObligationCause::dummy(), self.tcx);
         if left_meta_ty == right_meta_ty {
             true
         } else if let Ok(left) =

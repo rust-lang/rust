@@ -13,6 +13,7 @@ use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisi
 use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
@@ -777,11 +778,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         if !remapped_types.contains_key(assoc_item) {
             remapped_types.insert(
                 *assoc_item,
-                ty::EarlyBinder::bind(Ty::new_error_with_message(
-                    tcx,
-                    return_span,
-                    "missing synthetic item for RPITIT",
-                )),
+                ty::EarlyBinder::bind(
+                    tcx.new_error_with_message(return_span, "missing synthetic item for RPITIT"),
+                ),
             );
         }
     }

@@ -6,6 +6,7 @@ use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{
     self, CanonicalUserType, CanonicalUserTypeAnnotation, LitToConstInput, Ty, TyCtxt,
     TypeVisitableExt as _, UserTypeAnnotationIndex,

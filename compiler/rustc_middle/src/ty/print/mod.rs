@@ -6,8 +6,8 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use tracing::{debug, instrument, trace};
 
+use crate::ty::util::TyKindRef;
 use crate::ty::{self, GenericArg, Ty, TyCtxt};
-
 // `pretty` is a separate module only for organization.
 mod pretty;
 pub use self::pretty::*;

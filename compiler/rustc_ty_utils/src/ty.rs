@@ -5,6 +5,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, SizedTraitKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast,
     fold_regions,
@@ -355,8 +356,7 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
         &cause,
         |ty| {
             ocx.structurally_normalize_ty(&cause, param_env, ty).unwrap_or_else(|_| {
-                Ty::new_error_with_message(
-                    tcx,
+                tcx.new_error_with_message(
                     tcx.def_span(impl_def_id),
                     "struct tail should be computable",
                 )

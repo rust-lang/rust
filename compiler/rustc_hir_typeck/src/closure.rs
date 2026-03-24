@@ -1018,8 +1018,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })?
             }
             ty::Alias(ty::Projection, _) => {
-                return Some(Ty::new_error_with_message(
-                    self.tcx,
+                return Some(self.tcx.new_error_with_message(
                     closure_span,
                     "this projection should have been projected to an opaque type",
                 ));

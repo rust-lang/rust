@@ -94,10 +94,6 @@ impl ConstValue {
         self.try_to_scalar_int()?.try_into().ok()
     }
 
-    pub fn try_to_target_usize(&self, tcx: TyCtxt<'_>) -> Option<u64> {
-        Some(self.try_to_scalar_int()?.to_target_usize(tcx))
-    }
-
     pub fn try_to_bits_for_ty<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,

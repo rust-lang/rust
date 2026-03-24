@@ -23,6 +23,7 @@ use rustc_macros::extension;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::*;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};

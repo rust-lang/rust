@@ -3,6 +3,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::interpret::{AllocInit, Allocation, GlobalAlloc, InterpResult, Pointer};
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{PolyExistentialPredicate, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
 use rustc_middle::{mir, span_bug, ty};
 use rustc_trait_selection::traits::ObligationCtxt;

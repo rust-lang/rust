@@ -31,6 +31,7 @@ use crate::mir::{self, AssignOp, BinOp, BorrowKind, FakeReadCause, UnOp};
 use crate::thir::visit::for_each_immediate_subpat;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::layout::IntegerExt;
+use crate::ty::util::{TyKindRef, TyUtil};
 use crate::ty::{
     self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, Ty,
     TyCtxt, UpvarArgs,

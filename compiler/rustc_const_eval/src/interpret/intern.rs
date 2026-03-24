@@ -26,6 +26,7 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::util::TyUtil;
 use rustc_span::def_id::LocalDefId;
 use tracing::{instrument, trace};
 

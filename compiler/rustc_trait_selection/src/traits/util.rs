@@ -8,6 +8,7 @@ use rustc_infer::traits::PolyTraitObligation;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, PolyTraitPredicate, PredicatePolarity, SizedTraitKind, TraitPredicate, TraitRef, Ty,
     TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,

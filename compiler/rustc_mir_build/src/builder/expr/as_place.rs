@@ -8,6 +8,7 @@ use rustc_middle::hir::place::{Projection as HirProjection, ProjectionKind as Hi
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, Variance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;

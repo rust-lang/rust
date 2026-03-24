@@ -4,6 +4,8 @@ use rustc_errors::{
     MultiSpan, Subdiagnostic, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_middle::ty::inhabitedness::TyInhabitedHelpers;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{self, Ty};
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::RustcPatCtxt;

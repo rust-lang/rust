@@ -7,6 +7,7 @@ use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_signature};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode,

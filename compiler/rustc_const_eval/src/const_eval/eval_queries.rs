@@ -9,6 +9,7 @@ use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, throw_inval};
 use rustc_span::def_id::LocalDefId;

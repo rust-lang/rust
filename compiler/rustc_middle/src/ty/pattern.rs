@@ -7,6 +7,7 @@ use rustc_type_ir::{self as ir, FlagComputation, Flags};
 
 use super::TyCtxt;
 use crate::ty;
+use crate::ty::util::TyKindRef;
 
 pub type PatternKind<'tcx> = ir::PatternKind<TyCtxt<'tcx>>;
 

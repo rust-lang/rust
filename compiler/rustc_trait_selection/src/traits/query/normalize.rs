@@ -8,6 +8,7 @@ use rustc_hir::def::DefKind;
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 pub use rustc_middle::traits::query::NormalizationResult;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{
     self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
@@ -243,11 +244,8 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                         let mut concrete_ty = generic_ty.instantiate(self.cx(), args);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
-                            concrete_ty = Ty::new_error_with_message(
-                                self.cx(),
-                                DUMMY_SP,
-                                "recursive opaque type",
-                            );
+                            concrete_ty =
+                                self.cx().new_error_with_message(DUMMY_SP, "recursive opaque type");
                         }
                         let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
                         self.anon_depth -= 1;

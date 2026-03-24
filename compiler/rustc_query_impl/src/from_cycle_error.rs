@@ -13,6 +13,7 @@ use rustc_middle::queries::{QueryVTables, TaggedQueryKey};
 use rustc_middle::query::CycleError;
 use rustc_middle::query::erase::erase_val;
 use rustc_middle::ty::layout::LayoutError;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};

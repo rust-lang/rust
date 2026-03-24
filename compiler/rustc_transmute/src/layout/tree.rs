@@ -253,6 +253,7 @@ pub(crate) mod rustc {
         FieldIdx, FieldsShape, Layout, Size, TagEncoding, TyAndLayout, VariantIdx, Variants,
     };
     use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError};
+    use rustc_middle::ty::util::TyKindRef;
     use rustc_middle::ty::{
         self, AdtDef, AdtKind, List, Region, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
     };

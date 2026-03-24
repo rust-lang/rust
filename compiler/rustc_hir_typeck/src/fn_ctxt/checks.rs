@@ -2994,7 +2994,7 @@ impl<'a, 'b, 'tcx> ArgsCtxt<'a, 'b, 'tcx> {
                     .typeck_results
                     .borrow()
                     .expr_ty_adjusted_opt(expr)
-                    .unwrap_or_else(|| Ty::new_misc_error(self.call_ctxt.fn_ctxt.tcx));
+                    .unwrap_or_else(|| self.call_ctxt.fn_ctxt.tcx.new_misc_error());
                 (
                     self.call_ctxt.fn_ctxt.resolve_vars_if_possible(ty),
                     self.normalize_span(expr.span),

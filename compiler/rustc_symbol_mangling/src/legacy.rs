@@ -7,6 +7,7 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::bug;
 use rustc_middle::ty::print::{PrettyPrinter, Print, PrintError, Printer};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, Instance, ReifyReason, Ty, TyCtxt, TypeVisitableExt,
 };

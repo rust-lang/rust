@@ -81,8 +81,7 @@ fn check_transmute<'tcx>(
         if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, ty) {
             ty
         } else {
-            Ty::new_error_with_message(
-                tcx,
+            tcx.new_error_with_message(
                 span(),
                 format!("tried to normalize non-wf type {ty:#?} in check_transmute"),
             )

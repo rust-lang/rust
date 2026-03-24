@@ -11,10 +11,12 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
+use std::borrow::Cow;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::num::NonZero;
+use std::ops::Range;
 use std::ptr::NonNull;
 use std::{assert_matches, fmt, iter, str};
 
@@ -35,7 +37,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
+use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
@@ -104,7 +106,7 @@ pub use self::sty::{
     AliasTy, Article, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind,
     BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder, FnSig, InlineConstArgs,
     InlineConstArgsParts, ParamConst, ParamTy, PlaceholderConst, PlaceholderRegion,
-    PlaceholderType, PolyFnSig, TyKind, TypeAndMut, TypingMode, UpvarArgs,
+    PlaceholderType, PolyFnSig, Ty, TyKind, TypeAndMut, TypingMode, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -118,11 +120,11 @@ use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, SourceInfo};
 use crate::query::{IntoQueryKey, Providers};
 use crate::ty;
-use crate::ty::codec::{TyDecoder, TyEncoder};
+use crate::ty::codec::{TyDecoder as CodecTyDecoder, TyEncoder as CodecTyEncoder};
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{FnAbiError, LayoutError};
-use crate::ty::util::Discr;
+use crate::ty::util::{Discr, TyKindRef, TyUtil};
 use crate::ty::walk::TypeWalker;
 
 pub mod abstract_const;
@@ -424,29 +426,11 @@ pub struct CReaderCacheKey {
     pub pos: usize,
 }
 
-/// Use this rather than `TyKind`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
-#[rustc_diagnostic_item = "Ty"]
-#[rustc_pass_by_value]
-pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
-
-impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
-    type Kind = TyKind<'tcx>;
-
-    fn kind(self) -> TyKind<'tcx> {
-        *self.kind()
-    }
-}
-
-impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
-    fn flags(&self) -> TypeFlags {
-        self.0.flags
-    }
-
-    fn outer_exclusive_binder(&self) -> DebruijnIndex {
-        self.0.outer_exclusive_binder
-    }
-}
+///// Use this rather than `TyKind`, whenever possible.
+//#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+//#[rustc_diagnostic_item = "Ty"]
+//#[rustc_pass_by_value]
+//pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
 /// The crate outlives map is computed during typeck and contains the
 /// outlives of every item in the local crate. You should not use it
@@ -544,13 +528,13 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Term<'tcx> {
+impl<'tcx, E: CodecTyEncoder<'tcx>> Encodable<E> for Term<'tcx> {
     fn encode(&self, e: &mut E) {
         self.kind().encode(e)
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Term<'tcx> {
+impl<'tcx, D: CodecTyDecoder<'tcx>> Decodable<D> for Term<'tcx> {
     fn decode(d: &mut D) -> Self {
         let res: TermKind<'tcx> = Decodable::decode(d);
         res.pack()
@@ -567,7 +551,7 @@ impl<'tcx> Term<'tcx> {
         // and this is just going in the other direction.
         unsafe {
             match self.ptr.addr().get() & TAG_MASK {
-                TYPE_TAG => TermKind::Ty(Ty(Interned::new_unchecked(
+                TYPE_TAG => TermKind::Ty(Ty::from_interned(Interned::new_unchecked(
                     ptr.cast::<WithCachedTypeInfo<ty::TyKind<'tcx>>>().as_ref(),
                 ))),
                 CONST_TAG => TermKind::Const(ty::Const(Interned::new_unchecked(
@@ -603,8 +587,8 @@ impl<'tcx> Term<'tcx> {
 
     pub fn to_alias_term(self) -> Option<AliasTerm<'tcx>> {
         match self.kind() {
-            TermKind::Ty(ty) => match *ty.kind() {
-                ty::Alias(_kind, alias_ty) => Some(alias_ty.into()),
+            TermKind::Ty(ty) => match ty.kind() {
+                ty::Alias(_kind, alias_ty) => Some((*alias_ty).into()),
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
@@ -1227,6 +1211,16 @@ impl VariantDef {
     /// Returns whether this variant has unsafe fields.
     pub fn has_unsafe_fields(&self) -> bool {
         self.fields.iter().any(|x| x.safety.is_unsafe())
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::VariantDef<TyCtxt<'tcx>> for &'tcx VariantDef {
+    fn field_zero_ty(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> Ty<'tcx> {
+        self.fields[FieldIdx::ZERO].ty(tcx, args)
+    }
+
+    fn fields_len(self) -> usize {
+        self.fields.len()
     }
 }
 
@@ -2169,6 +2163,36 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             self.fn_abi_of_instance_no_deduced_attrs(query)
         }
+    }
+
+    /// The valid variant indices of this coroutine.
+    #[inline]
+    pub fn coroutine_variant_range(
+        self,
+        def_id: DefId,
+        coroutine_args: ty::CoroutineArgs<Self>,
+    ) -> Range<VariantIdx> {
+        // FIXME requires optimized MIR
+        rustc_abi::FIRST_VARIANT
+            ..self
+                .coroutine_layout(def_id, coroutine_args.args)
+                .unwrap()
+                .variant_fields
+                .next_index()
+    }
+
+    pub fn new_error_with_message<S: Into<MultiSpan>>(
+        self,
+        span: S,
+        msg: impl Into<Cow<'static, str>>,
+    ) -> Ty<'tcx> {
+        let reported = self.dcx().span_delayed_bug(span, msg);
+        Ty::new(self, ty::Error(reported))
+    }
+
+    /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` to ensure it gets used.
+    pub fn new_misc_error(self) -> Ty<'tcx> {
+        self.new_error_with_message(DUMMY_SP, "TyKind::Error constructed but no error reported")
     }
 }
 

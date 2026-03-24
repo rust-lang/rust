@@ -4,7 +4,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
+use rustc_middle::ty::util::{CheckRegions, NotUniqueParam, TyKindRef};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;

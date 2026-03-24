@@ -3,6 +3,7 @@ use rustc_infer::infer::relate::{
     self, Relate, RelateResult, TypeRelation, structurally_relate_tys,
 };
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
 use tracing::instrument;
 

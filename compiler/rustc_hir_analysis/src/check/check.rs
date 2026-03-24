@@ -18,7 +18,7 @@ use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
-use rustc_middle::ty::util::Discr;
+use rustc_middle::ty::util::{Discr, TyKindRef};
 use rustc_middle::ty::{
     AdtDef, BottomUpFolder, FnSig, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, fold_regions,

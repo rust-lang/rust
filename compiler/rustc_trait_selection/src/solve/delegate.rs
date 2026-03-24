@@ -11,6 +11,7 @@ use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtx
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
 };

@@ -18,6 +18,7 @@ use rustc_middle::ty::layout::{
     FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, SimdLayoutError, TyAndLayout,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{
     self, AdtDef, CoroutineArgsExt, EarlyBinder, PseudoCanonicalInput, Ty, TyCtxt, TypeVisitableExt,
 };

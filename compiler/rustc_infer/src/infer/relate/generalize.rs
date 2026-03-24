@@ -5,6 +5,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode,

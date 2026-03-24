@@ -1,6 +1,7 @@
 use std::assert_matches;
 
 use rustc_middle::ty::outlives::{Component, compute_alias_components_recursive};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
 use smallvec::smallvec;
 use tracing::{debug, instrument, trace};

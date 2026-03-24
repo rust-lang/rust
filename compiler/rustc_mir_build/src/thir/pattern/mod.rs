@@ -20,6 +20,7 @@ use rustc_middle::thir::{
 };
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, LitToConstInput, Ty, TyCtxt, const_lit_matches_ty,
 };

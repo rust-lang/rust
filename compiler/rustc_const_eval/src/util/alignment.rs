@@ -1,5 +1,6 @@
 use rustc_abi::Align;
 use rustc_middle::mir::*;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, AdtDef, TyCtxt};
 use tracing::debug;
 

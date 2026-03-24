@@ -58,6 +58,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::{
     Body, BorrowKind, FakeBorrowKind, MutBorrowKind, Place, PlaceElem, PlaceRef, ProjectionElem,
 };
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, TyCtxt};
 use tracing::{debug, instrument};
 

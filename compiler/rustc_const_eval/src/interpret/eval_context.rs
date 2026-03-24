@@ -10,6 +10,7 @@ use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf,
     LayoutOfHelpers, TyAndLayout,
 };
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{
     self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
 };

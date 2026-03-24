@@ -12,6 +12,7 @@ use rustc_macros::extension;
 pub use rustc_type_ir::error::ExpectedFound;
 
 use crate::ty::print::{FmtPrinter, Print, with_forced_trimmed_paths};
+use crate::ty::util::TyKindRef;
 use crate::ty::{self, Lift, Ty, TyCtxt};
 
 pub type TypeError<'tcx> = rustc_type_ir::error::TypeError<TyCtxt<'tcx>>;
@@ -121,8 +122,13 @@ impl<'tcx> TypeError<'tcx> {
     }
 }
 
-impl<'tcx> Ty<'tcx> {
-    pub fn sort_string(self, tcx: TyCtxt<'tcx>) -> Cow<'static, str> {
+pub trait TyErrorHelpers<'tcx> {
+    fn sort_string(self, tcx: TyCtxt<'tcx>) -> Cow<'static, str>;
+    fn prefix_string(self, tcx: TyCtxt<'_>) -> Cow<'static, str>;
+}
+
+impl<'tcx> TyErrorHelpers<'tcx> for Ty<'tcx> {
+    fn sort_string(self, tcx: TyCtxt<'tcx>) -> Cow<'static, str> {
         match *self.kind() {
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
             ty::FnDef(def_id, ..) => match tcx.def_kind(def_id) {
@@ -170,7 +176,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    pub fn prefix_string(self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
+    fn prefix_string(self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match *self.kind() {
             ty::Infer(_)
             | ty::Error(_)

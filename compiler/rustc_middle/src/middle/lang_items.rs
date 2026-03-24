@@ -27,6 +27,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.lang_items().get(lang_item) == Some(def_id)
     }
 
+    pub fn is_c_void(self, adt: ty::AdtDef<'tcx>) -> bool {
+        self.is_lang_item(adt.did(), LangItem::CVoid)
+    }
+
     pub fn as_lang_item(self, def_id: DefId) -> Option<LangItem> {
         self.lang_items().from_def_id(def_id)
     }

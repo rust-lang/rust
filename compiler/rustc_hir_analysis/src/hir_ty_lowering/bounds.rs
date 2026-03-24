@@ -8,6 +8,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{PolyTraitRef, find_attr};
 use rustc_middle::bug;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor, Upcast,
@@ -684,11 +685,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let item_def_id = match path.res {
                     Res::Def(DefKind::AssocFn, item_def_id) => item_def_id,
                     Res::Err => {
-                        return Ty::new_error_with_message(
-                            tcx,
-                            hir_ty.span,
-                            "failed to resolve RTN",
-                        );
+                        return tcx.new_error_with_message(hir_ty.span, "failed to resolve RTN");
                     }
                     _ => bug!("only expected method resolution for fully qualified RTN"),
                 };

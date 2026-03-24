@@ -9,6 +9,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::{DUMMY_SP, Spanned, sym};
 use rustc_trait_selection::infer::InferCtxtExt;

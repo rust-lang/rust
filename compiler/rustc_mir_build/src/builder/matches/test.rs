@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
 use rustc_middle::bug;
 use rustc_middle::mir::*;
-use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::util::{IntTypeExt, TyKindRef};
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};

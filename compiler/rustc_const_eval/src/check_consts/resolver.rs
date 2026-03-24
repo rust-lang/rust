@@ -10,6 +10,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind, TerminatorEdges,
 };
+use rustc_middle::ty::util::TyUtil;
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, JoinSemiLattice};
 

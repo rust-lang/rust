@@ -10,6 +10,7 @@ use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::significant_drop_order::{
     extract_component_with_significant_dtor, ty_dtor_span,
 };
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::{LintId, fcw};
 use rustc_session::{declare_lint, impl_lint_pass};

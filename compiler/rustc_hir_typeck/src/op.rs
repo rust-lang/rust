@@ -299,7 +299,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             // error types are considered "builtin"
             Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => {
-                Ty::new_misc_error(self.tcx)
+                self.tcx.new_misc_error()
             }
             Err(errors) => {
                 let (_, trait_def_id) = lang_item_for_binop(self.tcx, op);

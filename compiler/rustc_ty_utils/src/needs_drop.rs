@@ -6,7 +6,7 @@ use rustc_hir::find_attr;
 use rustc_hir::limit::Limit;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
+use rustc_middle::ty::util::{AlwaysRequiresDrop, TyKindRef, needs_drop_components};
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use tracing::{debug, instrument};
 

@@ -1,6 +1,7 @@
 use rustc_hir::attrs::RustcMirKind;
 use rustc_hir::find_attr;
 use rustc_middle::mir::{self, Body, Local, Location};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{Span, sym};
 use tracing::{debug, info};

@@ -4,6 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::Diagnostic;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::sym;

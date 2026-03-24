@@ -29,6 +29,7 @@ use rustc_middle::ty::print::{
     PrintPolyTraitPredicateExt, PrintTraitPredicateExt as _, PrintTraitRefExt as _,
     with_forced_trimmed_paths,
 };
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{
     self, GenericArgKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt, Upcast,
@@ -1134,7 +1135,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.note_missing_impl_for_question_mark(err, self_ty, found_ty, trait_pred);
 
         let mut prev_ty = self.resolve_vars_if_possible(
-            typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
+            typeck.expr_ty_adjusted_opt(expr).unwrap_or(self.tcx.new_misc_error()),
         );
 
         // We always look at the `E` type, because that's the only one affected by `?`. If the
@@ -1166,7 +1167,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             chain.push((span, prev_ty));
 
             let next_ty = self.resolve_vars_if_possible(
-                typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
+                typeck.expr_ty_adjusted_opt(expr).unwrap_or(self.tcx.new_misc_error()),
             );
 
             let is_diagnostic_item = |symbol: Symbol, ty: Ty<'tcx>| {
@@ -1210,7 +1211,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 && let hir::StmtKind::Semi(expr) = stmt.kind
                 && let expr_ty = self.resolve_vars_if_possible(
                     typeck.expr_ty_adjusted_opt(expr)
-                        .unwrap_or(Ty::new_misc_error(self.tcx)),
+                        .unwrap_or(self.tcx.new_misc_error()),
                 )
                 && self
                     .infcx
@@ -1254,7 +1255,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // expression kind, like a method call or a path. If this expression is `Result<T, E>` as
         // well, then we also point at it.
         prev_ty = self.resolve_vars_if_possible(
-            typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
+            typeck.expr_ty_adjusted_opt(expr).unwrap_or(self.tcx.new_misc_error()),
         );
         chain.push((expr.span, prev_ty));
 

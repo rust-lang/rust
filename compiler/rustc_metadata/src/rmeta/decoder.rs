@@ -23,8 +23,7 @@ use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_index::Idx;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::ty::Visibility;
-use rustc_middle::ty::codec::TyDecoder;
+use rustc_middle::ty::{TyDecoder, Visibility};
 use rustc_middle::{bug, implement_ty_decoder};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_serialize::opaque::MemDecoder;
@@ -387,6 +386,8 @@ impl<'a> BlobDecodeContext<'a> {
 }
 
 impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
+    type Interner = TyCtxt<'tcx>;
+
     const CLEAR_CROSS_CRATE: bool = true;
 
     #[inline]

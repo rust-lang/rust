@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::ops::Range;
 
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,

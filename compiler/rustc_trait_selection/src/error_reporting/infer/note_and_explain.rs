@@ -7,6 +7,7 @@ use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::print::{FmtPrinter, Printer};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, suggest_constraining_type_param};
 use rustc_span::def_id::DefId;
 use rustc_span::{BytePos, Span, Symbol};

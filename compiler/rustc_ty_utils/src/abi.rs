@@ -10,6 +10,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;

@@ -2,6 +2,8 @@ use std::iter;
 
 use rustc_abi::ExternAbi;
 use rustc_hir::{self as hir, find_attr};
+use rustc_infer::traits::ObligationCause;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
@@ -109,7 +111,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CheckGpuKernelTypes<'tcx> {
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {}
             // Thin pointers are allowed but fat pointers with metadata are not
             ty::RawPtr(_, _) => {
-                if !ty.pointee_metadata_ty_or_projection(self.tcx).is_unit() {
+                if !ty
+                    .pointee_metadata_ty_or_projection(&ObligationCause::dummy(), self.tcx)
+                    .is_unit()
+                {
                     self.has_invalid = true;
                 }
             }

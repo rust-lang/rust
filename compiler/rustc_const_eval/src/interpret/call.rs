@@ -8,7 +8,9 @@ use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_target::callconv::{ArgAbi, FnAbi};
@@ -220,7 +222,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // to fields, which can yield non-normalized types. So we need to provide a
                 // normalization function.
                 let normalize = |ty| self.tcx.normalize_erasing_regions(self.typing_env, ty);
-                ty.ptr_metadata_ty(*self.tcx, normalize)
+                ty.ptr_metadata_ty(*self.tcx, &ObligationCause::dummy(), normalize)
             };
             return interp_ok(meta_ty(caller) == meta_ty(callee));
         }

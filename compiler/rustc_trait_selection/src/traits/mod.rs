@@ -33,6 +33,7 @@ use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode, Upcast,
