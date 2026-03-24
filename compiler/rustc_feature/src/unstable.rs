@@ -496,6 +496,8 @@ declare_features! (
     (unstable, extern_item_impls, "1.94.0", Some(125418)),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),
+    /// Exposes the constants for masking the sign, exponent and mantissa bits of floats.
+    (unstable, float_masks, "CURRENT_RUSTC_VERSION", Some(154064)),
     /// Allow using 128-bit (quad precision) floating point numbers.
     (unstable, f128, "1.78.0", Some(116909)),
     /// Allow using 16-bit (half precision) floating point numbers.
