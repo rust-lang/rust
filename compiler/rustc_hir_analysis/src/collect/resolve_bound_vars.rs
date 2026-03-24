@@ -925,7 +925,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             hir::FnRetTy::Return(ty) => Some(ty),
         };
         if let Some(ty) = output
-            && let hir::TyKind::InferDelegation(sig_id, _) = ty.kind
+            && let hir::TyKind::InferDelegation(hir::InferDelegation::Sig(sig_id, _)) = ty.kind
         {
             let bound_vars: Vec<_> =
                 self.tcx.fn_sig(sig_id).skip_binder().bound_vars().iter().collect();
