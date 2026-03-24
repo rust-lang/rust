@@ -944,6 +944,7 @@ symbols! {
         fields,
         file,
         final_associated_functions,
+        float_masks,
         float_to_int_unchecked,
         floorf16,
         floorf32,
