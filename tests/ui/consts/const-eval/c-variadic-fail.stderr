@@ -240,7 +240,7 @@ LL |         drop(ap);
    |         ^^^^^^^^
 note: inside `std::mem::drop::<VaList<'_>>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-note: inside `drop_in_place::<VaList<'_>> - shim(Some(VaList<'_>))`
+note: inside `std::ptr::drop_glue::<VaList<'_>> - shim(Some(VaList<'_>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `<VaList<'_> as Drop>::drop`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
@@ -272,7 +272,7 @@ LL |         drop(ap);
    |         ^^^^^^^^
 note: inside `std::mem::drop::<VaList<'_>>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-note: inside `drop_in_place::<VaList<'_>> - shim(Some(VaList<'_>))`
+note: inside `std::ptr::drop_glue::<VaList<'_>> - shim(Some(VaList<'_>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `<VaList<'_> as Drop>::drop`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
@@ -325,7 +325,7 @@ error[E0080]: pointer not dereferenceable: pointer must point to some allocation
 LL |     }
    |     ^ evaluation of `drop_of_invalid::{constant#0}` failed inside this call
    |
-note: inside `drop_in_place::<VaList<'_>> - shim(Some(VaList<'_>))`
+note: inside `std::ptr::drop_glue::<VaList<'_>> - shim(Some(VaList<'_>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `<VaList<'_> as Drop>::drop`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL

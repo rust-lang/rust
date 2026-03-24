@@ -1,15 +1,13 @@
 error: Undefined Behavior: constructing invalid value of type &mut PartialDrop: encountered an unaligned reference (required ALIGN byte alignment but found ALIGN)
   --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
    |
-LL | / pub const unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T)
-LL | | where
-LL | |     T: [const] Destruct,
-   | |________________________^ Undefined Behavior occurred here
+LL |     unsafe { drop_glue(&mut *to_drop) }
+   |                        ^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: stack backtrace:
-           0: std::ptr::drop_in_place - shim(Some(PartialDrop))
+           0: std::ptr::drop_in_place
                at RUSTLIB/core/src/ptr/mod.rs:LL:CC
            1: main
                at tests/fail/unaligned_pointers/drop_in_place.rs:LL:CC
