@@ -18,7 +18,7 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 
 pub use shared::{ALL_OPERATIONS, FloatTy, MathOpInfo, Ty};
 
-use crate::{CheckOutput, Float, TupleCall};
+use crate::{CheckOutput, Float, Tuple, TupleCall};
 
 mod shared {
     include!("../../crates/libm-macros/src/shared.rs");
@@ -82,6 +82,7 @@ pub trait MathOp {
     /// The required `TupleCall` bounds ensure this type can be passed either to the C function or
     /// to the Rust function.
     type RustArgs: Copy
+        + Tuple
         + TupleCall<Self::RustFn, Output = Self::RustRet>
         + TupleCall<Self::CFn, Output = Self::RustRet>
         + RefUnwindSafe;
@@ -116,6 +117,18 @@ pub type OpRustFn<Op> = <Op as MathOp>::RustFn;
 pub type OpRustArgs<Op> = <Op as MathOp>::RustArgs;
 /// Access the associated `RustRet` type from an op (helper to avoid ambiguous associated types).
 pub type OpRustRet<Op> = <Op as MathOp>::RustRet;
+
+/// Get the type of the first Rust argument.
+pub type Arg0<Op> = <OpRustArgs<Op> as Tuple>::T0;
+/// Get the type of the second Rust argument.
+pub type Arg1<Op> = <OpRustArgs<Op> as Tuple>::T1;
+/// Get the type of the third Rust argument.
+pub type Arg2<Op> = <OpRustArgs<Op> as Tuple>::T2;
+
+/// If the Rust return type is a tuple, get the first type.
+pub type Ret0<Op> = <OpRustRet<Op> as Tuple>::T0;
+/// If the Rust return type is a tuple, get the second type.
+pub type Ret1<Op> = <OpRustRet<Op> as Tuple>::T1;
 
 macro_rules! create_op_modules {
     // Matcher for unary functions

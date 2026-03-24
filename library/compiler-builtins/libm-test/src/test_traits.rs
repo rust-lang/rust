@@ -1,7 +1,8 @@
 //! Traits related to testing.
 //!
-//! There are two main traits in this module:
+//! There are three main traits in this module:
 //!
+//! - `Tuple`: Implemented on tuples to help extract types.
 //! - `TupleCall`: implemented on tuples to allow calling them as function arguments.
 //! - `CheckOutput`: implemented on anything that is an output type for validation against an
 //!   expected value.
@@ -23,6 +24,7 @@ use crate::{
 /// tuple for multiple signatures).
 pub trait TupleCall<Func>: fmt::Debug {
     type Output;
+
     fn call(self, f: Func) -> Self::Output;
 
     /// Intercept panics and print the input to stderr before continuing.
@@ -42,12 +44,42 @@ pub trait TupleCall<Func>: fmt::Debug {
     }
 }
 
+/// Helper to allow extracting types from a tuple.
+pub trait Tuple {
+    type T0;
+    type T1;
+    type T2;
+}
+
+/// If a tuple contains fewer types than provided in `Tuple`, they use this struct.
+pub enum Unused {}
+
 /// A trait to implement on any output type so we can verify it in a generic way.
 pub trait CheckOutput<Input>: Sized {
     /// Validate `self` (actual) and `expected` are the same.
     ///
     /// `input` is only used here for error messages.
     fn validate(self, expected: Self, input: Input, ctx: &CheckCtx) -> TestResult;
+}
+
+/* implement Tuple */
+
+impl<T0> Tuple for (T0,) {
+    type T0 = T0;
+    type T1 = Unused;
+    type T2 = Unused;
+}
+
+impl<T0, T1> Tuple for (T0, T1) {
+    type T0 = T0;
+    type T1 = T1;
+    type T2 = Unused;
+}
+
+impl<T0, T1, T2> Tuple for (T0, T1, T2) {
+    type T0 = T0;
+    type T1 = T1;
+    type T2 = T2;
 }
 
 /* implement `TupleCall` */
