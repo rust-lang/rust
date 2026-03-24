@@ -25,6 +25,7 @@ impl CommandEnv {
         let mut result = BTreeMap::<EnvKey, OsString>::new();
         if !self.clear {
             for (k, v) in env::vars_os() {
+                #[allow(self_type_conversion)]
                 result.insert(k.into(), v);
             }
         }
@@ -137,6 +138,7 @@ impl Iterator for CommandResolvedEnvs {
     type Item = (OsString, OsString);
 
     fn next(&mut self) -> Option<Self::Item> {
+        #[allow(self_type_conversion)]
         self.inner.next().map(|(key, value)| (key.into(), value))
     }
 

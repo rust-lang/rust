@@ -1,5 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
+#![allow(self_type_conversion)]
 
 struct NewSolver;
 struct OldSolver;
