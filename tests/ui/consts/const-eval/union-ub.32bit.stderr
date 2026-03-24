@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value: encountered 0x2a, but expected a boolean
+error[E0080]: constructing invalid value of type bool: encountered 0x2a, but expected a boolean
   --> $DIR/union-ub.rs:33:1
    |
 LL | const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool };

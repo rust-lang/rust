@@ -1,6 +1,7 @@
 //@ add-minicore
-//@ only-aarch64
-//@ compile-flags: -C target-feature=+neon
+//@ compile-flags: --target aarch64-unknown-linux-gnu -C target-feature=+neon
+//@ needs-llvm-components: aarch64
+//@ ignore-backends: gcc
 #![crate_type = "lib"]
 #![feature(no_core)]
 #![no_core]

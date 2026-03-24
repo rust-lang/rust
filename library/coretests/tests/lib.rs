@@ -17,6 +17,7 @@
 #![feature(const_bool)]
 #![feature(const_cell_traits)]
 #![feature(const_clone)]
+#![feature(const_closures)]
 #![feature(const_cmp)]
 #![feature(const_convert)]
 #![feature(const_default)]

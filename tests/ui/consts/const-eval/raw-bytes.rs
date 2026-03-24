@@ -83,10 +83,10 @@ const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
 };
 
 const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
-//~^ ERROR constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
+//~^ ERROR encountered an unaligned reference (required 2 byte alignment but found 1)
 
 const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
-//~^ ERROR constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
+//~^ ERROR encountered an unaligned box (required 2 byte alignment but found 1)
 
 const NULL: &u16 = unsafe { mem::transmute(0usize) };
 //~^ ERROR constructing invalid value

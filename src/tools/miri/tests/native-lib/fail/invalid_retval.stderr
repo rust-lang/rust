@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered 0x02, but expected a boolean
+error: Undefined Behavior: constructing invalid value of type bool: encountered 0x02, but expected a boolean
   --> tests/native-lib/fail/invalid_retval.rs:LL:CC
    |
 LL |         u8_id(2);

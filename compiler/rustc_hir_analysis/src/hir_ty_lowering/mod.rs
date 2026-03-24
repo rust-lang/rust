@@ -2947,7 +2947,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
             if def_id.is_local() {
                 let name = tcx.def_path_str(def_id);
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     tcx.def_span(def_id).shrink_to_lo(),
                     format!("add `type` before `const` for `{name}`"),
                     format!("type "),
