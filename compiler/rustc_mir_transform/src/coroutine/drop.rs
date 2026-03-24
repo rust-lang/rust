@@ -596,10 +596,6 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
 
     make_coroutine_state_argument_indirect(tcx, &mut body);
 
-    // Change the coroutine argument from &mut to *mut
-    body.local_decls[SELF_ARG] =
-        LocalDecl::with_source_info(Ty::new_mut_ptr(tcx, coroutine_ty), source_info);
-
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
     simplify::remove_dead_blocks(&mut body);

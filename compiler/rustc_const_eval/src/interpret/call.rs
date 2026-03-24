@@ -891,6 +891,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 place
             }
         };
+
         let instance = {
             let _trace =
                 enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
@@ -898,7 +899,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         let fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, ty::List::empty())?;
 
-        let arg = self.mplace_to_imm_ptr(&place, None)?;
+        let ref_ty = Ty::new_mut_ref(self.tcx.tcx, self.tcx.lifetimes.re_erased, place.layout.ty);
+        let arg = self.mplace_to_imm_ptr(&place, Some(ref_ty))?;
+
         let ret = MPlaceTy::fake_alloc_zst(self.layout_of(self.tcx.types.unit)?);
 
         self.init_fn_call(
