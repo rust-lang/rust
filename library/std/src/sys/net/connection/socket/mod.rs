@@ -485,10 +485,12 @@ impl TcpStream {
         Ok(raw as u32)
     }
 
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
     }
 
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
         let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)?;
         Ok(raw as u8)
@@ -622,10 +624,12 @@ impl TcpListener {
         Ok(raw as u32)
     }
 
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
     }
 
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
         let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)?;
         Ok(raw as u8)
@@ -851,19 +855,23 @@ impl UdpSocket {
         Ok(raw as u32)
     }
 
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
     }
 
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
         let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)?;
         Ok(raw as u8)
     }
 
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn set_multicast_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS, limit as c_int)
     }
 
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
         let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS)?;
         Ok(raw as u8)
