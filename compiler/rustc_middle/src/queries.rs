@@ -98,7 +98,7 @@ use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
     EvalToValTreeResult, GlobalId,
 };
-use crate::mir::mono::{
+use crate::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
 use crate::query::describe_as_module;
