@@ -600,7 +600,6 @@ impl UdpSocket {
     /// socket.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
     /// ```
     #[unstable(feature = "ipv6_hop_limit", issue = "139166")]
-    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         self.0.set_hop_limit_v6(limit)
     }
@@ -620,7 +619,6 @@ impl UdpSocket {
     /// assert_eq!(socket.hop_limit_v6().unwrap(), 88);
     /// ```
     #[unstable(feature = "ipv6_hop_limit", issue = "139166")]
-    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
         self.0.hop_limit_v6()
     }
@@ -640,7 +638,6 @@ impl UdpSocket {
     /// socket.set_multicast_hop_limit_v6(88).expect("set_multicast_hop_limit_v6 call failed");
     /// ```
     #[unstable(feature = "ipv6_hop_limit", issue = "139166")]
-    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn set_multicast_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         self.0.set_multicast_hop_limit_v6(limit)
     }
@@ -660,7 +657,6 @@ impl UdpSocket {
     /// assert_eq!(socket.multicast_hop_limit_v6().unwrap(), 88);
     /// ```
     #[unstable(feature = "ipv6_hop_limit", issue = "139166")]
-    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
         self.0.multicast_hop_limit_v6()
     }
