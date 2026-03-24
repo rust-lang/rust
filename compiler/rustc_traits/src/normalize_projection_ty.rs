@@ -54,7 +54,7 @@ fn normalize_canonicalized_projection<'tcx>(
             let normalized_term = traits::normalize_projection_term(
                 selcx,
                 param_env,
-                goal.into(),
+                goal,
                 cause,
                 0,
                 &mut obligations,
@@ -143,7 +143,7 @@ fn normalize_canonicalized_inherent_projection<'tcx>(
             let normalized_term = traits::normalize_inherent_projection(
                 selcx,
                 param_env,
-                goal.into(),
+                goal,
                 cause,
                 0,
                 &mut obligations,
