@@ -244,7 +244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Check whether this is a call to a closure where we
             // haven't yet decided on whether the closure is fn vs
             // fnmut vs fnonce. If so, we have to defer further processing.
-            // FIXME(splat): handle splatting of closure arguments
+            // FIXME(splat): does it make sense to splat closure arguments?
             ty::Closure(def_id, args) if self.closure_kind(adjusted_ty).is_none() => {
                 let def_id = def_id.expect_local();
                 let closure_sig = args.as_closure().sig();
@@ -272,7 +272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // signature with an infer var for the `tupled_upvars_ty` of the coroutine,
             // and record a deferred call resolution which will constrain that var
             // as part of `AsyncFn*` trait confirmation.
-            // FIXME(splat): handle splatting of coroutine closure arguments
+            // FIXME(splat): does it make sense to splat coroutine closure arguments?
             ty::CoroutineClosure(def_id, args) if self.closure_kind(adjusted_ty).is_none() => {
                 let def_id = def_id.expect_local();
                 let closure_args = args.as_coroutine_closure();

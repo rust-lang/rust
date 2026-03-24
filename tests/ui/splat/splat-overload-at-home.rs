@@ -36,19 +36,22 @@ impl Foo {
 fn main() {
     let foo = Foo;
 
-    foo.method::<()>(); //~ ERROR broken MIR
-
     // FIXME(splat):
     // - generic tuple trait implementers should work without explicit tuple type parameters.
     // - actually modify the argument list during typeck, to avoid "broken MIR" errors.
+    foo.method::<()>(); //~ ERROR broken MIR
+    foo.method(); //~ ERROR broken MIR
+
     foo.method::<(i32,)>(42i32); //~ ERROR broken MIR
+    foo.method::<(i32,)>(42); //~ ERROR broken MIR
+    foo.method(42i32); //~ ERROR broken MIR
+    foo.method(42); //~ ERROR broken MIR
     // FIXME(splat): should splatted functions be callable with tupled and un-tupled arguments?
     // Add a tupled test for each call if they are.
     //foo.method((42i32,));
 
-    foo.method::<(i32,)>(42); //~ ERROR broken MIR
-
     foo.method::<(i32, String)>(42i32, "asdf".to_owned()); //~ ERROR broken MIR
-
-    foo.method::<(i32, String)>(42, "asdf".to_owned()); //~ ERROR broken MIR
+    foo.method::<(i32, String)>(42, "asdf".to_owned());
+    foo.method(42i32, "asdf".to_owned());
+    foo.method(42, "asdf".to_owned());
 }

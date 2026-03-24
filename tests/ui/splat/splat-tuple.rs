@@ -82,20 +82,23 @@ fn main() {
     Foo::tuple_3(1u32, 2i32, 3i8); //~ ERROR broken MIR
     foo.tuple_4(1u32, 2i8, (), 3f32);
 
-    Foo::tuple_1_trait(1u32);
     // FIXME(splat): this should error because `self` is splatted, but `Foo` is not a tuple.
+    Foo::tuple_1_trait(1u32);
     foo.tuple_4_trait((1u32, 2i8, (), 3f32));
 
     let tuple_struct = TupleStruct(1u32, 2i8);
+    // FIXME(splat): this should error because `self` is splatted, but `TupleStruct` is not a tuple.
     tuple_struct.tuple_2((1u32, 2i8));
 
     TupleStruct::tuple_1_trait(1u32);
-    // FIXME(splat): this should error because `self` is splatted, but `TupleStruct` is not a tuple.
     tuple_struct.tuple_4_trait((1u32, 2i8, (), 3f32));
 
     // FIXME(splat): generic tuple trait implementers should work without explicit tuple type
     // parameters.
     splat_generic_tuple::<(u32, i8)>(1u32, 2i8);
+    splat_generic_tuple(1u32, 2i8);
+    splat_generic_tuple(1, 2);
 
     splat_generic_tuple::<()>();
+    splat_generic_tuple();
 }

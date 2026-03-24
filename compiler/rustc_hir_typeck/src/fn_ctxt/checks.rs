@@ -293,28 +293,65 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 formal_input_tys.len().checked_sub(1).expect("must have a tuple argument");
             // Keep the type variable if the argument is splatted, so we can force it to be a tuple later.
             let tuple_type = if tuple_arguments.is_splatted() {
-                let tuple_type = self
+                let calee_tuple_type = self
                     .try_structurally_resolve_type(call_span, formal_input_tys[tupled_arg_index]);
-                if tuple_type.is_ty_var() {
+                if calee_tuple_type.is_ty_var() {
                     let tuple_len = provided_args.len().checked_sub(tupled_arg_index);
                     if let Some(tuple_len) = tuple_len {
-                        // FIXME(splat before merging): how do we force the type variable to resolve to (a supertype) of the caller's tupled argument types?
-                        Ty::new_tup_from_iter(
+                        // Make the original type variable resolve to a tuple containing new type variables
+                        let ocx = ObligationCtxt::new(self);
+                        let origin = self.misc(call_span);
+
+                        let new_tupled_type = Ty::new_tup_from_iter(
                             self.tcx,
                             iter::repeat_with(|| self.next_ty_var(call_span)).take(tuple_len),
-                        )
+                        );
+
+                        // FIXME(splat): should this be a sub/super type relationship?
+                        let ocx_error =
+                            ocx.eq(&origin, self.param_env, calee_tuple_type, new_tupled_type);
+                        if let Err(ocx_error) = ocx_error {
+                            struct_span_code_err!(
+                                self.dcx(),
+                                call_span,
+                                // FIXME(splat): add a new error code before stabilization
+                                E0277,
+                                "cannot resolve splatted arguments; the last type parameter \
+                                for the function must be a tuple or unit: {:?}",
+                                ocx_error,
+                            )
+                            .emit();
+                        }
+
+                        let type_errors = ocx.try_evaluate_obligations();
+                        if type_errors.is_empty() {
+                            assert_matches!(new_tupled_type.kind(), ty::Tuple(_));
+                            new_tupled_type
+                        } else {
+                            let guar = struct_span_code_err!(
+                                self.dcx(),
+                                call_span,
+                                // FIXME(splat): add a new error code before stabilization
+                                E0277,
+                                "cannot resolve splatted arguments; the last type parameter \
+                                for the function must be a tuple or unit: {:?}",
+                                type_errors,
+                            )
+                            .emit();
+                            Ty::new_error(self.tcx, guar)
+                        }
                     } else {
                         // Just let it likely fail later
-                        tuple_type
+                        calee_tuple_type
                     }
                 } else {
-                    tuple_type
+                    calee_tuple_type
                 }
             } else {
                 self.structurally_resolve_type(call_span, formal_input_tys[tupled_arg_index])
             };
             match tuple_type.kind() {
-                // We expected a tuple and got a tuple
+                // We expected a tuple and got a tuple (or made one ourselves)
                 ty::Tuple(arg_types) => {
                     // Argument length differs
                     // FIXME(splat): update the error code E0057 docs when splat is stabilized
