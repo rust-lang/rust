@@ -232,9 +232,20 @@ fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>
         }
 
         // Omit f16 and f128 functions if requested
-        if input.skip_f16_f128 && (func.float_ty == FloatTy::F16 || func.float_ty == FloatTy::F128)
-        {
-            continue;
+        if input.skip_f16_f128 {
+            if matches!(func.float_ty, FloatTy::F16 | FloatTy::F128) {
+                continue;
+            }
+
+            if func
+                .rust_sig
+                .args
+                .iter()
+                .chain(func.rust_sig.returns.iter())
+                .any(|ty| matches!(ty, Ty::F16 | Ty::F128))
+            {
+                continue;
+            }
         }
 
         if input.skip_builtins && func.scope.defined_in_compiler_builtins() {
