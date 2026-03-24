@@ -1,4 +1,6 @@
 //@ run-pass
+//Tests enum with full i-32 range discriminants roundtrip correctly through option and casting.
+//https://github.com/rust-lang/rust/issues/49973
 #[derive(Debug)]
 #[repr(i32)]
 enum E {
