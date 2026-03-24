@@ -1264,6 +1264,8 @@ pub struct HashIgnoredAttrId {
     pub attr_id: AttrId,
 }
 
+/// Many functions on this type have their documentation in the [`AttributeExt`] trait,
+/// since they defer their implementation directly to that trait.
 #[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Attribute {
     /// A parsed built-in attribute.
