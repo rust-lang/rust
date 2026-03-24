@@ -11,6 +11,7 @@ Version 1.94.1 (2026-03-26)
 * [Cargo: update tar to 0.4.45](https://github.com/rust-lang/cargo/pull/16769)
   This resolves CVE-2026-33055 and CVE-2026-33056. Users of crates.io are not affected.
   See [blog](https://blog.rust-lang.org/2026/03/21/cve-2026-33056/) for more details.
+* [Cargo: fix certificate validation errors on FreeBSD](https://github.com/rust-lang/cargo/pull/16787)
 
 Version 1.94.0 (2026-03-05)
 ==========================
