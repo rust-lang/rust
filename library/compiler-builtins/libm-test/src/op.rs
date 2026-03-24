@@ -29,6 +29,16 @@ mod shared {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Identifier {}
 
+impl Identifier {
+    /// Return information about this operation.
+    pub fn math_op(self) -> &'static MathOpInfo {
+        ALL_OPERATIONS
+            .iter()
+            .find(|op| op.name == self.as_str())
+            .unwrap()
+    }
+}
+
 impl fmt::Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
