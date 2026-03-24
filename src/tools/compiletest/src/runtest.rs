@@ -1921,10 +1921,7 @@ impl<'test> TestCx<'test> {
 
         // Allow tests to use internal and incomplete features.
         compiler.args(&["-A", "internal_features"]);
-        // FIXME(#154168); temporarily exclude some directories to make the transition easier
-        if !input_file.iter().any(|p| p == "specialization") {
-            compiler.args(&["-A", "incomplete_features"]);
-        }
+        compiler.args(&["-A", "incomplete_features"]);
 
         // Allow tests to have unused parens and braces.
         // Add #![deny(unused_parens, unused_braces)] to the test file if you want to

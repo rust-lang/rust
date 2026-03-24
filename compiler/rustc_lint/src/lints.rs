@@ -2994,14 +2994,6 @@ pub(crate) mod unexpected_cfg_value {
     }
 }
 
-#[derive(Diagnostic)]
-#[diag("extern crate `{$extern_crate}` is unused in crate `{$local_crate}`")]
-#[help("remove the dependency or add `use {$extern_crate} as _;` to the crate root")]
-pub(crate) struct UnusedCrateDependency {
-    pub extern_crate: Symbol,
-    pub local_crate: Symbol,
-}
-
 // FIXME(jdonszelmann): duplicated in rustc_attr_parsing, should be moved there completely.
 #[derive(Diagnostic)]
 #[diag(
