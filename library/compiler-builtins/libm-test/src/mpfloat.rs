@@ -150,6 +150,10 @@ libm_macros::for_each_function! {
         divf128,
         divf32,
         divf64,
+        eqf128,
+        eqf16,
+        eqf32,
+        eqf64,
         fabs,
         fabsf,
         fabsf128,
@@ -173,6 +177,14 @@ libm_macros::for_each_function! {
         frexpf,
         frexpf128,
         frexpf16,
+        gef128,
+        gef16,
+        gef32,
+        gef64,
+        gtf128,
+        gtf16,
+        gtf32,
+        gtf64,
         ilogb,
         ilogbf,
         ilogbf128,
@@ -183,16 +195,28 @@ libm_macros::for_each_function! {
         ldexpf,
         ldexpf128,
         ldexpf16,
+        lef128,
+        lef16,
+        lef32,
+        lef64,
         lgamma,
         lgamma_r,
         lgammaf,
         lgammaf_r,
+        ltf128,
+        ltf16,
+        ltf32,
+        ltf64,
         modf,
         modff,
         mulf128,
         mulf16,
         mulf32,
         mulf64,
+        nef128,
+        nef16,
+        nef32,
+        nef64,
         nextafter,
         nextafterf,
         pow,
@@ -226,6 +250,10 @@ libm_macros::for_each_function! {
         truncf,
         truncf128,
         truncf16,yn,
+        unordf128,
+        unordf16,
+        unordf32,
+        unordf64,
         ynf,
         // verify-sorted-end
     ],
@@ -463,6 +491,104 @@ macro_rules! impl_op_for_ty_all {
                     this.1.assign(input.1);
                     let ord = this.0.mul_assign_round(&this.1, Nearest);
                     prep_retval::<Self::RustRet>(&mut this.0, ord)
+                }
+            }
+
+            impl MpOp for crate::op::[<eq $fty>]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    this.0 == this.1
+                }
+            }
+
+            impl MpOp for crate::op::[<gt $fty>]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    this.0 > this.1
+                }
+            }
+
+            impl MpOp for crate::op::[<ge $fty>]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    this.0 >= this.1
+                }
+            }
+
+            impl MpOp for crate::op::[<lt $fty>]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    this.0 < this.1
+                }
+            }
+
+            impl MpOp for crate::op::[<le $fty>]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    this.0 <= this.1
+                }
+            }
+
+            impl MpOp for crate::op::[<ne $fty>]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    this.0 != this.1
+                }
+            }
+
+            impl MpOp for crate::op::[<unord $fty>]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    this.0.is_nan() || this.1.is_nan()
                 }
             }
 

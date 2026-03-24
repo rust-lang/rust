@@ -120,6 +120,132 @@ fn powif128_cases() -> Vec<TestCase<op::powif128::Routine>> {
     vec![]
 }
 
+#[cfg(f16_enabled)]
+fn eqf16_cases() -> Vec<TestCase<op::eqf16::Routine>> {
+    vec![]
+}
+
+fn eqf32_cases() -> Vec<TestCase<op::eqf32::Routine>> {
+    vec![]
+}
+
+fn eqf64_cases() -> Vec<TestCase<op::eqf64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn eqf128_cases() -> Vec<TestCase<op::eqf128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn gtf16_cases() -> Vec<TestCase<op::gtf16::Routine>> {
+    vec![]
+}
+
+fn gtf32_cases() -> Vec<TestCase<op::gtf32::Routine>> {
+    vec![]
+}
+
+fn gtf64_cases() -> Vec<TestCase<op::gtf64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn gtf128_cases() -> Vec<TestCase<op::gtf128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn gef16_cases() -> Vec<TestCase<op::gef16::Routine>> {
+    vec![]
+}
+
+fn gef32_cases() -> Vec<TestCase<op::gef32::Routine>> {
+    vec![]
+}
+
+fn gef64_cases() -> Vec<TestCase<op::gef64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn gef128_cases() -> Vec<TestCase<op::gef128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn ltf16_cases() -> Vec<TestCase<op::ltf16::Routine>> {
+    vec![]
+}
+
+fn ltf32_cases() -> Vec<TestCase<op::ltf32::Routine>> {
+    vec![]
+}
+
+fn ltf64_cases() -> Vec<TestCase<op::ltf64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn ltf128_cases() -> Vec<TestCase<op::ltf128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn lef16_cases() -> Vec<TestCase<op::lef16::Routine>> {
+    vec![]
+}
+
+fn lef32_cases() -> Vec<TestCase<op::lef32::Routine>> {
+    vec![]
+}
+
+fn lef64_cases() -> Vec<TestCase<op::lef64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn lef128_cases() -> Vec<TestCase<op::lef128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn nef16_cases() -> Vec<TestCase<op::nef16::Routine>> {
+    vec![]
+}
+
+fn nef32_cases() -> Vec<TestCase<op::nef32::Routine>> {
+    vec![]
+}
+
+fn nef64_cases() -> Vec<TestCase<op::nef64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn nef128_cases() -> Vec<TestCase<op::nef128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn unordf16_cases() -> Vec<TestCase<op::unordf16::Routine>> {
+    vec![]
+}
+
+fn unordf32_cases() -> Vec<TestCase<op::unordf32::Routine>> {
+    vec![]
+}
+
+fn unordf64_cases() -> Vec<TestCase<op::unordf64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn unordf128_cases() -> Vec<TestCase<op::unordf128::Routine>> {
+    vec![]
+}
+
 /* libm test cases */
 
 fn acos_cases() -> Vec<TestCase<op::acos::Routine>> {

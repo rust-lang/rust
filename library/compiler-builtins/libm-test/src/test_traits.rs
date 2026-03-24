@@ -186,6 +186,28 @@ where
     }
 }
 
+/* trait implementations for bool */
+
+impl<Input> CheckOutput<Input> for bool
+where
+    Input: Hex + fmt::Debug,
+    SpecialCase: MaybeOverride<Input>,
+{
+    fn validate<'a>(self, expected: Self, input: Input, _ctx: &CheckCtx) -> TestResult {
+        anyhow::ensure!(
+            self == expected,
+            "\
+            \n    input:    {input:?} {ibits}\
+            \n    expected: {expected}\
+            \n    actual:   {self}\
+            ",
+            ibits = input.hex(),
+        );
+
+        Ok(())
+    }
+}
+
 /* trait implementations for ints */
 
 macro_rules! impl_int {

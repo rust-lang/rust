@@ -4,8 +4,10 @@ use crate::float::Float;
 use crate::int::MinInt;
 use crate::support::cfg_if;
 
-// Taken from LLVM config:
-// https://github.com/llvm/llvm-project/blob/0cf3c437c18ed27d9663d87804a9a15ff6874af2/compiler-rt/lib/builtins/fp_compare_impl.inc#L11-L27
+// Taken from LLVM config [1], which should match GCC's `CMPtype` [2].
+//
+// [1]: https://github.com/llvm/llvm-project/blob/0cf3c437c18ed27d9663d87804a9a15ff6874af2/compiler-rt/lib/builtins/fp_compare_impl.inc#L11-L27
+// [2]: https://gcc.gnu.org/onlinedocs/gccint/Soft-float-library-routines.html#Comparison-functions-1
 cfg_if! {
     if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))] {
         // Aarch64 uses `int` rather than a pointer-sized value.
@@ -28,8 +30,18 @@ enum Result {
     Unordered,
 }
 
+/// Conversions to match GCC intrinsics [1].
+///
+/// * `unord`: nonzero if either NaN, 0 otherwise
+/// * `eq`, `ne`: 0 if a == b and both YaN, nonzero otherwise
+/// * `ge`, `gt`, `lt`, `le`: return an int result that provides the same comparison to 0 if both
+///   YaN and the comparison matches. E.g. if a >= b, `ge` returns an `x >= 0`.
+///
+/// The separate map functions are only needed to handle the unordered case.
+///
+/// [1]: https://gcc.gnu.org/onlinedocs/gccint/Soft-float-library-routines.html#Comparison-functions-1
 impl Result {
-    fn to_le_abi(self) -> CmpResult {
+    fn to_default_cmp_result(self) -> CmpResult {
         match self {
             Result::Less => -1,
             Result::Equal => 0,
@@ -38,7 +50,7 @@ impl Result {
         }
     }
 
-    fn to_ge_abi(self) -> CmpResult {
+    fn to_gt_ge_cmp_result(self) -> CmpResult {
         match self {
             Result::Less => -1,
             Result::Equal => 0,
@@ -118,11 +130,11 @@ fn unord<F: Float>(a: F, b: F) -> bool {
 #[cfg(f16_enabled)]
 intrinsics! {
     pub extern "C" fn __lehf2(a: f16, b: f16) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __gehf2(a: f16, b: f16) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_ge_abi()
+        cmp(a, b).to_gt_ge_cmp_result()
     }
 
     pub extern "C" fn __unordhf2(a: f16, b: f16) -> crate::float::cmp::CmpResult {
@@ -130,29 +142,29 @@ intrinsics! {
     }
 
     pub extern "C" fn __eqhf2(a: f16, b: f16) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __lthf2(a: f16, b: f16) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __nehf2(a: f16, b: f16) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __gthf2(a: f16, b: f16) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_ge_abi()
+        cmp(a, b).to_gt_ge_cmp_result()
     }
 }
 
 intrinsics! {
     pub extern "C" fn __lesf2(a: f32, b: f32) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __gesf2(a: f32, b: f32) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_ge_abi()
+        cmp(a, b).to_gt_ge_cmp_result()
     }
 
     #[arm_aeabi_alias = __aeabi_fcmpun]
@@ -161,27 +173,27 @@ intrinsics! {
     }
 
     pub extern "C" fn __eqsf2(a: f32, b: f32) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __ltsf2(a: f32, b: f32) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __nesf2(a: f32, b: f32) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __gtsf2(a: f32, b: f32) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_ge_abi()
+        cmp(a, b).to_gt_ge_cmp_result()
     }
 
     pub extern "C" fn __ledf2(a: f64, b: f64) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __gedf2(a: f64, b: f64) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_ge_abi()
+        cmp(a, b).to_gt_ge_cmp_result()
     }
 
     #[arm_aeabi_alias = __aeabi_dcmpun]
@@ -190,19 +202,19 @@ intrinsics! {
     }
 
     pub extern "C" fn __eqdf2(a: f64, b: f64) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __ltdf2(a: f64, b: f64) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __nedf2(a: f64, b: f64) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     pub extern "C" fn __gtdf2(a: f64, b: f64) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_ge_abi()
+        cmp(a, b).to_gt_ge_cmp_result()
     }
 }
 
@@ -210,12 +222,12 @@ intrinsics! {
 intrinsics! {
     #[ppc_alias = __lekf2]
     pub extern "C" fn __letf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     #[ppc_alias = __gekf2]
     pub extern "C" fn __getf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_ge_abi()
+        cmp(a, b).to_gt_ge_cmp_result()
     }
 
     #[ppc_alias = __unordkf2]
@@ -225,22 +237,22 @@ intrinsics! {
 
     #[ppc_alias = __eqkf2]
     pub extern "C" fn __eqtf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     #[ppc_alias = __ltkf2]
     pub extern "C" fn __lttf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     #[ppc_alias = __nekf2]
     pub extern "C" fn __netf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_le_abi()
+        cmp(a, b).to_default_cmp_result()
     }
 
     #[ppc_alias = __gtkf2]
     pub extern "C" fn __gttf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
-        cmp(a, b).to_ge_abi()
+        cmp(a, b).to_gt_ge_cmp_result()
     }
 }
 

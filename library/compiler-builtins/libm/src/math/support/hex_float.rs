@@ -427,6 +427,20 @@ mod hex_fmt {
         }
     }
 
+    // Not really a meaningful impl, but makes some generics easier.
+    impl fmt::LowerHex for Hexf<bool> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            cfg_if! {
+                if #[cfg(feature = "compiler-builtins")] {
+                    let _ = f;
+                    unimplemented!()
+                } else {
+                    write!(f, "{}", self.0)
+                }
+            }
+        }
+    }
+
     impl<T> fmt::Debug for Hexf<T>
     where
         Hexf<T>: fmt::LowerHex,

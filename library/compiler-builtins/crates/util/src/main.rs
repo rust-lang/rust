@@ -108,7 +108,7 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
             | roundevenf
             | ALL_F16
             | ALL_F128
-            | ALL_BUILTINS  => None,
+            | ALL_BUILTINS => None,
             _ => Some(musl_math_sys::MACRO_FN_NAME)
         }
     }

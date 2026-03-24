@@ -116,6 +116,60 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         fn_list: &["powif128"],
         scope: OpScope::BuiltinsPublic,
     },
+    NestedOp {
+        float_ty: FloatTy::F16,
+        rust_sig: Signature {
+            args: &[Ty::F16, Ty::F16],
+            returns: &[Ty::Bool],
+        },
+        c_sig: None,
+        fn_list: &[
+            "eqf16", "gef16", "gtf16", "lef16", "ltf16", "nef16", "unordf16",
+        ],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32, Ty::F32],
+            returns: &[Ty::Bool],
+        },
+        c_sig: None,
+        fn_list: &[
+            "eqf32", "gef32", "gtf32", "lef32", "ltf32", "nef32", "unordf32",
+        ],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64, Ty::F64],
+            returns: &[Ty::Bool],
+        },
+        c_sig: None,
+        fn_list: &[
+            "eqf64", "gef64", "gtf64", "lef64", "ltf64", "nef64", "unordf64",
+        ],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128, Ty::F128],
+            returns: &[Ty::Bool],
+        },
+        c_sig: None,
+        fn_list: &[
+            "eqf128",
+            "gef128",
+            "gtf128",
+            "lef128",
+            "ltf128",
+            "nef128",
+            "unordf128",
+        ],
+        scope: OpScope::BuiltinsPublic,
+    },
     /* libm operations */
     NestedOp {
         // `fn(f16) -> f16`
@@ -643,6 +697,7 @@ pub enum Ty {
     F64,
     F128,
     I32,
+    Bool,
     CInt,
     MutF16,
     MutF32,
@@ -670,6 +725,7 @@ impl fmt::Display for Ty {
             Ty::F64 => "f64",
             Ty::F128 => "f128",
             Ty::I32 => "i32",
+            Ty::Bool => "bool",
             Ty::CInt => "::core::ffi::c_int",
             Ty::MutF16 => "&mut f16",
             Ty::MutF32 => "&mut f32",

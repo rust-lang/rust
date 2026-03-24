@@ -11,9 +11,47 @@ macro_rules! cb_op {
             compiler_builtins::float::$mod::$cb_name($($arg),*)
         }
     };
+
     // Common signatures
     (@binop $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
         cb_op!($mod, $cb_name, $new_name, (a: $ty, b: $ty) -> $ty);
+    };
+
+    // Cmp signatures. See the documentation in cmp.rs regarding the result.
+    (@cmp_eq $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        pub fn $new_name(a: $ty, b: $ty) -> bool {
+            compiler_builtins::float::$mod::$cb_name(a, b) == 0
+        }
+    };
+    (@cmp_ne $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        pub fn $new_name(a: $ty, b: $ty) -> bool {
+            compiler_builtins::float::$mod::$cb_name(a, b) != 0
+        }
+    };
+    (@cmp_unord $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        pub fn $new_name(a: $ty, b: $ty) -> bool {
+            compiler_builtins::float::$mod::$cb_name(a, b) != 0
+        }
+    };
+    (@cmp_lt $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        pub fn $new_name(a: $ty, b: $ty) -> bool {
+            compiler_builtins::float::$mod::$cb_name(a, b) < 0
+        }
+    };
+    (@cmp_le $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        pub fn $new_name(a: $ty, b: $ty) -> bool {
+            compiler_builtins::float::$mod::$cb_name(a, b) <= 0
+        }
+    };
+    (@cmp_gt $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        pub fn $new_name(a: $ty, b: $ty) -> bool {
+            compiler_builtins::float::$mod::$cb_name(a, b) > 0
+        }
+    };
+    (@cmp_ge $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        pub fn $new_name(a: $ty, b: $ty) -> bool {
+            compiler_builtins::float::$mod::$cb_name(a, b) >= 0
+        }
     };
 }
 
@@ -47,3 +85,52 @@ cb_op!(pow, __powisf2, powif32, (a: f32, b: i32) -> f32);
 cb_op!(pow, __powidf2, powif64, (a: f64, b: i32) -> f64);
 #[cfg(f128_enabled)]
 cb_op!(pow, __powitf2, powif128, (a: f128, b: i32) -> f128);
+
+#[cfg(f16_enabled)]
+cb_op!(@cmp_eq f16, cmp, __eqhf2, eqf16);
+cb_op!(@cmp_eq f32, cmp, __eqsf2, eqf32);
+cb_op!(@cmp_eq f64, cmp, __eqdf2, eqf64);
+#[cfg(f128_enabled)]
+cb_op!(@cmp_eq f128, cmp, __eqtf2, eqf128);
+
+#[cfg(f16_enabled)]
+cb_op!(@cmp_gt f16, cmp, __gthf2, gtf16);
+cb_op!(@cmp_gt f32, cmp, __gtsf2, gtf32);
+cb_op!(@cmp_gt f64, cmp, __gtdf2, gtf64);
+#[cfg(f128_enabled)]
+cb_op!(@cmp_gt f128, cmp, __gttf2, gtf128);
+
+#[cfg(f16_enabled)]
+cb_op!(@cmp_ge f16, cmp, __gehf2, gef16);
+cb_op!(@cmp_ge f32, cmp, __gesf2, gef32);
+cb_op!(@cmp_ge f64, cmp, __gedf2, gef64);
+#[cfg(f128_enabled)]
+cb_op!(@cmp_ge f128, cmp, __getf2, gef128);
+
+#[cfg(f16_enabled)]
+cb_op!(@cmp_lt f16, cmp, __lthf2, ltf16);
+cb_op!(@cmp_lt f32, cmp, __ltsf2, ltf32);
+cb_op!(@cmp_lt f64, cmp, __ltdf2, ltf64);
+#[cfg(f128_enabled)]
+cb_op!(@cmp_lt f128, cmp, __lttf2, ltf128);
+
+#[cfg(f16_enabled)]
+cb_op!(@cmp_le f16, cmp, __lehf2, lef16);
+cb_op!(@cmp_le f32, cmp, __lesf2, lef32);
+cb_op!(@cmp_le f64, cmp, __ledf2, lef64);
+#[cfg(f128_enabled)]
+cb_op!(@cmp_le f128, cmp, __letf2, lef128);
+
+#[cfg(f16_enabled)]
+cb_op!(@cmp_ne f16, cmp, __nehf2, nef16);
+cb_op!(@cmp_ne f32, cmp, __nesf2, nef32);
+cb_op!(@cmp_ne f64, cmp, __nedf2, nef64);
+#[cfg(f128_enabled)]
+cb_op!(@cmp_ne f128, cmp, __netf2, nef128);
+
+#[cfg(f16_enabled)]
+cb_op!(@cmp_unord f16, cmp, __unordhf2, unordf16);
+cb_op!(@cmp_unord f32, cmp, __unordsf2, unordf32);
+cb_op!(@cmp_unord f64, cmp, __unorddf2, unordf64);
+#[cfg(f128_enabled)]
+cb_op!(@cmp_unord f128, cmp, __unordtf2, unordf128);
