@@ -206,15 +206,13 @@ See [Checking conditional configurations | The rustc book](https://doc.rust-lang
 
 Tests targeted at how we deduce the types of closure arguments. This process is a result of some heuristics which take into account the *expected type* we have alongside the *actual types* that we get from inputs.
 
-**FIXME**: Appears to have significant overlap with `tests/ui/closure_context` and `tests/ui/functions-closures/closure-expected-type`. Needs further investigation.
-
-## `tests/ui/closure_context`: Closure type inference in context
-
-Tests for closure type inference with respect to surrounding scopes, mostly quality of diagnostics.
+**FIXME**: Appears to have significant overlap with `tests/ui/functions-closures/closure-expected-type`. Needs further investigation.
 
 ## `tests/ui/closures/`: General Closure Tests
 
-Any closure-focused tests that does not fit in the other more specific closure subdirectories belong here. E.g. syntax, `move`, lifetimes.
+Any closure-focused tests that does not fit in the other more specific closure
+subdirectories belong here. E.g. syntax, `move`, lifetimes, and closure-kind
+(`Fn`, `FnMut`, `FnOnce`) behavior.
 
 ## `tests/ui/cmse-nonsecure/`: `cmse-nonsecure` ABIs
 

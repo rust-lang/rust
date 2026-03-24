@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `debug_dump_dict`
-  --> $DIR/issue-42065.rs:11:5
+  --> $DIR/iterating-captured-hashmap-makes-closure-fnonce.rs:16:5
    |
 LL |     debug_dump_dict();
    |     ----------------- `debug_dump_dict` moved due to this call
@@ -7,12 +7,12 @@ LL |     debug_dump_dict();
    |     ^^^^^^^^^^^^^^^ value used here after move
    |
 note: closure cannot be invoked more than once because it moves the variable `dict` out of its environment
-  --> $DIR/issue-42065.rs:6:29
+  --> $DIR/iterating-captured-hashmap-makes-closure-fnonce.rs:11:29
    |
 LL |         for (key, value) in dict {
    |                             ^^^^
 note: this value implements `FnOnce`, which causes it to be moved when called
-  --> $DIR/issue-42065.rs:10:5
+  --> $DIR/iterating-captured-hashmap-makes-closure-fnonce.rs:15:5
    |
 LL |     debug_dump_dict();
    |     ^^^^^^^^^^^^^^^

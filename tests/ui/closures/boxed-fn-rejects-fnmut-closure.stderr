@@ -1,5 +1,5 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
-  --> $DIR/issue-26046-fn-mut.rs:4:19
+  --> $DIR/boxed-fn-rejects-fnmut-closure.rs:9:19
    |
 LL |     let closure = || {
    |                   ^^ this closure implements `FnMut`, not `Fn`
@@ -9,7 +9,7 @@ LL |         num += 1;
 LL |     Box::new(closure)
    |     ----------------- the requirement to implement `Fn` derives from here
    |
-   = note: required for the cast from `Box<{closure@$DIR/issue-26046-fn-mut.rs:4:19: 4:21}>` to `Box<(dyn Fn() + 'static)>`
+   = note: required for the cast from `Box<{closure@$DIR/boxed-fn-rejects-fnmut-closure.rs:9:19: 9:21}>` to `Box<(dyn Fn() + 'static)>`
 
 error: aborting due to 1 previous error
 
