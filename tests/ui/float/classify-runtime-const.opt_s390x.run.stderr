@@ -1,0 +1,6 @@
+
+thread 'main' ($TID) panicked at $DIR/classify-runtime-const.rs:109:1:
+assertion `left == right` failed: f16 :: is_normal (1.0 / black_box(T::MAX)) produces wrong result
+  left: true
+ right: false
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

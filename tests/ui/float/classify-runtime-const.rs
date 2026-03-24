@@ -1,7 +1,15 @@
-//@ run-pass
-//@ revisions: opt noopt ctfe
+//@ revisions: opt opt_s390x noopt ctfe
+//@[opt] run-pass
 //@[opt] compile-flags: -O
+// optimized f16 if broken on s390x
+// https://github.com/rust-lang/rust/issues/154101
+//@[opt_s390x] only-s390x
+//@[opt_s390x] compile-flags: -O
+//@[opt_s390x] run-fail
+//@[opt_s390x] check-run-results
+//@[noopt] run-pass
 //@[noopt] compile-flags: -Zmir-opt-level=0
+//@[ctfe] run-pass
 //@ min-llvm-version: 22
 //@ compile-flags: --check-cfg=cfg(target_has_reliable_f16)
 // ignore-tidy-linelength
@@ -120,8 +128,10 @@ suite! { T => // type alias for the type we are testing
                     [ Infinite,  false,        true,     false,     false,             true,            false],
     -2.0 * black_box(T::MAX) =>
                     [ Infinite,  false,        true,     false,     false,            false,             true],
+    @cfg: not(all(target_arch = "s390x", opt))
     1.0 / black_box(T::MAX) =>
                     [Subnormal,  false,       false,      true,     false,             true,            false],
+    @cfg: not(all(target_arch = "s390x", opt))
    -1.0 / black_box(T::MAX) =>
                     [Subnormal,  false,       false,      true,     false,            false,             true],
     // This specific expression causes trouble on x87 due to
