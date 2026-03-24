@@ -15,7 +15,7 @@ struct Cli {
     /// Modify files that do not comply
     overwrite: bool,
     /// Applies to lines that are to be split
-    #[arg(long, default_value_t = 100)]
+    #[arg(long, default_value_t = 80)]
     line_length_limit: usize,
 }
 

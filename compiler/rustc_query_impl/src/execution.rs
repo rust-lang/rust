@@ -8,8 +8,8 @@ use rustc_data_structures::{outline, sharded, sync};
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::{
-    ActiveKeyStatus, CycleError, EnsureMode, QueryCache, QueryJob, QueryJobId, QueryKey,
-    QueryLatch, QueryMode, QueryState, QueryVTable,
+    ActiveKeyStatus, Cycle, EnsureMode, QueryCache, QueryJob, QueryJobId, QueryKey, QueryLatch,
+    QueryMode, QueryState, QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
@@ -17,7 +17,7 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::warn;
 
 use crate::dep_graph::{DepNode, DepNodeIndex};
-use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
+use crate::job::{QueryJobInfo, QueryJobMap, create_cycle_error, find_cycle_in_stack};
 use crate::plumbing::{current_query_job, loadable_from_disk, next_job_id, start_query};
 use crate::query_impl::for_each_query_vtable;
 
@@ -108,14 +108,14 @@ fn collect_active_query_jobs_inner<'tcx, C>(
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<'tcx, C: QueryCache>(
+fn handle_cycle<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
-    cycle_error: CycleError<'tcx>,
+    cycle: Cycle<'tcx>,
 ) -> C::Value {
-    let error = report_cycle(tcx, &cycle_error);
-    (query.value_from_cycle_error)(tcx, key, cycle_error, error)
+    let error = create_cycle_error(tcx, &cycle);
+    (query.handle_cycle_error_fn)(tcx, key, cycle, error)
 }
 
 /// Guard object representing the responsibility to execute a query job and
@@ -194,7 +194,7 @@ where
 
 #[cold]
 #[inline(never)]
-fn cycle_error<'tcx, C: QueryCache>(
+fn find_and_handle_cycle<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
@@ -205,8 +205,8 @@ fn cycle_error<'tcx, C: QueryCache>(
     // We need the complete map to ensure we find a cycle to break.
     let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::FullNoContention);
 
-    let error = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
-    (mk_cycle(query, tcx, key, error), None)
+    let cycle = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
+    (handle_cycle(query, tcx, key, cycle), None)
 }
 
 #[inline(always)]
@@ -250,7 +250,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(query, tcx, key, cycle), None),
+        Err(cycle) => (handle_cycle(query, tcx, key, cycle), None),
     }
 }
 
@@ -330,7 +330,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
                         // If we are single-threaded we know that we have cycle error,
                         // so we just return the error.
-                        cycle_error(query, tcx, key, id, span)
+                        find_and_handle_cycle(query, tcx, key, id, span)
                     }
                 }
                 ActiveKeyStatus::Poisoned => FatalError.raise(),
@@ -624,20 +624,26 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     Some(result)
 }
 
-pub(crate) fn force_query<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+/// Inner implementation of [`DepKindVTable::force_from_dep_node_fn`][force_fn]
+/// for query nodes.
+///
+/// [force_fn]: rustc_middle::dep_graph::DepKindVTable::force_from_dep_node_fn
+pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
-    key: C::Key,
+    query: &'tcx QueryVTable<'tcx, C>,
     dep_node: DepNode,
-) {
-    // We may be concurrently trying both execute and force a query.
-    // Ensure that only one of them runs the query.
-    if let Some((_, index)) = query.cache.lookup(&key) {
-        tcx.prof.query_cache_hit(index.into());
-        return;
-    }
+) -> bool {
+    let Some(key) = C::Key::try_recover_key(tcx, &dep_node) else {
+        // We couldn't recover a key from the node's key fingerprint.
+        // Tell the caller that we couldn't force the node.
+        return false;
+    };
 
     ensure_sufficient_stack(|| {
         try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
     });
+
+    // We did manage to recover a key and force the node, though it's up to
+    // the caller to check whether the node ended up marked red or green.
+    true
 }

@@ -72,6 +72,15 @@ rustc_index::newtype_index! {
     pub struct SerializedDepNodeIndex {}
 }
 
+impl SerializedDepNodeIndex {
+    /// Converts a current-session dep node index to a "serialized" index,
+    /// for the purpose of serializing data to be loaded by future sessions.
+    #[inline(always)]
+    pub fn from_curr_for_serialization(index: DepNodeIndex) -> Self {
+        SerializedDepNodeIndex::from_u32(index.as_u32())
+    }
+}
+
 const DEP_NODE_SIZE: usize = size_of::<SerializedDepNodeIndex>();
 /// Amount of padding we need to add to the edge list data so that we can retrieve every
 /// SerializedDepNodeIndex with a fixed-size read then mask.

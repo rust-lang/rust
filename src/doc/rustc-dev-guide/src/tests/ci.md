@@ -109,11 +109,13 @@ The live results can be seen on [the GitHub Actions workflows page].
 At any given time, at most a single `auto` build is being executed.
 Find out more in [Merging PRs serially with bors](#merging-prs-serially-with-bors).
 
-Normally, when an auto job fails, the whole CI workflow immediately ends. However, it can be useful to
+Normally, when an auto job fails, the whole CI workflow immediately ends.
+However, it can be useful to
 create auto jobs that are "non-blocking", or optional, to test them on CI for some time before blocking
-merges on them. This can be useful if those jobs can be flaky.
+merges on them.
+This can be useful if those jobs can be flaky.
 
-To do that, prefix such a job with `optional-`, and set `continue_on_error: true` for it in [`jobs.yml`]. 
+To do that, prefix such a job with `optional-`, and set `continue_on_error: true` for it in [`jobs.yml`].
 
 [platform tiers]: https://forge.rust-lang.org/release/platform-support.html#rust-platform-support
 [auto]: https://github.com/rust-lang/rust/tree/automation/bors/auto

@@ -1,6 +1,5 @@
 # Updating LLVM
 
-<!-- date-check: Aug 2024 -->
 Rust supports building against multiple LLVM versions:
 
 * Tip-of-tree for the current LLVM development branch is usually supported within a few days.
@@ -91,7 +90,6 @@ An example PR: [#59089](https://github.com/rust-lang/rust/pull/59089)
 
 ## New LLVM Release Updates
 
-<!-- date-check: Jul 2023 -->
 
 Unlike bugfixes,
 updating to a new release of LLVM typically requires a lot more work.
@@ -172,12 +170,14 @@ so let's go through each in detail.
    You'll change at least
    `src/llvm-project` and will likely also change [`llvm-wrapper`] as well.
 
-   <!-- date-check: mar 2025 -->
+   <!-- date-check: March 2026 -->
    > For prior art, here are some previous LLVM updates:
    > - [LLVM 17](https://github.com/rust-lang/rust/pull/115959)
    > - [LLVM 18](https://github.com/rust-lang/rust/pull/120055)
    > - [LLVM 19](https://github.com/rust-lang/rust/pull/127513)
    > - [LLVM 20](https://github.com/rust-lang/rust/pull/135763)
+   > - [LLVM 21](https://github.com/rust-lang/rust/pull/143684)
+   > - [LLVM 22](https://github.com/rust-lang/rust/pull/150722)
 
    Note that sometimes it's easiest to land [`llvm-wrapper`] compatibility as a PR
    before actually updating `src/llvm-project`.
