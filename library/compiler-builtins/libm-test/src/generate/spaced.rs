@@ -4,9 +4,8 @@ use std::ops::RangeInclusive;
 use libm::support::{Float, MinInt};
 
 use crate::domain::get_domain;
-use crate::op::OpITy;
 use crate::run_cfg::{int_range, iteration_count};
-use crate::{CheckCtx, MathOp, linear_ints, logspace};
+use crate::{Arg0, Arg1, Arg2, CheckCtx, MathOp, linear_ints, logspace};
 
 /// Generate a sequence of inputs that eiher cover the domain in completeness (for smaller float
 /// types and single argument functions) or provide evenly spaced inputs across the domain with
@@ -17,23 +16,23 @@ pub trait SpacedInput<Op> {
 
 /// Construct an iterator from `logspace` and also calculate the total number of steps expected
 /// for that iterator.
-fn logspace_steps<Op>(
+fn logspace_steps<F>(
     ctx: &CheckCtx,
     argnum: usize,
     max_steps: u64,
-) -> (impl Iterator<Item = Op::FTy> + Clone, u64)
+) -> (impl Iterator<Item = F> + Clone, u64)
 where
-    Op: MathOp,
-    OpITy<Op>: TryFrom<u64, Error: fmt::Debug>,
-    u64: TryFrom<OpITy<Op>, Error: fmt::Debug>,
-    RangeInclusive<OpITy<Op>>: Iterator,
+    F: Float,
+    F::Int: TryFrom<u64, Error: fmt::Debug>,
+    u64: TryFrom<F::Int, Error: fmt::Debug>,
+    RangeInclusive<F::Int>: Iterator,
 {
     // i8 is a dummy type here, it can be any integer.
-    let domain = get_domain::<Op::FTy, i8>(ctx.fn_ident, argnum).unwrap_float();
+    let domain = get_domain::<F, i8>(ctx.fn_ident, argnum).unwrap_float();
     let start = domain.range_start();
     let end = domain.range_end();
 
-    let max_steps = OpITy::<Op>::try_from(max_steps).unwrap_or(OpITy::<Op>::MAX);
+    let max_steps = F::Int::try_from(max_steps).unwrap_or(F::Int::MAX);
     let (iter, steps) = logspace(start, end, max_steps);
 
     // `steps` will be <= the original `max_steps`, which is a `u64`.
@@ -87,19 +86,19 @@ macro_rules! impl_spaced_input {
     ($fty:ty) => {
         impl<Op> SpacedInput<Op> for ($fty,)
         where
-            Op: MathOp<RustArgs = Self, FTy = $fty>,
+            Op: MathOp<RustArgs = Self>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let max_steps0 = iteration_count(ctx, 0);
                 // `f16` and `f32` can have exhaustive tests.
-                match value_count::<Op::FTy>() {
+                match value_count::<Arg0<Op>>() {
                     Some(steps0) if steps0 <= max_steps0 => {
                         let iter0 = all_values();
                         let iter0 = iter0.map(|v| (v,));
                         (EitherIter::A(iter0), steps0)
                     }
                     _ => {
-                        let (iter0, steps0) = logspace_steps::<Op>(ctx, 0, max_steps0);
+                        let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
                         let iter0 = iter0.map(|v| (v,));
                         (EitherIter::B(iter0), steps0)
                     }
@@ -109,21 +108,21 @@ macro_rules! impl_spaced_input {
 
         impl<Op> SpacedInput<Op> for ($fty, $fty)
         where
-            Op: MathOp<RustArgs = Self, FTy = $fty>,
+            Op: MathOp<RustArgs = Self>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 1);
                 // `f16` can have exhaustive tests.
-                match value_count::<Op::FTy>() {
+                match value_count::<Arg0<Op>>() {
                     Some(count) if count <= max_steps0 && count <= max_steps1 => {
                         let iter = all_values()
                             .flat_map(|first| all_values().map(move |second| (first, second)));
                         (EitherIter::A(iter), count.checked_mul(count).unwrap())
                     }
                     _ => {
-                        let (iter0, steps0) = logspace_steps::<Op>(ctx, 0, max_steps0);
-                        let (iter1, steps1) = logspace_steps::<Op>(ctx, 1, max_steps1);
+                        let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
+                        let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
                         let iter = iter0.flat_map(move |first| {
                             iter1.clone().map(move |second| (first, second))
                         });
@@ -136,14 +135,14 @@ macro_rules! impl_spaced_input {
 
         impl<Op> SpacedInput<Op> for ($fty, $fty, $fty)
         where
-            Op: MathOp<RustArgs = Self, FTy = $fty>,
+            Op: MathOp<RustArgs = Self>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 1);
                 let max_steps2 = iteration_count(ctx, 2);
                 // `f16` can be exhaustive tested if `LIBM_EXTENSIVE_TESTS` is incresed.
-                match value_count::<Op::FTy>() {
+                match value_count::<Arg0<Op>>() {
                     Some(count)
                         if count <= max_steps0 && count <= max_steps1 && count <= max_steps2 =>
                     {
@@ -155,9 +154,9 @@ macro_rules! impl_spaced_input {
                         (EitherIter::A(iter), count.checked_pow(3).unwrap())
                     }
                     _ => {
-                        let (iter0, steps0) = logspace_steps::<Op>(ctx, 0, max_steps0);
-                        let (iter1, steps1) = logspace_steps::<Op>(ctx, 1, max_steps1);
-                        let (iter2, steps2) = logspace_steps::<Op>(ctx, 2, max_steps2);
+                        let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
+                        let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
+                        let (iter2, steps2) = logspace_steps::<Arg2<Op>>(ctx, 2, max_steps2);
 
                         let iter = iter0
                             .flat_map(move |first| iter1.clone().map(move |second| (first, second)))
@@ -178,13 +177,13 @@ macro_rules! impl_spaced_input {
 
         impl<Op> SpacedInput<Op> for (i32, $fty)
         where
-            Op: MathOp<RustArgs = Self, FTy = $fty>,
+            Op: MathOp<RustArgs = Self>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let range0 = int_range(ctx, 0);
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 1);
-                match value_count::<Op::FTy>() {
+                match value_count::<Arg1<Op>>() {
                     Some(count1) if count1 <= max_steps1 => {
                         let (iter0, steps0) = linear_ints(range0, max_steps0);
                         let iter = iter0
@@ -193,7 +192,7 @@ macro_rules! impl_spaced_input {
                     }
                     _ => {
                         let (iter0, steps0) = linear_ints(range0, max_steps0);
-                        let (iter1, steps1) = logspace_steps::<Op>(ctx, 1, max_steps1);
+                        let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
 
                         let iter = iter0.flat_map(move |first| {
                             iter1.clone().map(move |second| (first, second))
@@ -208,13 +207,13 @@ macro_rules! impl_spaced_input {
 
         impl<Op> SpacedInput<Op> for ($fty, i32)
         where
-            Op: MathOp<RustArgs = Self, FTy = $fty>,
+            Op: MathOp<RustArgs = Self>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let max_steps0 = iteration_count(ctx, 0);
                 let range1 = int_range(ctx, 1);
                 let max_steps1 = iteration_count(ctx, 1);
-                match value_count::<Op::FTy>() {
+                match value_count::<Arg0<Op>>() {
                     Some(count0) if count0 <= max_steps0 => {
                         let (iter1, steps1) = linear_ints(range1, max_steps1);
                         let iter = all_values().flat_map(move |first| {
@@ -223,7 +222,7 @@ macro_rules! impl_spaced_input {
                         (EitherIter::A(iter), count0.checked_mul(steps1).unwrap())
                     }
                     _ => {
-                        let (iter0, steps0) = logspace_steps::<Op>(ctx, 0, max_steps0);
+                        let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
                         let (iter1, steps1) = linear_ints(range1, max_steps1);
 
                         let iter = iter0.flat_map(move |first| {
