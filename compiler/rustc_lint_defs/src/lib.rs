@@ -690,10 +690,6 @@ pub enum BuiltinLintDiag {
         /// Indicates if the named argument is used as a width/precision for formatting
         is_formatting_arg: bool,
     },
-    UnusedCrateDependency {
-        extern_crate: Symbol,
-        local_crate: Symbol,
-    },
     AttributeLint(AttributeLintKind),
 }
 
