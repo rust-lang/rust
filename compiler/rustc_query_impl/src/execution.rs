@@ -261,9 +261,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     key: C::Key,
-    // If present, some previous step has already created a `DepNode` for this
-    // query+key, which we should reuse instead of creating a new one.
-    dep_node: Option<DepNode>,
+    dep_node: Option<DepNode>, // `None` for non-incremental, `Some` for incremental
 ) -> (C::Value, Option<DepNodeIndex>) {
     let key_hash = sharded::make_hash(&key);
     let mut state_lock = query.state.active.lock_shard_by_hash(key_hash);
@@ -298,11 +296,9 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
             // panic occurs while executing the query (or any intermediate plumbing).
             let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
 
-            debug_assert_eq!(tcx.dep_graph.is_fully_enabled(), INCR);
-
             // Delegate to another function to actually execute the query job.
             let (value, dep_node_index) = if INCR {
-                execute_job_incr(query, tcx, key, dep_node, id)
+                execute_job_incr(query, tcx, key, dep_node.unwrap(), id)
             } else {
                 execute_job_non_incr(query, tcx, key, id)
             };
@@ -418,27 +414,23 @@ fn execute_job_incr<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
-    mut dep_node_opt: Option<DepNode>,
+    dep_node: DepNode,
     job_id: QueryJobId,
 ) -> (C::Value, DepNodeIndex) {
     let dep_graph_data =
         tcx.dep_graph.data().expect("should always be present in incremental mode");
 
     if !query.eval_always {
-        // `to_dep_node` is expensive for some `DepKind`s.
-        let dep_node =
-            dep_node_opt.get_or_insert_with(|| DepNode::construct(tcx, query.dep_kind, &key));
-
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         if let Some(ret) = start_query(job_id, false, || try {
-            let (prev_index, dep_node_index) = dep_graph_data.try_mark_green(tcx, dep_node)?;
+            let (prev_index, dep_node_index) = dep_graph_data.try_mark_green(tcx, &dep_node)?;
             let value = load_from_disk_or_invoke_provider_green(
                 tcx,
                 dep_graph_data,
                 query,
                 key,
-                dep_node,
+                &dep_node,
                 prev_index,
                 dep_node_index,
             );
@@ -451,10 +443,6 @@ fn execute_job_incr<'tcx, C: QueryCache>(
     let prof_timer = tcx.prof.query_provider();
 
     let (result, dep_node_index) = start_query(job_id, query.depth_limit, || {
-        // `to_dep_node` is expensive for some `DepKind`s.
-        let dep_node =
-            dep_node_opt.unwrap_or_else(|| DepNode::construct(tcx, query.dep_kind, &key));
-
         // Call the query provider.
         dep_graph_data.with_task(
             dep_node,
@@ -544,16 +532,6 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     value
 }
 
-/// Return value struct for [`check_if_ensure_can_skip_execution`].
-struct EnsureCanSkip {
-    /// If true, the current `tcx.ensure_ok()` or `tcx.ensure_done()` query
-    /// can return early without actually trying to execute.
-    skip_execution: bool,
-    /// A dep node that was prepared while checking whether execution can be
-    /// skipped, to be reused by execution itself if _not_ skipped.
-    dep_node: Option<DepNode>,
-}
-
 /// Checks whether a `tcx.ensure_ok()` or `tcx.ensure_done()` query call can
 /// return early without actually trying to execute.
 ///
@@ -561,20 +539,19 @@ struct EnsureCanSkip {
 /// on having the dependency graph (and in some cases a disk-cached value)
 /// from the previous incr-comp session.
 #[inline(never)]
-fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
+fn ensure_can_skip_execution<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
+    dep_node: DepNode,
     ensure_mode: EnsureMode,
-) -> EnsureCanSkip {
+) -> bool {
     // Queries with `eval_always` should never skip execution.
     if query.eval_always {
-        return EnsureCanSkip { skip_execution: false, dep_node: None };
+        return false;
     }
 
-    let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
-
-    let serialized_dep_node_index = match tcx.dep_graph.try_mark_green(tcx, &dep_node) {
+    match tcx.dep_graph.try_mark_green(tcx, &dep_node) {
         None => {
             // A None return from `try_mark_green` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -582,29 +559,27 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
-            return EnsureCanSkip { skip_execution: false, dep_node: Some(dep_node) };
+            false
         }
         Some((serialized_dep_node_index, dep_node_index)) => {
             tcx.dep_graph.read_index(dep_node_index);
             tcx.prof.query_cache_hit(dep_node_index.into());
-            serialized_dep_node_index
-        }
-    };
+            match ensure_mode {
+                // In ensure-ok mode, we can skip execution for this key if the
+                // node is green. It must have succeeded in the previous
+                // session, and therefore would succeed in the current session
+                // if executed.
+                EnsureMode::Ok => true,
 
-    match ensure_mode {
-        EnsureMode::Ok => {
-            // In ensure-ok mode, we can skip execution for this key if the node
-            // is green. It must have succeeded in the previous session, and
-            // therefore would succeed in the current session if executed.
-            EnsureCanSkip { skip_execution: true, dep_node: None }
-        }
-        EnsureMode::Done => {
-            // In ensure-done mode, we can only skip execution for this key if
-            // there's a disk-cached value available to load later if needed,
-            // which guarantees the query provider will never run for this key.
-            let is_loadable = (query.will_cache_on_disk_for_key_fn)(tcx, key)
-                && loadable_from_disk(tcx, serialized_dep_node_index);
-            EnsureCanSkip { skip_execution: is_loadable, dep_node: Some(dep_node) }
+                // In ensure-done mode, we can only skip execution for this key
+                // if there's a disk-cached value available to load later if
+                // needed, which guarantees the query provider will never run
+                // for this key.
+                EnsureMode::Done => {
+                    (query.will_cache_on_disk_for_key_fn)(tcx, key)
+                        && loadable_from_disk(tcx, serialized_dep_node_index)
+                }
+            }
         }
     }
 }
@@ -618,8 +593,6 @@ pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
     span: Span,
     key: C::Key,
 ) -> C::Value {
-    debug_assert!(!tcx.dep_graph.is_fully_enabled());
-
     ensure_sufficient_stack(|| try_execute_query::<C, false>(query, tcx, span, key, None).0)
 }
 
@@ -633,26 +606,18 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     key: C::Key,
     mode: QueryMode,
 ) -> Option<C::Value> {
-    debug_assert!(tcx.dep_graph.is_fully_enabled());
+    let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
 
     // Check if query execution can be skipped, for `ensure_ok` or `ensure_done`.
-    // This might have the side-effect of creating a suitable DepNode, which
-    // we should reuse for execution instead of creating a new one.
-    let dep_node: Option<DepNode> = match mode {
-        QueryMode::Ensure { ensure_mode } => {
-            let EnsureCanSkip { skip_execution, dep_node } =
-                check_if_ensure_can_skip_execution(query, tcx, key, ensure_mode);
-            if skip_execution {
-                // Return early to skip execution.
-                return None;
-            }
-            dep_node
-        }
-        QueryMode::Get => None,
-    };
+    if let QueryMode::Ensure { ensure_mode } = mode
+        && ensure_can_skip_execution(query, tcx, key, dep_node, ensure_mode)
+    {
+        return None;
+    }
 
-    let (result, dep_node_index) =
-        ensure_sufficient_stack(|| try_execute_query::<C, true>(query, tcx, span, key, dep_node));
+    let (result, dep_node_index) = ensure_sufficient_stack(|| {
+        try_execute_query::<C, true>(query, tcx, span, key, Some(dep_node))
+    });
     if let Some(dep_node_index) = dep_node_index {
         tcx.dep_graph.read_index(dep_node_index)
     }
