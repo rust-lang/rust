@@ -802,20 +802,33 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 /// // Ensure that the last item was dropped.
 /// assert!(weak.upgrade().is_none());
 /// ```
+#[inline(always)]
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[lang = "drop_in_place"]
-#[allow(unconditional_recursion)]
 #[rustc_diagnostic_item = "ptr_drop_in_place"]
 #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
 pub const unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T)
 where
     T: [const] Destruct,
 {
+    // Due to historic reasons, `drop_in_place` takes a pointer rather than a reference,
+    // which results in worse codegen since we don't apply noalias/dereferenceable llvm
+    // attributes to pointer arguments. To workaround this without breaking public
+    // interface, `drop_in_place` calls the lang item, rather than being one directly.
+
+    // SAFETY:
+    // - compiler glue has the same safety requirements as this function
+    // - the pointer must be valid as per the safety requirement of this function
+    unsafe { drop_glue(&mut *to_drop) }
+}
+
+/// Helper function for `drop_in_place`.
+#[lang = "drop_in_place"]
+const unsafe fn drop_glue<T: PointeeSized>(_: &mut T)
+where
+    T: [const] Destruct,
+{
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
-
-    // SAFETY: see comment above
-    unsafe { drop_in_place(to_drop) }
 }
 
 /// Creates a null raw pointer.
