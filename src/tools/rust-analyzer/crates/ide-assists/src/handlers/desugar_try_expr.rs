@@ -116,7 +116,10 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 let fill_expr = || crate::utils::expr_fill_default(ctx.config);
                 let new_let_stmt = make.let_else_stmt(
                     try_enum.happy_pattern(pat),
-                    let_stmt.ty().map(|ty| make.ty_option(ty).into()),
+                    let_stmt.ty().map(|ty| match try_enum {
+                        TryEnum::Option => make.ty_option(ty).into(),
+                        TryEnum::Result => make.ty_result(ty, make.ty_infer().into()).into(),
+                    }),
                     expr,
                     make.block_expr(
                         iter::once(
@@ -263,6 +266,27 @@ fn test() {
 fn test() {
     let Some(pat): Option<bool> = Some(true) else {
         return None;
+    };
+}
+            "#,
+            "Replace try expression with let else",
+        );
+    }
+
+    #[test]
+    fn test_desugar_try_expr_result_let_else_with_type() {
+        check_assist_by_label(
+            desugar_try_expr,
+            r#"
+//- minicore: try, result
+fn test() {
+    let pat: bool = Ok(true)$0?;
+}
+            "#,
+            r#"
+fn test() {
+    let Ok(pat): Result<bool, _> = Ok(true) else {
+        return Err(todo!());
     };
 }
             "#,
