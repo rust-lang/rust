@@ -231,6 +231,7 @@ pub fn get_domain<F: Float, I: Int>(
         BaseName::Div => &EitherPrim::UNBOUNDED2[..],
         BaseName::Powi => &EitherPrim::UNBOUNDED2[..],
 
+        // Comparison
         BaseName::Eq => &EitherPrim::UNBOUNDED2[..],
         BaseName::Ne => &EitherPrim::UNBOUNDED2[..],
         BaseName::Gt => &EitherPrim::UNBOUNDED2[..],
@@ -238,6 +239,14 @@ pub fn get_domain<F: Float, I: Int>(
         BaseName::Lt => &EitherPrim::UNBOUNDED2[..],
         BaseName::Le => &EitherPrim::UNBOUNDED2[..],
         BaseName::Unord => &EitherPrim::UNBOUNDED2[..],
+
+        // Conversions
+        BaseName::ExtendF16 => &EitherPrim::UNBOUNDED1[..],
+        BaseName::ExtendF32 => &EitherPrim::UNBOUNDED1[..],
+        BaseName::ExtendF64 => &EitherPrim::UNBOUNDED1[..],
+        BaseName::TruncF32 => &EitherPrim::UNBOUNDED1[..],
+        BaseName::TruncF64 => &EitherPrim::UNBOUNDED1[..],
+        BaseName::TruncF128 => &EitherPrim::UNBOUNDED1[..],
 
         // Math functions
         BaseName::Acos => &EitherPrim::INVERSE_TRIG_PERIODIC[..],

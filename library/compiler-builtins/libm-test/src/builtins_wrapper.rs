@@ -134,3 +134,29 @@ cb_op!(@cmp_unord f32, cmp, __unordsf2, unordf32);
 cb_op!(@cmp_unord f64, cmp, __unorddf2, unordf64);
 #[cfg(f128_enabled)]
 cb_op!(@cmp_unord f128, cmp, __unordtf2, unordf128);
+
+#[cfg(f16_enabled)]
+cb_op!(extend, __extendhfsf2, extend_f16_f32, (a: f16) -> f32);
+#[cfg(f16_enabled)]
+cb_op!(extend, __extendhfdf2, extend_f16_f64, (a: f16) -> f64);
+#[cfg(f16_enabled)]
+#[cfg(f128_enabled)]
+cb_op!(extend, __extendhftf2, extend_f16_f128, (a: f16) -> f128);
+cb_op!(extend, __extendsfdf2, extend_f32_f64, (a: f32) -> f64);
+#[cfg(f128_enabled)]
+cb_op!(extend, __extendsftf2, extend_f32_f128, (a: f32) -> f128);
+#[cfg(f128_enabled)]
+cb_op!(extend, __extenddftf2, extend_f64_f128, (a: f64) -> f128);
+
+#[cfg(f16_enabled)]
+cb_op!(trunc, __truncsfhf2, trunc_f32_f16, (a: f32) -> f16);
+#[cfg(f16_enabled)]
+cb_op!(trunc, __truncdfhf2, trunc_f64_f16, (a: f64) -> f16);
+cb_op!(trunc, __truncdfsf2, trunc_f64_f32, (a: f64) -> f32);
+#[cfg(f16_enabled)]
+#[cfg(f128_enabled)]
+cb_op!(trunc, __trunctfhf2, trunc_f128_f16, (a: f128) -> f16);
+#[cfg(f128_enabled)]
+cb_op!(trunc, __trunctfsf2, trunc_f128_f32, (a: f128) -> f32);
+#[cfg(f128_enabled)]
+cb_op!(trunc, __trunctfdf2, trunc_f128_f64, (a: f128) -> f64);

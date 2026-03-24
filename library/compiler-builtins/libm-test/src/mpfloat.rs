@@ -154,6 +154,12 @@ libm_macros::for_each_function! {
         eqf16,
         eqf32,
         eqf64,
+        extend_f16_f128,
+        extend_f16_f32,
+        extend_f16_f64,
+        extend_f32_f128,
+        extend_f32_f64,
+        extend_f64_f128,
         fabs,
         fabsf,
         fabsf128,
@@ -247,6 +253,12 @@ libm_macros::for_each_function! {
         subf32,
         subf64,
         trunc,
+        trunc_f128_f16,
+        trunc_f128_f32,
+        trunc_f128_f64,
+        trunc_f32_f16,
+        trunc_f64_f16,
+        trunc_f64_f32,
         truncf,
         truncf128,
         truncf16,yn,
@@ -766,6 +778,38 @@ macro_rules! impl_op_for_ty_no_f16 {
     };
 }
 
+macro_rules! impl_extend_trunc {
+    ($narrow:ty, $wide:ty) => {
+        paste::paste! {
+            impl MpOp for crate::op::[<extend_ $narrow _ $wide>]::Routine {
+                type MpTy = MpFloat;
+
+                fn new_mp() -> Self::MpTy {
+                    new_mpfloat::<Self::FTy>()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    prep_retval::<Self::RustRet>(this, Ordering::Equal)
+                }
+            }
+
+            impl MpOp for crate::op::[<trunc_ $wide _ $narrow>]::Routine {
+                type MpTy = MpFloat;
+
+                fn new_mp() -> Self::MpTy {
+                    new_mpfloat::<Self::FTy>()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    prep_retval::<Self::RustRet>(this, Ordering::Equal)
+                }
+            }
+        }
+    };
+}
+
 impl_op_for_ty!(f32, "f");
 impl_op_for_ty!(f64, "");
 
@@ -780,6 +824,19 @@ impl_op_for_ty_all!(f32, "f");
 impl_op_for_ty_all!(f64, "");
 #[cfg(f128_enabled)]
 impl_op_for_ty_all!(f128, "f128");
+
+#[cfg(f16_enabled)]
+impl_extend_trunc!(f16, f32);
+#[cfg(f16_enabled)]
+impl_extend_trunc!(f16, f64);
+#[cfg(f16_enabled)]
+#[cfg(f128_enabled)]
+impl_extend_trunc!(f16, f128);
+impl_extend_trunc!(f32, f64);
+#[cfg(f128_enabled)]
+impl_extend_trunc!(f32, f128);
+#[cfg(f128_enabled)]
+impl_extend_trunc!(f64, f128);
 
 // `lgamma_r` is not a simple suffix so we can't use the above macro.
 impl MpOp for crate::op::lgamma_r::Routine {

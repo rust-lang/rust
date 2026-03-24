@@ -170,6 +170,126 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         ],
         scope: OpScope::BuiltinsPublic,
     },
+    NestedOp {
+        float_ty: FloatTy::F16,
+        rust_sig: Signature {
+            args: &[Ty::F16],
+            returns: &[Ty::F32],
+        },
+        c_sig: None,
+        fn_list: &["extend_f16_f32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F16,
+        rust_sig: Signature {
+            args: &[Ty::F16],
+            returns: &[Ty::F64],
+        },
+        c_sig: None,
+        fn_list: &["extend_f16_f64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F16,
+        rust_sig: Signature {
+            args: &[Ty::F16],
+            returns: &[Ty::F128],
+        },
+        c_sig: None,
+        fn_list: &["extend_f16_f128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::F64],
+        },
+        c_sig: None,
+        fn_list: &["extend_f32_f64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::F128],
+        },
+        c_sig: None,
+        fn_list: &["extend_f32_f128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::F128],
+        },
+        c_sig: None,
+        fn_list: &["extend_f64_f128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::F16],
+        },
+        c_sig: None,
+        fn_list: &["trunc_f32_f16"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::F16],
+        },
+        c_sig: None,
+        fn_list: &["trunc_f64_f16"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::F16],
+        },
+        c_sig: None,
+        fn_list: &["trunc_f128_f16"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::F32],
+        },
+        c_sig: None,
+        fn_list: &["trunc_f64_f32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::F32],
+        },
+        c_sig: None,
+        fn_list: &["trunc_f128_f32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::F64],
+        },
+        c_sig: None,
+        fn_list: &["trunc_f128_f64"],
+        scope: OpScope::BuiltinsPublic,
+    },
     /* libm operations */
     NestedOp {
         // `fn(f16) -> f16`

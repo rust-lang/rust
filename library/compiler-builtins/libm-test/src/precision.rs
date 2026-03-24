@@ -26,6 +26,14 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
         // Operations that only return non-float results
         Bn::Eq | Bn::Ne | Bn::Gt | Bn::Ge | Bn::Lt | Bn::Le | Bn::Unord | Bn::Ilogb => return None,
 
+        // Convrsion operations must be precise.
+        BaseName::ExtendF16
+        | BaseName::ExtendF32
+        | BaseName::ExtendF64
+        | BaseName::TruncF128
+        | BaseName::TruncF32
+        | BaseName::TruncF64 => 0,
+
         // Operations that require exact results. This list should correlate with what we
         // have documented at <https://doc.rust-lang.org/std/primitive.f32.html>.
         Bn::Ceil

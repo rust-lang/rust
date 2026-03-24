@@ -38,7 +38,9 @@ impl<Op: MathOp> TestCase<Op> {
     }
 }
 
-/* compiler-builtins test cases */
+/********************************
+ * compiler-builtins test cases *
+ ********************************/
 
 #[cfg(f16_enabled)]
 fn addf16_cases() -> Vec<TestCase<op::addf16::Routine>> {
@@ -119,6 +121,8 @@ fn powif64_cases() -> Vec<TestCase<op::powif64::Routine>> {
 fn powif128_cases() -> Vec<TestCase<op::powif128::Routine>> {
     vec![]
 }
+
+/* comparison */
 
 #[cfg(f16_enabled)]
 fn eqf16_cases() -> Vec<TestCase<op::eqf16::Routine>> {
@@ -246,7 +250,71 @@ fn unordf128_cases() -> Vec<TestCase<op::unordf128::Routine>> {
     vec![]
 }
 
-/* libm test cases */
+/* conversion */
+
+#[cfg(f16_enabled)]
+fn extend_f16_f32_cases() -> Vec<TestCase<op::extend_f16_f32::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn extend_f16_f64_cases() -> Vec<TestCase<op::extend_f16_f64::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+#[cfg(f128_enabled)]
+fn extend_f16_f128_cases() -> Vec<TestCase<op::extend_f16_f128::Routine>> {
+    vec![]
+}
+
+fn extend_f32_f64_cases() -> Vec<TestCase<op::extend_f32_f64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn extend_f32_f128_cases() -> Vec<TestCase<op::extend_f32_f128::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn extend_f64_f128_cases() -> Vec<TestCase<op::extend_f64_f128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn trunc_f32_f16_cases() -> Vec<TestCase<op::trunc_f32_f16::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn trunc_f64_f16_cases() -> Vec<TestCase<op::trunc_f64_f16::Routine>> {
+    vec![]
+}
+
+fn trunc_f64_f32_cases() -> Vec<TestCase<op::trunc_f64_f32::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+#[cfg(f128_enabled)]
+fn trunc_f128_f16_cases() -> Vec<TestCase<op::trunc_f128_f16::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn trunc_f128_f32_cases() -> Vec<TestCase<op::trunc_f128_f32::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn trunc_f128_f64_cases() -> Vec<TestCase<op::trunc_f128_f64::Routine>> {
+    vec![]
+}
+
+/*******************
+ * libm test cases *
+ *******************/
 
 fn acos_cases() -> Vec<TestCase<op::acos::Routine>> {
     vec![]
