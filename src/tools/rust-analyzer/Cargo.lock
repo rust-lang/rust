@@ -2315,6 +2315,7 @@ dependencies = [
  "ide-db",
  "ide-ssr",
  "indexmap",
+ "intern",
  "itertools 0.14.0",
  "load-cargo",
  "lsp-server 0.7.9 (registry+https://github.com/rust-lang/crates.io-index)",
