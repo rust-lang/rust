@@ -2,7 +2,7 @@
 //@ run-pass
 //@ reference: macro.decl.follow-set.token-pat
 //@ reference: macro.decl.follow-set.edition2021
-#![allow(unused_macros)]
+#![allow(unused_macros, self_type_conversion)]
 macro_rules! foo { ($x:pat | $y:pat) => {} } // should be ok
 macro_rules! bar { ($($x:pat)+ | $($y:pat)+) => {} } // should be ok
 macro_rules! qux { ($x:pat, $y:pat) => {} } // should be ok
