@@ -35,7 +35,7 @@ fn bar() -> Result<(), String> { //~ NOTE expected `String` because of this
     //~| NOTE the trait `From<()>` is not implemented for `String`
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
     //~| NOTE required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`
-    //~| HELP the following other types implement trait `From<T>`:
+    //~| HELP `String` implements trait `From<T>`:
     Ok(one)
 }
 

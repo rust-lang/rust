@@ -2291,8 +2291,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             fn_sig,
                         );
                         let name = inherent_method.name();
+                        let inputs = fn_sig.inputs();
+                        let expected_inputs =
+                            if inherent_method.is_method() { &inputs[1..] } else { inputs };
                         if let Some(ref args) = call_args
-                            && fn_sig.inputs()[1..]
+                            && expected_inputs
                                 .iter()
                                 .eq_by(args, |expected, found| self.may_coerce(*expected, *found))
                         {
@@ -3460,13 +3463,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let diagnostic_name = self.tcx.get_diagnostic_name(trait_pred.def_id())?;
 
         let can_derive = match diagnostic_name {
+            sym::Copy | sym::Clone => true,
+            _ if adt.is_union() => false,
             sym::Default
             | sym::Eq
             | sym::PartialEq
             | sym::Ord
             | sym::PartialOrd
-            | sym::Clone
-            | sym::Copy
             | sym::Hash
             | sym::Debug => true,
             _ => false,

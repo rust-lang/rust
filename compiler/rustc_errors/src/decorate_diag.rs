@@ -81,4 +81,21 @@ impl LintBuffer {
             diagnostic: decorate.into(),
         });
     }
+
+    pub fn dyn_buffer_lint<
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + 'static,
+    >(
+        &mut self,
+        lint: &'static Lint,
+        node_id: NodeId,
+        span: impl Into<MultiSpan>,
+        callback: F,
+    ) {
+        self.add_early_lint(BufferedEarlyLint {
+            lint_id: LintId::of(lint),
+            node_id,
+            span: Some(span.into()),
+            diagnostic: DecorateDiagCompat::Dynamic(Box::new(callback)),
+        });
+    }
 }

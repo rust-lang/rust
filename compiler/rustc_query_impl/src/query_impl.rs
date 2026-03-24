@@ -16,12 +16,12 @@ macro_rules! define_queries {
                 fn $name:ident($K:ty) -> $V:ty
                 {
                     // Search for (QMODLIST) to find all occurrences of this query modifier list.
-                    anon: $anon:literal,
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
                     depth_limit: $depth_limit:literal,
                     eval_always: $eval_always:literal,
                     feedable: $feedable:literal,
+                    no_force: $no_force:literal,
                     no_hash: $no_hash:literal,
                     returns_error_guaranteed: $returns_error_guaranteed:literal,
                     separate_provide_extern: $separate_provide_extern:literal,
@@ -132,7 +132,6 @@ macro_rules! define_queries {
 
                     QueryVTable {
                         name: stringify!($name),
-                        anon: $anon,
                         eval_always: $eval_always,
                         depth_limit: $depth_limit,
                         feedable: $feedable,
@@ -165,14 +164,6 @@ macro_rules! define_queries {
                         },
                         #[cfg(not($cache_on_disk))]
                         try_load_from_disk_fn: |_tcx, _key, _prev_index, _index| None,
-
-                        #[cfg($cache_on_disk)]
-                        is_loadable_from_disk_fn: |tcx, key, index| -> bool {
-                            rustc_middle::queries::_cache_on_disk_if_fns::$name(tcx, key) &&
-                                $crate::plumbing::loadable_from_disk(tcx, index)
-                        },
-                        #[cfg(not($cache_on_disk))]
-                        is_loadable_from_disk_fn: |_tcx, _key, _index| false,
 
                         // The default just emits `err` and then aborts.
                         // `from_cycle_error::specialize_query_vtables` overwrites this default for

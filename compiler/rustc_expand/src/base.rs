@@ -149,14 +149,14 @@ impl Annotatable {
     pub fn expect_trait_item(self) -> Box<ast::AssocItem> {
         match self {
             Annotatable::AssocItem(i, AssocCtxt::Trait) => i,
-            _ => panic!("expected Item"),
+            _ => panic!("expected trait item"),
         }
     }
 
     pub fn expect_impl_item(self) -> Box<ast::AssocItem> {
         match self {
             Annotatable::AssocItem(i, AssocCtxt::Impl { .. }) => i,
-            _ => panic!("expected Item"),
+            _ => panic!("expected impl item"),
         }
     }
 

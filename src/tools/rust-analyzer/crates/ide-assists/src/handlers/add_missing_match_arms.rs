@@ -245,14 +245,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 .arms()
                 .filter(|arm| {
                     if matches!(arm.pat(), Some(ast::Pat::WildcardPat(_))) {
-                        let is_empty_expr = arm.expr().is_none_or(|e| match e {
-                            ast::Expr::BlockExpr(b) => {
-                                b.statements().next().is_none() && b.tail_expr().is_none()
-                            }
-                            ast::Expr::TupleExpr(t) => t.fields().next().is_none(),
-                            _ => false,
-                        });
-                        if is_empty_expr {
+                        if arm.expr().is_none_or(is_empty_expr) {
                             false
                         } else {
                             cov_mark::hit!(add_missing_match_arms_empty_expr);
@@ -347,10 +340,22 @@ fn cursor_at_trivial_match_arm_list(
     //     $0
     // }
     if let Some(last_arm) = match_arm_list.arms().last() {
-        let last_arm_range = ctx.sema.original_range_opt(last_arm.syntax())?.range;
+        let last_node = match last_arm.expr() {
+            Some(expr) => expr.syntax().clone(),
+            None => last_arm.syntax().clone(),
+        };
+        let last_node_range = ctx.sema.original_range_opt(&last_node)?.range;
         let match_expr_range = ctx.sema.original_range_opt(match_expr.syntax())?.range;
-        if last_arm_range.end() <= ctx.offset() && ctx.offset() < match_expr_range.end() {
+        if last_node_range.end() <= ctx.offset() && ctx.offset() < match_expr_range.end() {
             cov_mark::hit!(add_missing_match_arms_end_of_last_arm);
+            return Some(());
+        }
+
+        if ast::Expr::cast(last_node.clone()).is_some_and(is_empty_expr)
+            && last_node_range.contains(ctx.offset())
+            && !last_node.text().contains_char('\n')
+        {
+            cov_mark::hit!(add_missing_match_arms_end_of_last_empty_arm);
             return Some(());
         }
     }
@@ -369,6 +374,14 @@ fn cursor_at_trivial_match_arm_list(
 
 fn is_variant_missing(existing_pats: &[Pat], var: &Pat) -> bool {
     !existing_pats.iter().any(|pat| does_pat_match_variant(pat, var))
+}
+
+fn is_empty_expr(e: ast::Expr) -> bool {
+    match e {
+        ast::Expr::BlockExpr(b) => b.statements().next().is_none() && b.tail_expr().is_none(),
+        ast::Expr::TupleExpr(t) => t.fields().next().is_none(),
+        _ => false,
+    }
 }
 
 // Fixme: this is still somewhat limited, use hir_ty::diagnostics::match_check?
@@ -1066,7 +1079,7 @@ fn main() {
 
     #[test]
     fn add_missing_match_arms_end_of_last_arm() {
-        cov_mark::check!(add_missing_match_arms_end_of_last_arm);
+        cov_mark::check_count!(add_missing_match_arms_end_of_last_arm, 2);
         check_assist(
             add_missing_match_arms,
             r#"
@@ -1090,6 +1103,103 @@ fn main() {
     let b = B::One;
     match (a, b) {
         (A::Two, B::One) => {},
+        (A::One, B::One) => ${1:todo!()},
+        (A::One, B::Two) => ${2:todo!()},
+        (A::Two, B::Two) => ${3:todo!()},$0
+    }
+}
+"#,
+        );
+
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum A { One, Two }
+enum B { One, Two }
+
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a, b) {
+        (A::Two, B::One) => 2$0,
+    }
+}
+"#,
+            r#"
+enum A { One, Two }
+enum B { One, Two }
+
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a, b) {
+        (A::Two, B::One) => 2,
+        (A::One, B::One) => ${1:todo!()},
+        (A::One, B::Two) => ${2:todo!()},
+        (A::Two, B::Two) => ${3:todo!()},$0
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_missing_match_arms_end_of_last_empty_arm() {
+        cov_mark::check_count!(add_missing_match_arms_end_of_last_empty_arm, 2);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum A { One, Two }
+enum B { One, Two }
+
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a, b) {
+        (A::Two, B::One) => {$0}
+    }
+}
+"#,
+            r#"
+enum A { One, Two }
+enum B { One, Two }
+
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a, b) {
+        (A::Two, B::One) => {}
+        (A::One, B::One) => ${1:todo!()},
+        (A::One, B::Two) => ${2:todo!()},
+        (A::Two, B::Two) => ${3:todo!()},$0
+    }
+}
+"#,
+        );
+
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum A { One, Two }
+enum B { One, Two }
+
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a, b) {
+        (A::Two, B::One) => ($0)
+    }
+}
+"#,
+            r#"
+enum A { One, Two }
+enum B { One, Two }
+
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a, b) {
+        (A::Two, B::One) => (),
         (A::One, B::One) => ${1:todo!()},
         (A::One, B::Two) => ${2:todo!()},
         (A::Two, B::Two) => ${3:todo!()},$0

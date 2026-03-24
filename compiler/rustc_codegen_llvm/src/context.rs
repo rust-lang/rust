@@ -28,7 +28,7 @@ use rustc_session::config::{
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{
-    Abi, Arch, Env, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
+    Arch, CfgAbi, Env, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
 };
 use smallvec::SmallVec;
 
@@ -344,7 +344,7 @@ pub(crate) unsafe fn create_module<'ll>(
     if sess.target.is_like_msvc
         || (sess.target.options.os == Os::Windows
             && sess.target.options.env == Env::Gnu
-            && sess.target.options.abi == Abi::Llvm)
+            && sess.target.options.cfg_abi == CfgAbi::Llvm)
     {
         match sess.opts.cg.control_flow_guard {
             CFGuard::Disabled => {}
@@ -509,14 +509,13 @@ pub(crate) unsafe fn create_module<'ll>(
     // to workaround lld as the LTO plugin not
     // correctly setting target-abi for the LTO object
     // FIXME: https://github.com/llvm/llvm-project/issues/50591
-    // If llvm_abiname is empty, emit nothing.
     let llvm_abiname = &sess.target.options.llvm_abiname;
-    if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64) && !llvm_abiname.is_empty() {
+    if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64) {
         llvm::add_module_flag_str(
             llmod,
             llvm::ModuleFlagMergeBehavior::Error,
             "target-abi",
-            llvm_abiname,
+            llvm_abiname.desc(),
         );
     }
 

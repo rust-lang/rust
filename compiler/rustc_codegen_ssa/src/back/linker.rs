@@ -18,7 +18,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_target::spec::{Abi, Arch, Cc, LinkOutputKind, LinkerFlavor, Lld, Os};
+use rustc_target::spec::{Arch, Cc, CfgAbi, LinkOutputKind, LinkerFlavor, Lld, Os};
 use tracing::{debug, warn};
 
 use super::command::Command;
@@ -84,7 +84,7 @@ pub(crate) fn get_linker<'a>(
     // To comply with the Windows App Certification Kit,
     // MSVC needs to link with the Store versions of the runtime libraries (vcruntime, msvcrt, etc).
     let t = &sess.target;
-    if matches!(flavor, LinkerFlavor::Msvc(..)) && t.abi == Abi::Uwp {
+    if matches!(flavor, LinkerFlavor::Msvc(..)) && t.cfg_abi == CfgAbi::Uwp {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
             if let Some(root_lib_path) = original_path.ancestors().nth(4) {
@@ -135,7 +135,7 @@ pub(crate) fn get_linker<'a>(
 
     // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
     // to the linker args construction.
-    assert!(cmd.get_args().is_empty() || sess.target.abi == Abi::Uwp);
+    assert!(cmd.get_args().is_empty() || sess.target.cfg_abi == CfgAbi::Uwp);
     match flavor {
         LinkerFlavor::Unix(Cc::No) if sess.target.os == Os::L4Re => {
             Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>

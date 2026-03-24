@@ -5,10 +5,11 @@ use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, MirDialect, MirPhase};
 use rustc_span::{Span, Symbol, sym};
 
-use super::{AttributeOrder, OnDuplicate};
+use super::OnDuplicate;
 use crate::attributes::SingleAttributeParser;
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
+use crate::session_diagnostics;
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::Allow;
 
@@ -16,8 +17,6 @@ pub(crate) struct CustomMirParser;
 
 impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
     const PATH: &[rustc_span::Symbol] = &[sym::custom_mir];
-
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
 
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
@@ -57,6 +56,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 
         let dialect = parse_dialect(cx, dialect, &mut failed);
         let phase = parse_phase(cx, phase, &mut failed);
+        check_custom_mir(cx, dialect, phase, &mut failed);
 
         if failed {
             return None;
@@ -137,4 +137,52 @@ fn parse_phase<S: Stage>(
     };
 
     Some((phase, span))
+}
+
+fn check_custom_mir<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    dialect: Option<(MirDialect, Span)>,
+    phase: Option<(MirPhase, Span)>,
+    failed: &mut bool,
+) {
+    let attr_span = cx.attr_span;
+    let Some((dialect, dialect_span)) = dialect else {
+        if let Some((_, phase_span)) = phase {
+            *failed = true;
+            cx.emit_err(session_diagnostics::CustomMirPhaseRequiresDialect {
+                attr_span,
+                phase_span,
+            });
+        }
+        return;
+    };
+
+    match dialect {
+        MirDialect::Analysis => {
+            if let Some((MirPhase::Optimized, phase_span)) = phase {
+                *failed = true;
+                cx.emit_err(session_diagnostics::CustomMirIncompatibleDialectAndPhase {
+                    dialect,
+                    phase: MirPhase::Optimized,
+                    attr_span,
+                    dialect_span,
+                    phase_span,
+                });
+            }
+        }
+
+        MirDialect::Built => {
+            if let Some((phase, phase_span)) = phase {
+                *failed = true;
+                cx.emit_err(session_diagnostics::CustomMirIncompatibleDialectAndPhase {
+                    dialect,
+                    phase,
+                    attr_span,
+                    dialect_span,
+                    phase_span,
+                });
+            }
+        }
+        MirDialect::Runtime => {}
+    }
 }

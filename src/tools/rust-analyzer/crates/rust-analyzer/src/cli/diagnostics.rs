@@ -41,6 +41,7 @@ impl flags::Diagnostics {
             load_out_dirs_from_check: !self.disable_build_scripts,
             with_proc_macro_server,
             prefill_caches: false,
+            num_worker_threads: 1,
             proc_macro_processes: 1,
         };
         let (db, _vfs, _proc_macro) =

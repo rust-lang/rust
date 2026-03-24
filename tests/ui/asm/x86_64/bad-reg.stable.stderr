@@ -4,7 +4,7 @@ error: invalid register class `foo`: unknown register class
 LL |         asm!("{}", in(foo) foo);
    |                    ^^^^^^^^^^^
    |
-   = note: the following register classes are supported on this target: `reg`, `reg_abcd`, `reg_byte`, `xmm_reg`, `ymm_reg`, `zmm_reg`, `kreg`, `kreg0`, `mmx_reg`, `x87_reg`, `tmm_reg`
+   = note: the following register classes are supported on this target: `reg`, `reg_abcd`, `reg_byte`, `xmm_reg`, `ymm_reg`, `zmm_reg`, `kreg`, `kreg0`, `mmx_reg`, `x87_reg`, and `tmm_reg`
 
 error: invalid register `foo`: unknown register
   --> $DIR/bad-reg.rs:22:18
@@ -12,7 +12,7 @@ error: invalid register `foo`: unknown register
 LL |         asm!("", in("foo") foo);
    |                  ^^^^^^^^^^^^^
 
-error: invalid asm template modifier for this register class
+error: invalid asm template modifier `z` for this register class
   --> $DIR/bad-reg.rs:24:15
    |
 LL |         asm!("{:z}", in(reg) foo);
@@ -20,9 +20,9 @@ LL |         asm!("{:z}", in(reg) foo);
    |               |
    |               template modifier
    |
-   = note: the `reg` register class supports the following template modifiers: `l`, `x`, `e`, `r`
+   = note: the `reg` register class supports the following template modifiers: `l`, `x`, `e`, and `r`
 
-error: invalid asm template modifier for this register class
+error: invalid asm template modifier `r` for this register class
   --> $DIR/bad-reg.rs:26:15
    |
 LL |         asm!("{:r}", in(xmm_reg) foo);
@@ -30,7 +30,7 @@ LL |         asm!("{:r}", in(xmm_reg) foo);
    |               |
    |               template modifier
    |
-   = note: the `xmm_reg` register class supports the following template modifiers: `x`, `y`, `z`
+   = note: the `xmm_reg` register class supports the following template modifiers: `x`, `y`, and `z`
 
 error: asm template modifiers are not allowed for `const` arguments
   --> $DIR/bad-reg.rs:28:15

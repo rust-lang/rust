@@ -1919,8 +1919,15 @@ impl<'test> TestCx<'test> {
             compiler.args(&["-A", "unused", "-W", "unused_attributes"]);
         }
 
-        // Allow tests to use internal features.
+        // Allow tests to use internal and incomplete features.
         compiler.args(&["-A", "internal_features"]);
+        // FIXME(#154168); temporarily exclude some directories to make the transition easier
+        if !input_file
+            .iter()
+            .any(|p| p == "traits" || p == "specialization" || p == "const-generics")
+        {
+            compiler.args(&["-A", "incomplete_features"]);
+        }
 
         // Allow tests to have unused parens and braces.
         // Add #![deny(unused_parens, unused_braces)] to the test file if you want to
@@ -2121,7 +2128,7 @@ impl<'test> TestCx<'test> {
     }
 
     /// Prints a message to (captured) stdout if `config.verbose` is true.
-    /// The message is also logged to `tracing::debug!` regardles of verbosity.
+    /// The message is also logged to `tracing::debug!` regardless of verbosity.
     ///
     /// Use `format_args!` as the argument to perform formatting if required.
     fn logv(&self, message: impl fmt::Display) {
@@ -2748,7 +2755,7 @@ impl<'test> TestCx<'test> {
                 return CompareOutcome::Same;
             }
             if expected_lines.is_empty() {
-                // if we have no lines to check, force a full overwite
+                // if we have no lines to check, force a full overwrite
                 ("", actual)
             } else {
                 // this prints/blesses the subset, not the actual

@@ -4,12 +4,11 @@ use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKin
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::{TEXT_FLOW_CONTROL_CHARS, contains_text_flow_control_chars};
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, StashKey};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, StashKey};
 use rustc_lexer::{
     Base, Cursor, DocStyle, FrontmatterAllowed, LiteralKind, RawStrError, is_horizontal_whitespace,
 };
 use rustc_literal_escaper::{EscapeError, Mode, check_for_errors};
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
     TEXT_DIRECTION_CODEPOINT_IN_COMMENT, TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
@@ -388,7 +387,10 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                             prefix_span,
                             ast::CRATE_NODE_ID,
-                            BuiltinLintDiag::RawPrefix(prefix_span),
+                            errors::RawPrefix {
+                                label: prefix_span,
+                                suggestion: prefix_span.shrink_to_hi()
+                            },
                         );
 
                         // Reset the state so we just lex the `'r`.
@@ -498,11 +500,41 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let content = self.str_from(content_start);
         if contains_text_flow_control_chars(content) {
             let span = self.mk_sp(start, self.pos);
-            self.psess.buffer_lint(
+            let content = content.to_string();
+            self.psess.dyn_buffer_lint(
                 TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
                 span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::UnicodeTextFlow(span, content.to_string()),
+                move |dcx, level| {
+                    let spans: Vec<_> = content
+                        .char_indices()
+                        .filter_map(|(i, c)| {
+                            TEXT_FLOW_CONTROL_CHARS.contains(&c).then(|| {
+                                let lo = span.lo() + BytePos(2 + i as u32);
+                                (c, span.with_lo(lo).with_hi(lo + BytePos(c.len_utf8() as u32)))
+                            })
+                        })
+                        .collect();
+                    let characters = spans
+                        .iter()
+                        .map(|&(c, span)| errors::UnicodeCharNoteSub {
+                            span,
+                            c_debug: format!("{c:?}"),
+                        })
+                        .collect();
+                    let suggestions =
+                        (!spans.is_empty()).then_some(errors::UnicodeTextFlowSuggestion {
+                            spans: spans.iter().map(|(_c, span)| *span).collect(),
+                        });
+
+                    errors::UnicodeTextFlow {
+                        comment_span: span,
+                        characters,
+                        suggestions,
+                        num_codepoints: spans.len(),
+                    }
+                    .into_diag(dcx, level)
+                },
             );
         }
     }
@@ -1038,7 +1070,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                 prefix_span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::ReservedPrefix(prefix_span, prefix.to_string()),
+                errors::ReservedPrefix {
+                    label: prefix_span,
+                    suggestion: prefix_span.shrink_to_hi(),
+                    prefix: prefix.to_string(),
+                },
             );
         }
     }
@@ -1112,11 +1148,18 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             })
         } else {
             // Before Rust 2024, only emit a lint for migration.
-            self.psess.buffer_lint(
+            self.psess.dyn_buffer_lint(
                 RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
                 span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::ReservedString { is_string, suggestion: space_span },
+                move |dcx, level| {
+                    if is_string {
+                        errors::ReservedStringLint { suggestion: space_span }.into_diag(dcx, level)
+                    } else {
+                        errors::ReservedMultihashLint { suggestion: space_span }
+                            .into_diag(dcx, level)
+                    }
+                },
             );
 
             // For backwards compatibility, roll back to after just the first `#`

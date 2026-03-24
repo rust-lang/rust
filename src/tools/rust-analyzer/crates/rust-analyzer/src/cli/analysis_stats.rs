@@ -91,6 +91,7 @@ impl flags::AnalysisStats {
                 }
             },
             prefill_caches: false,
+            num_worker_threads: 1,
             proc_macro_processes: 1,
         };
 

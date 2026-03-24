@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_target::spec::{
-    Abi, Arch, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport,
+    Arch, CfgAbi, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport,
 };
 use smallvec::{SmallVec, smallvec};
 
@@ -252,7 +252,10 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
             "fp16" => Some(LLVMFeature::new("fullfp16")),
             s => Some(LLVMFeature::new(s)),
         },
-
+        Arch::Bpf => match s {
+            "allows-misaligned-mem-access" if major < 22 => None,
+            s => Some(LLVMFeature::new(s)),
+        },
         // Filter out features that are not supported by the current LLVM version
         Arch::PowerPC | Arch::PowerPC64 => match s {
             "power8-crypto" => Some(LLVMFeature::new("crypto")),
@@ -362,7 +365,7 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     let target_arch = &sess.target.arch;
     let target_os = &sess.target.options.os;
     let target_env = &sess.target.options.env;
-    let target_abi = &sess.target.options.abi;
+    let target_abi = &sess.target.options.cfg_abi;
     let target_pointer_width = sess.target.pointer_width;
     let version = get_version();
     let (major, _, _) = version;
@@ -371,7 +374,9 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434> (fixed in llvm22)
         (Arch::Arm64EC, _) if major < 22 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != Abi::Llvm => false,
+        (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != CfgAbi::Llvm => {
+            false
+        }
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
         (Arch::CSky, _) if major < 22 => false, // (fixed in llvm22)
         (Arch::PowerPC | Arch::PowerPC64, _) if major < 22 => false, // (fixed in llvm22)
@@ -394,10 +399,12 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // ABI bugs <https://github.com/rust-lang/rust/issues/125109> et al. (full
         // list at <https://github.com/rust-lang/rust/issues/116909>)
         (Arch::PowerPC | Arch::PowerPC64, _) => false,
-        // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838>
-        (Arch::Sparc, _) => false,
+        // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838> (fixed in llvm22)
+        (Arch::Sparc, _) if major < 22 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != Abi::Llvm => false,
+        (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != CfgAbi::Llvm => {
+            false
+        }
         // There are no known problems on other platforms, so the only requirement is that symbols
         // are available. `compiler-builtins` provides all symbols required for core `f128`
         // support, so this should work for everything else.

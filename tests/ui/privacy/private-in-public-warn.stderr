@@ -194,17 +194,14 @@ note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
 LL |     trait PrivTr {}
    |     ^^^^^^^^^^^^
 
-error: trait `traits::PrivTr` is more private than the item `traits::Tr3::g::{anon_assoc#0}`
+error[E0446]: private trait `traits::PrivTr` in public interface
   --> $DIR/private-in-public-warn.rs:51:19
    |
-LL |         fn g() -> impl PrivTr;
-   |                   ^^^^^^^^^^^ opaque type `traits::Tr3::g::{anon_assoc#0}` is reachable at visibility `pub(crate)`
-   |
-note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
-  --> $DIR/private-in-public-warn.rs:37:5
-   |
 LL |     trait PrivTr {}
-   |     ^^^^^^^^^^^^
+   |     ------------ `traits::PrivTr` declared as private
+...
+LL |         fn g() -> impl PrivTr;
+   |                   ^^^^^^^^^^^ can't leak private trait
 
 error: trait `traits::PrivTr` is more private than the item `traits::Tr3::g::{anon_assoc#0}`
   --> $DIR/private-in-public-warn.rs:51:19
@@ -218,17 +215,14 @@ note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
 LL |     trait PrivTr {}
    |     ^^^^^^^^^^^^
 
-error: trait `traits::PrivTr` is more private than the item `traits::Tr3::h::{anon_assoc#0}`
+error[E0446]: private trait `traits::PrivTr` in public interface
   --> $DIR/private-in-public-warn.rs:54:19
    |
-LL |         fn h() -> impl PrivTr {}
-   |                   ^^^^^^^^^^^ opaque type `traits::Tr3::h::{anon_assoc#0}` is reachable at visibility `pub(crate)`
-   |
-note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
-  --> $DIR/private-in-public-warn.rs:37:5
-   |
 LL |     trait PrivTr {}
-   |     ^^^^^^^^^^^^
+   |     ------------ `traits::PrivTr` declared as private
+...
+LL |         fn h() -> impl PrivTr {}
+   |                   ^^^^^^^^^^^ can't leak private trait
 
 error: trait `traits::PrivTr` is more private than the item `traits::Tr3::h::{anon_assoc#0}`
   --> $DIR/private-in-public-warn.rs:54:19
@@ -350,6 +344,24 @@ note: but type `generics::Priv` is only usable at visibility `pub(self)`
 LL |     struct Priv<T = u8>(T);
    |     ^^^^^^^^^^^^^^^^^^^
 
+error[E0446]: private trait `generics::PrivTr<generics::Priv<()>>` in public interface
+  --> $DIR/private-in-public-warn.rs:95:26
+   |
+LL |     trait PrivTr<T> {}
+   |     --------------- `generics::PrivTr<generics::Priv<()>>` declared as private
+...
+LL |         fn required() -> impl PrivTr<Priv<()>>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
+
+error[E0446]: private type `generics::Priv<()>` in public interface
+  --> $DIR/private-in-public-warn.rs:95:26
+   |
+LL |     struct Priv<T = u8>(T);
+   |     ------------------- `generics::Priv<()>` declared as private
+...
+LL |         fn required() -> impl PrivTr<Priv<()>>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^ can't leak private type
+
 error: trait `generics::PrivTr<generics::Priv<()>>` is more private than the item `Tr5::required::{anon_assoc#0}`
   --> $DIR/private-in-public-warn.rs:95:26
    |
@@ -374,53 +386,23 @@ note: but type `generics::Priv<()>` is only usable at visibility `pub(self)`
 LL |     struct Priv<T = u8>(T);
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: trait `generics::PrivTr<generics::Priv<()>>` is more private than the item `Tr5::required::{anon_assoc#0}`
-  --> $DIR/private-in-public-warn.rs:95:26
-   |
-LL |         fn required() -> impl PrivTr<Priv<()>>;
-   |                          ^^^^^^^^^^^^^^^^^^^^^ opaque type `Tr5::required::{anon_assoc#0}` is reachable at visibility `pub(crate)`
-   |
-note: but trait `generics::PrivTr<generics::Priv<()>>` is only usable at visibility `pub(self)`
-  --> $DIR/private-in-public-warn.rs:84:5
-   |
-LL |     trait PrivTr<T> {}
-   |     ^^^^^^^^^^^^^^^
-
-error: type `generics::Priv<()>` is more private than the item `Tr5::required::{anon_assoc#0}`
-  --> $DIR/private-in-public-warn.rs:95:26
-   |
-LL |         fn required() -> impl PrivTr<Priv<()>>;
-   |                          ^^^^^^^^^^^^^^^^^^^^^ opaque type `Tr5::required::{anon_assoc#0}` is reachable at visibility `pub(crate)`
-   |
-note: but type `generics::Priv<()>` is only usable at visibility `pub(self)`
-  --> $DIR/private-in-public-warn.rs:82:5
-   |
-LL |     struct Priv<T = u8>(T);
-   |     ^^^^^^^^^^^^^^^^^^^
-
-error: trait `generics::PrivTr<generics::Priv<()>>` is more private than the item `Tr5::provided::{anon_assoc#0}`
+error[E0446]: private trait `generics::PrivTr<generics::Priv<()>>` in public interface
   --> $DIR/private-in-public-warn.rs:100:26
    |
-LL |         fn provided() -> impl PrivTr<Priv<()>> {}
-   |                          ^^^^^^^^^^^^^^^^^^^^^ opaque type `Tr5::provided::{anon_assoc#0}` is reachable at visibility `pub(crate)`
-   |
-note: but trait `generics::PrivTr<generics::Priv<()>>` is only usable at visibility `pub(self)`
-  --> $DIR/private-in-public-warn.rs:84:5
-   |
 LL |     trait PrivTr<T> {}
-   |     ^^^^^^^^^^^^^^^
+   |     --------------- `generics::PrivTr<generics::Priv<()>>` declared as private
+...
+LL |         fn provided() -> impl PrivTr<Priv<()>> {}
+   |                          ^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
-error: type `generics::Priv<()>` is more private than the item `Tr5::provided::{anon_assoc#0}`
+error[E0446]: private type `generics::Priv<()>` in public interface
   --> $DIR/private-in-public-warn.rs:100:26
    |
-LL |         fn provided() -> impl PrivTr<Priv<()>> {}
-   |                          ^^^^^^^^^^^^^^^^^^^^^ opaque type `Tr5::provided::{anon_assoc#0}` is reachable at visibility `pub(crate)`
-   |
-note: but type `generics::Priv<()>` is only usable at visibility `pub(self)`
-  --> $DIR/private-in-public-warn.rs:82:5
-   |
 LL |     struct Priv<T = u8>(T);
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ------------------- `generics::Priv<()>` declared as private
+...
+LL |         fn provided() -> impl PrivTr<Priv<()>> {}
+   |                          ^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: trait `generics::PrivTr<generics::Priv<()>>` is more private than the item `Tr5::provided::{anon_assoc#0}`
   --> $DIR/private-in-public-warn.rs:100:26

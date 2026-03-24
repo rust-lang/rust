@@ -1364,6 +1364,37 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
         self.data.as_slice()
     }
 
+    /// Returns a mutable slice of all values in the underlying vector.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the slice remains a max-heap, i.e. for all indices
+    /// `0 < i < slice.len()`, `slice[(i - 1) / 2] >= slice[i]`, before the borrow ends
+    /// and the binary heap is used.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_as_mut_slice)]
+    ///
+    /// use std::collections::BinaryHeap;
+    ///
+    /// let mut heap = BinaryHeap::<u32>::from([1, 2, 3, 4, 5, 6, 7]);
+    ///
+    /// unsafe {
+    ///     for value in heap.as_mut_slice() {
+    ///         *value = (*value).saturating_mul(2);
+    ///     }
+    /// }
+    /// ```
+    #[must_use]
+    #[unstable(feature = "binary_heap_as_mut_slice", issue = "154009")]
+    pub unsafe fn as_mut_slice(&mut self) -> &mut [T] {
+        self.data.as_mut_slice()
+    }
+
     /// Consumes the `BinaryHeap` and returns the underlying vector
     /// in arbitrary order.
     ///

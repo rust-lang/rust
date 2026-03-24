@@ -2,7 +2,7 @@
 // runtime check that panics after yielding the maximum value of the range bound type. That is
 // tested for by tests/ui/iterators/rangefrom-overflow-overflow-checks.rs
 //
-// This test ensures that such a runtime check is *not* emitted when debug-assertions are
+// This test ensures such runtime checks are optimized out when debug-assertions are
 // enabled, but overflow-checks are explicitly disabled.
 
 //@ revisions: DEBUG NOCHECKS
@@ -11,17 +11,25 @@
 
 #![crate_type = "lib"]
 #![feature(new_range_api)]
-use std::range::{RangeFrom, RangeFromIter};
 
-// CHECK-LABEL: @iterrangefrom_remainder(
+use std::range::RangeFrom;
+
+// CHECK-LABEL: @rangefrom_increments(
 #[no_mangle]
-pub unsafe fn iterrangefrom_remainder(x: RangeFromIter<i32>) -> RangeFrom<i32> {
-    //        DEBUG: i32 noundef %x
-    //     NOCHECKS: i32 noundef returned %x
-    //        DEBUG: br i1
-    //        DEBUG: call core::panicking::panic_const::panic_const_add_overflow
-    //        DEBUG: unreachable
-    // NOCHECKS-NOT: unreachable
-    //     NOCHECKS: ret i32 %x
-    x.remainder()
+pub unsafe fn rangefrom_increments(range: RangeFrom<i32>) -> RangeFrom<i32> {
+    // Iterator is contained entirely within this function, so the optimizer should
+    // be able to see that `exhausted` is never set and optimize out any branches.
+
+    //         CHECK: i32 noundef %range
+    //         DEBUG: switch i32 %range
+    //         DEBUG: call core::panicking::panic_const::panic_const_add_overflow
+    //         DEBUG: unreachable
+    //  NOCHECKS-NOT: unreachable
+    //      NOCHECKS: [[REM:%[a-z_0-9.]+]] = add i32 %range, 2
+    // NOCHECKS-NEXT: ret i32 [[REM]]
+
+    let mut iter = range.into_iter();
+    let _ = iter.next();
+    let _ = iter.next();
+    iter.remainder()
 }

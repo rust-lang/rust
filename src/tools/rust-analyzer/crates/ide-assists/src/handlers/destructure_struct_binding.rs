@@ -381,23 +381,20 @@ fn build_usage_edit(
         Some(field_expr) => Some({
             let field_name: SmolStr = field_expr.name_ref()?.to_string().into();
             let new_field_name = field_names.get(&field_name)?;
-            let new_expr = ast::make::expr_path(ast::make::ext::ident_path(new_field_name));
+            let new_expr = make.expr_path(make.ident_path(new_field_name));
 
             // If struct binding is a reference, we might need to deref field usages
             if data.is_ref {
                 let (replace_expr, ref_data) = determine_ref_and_parens(ctx, &field_expr);
-                (
-                    replace_expr.syntax().clone_for_update(),
-                    ref_data.wrap_expr(new_expr).syntax().clone_for_update(),
-                )
+                (replace_expr.syntax().clone(), ref_data.wrap_expr(new_expr, make).syntax().clone())
             } else {
-                (field_expr.syntax().clone(), new_expr.syntax().clone_for_update())
+                (field_expr.syntax().clone(), new_expr.syntax().clone())
             }
         }),
         None => Some((
             usage.name.syntax().as_node().unwrap().clone(),
             make.expr_macro(
-                ast::make::ext::ident_path("todo"),
+                make.ident_path("todo"),
                 make.token_tree(syntax::SyntaxKind::L_PAREN, []),
             )
             .syntax()

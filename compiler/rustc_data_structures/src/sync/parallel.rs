@@ -57,8 +57,8 @@ where
 }
 
 pub fn spawn(func: impl FnOnce() + DynSend + 'static) {
-    if mode::is_dyn_thread_safe() {
-        let func = FromDyn::from(func);
+    if let Some(proof) = mode::check_dyn_thread_safe() {
+        let func = proof.derive(func);
         rustc_thread_pool::spawn(|| {
             (func.into_inner())();
         });
@@ -73,8 +73,8 @@ pub fn spawn(func: impl FnOnce() + DynSend + 'static) {
 /// Use that for the longest running function for better scheduling.
 pub fn par_fns(funcs: &mut [&mut (dyn FnMut() + DynSend)]) {
     parallel_guard(|guard: &ParallelGuard| {
-        if mode::is_dyn_thread_safe() {
-            let funcs = FromDyn::from(funcs);
+        if let Some(proof) = mode::check_dyn_thread_safe() {
+            let funcs = proof.derive(funcs);
             rustc_thread_pool::scope(|s| {
                 let Some((first, rest)) = funcs.into_inner().split_at_mut_checked(1) else {
                     return;
@@ -84,7 +84,7 @@ pub fn par_fns(funcs: &mut [&mut (dyn FnMut() + DynSend)]) {
                 // order when using a single thread. This ensures the execution order matches
                 // that of a single threaded rustc.
                 for f in rest.iter_mut().rev() {
-                    let f = FromDyn::from(f);
+                    let f = proof.derive(f);
                     s.spawn(|_| {
                         guard.run(|| (f.into_inner())());
                     });
@@ -108,13 +108,13 @@ where
     A: FnOnce() -> RA + DynSend,
     B: FnOnce() -> RB + DynSend,
 {
-    if mode::is_dyn_thread_safe() {
-        let oper_a = FromDyn::from(oper_a);
-        let oper_b = FromDyn::from(oper_b);
+    if let Some(proof) = mode::check_dyn_thread_safe() {
+        let oper_a = proof.derive(oper_a);
+        let oper_b = proof.derive(oper_b);
         let (a, b) = parallel_guard(|guard| {
             rustc_thread_pool::join(
-                move || guard.run(move || FromDyn::from(oper_a.into_inner()())),
-                move || guard.run(move || FromDyn::from(oper_b.into_inner()())),
+                move || guard.run(move || proof.derive(oper_a.into_inner()())),
+                move || guard.run(move || proof.derive(oper_b.into_inner()())),
             )
         });
         (a.unwrap().into_inner(), b.unwrap().into_inner())
@@ -127,13 +127,30 @@ fn par_slice<I: DynSend>(
     items: &mut [I],
     guard: &ParallelGuard,
     for_each: impl Fn(&mut I) + DynSync + DynSend,
+    proof: FromDyn<()>,
 ) {
-    let for_each = FromDyn::from(for_each);
+    match items {
+        [] => return,
+        [item] => {
+            guard.run(|| for_each(item));
+            return;
+        }
+        _ => (),
+    }
+
+    let for_each = proof.derive(for_each);
     let mut items = for_each.derive(items);
     rustc_thread_pool::scope(|s| {
         let proof = items.derive(());
-        let group_size = std::cmp::max(items.len() / 128, 1);
-        for group in items.chunks_mut(group_size) {
+
+        const MAX_GROUP_COUNT: usize = 128;
+        let group_size = items.len().div_ceil(MAX_GROUP_COUNT);
+        let groups = items.chunks_mut(group_size);
+
+        // Reverse the order of the later functions since Rayon executes them in reverse
+        // order when using a single thread. This ensures the execution order matches
+        // that of a single threaded rustc.
+        for group in groups.rev() {
             let group = proof.derive(group);
             s.spawn(|_| {
                 let mut group = group;
@@ -150,9 +167,9 @@ pub fn par_for_each_in<I: DynSend, T: IntoIterator<Item = I>>(
     for_each: impl Fn(&I) + DynSync + DynSend,
 ) {
     parallel_guard(|guard| {
-        if mode::is_dyn_thread_safe() {
+        if let Some(proof) = mode::check_dyn_thread_safe() {
             let mut items: Vec<_> = t.into_iter().collect();
-            par_slice(&mut items, guard, |i| for_each(&*i))
+            par_slice(&mut items, guard, |i| for_each(&*i), proof)
         } else {
             t.into_iter().for_each(|i| {
                 guard.run(|| for_each(&i));
@@ -173,16 +190,21 @@ where
     <T as IntoIterator>::Item: DynSend,
 {
     parallel_guard(|guard| {
-        if mode::is_dyn_thread_safe() {
+        if let Some(proof) = mode::check_dyn_thread_safe() {
             let mut items: Vec<_> = t.into_iter().collect();
 
             let error = Mutex::new(None);
 
-            par_slice(&mut items, guard, |i| {
-                if let Err(err) = for_each(&*i) {
-                    *error.lock() = Some(err);
-                }
-            });
+            par_slice(
+                &mut items,
+                guard,
+                |i| {
+                    if let Err(err) = for_each(&*i) {
+                        *error.lock() = Some(err);
+                    }
+                },
+                proof,
+            );
 
             if let Some(err) = error.into_inner() { Err(err) } else { Ok(()) }
         } else {
@@ -196,15 +218,20 @@ pub fn par_map<I: DynSend, T: IntoIterator<Item = I>, R: DynSend, C: FromIterato
     map: impl Fn(I) -> R + DynSync + DynSend,
 ) -> C {
     parallel_guard(|guard| {
-        if mode::is_dyn_thread_safe() {
-            let map = FromDyn::from(map);
+        if let Some(proof) = mode::check_dyn_thread_safe() {
+            let map = proof.derive(map);
 
             let mut items: Vec<(Option<I>, Option<R>)> =
                 t.into_iter().map(|i| (Some(i), None)).collect();
 
-            par_slice(&mut items, guard, |i| {
-                i.1 = Some(map(i.0.take().unwrap()));
-            });
+            par_slice(
+                &mut items,
+                guard,
+                |i| {
+                    i.1 = Some(map(i.0.take().unwrap()));
+                },
+                proof,
+            );
 
             items.into_iter().filter_map(|i| i.1).collect()
         } else {
@@ -214,8 +241,8 @@ pub fn par_map<I: DynSend, T: IntoIterator<Item = I>, R: DynSend, C: FromIterato
 }
 
 pub fn broadcast<R: DynSend>(op: impl Fn(usize) -> R + DynSync) -> Vec<R> {
-    if mode::is_dyn_thread_safe() {
-        let op = FromDyn::from(op);
+    if let Some(proof) = mode::check_dyn_thread_safe() {
+        let op = proof.derive(op);
         let results = rustc_thread_pool::broadcast(|context| op.derive(op(context.index())));
         results.into_iter().map(|r| r.into_inner()).collect()
     } else {

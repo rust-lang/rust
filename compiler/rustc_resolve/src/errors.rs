@@ -561,6 +561,10 @@ pub(crate) struct ExpectedModuleFound {
 pub(crate) struct Indeterminate(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
+#[diag("trait implementation can only be restricted to ancestor modules")]
+pub(crate) struct RestrictionAncestorOnly(#[primary_span] pub(crate) Span);
+
+#[derive(Diagnostic)]
 #[diag("cannot use a tool module through an import")]
 pub(crate) struct ToolModuleImported {
     #[primary_span]
@@ -881,6 +885,21 @@ pub(crate) struct UnexpectedResChangeTyToConstParamSugg {
     pub span: Span,
     #[applicability]
     pub applicability: Applicability,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "you might have meant to introduce a const parameter `{$item_name}` on the {$item_location}",
+    code = "{snippet}",
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub(crate) struct UnexpectedMissingConstParameter {
+    #[primary_span]
+    pub span: Span,
+    pub snippet: String,
+    pub item_name: String,
+    pub item_location: String,
 }
 
 #[derive(Subdiagnostic)]
@@ -1563,4 +1582,13 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Ambiguity {
         }
         diag
     }
+}
+
+#[derive(Diagnostic)]
+#[diag("lifetime parameter `{$ident}` never used")]
+pub(crate) struct UnusedLifetime {
+    #[suggestion("elide the unused lifetime", code = "", applicability = "machine-applicable")]
+    pub deletion_span: Option<Span>,
+
+    pub ident: Ident,
 }

@@ -1,5 +1,10 @@
 #![warn(clippy::unnecessary_result_map_or_else)]
-#![allow(clippy::unnecessary_literal_unwrap, clippy::let_and_return, clippy::let_unit_value)]
+#![allow(
+    clippy::unnecessary_literal_unwrap,
+    clippy::let_and_return,
+    clippy::let_unit_value,
+    clippy::needless_return
+)]
 
 fn main() {
     let x: Result<(), ()> = Ok(());
@@ -15,7 +20,7 @@ fn main() {
     let y = String::new();
     let x: Result<&String, &String> = Ok(&y);
     let y: &str = x.map_or_else(|err| err, |n| n);
-    //~^ unnecessary_result_map_or_else
+    // This should lint with a smarter check
 
     // Temporary variable.
     let x: Result<(), ()> = Ok(());
@@ -26,6 +31,18 @@ fn main() {
             let tmp = n;
             let tmp2 = tmp;
             tmp2
+        },
+    );
+
+    // Temporary variable with pattern
+    let x: Result<((), ()), ((), ())> = Ok(((), ()));
+    x.map_or_else(
+        //~^ unnecessary_result_map_or_else
+        |err| err,
+        |n| {
+            let tmp = n;
+            let (a, b) = tmp;
+            (a, b)
         },
     );
 
@@ -67,6 +84,34 @@ fn main() {
         |n| {
             let tmp = n;
             y
+        },
+    );
+
+    let x: Result<((), ()), ((), ())> = Ok(((), ()));
+    x.map_or_else(|err| err, |(a, b)| (a, b));
+    //~^ unnecessary_result_map_or_else
+
+    // Returned temporary variable.
+    let x: Result<(), ()> = Ok(());
+    x.map_or_else(
+        //~^ unnecessary_result_map_or_else
+        |err| err,
+        |n| {
+            let tmp = n;
+            let tmp2 = tmp;
+            return tmp2;
+        },
+    );
+
+    // Returned temporary variable with pattern
+    let x: Result<((), ()), ((), ())> = Ok(((), ()));
+    x.map_or_else(
+        //~^ unnecessary_result_map_or_else
+        |err| err,
+        |n| {
+            let tmp = n;
+            let (a, b) = tmp;
+            return (a, b);
         },
     );
 }

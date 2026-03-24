@@ -4,13 +4,13 @@ Date: Sun, 15 Feb 2026 14:06:49 +0000
 Subject: [PATCH] Disable f16 math tests for cranelift
 
 ---
- coretests/tests/floats/mod.rs | 26 +++++++++++++-------------
+ coretests/tests/num/floats.rs | 26 +++++++++++++-------------
  1 file changed, 13 insertions(+), 13 deletions(-)
 
 diff --git a/coretests/tests/floats/mod.rs b/coretests/tests/floats/mod.rs
 index c61961f8584..d7b4fa20322 100644
---- a/coretests/tests/floats/mod.rs
-+++ b/coretests/tests/floats/mod.rs
+--- a/coretests/tests/num/floats.rs
++++ b/coretests/tests/num/floats.rs
 @@ -1534,7 +1534,7 @@ fn s_nan() -> Float {
      name: powf,
      attrs: {
@@ -128,6 +128,5 @@ index c61961f8584..d7b4fa20322 100644
          f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
      },
      test {
--- 
+--
 2.50.1
-

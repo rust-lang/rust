@@ -1,8 +1,4 @@
-//! This module implements some validity checks for attributes.
-//! In particular it verifies that `#[inline]` and `#[repr]` attributes are
-//! attached to items that actually support them and if there are
-//! conflicts between multiple such attributes attached to the same
-//! item.
+//! This module lists attribute targets, with conversions from other types.
 
 use std::fmt::{self, Display};
 
