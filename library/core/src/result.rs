@@ -829,6 +829,7 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
+    #[rustc_diagnostic_item = "result_map"]
     pub const fn map<U, F>(self, op: F) -> Result<U, E>
     where
         F: [const] FnOnce(T) -> U + [const] Destruct,
@@ -958,6 +959,7 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
+    #[rustc_diagnostic_item = "result_map_err"]
     pub const fn map_err<F, O>(self, op: O) -> Result<T, F>
     where
         O: [const] FnOnce(E) -> F + [const] Destruct,

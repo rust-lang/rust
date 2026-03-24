@@ -434,6 +434,7 @@ impl ExitStatusExt for process::ExitStatus {
     }
 
     fn into_raw(self) -> i32 {
+        #[allow(self_type_conversion)]
         self.as_inner().into_raw().into()
     }
 }
