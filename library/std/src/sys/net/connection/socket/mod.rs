@@ -908,7 +908,8 @@ impl UdpSocket {
 
     #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
     pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
-        let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS)? };
+        let raw: c_int =
+            unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS)? };
         Ok(raw as u8)
     }
 
