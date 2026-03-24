@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a value of uninhabited type `main::Void`
+error: Undefined Behavior: constructing invalid value of type main::Void: encountered a value of uninhabited type `main::Void`
   --> tests/fail/validity/match_binder_checks_validity1.rs:LL:CC
    |
 LL |             _x => println!("hi from the void!"),

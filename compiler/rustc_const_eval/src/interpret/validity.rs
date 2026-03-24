@@ -47,9 +47,9 @@ use super::UnsupportedOpInfo::*;
 macro_rules! err_validation_failure {
     ($where:expr,  $msg:expr ) => {{
         let where_ = &$where;
-        let path = if !where_.is_empty() {
+        let path = if !where_.projs.is_empty() {
             let mut path = String::new();
-            write_path(&mut path, where_);
+            write_path(&mut path, &where_.projs);
             Some(path)
         } else {
             None
@@ -59,6 +59,7 @@ macro_rules! err_validation_failure {
         use ValidationErrorKind::*;
         let msg = ValidationErrorKind::from($msg);
         err_ub!(ValidationError {
+            orig_ty: where_.orig_ty,
             path,
             ptr_bytes_warning: msg.ptr_bytes_warning(),
             msg: msg.to_string(),
@@ -234,7 +235,7 @@ fn fmt_range(r: WrappingRange, max_hi: u128) -> String {
 /// So we track a `Vec<PathElem>` where `PathElem` contains all the data we
 /// need to later print something for the user.
 #[derive(Copy, Clone, Debug)]
-pub enum PathElem {
+pub enum PathElem<'tcx> {
     Field(Symbol),
     Variant(Symbol),
     CoroutineState(VariantIdx),
@@ -244,8 +245,20 @@ pub enum PathElem {
     Deref,
     EnumTag,
     CoroutineTag,
-    DynDowncast,
+    DynDowncast(Ty<'tcx>),
     Vtable,
+}
+
+#[derive(Clone, Debug)]
+pub struct Path<'tcx> {
+    orig_ty: Ty<'tcx>,
+    projs: Vec<PathElem<'tcx>>,
+}
+
+impl<'tcx> Path<'tcx> {
+    fn new(ty: Ty<'tcx>) -> Self {
+        Self { orig_ty: ty, projs: vec![] }
+    }
 }
 
 /// Extra things to check for during validation of CTFE results.
@@ -280,15 +293,9 @@ pub struct RefTracking<T, PATH = ()> {
     todo: Vec<(T, PATH)>,
 }
 
-impl<T: Clone + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH> {
+impl<T: Clone + Eq + Hash + std::fmt::Debug, PATH> RefTracking<T, PATH> {
     pub fn empty() -> Self {
         RefTracking { seen: FxHashSet::default(), todo: vec![] }
-    }
-    pub fn new(val: T) -> Self {
-        let mut ref_tracking_for_consts =
-            RefTracking { seen: FxHashSet::default(), todo: vec![(val.clone(), PATH::default())] };
-        ref_tracking_for_consts.seen.insert(val);
-        ref_tracking_for_consts
     }
     pub fn next(&mut self) -> Option<(T, PATH)> {
         self.todo.pop()
@@ -304,8 +311,17 @@ impl<T: Clone + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH>
     }
 }
 
+impl<'tcx, T: Clone + Eq + Hash + std::fmt::Debug> RefTracking<T, Path<'tcx>> {
+    pub fn new(val: T, ty: Ty<'tcx>) -> Self {
+        let mut ref_tracking_for_consts =
+            RefTracking { seen: FxHashSet::default(), todo: vec![(val.clone(), Path::new(ty))] };
+        ref_tracking_for_consts.seen.insert(val);
+        ref_tracking_for_consts
+    }
+}
+
 /// Format a path
-fn write_path(out: &mut String, path: &[PathElem]) {
+fn write_path(out: &mut String, path: &[PathElem<'_>]) {
     use self::PathElem::*;
 
     for elem in path.iter() {
@@ -323,7 +339,7 @@ fn write_path(out: &mut String, path: &[PathElem]) {
             // even use the usual syntax because we are just showing the projections,
             // not the root.
             Deref => write!(out, ".<deref>"),
-            DynDowncast => write!(out, ".<dyn-downcast>"),
+            DynDowncast(ty) => write!(out, ".<dyn-downcast({ty})>"),
             Vtable => write!(out, ".<vtable>"),
         }
         .unwrap()
@@ -382,10 +398,9 @@ impl RangeSet {
 
 struct ValidityVisitor<'rt, 'tcx, M: Machine<'tcx>> {
     /// The `path` may be pushed to, but the part that is present when a function
-    /// starts must not be changed!  `visit_fields` and `visit_array` rely on
-    /// this stack discipline.
-    path: Vec<PathElem>,
-    ref_tracking: Option<&'rt mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Vec<PathElem>>>,
+    /// starts must not be changed!  `with_elem` relies on this stack discipline.
+    path: Path<'tcx>,
+    ref_tracking: Option<&'rt mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Path<'tcx>>>,
     /// `None` indicates this is not validating for CTFE (but for runtime).
     ctfe_mode: Option<CtfeValidationMode>,
     ecx: &'rt mut InterpCx<'tcx, M>,
@@ -404,7 +419,12 @@ struct ValidityVisitor<'rt, 'tcx, M: Machine<'tcx>> {
 }
 
 impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
-    fn aggregate_field_path_elem(&mut self, layout: TyAndLayout<'tcx>, field: usize) -> PathElem {
+    fn aggregate_field_path_elem(
+        &mut self,
+        layout: TyAndLayout<'tcx>,
+        field: usize,
+        field_ty: Ty<'tcx>,
+    ) -> PathElem<'tcx> {
         // First, check if we are projecting to a variant.
         match layout.variants {
             Variants::Multiple { tag_field, .. } => {
@@ -474,7 +494,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             // dyn traits
             ty::Dynamic(..) => {
                 assert_eq!(field, 0);
-                PathElem::DynDowncast
+                PathElem::DynDowncast(field_ty)
             }
 
             // nothing else has an aggregate layout
@@ -484,17 +504,17 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
 
     fn with_elem<R>(
         &mut self,
-        elem: PathElem,
+        elem: PathElem<'tcx>,
         f: impl FnOnce(&mut Self) -> InterpResult<'tcx, R>,
     ) -> InterpResult<'tcx, R> {
         // Remember the old state
-        let path_len = self.path.len();
+        let path_len = self.path.projs.len();
         // Record new element
-        self.path.push(elem);
+        self.path.projs.push(elem);
         // Perform operation
         let r = f(self)?;
         // Undo changes
-        self.path.truncate(path_len);
+        self.path.projs.truncate(path_len);
         // Done
         interp_ok(r)
     }
@@ -796,10 +816,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             ref_tracking.track(place, || {
                 // We need to clone the path anyway, make sure it gets created
                 // with enough space for the additional `Deref`.
-                let mut new_path = Vec::with_capacity(path.len() + 1);
-                new_path.extend(path);
-                new_path.push(PathElem::Deref);
-                new_path
+                let mut new_projs = Vec::with_capacity(path.projs.len() + 1);
+                new_projs.extend(&path.projs);
+                new_projs.push(PathElem::Deref);
+                Path { projs: new_projs, orig_ty: path.orig_ty }
             });
         }
         interp_ok(())
@@ -1220,7 +1240,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
         field: usize,
         new_val: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        let elem = self.aggregate_field_path_elem(old_val.layout, field);
+        let elem = self.aggregate_field_path_elem(old_val.layout, field, new_val.layout.ty);
         self.with_elem(elem, move |this| this.visit_value(new_val))
     }
 
@@ -1385,7 +1405,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                                 access.bad.start.bytes() / layout.size.bytes(),
                             )
                             .unwrap();
-                            self.path.push(PathElem::ArrayElem(i));
+                            self.path.projs.push(PathElem::ArrayElem(i));
 
                             if matches!(kind, Ub(InvalidUninitBytes(_))) {
                                 err_validation_failure!(self.path, Uninit { expected })
@@ -1515,8 +1535,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn validate_operand_internal(
         &mut self,
         val: &PlaceTy<'tcx, M::Provenance>,
-        path: Vec<PathElem>,
-        ref_tracking: Option<&mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Vec<PathElem>>>,
+        path: Path<'tcx>,
+        ref_tracking: Option<&mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Path<'tcx>>>,
         ctfe_mode: Option<CtfeValidationMode>,
         reset_provenance_and_padding: bool,
     ) -> InterpResult<'tcx> {
@@ -1569,8 +1589,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(crate) fn const_validate_operand(
         &mut self,
         val: &PlaceTy<'tcx, M::Provenance>,
-        path: Vec<PathElem>,
-        ref_tracking: &mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Vec<PathElem>>,
+        path: Path<'tcx>,
+        ref_tracking: &mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Path<'tcx>>,
         ctfe_mode: CtfeValidationMode,
     ) -> InterpResult<'tcx> {
         self.validate_operand_internal(
@@ -1599,14 +1619,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             reset_provenance_and_padding,
             ?val,
         );
-
         // Note that we *could* actually be in CTFE here with `-Zextra-const-ub-checks`, but it's
         // still correct to not use `ctfe_mode`: that mode is for validation of the final constant
         // value, it rules out things like `UnsafeCell` in awkward places.
         if !recursive {
             return self.validate_operand_internal(
                 val,
-                vec![],
+                Path::new(val.layout.ty),
                 None,
                 None,
                 reset_provenance_and_padding,
@@ -1616,7 +1635,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let mut ref_tracking = RefTracking::empty();
         self.validate_operand_internal(
             val,
-            vec![],
+            Path::new(val.layout.ty),
             Some(&mut ref_tracking),
             None,
             reset_provenance_and_padding,

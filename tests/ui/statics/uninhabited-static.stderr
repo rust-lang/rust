@@ -43,13 +43,13 @@ LL |     static NEVER: !;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
 
-error[E0080]: constructing invalid value: encountered a value of uninhabited type `Void`
+error[E0080]: constructing invalid value of type Void: encountered a value of uninhabited type `Void`
   --> $DIR/uninhabited-static.rs:12:31
    |
 LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `VOID2` failed here
 
-error[E0080]: constructing invalid value: encountered a value of uninhabited type `Void`
+error[E0080]: constructing invalid value of type Void: encountered a value of uninhabited type `Void`
   --> $DIR/uninhabited-static.rs:15:32
    |
 LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
