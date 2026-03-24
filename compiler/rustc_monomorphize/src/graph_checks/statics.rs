@@ -4,7 +4,7 @@ use rustc_data_structures::graph::{DirectedGraph, Successors};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec, newtype_index};
-use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::TyCtxt;
 
 use crate::collector::UsageMap;

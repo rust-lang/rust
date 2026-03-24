@@ -15,7 +15,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_span::{ErrorGuaranteed, Spanned};
 
-use crate::mir::mono::{MonoItem, NormalizationErrorInMono};
+use crate::mono::{MonoItem, NormalizationErrorInMono};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, thir, traits};
 
@@ -221,7 +221,7 @@ impl_erasable_for_types_with_no_type_params! {
     rustc_middle::mir::interpret::AllocId,
     rustc_middle::mir::interpret::EvalStaticInitializerRawResult<'_>,
     rustc_middle::mir::interpret::EvalToValTreeResult<'_>,
-    rustc_middle::mir::mono::MonoItemPartitions<'_>,
+    rustc_middle::mono::MonoItemPartitions<'_>,
     rustc_middle::traits::query::MethodAutoderefStepsResult<'_>,
     rustc_middle::ty::AdtDef<'_>,
     rustc_middle::ty::AnonConstKind,
