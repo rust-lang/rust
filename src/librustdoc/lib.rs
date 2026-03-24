@@ -907,7 +907,9 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
                 if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
                     for lint in &delayed_lints.lints {
-                        rustc_hir_analysis::emit_delayed_lint(lint, tcx);
+                        // njn: where to put it?
+                        //rustc_hir_analysis::emit_delayed_lint(lint, tcx);
+                        rustc_interface::passes::emit_delayed_lint(lint, tcx);
                     }
                 }
             }

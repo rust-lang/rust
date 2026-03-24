@@ -1025,6 +1025,26 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     )
 }
 
+// njn: where to put this?
+use rustc_hir::lints::DelayedLint;
+use rustc_lint::DecorateAttrLint;
+pub fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
+    match lint {
+        DelayedLint::AttributeParsing(attribute_lint) => {
+            tcx.emit_node_span_lint(
+                attribute_lint.lint_id.lint,
+                attribute_lint.id,
+                attribute_lint.span,
+                DecorateAttrLint {
+                    sess: tcx.sess,
+                    tcx: Some(tcx),
+                    diagnostic: &attribute_lint.kind,
+                },
+            );
+        }
+    }
+}
+
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
 /// This function never fails.
 fn run_required_analyses(tcx: TyCtxt<'_>) {
@@ -1074,7 +1094,47 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         ]);
     });
 
-    rustc_hir_analysis::check_crate(tcx);
+    {
+        //let _prof_timer = tcx.sess.timer("type_check_crate");
+
+        tcx.sess.time("emit_ast_lowering_delayed_lints", || {
+            // sanity check in debug mode that all lints are really noticed
+            // and we really will emit them all in the loop right below.
+            //
+            // during ast lowering, when creating items, foreign items, trait items and impl items
+            // we store in them whether they have any lints in their owner node that should be
+            // picked up by `hir_crate_items`. However, theoretically code can run between that
+            // boolean being inserted into the item and the owner node being created.
+            // We don't want any new lints to be emitted there
+            // (though honestly, you have to really try to manage to do that but still),
+            // but this check is there to catch that.
+            #[cfg(debug_assertions)]
+            {
+                // iterate over all owners
+                for owner_id in tcx.hir_crate_items(()).owners() {
+                    // if it has delayed lints
+                    if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
+                        if !delayed_lints.lints.is_empty() {
+                            // assert that delayed_lint_items also picked up this item to have lints
+                            assert!(
+                                tcx.hir_crate_items(()).delayed_lint_items().any(|i| i == owner_id)
+                            );
+                        }
+                    }
+                }
+            }
+
+            for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
+                if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
+                    for lint in &delayed_lints.lints {
+                        emit_delayed_lint(lint, tcx);
+                    }
+                }
+            }
+        });
+    }
+
+    rustc_hir_analysis::check_crate2(tcx);
     // Freeze definitions as we don't add new ones at this point.
     // We need to wait until now since we synthesize a by-move body
     // for all coroutine-closures.
