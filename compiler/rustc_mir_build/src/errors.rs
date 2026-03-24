@@ -924,22 +924,24 @@ pub(crate) struct IrrefutableLetPatternsIfLetGuard {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "irrefutable `let...else` {$count ->
-    [one] pattern
-    *[other] patterns
-}"
-)]
-#[note(
-    "{$count ->
-    [one] this pattern always matches, so the else clause is unreachable
-    *[other] these patterns always match, so the else clause is unreachable
-}"
-)]
+#[diag("unreachable `else` clause")]
+#[note("this pattern always matches, so the else clause is unreachable")]
 pub(crate) struct IrrefutableLetPatternsLetElse {
-    pub(crate) count: usize,
-    #[help("remove this `else` block")]
-    pub(crate) else_span: Option<Span>,
+    #[subdiagnostic]
+    pub(crate) be_replaced: Option<BeReplacedLetElse>,
+}
+
+#[derive(Subdiagnostic, Debug)]
+#[suggestion(
+    "consider using `let {$lhs} = {$rhs}` to match on a specific variant",
+    code = "let {lhs} = {rhs}",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct BeReplacedLetElse {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) lhs: String,
+    pub(crate) rhs: String,
 }
 
 #[derive(Diagnostic)]
