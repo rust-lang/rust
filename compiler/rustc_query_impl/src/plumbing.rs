@@ -2,18 +2,14 @@ use std::num::NonZero;
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::limit::Limit;
-use rustc_index::Idx;
 use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
 use rustc_middle::dep_graph::{DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::erase::{Erasable, Erased};
-use rustc_middle::query::on_disk_cache::{
-    AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
-};
+use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder};
 use rustc_middle::query::{QueryCache, QueryJobId, QueryMode, QueryVTable, erase};
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::DUMMY_SP;
@@ -79,13 +75,9 @@ pub(crate) fn start_query<R>(
     })
 }
 
-pub(crate) fn encode_query_values<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    encoder: &mut CacheEncoder<'_, 'tcx>,
-    query_result_index: &mut EncodedDepNodeIndex,
-) {
+pub(crate) fn encode_query_values<'tcx>(tcx: TyCtxt<'tcx>, encoder: &mut CacheEncoder<'_, 'tcx>) {
     for_each_query_vtable!(CACHE_ON_DISK, tcx, |query| {
-        encode_query_values_inner(tcx, query, encoder, query_result_index)
+        encode_query_values_inner(tcx, query, encoder)
     });
 }
 
@@ -93,7 +85,6 @@ fn encode_query_values_inner<'a, 'tcx, C, V>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
-    query_result_index: &mut EncodedDepNodeIndex,
 ) where
     C: QueryCache<Value = Erased<V>>,
     V: Erasable + Encodable<CacheEncoder<'a, 'tcx>>,
@@ -103,14 +94,7 @@ fn encode_query_values_inner<'a, 'tcx, C, V>(
     assert!(all_inactive(&query.state));
     query.cache.for_each(&mut |key, value, dep_node| {
         if (query.will_cache_on_disk_for_key_fn)(tcx, *key) {
-            let dep_node = SerializedDepNodeIndex::new(dep_node.index());
-
-            // Record position of the cache entry.
-            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
-
-            // Encode the type check tables with the `SerializedDepNodeIndex`
-            // as tag.
-            encoder.encode_tagged(dep_node, &erase::restore_val::<V>(*value));
+            encoder.encode_query_value::<V>(dep_node, &erase::restore_val::<V>(*value));
         }
     });
 }
@@ -214,7 +198,7 @@ where
     // details.
     let value = tcx
         .dep_graph
-        .with_query_deserialization(|| on_disk_cache.try_load_query_result(tcx, prev_index));
+        .with_query_deserialization(|| on_disk_cache.try_load_query_value(tcx, prev_index));
 
     prof_timer.finish_with_query_invocation_id(index.into());
 
