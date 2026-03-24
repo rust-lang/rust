@@ -1,6 +1,7 @@
 //@ check-pass
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
+#![allow(self_type_conversion)]
 
 // When type checking a closure expr we look at the list of unsolved goals
 // to determine if there are any bounds on the closure type to infer a signature from.
