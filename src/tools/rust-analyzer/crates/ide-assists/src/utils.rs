@@ -203,6 +203,9 @@ pub fn filter_assoc_items(
 /// [`filter_assoc_items()`]), clones each item for update and applies path transformation to it,
 /// then inserts into `impl_`. Returns the modified `impl_` and the first associated item that got
 /// inserted.
+///
+/// Legacy: prefer [`add_trait_assoc_items_to_impl_with_factory`] when a [`SyntaxFactory`] is
+/// available.
 #[must_use]
 pub fn add_trait_assoc_items_to_impl(
     sema: &Semantics<'_, RootDatabase>,
@@ -251,6 +254,79 @@ pub fn add_trait_assoc_items_to_impl(
                 let new_body = make::block_expr(None, Some(expr_fill_default(config)));
                 let mut fn_editor = SyntaxEditor::new(fn_.syntax().clone());
                 fn_.replace_or_insert_body(&mut fn_editor, new_body.clone_for_update());
+                let new_fn_ = fn_editor.finish().new_root().clone();
+                ast::AssocItem::cast(new_fn_)
+            }
+            ast::AssocItem::TypeAlias(type_alias) => {
+                let type_alias = type_alias.clone_subtree();
+                if let Some(type_bound_list) = type_alias.type_bound_list() {
+                    let mut type_alias_editor = SyntaxEditor::new(type_alias.syntax().clone());
+                    type_bound_list.remove(&mut type_alias_editor);
+                    let type_alias = type_alias_editor.finish().new_root().clone();
+                    ast::AssocItem::cast(type_alias)
+                } else {
+                    Some(ast::AssocItem::TypeAlias(type_alias))
+                }
+            }
+            item => Some(item),
+        })
+        .map(|item| AstNodeEdit::indent(&item, new_indent_level))
+        .collect()
+}
+
+/// [`SyntaxFactory`]-based variant of [`add_trait_assoc_items_to_impl`].
+#[must_use]
+pub fn add_trait_assoc_items_to_impl_with_factory(
+    make: &SyntaxFactory,
+    sema: &Semantics<'_, RootDatabase>,
+    config: &AssistConfig,
+    original_items: &[InFile<ast::AssocItem>],
+    trait_: hir::Trait,
+    impl_: &ast::Impl,
+    target_scope: &hir::SemanticsScope<'_>,
+) -> Vec<ast::AssocItem> {
+    let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
+    original_items
+        .iter()
+        .map(|InFile { file_id, value: original_item }| {
+            let mut cloned_item = {
+                if let Some(macro_file) = file_id.macro_file() {
+                    let span_map = sema.db.expansion_span_map(macro_file);
+                    let item_prettified = prettify_macro_expansion(
+                        sema.db,
+                        original_item.syntax().clone(),
+                        &span_map,
+                        target_scope.krate().into(),
+                    );
+                    if let Some(formatted) = ast::AssocItem::cast(item_prettified) {
+                        return formatted;
+                    } else {
+                        stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
+                    }
+                }
+                original_item
+            }
+            .reset_indent();
+
+            if let Some(source_scope) = sema.scope(original_item.syntax()) {
+                let transform =
+                    PathTransform::trait_impl(target_scope, &source_scope, trait_, impl_.clone());
+                cloned_item = ast::AssocItem::cast(transform.apply(cloned_item.syntax())).unwrap();
+            }
+            cloned_item.remove_attrs_and_docs();
+            cloned_item
+        })
+        .filter_map(|item| match item {
+            ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
+                let fn_ = fn_.clone_subtree();
+                let fill_expr: ast::Expr = match config.expr_fill_default {
+                    ExprFillDefaultMode::Todo | ExprFillDefaultMode::Default => make.expr_todo(),
+                    ExprFillDefaultMode::Underscore => make.expr_underscore().into(),
+                };
+                let new_body = make.block_expr(None::<ast::Stmt>, Some(fill_expr));
+                let new_body = AstNodeEdit::indent(&new_body, IndentLevel::single());
+                let mut fn_editor = SyntaxEditor::new(fn_.syntax().clone());
+                fn_.replace_or_insert_body(&mut fn_editor, new_body);
                 let new_fn_ = fn_editor.finish().new_root().clone();
                 ast::AssocItem::cast(new_fn_)
             }
@@ -671,8 +747,13 @@ pub(crate) fn generate_impl(adt: &ast::Adt) -> ast::Impl {
 /// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
 ///
 /// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
-pub(crate) fn generate_trait_impl(is_unsafe: bool, adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
-    generate_impl_inner(is_unsafe, adt, Some(trait_), true, None)
+pub(crate) fn generate_trait_impl(
+    make: &SyntaxFactory,
+    is_unsafe: bool,
+    adt: &ast::Adt,
+    trait_: ast::Type,
+) -> ast::Impl {
+    generate_impl_inner_with_factory(make, is_unsafe, adt, Some(trait_), true, None)
 }
 
 /// Generates the corresponding `impl <trait> for Type {}` including type
@@ -753,6 +834,76 @@ fn generate_impl_inner(
     .clone_for_update()
 }
 
+fn generate_impl_inner_with_factory(
+    make: &SyntaxFactory,
+    is_unsafe: bool,
+    adt: &ast::Adt,
+    trait_: Option<ast::Type>,
+    trait_is_transitive: bool,
+    body: Option<ast::AssocItemList>,
+) -> ast::Impl {
+    // Ensure lifetime params are before type & const params
+    let generic_params = adt.generic_param_list().map(|generic_params| {
+        let lifetime_params =
+            generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
+        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
+            let param = match param {
+                ast::TypeOrConstParam::Type(param) => {
+                    // remove defaults since they can't be specified in impls
+                    let mut bounds =
+                        param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
+                    if let Some(trait_) = &trait_ {
+                        // Add the current trait to `bounds` if the trait is transitive,
+                        // meaning `impl<T> Trait for U<T>` requires `T: Trait`.
+                        if trait_is_transitive {
+                            bounds.push(make.type_bound(trait_.clone()));
+                        }
+                    };
+                    // `{ty_param}: {bounds}`
+                    let param = make.type_param(param.name()?, make.type_bound_list(bounds));
+                    ast::GenericParam::TypeParam(param)
+                }
+                ast::TypeOrConstParam::Const(param) => {
+                    // remove defaults since they can't be specified in impls
+                    let param = make.const_param(param.name()?, param.ty()?);
+                    ast::GenericParam::ConstParam(param)
+                }
+            };
+            Some(param)
+        });
+
+        make.generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
+    });
+    let generic_args =
+        generic_params.as_ref().map(|params| params.to_generic_args().clone_for_update());
+    let adt_assoc_bounds =
+        trait_.as_ref().zip(generic_params.as_ref()).and_then(|(trait_, params)| {
+            generic_param_associated_bounds_with_factory(make, adt, trait_, params)
+        });
+
+    let ty: ast::Type = make.ty_path(make.ident_path(&adt.name().unwrap().text())).into();
+
+    let cfg_attrs =
+        adt.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
+    match trait_ {
+        Some(trait_) => make.impl_trait(
+            cfg_attrs,
+            is_unsafe,
+            None,
+            None,
+            generic_params,
+            generic_args,
+            false,
+            trait_,
+            ty,
+            adt_assoc_bounds,
+            adt.where_clause(),
+            body,
+        ),
+        None => make.impl_(cfg_attrs, generic_params, generic_args, ty, adt.where_clause(), body),
+    }
+}
+
 fn generic_param_associated_bounds(
     adt: &ast::Adt,
     trait_: &ast::Type,
@@ -796,6 +947,52 @@ fn generic_param_associated_bounds(
         .unique_by(|it| it.syntax().to_string())
         .peekable();
     trait_where_clause.peek().is_some().then(|| make::where_clause(trait_where_clause))
+}
+
+fn generic_param_associated_bounds_with_factory(
+    make: &SyntaxFactory,
+    adt: &ast::Adt,
+    trait_: &ast::Type,
+    generic_params: &ast::GenericParamList,
+) -> Option<ast::WhereClause> {
+    let in_type_params = |name: &ast::NameRef| {
+        generic_params
+            .generic_params()
+            .filter_map(|param| match param {
+                ast::GenericParam::TypeParam(type_param) => type_param.name(),
+                _ => None,
+            })
+            .any(|param| param.text() == name.text())
+    };
+    let adt_body = match adt {
+        ast::Adt::Enum(e) => e.variant_list().map(|it| it.syntax().clone()),
+        ast::Adt::Struct(s) => s.field_list().map(|it| it.syntax().clone()),
+        ast::Adt::Union(u) => u.record_field_list().map(|it| it.syntax().clone()),
+    };
+    let mut trait_where_clause = adt_body
+        .into_iter()
+        .flat_map(|it| it.descendants())
+        .filter_map(ast::Path::cast)
+        .filter_map(|path| {
+            let qualifier = path.qualifier()?.as_single_segment()?;
+            let qualifier = qualifier
+                .name_ref()
+                .or_else(|| match qualifier.type_anchor()?.ty()? {
+                    ast::Type::PathType(path_type) => path_type.path()?.as_single_name_ref(),
+                    _ => None,
+                })
+                .filter(in_type_params)?;
+            Some((qualifier, path.segment()?.name_ref()?))
+        })
+        .map(|(qualifier, assoc_name)| {
+            let segments = [qualifier, assoc_name].map(|nr| make.path_segment(nr));
+            let path = make.path_from_segments(segments, false);
+            let bounds = [make.type_bound(trait_.clone())];
+            make.where_pred(either::Either::Right(make.ty_path(path).into()), bounds)
+        })
+        .unique_by(|it| it.syntax().to_string())
+        .peekable();
+    trait_where_clause.peek().is_some().then(|| make.where_clause(trait_where_clause))
 }
 
 pub(crate) fn add_method_to_adt(
