@@ -69,7 +69,7 @@ pub fn extensive_max_iterations() -> u64 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckCtx {
     /// Allowed ULP deviation
-    pub ulp: u32,
+    pub ulp: Option<u32>,
     pub fn_ident: Identifier,
     pub base_name: BaseName,
     /// Function name.
@@ -88,7 +88,7 @@ impl CheckCtx {
     /// Create a new check context, using the default ULP for the function.
     pub fn new(fn_ident: Identifier, basis: CheckBasis, gen_kind: GeneratorKind) -> Self {
         let mut ret = Self {
-            ulp: 0,
+            ulp: None,
             fn_ident,
             fn_name: fn_ident.as_str(),
             base_name: fn_ident.base_name(),

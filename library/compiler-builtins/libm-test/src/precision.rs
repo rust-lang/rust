@@ -13,7 +13,7 @@ pub struct SpecialCase;
 
 /// ULP allowed to differ from the results returned by a test basis.
 #[allow(clippy::single_match)]
-pub fn default_ulp(ctx: &CheckCtx) -> u32 {
+pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
     // ULP compared to the infinite (MPFR) result.
     let mut ulp = match ctx.base_name {
         // Basic arithmetic needs to always be precise.
@@ -22,6 +22,9 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         // than C).
         Bn::Powi if ctx.fn_ident == Id::Powif64 => 10_000,
         Bn::Powi => 1000,
+
+        // Operations that only return non-float results
+        Bn::Ilogb => return None,
 
         // Operations that require exact results. This list should correlate with what we
         // have documented at <https://doc.rust-lang.org/std/primitive.f32.html>.
@@ -39,7 +42,6 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         | Bn::FminimumNum
         | Bn::Fmod
         | Bn::Frexp
-        | Bn::Ilogb
         | Bn::Ldexp
         | Bn::Modf
         | Bn::Nextafter
@@ -152,7 +154,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         }
     }
 
-    ulp
+    Some(ulp)
 }
 
 /// Result of checking for possible overrides.

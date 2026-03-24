@@ -310,7 +310,9 @@ where
 
     // Create a wrapper function so we only need to `.with_context` once.
     let mut inner = || -> TestResult {
-        let mut allowed_ulp = ctx.ulp;
+        let mut allowed_ulp = ctx
+            .ulp
+            .expect("functions returning floats should have a default ulp set");
 
         match SpecialCase::check_float(input, actual, expected, ctx) {
             // Forbid overrides if the items came from an explicit list
