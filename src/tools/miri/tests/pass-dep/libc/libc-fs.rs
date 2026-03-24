@@ -54,29 +54,23 @@ fn main() {
 
 fn test_file_open_unix_allow_two_args() {
     let path = utils::prepare_with_content("test_file_open_unix_allow_two_args.txt", &[]);
+    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
 
-    let mut name = path.into_os_string();
-    name.push("\0");
-    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
-    let _fd = unsafe { libc::open(name_ptr, libc::O_RDONLY) };
+    let _fd = unsafe { libc::open(name.as_ptr(), libc::O_RDONLY) };
 }
 
 fn test_file_open_unix_needs_three_args() {
     let path = utils::prepare_with_content("test_file_open_unix_needs_three_args.txt", &[]);
+    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
 
-    let mut name = path.into_os_string();
-    name.push("\0");
-    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
-    let _fd = unsafe { libc::open(name_ptr, libc::O_CREAT, 0o666) };
+    let _fd = unsafe { libc::open(name.as_ptr(), libc::O_CREAT, 0o666) };
 }
 
 fn test_file_open_unix_extra_third_arg() {
     let path = utils::prepare_with_content("test_file_open_unix_extra_third_arg.txt", &[]);
+    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
 
-    let mut name = path.into_os_string();
-    name.push("\0");
-    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
-    let _fd = unsafe { libc::open(name_ptr, libc::O_RDONLY, 42) };
+    let _fd = unsafe { libc::open(name.as_ptr(), libc::O_RDONLY, 42) };
 }
 
 fn test_dup_stdout_stderr() {
@@ -92,12 +86,10 @@ fn test_dup_stdout_stderr() {
 fn test_dup() {
     let bytes = b"dup and dup2";
     let path = utils::prepare_with_content("miri_test_libc_dup.txt", bytes);
+    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
 
-    let mut name = path.into_os_string();
-    name.push("\0");
-    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
     unsafe {
-        let fd = libc::open(name_ptr, libc::O_RDONLY);
+        let fd = libc::open(name.as_ptr(), libc::O_RDONLY);
         let new_fd = libc::dup(fd);
         let new_fd2 = libc::dup2(fd, 8);
 
@@ -519,7 +511,7 @@ fn test_read_and_uninit() {
     {
         // We test that libc::read initializes its buffer.
         let path = utils::prepare_with_content("pass-libc-read-and-uninit.txt", &[1u8, 2, 3]);
-        let cpath = CString::new(path.clone().into_os_string().into_encoded_bytes()).unwrap();
+        let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
         unsafe {
             let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
             assert_ne!(fd, -1);
@@ -528,8 +520,8 @@ fn test_read_and_uninit() {
             let buf = buf.assume_init();
             assert_eq!(buf, 1);
             assert_eq!(libc::close(fd), 0);
+            assert_eq!(libc::unlink(cpath.as_ptr()), 0);
         }
-        remove_file(&path).unwrap();
     }
     {
         // We test that if we requested to read 4 bytes, but actually read 3 bytes, then
@@ -567,17 +559,15 @@ fn test_nofollow_not_symlink() {
 #[cfg(target_os = "macos")]
 fn test_ioctl() {
     let path = utils::prepare_with_content("miri_test_libc_ioctl.txt", &[]);
+    let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
 
-    let mut name = path.into_os_string();
-    name.push("\0");
-    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
     unsafe {
         // 100 surely is an invalid FD.
         assert_eq!(libc::ioctl(100, libc::FIOCLEX), -1);
         let errno = std::io::Error::last_os_error().raw_os_error().unwrap();
         assert_eq!(errno, libc::EBADF);
 
-        let fd = libc::open(name_ptr, libc::O_RDONLY);
+        let fd = libc::open(name.as_ptr(), libc::O_RDONLY);
         assert_eq!(libc::ioctl(fd, libc::FIOCLEX), 0);
     }
 }

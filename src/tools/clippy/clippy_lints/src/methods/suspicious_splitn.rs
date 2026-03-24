@@ -2,8 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_note;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_span::Symbol;
-use rustc_span::Spanned;
+use rustc_span::{Spanned, Symbol};
 
 use super::SUSPICIOUS_SPLITN;
 

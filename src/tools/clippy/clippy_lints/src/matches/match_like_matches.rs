@@ -8,7 +8,7 @@ use clippy_utils::{is_lint_allowed, is_wild, span_contains_comment};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Spanned;
 
@@ -22,7 +22,7 @@ pub(crate) fn check_if_let<'tcx>(
     then_expr: &'tcx Expr<'_>,
     else_expr: &'tcx Expr<'_>,
 ) {
-    if !span_contains_comment(cx.sess().source_map(), expr.span)
+    if !span_contains_comment(cx, expr.span)
         && cx.typeck_results().expr_ty(expr).is_bool()
         && let Some(b0) = find_bool_lit(then_expr)
         && let Some(b1) = find_bool_lit(else_expr)
@@ -71,7 +71,7 @@ pub(super) fn check_match<'tcx>(
 ) -> bool {
     if let Some((last_arm, arms_without_last)) = arms.split_last()
         && let Some((first_arm, middle_arms)) = arms_without_last.split_first()
-        && !span_contains_comment(cx.sess().source_map(), e.span)
+        && !span_contains_comment(cx, e.span)
         && cx.typeck_results().expr_ty(e).is_bool()
         && let Some(b0) = find_bool_lit(first_arm.body)
         && let Some(b1) = find_bool_lit(last_arm.body)

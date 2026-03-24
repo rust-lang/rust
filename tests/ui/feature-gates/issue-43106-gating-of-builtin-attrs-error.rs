@@ -37,7 +37,7 @@
 #[inline]
 //~^ ERROR attribute cannot be used on
 mod inline {
-    //~^ NOTE the inner attribute doesn't annotate this module
+    //~^ NOTE the inner attribute doesn't annotate this item
 
     mod inner { #![inline] }
     //~^ ERROR attribute cannot be used on

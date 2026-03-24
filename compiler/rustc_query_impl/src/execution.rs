@@ -18,7 +18,7 @@ use tracing::warn;
 
 use crate::dep_graph::{DepNode, DepNodeIndex};
 use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
-use crate::plumbing::{current_query_job, next_job_id, start_query};
+use crate::plumbing::{current_query_job, loadable_from_disk, next_job_id, start_query};
 use crate::query_impl::for_each_query_vtable;
 
 #[inline]
@@ -424,7 +424,7 @@ fn execute_job_incr<'tcx, C: QueryCache>(
     let dep_graph_data =
         tcx.dep_graph.data().expect("should always be present in incremental mode");
 
-    if !query.anon && !query.eval_always {
+    if !query.eval_always {
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node =
             dep_node_opt.get_or_insert_with(|| DepNode::construct(tcx, query.dep_kind, &key));
@@ -451,13 +451,6 @@ fn execute_job_incr<'tcx, C: QueryCache>(
     let prof_timer = tcx.prof.query_provider();
 
     let (result, dep_node_index) = start_query(job_id, query.depth_limit, || {
-        if query.anon {
-            // Call the query provider inside an anon task.
-            return dep_graph_data.with_anon_task_inner(tcx, query.dep_kind, || {
-                (query.invoke_provider_fn)(tcx, key)
-            });
-        }
-
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node =
             dep_node_opt.unwrap_or_else(|| DepNode::construct(tcx, query.dep_kind, &key));
@@ -495,80 +488,58 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
 
     debug_assert!(dep_graph_data.is_index_green(prev_index));
 
-    // First we try to load the result from the on-disk cache.
-    // Some things are never cached on disk.
-    if let Some(value) = (query.try_load_from_disk_fn)(tcx, key, prev_index, dep_node_index) {
-        if std::intrinsics::unlikely(tcx.sess.opts.unstable_opts.query_dep_graph) {
-            dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
-        }
+    // First try to load the result from the on-disk cache. Some things are never cached on disk.
+    let value;
+    let verify;
+    match (query.try_load_from_disk_fn)(tcx, key, prev_index, dep_node_index) {
+        Some(loaded_value) => {
+            if std::intrinsics::unlikely(tcx.sess.opts.unstable_opts.query_dep_graph) {
+                dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
+            }
 
-        let prev_fingerprint = dep_graph_data.prev_value_fingerprint_of(prev_index);
-        // If `-Zincremental-verify-ich` is specified, re-hash results from
-        // the cache and make sure that they have the expected fingerprint.
+            value = loaded_value;
+
+            let prev_fingerprint = dep_graph_data.prev_value_fingerprint_of(prev_index);
+            // If `-Zincremental-verify-ich` is specified, re-hash results from
+            // the cache and make sure that they have the expected fingerprint.
+            //
+            // If not, we still seek to verify a subset of fingerprints loaded
+            // from disk. Re-hashing results is fairly expensive, so we can't
+            // currently afford to verify every hash. This subset should still
+            // give us some coverage of potential bugs.
+            verify = prev_fingerprint.split().1.as_u64().is_multiple_of(32)
+                || tcx.sess.opts.unstable_opts.incremental_verify_ich;
+        }
+        None => {
+            // We could not load a result from the on-disk cache, so recompute. The dep-graph for
+            // this computation is already in-place, so we can just call the query provider.
+            let prof_timer = tcx.prof.query_provider();
+            value = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, key));
+            prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+            verify = true;
+        }
+    };
+
+    if verify {
+        // Verify that re-running the query produced a result with the expected hash.
+        // This catches bugs in query implementations, turning them into ICEs.
+        // For example, a query might sort its result by `DefId` - since `DefId`s are
+        // not stable across compilation sessions, the result could get up getting sorted
+        // in a different order when the query is re-run, even though all of the inputs
+        // (e.g. `DefPathHash` values) were green.
         //
-        // If not, we still seek to verify a subset of fingerprints loaded
-        // from disk. Re-hashing results is fairly expensive, so we can't
-        // currently afford to verify every hash. This subset should still
-        // give us some coverage of potential bugs though.
-        let try_verify = prev_fingerprint.split().1.as_u64().is_multiple_of(32);
-        if std::intrinsics::unlikely(
-            try_verify || tcx.sess.opts.unstable_opts.incremental_verify_ich,
-        ) {
-            incremental_verify_ich(
-                tcx,
-                dep_graph_data,
-                &value,
-                prev_index,
-                query.hash_value_fn,
-                query.format_value,
-            );
-        }
-
-        return value;
+        // See issue #82920 for an example of a miscompilation that would get turned into
+        // an ICE by this check
+        incremental_verify_ich(
+            tcx,
+            dep_graph_data,
+            &value,
+            prev_index,
+            query.hash_value_fn,
+            query.format_value,
+        );
     }
-
-    // We always expect to find a cached result for things that
-    // can be forced from `DepNode`.
-    debug_assert!(
-        !(query.will_cache_on_disk_for_key_fn)(tcx, key)
-            || !tcx.key_fingerprint_style(dep_node.kind).is_maybe_recoverable(),
-        "missing on-disk cache entry for {dep_node:?}"
-    );
-
-    // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
-    // we should actually be able to load it.
-    debug_assert!(
-        !(query.is_loadable_from_disk_fn)(tcx, key, prev_index),
-        "missing on-disk cache entry for loadable {dep_node:?}"
-    );
-
-    // We could not load a result from the on-disk cache, so
-    // recompute.
-    let prof_timer = tcx.prof.query_provider();
-
-    // The dep-graph for this computation is already in-place.
-    // Call the query provider.
-    let value = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, key));
-
-    prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-    // Verify that re-running the query produced a result with the expected hash
-    // This catches bugs in query implementations, turning them into ICEs.
-    // For example, a query might sort its result by `DefId` - since `DefId`s are
-    // not stable across compilation sessions, the result could get up getting sorted
-    // in a different order when the query is re-run, even though all of the inputs
-    // (e.g. `DefPathHash` values) were green.
-    //
-    // See issue #82920 for an example of a miscompilation that would get turned into
-    // an ICE by this check
-    incremental_verify_ich(
-        tcx,
-        dep_graph_data,
-        &value,
-        prev_index,
-        query.hash_value_fn,
-        query.format_value,
-    );
 
     value
 }
@@ -601,9 +572,6 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
         return EnsureCanSkip { skip_execution: false, dep_node: None };
     }
 
-    // Ensuring an anonymous query makes no sense
-    assert!(!query.anon);
-
     let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
 
     let serialized_dep_node_index = match tcx.dep_graph.try_mark_green(tcx, &dep_node) {
@@ -634,7 +602,8 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
             // In ensure-done mode, we can only skip execution for this key if
             // there's a disk-cached value available to load later if needed,
             // which guarantees the query provider will never run for this key.
-            let is_loadable = (query.is_loadable_from_disk_fn)(tcx, key, serialized_dep_node_index);
+            let is_loadable = (query.will_cache_on_disk_for_key_fn)(tcx, key)
+                && loadable_from_disk(tcx, serialized_dep_node_index);
             EnsureCanSkip { skip_execution: is_loadable, dep_node: Some(dep_node) }
         }
     }
@@ -702,8 +671,6 @@ pub(crate) fn force_query<'tcx, C: QueryCache>(
         tcx.prof.query_cache_hit(index.into());
         return;
     }
-
-    debug_assert!(!query.anon);
 
     ensure_sufficient_stack(|| {
         try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))

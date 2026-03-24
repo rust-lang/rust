@@ -27,7 +27,6 @@ use rustc_abi::{
     Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
 };
 use rustc_ast as ast;
-use rustc_ast::AttrVec;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
@@ -221,43 +220,15 @@ pub struct ResolverAstLowering<'tcx> {
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
 
-    /// Information about functions signatures for delegation items expansion
-    pub delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
     // Information about delegations which is used when handling recursive delegations
     pub delegation_infos: LocalDefIdMap<DelegationInfo>,
 }
-
-bitflags::bitflags! {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-    pub struct DelegationFnSigAttrs: u8 {
-        const TARGET_FEATURE = 1 << 0;
-        const MUST_USE = 1 << 1;
-    }
-}
-
-pub const DELEGATION_INHERIT_ATTRS_START: DelegationFnSigAttrs = DelegationFnSigAttrs::MUST_USE;
 
 #[derive(Debug)]
 pub struct DelegationInfo {
     // NodeId (either delegation.id or item_id in case of a trait impl) for signature resolution,
     // for details see https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914
     pub resolution_node: ast::NodeId,
-    pub attrs: DelegationAttrs,
-}
-
-#[derive(Debug)]
-pub struct DelegationAttrs {
-    pub flags: DelegationFnSigAttrs,
-    pub to_inherit: AttrVec,
-}
-
-#[derive(Debug)]
-pub struct DelegationFnSig {
-    pub header: ast::FnHeader,
-    pub param_count: usize,
-    pub has_self: bool,
-    pub c_variadic: bool,
-    pub attrs: DelegationAttrs,
 }
 
 #[derive(Clone, Copy, Debug, HashStable)]
@@ -2198,6 +2169,36 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             self.fn_abi_of_instance_no_deduced_attrs(query)
         }
+    }
+}
+
+// `HasAttrs` impls: allow `find_attr!(tcx, id, ...)` to work with both DefId-like types and HirId.
+
+impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for DefId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+        if let Some(did) = self.as_local() {
+            tcx.hir_attrs(tcx.local_def_id_to_hir_id(did))
+        } else {
+            tcx.attrs_for_def(self)
+        }
+    }
+}
+
+impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for LocalDefId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+        tcx.hir_attrs(tcx.local_def_id_to_hir_id(self))
+    }
+}
+
+impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::OwnerId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+        hir::attrs::HasAttrs::get_attrs(self.def_id, tcx)
+    }
+}
+
+impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::HirId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+        tcx.hir_attrs(self)
     }
 }
 

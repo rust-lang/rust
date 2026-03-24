@@ -2251,6 +2251,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if candidates.is_empty() {
                 return false;
             }
+            let mut specific_candidates = candidates.clone();
+            specific_candidates.retain(|(tr, _)| {
+                tr.with_replaced_self_ty(self.tcx, trait_pred.skip_binder().self_ty())
+                    == trait_pred.skip_binder().trait_ref
+            });
+            if !specific_candidates.is_empty() {
+                // We have found a subset of impls that fully satisfy the expected trait, only
+                // mention those types.
+                candidates = specific_candidates;
+            }
             if let &[(cand, def_id)] = &candidates[..] {
                 if self.tcx.is_diagnostic_item(sym::FromResidual, cand.def_id)
                     && !self.tcx.features().enabled(sym::try_trait_v2)
@@ -2289,6 +2299,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // FIXME: this could use a better heuristic, like just checking
             // that args[1..] is the same.
             let all_traits_equal = traits.len() == 1;
+            let mut types: Vec<_> =
+                candidates.iter().map(|(c, _)| c.self_ty().to_string()).collect();
+            types.sort();
+            types.dedup();
+            let all_types_equal = types.len() == 1;
 
             let end = if candidates.len() <= 9 || self.tcx.sess.opts.verbose {
                 candidates.len()
@@ -2302,6 +2317,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 for (c, def_id) in &candidates {
                     let msg = if all_traits_equal {
                         format!("`{}`", self.tcx.short_string(c.self_ty(), err.long_ty_path()))
+                    } else if all_types_equal {
+                        format!(
+                            "`{}`",
+                            self.tcx.short_string(c.print_only_trait_path(), err.long_ty_path())
+                        )
                     } else {
                         format!(
                             "`{}` implements `{}`",
@@ -2311,13 +2331,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     };
                     span.push_span_label(self.tcx.def_span(*def_id), msg);
                 }
-                err.span_help(
-                    span,
+                let msg = if all_types_equal {
+                    format!(
+                        "`{}` implements trait `{}`",
+                        self.tcx.short_string(candidates[0].0.self_ty(), err.long_ty_path()),
+                        self.tcx.short_string(trait_ref.print_trait_sugared(), err.long_ty_path()),
+                    )
+                } else {
                     format!(
                         "the following {other}types implement trait `{}`",
-                        trait_ref.print_trait_sugared(),
-                    ),
-                );
+                        self.tcx.short_string(trait_ref.print_trait_sugared(), err.long_ty_path()),
+                    )
+                };
+                err.span_help(span, msg);
             } else {
                 let candidate_names: Vec<String> = candidates
                     .iter()
@@ -2326,6 +2352,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             format!(
                                 "\n  {}",
                                 self.tcx.short_string(c.self_ty(), err.long_ty_path())
+                            )
+                        } else if all_types_equal {
+                            format!(
+                                "\n  {}",
+                                self.tcx
+                                    .short_string(c.print_only_trait_path(), err.long_ty_path())
                             )
                         } else {
                             format!(
@@ -2337,9 +2369,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                     })
                     .collect();
+                let msg = if all_types_equal {
+                    format!(
+                        "`{}` implements trait `{}`",
+                        self.tcx.short_string(candidates[0].0.self_ty(), err.long_ty_path()),
+                        self.tcx.short_string(trait_ref.print_trait_sugared(), err.long_ty_path()),
+                    )
+                } else {
+                    format!(
+                        "the following {other}types implement trait `{}`",
+                        self.tcx.short_string(trait_ref.print_trait_sugared(), err.long_ty_path()),
+                    )
+                };
+
                 err.help(format!(
-                    "the following {other}types implement trait `{}`:{}{}",
-                    trait_ref.print_trait_sugared(),
+                    "{msg}:{}{}",
                     candidate_names[..end].join(""),
                     if candidates.len() > 9 && !self.tcx.sess.opts.verbose {
                         format!("\nand {} others", candidates.len() - 8)

@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `std::utils`
+  --> $DIR/open-ns-11.rs:7:10
+   |
+LL | use std::utils::get_u32;
+   |          ^^^^^ could not find `utils` in `std`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

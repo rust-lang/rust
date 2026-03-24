@@ -18,7 +18,7 @@ use rustc_middle::ty::{
     AdtDef, AdtKind, AssocItem, Binder, ClosureKind, CoroutineArgsExt, EarlyBinder,
     ExistentialTraitRef, FnSig, GenericArgsRef, Instance, InstanceKind, IntrinsicDef, List,
     PolyFnSig, ScalarInt, TraitDef, TraitRef, Ty, TyCtxt, TyKind, TypeVisitableExt, UintTy,
-    ValTree, VariantDef,
+    ValTree, VariantDef, VtblEntry,
 };
 use rustc_middle::{mir, ty};
 use rustc_session::cstore::ForeignModule;
@@ -756,5 +756,17 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
                 .collect()
         };
         assoc_items
+    }
+
+    /// Get all vtable entries of a trait.
+    pub fn vtable_entries(&self, trait_ref: TraitRef<'tcx>) -> Vec<VtblEntry<'tcx>> {
+        self.tcx.vtable_entries(trait_ref).to_vec()
+    }
+
+    /// Returns the vtable entry at the given index.
+    ///
+    /// Returns `None` if the index is out of bounds.
+    pub fn vtable_entry(&self, trait_ref: TraitRef<'tcx>, idx: usize) -> Option<VtblEntry<'tcx>> {
+        self.vtable_entries(trait_ref).get(idx).copied()
     }
 }

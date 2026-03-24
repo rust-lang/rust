@@ -1,6 +1,6 @@
 use crate::spec::{
-    Abi, Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
-    TargetOptions,
+    Arch, Cc, CfgAbi, LinkerFlavor, Lld, LlvmAbi, PanicStrategy, RelocModel, Target,
+    TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -19,12 +19,12 @@ pub(crate) fn target() -> Target {
         arch: Arch::RiscV32,
 
         options: TargetOptions {
-            abi: Abi::Ilp32e,
+            cfg_abi: CfgAbi::Ilp32e,
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             cpu: "generic-rv32".into(),
             // The ilp32e ABI specifies the `data_layout`
-            llvm_abiname: "ilp32e".into(),
+            llvm_abiname: LlvmAbi::Ilp32e,
             max_atomic_width: Some(32),
             atomic_cas: false,
             features: "+e,+forced-atomics".into(),

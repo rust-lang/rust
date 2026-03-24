@@ -78,7 +78,11 @@ impl Clone for Struct {
     }
 }
 
-
+impl Struct { // No doc or code example and it's fine!
+    pub fn bar() {}
+    //~^ ERROR missing code example in this documentation
+    //~| ERROR missing documentation for an associated function
+}
 
 /// doc
 ///

@@ -707,7 +707,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         const DIAG_ATTRS: &[Symbol] =
-            &[sym::on_unimplemented, sym::do_not_recommend, sym::on_const];
+            &[sym::on_unimplemented, sym::do_not_recommend, sym::on_const, sym::on_move];
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && let [namespace, attribute, ..] = &*path.segments

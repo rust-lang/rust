@@ -533,7 +533,7 @@ fn make_bool_enum(make_pub: bool, make: &SyntaxFactory) -> ast::Enum {
             ],
         ),
     ));
-    make.enum_(
+    make.item_enum(
         [derive_eq],
         if make_pub { Some(make.visibility_pub()) } else { None },
         make.name("Bool"),

@@ -3020,46 +3020,6 @@ pub(crate) struct IllFormedAttributeInput {
 }
 
 #[derive(Diagnostic)]
-#[diag("unicode codepoint changing visible direction of text present in comment")]
-#[note(
-    "these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen"
-)]
-pub(crate) struct UnicodeTextFlow {
-    #[label(
-        "{$num_codepoints ->
-            [1] this comment contains an invisible unicode text flow control codepoint
-            *[other] this comment contains invisible unicode text flow control codepoints
-        }"
-    )]
-    pub comment_span: Span,
-    #[subdiagnostic]
-    pub characters: Vec<UnicodeCharNoteSub>,
-    #[subdiagnostic]
-    pub suggestions: Option<UnicodeTextFlowSuggestion>,
-
-    pub num_codepoints: usize,
-}
-
-#[derive(Subdiagnostic)]
-#[label("{$c_debug}")]
-pub(crate) struct UnicodeCharNoteSub {
-    #[primary_span]
-    pub span: Span,
-    pub c_debug: String,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    "if their presence wasn't intentional, you can remove them",
-    applicability = "machine-applicable",
-    style = "hidden"
-)]
-pub(crate) struct UnicodeTextFlowSuggestion {
-    #[suggestion_part(code = "")]
-    pub spans: Vec<Span>,
-}
-
-#[derive(Diagnostic)]
 #[diag(
     "absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition"
 )]
@@ -3166,108 +3126,6 @@ pub(crate) enum RedundantImportSub {
 }
 
 #[derive(Diagnostic)]
-pub(crate) enum PatternsInFnsWithoutBody {
-    #[diag("patterns aren't allowed in foreign function declarations")]
-    Foreign {
-        #[subdiagnostic]
-        sub: PatternsInFnsWithoutBodySub,
-    },
-    #[diag("patterns aren't allowed in functions without bodies")]
-    Bodiless {
-        #[subdiagnostic]
-        sub: PatternsInFnsWithoutBodySub,
-    },
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(
-    "remove `mut` from the parameter",
-    code = "{ident}",
-    applicability = "machine-applicable"
-)]
-pub(crate) struct PatternsInFnsWithoutBodySub {
-    #[primary_span]
-    pub span: Span,
-
-    pub ident: Ident,
-}
-
-#[derive(Diagnostic)]
-#[diag("prefix `{$prefix}` is unknown")]
-pub(crate) struct ReservedPrefix {
-    #[label("unknown prefix")]
-    pub label: Span,
-    #[suggestion(
-        "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
-
-    pub prefix: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("prefix `'r` is reserved")]
-pub(crate) struct RawPrefix {
-    #[label("reserved prefix")]
-    pub label: Span,
-    #[suggestion(
-        "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "this labeled break expression is easy to confuse with an unlabeled break with a labeled value expression"
-)]
-pub(crate) struct BreakWithLabelAndLoop {
-    #[subdiagnostic]
-    pub sub: BreakWithLabelAndLoopSub,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion("wrap this expression in parentheses", applicability = "machine-applicable")]
-pub(crate) struct BreakWithLabelAndLoopSub {
-    #[suggestion_part(code = "(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("where clause not allowed here")]
-#[note("see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information")]
-pub(crate) struct DeprecatedWhereClauseLocation {
-    #[subdiagnostic]
-    pub suggestion: DeprecatedWhereClauseLocationSugg,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum DeprecatedWhereClauseLocationSugg {
-    #[multipart_suggestion(
-        "move it to the end of the type declaration",
-        applicability = "machine-applicable"
-    )]
-    MoveToEnd {
-        #[suggestion_part(code = "")]
-        left: Span,
-        #[suggestion_part(code = "{sugg}")]
-        right: Span,
-
-        sugg: String,
-    },
-    #[suggestion("remove this `where`", code = "", applicability = "machine-applicable")]
-    RemoveWhere {
-        #[primary_span]
-        span: Span,
-    },
-}
-
-#[derive(Diagnostic)]
 #[diag("lifetime parameter `{$ident}` only used once")]
 pub(crate) struct SingleUseLifetime {
     #[label("this lifetime...")]
@@ -3289,15 +3147,6 @@ pub(crate) struct SingleUseLifetimeSugg {
     pub use_span: Span,
 
     pub replace_lt: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("lifetime parameter `{$ident}` never used")]
-pub(crate) struct UnusedLifetime {
-    #[suggestion("elide the unused lifetime", code = "", applicability = "machine-applicable")]
-    pub deletion_span: Option<Span>,
-
-    pub ident: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -3422,28 +3271,6 @@ pub(crate) enum MutRefSugg {
 #[derive(Diagnostic)]
 #[diag("`use` of a local item without leading `self::`, `super::`, or `crate::`")]
 pub(crate) struct UnqualifiedLocalImportsDiag;
-
-#[derive(Diagnostic)]
-#[diag("will be parsed as a guarded string in Rust 2024")]
-pub(crate) struct ReservedString {
-    #[suggestion(
-        "insert whitespace here to avoid this being parsed as a guarded string in Rust 2024",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("reserved token in Rust 2024")]
-pub(crate) struct ReservedMultihash {
-    #[suggestion(
-        "insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
-}
 
 #[derive(Diagnostic)]
 #[diag("direct cast of function item into an integer")]
@@ -3753,19 +3580,6 @@ pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("visibility qualifiers have no effect on `const _` declarations")]
-#[note("`const _` does not declare a name, so there is nothing for the qualifier to apply to")]
-pub(crate) struct UnusedVisibility {
-    #[suggestion(
-        "remove the qualifier",
-        style = "short",
-        code = "",
-        applicability = "machine-applicable"
-    )]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("doc alias is duplicated")]
 pub(crate) struct DocAliasDuplicated {
     #[label("first defined here")]
@@ -3954,6 +3768,11 @@ pub(crate) struct MissingOptionsForOnUnimplementedAttr;
 pub(crate) struct MissingOptionsForOnConstAttr;
 
 #[derive(Diagnostic)]
+#[diag("missing options for `on_move` attribute")]
+#[help("at least one of the `message`, `note` and `label` options are expected")]
+pub(crate) struct MissingOptionsForOnMoveAttr;
+
+#[derive(Diagnostic)]
 #[diag("malformed `on_unimplemented` attribute")]
 #[help("only `message`, `note` and `label` are allowed as options")]
 pub(crate) struct MalformedOnUnimplementedAttrLint {
@@ -3973,3 +3792,27 @@ pub(crate) struct MalformedOnConstAttrLint {
 #[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]
 #[note("this method was used to add checks to the `Eq` derive macro")]
 pub(crate) struct EqInternalMethodImplemented;
+
+#[derive(Diagnostic)]
+#[diag("unknown or malformed `on_move` attribute")]
+#[help(
+    "only `message`, `note` and `label` are allowed as options. Their values must be string literals"
+)]
+pub(crate) struct MalformedOnMoveAttrLint {
+    #[label("invalid option found here")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help("expect `Self` as format argument")]
+pub(crate) struct OnMoveMalformedFormatLiterals {
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("expected a literal or missing delimiter")]
+#[help(
+    "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
+)]
+pub(crate) struct OnMoveMalformedAttrExpectedLiteralOrDelimiter;

@@ -1,0 +1,36 @@
+error[E0425]: cannot find type `B` in this scope
+  --> $DIR/undeclared-generic-parameter.rs:2:8
+   |
+LL | struct A;
+   | --------- similarly named struct `A` defined here
+LL | impl A<B> {}
+   |        ^
+   |
+help: a struct with a similar name exists
+   |
+LL - impl A<B> {}
+LL + impl A<A> {}
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<B> A<B> {}
+   |     +++
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/undeclared-generic-parameter.rs:2:6
+   |
+LL | impl A<B> {}
+   |      ^--- help: remove the unnecessary generics
+   |      |
+   |      expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/undeclared-generic-parameter.rs:1:8
+   |
+LL | struct A;
+   |        ^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0425.
+For more information about an error, try `rustc --explain E0107`.

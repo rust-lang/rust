@@ -2,7 +2,6 @@
 //@ check-pass
 
 #![feature(generic_const_exprs)]
-//~^ WARN the feature `generic_const_exprs` is incomplete
 
 #[inline(always)]
 fn from_fn_1<const N: usize, F: FnMut(usize) -> f32>(mut f: F) -> [f32; N] {

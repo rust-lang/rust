@@ -815,7 +815,8 @@ impl File {
 
     /// Acquire an exclusive lock on the file. Blocks until the lock can be acquired.
     ///
-    /// This acquires an exclusive lock; no other file handle to this file may acquire another lock.
+    /// This acquires an exclusive lock; no other file handle to this file, in this or any other
+    /// process, may acquire another lock.
     ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
@@ -868,8 +869,8 @@ impl File {
 
     /// Acquire a shared (non-exclusive) lock on the file. Blocks until the lock can be acquired.
     ///
-    /// This acquires a shared lock; more than one file handle may hold a shared lock, but none may
-    /// hold an exclusive lock at the same time.
+    /// This acquires a shared lock; more than one file handle, in this or any other process, may
+    /// hold a shared lock, but none may hold an exclusive lock at the same time.
     ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
@@ -923,7 +924,8 @@ impl File {
     /// Returns `Err(TryLockError::WouldBlock)` if a different lock is already held on this file
     /// (via another handle/descriptor).
     ///
-    /// This acquires an exclusive lock; no other file handle to this file may acquire another lock.
+    /// This acquires an exclusive lock; no other file handle to this file, in this or any other
+    /// process, may acquire another lock.
     ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
@@ -987,8 +989,8 @@ impl File {
     /// Returns `Err(TryLockError::WouldBlock)` if a different lock is already held on this file
     /// (via another handle/descriptor).
     ///
-    /// This acquires a shared lock; more than one file handle may hold a shared lock, but none may
-    /// hold an exclusive lock at the same time.
+    /// This acquires a shared lock; more than one file handle, in this or any other process, may
+    /// hold a shared lock, but none may hold an exclusive lock at the same time.
     ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with

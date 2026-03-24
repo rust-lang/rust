@@ -93,7 +93,7 @@ error: invalid ABI for `clobber_abi`
 LL |         asm!("", clobber_abi("foo"));
    |                  ^^^^^^^^^^^^^^^^^^
    |
-   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`, `win64`, `sysv64`
+   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`, `win64`, and `sysv64`
 
 error: `C` ABI specified multiple times
   --> $DIR/bad-options.rs:28:52

@@ -673,22 +673,6 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    PatternsInFnsWithoutBody {
-        span: Span,
-        ident: Ident,
-        is_foreign: bool,
-    },
-    ReservedPrefix(Span, String),
-    /// `'r#` in edition < 2021.
-    RawPrefix(Span),
-    /// `##` or `#"` in edition < 2024.
-    ReservedString {
-        is_string: bool,
-        suggestion: Span,
-    },
-    BreakWithLabelAndLoop(Span),
-    UnicodeTextFlow(Span, String),
-    DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,
@@ -697,7 +681,8 @@ pub enum BuiltinLintDiag {
         deletion_span: Option<Span>,
         /// Span of the single use, or None if the lifetime is never used.
         /// If true, the lifetime will be fully elided.
-        use_span: Option<(Span, bool)>,
+        use_span: Span,
+        elidable: bool,
         ident: Ident,
     },
     NamedArgumentUsedPositionally {
@@ -746,7 +731,6 @@ pub enum BuiltinLintDiag {
         extern_crate: Symbol,
         local_crate: Symbol,
     },
-    UnusedVisibility(Span),
     AttributeLint(AttributeLintKind),
     UnreachableCfg {
         span: Span,
@@ -840,6 +824,9 @@ pub enum AttributeLintKind {
     MalformedOnConstAttr {
         span: Span,
     },
+    MalformedOnMoveAttr {
+        span: Span,
+    },
     MalformedDiagnosticFormat {
         warning: FormatWarning,
     },
@@ -855,6 +842,11 @@ pub enum AttributeLintKind {
     },
     MissingOptionsForOnUnimplemented,
     MissingOptionsForOnConst,
+    MissingOptionsForOnMove,
+    OnMoveMalformedFormatLiterals {
+        name: Symbol,
+    },
+    OnMoveMalformedAttrExpectedLiteralOrDelimiter,
 }
 
 #[derive(Debug, Clone, HashStable_Generic)]

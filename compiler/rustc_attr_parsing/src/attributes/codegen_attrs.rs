@@ -12,7 +12,6 @@ pub(crate) struct OptimizeParser;
 
 impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     const PATH: &[Symbol] = &[sym::optimize];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -68,7 +67,6 @@ pub(crate) struct CoverageParser;
 
 impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
     const PATH: &[Symbol] = &[sym::coverage];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -119,7 +117,6 @@ pub(crate) struct ExportNameParser;
 
 impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Static),
@@ -157,7 +154,6 @@ pub(crate) struct RustcObjcClassParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcObjcClassParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_class];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
@@ -169,7 +165,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjcClassParser {
             return None;
         };
         let Some(classname) = nv.value_as_str() else {
-            // `#[rustc_objc_class = ...]` is expected to be used as an implementatioin detail
+            // `#[rustc_objc_class = ...]` is expected to be used as an implementation detail
             // inside a standard library macro, but `cx.expected_string_literal` exposes too much.
             // Use a custom error message instead.
             cx.emit_err(ObjcClassExpectedStringLiteral { span: nv.value_span });
@@ -189,7 +185,6 @@ pub(crate) struct RustcObjcSelectorParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcObjcSelectorParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_selector];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
@@ -201,7 +196,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjcSelectorParser {
             return None;
         };
         let Some(methname) = nv.value_as_str() else {
-            // `#[rustc_objc_selector = ...]` is expected to be used as an implementatioin detail
+            // `#[rustc_objc_selector = ...]` is expected to be used as an implementation detail
             // inside a standard library macro, but `cx.expected_string_literal` exposes too much.
             // Use a custom error message instead.
             cx.emit_err(ObjcSelectorExpectedStringLiteral { span: nv.value_span });
@@ -595,7 +590,6 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
         r#"realtime = "nonblocking|blocking|caller""#,
     ]);
 
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
@@ -724,7 +718,6 @@ pub(crate) struct PatchableFunctionEntryParser;
 impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
     const PATH: &[Symbol] = &[sym::patchable_function_entry];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["prefix_nops = m, entry_nops = n"]);
 

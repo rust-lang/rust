@@ -35,8 +35,10 @@ macro_rules! declare_hooks {
 
         impl Default for Providers {
             fn default() -> Self {
+                #[allow(unused)]
                 Providers {
-                    $($name: |_, $($arg,)*| default_hook(stringify!($name), &($($arg,)*))),*
+                    $($name:
+                        |_, $($arg,)*| default_hook(stringify!($name))),*
                 }
             }
         }
@@ -116,8 +118,6 @@ declare_hooks! {
 }
 
 #[cold]
-fn default_hook(name: &str, args: &dyn std::fmt::Debug) -> ! {
-    bug!(
-        "`tcx.{name}{args:?}` cannot be called as `{name}` was never assigned to a provider function"
-    )
+fn default_hook(name: &str) -> ! {
+    bug!("`tcx.{name}` cannot be called as `{name}` was never assigned to a provider function")
 }

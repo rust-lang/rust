@@ -188,53 +188,6 @@ pub fn assert_dyn_send<T: ?Sized + PointeeSized + DynSend>() {}
 pub fn assert_dyn_send_val<T: ?Sized + PointeeSized + DynSend>(_t: &T) {}
 pub fn assert_dyn_send_sync_val<T: ?Sized + PointeeSized + DynSync + DynSend>(_t: &T) {}
 
-#[derive(Copy, Clone)]
-pub struct FromDyn<T>(T);
-
-impl<T> FromDyn<T> {
-    #[inline(always)]
-    pub fn from(val: T) -> Self {
-        // Check that `sync::is_dyn_thread_safe()` is true on creation so we can
-        // implement `Send` and `Sync` for this structure when `T`
-        // implements `DynSend` and `DynSync` respectively.
-        assert!(crate::sync::is_dyn_thread_safe());
-        FromDyn(val)
-    }
-
-    #[inline(always)]
-    pub fn derive<O>(&self, val: O) -> FromDyn<O> {
-        // We already did the check for `sync::is_dyn_thread_safe()` when creating `Self`
-        FromDyn(val)
-    }
-
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.0
-    }
-}
-
-// `FromDyn` is `Send` if `T` is `DynSend`, since it ensures that sync::is_dyn_thread_safe() is true.
-unsafe impl<T: DynSend> Send for FromDyn<T> {}
-
-// `FromDyn` is `Sync` if `T` is `DynSync`, since it ensures that sync::is_dyn_thread_safe() is true.
-unsafe impl<T: DynSync> Sync for FromDyn<T> {}
-
-impl<T> std::ops::Deref for FromDyn<T> {
-    type Target = T;
-
-    #[inline(always)]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> std::ops::DerefMut for FromDyn<T> {
-    #[inline(always)]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 // A wrapper to convert a struct that is already a `Send` or `Sync` into
 // an instance of `DynSend` and `DynSync`, since the compiler cannot infer
 // it automatically in some cases. (e.g. Box<dyn Send / Sync>)

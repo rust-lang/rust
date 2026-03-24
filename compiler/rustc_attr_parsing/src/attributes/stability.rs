@@ -1,6 +1,7 @@
 use std::num::NonZero;
 
 use rustc_errors::ErrorGuaranteed;
+use rustc_feature::ACCEPTED_LANG_FEATURES;
 use rustc_hir::target::GenericParamKind;
 use rustc_hir::{
     DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
@@ -366,7 +367,7 @@ pub(crate) fn parse_stability<S: Stage>(
     }
 }
 
-// Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
+/// Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
 /// attribute, and return the feature name and its stability information.
 pub(crate) fn parse_unstability<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
@@ -451,6 +452,16 @@ pub(crate) fn parse_unstability<S: Stage>(
 
     match (feature, issue) {
         (Ok(feature), Ok(_)) => {
+            // Stable *language* features shouldn't be used as unstable library features.
+            // (Not doing this for stable library features is checked by tidy.)
+            if ACCEPTED_LANG_FEATURES.iter().any(|f| f.name == feature) {
+                cx.emit_err(session_diagnostics::UnstableAttrForAlreadyStableFeature {
+                    attr_span: cx.attr_span,
+                    item_span: cx.target_span,
+                });
+                return None;
+            }
+
             let level = StabilityLevel::Unstable {
                 reason: UnstableReason::from_opt_reason(reason),
                 issue: issue_num,
