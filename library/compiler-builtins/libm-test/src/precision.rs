@@ -27,7 +27,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
         Bn::Eq | Bn::Ne | Bn::Gt | Bn::Ge | Bn::Lt | Bn::Le | Bn::Unord | Bn::Ilogb => return None,
 
         // Convrsion operations must be precise.
-        BaseName::Extend | BaseName::Narrow | BaseName::Ftoi => 0,
+        Bn::Extend | Bn::Narrow | Bn::Ftoi | Bn::Itof => 0,
 
         // Operations that require exact results. This list should correlate with what we
         // have documented at <https://doc.rust-lang.org/std/primitive.f32.html>.
@@ -537,3 +537,10 @@ impl MaybeOverride<(f32, f32, f32)> for SpecialCase {}
 impl MaybeOverride<(f64, f64, f64)> for SpecialCase {}
 #[cfg(f128_enabled)]
 impl MaybeOverride<(f128, f128, f128)> for SpecialCase {}
+
+impl MaybeOverride<(i32,)> for SpecialCase {}
+impl MaybeOverride<(i64,)> for SpecialCase {}
+impl MaybeOverride<(i128,)> for SpecialCase {}
+impl MaybeOverride<(u32,)> for SpecialCase {}
+impl MaybeOverride<(u64,)> for SpecialCase {}
+impl MaybeOverride<(u128,)> for SpecialCase {}

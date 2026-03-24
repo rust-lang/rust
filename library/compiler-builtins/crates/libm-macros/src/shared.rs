@@ -111,6 +111,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         fn_list: &["powif128"],
         scope: OpScope::BuiltinsPublic,
     },
+    /* Comparison */
     NestedOp {
         rust_sig: Signature {
             args: &[Ty::F16, Ty::F16],
@@ -161,6 +162,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         ],
         scope: OpScope::BuiltinsPublic,
     },
+    /* conversion */
     NestedOp {
         rust_sig: Signature {
             args: &[Ty::F16],
@@ -429,6 +431,168 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["ftoi_f128_u128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I32],
+            returns: &[Ty::F32],
+        },
+        c_sig: None,
+        fn_list: &["itof_i32_f32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I64],
+            returns: &[Ty::F32],
+        },
+        c_sig: None,
+        fn_list: &["itof_i64_f32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I128],
+            returns: &[Ty::F32],
+        },
+        c_sig: None,
+        fn_list: &["itof_i128_f32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I32],
+            returns: &[Ty::F64],
+        },
+        c_sig: None,
+        fn_list: &["itof_i32_f64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I64],
+            returns: &[Ty::F64],
+        },
+        c_sig: None,
+        fn_list: &["itof_i64_f64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I128],
+            returns: &[Ty::F64],
+        },
+        c_sig: None,
+        fn_list: &["itof_i128_f64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I32],
+            returns: &[Ty::F128],
+        },
+        c_sig: None,
+        fn_list: &["itof_i32_f128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I64],
+            returns: &[Ty::F128],
+        },
+        c_sig: None,
+        fn_list: &["itof_i64_f128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I128],
+            returns: &[Ty::F128],
+        },
+        c_sig: None,
+        fn_list: &["itof_i128_f128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U32],
+            returns: &[Ty::F32],
+        },
+        c_sig: None,
+        fn_list: &["itof_u32_f32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U64],
+            returns: &[Ty::F32],
+        },
+        c_sig: None,
+        fn_list: &["itof_u64_f32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U128],
+            returns: &[Ty::F32],
+        },
+        c_sig: None,
+        fn_list: &["itof_u128_f32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U32],
+            returns: &[Ty::F64],
+        },
+        c_sig: None,
+        fn_list: &["itof_u32_f64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U64],
+            returns: &[Ty::F64],
+        },
+        c_sig: None,
+        fn_list: &["itof_u64_f64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U128],
+            returns: &[Ty::F64],
+        },
+        c_sig: None,
+        fn_list: &["itof_u128_f64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U32],
+            returns: &[Ty::F128],
+        },
+        c_sig: None,
+        fn_list: &["itof_u32_f128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U64],
+            returns: &[Ty::F128],
+        },
+        c_sig: None,
+        fn_list: &["itof_u64_f128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U128],
+            returns: &[Ty::F128],
+        },
+        c_sig: None,
+        fn_list: &["itof_u128_f128"],
         scope: OpScope::BuiltinsPublic,
     },
     /*******************

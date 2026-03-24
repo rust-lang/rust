@@ -213,6 +213,24 @@ libm_macros::for_each_function! {
         ilogbf,
         ilogbf128,
         ilogbf16,
+        itof_i128_f128,
+        itof_i128_f32,
+        itof_i128_f64,
+        itof_i32_f128,
+        itof_i32_f32,
+        itof_i32_f64,
+        itof_i64_f128,
+        itof_i64_f32,
+        itof_i64_f64,
+        itof_u128_f128,
+        itof_u128_f32,
+        itof_u128_f64,
+        itof_u32_f128,
+        itof_u32_f32,
+        itof_u32_f64,
+        itof_u64_f128,
+        itof_u64_f32,
+        itof_u64_f64,
         jn,
         jnf,
         ldexp,
@@ -828,7 +846,7 @@ macro_rules! impl_extend_trunc {
     };
 }
 
-macro_rules! impl_ftoi {
+macro_rules! impl_ftoi_itof {
     ($fty:ty, $ity:ty) => {
         paste::paste! {
             impl MpOp for crate::op::[<ftoi_ $fty _ $ity>]::Routine {
@@ -851,6 +869,19 @@ macro_rules! impl_ftoi {
                             Self::RustRet::MAX
                         }
                     })
+                }
+            }
+
+            impl MpOp for crate::op::[<itof_ $ity _ $fty>]::Routine {
+                type MpTy = MpFloat;
+
+                fn new_mp() -> Self::MpTy {
+                    new_mpfloat::<Self::RustRet>()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    prep_retval::<Self::RustRet>(this, Ordering::Equal)
                 }
             }
         }
@@ -885,30 +916,30 @@ impl_extend_trunc!(f32, f128);
 #[cfg(f128_enabled)]
 impl_extend_trunc!(f64, f128);
 
-impl_ftoi!(f32, i32);
-impl_ftoi!(f32, i64);
-impl_ftoi!(f32, i128);
-impl_ftoi!(f32, u32);
-impl_ftoi!(f32, u64);
-impl_ftoi!(f32, u128);
-impl_ftoi!(f64, i32);
-impl_ftoi!(f64, i64);
-impl_ftoi!(f64, i128);
-impl_ftoi!(f64, u32);
-impl_ftoi!(f64, u64);
-impl_ftoi!(f64, u128);
+impl_ftoi_itof!(f32, i32);
+impl_ftoi_itof!(f32, i64);
+impl_ftoi_itof!(f32, i128);
+impl_ftoi_itof!(f32, u32);
+impl_ftoi_itof!(f32, u64);
+impl_ftoi_itof!(f32, u128);
+impl_ftoi_itof!(f64, i32);
+impl_ftoi_itof!(f64, i64);
+impl_ftoi_itof!(f64, i128);
+impl_ftoi_itof!(f64, u32);
+impl_ftoi_itof!(f64, u64);
+impl_ftoi_itof!(f64, u128);
 #[cfg(f128_enabled)]
-impl_ftoi!(f128, i32);
+impl_ftoi_itof!(f128, i32);
 #[cfg(f128_enabled)]
-impl_ftoi!(f128, i64);
+impl_ftoi_itof!(f128, i64);
 #[cfg(f128_enabled)]
-impl_ftoi!(f128, i128);
+impl_ftoi_itof!(f128, i128);
 #[cfg(f128_enabled)]
-impl_ftoi!(f128, u32);
+impl_ftoi_itof!(f128, u32);
 #[cfg(f128_enabled)]
-impl_ftoi!(f128, u64);
+impl_ftoi_itof!(f128, u64);
 #[cfg(f128_enabled)]
-impl_ftoi!(f128, u128);
+impl_ftoi_itof!(f128, u128);
 
 // `lgamma_r` is not a simple suffix so we can't use the above macro.
 impl MpOp for crate::op::lgamma_r::Routine {

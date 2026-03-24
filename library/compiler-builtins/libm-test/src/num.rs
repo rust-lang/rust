@@ -1,6 +1,7 @@
 //! Helpful numeric operations.
 
 use std::cmp::min;
+use std::fmt;
 use std::ops::RangeInclusive;
 
 use libm::support::Float;
@@ -257,15 +258,20 @@ where
 }
 
 /// Returns an iterator of up to `steps` integers evenly distributed.
-pub fn linear_ints(
-    range: RangeInclusive<i32>,
+pub fn linear_ints<I>(
+    range: RangeInclusive<I>,
     steps: u64,
-) -> (impl Iterator<Item = i32> + Clone, u64) {
-    let steps = steps.checked_sub(1).unwrap();
-    let between = u64::from(range.start().abs_diff(*range.end()));
-    let spacing = i32::try_from((between / steps).max(1)).unwrap();
-    let steps = steps.min(between);
-    let mut x: i32 = *range.start();
+) -> (impl Iterator<Item = I> + Clone, u64)
+where
+    I: Int + TryFrom<u128, Error: fmt::Debug>,
+    u128: TryFrom<I::Unsigned, Error: fmt::Debug>,
+{
+    let spaces: u128 = steps.checked_sub(1).unwrap().into();
+    let between = u128::try_from(range.start().abs_diff(*range.end())).expect("out of u128 range");
+    let spacing = I::try_from((between / spaces).max(1)).unwrap();
+    let steps = spaces.min(between);
+    let steps = u64::try_from(steps).expect("> u64::MAX steps");
+    let mut x: I = *range.start();
     (
         (0..=steps).map(move |_| {
             let res = x;
@@ -276,6 +282,11 @@ pub fn linear_ints(
         }),
         steps + 1,
     )
+}
+
+/// `..` as a `RangeInclusive`.
+pub fn full_range<I: MinInt>() -> RangeInclusive<I> {
+    I::MIN..=I::MAX
 }
 
 #[cfg(test)]

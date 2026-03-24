@@ -298,6 +298,28 @@ impl_edge_case_input!(f64);
 #[cfg(f128_enabled)]
 impl_edge_case_input!(f128);
 
+macro_rules! impl_edge_case_input_int {
+    ($ity:ty) => {
+        impl<Op> EdgeCaseInput<Op> for ($ity,)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let (iter0, steps0) = int_edge_cases(ctx, 0);
+                let iter0 = iter0.map(|v| (v,));
+                (iter0, steps0)
+            }
+        }
+    };
+}
+
+impl_edge_case_input_int!(i32);
+impl_edge_case_input_int!(i64);
+impl_edge_case_input_int!(i128);
+impl_edge_case_input_int!(u32);
+impl_edge_case_input_int!(u64);
+impl_edge_case_input_int!(u128);
+
 pub fn get_test_cases<Op>(
     ctx: &CheckCtx,
 ) -> (impl Iterator<Item = Op::RustArgs> + Send + use<'_, Op>, u64)

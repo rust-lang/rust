@@ -1,9 +1,10 @@
 use std::fmt;
 use std::ops::RangeInclusive;
 
-use libm::support::{Float, MinInt};
+use libm::support::{Float, Int, MinInt};
 
 use crate::domain::get_domain;
+use crate::num::full_range;
 use crate::run_cfg::{int_range, iteration_count};
 use crate::{Arg0, Arg1, Arg2, CheckCtx, MathOp, linear_ints, logspace};
 
@@ -69,7 +70,14 @@ fn value_count<F: Float>() -> Option<u64>
 where
     u64: TryFrom<F::Int>,
 {
-    u64::try_from(F::Int::MAX)
+    value_count_int::<F::Int>()
+}
+
+fn value_count_int<I: Int>() -> Option<u64>
+where
+    u64: TryFrom<I::Unsigned>,
+{
+    u64::try_from(I::MAX.abs_diff(I::MIN))
         .ok()
         .and_then(|max| max.checked_add(1))
 }
@@ -180,7 +188,7 @@ macro_rules! impl_spaced_input {
             Op: MathOp<RustArgs = Self>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let range0 = int_range(ctx, 0);
+                let range0 = int_range(ctx, 0).unwrap_or(full_range());
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 1);
                 match value_count::<Arg1<Op>>() {
@@ -211,7 +219,7 @@ macro_rules! impl_spaced_input {
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let max_steps0 = iteration_count(ctx, 0);
-                let range1 = int_range(ctx, 1);
+                let range1 = int_range(ctx, 1).unwrap_or(full_range());
                 let max_steps1 = iteration_count(ctx, 1);
                 match value_count::<Arg0<Op>>() {
                     Some(count0) if count0 <= max_steps0 => {
@@ -244,6 +252,38 @@ impl_spaced_input!(f32);
 impl_spaced_input!(f64);
 #[cfg(f128_enabled)]
 impl_spaced_input!(f128);
+
+macro_rules! impl_spaced_input_int {
+    ($ity:ty) => {
+        impl<Op> SpacedInput<Op> for ($ity,)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let range = int_range(ctx, 0).unwrap_or(full_range());
+                let max_steps0 = iteration_count(ctx, 0);
+                match value_count_int::<Arg0<Op>>() {
+                    Some(steps0) if steps0 <= max_steps0 => {
+                        let iter0 = range.map(|v| (v,));
+                        (EitherIter::A(iter0), steps0)
+                    }
+                    _ => {
+                        let (iter0, steps0) = linear_ints::<Arg0<Op>>(range, max_steps0);
+                        let iter0 = iter0.map(|v| (v,));
+                        (EitherIter::B(iter0), steps0)
+                    }
+                }
+            }
+        }
+    };
+}
+
+impl_spaced_input_int!(i32);
+impl_spaced_input_int!(i64);
+impl_spaced_input_int!(i128);
+impl_spaced_input_int!(u32);
+impl_spaced_input_int!(u64);
+impl_spaced_input_int!(u128);
 
 /// Create a test case iterator for extensive inputs. Also returns the total test case count.
 pub fn get_test_cases<Op>(

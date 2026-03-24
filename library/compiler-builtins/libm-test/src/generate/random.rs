@@ -2,7 +2,8 @@ use std::env;
 use std::ops::RangeInclusive;
 use std::sync::LazyLock;
 
-use libm::support::Float;
+use libm::support::{Float, Int};
+use rand::distr::uniform::SampleUniform;
 use rand::distr::{Alphanumeric, StandardUniform};
 use rand::prelude::Distribution;
 use rand::{RngExt, SeedableRng};
@@ -10,6 +11,7 @@ use rand_chacha::ChaCha8Rng;
 
 use super::KnownSize;
 use crate::CheckCtx;
+use crate::num::full_range;
 use crate::run_cfg::{int_range, iteration_count};
 
 pub(crate) const SEED_ENV: &str = "LIBM_SEED";
@@ -43,9 +45,12 @@ where
 }
 
 /// Generate a sequence of deterministically random `i32`s within a specified range.
-fn random_ints(count: u64, range: RangeInclusive<i32>) -> impl Iterator<Item = i32> {
+fn random_ints<I>(count: u64, range: RangeInclusive<I>) -> impl Iterator<Item = I>
+where
+    I: Int + SampleUniform,
+{
     let mut rng = ChaCha8Rng::from_seed(*SEED);
-    (0..count).map(move |_| rng.random_range::<i32, _>(range.clone()))
+    (0..count).map(move |_| rng.random_range::<I, _>(range.clone()))
 }
 
 macro_rules! impl_random_input {
@@ -86,7 +91,7 @@ macro_rules! impl_random_input {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let count0 = iteration_count(ctx, 0);
                 let count1 = iteration_count(ctx, 1);
-                let range0 = int_range(ctx, 0);
+                let range0 = int_range::<i32>(ctx, 0).unwrap_or(full_range());
                 let iter = random_ints(count0, range0)
                     .flat_map(move |f1: i32| random_floats(count1).map(move |f2: $fty| (f1, f2)));
                 (iter, count0 * count1)
@@ -97,7 +102,7 @@ macro_rules! impl_random_input {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let count0 = iteration_count(ctx, 0);
                 let count1 = iteration_count(ctx, 1);
-                let range1 = int_range(ctx, 1);
+                let range1 = int_range::<i32>(ctx, 1).unwrap_or(full_range());
                 let iter = random_floats(count0).flat_map(move |f1: $fty| {
                     random_ints(count1, range1.clone()).map(move |f2: i32| (f1, f2))
                 });
@@ -113,6 +118,26 @@ impl_random_input!(f32);
 impl_random_input!(f64);
 #[cfg(f128_enabled)]
 impl_random_input!(f128);
+
+macro_rules! impl_random_input_int {
+    ($ity:ty) => {
+        impl RandomInput for ($ity,) {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let count = iteration_count(ctx, 0);
+                let range = int_range::<$ity>(ctx, 0).unwrap_or(full_range());
+                let iter = random_ints(count, range).map(|f: $ity| (f,));
+                (iter, count)
+            }
+        }
+    };
+}
+
+impl_random_input_int!(i32);
+impl_random_input_int!(i64);
+impl_random_input_int!(i128);
+impl_random_input_int!(u32);
+impl_random_input_int!(u64);
+impl_random_input_int!(u128);
 
 /// Create a test case iterator.
 pub fn get_test_cases<RustArgs: RandomInput>(

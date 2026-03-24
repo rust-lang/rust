@@ -390,6 +390,84 @@ fn ftoi_f128_u128_cases() -> Vec<TestCase<op::ftoi_f128_u128::Routine>> {
     vec![]
 }
 
+fn itof_i32_f32_cases() -> Vec<TestCase<op::itof_i32_f32::Routine>> {
+    vec![]
+}
+
+fn itof_i64_f32_cases() -> Vec<TestCase<op::itof_i64_f32::Routine>> {
+    vec![]
+}
+
+fn itof_i128_f32_cases() -> Vec<TestCase<op::itof_i128_f32::Routine>> {
+    vec![]
+}
+
+fn itof_i32_f64_cases() -> Vec<TestCase<op::itof_i32_f64::Routine>> {
+    vec![]
+}
+
+fn itof_i64_f64_cases() -> Vec<TestCase<op::itof_i64_f64::Routine>> {
+    vec![]
+}
+
+fn itof_i128_f64_cases() -> Vec<TestCase<op::itof_i128_f64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn itof_i32_f128_cases() -> Vec<TestCase<op::itof_i32_f128::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn itof_i64_f128_cases() -> Vec<TestCase<op::itof_i64_f128::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn itof_i128_f128_cases() -> Vec<TestCase<op::itof_i128_f128::Routine>> {
+    vec![]
+}
+
+fn itof_u32_f32_cases() -> Vec<TestCase<op::itof_u32_f32::Routine>> {
+    vec![]
+}
+
+fn itof_u64_f32_cases() -> Vec<TestCase<op::itof_u64_f32::Routine>> {
+    vec![]
+}
+
+fn itof_u128_f32_cases() -> Vec<TestCase<op::itof_u128_f32::Routine>> {
+    vec![]
+}
+
+fn itof_u32_f64_cases() -> Vec<TestCase<op::itof_u32_f64::Routine>> {
+    vec![]
+}
+
+fn itof_u64_f64_cases() -> Vec<TestCase<op::itof_u64_f64::Routine>> {
+    vec![]
+}
+
+fn itof_u128_f64_cases() -> Vec<TestCase<op::itof_u128_f64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn itof_u32_f128_cases() -> Vec<TestCase<op::itof_u32_f128::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn itof_u64_f128_cases() -> Vec<TestCase<op::itof_u64_f128::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn itof_u128_f128_cases() -> Vec<TestCase<op::itof_u128_f128::Routine>> {
+    vec![]
+}
+
 /*******************
  * libm test cases *
  *******************/

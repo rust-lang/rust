@@ -186,3 +186,28 @@ cb_op!(conv, __fixunstfsi, ftoi_f128_u32, (a: f128) -> u32);
 cb_op!(conv, __fixunstfdi, ftoi_f128_u64, (a: f128) -> u64);
 #[cfg(f128_enabled)]
 cb_op!(conv, __fixunstfti, ftoi_f128_u128, (a: f128) -> u128);
+
+cb_op!(conv, __floatsisf, itof_i32_f32, (a: i32) -> f32);
+cb_op!(conv, __floatdisf, itof_i64_f32, (a: i64) -> f32);
+cb_op!(conv, __floattisf, itof_i128_f32, (a: i128) -> f32);
+cb_op!(conv, __floatsidf, itof_i32_f64, (a: i32) -> f64);
+cb_op!(conv, __floatdidf, itof_i64_f64, (a: i64) -> f64);
+cb_op!(conv, __floattidf, itof_i128_f64, (a: i128) -> f64);
+#[cfg(f128_enabled)]
+cb_op!(conv, __floatsitf, itof_i32_f128, (a: i32) -> f128);
+#[cfg(f128_enabled)]
+cb_op!(conv, __floatditf, itof_i64_f128, (a: i64) -> f128);
+#[cfg(f128_enabled)]
+cb_op!(conv, __floattitf, itof_i128_f128, (a: i128) -> f128);
+cb_op!(conv, __floatunsisf, itof_u32_f32, (a: u32) -> f32);
+cb_op!(conv, __floatundisf, itof_u64_f32, (a: u64) -> f32);
+cb_op!(conv, __floatuntisf, itof_u128_f32, (a: u128) -> f32);
+cb_op!(conv, __floatunsidf, itof_u32_f64, (a: u32) -> f64);
+cb_op!(conv, __floatundidf, itof_u64_f64, (a: u64) -> f64);
+cb_op!(conv, __floatuntidf, itof_u128_f64, (a: u128) -> f64);
+#[cfg(f128_enabled)]
+cb_op!(conv, __floatunsitf, itof_u32_f128, (a: u32) -> f128);
+#[cfg(f128_enabled)]
+cb_op!(conv, __floatunditf, itof_u64_f128, (a: u64) -> f128);
+#[cfg(f128_enabled)]
+cb_op!(conv, __floatuntitf, itof_u128_f128, (a: u128) -> f128);

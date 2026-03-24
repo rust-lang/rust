@@ -2,7 +2,7 @@
 
 use std::ops::RangeInclusive;
 use std::sync::LazyLock;
-use std::{env, str};
+use std::{env, fmt, str};
 
 use crate::generate::random::{SEED, SEED_ENV};
 use crate::{BaseName, Group, Identifier, test_log};
@@ -347,12 +347,23 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
     ntests
 }
 
-/// Some tests require that an integer be kept within reasonable limits; generate that here.
-pub fn int_range(ctx: &CheckCtx, argnum: usize) -> RangeInclusive<i32> {
+/// Some tests require that an integer be kept within reasonable limits; if that is needed, retun
+/// a limited range.
+pub fn int_range<I>(ctx: &CheckCtx, argnum: usize) -> Option<RangeInclusive<I>>
+where
+    I: TryFrom<i32, Error: fmt::Debug>,
+{
     let t_env = TestEnv::from_env(ctx);
 
+    let argcount = ctx.fn_ident.math_op().rust_sig.args.len();
+    assert!(
+        argnum < argcount,
+        "requested argnum {argnum} of only {argcount} args"
+    );
+
+    // Use the whole range for most functions.
     if !matches!(ctx.base_name, BaseName::Jn | BaseName::Yn) {
-        return i32::MIN..=i32::MAX;
+        return None;
     }
 
     assert_eq!(
@@ -370,12 +381,14 @@ pub fn int_range(ctx: &CheckCtx, argnum: usize) -> RangeInclusive<i32> {
 
     let extensive_range = (-0xfff)..=0xfffff;
 
-    match ctx.gen_kind {
+    let ret = match ctx.gen_kind {
         _ if ctx.extensive => extensive_range,
         GeneratorKind::Spaced | GeneratorKind::Random => non_extensive_range,
         GeneratorKind::EdgeCases => extensive_range,
         GeneratorKind::List => unimplemented!("shoudn't need range for {:?}", ctx.gen_kind),
-    }
+    };
+
+    Some(I::try_from(*ret.start()).unwrap()..=I::try_from(*ret.end()).unwrap())
 }
 
 /// For domain tests, limit how many asymptotes or specified check points we test.

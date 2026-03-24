@@ -309,6 +309,31 @@ impl_parse_tuple!(f64);
 #[cfg(f128_enabled)]
 impl_parse_tuple_via_rug!(f128);
 
+macro_rules! impl_parse_tuple_int {
+    ($ty:ty) => {
+        impl ParseTuple for ($ty,) {
+            fn parse(input: &[&str]) -> Self {
+                assert_eq!(input.len(), 1, "expected a single argument, got {input:?}");
+                (parse(input, 0),)
+            }
+        }
+
+        impl FromStrRadix for $ty {
+            fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
+                let s = strip_radix_prefix(s, radix);
+                <$ty>::from_str_radix(s, radix)
+            }
+        }
+    };
+}
+
+impl_parse_tuple_int!(i32);
+impl_parse_tuple_int!(i64);
+impl_parse_tuple_int!(i128);
+impl_parse_tuple_int!(u32);
+impl_parse_tuple_int!(u64);
+impl_parse_tuple_int!(u128);
+
 /// Try to parse the number, printing a nice message on failure.
 fn parse<T: FromStr + FromStrRadix>(input: &[&str], idx: usize) -> T {
     let s = input[idx];
@@ -353,13 +378,6 @@ where
 
 trait FromStrRadix: Sized {
     fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError>;
-}
-
-impl FromStrRadix for i32 {
-    fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
-        let s = strip_radix_prefix(s, radix);
-        i32::from_str_radix(s, radix)
-    }
 }
 
 #[cfg(f16_enabled)]
