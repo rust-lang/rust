@@ -2718,7 +2718,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// enum Void {}
     /// unsafe extern {
     ///     static EXTERN: Void;
@@ -2734,10 +2734,11 @@ declare_lint! {
     /// compiler which assumes that there are no initialized uninhabited places (such as locals or
     /// statics). This was accidentally allowed, but is being phased out.
     pub UNINHABITED_STATIC,
-    Warn,
+    Deny,
     "uninhabited static",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #74840),
+        report_in_deps: true,
     };
 }
 
