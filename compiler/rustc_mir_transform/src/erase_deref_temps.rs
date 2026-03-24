@@ -16,7 +16,9 @@ impl<'tcx> MutVisitor<'tcx> for EraseDerefTempsVisitor<'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, _: Location) {
         if let &mut Rvalue::CopyForDeref(place) = rvalue {
-            *rvalue = Rvalue::Use(Operand::Copy(place))
+            // We do *NOT* want a retag here! This assignment might copy a mutable reference we
+            // can't actually copy, we just need it temporarily to create another pointer.
+            *rvalue = Rvalue::Use(Operand::Copy(place), WithRetag::No)
         }
     }
 

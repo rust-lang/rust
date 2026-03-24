@@ -49,7 +49,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
             for (statement_index, st) in data.statements.iter_mut().enumerate() {
                 let StatementKind::Assign(box (
                     lhs,
-                    Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
+                    Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs), _),
                 )) = &st.kind
                 else {
                     continue;
@@ -81,7 +81,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
                         tmp_ty,
                     ),
                 };
-                let rval = Rvalue::Use(Operand::Constant(Box::new(constant_vals)));
+                let rval = Rvalue::Use(Operand::Constant(Box::new(constant_vals)), WithRetag::No);
                 let const_assign = StatementKind::Assign(Box::new((place, rval)));
 
                 let discr_place =
@@ -98,10 +98,14 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
                 let size_place = Place::from(patch.new_temp(tcx.types.usize, span));
                 let store_size = StatementKind::Assign(Box::new((
                     size_place,
-                    Rvalue::Use(Operand::Copy(Place {
-                        local: size_array_local,
-                        projection: tcx.mk_place_elems(&[PlaceElem::Index(discr_cast_place.local)]),
-                    })),
+                    Rvalue::Use(
+                        Operand::Copy(Place {
+                            local: size_array_local,
+                            projection: tcx
+                                .mk_place_elems(&[PlaceElem::Index(discr_cast_place.local)]),
+                        }),
+                        WithRetag::No,
+                    ),
                 )));
 
                 let dst = Place::from(patch.new_temp(Ty::new_mut_ptr(tcx, ty), span));

@@ -63,7 +63,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
                         continue 'blocks;
                     }
                 } else if let StatementKind::Assign(box (lhs, ref rvalue)) = stmt.kind
-                    && let Rvalue::Use(Operand::Constant(c)) = rvalue
+                    && let Rvalue::Use(Operand::Constant(c), _) = rvalue
                 {
                     pre_place_const = Some((lhs, c));
                 }

@@ -157,9 +157,6 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
             mir::StatementKind::StorageDead(place) => {
                 crate::mir::StatementKind::StorageDead(place.stable(tables, cx))
             }
-            mir::StatementKind::Retag(retag, place) => {
-                crate::mir::StatementKind::Retag(retag.stable(tables, cx), place.stable(tables, cx))
-            }
             mir::StatementKind::PlaceMention(place) => {
                 crate::mir::StatementKind::PlaceMention(place.stable(tables, cx))
             }
@@ -195,7 +192,9 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
     ) -> Self::T {
         use rustc_middle::mir::Rvalue::*;
         match self {
-            Use(op) => crate::mir::Rvalue::Use(op.stable(tables, cx)),
+            Use(op, retag) => {
+                crate::mir::Rvalue::Use(op.stable(tables, cx), retag.stable(tables, cx))
+            }
             Repeat(op, len) => {
                 let len = len.stable(tables, cx);
                 crate::mir::Rvalue::Repeat(op.stable(tables, cx), len)
@@ -462,15 +461,13 @@ impl<'tcx> Stable<'tcx> for mir::Local {
     }
 }
 
-impl<'tcx> Stable<'tcx> for mir::RetagKind {
-    type T = crate::mir::RetagKind;
+impl<'tcx> Stable<'tcx> for mir::WithRetag {
+    type T = crate::mir::WithRetag;
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        use rustc_middle::mir::RetagKind;
+        use rustc_middle::mir::WithRetag;
         match self {
-            RetagKind::FnEntry => crate::mir::RetagKind::FnEntry,
-            RetagKind::TwoPhase => crate::mir::RetagKind::TwoPhase,
-            RetagKind::Raw => crate::mir::RetagKind::Raw,
-            RetagKind::Default => crate::mir::RetagKind::Default,
+            WithRetag::Yes => crate::mir::WithRetag::Yes,
+            WithRetag::No => crate::mir::WithRetag::No,
         }
     }
 }

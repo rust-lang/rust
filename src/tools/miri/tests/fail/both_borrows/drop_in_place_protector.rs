@@ -1,3 +1,6 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
+
 //! Test that drop_in_place retags the entire place,
 //! invalidating all aliases to it.
 
@@ -9,8 +12,11 @@ struct HasDrop;
 impl Drop for HasDrop {
     fn drop(&mut self) {
         unsafe {
-            let _val = *P;
-            //~^ ERROR: /not granting access .* because that would remove .* which is strongly protected/
+            // The error really has to mention a protector to make sure we're checking the right thing!
+            P.write(0);
+            //~[stack]^ ERROR: /not granting access .* because that would remove .* which is strongly protected/
+            //~[tree]| ERROR: forbidden
+            // For Tree Borrows, the protector is only mentioned in the "help:" texts unfortunately.
         }
     }
 }

@@ -21,13 +21,13 @@ fn variant_b::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:11:25: 11:41}, 
     }
 
     bb0: {
-        _3 = copy (*_2);
+        _3 = no_retag copy (*_2);
         _4 = copy ((*_3).0: usize);
-        _5 = copy (*_2);
+        _5 = no_retag copy (*_2);
         _6 = copy ((*_5).1: usize);
-        _7 = copy (*_2);
+        _7 = no_retag copy (*_2);
         _8 = copy ((*_7).2: usize);
-        _9 = copy (*_2);
+        _9 = no_retag copy (*_2);
         _10 = copy ((*_9).3: usize);
         StorageLive(_11);
         _11 = Le(copy _4, copy _8);

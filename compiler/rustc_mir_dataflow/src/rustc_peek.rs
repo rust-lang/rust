@@ -97,7 +97,7 @@ where
             (PeekCallKind::ByRef, mir::Rvalue::Ref(_, _, place))
             | (
                 PeekCallKind::ByVal,
-                mir::Rvalue::Use(mir::Operand::Move(place) | mir::Operand::Copy(place)),
+                mir::Rvalue::Use(mir::Operand::Move(place) | mir::Operand::Copy(place), _),
             ) => {
                 let loc = Location { block: bb, statement_index };
                 cursor.seek_before_primary_effect(loc);

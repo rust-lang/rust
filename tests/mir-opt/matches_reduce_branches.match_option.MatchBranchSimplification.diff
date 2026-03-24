@@ -21,11 +21,12 @@
 -     }
 - 
 -     bb3: {
-          _0 = copy (*_1);
+-         _0 = copy (*_1);
 -         goto -> bb4;
 -     }
 - 
 -     bb4: {
++         _0 = no_retag copy (*_1);
           return;
       }
   }

@@ -430,11 +430,14 @@ fn insert_uninhabited_enum_check<'tcx>(
         source_info,
         StatementKind::Assign(Box::new((
             is_ok,
-            Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
-                span: source_info.span,
-                user_ty: None,
-                const_: Const::Val(ConstValue::from_bool(false), tcx.types.bool),
-            }))),
+            Rvalue::Use(
+                Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
+                    user_ty: None,
+                    const_: Const::Val(ConstValue::from_bool(false), tcx.types.bool),
+                })),
+                WithRetag::Yes, // it's a bool, retag doesn't matter
+            ),
         ))),
     ));
 

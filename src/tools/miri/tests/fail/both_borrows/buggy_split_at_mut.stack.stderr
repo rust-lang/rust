@@ -7,8 +7,8 @@ LL | |                 from_raw_parts_mut(ptr.offset(mid as isize), len - mid),
 LL | |             )
    | |             ^
    | |             |
-   | |_____________this error occurs as part of retag (of a reference/box inside this compound value) at ALLOC[0x0..0x10]
-   |               errors for retagging in fields are fairly new; please reach out to us (e.g. at <https://rust-lang.zulipchat.com/#narrow/stream/269128-miri>) if you find this error troubling
+   | |_____________this error occurs as part of retag at ALLOC[0x0..0x10]
+   |               while retagging field .0
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information

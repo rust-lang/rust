@@ -1,10 +1,10 @@
 use std::cell::RefCell;
-use std::fmt;
 use std::num::NonZero;
+use std::{fmt, mem};
 
 use rustc_abi::Size;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_middle::mir::RetagKind;
+use rustc_middle::ty::Ty;
 use smallvec::SmallVec;
 
 use crate::*;
@@ -103,6 +103,8 @@ impl VisitProvenance for FrameState {
 pub struct GlobalStateInner {
     /// Borrow tracker method currently in use.
     borrow_tracker_method: BorrowTrackerMethod,
+    /// The currently active retag mode.
+    retag_mode: RetagMode,
     /// Next unused pointer ID (tag).
     next_ptr_tag: BorTag,
     /// Table storing the "root" tag for each allocation.
@@ -157,6 +159,7 @@ impl GlobalStateInner {
     ) -> Self {
         GlobalStateInner {
             borrow_tracker_method,
+            retag_mode: RetagMode::Default,
             next_ptr_tag: BorTag::one(),
             root_ptr_tags: FxHashMap::default(),
             protected_tags: FxHashMap::default(),
@@ -265,36 +268,43 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn retag_ptr_value(
         &mut self,
-        kind: RetagKind,
         val: &ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
-        let _trace = enter_trace_span!(borrow_tracker::retag_ptr_value, ?kind, ?val.layout);
+        ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
+        let _trace = enter_trace_span!(borrow_tracker::retag_ptr_value, ?ty);
         let this = self.eval_context_mut();
-        let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
+        let state = this.machine.borrow_tracker.as_mut().unwrap().get_mut();
+        let method = state.borrow_tracker_method;
+        let retag_mode = state.retag_mode;
+        info!("retag_ptr_value: type={ty}, mode={retag_mode:?}, val={:?}", **val);
         match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_retag_ptr_value(kind, val),
-            BorrowTrackerMethod::TreeBorrows { .. } => this.tb_retag_ptr_value(kind, val),
+            BorrowTrackerMethod::StackedBorrows => this.sb_retag_ptr_value(val, ty, retag_mode),
+            BorrowTrackerMethod::TreeBorrows { .. } => this.tb_retag_ptr_value(val, ty, retag_mode),
         }
     }
 
-    fn retag_place_contents(
+    fn with_retag_mode<T>(
         &mut self,
-        kind: RetagKind,
-        place: &PlaceTy<'tcx>,
-    ) -> InterpResult<'tcx> {
-        let _trace = enter_trace_span!(borrow_tracker::retag_place_contents, ?kind, ?place);
-        let this = self.eval_context_mut();
-        let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
-        match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_retag_place_contents(kind, place),
-            BorrowTrackerMethod::TreeBorrows { .. } => this.tb_retag_place_contents(kind, place),
-        }
+        mode: RetagMode,
+        f: impl FnOnce(&mut Self) -> InterpResult<'tcx, T>,
+    ) -> InterpResult<'tcx, T> {
+        // Set up new mode, remembering the old mode.
+        let state = self.eval_context_mut().machine.borrow_tracker.as_mut().unwrap().get_mut();
+        let old_mode = mem::replace(&mut state.retag_mode, mode);
+
+        let ret = f(self);
+
+        // Restore old mode.
+        let state = self.eval_context_mut().machine.borrow_tracker.as_mut().unwrap().get_mut();
+        state.retag_mode = old_mode;
+
+        ret
     }
 
     fn protect_place(&mut self, place: &MPlaceTy<'tcx>) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
         let _trace = enter_trace_span!(borrow_tracker::protect_place, ?place);
         let this = self.eval_context_mut();
-        let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
+        let method = this.machine.borrow_tracker.as_mut().unwrap().get_mut().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.sb_protect_place(place),
             BorrowTrackerMethod::TreeBorrows { .. } => this.tb_protect_place(place),
@@ -319,7 +329,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         name: &str,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
+        let method = this.machine.borrow_tracker.as_mut().unwrap().get_mut().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => {
                 this.tcx.tcx.dcx().warn("Stacked Borrows does not support named pointers; `miri_pointer_name` is a no-op");
@@ -332,11 +342,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn print_borrow_state(&mut self, alloc_id: AllocId, show_unnamed: bool) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let Some(borrow_tracker) = &this.machine.borrow_tracker else {
+        let Some(borrow_tracker) = &mut this.machine.borrow_tracker else {
             eprintln!("attempted to print borrow state, but no borrow state is being tracked");
             return interp_ok(());
         };
-        let method = borrow_tracker.borrow().borrow_tracker_method;
+        let method = borrow_tracker.get_mut().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.print_stacks(alloc_id),
             BorrowTrackerMethod::TreeBorrows { .. } => this.print_tree(alloc_id, show_unnamed),

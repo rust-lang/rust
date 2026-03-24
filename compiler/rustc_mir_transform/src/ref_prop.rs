@@ -247,7 +247,7 @@ fn compute_replacement<'tcx>(
             // This is a copy, just use the value we have in store for the previous one.
             // As we are visiting in `assignment_order`, i.e. reverse postorder, `rhs` should
             // have been visited before.
-            Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
+            Rvalue::Use(Operand::Copy(place) | Operand::Move(place), _) => {
                 if let Some(rhs) = place.as_local()
                     && ssa.is_ssa(rhs)
                 {

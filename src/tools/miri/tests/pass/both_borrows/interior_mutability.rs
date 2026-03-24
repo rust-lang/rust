@@ -17,6 +17,7 @@ fn main() {
     ref_mut_protector();
     rust_issue_68303();
     two_phase();
+    box_derefer();
 }
 
 fn aliasing_mut_and_shr() {
@@ -207,4 +208,14 @@ fn two_phase() {
         l.set(4);
         x.get() + l.get()
     });
+}
+
+fn box_derefer() {
+    // This fails if we accidentally retag the copies introduced by the derefer pass.
+    let mut cell = std::cell::RefCell::new(0);
+    let b = Box::new(&mut cell);
+    let mut mutref = b.borrow_mut();
+    *mutref += 1;
+    b.try_borrow().unwrap_err();
+    *mutref += 1;
 }
