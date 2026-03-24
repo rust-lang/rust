@@ -472,12 +472,17 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
         | ty::Error(_) => thin_vec![],
 
-        // Coroutines and closures could implement `[const] Drop`,
+        // Closures are [const] Destruct when all of their upvars (captures) are [const] Destruct.
+        ty::Closure(_, args) => {
+            let closure_args = args.as_closure();
+            thin_vec![ty::TraitRef::new(tcx, destruct_def_id, [closure_args.tupled_upvars_ty()])]
+        }
+
+        // Coroutines could implement `[const] Drop`,
         // but they don't really need to right now.
-        ty::Closure(_, _)
-        | ty::CoroutineClosure(_, _)
-        | ty::Coroutine(_, _)
-        | ty::CoroutineWitness(_, _) => return Err(EvaluationFailure::NoSolution),
+        ty::CoroutineClosure(_, _) | ty::Coroutine(_, _) | ty::CoroutineWitness(_, _) => {
+            return Err(EvaluationFailure::NoSolution);
+        }
 
         // FIXME(unsafe_binders): Unsafe binders could implement `[const] Drop`
         // if their inner type implements it.
