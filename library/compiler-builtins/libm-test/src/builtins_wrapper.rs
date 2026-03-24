@@ -4,48 +4,46 @@
 //! ABI (doesn't work with libm-test traits because that changes the type signature). Wrap these
 //! to make them a bit more similar to the rest of the libm functions.
 
-macro_rules! binop {
-    ($op:ident, $ty:ty, $sfx:ident) => {
-        paste::paste! {
-            pub fn [< $op $ty >](a: $ty, b: $ty) -> $ty {
-                compiler_builtins::float::$op::[< __ $op $sfx >](a, b)
-            }
+macro_rules! cb_op {
+    // Fully generic version
+    ($mod:ident, $cb_name:ident, $new_name:ident, ($($arg:ident: $ArgTy:ty),*) -> $RetTy:ty) => {
+        pub fn $new_name($($arg: $ArgTy),*) -> $RetTy {
+            compiler_builtins::float::$mod::$cb_name($($arg),*)
         }
+    };
+    // Common signatures
+    (@binop $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        cb_op!($mod, $cb_name, $new_name, (a: $ty, b: $ty) -> $ty);
     };
 }
 
 #[cfg(f16_enabled)]
-binop!(add, f16, hf3);
+cb_op!(@binop f16, add, __addhf3, addf16);
+cb_op!(@binop f32, add, __addsf3, addf32);
+cb_op!(@binop f64, add, __adddf3, addf64);
+#[cfg(f128_enabled)]
+cb_op!(@binop f128, add, __addtf3, addf128);
+
 #[cfg(f16_enabled)]
-binop!(sub, f16, hf3);
+cb_op!(@binop f16, sub, __subhf3, subf16);
+cb_op!(@binop f32, sub, __subsf3, subf32);
+cb_op!(@binop f64, sub, __subdf3, subf64);
+#[cfg(f128_enabled)]
+cb_op!(@binop f128, sub, __subtf3, subf128);
+
 #[cfg(f16_enabled)]
-binop!(mul, f16, hf3);
-binop!(add, f32, sf3);
-binop!(sub, f32, sf3);
-binop!(mul, f32, sf3);
-binop!(div, f32, sf3);
-binop!(add, f64, df3);
-binop!(sub, f64, df3);
-binop!(mul, f64, df3);
-binop!(div, f64, df3);
+cb_op!(@binop f16, mul, __mulhf3, mulf16);
+cb_op!(@binop f32, mul, __mulsf3, mulf32);
+cb_op!(@binop f64, mul, __muldf3, mulf64);
 #[cfg(f128_enabled)]
-binop!(add, f128, tf3);
-#[cfg(f128_enabled)]
-binop!(sub, f128, tf3);
-#[cfg(f128_enabled)]
-binop!(mul, f128, tf3);
-#[cfg(f128_enabled)]
-binop!(div, f128, tf3);
+cb_op!(@binop f128, mul, __multf3, mulf128);
 
-pub fn powif32(a: f32, b: i32) -> f32 {
-    compiler_builtins::float::pow::__powisf2(a, b)
-}
-
-pub fn powif64(a: f64, b: i32) -> f64 {
-    compiler_builtins::float::pow::__powidf2(a, b)
-}
-
+cb_op!(@binop f32, div, __divsf3, divf32);
+cb_op!(@binop f64, div, __divdf3, divf64);
 #[cfg(f128_enabled)]
-pub fn powif128(a: f128, b: i32) -> f128 {
-    compiler_builtins::float::pow::__powitf2(a, b)
-}
+cb_op!(@binop f128, div, __divtf3, divf128);
+
+cb_op!(pow, __powisf2, powif32, (a: f32, b: i32) -> f32);
+cb_op!(pow, __powidf2, powif64, (a: f64, b: i32) -> f64);
+#[cfg(f128_enabled)]
+cb_op!(pow, __powitf2, powif128, (a: f128, b: i32) -> f128);
