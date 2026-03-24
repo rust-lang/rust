@@ -2,7 +2,6 @@
 
 #![feature(adt_const_params)]
 #![feature(unsized_const_params)]
-//~^ WARN the feature `unsized_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
 
 #[derive(Clone)]
 struct S<const L: [u8]>;
