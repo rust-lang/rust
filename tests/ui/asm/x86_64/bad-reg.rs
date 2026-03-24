@@ -1,7 +1,7 @@
 //@ add-minicore
-//@ only-x86_64
 //@ revisions: stable experimental_reg
-//@ compile-flags: -C target-feature=+avx2,+avx512f
+//@ compile-flags: --target x86_64-unknown-linux-gnu -C target-feature=+avx2,+avx512f
+//@ needs-llvm-components: x86
 #![cfg_attr(experimental_reg, feature(asm_experimental_reg))]
 
 #![crate_type = "lib"]
