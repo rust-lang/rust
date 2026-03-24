@@ -2,7 +2,7 @@
 
 // Make sure we don't crash with a cycle error during coherence.
 
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 trait Trait<T> {
     type Assoc;

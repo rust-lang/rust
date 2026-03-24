@@ -1,13 +1,3 @@
-warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/specialization-overlap-negative.rs:2:12
-   |
-LL | #![feature(specialization)]
-   |            ^^^^^^^^^^^^^^
-   |
-   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
-   = help: consider using `min_specialization` instead, which is more stable and complete
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0751]: found both positive and negative implementation of trait `Send` for type `TestType<_>`:
   --> $DIR/specialization-overlap-negative.rs:9:1
    |
@@ -28,7 +18,7 @@ note: the implementor must specify the same requirement
 LL | struct TestType<T>(::std::marker::PhantomData<T>);
    | ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0367, E0751.
 For more information about an error, try `rustc --explain E0367`.
