@@ -148,15 +148,16 @@ cb_op!(extend, __extendsftf2, extend_f32_f128, (a: f32) -> f128);
 #[cfg(f128_enabled)]
 cb_op!(extend, __extenddftf2, extend_f64_f128, (a: f64) -> f128);
 
+// Note that these are renamed from trunc to narrow to avoid collision with libm `trunc`.
 #[cfg(f16_enabled)]
-cb_op!(trunc, __truncsfhf2, trunc_f32_f16, (a: f32) -> f16);
+cb_op!(trunc, __truncsfhf2, narrow_f32_f16, (a: f32) -> f16);
 #[cfg(f16_enabled)]
-cb_op!(trunc, __truncdfhf2, trunc_f64_f16, (a: f64) -> f16);
-cb_op!(trunc, __truncdfsf2, trunc_f64_f32, (a: f64) -> f32);
+cb_op!(trunc, __truncdfhf2, narrow_f64_f16, (a: f64) -> f16);
+cb_op!(trunc, __truncdfsf2, narrow_f64_f32, (a: f64) -> f32);
 #[cfg(f16_enabled)]
 #[cfg(f128_enabled)]
-cb_op!(trunc, __trunctfhf2, trunc_f128_f16, (a: f128) -> f16);
+cb_op!(trunc, __trunctfhf2, narrow_f128_f16, (a: f128) -> f16);
 #[cfg(f128_enabled)]
-cb_op!(trunc, __trunctfsf2, trunc_f128_f32, (a: f128) -> f32);
+cb_op!(trunc, __trunctfsf2, narrow_f128_f32, (a: f128) -> f32);
 #[cfg(f128_enabled)]
-cb_op!(trunc, __trunctfdf2, trunc_f128_f64, (a: f128) -> f64);
+cb_op!(trunc, __trunctfdf2, narrow_f128_f64, (a: f128) -> f64);

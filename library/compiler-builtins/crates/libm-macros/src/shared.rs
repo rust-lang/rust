@@ -237,7 +237,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F16],
         },
         c_sig: None,
-        fn_list: &["trunc_f32_f16"],
+        fn_list: &["narrow_f32_f16"],
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
@@ -247,7 +247,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F16],
         },
         c_sig: None,
-        fn_list: &["trunc_f64_f16"],
+        fn_list: &["narrow_f64_f16"],
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
@@ -257,7 +257,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F16],
         },
         c_sig: None,
-        fn_list: &["trunc_f128_f16"],
+        fn_list: &["narrow_f128_f16"],
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
@@ -267,7 +267,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F32],
         },
         c_sig: None,
-        fn_list: &["trunc_f64_f32"],
+        fn_list: &["narrow_f64_f32"],
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
@@ -277,7 +277,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F32],
         },
         c_sig: None,
-        fn_list: &["trunc_f128_f32"],
+        fn_list: &["narrow_f128_f32"],
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
@@ -287,7 +287,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F64],
         },
         c_sig: None,
-        fn_list: &["trunc_f128_f64"],
+        fn_list: &["narrow_f128_f64"],
         scope: OpScope::BuiltinsPublic,
     },
     /* libm operations */

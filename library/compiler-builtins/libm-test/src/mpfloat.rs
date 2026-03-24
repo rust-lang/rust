@@ -219,6 +219,12 @@ libm_macros::for_each_function! {
         mulf16,
         mulf32,
         mulf64,
+        narrow_f128_f16,
+        narrow_f128_f32,
+        narrow_f128_f64,
+        narrow_f32_f16,
+        narrow_f64_f16,
+        narrow_f64_f32,
         nef128,
         nef16,
         nef32,
@@ -253,12 +259,6 @@ libm_macros::for_each_function! {
         subf32,
         subf64,
         trunc,
-        trunc_f128_f16,
-        trunc_f128_f32,
-        trunc_f128_f64,
-        trunc_f32_f16,
-        trunc_f64_f16,
-        trunc_f64_f32,
         truncf,
         truncf128,
         truncf16,yn,
@@ -794,7 +794,7 @@ macro_rules! impl_extend_trunc {
                 }
             }
 
-            impl MpOp for crate::op::[<trunc_ $wide _ $narrow>]::Routine {
+            impl MpOp for crate::op::[<narrow_ $wide _ $narrow>]::Routine {
                 type MpTy = MpFloat;
 
                 fn new_mp() -> Self::MpTy {

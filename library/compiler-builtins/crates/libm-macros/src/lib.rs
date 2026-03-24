@@ -487,7 +487,7 @@ impl VisitMut for MacroReplace {
 /// Return the unsuffixed version of a function name; e.g. `abs` and `absf` both return `abs`,
 /// `lgamma_r` and `lgammaf_r` both return `lgamma_r`.
 fn base_name(name: &str) -> &str {
-    let known_mappings = &[
+    let known_mappings = [
         ("erff", "erf"),
         ("erf", "erf"),
         ("lgammaf_r", "lgamma_r"),
@@ -495,16 +495,33 @@ fn base_name(name: &str) -> &str {
         ("modf", "modf"),
     ];
 
-    match known_mappings.iter().find(|known| known.0 == name) {
-        Some(found) => found.1,
-        None => name
-            .strip_suffix("f")
-            .or_else(|| name.strip_suffix("f16"))
-            .or_else(|| name.strip_suffix("f32"))
-            .or_else(|| name.strip_suffix("f64"))
-            .or_else(|| name.strip_suffix("f128"))
-            .unwrap_or(name),
+    if let Some(found) = known_mappings.iter().find(|known| known.0 == name) {
+        return found.1;
     }
+
+    // Attempt to strip unambiguous suffixes first. This is repeated so e.g.
+    // `extend_f32_f64` turns into `extend`.
+    let strip = [
+        "_f16", "_f32", "_f64", "_f128", "_i32", "_i64", "_i128", "_u32", "_u64", "_u128", "f16",
+        "f32", "f64", "f128",
+    ];
+
+    let mut any_found = false;
+    let mut ret = name;
+
+    for sfx in strip {
+        if let Some(stripped) = ret.strip_suffix(sfx) {
+            ret = stripped;
+            any_found = true;
+        }
+    }
+
+    // Only if no suffix was stripped, try stripping the C-style float suffix.
+    if !any_found && let Some(stripped) = ret.strip_suffix("f") {
+        ret = stripped;
+    }
+
+    ret
 }
 
 impl ToTokens for Ty {

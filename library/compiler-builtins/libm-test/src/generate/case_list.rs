@@ -283,32 +283,32 @@ fn extend_f64_f128_cases() -> Vec<TestCase<op::extend_f64_f128::Routine>> {
 }
 
 #[cfg(f16_enabled)]
-fn trunc_f32_f16_cases() -> Vec<TestCase<op::trunc_f32_f16::Routine>> {
+fn narrow_f32_f16_cases() -> Vec<TestCase<op::narrow_f32_f16::Routine>> {
     vec![]
 }
 
 #[cfg(f16_enabled)]
-fn trunc_f64_f16_cases() -> Vec<TestCase<op::trunc_f64_f16::Routine>> {
+fn narrow_f64_f16_cases() -> Vec<TestCase<op::narrow_f64_f16::Routine>> {
     vec![]
 }
 
-fn trunc_f64_f32_cases() -> Vec<TestCase<op::trunc_f64_f32::Routine>> {
+fn narrow_f64_f32_cases() -> Vec<TestCase<op::narrow_f64_f32::Routine>> {
     vec![]
 }
 
 #[cfg(f16_enabled)]
 #[cfg(f128_enabled)]
-fn trunc_f128_f16_cases() -> Vec<TestCase<op::trunc_f128_f16::Routine>> {
+fn narrow_f128_f16_cases() -> Vec<TestCase<op::narrow_f128_f16::Routine>> {
     vec![]
 }
 
 #[cfg(f128_enabled)]
-fn trunc_f128_f32_cases() -> Vec<TestCase<op::trunc_f128_f32::Routine>> {
+fn narrow_f128_f32_cases() -> Vec<TestCase<op::narrow_f128_f32::Routine>> {
     vec![]
 }
 
 #[cfg(f128_enabled)]
-fn trunc_f128_f64_cases() -> Vec<TestCase<op::trunc_f128_f64::Routine>> {
+fn narrow_f128_f64_cases() -> Vec<TestCase<op::narrow_f128_f64::Routine>> {
     vec![]
 }
 
