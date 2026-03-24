@@ -18,10 +18,10 @@ Uninitialized memory occurred at ALLOC[0x4..0x8], in this allocation:
 ALLOC (Rust heap, size: 16, align: 8) {
     ╾42[ALLOC]<TAG> (ptr fragment 0)╼ 12 13 ╾43[ALLOC]<TAG> (ptr fragment 1)╼ __ __ __ __ __ __ __ __ __ __ __ __ │ ━..━░░░░░░░░░░░░
 }
-ALLOC (global (static or const), size: 1, align: 1) {
+ALLOC (unchanged global, size: 1, align: 1) {
     2a                                              │ *
 }
-ALLOC (global (static or const), size: 1, align: 1) {
+ALLOC (unchanged global, size: 1, align: 1) {
     00                                              │ .
 }
 

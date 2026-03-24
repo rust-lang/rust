@@ -16,10 +16,9 @@ use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
-    FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy,
-    Projectable, interp_ok, throw_ub, throw_unsup_format,
+    EnteredTraceSpan, FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine,
+    MemPlaceMeta, PlaceTy, Projectable, RetagMode, interp_ok, throw_ub, throw_unsup_format,
 };
-use crate::interpret::EnteredTraceSpan;
 use crate::{enter_trace_span, util};
 
 struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
@@ -112,12 +111,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // interpreter is solely intended for borrowck'ed code.
             FakeRead(..) => {}
 
-            // Stacked Borrows.
-            Retag(kind, place) => {
-                let dest = self.eval_place(**place)?;
-                M::retag_place_contents(self, *kind, &dest)?;
-            }
-
             Intrinsic(box intrinsic) => self.eval_nondiverging_intrinsic(intrinsic)?,
 
             // Evaluate the place expression, without reading from it.
@@ -177,10 +170,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_pointer(ptr, &dest)?;
             }
 
-            Use(ref operand) => {
+            Use(ref operand, with_retag) => {
                 // Avoid recomputing the layout
                 let op = self.eval_operand(operand, Some(dest.layout))?;
-                self.copy_op(&op, &dest)?;
+                let mode = if with_retag.yes() { RetagMode::Default } else { RetagMode::None };
+                M::with_retag_mode(self, mode, |ecx| ecx.copy_op(&op, &dest))?;
             }
 
             CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
@@ -214,18 +208,26 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Ref(_, borrow_kind, place) => {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(&src)?;
-                let val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
-                // A fresh reference was created, make sure it gets retagged.
-                let val = M::retag_ptr_value(
-                    self,
-                    if borrow_kind.is_two_phase_borrow() {
-                        mir::RetagKind::TwoPhase
-                    } else {
-                        mir::RetagKind::Default
-                    },
-                    &val,
-                )?;
-                self.write_immediate(*val, &dest)?;
+                let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
+                // A fresh reference was created, make sure it gets retagged with the right mode.
+                let mode = if borrow_kind.is_two_phase_borrow() {
+                    RetagMode::TwoPhase
+                } else {
+                    RetagMode::Default
+                };
+                M::with_retag_mode(self, mode, |ecx| {
+                    // If validation is disabled, we still want to do this retag. This is because
+                    // const-eval disables validation for performance reasons but wants to retag
+                    // shared references. So we add a bit of a hack here to do the retag manually
+                    // if the write would not incur validation.
+                    if !M::enforce_validity(ecx, val.layout) {
+                        if let Some(new_val) = M::retag_ptr_value(ecx, &val, val.layout.ty)? {
+                            val = new_val;
+                        }
+                    }
+                    // Now do the actual write.
+                    ecx.write_immediate(*val, &dest)
+                })?;
             }
 
             RawPtr(kind, place) => {
@@ -244,8 +246,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 if !place_base_raw && !kind.is_fake() {
                     // If this was not already raw, it needs retagging -- except for "fake"
                     // raw borrows whose defining property is that they do not get retagged.
-                    val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
+                    val = M::with_retag_mode(self, RetagMode::Raw, |ecx| {
+                        interp_ok(M::retag_ptr_value(ecx, &val, val.layout.ty)?.unwrap_or(val))
+                    })?;
                 }
+                // This writes a raw pointer so it will not do any retags.
                 self.write_immediate(*val, &dest)?;
             }
 

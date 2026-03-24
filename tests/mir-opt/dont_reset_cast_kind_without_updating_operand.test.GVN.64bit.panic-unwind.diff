@@ -53,7 +53,7 @@
           StorageDead(_2);
 -         StorageLive(_5);
 +         nop;
-          _10 = copy (*_1);
+          _10 = no_retag copy (*_1);
           _11 = copy ((_10.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
           _5 = &raw const (*_11);
 -         StorageLive(_6);

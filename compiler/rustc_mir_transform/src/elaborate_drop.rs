@@ -359,11 +359,10 @@ where
             let obj_ref_place = Place::from(self.new_temp(unwrap_ty));
             call_statements.push(self.assign(
                 obj_ref_place,
-                Rvalue::Use(Operand::Copy(tcx.mk_place_field(
-                    pin_obj_place,
-                    FieldIdx::ZERO,
-                    unwrap_ty,
-                ))),
+                Rvalue::Use(
+                    Operand::Copy(tcx.mk_place_field(pin_obj_place, FieldIdx::ZERO, unwrap_ty)),
+                    WithRetag::Yes,
+                ),
             ));
 
             let obj_ptr_place = Place::from(self.new_temp(obj_ptr_ty));
@@ -1278,7 +1277,7 @@ where
                         Operand::Copy(Place::from(self.place.local)),
                     ),
                 ),
-                self.assign(cur.into(), Rvalue::Use(zero)),
+                self.assign(cur.into(), Rvalue::Use(zero, WithRetag::Yes)),
             ],
             Some(Terminator {
                 source_info: self.source_info,

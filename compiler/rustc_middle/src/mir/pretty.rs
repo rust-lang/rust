@@ -810,17 +810,6 @@ impl Debug for StatementKind<'_> {
             FakeRead(box (ref cause, ref place)) => {
                 write!(fmt, "FakeRead({cause:?}, {place:?})")
             }
-            Retag(ref kind, ref place) => write!(
-                fmt,
-                "Retag({}{:?})",
-                match kind {
-                    RetagKind::FnEntry => "[fn entry] ",
-                    RetagKind::TwoPhase => "[2phase] ",
-                    RetagKind::Raw => "[raw] ",
-                    RetagKind::Default => "",
-                },
-                place,
-            ),
             StorageLive(ref place) => write!(fmt, "StorageLive({place:?})"),
             StorageDead(ref place) => write!(fmt, "StorageDead({place:?})"),
             SetDiscriminant { ref place, variant_index } => {
@@ -1095,7 +1084,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
         use self::Rvalue::*;
 
         match *self {
-            Use(ref place) => write!(fmt, "{place:?}"),
+            Use(ref operand, with_retag) => {
+                // With retag is more common so we only print when it's without.
+                write!(fmt, "{}{operand:?}", if with_retag.no() { "no_retag " } else { "" })
+            }
             Repeat(ref a, b) => {
                 write!(fmt, "[{a:?}; ")?;
                 pretty_print_const(b, fmt, false)?;

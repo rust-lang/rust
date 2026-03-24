@@ -328,7 +328,7 @@ pub(super) fn expand_async_drops<'tcx>(
         // First state-loop yield for mainline
         let context_ref_place =
             Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)));
-        let arg = Rvalue::Use(Operand::Move(Place::from(CTX_ARG)));
+        let arg = Rvalue::Use(Operand::Move(Place::from(CTX_ARG)), WithRetag::Yes);
         body[bb].statements.push(Statement::new(
             source_info,
             StatementKind::Assign(Box::new((context_ref_place, arg))),

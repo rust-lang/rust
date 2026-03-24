@@ -592,7 +592,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                                         };
                                     computed_scalar_int = Some(scalar_int);
                                 }
-                                Rvalue::Use(operand) => {
+                                Rvalue::Use(operand, _) => {
                                     computed_scalar_int = mir_operand_get_const_val(fx, operand)
                                 }
                                 _ => return None,
@@ -613,7 +613,6 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         | StatementKind::SetDiscriminant { .. }
                         | StatementKind::StorageLive(_)
                         | StatementKind::StorageDead(_)
-                        | StatementKind::Retag(_, _)
                         | StatementKind::AscribeUserType(_, _)
                         | StatementKind::PlaceMention(..)
                         | StatementKind::Coverage(_)

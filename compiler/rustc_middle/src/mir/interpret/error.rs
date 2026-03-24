@@ -772,7 +772,10 @@ impl fmt::Display for ResourceExhaustionInfo {
 }
 
 /// A trait for machine-specific errors (or other "machine stop" conditions).
-pub trait MachineStopType: Any + fmt::Display + fmt::Debug + Send {}
+pub trait MachineStopType: Any + fmt::Display + fmt::Debug + Send {
+    /// This error occurred during validation, inside a value at the given path.
+    fn with_validation_path(&mut self, _path: String) {}
+}
 
 impl dyn MachineStopType {
     #[inline(always)]

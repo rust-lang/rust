@@ -107,16 +107,16 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         let Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), box (a, b)) = &*rvalue else { return };
         *rvalue = match (op, self.try_eval_bool(a), self.try_eval_bool(b)) {
             // Transform "Eq(a, true)" ==> "a"
-            (BinOp::Eq, _, Some(true)) => Rvalue::Use(a.clone()),
+            (BinOp::Eq, _, Some(true)) => Rvalue::Use(a.clone(), WithRetag::Yes),
 
             // Transform "Ne(a, false)" ==> "a"
-            (BinOp::Ne, _, Some(false)) => Rvalue::Use(a.clone()),
+            (BinOp::Ne, _, Some(false)) => Rvalue::Use(a.clone(), WithRetag::Yes),
 
             // Transform "Eq(true, b)" ==> "b"
-            (BinOp::Eq, Some(true), _) => Rvalue::Use(b.clone()),
+            (BinOp::Eq, Some(true), _) => Rvalue::Use(b.clone(), WithRetag::Yes),
 
             // Transform "Ne(false, b)" ==> "b"
-            (BinOp::Ne, Some(false), _) => Rvalue::Use(b.clone()),
+            (BinOp::Ne, Some(false), _) => Rvalue::Use(b.clone(), WithRetag::Yes),
 
             // Transform "Eq(false, b)" ==> "Not(b)"
             (BinOp::Eq, Some(false), _) => Rvalue::UnaryOp(UnOp::Not, b.clone()),
@@ -145,10 +145,24 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             && let Some((base, ProjectionElem::Deref)) = place.as_ref().last_projection()
             && rvalue.ty(self.local_decls, self.tcx) == base.ty(self.local_decls, self.tcx).ty
         {
-            *rvalue = Rvalue::Use(Operand::Copy(Place {
-                local: base.local,
-                projection: self.tcx.mk_place_elems(base.projection),
-            }));
+            *rvalue = Rvalue::Use(
+                Operand::Copy(Place {
+                    local: base.local,
+                    projection: self.tcx.mk_place_elems(base.projection),
+                }),
+                // This might have been a two-phase borrow, which we should not upgrade
+                // to a full `&mut` reborrow.
+                // FIXME: Once Stacked Borrows is fully removed, we can use `Yes` here as
+                // Tree Borrows treats two-phase and full borrows the same.
+                if matches!(
+                    rvalue,
+                    Rvalue::Ref(_, BorrowKind::Mut { kind: MutBorrowKind::TwoPhaseBorrow }, _)
+                ) {
+                    WithRetag::No
+                } else {
+                    WithRetag::Yes
+                },
+            );
         }
     }
 
@@ -172,7 +186,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
 
         let operand_ty = operand.ty(self.local_decls, self.tcx);
         if operand_ty == *cast_ty {
-            *rvalue = Rvalue::Use(operand.clone());
+            *rvalue = Rvalue::Use(operand.clone(), WithRetag::Yes);
         } else if *kind == CastKind::Transmute
             // Transmuting an integer to another integer is just a signedness cast
             && let (ty::Int(int), ty::Uint(uint)) | (ty::Uint(uint), ty::Int(int)) =
@@ -236,9 +250,10 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             terminator.source_info,
             StatementKind::Assign(Box::new((
                 *destination,
-                Rvalue::Use(Operand::Copy(
-                    arg_place.project_deeper(&[ProjectionElem::Deref], self.tcx),
-                )),
+                Rvalue::Use(
+                    Operand::Copy(arg_place.project_deeper(&[ProjectionElem::Deref], self.tcx)),
+                    WithRetag::Yes,
+                ),
             ))),
         ));
         terminator.kind = TerminatorKind::Goto { target: *destination_block };
@@ -294,7 +309,10 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             );
             statements.push(Statement::new(
                 source_info,
-                StatementKind::Assign(Box::new((*destination, Rvalue::Use(const_op)))),
+                StatementKind::Assign(Box::new((
+                    *destination,
+                    Rvalue::Use(const_op, WithRetag::Yes),
+                ))),
             ));
             terminator.kind = TerminatorKind::Goto { target: *destination_block };
         }
