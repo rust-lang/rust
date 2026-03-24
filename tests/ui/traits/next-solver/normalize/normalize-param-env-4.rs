@@ -2,7 +2,6 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@[next] known-bug: #92505
-//@[current] check-pass
 
 trait Trait {
     type Assoc;
@@ -15,6 +14,8 @@ impl<T> Trait for T {
 fn impls_trait<T: Trait>() {}
 
 fn foo<T>()
+    //[current]~^ ERROR: inconsistency during normalizing env
+    //[current]~| ERROR: inconsistency during normalizing env
 where
     <T as Trait>::Assoc: Trait,
 {
