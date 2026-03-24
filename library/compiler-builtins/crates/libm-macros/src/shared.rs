@@ -4,8 +4,8 @@ use std::collections::HashSet;
 use std::fmt;
 use std::sync::LazyLock;
 
+/// Convenient structure for defining items, gets expanded into a flat structure.
 struct NestedOp {
-    float_ty: FloatTy,
     rust_sig: Signature,
     c_sig: Option<Signature>,
     fn_list: &'static [&'static str],
@@ -49,7 +49,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
      * compiler-builtins operations *
      ********************************/
     NestedOp {
-        float_ty: FloatTy::F16,
         rust_sig: Signature {
             args: &[Ty::F16, Ty::F16],
             returns: &[Ty::F16],
@@ -59,7 +58,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32, Ty::F32],
             returns: &[Ty::F32],
@@ -69,7 +67,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64, Ty::F64],
             returns: &[Ty::F64],
@@ -79,7 +76,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128, Ty::F128],
             returns: &[Ty::F128],
@@ -89,7 +85,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32, Ty::I32],
             returns: &[Ty::F32],
@@ -99,7 +94,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64, Ty::I32],
             returns: &[Ty::F64],
@@ -109,7 +103,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128, Ty::I32],
             returns: &[Ty::F128],
@@ -119,7 +112,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F16,
         rust_sig: Signature {
             args: &[Ty::F16, Ty::F16],
             returns: &[Ty::Bool],
@@ -131,7 +123,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32, Ty::F32],
             returns: &[Ty::Bool],
@@ -143,7 +134,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64, Ty::F64],
             returns: &[Ty::Bool],
@@ -155,7 +145,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128, Ty::F128],
             returns: &[Ty::Bool],
@@ -173,7 +162,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F16,
         rust_sig: Signature {
             args: &[Ty::F16],
             returns: &[Ty::F32],
@@ -183,7 +171,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F16,
         rust_sig: Signature {
             args: &[Ty::F16],
             returns: &[Ty::F64],
@@ -193,7 +180,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F16,
         rust_sig: Signature {
             args: &[Ty::F16],
             returns: &[Ty::F128],
@@ -203,7 +189,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::F64],
@@ -213,7 +198,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::F128],
@@ -223,7 +207,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::F128],
@@ -233,7 +216,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::F16],
@@ -243,7 +225,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::F16],
@@ -253,7 +234,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::F16],
@@ -263,7 +243,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::F32],
@@ -273,7 +252,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::F32],
@@ -283,7 +261,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::F64],
@@ -293,7 +270,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::I32],
@@ -303,7 +279,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::I64],
@@ -313,7 +288,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::I128],
@@ -323,7 +297,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::I32],
@@ -333,7 +306,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::I64],
@@ -343,7 +315,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::I128],
@@ -353,7 +324,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::I32],
@@ -363,7 +333,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::I64],
@@ -373,7 +342,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::I128],
@@ -383,7 +351,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::U32],
@@ -393,7 +360,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::U64],
@@ -403,7 +369,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::U128],
@@ -413,7 +378,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::U32],
@@ -423,7 +387,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::U64],
@@ -433,7 +396,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::U128],
@@ -443,7 +405,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::U32],
@@ -453,7 +414,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::U64],
@@ -463,7 +423,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::BuiltinsPublic,
     },
     NestedOp {
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::U128],
@@ -477,7 +436,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
      *******************/
     NestedOp {
         // `fn(f16) -> f16`
-        float_ty: FloatTy::F16,
         rust_sig: Signature {
             args: &[Ty::F16],
             returns: &[Ty::F16],
@@ -497,7 +455,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `fn(f32) -> f32`
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::F32],
@@ -546,7 +503,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f64) -> f64`
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::F64],
@@ -595,7 +551,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `fn(f128) -> f128`
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::F128],
@@ -615,7 +570,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f16, f16) -> f16`
-        float_ty: FloatTy::F16,
         rust_sig: Signature {
             args: &[Ty::F16, Ty::F16],
             returns: &[Ty::F16],
@@ -636,7 +590,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f32, f32) -> f32`
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32, Ty::F32],
             returns: &[Ty::F32],
@@ -662,7 +615,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f64, f64) -> f64`
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64, Ty::F64],
             returns: &[Ty::F64],
@@ -688,7 +640,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f128, f128) -> f128`
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128, Ty::F128],
             returns: &[Ty::F128],
@@ -709,7 +660,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f32, f32, f32) -> f32`
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32, Ty::F32, Ty::F32],
             returns: &[Ty::F32],
@@ -720,7 +670,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f64, f64, f64) -> f64`
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64, Ty::F64, Ty::F64],
             returns: &[Ty::F64],
@@ -731,7 +680,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f128, f128, f128) -> f128`
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128, Ty::F128, Ty::F128],
             returns: &[Ty::F128],
@@ -742,7 +690,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f16) -> i32`
-        float_ty: FloatTy::F16,
         rust_sig: Signature {
             args: &[Ty::F16],
             returns: &[Ty::I32],
@@ -753,7 +700,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f32) -> i32`
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::I32],
@@ -764,7 +710,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f64) -> i32`
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::I32],
@@ -775,7 +720,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f128) -> i32`
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::I32],
@@ -786,7 +730,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(i32, f32) -> f32`
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::I32, Ty::F32],
             returns: &[Ty::F32],
@@ -797,7 +740,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(i32, f64) -> f64`
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::I32, Ty::F64],
             returns: &[Ty::F64],
@@ -808,7 +750,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f16, i32) -> f16`
-        float_ty: FloatTy::F16,
         rust_sig: Signature {
             args: &[Ty::F16, Ty::I32],
             returns: &[Ty::F16],
@@ -819,7 +760,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f32, i32) -> f32`
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32, Ty::I32],
             returns: &[Ty::F32],
@@ -830,7 +770,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f64, i64) -> f64`
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64, Ty::I32],
             returns: &[Ty::F64],
@@ -841,7 +780,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f128, i32) -> f128`
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128, Ty::I32],
             returns: &[Ty::F128],
@@ -852,7 +790,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f32, &mut f32) -> f32` as `(f32) -> (f32, f32)`
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::F32, Ty::F32],
@@ -866,7 +803,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f64, &mut f64) -> f64` as  `(f64) -> (f64, f64)`
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::F64, Ty::F64],
@@ -880,7 +816,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f16, &mut c_int) -> f16` as `(f16) -> (f16, i32)`
-        float_ty: FloatTy::F16,
         rust_sig: Signature {
             args: &[Ty::F16],
             returns: &[Ty::F16, Ty::I32],
@@ -894,7 +829,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f32, &mut c_int) -> f32` as `(f32) -> (f32, i32)`
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::F32, Ty::I32],
@@ -908,7 +842,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f64, &mut c_int) -> f64` as `(f64) -> (f64, i32)`
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::F64, Ty::I32],
@@ -922,7 +855,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f128, &mut c_int) -> f128` as `(f128) -> (f128, i32)`
-        float_ty: FloatTy::F128,
         rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::F128, Ty::I32],
@@ -936,7 +868,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f32, f32, &mut c_int) -> f32` as `(f32, f32) -> (f32, i32)`
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32, Ty::F32],
             returns: &[Ty::F32, Ty::I32],
@@ -950,7 +881,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f64, f64, &mut c_int) -> f64` as `(f64, f64) -> (f64, i32)`
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64, Ty::F64],
             returns: &[Ty::F64, Ty::I32],
@@ -964,7 +894,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f32, &mut f32, &mut f32)` as `(f32) -> (f32, f32)`
-        float_ty: FloatTy::F32,
         rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::F32, Ty::F32],
@@ -978,7 +907,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
     },
     NestedOp {
         // `(f64, &mut f64, &mut f64)` as `(f64) -> (f64, f64)`
-        float_ty: FloatTy::F64,
         rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::F64, Ty::F64],
@@ -1016,14 +944,75 @@ pub enum Ty {
     MutCInt,
 }
 
-/// A subset of [`Ty`] representing only floats.
+impl Ty {
+    /// The number of bits needed to represent this type's possible values. That is,
+    /// `log2(variant_count)`.
+    #[allow(dead_code)]
+    pub fn effective_bits(self) -> u32 {
+        match self {
+            Ty::Bool => 1,
+            Ty::F16 | Ty::MutF16 => 16,
+            Ty::F32 | Ty::I32 | Ty::U32 | Ty::MutF32 | Ty::MutI32 => 32,
+            Ty::F64 | Ty::I64 | Ty::U64 | Ty::MutF64 => 64,
+            Ty::F128 | Ty::I128 | Ty::U128 | Ty::MutF128 => 128,
+            // Assume we're not testing on a 16-bit system
+            Ty::CInt | Ty::MutCInt => 32,
+        }
+    }
+
+    /// How to group functions that mostly have this kind of input.
+    fn group(self) -> Group {
+        match self {
+            Ty::F16 | Ty::MutF16 => Group::F16,
+            Ty::F32 | Ty::MutF32 => Group::F32,
+            Ty::F64 | Ty::MutF64 => Group::F64,
+            Ty::F128 | Ty::MutF128 => Group::F128,
+            Ty::I32
+            | Ty::I64
+            | Ty::I128
+            | Ty::U32
+            | Ty::U64
+            | Ty::U128
+            | Ty::Bool
+            | Ty::CInt
+            | Ty::MutI32
+            | Ty::MutCInt => Group::Integer,
+        }
+    }
+
+    fn is_float(self) -> bool {
+        match self {
+            Ty::F16
+            | Ty::F32
+            | Ty::F64
+            | Ty::F128
+            | Ty::MutF16
+            | Ty::MutF32
+            | Ty::MutF64
+            | Ty::MutF128 => true,
+            Ty::I32
+            | Ty::I64
+            | Ty::I128
+            | Ty::U32
+            | Ty::U64
+            | Ty::U128
+            | Ty::Bool
+            | Ty::CInt
+            | Ty::MutI32
+            | Ty::MutCInt => false,
+        }
+    }
+}
+
+/// How a function should get grouped for things like extensive tests.
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum FloatTy {
+pub enum Group {
     F16,
     F32,
     F64,
     F128,
+    Integer,
 }
 
 impl fmt::Display for Ty {
@@ -1052,18 +1041,6 @@ impl fmt::Display for Ty {
     }
 }
 
-impl fmt::Display for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            FloatTy::F16 => "f16",
-            FloatTy::F32 => "f32",
-            FloatTy::F64 => "f64",
-            FloatTy::F128 => "f128",
-        };
-        f.write_str(s)
-    }
-}
-
 /// Representation of e.g. `(f32, f32) -> f32`
 #[derive(Debug, Clone)]
 pub struct Signature {
@@ -1075,7 +1052,8 @@ pub struct Signature {
 #[derive(Debug, Clone)]
 pub struct MathOpInfo {
     pub name: &'static str,
-    pub float_ty: FloatTy,
+    /// How this function should be grouped when needed. Based on the first float argument.
+    pub group: Group,
     /// Function signature for C implementations
     pub c_sig: Signature,
     /// Function signature for Rust implementations
@@ -1093,9 +1071,20 @@ pub static ALL_OPERATIONS: LazyLock<Vec<MathOpInfo>> = LazyLock::new(|| {
     for op in ALL_OPERATIONS_NESTED {
         let fn_names = op.fn_list;
         for name in fn_names {
+            // Locate the first float argument or return value, fall back to whatever the first
+            // argument is if there are no floats.
+            let group_ty = op
+                .rust_sig
+                .args
+                .iter()
+                .chain(op.rust_sig.returns.iter())
+                .find(|arg| arg.is_float())
+                .unwrap_or(&op.rust_sig.args[0]);
+            let group = group_ty.group();
+
             let api = MathOpInfo {
                 name,
-                float_ty: op.float_ty,
+                group,
                 rust_sig: op.rust_sig.clone(),
                 c_sig: op.c_sig.clone().unwrap_or_else(|| op.rust_sig.clone()),
                 scope: op.scope,

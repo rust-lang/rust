@@ -6,13 +6,14 @@ use parse::{Invocation, StructuredInput};
 use proc_macro as pm;
 use proc_macro2::{self as pm2, Span};
 use quote::{ToTokens, quote};
-pub(crate) use shared::{ALL_OPERATIONS, FloatTy, MathOpInfo, Ty};
+use shared::Group;
+pub(crate) use shared::{ALL_OPERATIONS, MathOpInfo, Ty};
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
 use syn::{Ident, ItemEnum, PathArguments, PathSegment};
 
 const KNOWN_TYPES: &[&str] = &[
-    "FTy", "CFn", "CArgs", "CRet", "RustFn", "RustArgs", "RustRet", "path",
+    "CFn", "CArgs", "CRet", "RustFn", "RustArgs", "RustRet", "path",
 ];
 
 /// Populate an enum with a variant representing function. Names are in upper camel case.
@@ -66,8 +67,6 @@ pub fn base_name_enum(attributes: pm::TokenStream, tokens: pm::TokenStream) -> p
 ///     (
 ///         // Name of that function
 ///         fn_name: $fn_name:ident,
-///         // The basic float type for this function (e.g. `f32`, `f64`)
-///         FTy: $FTy:ty,
 ///         // Function signature of the C version (e.g. `fn(f32, &mut f32) -> f32`)
 ///         CFn: $CFn:ty,
 ///         // A tuple representing the C version's arguments (e.g. `(f32, &mut f32)`)
@@ -143,11 +142,12 @@ pub fn for_each_function(tokens: pm::TokenStream) -> pm::TokenStream {
 fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>> {
     // Replace magic mappers with a list of relevant functions.
     if let Some(map) = &mut input.fn_extra {
-        for (name, ty) in [
-            ("ALL_F16", FloatTy::F16),
-            ("ALL_F32", FloatTy::F32),
-            ("ALL_F64", FloatTy::F64),
-            ("ALL_F128", FloatTy::F128),
+        for (name, group) in [
+            ("ALL_F16", Group::F16),
+            ("ALL_F32", Group::F32),
+            ("ALL_F64", Group::F64),
+            ("ALL_F128", Group::F128),
+            ("ALL_INT", Group::Integer),
         ] {
             let Some(k) = map.keys().find(|key| *key == name) else {
                 continue;
@@ -156,7 +156,7 @@ fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>
             let key = k.clone();
             let val = map.remove(&key).unwrap();
 
-            for op in ALL_OPERATIONS.iter().filter(|op| op.float_ty == ty) {
+            for op in ALL_OPERATIONS.iter().filter(|op| op.group == group) {
                 map.insert(Ident::new(op.name, key.span()), val.clone());
             }
         }
@@ -233,7 +233,7 @@ fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>
 
         // Omit f16 and f128 functions if requested
         if input.skip_f16_f128 {
-            if matches!(func.float_ty, FloatTy::F16 | FloatTy::F128) {
+            if matches!(func.group, Group::F16 | Group::F128) {
                 continue;
             }
 
@@ -383,7 +383,6 @@ fn expand(input: StructuredInput, fn_list: &[&MathOpInfo]) -> syn::Result<pm2::T
             None => pm2::TokenStream::new(),
         };
 
-        let base_fty = func.float_ty;
         let c_args = &func.c_sig.args;
         let c_ret = &func.c_sig.returns;
         let rust_args = &func.rust_sig.args;
@@ -403,7 +402,6 @@ fn expand(input: StructuredInput, fn_list: &[&MathOpInfo]) -> syn::Result<pm2::T
         let mut ty_fields = Vec::new();
         for ty in &input.emit_types {
             let field = match ty.to_string().as_str() {
-                "FTy" => quote! { FTy: #base_fty, },
                 "CFn" => quote! { CFn: fn( #(#c_args),* ,) -> ( #(#c_ret),* ), },
                 "CArgs" => quote! { CArgs: ( #(#c_args),* ,), },
                 "CRet" => quote! { CRet: ( #(#c_ret),* ), },
@@ -545,18 +543,6 @@ impl ToTokens for Ty {
             Ty::MutF128 => quote! { &'a mut f128 },
             Ty::MutI32 => quote! { &'a mut i32 },
             Ty::MutCInt => quote! { &'a mut core::ffi::c_int },
-        };
-
-        tokens.extend(ts);
-    }
-}
-impl ToTokens for FloatTy {
-    fn to_tokens(&self, tokens: &mut pm2::TokenStream) {
-        let ts = match self {
-            FloatTy::F16 => quote! { f16 },
-            FloatTy::F32 => quote! { f32 },
-            FloatTy::F64 => quote! { f64 },
-            FloatTy::F128 => quote! { f128 },
         };
 
         tokens.extend(ts);

@@ -7,7 +7,6 @@
 macro_rules! basic {
     (
         fn_name: $fn_name:ident,
-        FTy: $FTy:ty,
         CFn: $CFn:ty,
         CArgs: $CArgs:ty,
         CRet: $CRet:ty,
@@ -22,7 +21,6 @@ macro_rules! basic {
         $(#[$attr])*
         #[allow(dead_code)]
         pub mod $fn_name {
-            type FTy= $FTy;
             type CFnTy<'a> = $CFn;
             type RustFnTy = $RustFn;
             type RustArgsTy = $RustArgs;

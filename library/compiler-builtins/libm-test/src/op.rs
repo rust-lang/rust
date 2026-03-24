@@ -16,9 +16,9 @@
 use std::fmt;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
-pub use shared::{ALL_OPERATIONS, FloatTy, MathOpInfo, Ty};
+pub use shared::{ALL_OPERATIONS, Group, MathOpInfo, Ty};
 
-use crate::{CheckOutput, Float, Tuple, TupleCall};
+use crate::{CheckOutput, Tuple, TupleCall};
 
 mod shared {
     include!("../../crates/libm-macros/src/shared.rs");
@@ -59,9 +59,6 @@ impl fmt::Display for BaseName {
 /// Attributes ascribed to a `libm` routine including signature, type information,
 /// and naming.
 pub trait MathOp {
-    /// The float type used for this operation.
-    type FTy: Float;
-
     /// The function type representing the signature in a C library.
     type CFn: Copy;
 
@@ -103,19 +100,17 @@ pub trait MathOp {
     const ROUTINE: Self::RustFn;
 }
 
-/// Access the associated `FTy` type from an op (helper to avoid ambiguous associated types).
-pub type OpFTy<Op> = <Op as MathOp>::FTy;
-/// Access the associated `FTy::Int` type from an op (helper to avoid ambiguous associated types).
-pub type OpITy<Op> = <<Op as MathOp>::FTy as Float>::Int;
-/// Access the associated `CFn` type from an op (helper to avoid ambiguous associated types).
+/* Most of these are workarounds for <https://github.com/rust-lang/rust/issues/38078> */
+
+/// Access the associated `CFn` type from an op.
 pub type OpCFn<Op> = <Op as MathOp>::CFn;
-/// Access the associated `CRet` type from an op (helper to avoid ambiguous associated types).
+/// Access the associated `CRet` type from an op.
 pub type OpCRet<Op> = <Op as MathOp>::CRet;
-/// Access the associated `RustFn` type from an op (helper to avoid ambiguous associated types).
+/// Access the associated `RustFn` type from an op.
 pub type OpRustFn<Op> = <Op as MathOp>::RustFn;
-/// Access the associated `RustArgs` type from an op (helper to avoid ambiguous associated types).
+/// Access the associated `RustArgs` type from an op.
 pub type OpRustArgs<Op> = <Op as MathOp>::RustArgs;
-/// Access the associated `RustRet` type from an op (helper to avoid ambiguous associated types).
+/// Access the associated `RustRet` type from an op.
 pub type OpRustRet<Op> = <Op as MathOp>::RustRet;
 
 /// Get the type of the first Rust argument.
@@ -134,7 +129,6 @@ macro_rules! create_op_modules {
     // Matcher for unary functions
     (
         fn_name: $fn_name:ident,
-        FTy: $FTy:ty,
         CFn: $CFn:ty,
         CArgs: $CArgs:ty,
         CRet: $CRet:ty,
@@ -151,7 +145,6 @@ macro_rules! create_op_modules {
                 pub struct Routine;
 
                 impl MathOp for Routine {
-                    type FTy = $FTy;
                     type CFn = for<'a> $CFn;
                     type CArgs<'a> = $CArgs where Self: 'a;
                     type CRet = $CRet;

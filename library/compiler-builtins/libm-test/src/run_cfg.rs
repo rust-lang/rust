@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 use std::{env, str};
 
 use crate::generate::random::{SEED, SEED_ENV};
-use crate::{BaseName, FloatTy, Identifier, test_log};
+use crate::{BaseName, Group, Identifier, test_log};
 
 /// The environment variable indicating which extensive tests should be run.
 pub const EXTENSIVE_ENV: &str = "LIBM_EXTENSIVE_TESTS";
@@ -152,10 +152,10 @@ static EXTENSIVE: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
     let list = var.split(",").filter(|s| !s.is_empty()).collect::<Vec<_>>();
     let mut ret = Vec::new();
 
-    let append_ty_ops = |ret: &mut Vec<_>, fty: FloatTy| {
+    let append_ty_ops = |ret: &mut Vec<_>, group: Group| {
         let iter = Identifier::ALL
             .iter()
-            .filter(move |id| id.math_op().float_ty == fty)
+            .filter(move |id| id.math_op().group == group)
             .copied();
         ret.extend(iter);
     };
@@ -163,10 +163,11 @@ static EXTENSIVE: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
     for item in list {
         match item {
             "all" => ret = Identifier::ALL.to_owned(),
-            "all_f16" => append_ty_ops(&mut ret, FloatTy::F16),
-            "all_f32" => append_ty_ops(&mut ret, FloatTy::F32),
-            "all_f64" => append_ty_ops(&mut ret, FloatTy::F64),
-            "all_f128" => append_ty_ops(&mut ret, FloatTy::F128),
+            "all_f16" => append_ty_ops(&mut ret, Group::F16),
+            "all_f32" => append_ty_ops(&mut ret, Group::F32),
+            "all_f64" => append_ty_ops(&mut ret, Group::F64),
+            "all_f128" => append_ty_ops(&mut ret, Group::F128),
+            "all_int" => append_ty_ops(&mut ret, Group::Integer),
             s => {
                 let id = Identifier::from_str(s)
                     .unwrap_or_else(|| panic!("unrecognized test name `{s}`"));
@@ -178,13 +179,18 @@ static EXTENSIVE: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
     ret
 });
 
+/// Most ops are somewhere on the order or 10^7 iterations per second when running exhaustive
+/// tests. Assuming about four hours to run, this is log2 of the max number of inputs that coul
+/// be tested.
+const MAX_REASONABLE_EXHAUSTIVE_BITS: u32 = 36;
+
 /// Information about the function to be tested.
 #[derive(Debug)]
 struct TestEnv {
     /// Tests should be reduced because the platform is slow. E.g. 32-bit or emulated.
     slow_platform: bool,
-    /// The float cannot be tested exhaustively, `f64` or `f128`.
-    large_float_ty: bool,
+    /// How many bits of input there are for this function.
+    total_input_bits: u32,
     /// Env indicates that an extensive test should be run.
     should_run_extensive: bool,
     /// Multiprecision tests will be run.
@@ -199,10 +205,11 @@ impl TestEnv {
         let op = id.math_op();
 
         let will_run_mp = cfg!(feature = "build-mpfr");
-        let large_float_ty = match op.float_ty {
-            FloatTy::F16 | FloatTy::F32 => false,
-            FloatTy::F64 | FloatTy::F128 => true,
-        };
+
+        let mut total_input_bits = 0;
+        for ty in op.rust_sig.args {
+            total_input_bits += ty.effective_bits();
+        }
 
         let will_run_extensive = EXTENSIVE.contains(&id);
 
@@ -210,7 +217,7 @@ impl TestEnv {
 
         Self {
             slow_platform: slow_platform(),
-            large_float_ty,
+            total_input_bits,
             should_run_extensive: will_run_extensive,
             mp_tests_enabled: will_run_mp,
             input_count,
@@ -260,8 +267,9 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
         }
     };
 
-    // Larger float types get more iterations.
-    if t_env.large_float_ty {
+    // This signature has too many possible inputs to test exhaustively, so increase input count
+    // on all other kinds of tests to get better coverage.
+    if t_env.total_input_bits > MAX_REASONABLE_EXHAUSTIVE_BITS {
         if ctx.extensive {
             // Extensive already has a pretty high test count.
             total_iterations *= 2;
