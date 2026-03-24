@@ -18,3 +18,19 @@ fn issue13365() {
     }
     //~^^^^ ERROR: this lint expectation is unfulfilled
 }
+
+#[allow(unexpected_cfgs)]
+fn issue16715(o: Option<i32>) {
+    if let Some(x) = o {
+        if x > 0 {
+            println!("Positive: {}", x);
+        }
+
+        #[cfg(feature = "some_feature")]
+        {
+            if x % 2 == 0 {
+                println!("Even: {}", x);
+            }
+        }
+    }
+}
