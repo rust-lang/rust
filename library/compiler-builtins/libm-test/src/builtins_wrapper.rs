@@ -161,3 +161,28 @@ cb_op!(trunc, __trunctfhf2, narrow_f128_f16, (a: f128) -> f16);
 cb_op!(trunc, __trunctfsf2, narrow_f128_f32, (a: f128) -> f32);
 #[cfg(f128_enabled)]
 cb_op!(trunc, __trunctfdf2, narrow_f128_f64, (a: f128) -> f64);
+
+cb_op!(conv, __fixsfsi, ftoi_f32_i32, (a: f32) -> i32);
+cb_op!(conv, __fixsfdi, ftoi_f32_i64, (a: f32) -> i64);
+cb_op!(conv, __fixsfti, ftoi_f32_i128, (a: f32) -> i128);
+cb_op!(conv, __fixdfsi, ftoi_f64_i32, (a: f64) -> i32);
+cb_op!(conv, __fixdfdi, ftoi_f64_i64, (a: f64) -> i64);
+cb_op!(conv, __fixdfti, ftoi_f64_i128, (a: f64) -> i128);
+#[cfg(f128_enabled)]
+cb_op!(conv, __fixtfsi, ftoi_f128_i32, (a: f128) -> i32);
+#[cfg(f128_enabled)]
+cb_op!(conv, __fixtfdi, ftoi_f128_i64, (a: f128) -> i64);
+#[cfg(f128_enabled)]
+cb_op!(conv, __fixtfti, ftoi_f128_i128, (a: f128) -> i128);
+cb_op!(conv, __fixunssfsi, ftoi_f32_u32, (a: f32) -> u32);
+cb_op!(conv, __fixunssfdi, ftoi_f32_u64, (a: f32) -> u64);
+cb_op!(conv, __fixunssfti, ftoi_f32_u128, (a: f32) -> u128);
+cb_op!(conv, __fixunsdfsi, ftoi_f64_u32, (a: f64) -> u32);
+cb_op!(conv, __fixunsdfdi, ftoi_f64_u64, (a: f64) -> u64);
+cb_op!(conv, __fixunsdfti, ftoi_f64_u128, (a: f64) -> u128);
+#[cfg(f128_enabled)]
+cb_op!(conv, __fixunstfsi, ftoi_f128_u32, (a: f128) -> u32);
+#[cfg(f128_enabled)]
+cb_op!(conv, __fixunstfdi, ftoi_f128_u64, (a: f128) -> u64);
+#[cfg(f128_enabled)]
+cb_op!(conv, __fixunstfti, ftoi_f128_u128, (a: f128) -> u128);

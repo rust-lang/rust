@@ -45,7 +45,9 @@ impl OpScope {
 /// We need a flat list to work with most of the time, but define things as a more convenient
 /// nested list.
 const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
-    /* compiler-builtins operations */
+    /********************************
+     * compiler-builtins operations *
+     ********************************/
     NestedOp {
         float_ty: FloatTy::F16,
         rust_sig: Signature {
@@ -290,7 +292,189 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         fn_list: &["narrow_f128_f64"],
         scope: OpScope::BuiltinsPublic,
     },
-    /* libm operations */
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::I32],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f32_i32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::I64],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f32_i64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::I128],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f32_i128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::I32],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f64_i32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::I64],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f64_i64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::I128],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f64_i128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::I32],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f128_i32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::I64],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f128_i64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::I128],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f128_i128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::U32],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f32_u32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::U64],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f32_u64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::U128],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f32_u128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::U32],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f64_u32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::U64],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f64_u64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::U128],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f64_u128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::U32],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f128_u32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::U64],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f128_u64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::U128],
+        },
+        c_sig: None,
+        fn_list: &["ftoi_f128_u128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    /*******************
+     * libm operations *
+     *******************/
     NestedOp {
         // `fn(f16) -> f16`
         float_ty: FloatTy::F16,
@@ -817,6 +1001,11 @@ pub enum Ty {
     F64,
     F128,
     I32,
+    I64,
+    I128,
+    U32,
+    U64,
+    U128,
     Bool,
     CInt,
     MutF16,
@@ -845,6 +1034,11 @@ impl fmt::Display for Ty {
             Ty::F64 => "f64",
             Ty::F128 => "f128",
             Ty::I32 => "i32",
+            Ty::I64 => "i64",
+            Ty::I128 => "i128",
+            Ty::U32 => "u32",
+            Ty::U64 => "u64",
+            Ty::U128 => "u128",
             Ty::Bool => "bool",
             Ty::CInt => "::core::ffi::c_int",
             Ty::MutF16 => "&mut f16",

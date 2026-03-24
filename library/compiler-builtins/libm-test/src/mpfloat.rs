@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 
 use rug::Assign;
 pub use rug::Float as MpFloat;
-use rug::az::{self, Az};
+use rug::az::{self, Az, CheckedCast};
 use rug::float::Round::Nearest;
 use rug::ops::{
     AddAssignRound, DivAssignRound, MulAssignRound, PowAssignRound, RemAssignRound, SubAssignRound,
@@ -21,7 +21,7 @@ fn new_mpfloat<F: Float>() -> MpFloat {
 }
 
 /// Set subnormal emulation and convert to a concrete float type.
-fn prep_retval<F: Float>(mp: &mut MpFloat, ord: Ordering) -> F
+fn prep_retval<F>(mp: &mut MpFloat, ord: Ordering) -> F
 where
     for<'a> &'a MpFloat: az::Cast<F>,
 {
@@ -183,6 +183,24 @@ libm_macros::for_each_function! {
         frexpf,
         frexpf128,
         frexpf16,
+        ftoi_f128_i128,
+        ftoi_f128_i32,
+        ftoi_f128_i64,
+        ftoi_f128_u128,
+        ftoi_f128_u32,
+        ftoi_f128_u64,
+        ftoi_f32_i128,
+        ftoi_f32_i32,
+        ftoi_f32_i64,
+        ftoi_f32_u128,
+        ftoi_f32_u32,
+        ftoi_f32_u64,
+        ftoi_f64_i128,
+        ftoi_f64_i32,
+        ftoi_f64_i64,
+        ftoi_f64_u128,
+        ftoi_f64_u32,
+        ftoi_f64_u64,
         gef128,
         gef16,
         gef32,
@@ -810,6 +828,35 @@ macro_rules! impl_extend_trunc {
     };
 }
 
+macro_rules! impl_ftoi {
+    ($fty:ty, $ity:ty) => {
+        paste::paste! {
+            impl MpOp for crate::op::[<ftoi_ $fty _ $ity>]::Routine {
+                type MpTy = MpFloat;
+
+                fn new_mp() -> Self::MpTy {
+                    new_mpfloat::<Self::FTy>()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    this.trunc_mut();
+                    this.subnormalize_ieee_round(Ordering::Equal, Nearest);
+                    (&*this).checked_cast().unwrap_or_else(|| {
+                        if this.is_nan() {
+                            0
+                        } else if this.is_sign_negative() {
+                            Self::RustRet::MIN
+                        } else {
+                            Self::RustRet::MAX
+                        }
+                    })
+                }
+            }
+        }
+    };
+}
+
 impl_op_for_ty!(f32, "f");
 impl_op_for_ty!(f64, "");
 
@@ -837,6 +884,31 @@ impl_extend_trunc!(f32, f64);
 impl_extend_trunc!(f32, f128);
 #[cfg(f128_enabled)]
 impl_extend_trunc!(f64, f128);
+
+impl_ftoi!(f32, i32);
+impl_ftoi!(f32, i64);
+impl_ftoi!(f32, i128);
+impl_ftoi!(f32, u32);
+impl_ftoi!(f32, u64);
+impl_ftoi!(f32, u128);
+impl_ftoi!(f64, i32);
+impl_ftoi!(f64, i64);
+impl_ftoi!(f64, i128);
+impl_ftoi!(f64, u32);
+impl_ftoi!(f64, u64);
+impl_ftoi!(f64, u128);
+#[cfg(f128_enabled)]
+impl_ftoi!(f128, i32);
+#[cfg(f128_enabled)]
+impl_ftoi!(f128, i64);
+#[cfg(f128_enabled)]
+impl_ftoi!(f128, i128);
+#[cfg(f128_enabled)]
+impl_ftoi!(f128, u32);
+#[cfg(f128_enabled)]
+impl_ftoi!(f128, u64);
+#[cfg(f128_enabled)]
+impl_ftoi!(f128, u128);
 
 // `lgamma_r` is not a simple suffix so we can't use the above macro.
 impl MpOp for crate::op::lgamma_r::Routine {

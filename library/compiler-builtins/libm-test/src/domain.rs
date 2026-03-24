@@ -243,6 +243,7 @@ pub fn get_domain<F: Float, I: Int>(
         // Conversions
         BaseName::Extend => &EitherPrim::UNBOUNDED1[..],
         BaseName::Narrow => &EitherPrim::UNBOUNDED1[..],
+        BaseName::Ftoi => &EitherPrim::UNBOUNDED1[..],
 
         // Math functions
         BaseName::Acos => &EitherPrim::INVERSE_TRIG_PERIODIC[..],

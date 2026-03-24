@@ -312,6 +312,84 @@ fn narrow_f128_f64_cases() -> Vec<TestCase<op::narrow_f128_f64::Routine>> {
     vec![]
 }
 
+fn ftoi_f32_i32_cases() -> Vec<TestCase<op::ftoi_f32_i32::Routine>> {
+    vec![]
+}
+
+fn ftoi_f32_i64_cases() -> Vec<TestCase<op::ftoi_f32_i64::Routine>> {
+    vec![]
+}
+
+fn ftoi_f32_i128_cases() -> Vec<TestCase<op::ftoi_f32_i128::Routine>> {
+    vec![]
+}
+
+fn ftoi_f64_i32_cases() -> Vec<TestCase<op::ftoi_f64_i32::Routine>> {
+    vec![]
+}
+
+fn ftoi_f64_i64_cases() -> Vec<TestCase<op::ftoi_f64_i64::Routine>> {
+    vec![]
+}
+
+fn ftoi_f64_i128_cases() -> Vec<TestCase<op::ftoi_f64_i128::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn ftoi_f128_i32_cases() -> Vec<TestCase<op::ftoi_f128_i32::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn ftoi_f128_i64_cases() -> Vec<TestCase<op::ftoi_f128_i64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn ftoi_f128_i128_cases() -> Vec<TestCase<op::ftoi_f128_i128::Routine>> {
+    vec![]
+}
+
+fn ftoi_f32_u32_cases() -> Vec<TestCase<op::ftoi_f32_u32::Routine>> {
+    vec![]
+}
+
+fn ftoi_f32_u64_cases() -> Vec<TestCase<op::ftoi_f32_u64::Routine>> {
+    vec![]
+}
+
+fn ftoi_f32_u128_cases() -> Vec<TestCase<op::ftoi_f32_u128::Routine>> {
+    vec![]
+}
+
+fn ftoi_f64_u32_cases() -> Vec<TestCase<op::ftoi_f64_u32::Routine>> {
+    vec![]
+}
+
+fn ftoi_f64_u64_cases() -> Vec<TestCase<op::ftoi_f64_u64::Routine>> {
+    vec![]
+}
+
+fn ftoi_f64_u128_cases() -> Vec<TestCase<op::ftoi_f64_u128::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn ftoi_f128_u32_cases() -> Vec<TestCase<op::ftoi_f128_u32::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn ftoi_f128_u64_cases() -> Vec<TestCase<op::ftoi_f128_u64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn ftoi_f128_u128_cases() -> Vec<TestCase<op::ftoi_f128_u128::Routine>> {
+    vec![]
+}
+
 /*******************
  * libm test cases *
  *******************/

@@ -27,7 +27,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
         Bn::Eq | Bn::Ne | Bn::Gt | Bn::Ge | Bn::Lt | Bn::Le | Bn::Unord | Bn::Ilogb => return None,
 
         // Convrsion operations must be precise.
-        BaseName::Extend | BaseName::Narrow => 0,
+        BaseName::Extend | BaseName::Narrow | BaseName::Ftoi => 0,
 
         // Operations that require exact results. This list should correlate with what we
         // have documented at <https://doc.rust-lang.org/std/primitive.f32.html>.
