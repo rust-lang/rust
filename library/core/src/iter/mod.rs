@@ -364,11 +364,15 @@
 //! The [`Iterator`] trait *itself* doesn't impose any particular meaning on what will
 //! happen if its methods are called again after becoming exhausted.
 //!
+//! Note that [infinite iterators], mentioned above, are never exhausted and thus
+//! this section is not relevant to them.
+//!
 //! Many iterators implement [`FusedIterator`] to convey that once they have reached
 //! exhaustion, they will remain exhausted forever, with `next` returning `None`
 //! for all future calls, `position` returning `None` for all future calls, etc.
 //! The structure of implementing iterators frequently makes this doable for no extra
 //! cost, as a simple consequence of ever returning `None`, so is preferred in those cases.
+//! This is particularly common for iterators over collections.
 //!
 //! Some iterators define what it means to use them again after hitting exhaustion.
 //! For example, [`mpsc::TryIter`] continues to return more items from the channel
@@ -376,11 +380,16 @@
 //! that their implementation is simplest if they re-iterate the same items again
 //! when called again after exhaustion.
 //!
-//! Occasionally, iterators exist where calling again after exhaustion will misbehave
-//! in some way.  That of course must not cause *Undefined Behaviour*, as `Iterator`
-//! is a safe trait.  However, if the iterator is non-fused and avoiding doing so
-//! would cause extra cost, a particular iterator might end up panicking in `next`
-//! (or `fold` or `find_map` or ...) if called after exhaustion.
+//! Occasionally, iterators exist where their authors do not want to promise any
+//! specific behaviour after exhaustion, particularly if making such a guarantee
+//! would add overhead.  Such iterators must not implement `FusedIterator`, as
+//! that trait does promise a particular behavior.  And like *all* safe methods,
+//! calling safe `Iterator` methods must never cause *Undefined Behaviour* -- even
+//! after exhaustion.  However, absent a trait- or documentation-based guarantee
+//! to the contrary, an iterator might end up returning strange results from or
+//! panicking in `next` (or `fold` or `find_map` or ...) if called after exhaustion.
+//! For example, an iterator which is not fused needn't go out of its way to avoid
+//! integer overflows if its methods are called after exhaustion.
 //!
 //! As such, you should be cognizant of how you handle iterators at exhaustion.
 //! Calling `next` on a general `impl Iterator` after exhaustion, only to throw
@@ -402,6 +411,7 @@
 //! for some reason that iterating causes side effects, it can be useful.
 //!
 //! [`mpsc::TryIter`]: ../../std/sync/mpsc/struct.TryIter.html
+//! [infinite iterators]: #infinity
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
