@@ -398,6 +398,11 @@
 //! be helpful to call [`Iterator::fuse`] on the iterator you're processing so
 //! that you can (vacuously) use it after exhaustion without worry.
 //!
+//! Using an exhausted iterator with an iterator adapter may similarly
+//! produce varying results; check the documentation of the individual
+//! iterator adapter and do not rely on any particular behavior that
+//! is not documented.
+//!
 //! Generally you'll also want to convey, in some way, whether you hit exhaustion
 //! when processing an iterator.  That might be returning `None` like `next` and
 //! `nth`, could be a more complex strategy like returning an `Err` with a
