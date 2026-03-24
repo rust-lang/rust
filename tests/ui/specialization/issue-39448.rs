@@ -1,4 +1,4 @@
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 // Regression test for a specialization-related ICE (#39448).
 

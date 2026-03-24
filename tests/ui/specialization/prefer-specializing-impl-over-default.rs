@@ -3,7 +3,6 @@
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
 
 trait WithAssoc: 'static {
     type Assoc;
