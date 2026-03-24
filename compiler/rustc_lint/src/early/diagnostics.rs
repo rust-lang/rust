@@ -153,9 +153,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
                 .into_diag(dcx, level)
             }
 
-            BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
-                lints::UnusedCrateDependency { extern_crate, local_crate }.into_diag(dcx, level)
-            }
             BuiltinLintDiag::AttributeLint(kind) => {
                 DecorateAttrLint { sess: self.sess, tcx: self.tcx, diagnostic: &kind }
                     .into_diag(dcx, level)
