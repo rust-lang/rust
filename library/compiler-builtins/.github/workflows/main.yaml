@@ -114,16 +114,16 @@ jobs:
       JOB_TARGET: ${{ matrix.target }}
       JOB_CHANNEL: ${{ matrix.channel }}
       MAY_SKIP_LIBM_CI: ${{ needs.calculate_vars.outputs.may_skip_libm_ci }}
+      RUN_IN_DOCKER: ${{ matrix.os == 'ubuntu-24.04' }}
     steps:
-    - name: Print $HOME
+    - name: Print runner information
       shell: bash
       run: |
         set -x
-        echo "${HOME:-not found}"
+        uname -a
+        lscpu || (sysctl -a | grep cpu) || true
+        echo "home: ${HOME:-not found}"
         pwd
-        printenv
-    - name: Print runner information
-      run: uname -a
 
     # Native ppc and s390x runners don't have rustup by default
     - name: Install rustup
@@ -151,14 +151,14 @@ jobs:
         key: ${{ matrix.target }}
     - name: Cache Docker layers
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
-      if: matrix.os == 'ubuntu-24.04'
+      if: ${{ env.RUN_IN_DOCKER == 'true' }}
       with:
         path: /tmp/.buildx-cache
         key: ${{ matrix.target }}-buildx-${{ github.sha }}
         restore-keys: ${{ matrix.target }}-buildx-
     # Configure buildx to use Docker layer caching
     - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
-      if: matrix.os == 'ubuntu-24.04'
+      if: ${{ env.RUN_IN_DOCKER == 'true' }}
 
     - name: Cache compiler-rt
       id: cache-compiler-rt
@@ -183,13 +183,13 @@ jobs:
 
     # Non-linux tests just use our raw script
     - name: Run locally
-      if: matrix.os != 'ubuntu-24.04'
+      if: ${{ env.RUN_IN_DOCKER != 'true' }}
       shell: bash
       run: ./ci/run.sh "$JOB_TARGET"
 
     # Otherwise we use our docker containers to run builds
     - name: Run in Docker
-      if: matrix.os == 'ubuntu-24.04'
+      if: ${{ env.RUN_IN_DOCKER == 'true' }}
       run: ./ci/run-docker.sh "$JOB_TARGET"
 
     - name: Print test logs if available
@@ -201,7 +201,7 @@ jobs:
     # https://github.com/docker/build-push-action/issues/252
     # https://github.com/moby/buildkit/issues/1896
     - name: Move Docker cache
-      if: matrix.os == 'ubuntu-24.04'
+      if: ${{ env.RUN_IN_DOCKER == 'true' }}
       run: |
         rm -rf /tmp/.buildx-cache
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
