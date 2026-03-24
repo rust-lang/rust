@@ -23,9 +23,6 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                 let op = self.parse_operand(args[0])?;
                 Ok(StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(op))))
             },
-            @call(mir_retag, args) => {
-                Ok(StatementKind::Retag(RetagKind::Default, Box::new(self.parse_place(args[0])?)))
-            },
             @call(mir_set_discriminant, args) => {
                 let place = self.parse_place(args[0])?;
                 let var = self.parse_integer_literal(args[1])? as u32;
@@ -287,7 +284,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     fields.iter().map(|f| self.parse_operand(f.expr)).collect::<Result<_, _>>()?
                 ))
             },
-            _ => self.parse_operand(expr_id).map(Rvalue::Use),
+            _ => self.parse_operand(expr_id).map(|op| Rvalue::Use(op, WithRetag::Yes)),
         )
     }
 

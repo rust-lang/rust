@@ -117,7 +117,7 @@
           StorageLive(_8);
           _8 = move _4;
           StorageLive(_9);
-          _10 = copy (_1.1: &mut std::task::Context<'_>);
+          _10 = no_retag copy (_1.1: &mut std::task::Context<'_>);
           _9 = &mut (*_10);
 -         _7 = <{async fn body of ActionPermit<'_, T>::perform()} as Future>::poll(move _8, move _9) -> [return: bb3, unwind: bb5];
 +         StorageLive(_16);
@@ -209,7 +209,7 @@
 +         _40 = &raw mut _19;
 +         _39 = copy _40 as *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>> (PtrToPtr);
 +         StorageDead(_40);
-+         _37 = copy ((*_39).0: &mut std::future::Ready<()>);
++         _37 = no_retag copy ((*_39).0: &mut std::future::Ready<()>);
 +         StorageLive(_42);
 +         _42 = Option::<()>::None;
 +         _35 = copy ((*_37).0: std::option::Option<()>);

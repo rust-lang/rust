@@ -1282,7 +1282,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if let Some(mir::Statement {
                     source_info: _,
                     kind:
-                        mir::StatementKind::Assign(box (_, mir::Rvalue::Use(mir::Operand::Copy(place)))),
+                        mir::StatementKind::Assign(box (
+                            _,
+                            mir::Rvalue::Use(mir::Operand::Copy(place), _),
+                        )),
                     ..
                 }) = first_assignment_stmt
                 {

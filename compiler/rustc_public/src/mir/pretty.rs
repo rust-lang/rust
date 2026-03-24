@@ -108,7 +108,6 @@ fn pretty_statement<W: Write>(writer: &mut W, statement: &StatementKind) -> io::
         StatementKind::StorageDead(local) => {
             writeln!(writer, "{INDENT}StorageDead(_{local});")
         }
-        StatementKind::Retag(kind, place) => writeln!(writer, "Retag({kind:?}, {place:?});"),
         StatementKind::PlaceMention(place) => {
             writeln!(writer, "{INDENT}PlaceMention({place:?};")
         }
@@ -389,7 +388,12 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
         Rvalue::UnaryOp(un, op) => {
             write!(writer, "{:?}({})", un, pretty_operand(op))
         }
-        Rvalue::Use(op) => write!(writer, "{}", pretty_operand(op)),
+        Rvalue::Use(op, retag) => write!(
+            writer,
+            "{}{}",
+            if matches!(retag, crate::mir::WithRetag::No) { "no_retag " } else { "" },
+            pretty_operand(op)
+        ),
     }
 }
 

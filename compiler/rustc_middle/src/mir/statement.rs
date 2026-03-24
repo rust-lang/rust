@@ -52,7 +52,6 @@ impl<'tcx> StatementKind<'tcx> {
             StatementKind::SetDiscriminant { .. } => "SetDiscriminant",
             StatementKind::StorageLive(..) => "StorageLive",
             StatementKind::StorageDead(..) => "StorageDead",
-            StatementKind::Retag(..) => "Retag",
             StatementKind::PlaceMention(..) => "PlaceMention",
             StatementKind::AscribeUserType(..) => "AscribeUserType",
             StatementKind::Coverage(..) => "Coverage",
@@ -757,7 +756,7 @@ impl<'tcx> Rvalue<'tcx> {
             // <https://www.ralfj.de/blog/2022/04/11/provenance-exposed.html>
             Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => false,
 
-            Rvalue::Use(_)
+            Rvalue::Use(_, _)
             | Rvalue::CopyForDeref(_)
             | Rvalue::Repeat(_, _)
             | Rvalue::Ref(_, _, _)
@@ -790,7 +789,7 @@ impl<'tcx> Rvalue<'tcx> {
         D: ?Sized + HasLocalDecls<'tcx>,
     {
         match *self {
-            Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
+            Rvalue::Use(ref operand, _) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, count) => {
                 Ty::new_array_with_const_len(tcx, operand.ty(local_decls, tcx), count)
             }

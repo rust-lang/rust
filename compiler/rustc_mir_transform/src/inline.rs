@@ -966,7 +966,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
                 callsite.source_info,
                 StatementKind::Assign(Box::new((
                     dest,
-                    Rvalue::Use(Operand::Move(destination_local.into())),
+                    Rvalue::Use(Operand::Move(destination_local.into()), WithRetag::Yes),
                 ))),
             ));
             n += 1;
@@ -1138,7 +1138,7 @@ fn create_temp_if_necessary<'tcx, I: Inliner<'tcx>>(
     let local = new_call_temp(caller_body, callsite, arg_ty, return_block);
     caller_body[callsite.block].statements.push(Statement::new(
         callsite.source_info,
-        StatementKind::Assign(Box::new((Place::from(local), Rvalue::Use(arg)))),
+        StatementKind::Assign(Box::new((Place::from(local), Rvalue::Use(arg, WithRetag::Yes)))),
     ));
     local
 }
@@ -1273,16 +1273,6 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
         self.in_cleanup_block = data.is_cleanup;
         self.super_basic_block_data(block, data);
         self.in_cleanup_block = false;
-    }
-
-    fn visit_retag(&mut self, kind: &mut RetagKind, place: &mut Place<'tcx>, loc: Location) {
-        self.super_retag(kind, place, loc);
-
-        // We have to patch all inlined retags to be aware that they are no longer
-        // happening on function entry.
-        if *kind == RetagKind::FnEntry {
-            *kind = RetagKind::Default;
-        }
     }
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {

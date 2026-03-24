@@ -177,9 +177,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     FlatSet::<Scalar>::BOTTOM,
                 );
             }
-            StatementKind::Retag(..) => {
-                // We don't track references.
-            }
             StatementKind::ConstEvalCounter
             | StatementKind::Nop
             | StatementKind::FakeRead(..)
@@ -299,7 +296,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         state: &mut State<FlatSet<Scalar>>,
     ) {
         match rvalue {
-            Rvalue::Use(operand) => {
+            Rvalue::Use(operand, _) => {
                 state.flood(target.as_ref(), &self.map);
                 if let Some(target) = self.map.find(target.as_ref()) {
                     self.assign_operand(state, target, operand);
@@ -465,7 +462,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
             }
             Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), &self.map),
-            Rvalue::Use(operand) => return self.handle_operand(operand, state),
+            Rvalue::Use(operand, _) => return self.handle_operand(operand, state),
             Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
             Rvalue::Ref(..) | Rvalue::RawPtr(..) => {
                 // We don't track such places.
@@ -976,7 +973,7 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
         location: Location,
     ) {
         match statement.kind {
-            StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(_)))) => {
+            StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(_), _))) => {
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
             StatementKind::Assign(box (place, _)) => {
@@ -1019,7 +1016,11 @@ impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
         if let Some(value) = self.assignments.get(&location) {
             match &mut statement.kind {
                 StatementKind::Assign(box (_, rvalue)) => {
-                    *rvalue = Rvalue::Use(self.make_operand(*value));
+                    let old_retag = match rvalue {
+                        Rvalue::Use(_, retag) => *retag,
+                        _ => WithRetag::Yes,
+                    };
+                    *rvalue = Rvalue::Use(self.make_operand(*value), old_retag);
                 }
                 _ => bug!("found assignment info for non-assign statement"),
             }

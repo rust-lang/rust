@@ -23,7 +23,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         rvalue: &mir::Rvalue<'tcx>,
     ) {
         match *rvalue {
-            mir::Rvalue::Use(ref operand) => {
+            mir::Rvalue::Use(ref operand, _) => {
                 if let mir::Operand::Constant(const_op) = operand {
                     let val = self.eval_mir_constant(&const_op);
                     if val.all_bytes_uninit(self.cx.tcx()) {
@@ -658,7 +658,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 OperandRef { val: OperandValue::Immediate(static_), layout, move_annotation: None }
             }
-            mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
+            mir::Rvalue::Use(ref operand, _) => self.codegen_operand(bx, operand),
             mir::Rvalue::Repeat(ref elem, len_const) => {
                 // All arrays have `BackendRepr::Memory`, so only the ZST cases
                 // end up here. Anything else forces the destination local to be

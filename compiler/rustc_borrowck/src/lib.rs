@@ -853,7 +853,6 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                 );
             }
             StatementKind::Nop
-            | StatementKind::Retag { .. }
             | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }
@@ -1540,7 +1539,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
             Rvalue::ThreadLocalRef(_) => {}
 
-            Rvalue::Use(operand)
+            Rvalue::Use(operand, _)
             | Rvalue::Repeat(operand, _)
             | Rvalue::UnaryOp(_ /*un_op*/, operand)
             | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/) => {
@@ -1693,7 +1692,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             StatementKind::Assign(box (
                                 _,
                                 Rvalue::Ref(_, _, source)
-                                | Rvalue::Use(Operand::Copy(source) | Operand::Move(source)),
+                                | Rvalue::Use(Operand::Copy(source) | Operand::Move(source), _),
                             )) => {
                                 propagate_closure_used_mut_place(self, source);
                             }
