@@ -69,8 +69,7 @@ pub fn fmaximumf128(x: f128, y: f128) -> f128 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::support::hex_float::Hexi;
-    use crate::support::{Float, Hexf};
+    use crate::support::{Float, Hex};
 
     fn fminimum_spec_test<F: Float>(f: impl Fn(F, F) -> F) {
         let cases = [
@@ -132,10 +131,10 @@ mod tests {
                 val,
                 res,
                 "fminimum({}, {}) ({}, {})",
-                Hexf(x),
-                Hexf(y),
-                Hexi(x.to_bits()),
-                Hexi(y.to_bits()),
+                Hex(x),
+                Hex(y),
+                Hex(x.to_bits()),
+                Hex(y.to_bits()),
             );
         }
 
@@ -264,10 +263,10 @@ mod tests {
                 val,
                 res,
                 "fmaximum({}, {}) ({}, {})",
-                Hexf(x),
-                Hexf(y),
-                Hexi(x.to_bits()),
-                Hexi(y.to_bits()),
+                Hex(x),
+                Hex(y),
+                Hex(x.to_bits()),
+                Hex(y.to_bits()),
             );
         }
 

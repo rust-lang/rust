@@ -9,10 +9,10 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 
 use cfg_if::cfg_if;
-use libm::support::{Float, Hexf, hf32, hf64};
+use libm::support::{Float, Hex, hf32, hf64};
 #[cfg(feature = "build-mpfr")]
 use libm_test::mpfloat::MpOp;
-use libm_test::{Hex, MathOp, TupleCall, builtins_wrapper};
+use libm_test::{MathOp, TupleCall, builtins_wrapper};
 #[cfg(feature = "build-mpfr")]
 use rug::az::{self, Az};
 
@@ -82,7 +82,7 @@ macro_rules! handle_call {
                 }
                 _ => panic!("unrecognized or disabled basis '{}'", $basis),
             };
-            println!("{output:?} {:x}", Hexf(output));
+            println!("{output:?} {:x}", Hex(output));
             return;
         }
     };
@@ -162,18 +162,17 @@ fn do_classify(inputs: &[&str]) {
 fn classify_print<F>(x: F)
 where
     F: Float,
-    F::Int: Hex,
 {
     println!("{x:?}");
-    println!("    hex:  {}", Hexf(x));
-    println!("    bits: {}", x.to_bits().hex());
+    println!("    hex:  {}", Hex(x));
+    println!("    bits: {}", Hex(x.to_bits()));
     println!("    nan:  {}", x.is_nan());
     println!("    inf:  {}", x.is_infinite());
     println!("    normal: {}", !x.is_subnormal());
     println!("    pos:  {}", x.is_sign_positive());
-    println!("    exp:  {} {}", x.ex(), x.ex().hex());
+    println!("    exp:  {} {}", x.ex(), Hex(x.ex()));
     println!("    exp unbiased: {}", x.exp_unbiased());
-    println!("    frac: {} {}", x.frac(), x.frac().hex());
+    println!("    frac: {} {}", x.frac(), Hex(x.frac()));
 }
 
 /// Parse a tuple from a space-delimited string.

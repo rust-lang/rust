@@ -47,7 +47,7 @@ pub fn rint_round<F: Float>(x: F, _round: Round) -> FpResult<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::support::{Hexf, Status};
+    use crate::support::{Hex, Status};
 
     fn spec_test<F: Float>(cases: &[(F, F, Status)]) {
         let roundtrip = [
@@ -61,14 +61,14 @@ mod tests {
 
         for x in roundtrip {
             let FpResult { val, status } = rint_round(x, Round::Nearest);
-            assert_biteq!(val, x, "rint_round({})", Hexf(x));
-            assert_eq!(status, Status::OK, "{}", Hexf(x));
+            assert_biteq!(val, x, "rint_round({})", Hex(x));
+            assert_eq!(status, Status::OK, "{}", Hex(x));
         }
 
         for &(x, res, res_stat) in cases {
             let FpResult { val, status } = rint_round(x, Round::Nearest);
-            assert_biteq!(val, res, "rint_round({})", Hexf(x));
-            assert_eq!(status, res_stat, "{}", Hexf(x));
+            assert_biteq!(val, res, "rint_round({})", Hex(x));
+            assert_eq!(status, res_stat, "{}", Hex(x));
         }
     }
 

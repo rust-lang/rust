@@ -62,7 +62,7 @@ pub fn floor_status<F: Float>(x: F) -> FpResult<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::support::Hexf;
+    use crate::support::Hex;
 
     macro_rules! cases {
         ($f:ty) => {
@@ -95,13 +95,13 @@ mod tests {
     fn check<F: Float>(cases: &[(F, F, Status)]) {
         for &(x, exp_res, exp_stat) in cases {
             let FpResult { val, status } = floor_status(x);
-            assert_biteq!(val, exp_res, "{x:?} {}", Hexf(x));
+            assert_biteq!(val, exp_res, "{x:?} {}", Hex(x));
             assert_eq!(
                 status,
                 exp_stat,
                 "{x:?} {} -> {exp_res:?} {}",
-                Hexf(x),
-                Hexf(exp_res)
+                Hex(x),
+                Hex(exp_res)
             );
         }
     }

@@ -5,7 +5,7 @@
 use std::hint::black_box;
 
 use gungraun::{library_benchmark, library_benchmark_group, main};
-use libm::support::{HInt, Hexf, hf16, hf32, hf64, hf128, u256};
+use libm::support::{HInt, Hex, hf16, hf32, hf64, hf128, u256};
 use libm_test::generate::spaced;
 use libm_test::{CheckBasis, CheckCtx, GeneratorKind, MathOp, OpRustArgs, TupleCall, op};
 
@@ -206,28 +206,28 @@ library_benchmark_group!(
 #[bench::short(1.015625)]
 #[bench::max(f16::MAX)]
 fn icount_bench_print_hf16(x: f16) -> String {
-    black_box(Hexf(x).to_string())
+    black_box(Hex(x).to_string())
 }
 
 #[library_benchmark]
 #[bench::short(1.015625)]
 #[bench::max(f32::MAX)]
 fn icount_bench_print_hf32(x: f32) -> String {
-    black_box(Hexf(x).to_string())
+    black_box(Hex(x).to_string())
 }
 
 #[library_benchmark]
 #[bench::short(1.015625)]
 #[bench::max(f64::MAX)]
 fn icount_bench_print_hf64(x: f64) -> String {
-    black_box(Hexf(x).to_string())
+    black_box(Hex(x).to_string())
 }
 
 #[library_benchmark]
 #[bench::short(1.015625)]
 #[bench::max(f128::MAX)]
 fn icount_bench_print_hf128(x: f128) -> String {
-    black_box(Hexf(x).to_string())
+    black_box(Hex(x).to_string())
 }
 
 library_benchmark_group!(

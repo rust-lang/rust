@@ -1,5 +1,7 @@
 //! Utilities for working with hex float formats.
 
+pub use hex_fmt::{DisplayHex, Hex};
+
 use super::{Round, Status, f32_from_bits, f64_from_bits};
 
 /// Construct a 16-bit float from hex float representation (C-style)
@@ -324,17 +326,12 @@ const fn hex_digit(c: u8) -> Option<u8> {
     }
 }
 
-#[cfg(any(test, feature = "unstable-public-internals"))]
 mod hex_fmt {
-    use core::fmt::{self, LowerHex};
+    use core::fmt;
 
-    use crate::support::{Float, MinInt};
-
-    /// Format a floating point number as its IEEE hex (`%a`) representation.
-    pub struct Hexf<F>(pub F);
+    use crate::support::Float;
 
     // Adapted from https://github.com/ericseppanen/hexfloat2/blob/a5c27932f0ff/src/format.rs
-    #[cfg(not(feature = "compiler-builtins"))]
     pub(super) fn fmt_any_hex<F: Float>(x: &F, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if x.is_sign_negative() {
             write!(f, "-")?;
@@ -370,159 +367,113 @@ mod hex_fmt {
         write!(f, "0x{leading}{sig:0mwidth$x}p{exponent:+}")
     }
 
-    #[cfg(feature = "compiler-builtins")]
-    pub(super) fn fmt_any_hex<F: Float>(_x: &F, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        unimplemented!()
+    /// Types that can be formatted as hex via `Hex`. For ints we always print with a fixed
+    /// number of leading zeros. For floats we use the IEEE hex (`%a`) representation.
+    pub trait DisplayHex {
+        #[allow(unused)] // Only used for tests and public test internals
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
     }
 
-    impl<F: Float> fmt::LowerHex for Hexf<F> {
+    /// A wrapper implementing formatting traits via `DisplayHex`.
+    #[allow(unused)] // Only used for tests and public test internals
+    pub struct Hex<T>(pub T);
+
+    impl<T: DisplayHex> fmt::Debug for Hex<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            cfg_if! {
-                if #[cfg(feature = "compiler-builtins")] {
-                    let _ = f;
-                    unimplemented!()
-                } else {
-                    fmt_any_hex(&self.0, f)
-                }
-            }
+            self.0.fmt(f)
         }
     }
 
-    impl<F: Float> fmt::LowerHex for Hexf<(F, F)> {
+    impl<T: DisplayHex> fmt::Display for Hex<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            cfg_if! {
-                if #[cfg(feature = "compiler-builtins")] {
-                    let _ = f;
-                    unimplemented!()
-                } else {
-                    write!(f, "({:x}, {:x})", Hexf(self.0.0), Hexf(self.0.1))
-                }
-            }
+            self.0.fmt(f)
         }
     }
 
-    impl<F: Float> fmt::LowerHex for Hexf<(F, i32)> {
+    impl<T: DisplayHex> fmt::LowerHex for Hex<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            cfg_if! {
-                if #[cfg(feature = "compiler-builtins")] {
-                    let _ = f;
-                    unimplemented!()
-                } else {
-                    write!(f, "({:x}, {:x})", Hexf(self.0.0), Hexf(self.0.1))
-                }
-            }
+            self.0.fmt(f)
         }
     }
 
-    impl fmt::LowerHex for Hexf<i32> {
+    impl<F: Float> DisplayHex for F {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            cfg_if! {
-                if #[cfg(feature = "compiler-builtins")] {
-                    let _ = f;
-                    unimplemented!()
-                } else {
-                    write!(f, "{:#010x}", self.0)
-                }
-            }
+            fmt_any_hex(self, f)
         }
     }
+
+    macro_rules! impl_int {
+        ($ity:ty) => {
+            impl DisplayHex for $ity {
+                #[inline]
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    write!(
+                        f,
+                        "{self:#0width$x}",
+                        width = ((<$ity>::BITS / 4) + 2) as usize,
+                    )
+                }
+            }
+        };
+    }
+
+    impl_int!(i8);
+    impl_int!(i16);
+    impl_int!(i32);
+    impl_int!(i64);
+    impl_int!(i128);
+    impl_int!(isize);
+    impl_int!(u8);
+    impl_int!(u16);
+    impl_int!(u32);
+    impl_int!(u64);
+    impl_int!(u128);
+    impl_int!(usize);
 
     // Not really a meaningful impl, but makes some generics easier.
-    impl fmt::LowerHex for Hexf<bool> {
+    impl DisplayHex for bool {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             cfg_if! {
                 if #[cfg(feature = "compiler-builtins")] {
                     let _ = f;
                     unimplemented!()
                 } else {
-                    write!(f, "{}", self.0)
+                    write!(f, "{self}")
                 }
             }
         }
     }
 
-    impl<T> fmt::Debug for Hexf<T>
+    impl<T1> DisplayHex for (T1,)
     where
-        Hexf<T>: fmt::LowerHex,
+        T1: Copy + DisplayHex,
     {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            cfg_if! {
-                if #[cfg(feature = "compiler-builtins")] {
-                    let _ = f;
-                    unimplemented!()
-                } else {
-                    fmt::LowerHex::fmt(self, f)
-                }
-            }
+            write!(f, "({},)", Hex(self.0))
         }
     }
 
-    impl<T> fmt::Display for Hexf<T>
+    impl<T1, T2> DisplayHex for (T1, T2)
     where
-        Hexf<T>: fmt::LowerHex,
+        T1: Copy + DisplayHex,
+        T2: Copy + DisplayHex,
     {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            cfg_if! {
-                if #[cfg(feature = "compiler-builtins")] {
-                    let _ = f;
-                    unimplemented!()
-                } else {
-                    fmt::LowerHex::fmt(self, f)
-                }
-            }
+            write!(f, "({}, {})", Hex(self.0), Hex(self.1))
         }
     }
 
-    pub struct Hexi<F>(pub F);
-
-    impl<I: MinInt + LowerHex> fmt::LowerHex for Hexi<I> {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            cfg_if! {
-                if #[cfg(feature = "compiler-builtins")] {
-                    let _ = f;
-                    unimplemented!()
-                } else {
-                    write!(f, "{:#0width$x}", self.0, width = ((I::BITS / 4) + 2) as usize)
-                }
-            }
-        }
-    }
-
-    impl<T> fmt::Debug for Hexi<T>
+    impl<T1, T2, T3> DisplayHex for (T1, T2, T3)
     where
-        Hexi<T>: fmt::LowerHex,
+        T1: Copy + DisplayHex,
+        T2: Copy + DisplayHex,
+        T3: Copy + DisplayHex,
     {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            cfg_if! {
-                if #[cfg(feature = "compiler-builtins")] {
-                    let _ = f;
-                    unimplemented!()
-                } else {
-                    fmt::LowerHex::fmt(self, f)
-                }
-            }
-        }
-    }
-
-    impl<T> fmt::Display for Hexi<T>
-    where
-        Hexi<T>: fmt::LowerHex,
-    {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            cfg_if! {
-                if #[cfg(feature = "compiler-builtins")] {
-                    let _ = f;
-                    unimplemented!()
-                } else {
-                    fmt::LowerHex::fmt(self, f)
-                }
-            }
+            write!(f, "({}, {}, {})", Hex(self.0), Hex(self.1), Hex(self.2))
         }
     }
 }
-
-#[cfg(any(test, feature = "unstable-public-internals"))]
-pub use hex_fmt::*;
 
 #[cfg(test)]
 mod parse_tests {
@@ -592,7 +543,7 @@ mod parse_tests {
         let n = 1_i32 << 14;
         for i in -n..n {
             let u = i.rotate_right(11) as u32;
-            let s = format!("{}", Hexf(f32::from_bits(u)));
+            let s = format!("{}", Hex(f32::from_bits(u)));
             let s = canonicalize_snan_str(s);
             match rounding_properties(&s) {
                 Ok(()) => (),
@@ -667,7 +618,7 @@ mod parse_tests {
     #[cfg(f128_enabled)]
     fn rounding() {
         let pi = std::f128::consts::PI;
-        let s = format!("{}", Hexf(pi));
+        let s = format!("{}", Hex(pi));
 
         for k in 0..=111 {
             let (bits, status) = parse_any(&s, 128 - k, 112 - k, Round::Nearest).unwrap();
@@ -1133,7 +1084,7 @@ mod print_tests {
             use super::parse_tests::canonicalize_snan_str;
 
             let f = f16::from_bits(x);
-            let s = format!("{}", Hexf(f));
+            let s = format!("{}", Hex(f));
             let s = canonicalize_snan_str(s);
             let from_s = hf16(&s);
 
@@ -1162,10 +1113,10 @@ mod print_tests {
         //  - `f16 -> f32 -> str -> f16 -> f32`
         for x in 0..=u16::MAX {
             let f16 = f16::from_bits(x);
-            let s16 = format!("{}", Hexf(f16));
+            let s16 = format!("{}", Hex(f16));
             let s16 = canonicalize_snan_str(s16);
             let f32 = f16 as f32;
-            let s32 = format!("{}", Hexf(f32));
+            let s32 = format!("{}", Hex(f32));
             let s32 = canonicalize_snan_str(s32);
 
             let a = hf32(&s16);
@@ -1195,66 +1146,66 @@ mod print_tests {
     }
     #[test]
     fn spot_checks() {
-        assert_eq!(Hexf(f32::MAX).to_string(), "0x1.fffffep+127");
-        assert_eq!(Hexf(f64::MAX).to_string(), "0x1.fffffffffffffp+1023");
+        assert_eq!(Hex(f32::MAX).to_string(), "0x1.fffffep+127");
+        assert_eq!(Hex(f64::MAX).to_string(), "0x1.fffffffffffffp+1023");
 
-        assert_eq!(Hexf(f32::MIN).to_string(), "-0x1.fffffep+127");
-        assert_eq!(Hexf(f64::MIN).to_string(), "-0x1.fffffffffffffp+1023");
+        assert_eq!(Hex(f32::MIN).to_string(), "-0x1.fffffep+127");
+        assert_eq!(Hex(f64::MIN).to_string(), "-0x1.fffffffffffffp+1023");
 
-        assert_eq!(Hexf(f32::ZERO).to_string(), "0x0p+0");
-        assert_eq!(Hexf(f64::ZERO).to_string(), "0x0p+0");
+        assert_eq!(Hex(f32::ZERO).to_string(), "0x0p+0");
+        assert_eq!(Hex(f64::ZERO).to_string(), "0x0p+0");
 
-        assert_eq!(Hexf(f32::NEG_ZERO).to_string(), "-0x0p+0");
-        assert_eq!(Hexf(f64::NEG_ZERO).to_string(), "-0x0p+0");
+        assert_eq!(Hex(f32::NEG_ZERO).to_string(), "-0x0p+0");
+        assert_eq!(Hex(f64::NEG_ZERO).to_string(), "-0x0p+0");
 
-        assert_eq!(Hexf(f32::NAN).to_string(), "qNaN");
-        assert_eq!(Hexf(f64::NAN).to_string(), "qNaN");
-        assert_eq!(Hexf(f32::NEG_NAN).to_string(), "-qNaN");
-        assert_eq!(Hexf(f64::NEG_NAN).to_string(), "-qNaN");
+        assert_eq!(Hex(f32::NAN).to_string(), "qNaN");
+        assert_eq!(Hex(f64::NAN).to_string(), "qNaN");
+        assert_eq!(Hex(f32::NEG_NAN).to_string(), "-qNaN");
+        assert_eq!(Hex(f64::NEG_NAN).to_string(), "-qNaN");
         if !cfg!(x86_no_sse) {
             // FIXME(rust-lang/rust#115567): calls quiet the sNaN
-            assert_eq!(Hexf(f32::SNAN).to_string(), "sNaN");
-            assert_eq!(Hexf(f64::SNAN).to_string(), "sNaN");
-            assert_eq!(Hexf(f32::NEG_SNAN).to_string(), "-sNaN");
-            assert_eq!(Hexf(f64::NEG_SNAN).to_string(), "-sNaN");
+            assert_eq!(Hex(f32::SNAN).to_string(), "sNaN");
+            assert_eq!(Hex(f64::SNAN).to_string(), "sNaN");
+            assert_eq!(Hex(f32::NEG_SNAN).to_string(), "-sNaN");
+            assert_eq!(Hex(f64::NEG_SNAN).to_string(), "-sNaN");
         }
 
-        assert_eq!(Hexf(f32::INFINITY).to_string(), "inf");
-        assert_eq!(Hexf(f64::INFINITY).to_string(), "inf");
+        assert_eq!(Hex(f32::INFINITY).to_string(), "inf");
+        assert_eq!(Hex(f64::INFINITY).to_string(), "inf");
 
-        assert_eq!(Hexf(f32::NEG_INFINITY).to_string(), "-inf");
-        assert_eq!(Hexf(f64::NEG_INFINITY).to_string(), "-inf");
+        assert_eq!(Hex(f32::NEG_INFINITY).to_string(), "-inf");
+        assert_eq!(Hex(f64::NEG_INFINITY).to_string(), "-inf");
 
         #[cfg(f16_enabled)]
         {
-            assert_eq!(Hexf(f16::MAX).to_string(), "0x1.ffcp+15");
-            assert_eq!(Hexf(f16::MIN).to_string(), "-0x1.ffcp+15");
-            assert_eq!(Hexf(f16::ZERO).to_string(), "0x0p+0");
-            assert_eq!(Hexf(f16::NEG_ZERO).to_string(), "-0x0p+0");
-            assert_eq!(Hexf(f16::NAN).to_string(), "qNaN");
-            assert_eq!(Hexf(f16::SNAN).to_string(), "sNaN");
-            assert_eq!(Hexf(f16::NEG_NAN).to_string(), "-qNaN");
-            assert_eq!(Hexf(f16::INFINITY).to_string(), "inf");
-            assert_eq!(Hexf(f16::NEG_INFINITY).to_string(), "-inf");
+            assert_eq!(Hex(f16::MAX).to_string(), "0x1.ffcp+15");
+            assert_eq!(Hex(f16::MIN).to_string(), "-0x1.ffcp+15");
+            assert_eq!(Hex(f16::ZERO).to_string(), "0x0p+0");
+            assert_eq!(Hex(f16::NEG_ZERO).to_string(), "-0x0p+0");
+            assert_eq!(Hex(f16::NAN).to_string(), "qNaN");
+            assert_eq!(Hex(f16::SNAN).to_string(), "sNaN");
+            assert_eq!(Hex(f16::NEG_NAN).to_string(), "-qNaN");
+            assert_eq!(Hex(f16::INFINITY).to_string(), "inf");
+            assert_eq!(Hex(f16::NEG_INFINITY).to_string(), "-inf");
         }
 
         #[cfg(f128_enabled)]
         {
             assert_eq!(
-                Hexf(f128::MAX).to_string(),
+                Hex(f128::MAX).to_string(),
                 "0x1.ffffffffffffffffffffffffffffp+16383"
             );
             assert_eq!(
-                Hexf(f128::MIN).to_string(),
+                Hex(f128::MIN).to_string(),
                 "-0x1.ffffffffffffffffffffffffffffp+16383"
             );
-            assert_eq!(Hexf(f128::ZERO).to_string(), "0x0p+0");
-            assert_eq!(Hexf(f128::NEG_ZERO).to_string(), "-0x0p+0");
-            assert_eq!(Hexf(f128::NAN).to_string(), "qNaN");
-            assert_eq!(Hexf(f128::SNAN).to_string(), "sNaN");
-            assert_eq!(Hexf(f128::NEG_NAN).to_string(), "-qNaN");
-            assert_eq!(Hexf(f128::INFINITY).to_string(), "inf");
-            assert_eq!(Hexf(f128::NEG_INFINITY).to_string(), "-inf");
+            assert_eq!(Hex(f128::ZERO).to_string(), "0x0p+0");
+            assert_eq!(Hex(f128::NEG_ZERO).to_string(), "-0x0p+0");
+            assert_eq!(Hex(f128::NAN).to_string(), "qNaN");
+            assert_eq!(Hex(f128::SNAN).to_string(), "sNaN");
+            assert_eq!(Hex(f128::NEG_NAN).to_string(), "-qNaN");
+            assert_eq!(Hex(f128::INFINITY).to_string(), "inf");
+            assert_eq!(Hex(f128::NEG_INFINITY).to_string(), "-inf");
         }
     }
 }

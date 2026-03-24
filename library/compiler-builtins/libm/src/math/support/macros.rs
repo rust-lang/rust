@@ -146,9 +146,9 @@ macro_rules! assert_biteq {
             "{}\nl: {l:?} ({lb:#0width$x} {lh})\nr: {r:?} ({rb:#0width$x} {rh})",
             format_args!($($tt)*),
             lb = l.to_bits(),
-            lh = $crate::support::Hexf(l),
+            lh = $crate::support::Hex(l),
             rb = r.to_bits(),
-            rh = $crate::support::Hexf(r),
+            rh = $crate::support::Hex(r),
             width = ((bits / 4) + 2) as usize,
 
         );

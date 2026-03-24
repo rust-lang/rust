@@ -10,7 +10,7 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::{fmt, panic};
 
 use anyhow::{Context, anyhow, bail, ensure};
-use libm::support::Hexf;
+use libm::support::{DisplayHex, Hex};
 
 use crate::precision::CheckAction;
 use crate::{
@@ -48,17 +48,6 @@ pub trait CheckOutput<Input>: Sized {
     ///
     /// `input` is only used here for error messages.
     fn validate(self, expected: Self, input: Input, ctx: &CheckCtx) -> TestResult;
-}
-
-/// A helper trait to print something as hex with the correct number of nibbles, e.g. a `u32`
-/// will always print with `0x` followed by 8 digits.
-///
-/// This is only used for printing errors so allocating is okay.
-pub trait Hex: Copy {
-    /// Hex integer syntax.
-    fn hex(self) -> String;
-    /// Hex float syntax.
-    fn hexf(self) -> String;
 }
 
 /* implement `TupleCall` */
@@ -142,55 +131,11 @@ where
     }
 }
 
-/* implement `Hex` */
-
-impl<T1> Hex for (T1,)
-where
-    T1: Hex,
-{
-    fn hex(self) -> String {
-        format!("({},)", self.0.hex())
-    }
-
-    fn hexf(self) -> String {
-        format!("({},)", self.0.hexf())
-    }
-}
-
-impl<T1, T2> Hex for (T1, T2)
-where
-    T1: Hex,
-    T2: Hex,
-{
-    fn hex(self) -> String {
-        format!("({}, {})", self.0.hex(), self.1.hex())
-    }
-
-    fn hexf(self) -> String {
-        format!("({}, {})", self.0.hexf(), self.1.hexf())
-    }
-}
-
-impl<T1, T2, T3> Hex for (T1, T2, T3)
-where
-    T1: Hex,
-    T2: Hex,
-    T3: Hex,
-{
-    fn hex(self) -> String {
-        format!("({}, {}, {})", self.0.hex(), self.1.hex(), self.2.hex())
-    }
-
-    fn hexf(self) -> String {
-        format!("({}, {}, {})", self.0.hexf(), self.1.hexf(), self.2.hexf())
-    }
-}
-
 /* trait implementations for bool */
 
 impl<Input> CheckOutput<Input> for bool
 where
-    Input: Hex + fmt::Debug,
+    Input: Copy + DisplayHex + fmt::Debug,
     SpecialCase: MaybeOverride<Input>,
 {
     fn validate<'a>(self, expected: Self, input: Input, _ctx: &CheckCtx) -> TestResult {
@@ -201,7 +146,7 @@ where
             \n    expected: {expected}\
             \n    actual:   {self}\
             ",
-            ibits = input.hex(),
+            ibits = Hex(input),
         );
 
         Ok(())
@@ -213,19 +158,9 @@ where
 macro_rules! impl_int {
     ($($ty:ty),*) => {
         $(
-            impl Hex for $ty {
-                fn hex(self) -> String {
-                    format!("{self:#0width$x}", width = ((Self::BITS / 4) + 2) as usize)
-                }
-
-                fn hexf(self) -> String {
-                    String::new()
-                }
-            }
-
             impl<Input> $crate::CheckOutput<Input> for $ty
             where
-                Input: Hex + fmt::Debug,
+                Input: Copy + DisplayHex + fmt::Debug,
                 SpecialCase: MaybeOverride<Input>,
             {
                 fn validate<'a>(
@@ -243,8 +178,8 @@ macro_rules! impl_int {
 
 fn validate_int<I, Input>(actual: I, expected: I, input: Input, ctx: &CheckCtx) -> TestResult
 where
-    I: Int + Hex,
-    Input: Hex + fmt::Debug,
+    I: Int,
+    Input: Copy + DisplayHex + fmt::Debug,
     SpecialCase: MaybeOverride<Input>,
 {
     let (result, xfail_msg) = match SpecialCase::check_int(input, actual, expected, ctx) {
@@ -273,9 +208,9 @@ where
         \n    actual:   {actual:<22?} {actbits}\
         \n    {msg}\
         ",
-        actbits = actual.hex(),
-        expbits = expected.hex(),
-        ibits = input.hex(),
+        actbits = Hex(actual),
+        expbits = Hex(expected),
+        ibits = Hex(input),
         msg = make_xfail_msg()
     );
 
@@ -289,23 +224,9 @@ impl_int!(u16, i16, u32, i32, u64, i64, u128, i128);
 macro_rules! impl_float {
     ($($ty:ty),*) => {
         $(
-            impl Hex for $ty {
-                fn hex(self) -> String {
-                    format!(
-                        "{:#0width$x}",
-                        self.to_bits(),
-                        width = ((Self::BITS / 4) + 2) as usize
-                    )
-                }
-
-                fn hexf(self) -> String {
-                    format!("{}", Hexf(self))
-                }
-            }
-
             impl<Input> $crate::CheckOutput<Input> for $ty
             where
-                Input: Hex + fmt::Debug,
+                Input: Copy + DisplayHex + fmt::Debug,
                 SpecialCase: MaybeOverride<Input>,
             {
                 fn validate<'a>(
@@ -323,8 +244,8 @@ macro_rules! impl_float {
 
 fn validate_float<F, Input>(actual: F, expected: F, input: Input, ctx: &CheckCtx) -> TestResult
 where
-    F: Float + Hex,
-    Input: Hex + fmt::Debug,
+    F: Float,
+    Input: Copy + DisplayHex + fmt::Debug,
     u32: TryFrom<F::SignedInt, Error: fmt::Debug>,
     SpecialCase: MaybeOverride<Input>,
 {
@@ -418,12 +339,12 @@ where
             \n    expected: {expected:<22?} {exphex} {expbits}\
             \n    actual:   {actual:<22?} {acthex} {actbits}\
             ",
-            ihex = input.hexf(),
-            ibits = input.hex(),
-            exphex = expected.hexf(),
-            expbits = expected.hex(),
-            actbits = actual.hex(),
-            acthex = actual.hexf(),
+            ihex = Hex(input),
+            ibits = Hex(input),
+            exphex = Hex(expected),
+            expbits = Hex(expected),
+            actbits = Hex(actual),
+            acthex = Hex(actual),
         )
     })
 }
@@ -444,7 +365,7 @@ macro_rules! impl_tuples {
         $(
             impl<Input> CheckOutput<Input> for ($a, $b)
             where
-                Input: Hex + fmt::Debug,
+                Input: Copy + DisplayHex + fmt::Debug,
                 SpecialCase: MaybeOverride<Input>,
               {
                 fn validate<'a>(
@@ -463,10 +384,10 @@ macro_rules! impl_tuples {
                             \n    expected: {expected:?} {expbits}\
                             \n    actual:   {self:?} {actbits}\
                             ",
-                            ihex = input.hexf(),
-                            ibits = input.hex(),
-                            expbits = expected.hex(),
-                            actbits = self.hex(),
+                            ihex = Hex(input),
+                            ibits = Hex(input),
+                            expbits = Hex(expected),
+                            actbits = Hex(self),
                         ))
                 }
             }

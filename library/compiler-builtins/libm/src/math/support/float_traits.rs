@@ -1,6 +1,7 @@
 use core::{fmt, mem, ops};
 
 use super::int_traits::{CastFrom, Int, MinInt};
+use crate::support::DisplayHex;
 
 /// Whether MIPS sNaN/qNaNs should be used.
 ///
@@ -14,6 +15,7 @@ const MIPS_NAN: bool = cfg!(target_arch = "mips") || cfg!(target_arch = "mips64"
 pub trait Float:
     Copy
     + fmt::Debug
+    + DisplayHex
     + PartialEq
     + PartialOrd
     + ops::AddAssign
