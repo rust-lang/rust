@@ -1,8 +1,8 @@
 warning: irrefutable `if let` pattern
-  --> $DIR/nested-copy-drops-83176.rs:8:8
+  --> $DIR/nested-copy-drops-83176.rs:8:12
    |
 LL |     if let a = "" {
-   |        ^^^^^^^^^^
+   |            ^
    |
    = note: this pattern will always match, so the `if let` is useless
    = help: consider replacing the `if let` with a `let`
