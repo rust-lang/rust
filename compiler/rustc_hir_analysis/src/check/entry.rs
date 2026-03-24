@@ -88,20 +88,20 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuar
         }
     }
 
-    let mut error = false;
     let main_diagnostics_def_id = main_fn_diagnostics_def_id(tcx, main_def_id, main_span);
 
     let main_asyncness = tcx.asyncness(main_def_id);
     if main_asyncness.is_async() {
         let asyncness_span = main_fn_asyncness_span(tcx, main_def_id);
-        tcx.dcx()
-            .emit_err(errors::MainFunctionAsync { span: main_span, asyncness: asyncness_span });
-        error = true;
+        return Err(tcx
+            .dcx()
+            .emit_err(errors::MainFunctionAsync { span: main_span, asyncness: asyncness_span }));
     }
 
     if let Some(attr_span) = find_attr!(tcx, main_def_id, TrackCaller(span) => *span) {
-        tcx.dcx().emit_err(errors::TrackCallerOnMain { span: attr_span, annotated: main_span });
-        error = true;
+        return Err(tcx
+            .dcx()
+            .emit_err(errors::TrackCallerOnMain { span: attr_span, annotated: main_span }));
     }
 
     if !tcx.codegen_fn_attrs(main_def_id).target_features.is_empty()
@@ -109,12 +109,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuar
         && !tcx.sess.target.is_like_wasm
         && !tcx.sess.opts.actually_rustdoc
     {
-        tcx.dcx().emit_err(errors::TargetFeatureOnMain { main: main_span });
-        error = true;
-    }
-
-    if error {
-        return Ok(());
+        return Err(tcx.dcx().emit_err(errors::TargetFeatureOnMain { main: main_span }));
     }
 
     // Main should have no WC, so empty param env is OK here.
@@ -124,8 +119,9 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuar
         let return_ty = main_fnsig.output();
         let return_ty_span = main_fn_return_type_span(tcx, main_def_id).unwrap_or(main_span);
         let Some(return_ty) = return_ty.no_bound_vars() else {
-            tcx.dcx().emit_err(errors::MainFunctionReturnTypeGeneric { span: return_ty_span });
-            return Ok(());
+            return Err(tcx
+                .dcx()
+                .emit_err(errors::MainFunctionReturnTypeGeneric { span: return_ty_span }));
         };
         let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let cause = traits::ObligationCause::new(
@@ -164,7 +160,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuar
         ExternAbi::Rust,
     ));
 
-    if check_function_signature(
+    check_function_signature(
         tcx,
         ObligationCause::new(
             main_span,
@@ -173,11 +169,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuar
         ),
         main_def_id,
         expected_sig,
-    )
-    .is_err()
-    {
-        return Ok(());
-    }
+    )?;
 
     let main_fn_generics = tcx.generics_of(main_def_id);
     let main_fn_predicates = tcx.predicates_of(main_def_id);
