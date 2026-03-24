@@ -34,7 +34,9 @@ error[E0432]: unresolved import `super::inner::selected_out`
   --> $DIR/diagnostics-same-crate.rs:53:9
    |
 LL |     use super::inner::selected_out;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ no `selected_out` in `inner`
+   |         ^^^^^^^^^^^^^^------------
+   |                       |
+   |                       no `selected_out` in `inner`
    |
 note: found an item that was configured out
   --> $DIR/diagnostics-same-crate.rs:23:21

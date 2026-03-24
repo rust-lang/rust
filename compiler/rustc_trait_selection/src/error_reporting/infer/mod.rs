@@ -1498,14 +1498,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
                     ValuePairs::Aliases(ExpectedFound { expected, .. }) => {
                         let def_id = match expected.kind {
-                            ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::InherentTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::OpaqueTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::FreeTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::AnonConst { def_id } => def_id.into(),
-                            ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
-                            ty::AliasTermKind::FreeConst { def_id } => def_id.into(),
-                            ty::AliasTermKind::InherentConst { def_id } => def_id.into(),
+                            ty::AliasTermKind::ProjectionTy { def_id }
+                            | ty::AliasTermKind::InherentTy { def_id }
+                            | ty::AliasTermKind::OpaqueTy { def_id }
+                            | ty::AliasTermKind::FreeTy { def_id }
+                            | ty::AliasTermKind::AnonConst { def_id }
+                            | ty::AliasTermKind::ProjectionConst { def_id }
+                            | ty::AliasTermKind::FreeConst { def_id }
+                            | ty::AliasTermKind::InherentConst { def_id } => def_id,
                         };
                         (false, Mismatch::Fixed(self.tcx.def_descr(def_id)))
                     }
