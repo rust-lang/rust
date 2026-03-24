@@ -1592,3 +1592,99 @@ pub(crate) struct UnusedLifetime {
 
     pub ident: Ident,
 }
+
+#[derive(Diagnostic)]
+#[diag("ambiguous glob re-exports")]
+pub(crate) struct AmbiguousGlobReexports {
+    #[label("the name `{$name}` in the {$namespace} namespace is first re-exported here")]
+    pub first_reexport: Span,
+    #[label("but the name `{$name}` in the {$namespace} namespace is also re-exported here")]
+    pub duplicate_reexport: Span,
+
+    pub name: String,
+    pub namespace: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("private item shadows public glob re-export")]
+pub(crate) struct HiddenGlobReexports {
+    #[note(
+        "the name `{$name}` in the {$namespace} namespace is supposed to be publicly re-exported here"
+    )]
+    pub glob_reexport: Span,
+    #[note("but the private item here shadows it")]
+    pub private_item: Span,
+
+    pub name: String,
+    pub namespace: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("the item `{$ident}` is imported redundantly")]
+pub(crate) struct RedundantImport {
+    #[subdiagnostic]
+    pub subs: Vec<RedundantImportSub>,
+    pub ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum RedundantImportSub {
+    #[label("the item `{$ident}` is already imported here")]
+    ImportedHere {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label("the item `{$ident}` is already defined here")]
+    DefinedHere {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label("the item `{$ident}` is already imported by the extern prelude")]
+    ImportedPrelude {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label("the item `{$ident}` is already defined by the extern prelude")]
+    DefinedPrelude {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag("unnecessary qualification")]
+pub(crate) struct UnusedQualifications {
+    #[suggestion(
+        "remove the unnecessary path segments",
+        style = "verbose",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub removal_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "{$elided ->
+        [true] `&` without an explicit lifetime name cannot be used here
+        *[false] `'_` cannot be used here
+    }"
+)]
+pub(crate) struct AssociatedConstElidedLifetime {
+    #[suggestion(
+        "use the `'static` lifetime",
+        style = "verbose",
+        code = "{code}",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+
+    pub code: &'static str,
+    pub elided: bool,
+    #[note("cannot automatically infer `'static` because of other lifetimes in scope")]
+    pub lifetimes_in_scope: MultiSpan,
+}

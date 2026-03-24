@@ -678,7 +678,7 @@ pub fn lower_delayed_owner(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     lowerer.lower_node(def_id);
 
-    for (&child_def_id, &owner) in &map {
+    for (child_def_id, owner) in map {
         tcx.feed_delayed_owner(child_def_id, owner);
     }
 }
@@ -1265,7 +1265,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             };
             gen_args_ctor.into_generic_args(self)
         } else {
-            self.arena.alloc(hir::GenericArgs::none())
+            hir::GenericArgs::NONE
         };
         let kind = match &constraint.kind {
             AssocItemConstraintKind::Equality { term } => {
