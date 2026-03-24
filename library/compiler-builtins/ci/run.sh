@@ -166,7 +166,7 @@ else
         cmd=(cargo nextest run --max-fail=10)
 
         # Workaround for https://github.com/nextest-rs/nextest/issues/2066
-        if [ -f /.dockerenv ]; then
+        if [ -n "${CARGO_TARGET_DIR:-}" ]; then
             cfg_file="/tmp/nextest-config.toml"
             echo "[store]" >> "$cfg_file"
             echo "dir = \"$CARGO_TARGET_DIR/nextest\"" >> "$cfg_file"
