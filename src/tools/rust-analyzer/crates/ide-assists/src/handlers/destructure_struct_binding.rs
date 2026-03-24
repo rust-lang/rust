@@ -17,7 +17,7 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
-    utils::ref_field_expr::determine_ref_and_parens,
+    utils::{cover_edit_range, ref_field_expr::determine_ref_and_parens},
 };
 
 // Assist: destructure_struct_binding
@@ -358,6 +358,7 @@ fn update_usages(
     data: &StructEditData,
     field_names: &FxHashMap<SmolStr, SmolStr>,
 ) {
+    let source = ctx.source_file();
     let make = SyntaxFactory::with_mappings();
     let edits = data
         .usages
@@ -366,7 +367,9 @@ fn update_usages(
         .collect_vec();
     editor.add_mappings(make.finish_with_mappings());
     for (old, new) in edits {
-        editor.replace(old, new);
+        if let Some(range) = ctx.sema.original_range_opt(&old) {
+            editor.replace_all(cover_edit_range(source, range.range), vec![new.into()]);
+        }
     }
 }
 
@@ -1004,6 +1007,35 @@ mod tests {
             //- /main.rs crate:main deps:dep
             fn main($0foo: dep::Foo) {}
             "#,
+        )
+    }
+
+    #[test]
+    fn record_struct_usage_in_macro_call() {
+        // exact repro from #20716: struct field access inside write! must not panic
+        check_assist(
+            destructure_struct_binding,
+            r#"
+//- minicore: write, fmt
+use core::fmt::Write;
+struct Foo { y: i8 }
+
+fn main() {
+    let mut s = String::new();
+    let $0x = Foo { y: 8 };
+    write!(s, "{}", x.y).unwrap();
+}
+"#,
+            r#"
+use core::fmt::Write;
+struct Foo { y: i8 }
+
+fn main() {
+    let mut s = String::new();
+    let Foo { y } = Foo { y: 8 };
+    write!(s, "{}", y).unwrap();
+}
+"#,
         )
     }
 }
