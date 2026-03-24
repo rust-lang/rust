@@ -3071,7 +3071,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    fn test_mm_cvtsi32_ss() {
+    const fn test_mm_cvtsi32_ss() {
         test_mm_cvtsi32_ss_impl!(_mm_cvtsi32_ss);
     }
 
@@ -3207,12 +3207,12 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    fn test_mm_load1_ps() {
+    const fn test_mm_load1_ps() {
         test_mm_load1_ps_impl!(_mm_load1_ps);
     }
 
     #[simd_test(enable = "sse")]
-    fn test_mm_load_ps1() {
+    const fn test_mm_load_ps1() {
         test_mm_load1_ps_impl!(_mm_load_ps1);
     }
 
@@ -3276,12 +3276,12 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    fn test_mm_store1_ps() {
+    const fn test_mm_store1_ps() {
         test_mm_store1_ps_impl!(_mm_store1_ps);
     }
 
     #[simd_test(enable = "sse")]
-    fn test_mm_store_ps1() {
+    const fn test_mm_store_ps1() {
         test_mm_store1_ps_impl!(_mm_store_ps1);
     }
 

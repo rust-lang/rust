@@ -250,7 +250,6 @@ fn verify_all_signatures() {
                 "_mm_cvt_ss2si",
                 "_mm_cvtt_ss2si",
                 "_mm_cvt_si2ss",
-                "_mm_set_ps1",
                 "_mm_bslli_si128",
                 "_mm_bsrli_si128",
                 "_bextr2_u32",
