@@ -150,6 +150,11 @@ use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
 
+#[unstable(feature = "binary_heap_extract_if", issue = "42849")]
+pub use self::extract_if::ExtractIf;
+
+mod extract_if;
+
 use crate::alloc::Global;
 use crate::collections::TryReserveError;
 use crate::slice;
@@ -772,6 +777,12 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
     pub fn into_sorted_vec(mut self) -> Vec<T, A> {
+        self.sort_inner_vec();
+        self.into_vec()
+    }
+
+    /// Sorts the inner data inplace -> producing an invalid heap. Used for implementing ExtractIf
+    fn sort_inner_vec(&mut self) {
         let mut end = self.len();
         while end > 1 {
             end -= 1;
@@ -788,7 +799,6 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
             //  Which means 0 < end and end < self.len().
             unsafe { self.sift_down_range(0, end) };
         }
-        self.into_vec()
     }
 
     // The implementations of sift_up and sift_down use unsafe blocks in
@@ -1037,6 +1047,19 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
     pub fn drain_sorted(&mut self) -> DrainSorted<'_, T, A> {
         DrainSorted { inner: self }
+    }
+
+    /// Creates an iterator which uses a closure to determine if an element should be removed.
+    /// The items are checked in sorted order
+    ///
+    /// If the closure returns `true`, the element is marked to be removed and yielded
+    #[unstable(feature = "binary_heap_extract_if", issue = "42849")]
+    #[must_use]
+    pub fn extract_if<F>(&mut self, predicate: F) -> ExtractIf<'_, T, F, A>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        ExtractIf::new(self, predicate)
     }
 
     /// Retains only the elements specified by the predicate.
