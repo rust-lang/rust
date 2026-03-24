@@ -242,7 +242,7 @@ where
 {
     let make = SyntaxFactory::without_mappings();
     let orig = ctx.sema.original_range_opt(field_list.syntax())?;
-    let list_range = cover_edit_range(source, orig.range);
+    let list_range = cover_edit_range(source.syntax(), orig.range);
 
     let l_curly = match list_range.start() {
         NodeOrToken::Node(node) => node.first_token()?,
@@ -265,7 +265,7 @@ where
 
     for name_ref in fields(&field_list) {
         let Some(orig) = ctx.sema.original_range_opt(name_ref.syntax()) else { continue };
-        let name_range = cover_edit_range(source, orig.range);
+        let name_range = cover_edit_range(source.syntax(), orig.range);
 
         if let Some(colon) = next_non_trivia_token(name_range.end().clone())
             && colon.kind() == T![:]
@@ -306,7 +306,7 @@ fn edit_field_references(
                     // Only edit the field reference if it's part of a `.field` access
                     if name_ref.syntax().parent().and_then(ast::FieldExpr::cast).is_some() {
                         edit.replace_all(
-                            cover_edit_range(&source, r.range),
+                            cover_edit_range(source.syntax(), r.range),
                             vec![make.name_ref(&index.to_string()).syntax().clone().into()],
                         );
                     }
