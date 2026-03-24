@@ -202,7 +202,7 @@ pub trait PointeeSized {
 /// - Arrays `[T; N]` implement `Unsize<[T]>`.
 /// - A type implements `Unsize<dyn Trait + 'a>` if all of these conditions are met:
 ///   - The type implements `Trait`.
-///   - `Trait` is dyn-compatible[^1].
+///   - `Trait` is dyn-compatible.[^1]
 ///   - The type is sized.
 ///   - The type outlives `'a`.
 /// - Trait objects `dyn TraitA + AutoA... + 'a` implement `Unsize<dyn TraitB + AutoB... + 'b>`
