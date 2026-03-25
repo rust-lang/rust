@@ -1503,6 +1503,19 @@ pub mod slice {
             loop {}
         }
     }
+
+    // region:default
+    impl<T> const Default for &[T] {
+        fn default() -> Self {
+            &[]
+        }
+    }
+    impl<T> const Default for &mut [T] {
+        fn default() -> Self {
+            &mut []
+        }
+    }
+    // endregion:default
 }
 // endregion:slice
 
