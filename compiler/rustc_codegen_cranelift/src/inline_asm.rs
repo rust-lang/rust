@@ -3,8 +3,10 @@
 use std::fmt::Write;
 
 use cranelift_codegen::isa::CallConv;
+use rustc_abi::CanonAbi;
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::LangItem;
+use rustc_middle::ty::layout::FnAbiOf;
 use rustc_span::sym;
 use rustc_target::asm::*;
 use rustc_target::spec::Arch;
@@ -120,21 +122,30 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                     .unwrap();
                     let symbol = fx.tcx.symbol_name(instance);
 
-                    // Pass a wrapper rather than the function itself as the function itself may not
-                    // be exported from the main codegen unit and may thus be unreachable from the
-                    // object file created by an external assembler.
-                    let wrapper_name = format!(
-                        "{}__inline_asm_{}_wrapper_n{}",
-                        fx.symbol_name,
-                        fx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
-                        fx.inline_asm_index,
-                    );
-                    fx.inline_asm_index += 1;
-                    let sig =
-                        get_function_sig(fx.tcx, fx.target_config.default_call_conv, instance);
-                    create_wrapper_function(fx.module, sig, &wrapper_name, symbol.name);
+                    if FullyMonomorphizedLayoutCx(fx.tcx)
+                        .fn_abi_of_instance(instance, ty::List::empty())
+                        .conv
+                        == CanonAbi::Custom
+                    {
+                        // We can't create a wrapper for custom ABI functions.
+                        CInlineAsmOperand::Symbol { symbol: symbol.name.to_owned() }
+                    } else {
+                        // Pass a wrapper rather than the function itself as the function itself may not
+                        // be exported from the main codegen unit and may thus be unreachable from the
+                        // object file created by an external assembler.
+                        let wrapper_name = format!(
+                            "{}__inline_asm_{}_wrapper_n{}",
+                            fx.symbol_name,
+                            fx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
+                            fx.inline_asm_index,
+                        );
+                        fx.inline_asm_index += 1;
+                        let sig =
+                            get_function_sig(fx.tcx, fx.target_config.default_call_conv, instance);
+                        create_wrapper_function(fx.module, sig, &wrapper_name, symbol.name);
 
-                    CInlineAsmOperand::Symbol { symbol: wrapper_name }
+                        CInlineAsmOperand::Symbol { symbol: wrapper_name }
+                    }
                 } else {
                     span_bug!(span, "invalid type for asm sym (fn)");
                 }
@@ -548,22 +559,21 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                             match self.arch {
                                 InlineAsmArch::X86_64 => match reg {
                                     InlineAsmReg::X86(reg)
-                                        if reg as u32 >= X86InlineAsmReg::xmm0 as u32
-                                            && reg as u32 <= X86InlineAsmReg::xmm15 as u32 =>
+                                        if matches!(
+                                            reg.reg_class(),
+                                            X86InlineAsmRegClass::xmm_reg
+                                                | X86InlineAsmRegClass::ymm_reg
+                                                | X86InlineAsmRegClass::zmm_reg
+                                        ) =>
                                     {
-                                        // rustc emits x0 rather than xmm0
-                                        let class = match *modifier {
-                                            None | Some('x') => "xmm",
-                                            Some('y') => "ymm",
-                                            Some('z') => "zmm",
-                                            _ => unreachable!(),
-                                        };
-                                        write!(
-                                            generated_asm,
-                                            "{class}{}",
-                                            reg as u32 - X86InlineAsmReg::xmm0 as u32
-                                        )
-                                        .unwrap();
+                                        // rustc emits x0/y0/z0 rather than xmm0/ymm0/zmm0
+                                        let name = reg.name();
+                                        if let Some(prefix) = modifier {
+                                            let index = &name[3..];
+                                            write!(generated_asm, "{prefix}mm{index}").unwrap();
+                                        } else {
+                                            write!(generated_asm, "{name}").unwrap();
+                                        }
                                     }
                                     _ => reg
                                         .emit(&mut generated_asm, InlineAsmArch::X86_64, *modifier)
@@ -575,7 +585,13 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                         CInlineAsmOperand::Const { ref value } => {
                             generated_asm.push_str(value);
                         }
-                        CInlineAsmOperand::Symbol { ref symbol } => generated_asm.push_str(symbol),
+                        CInlineAsmOperand::Symbol { ref symbol } => {
+                            if binary_format == BinaryFormat::Macho {
+                                generated_asm.push('_');
+                            }
+
+                            generated_asm.push_str(symbol);
+                        }
                     }
                 }
             }
@@ -716,12 +732,17 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             InlineAsmArch::X86_64 => {
                 match reg {
                     InlineAsmReg::X86(reg)
-                        if reg as u32 >= X86InlineAsmReg::xmm0 as u32
-                            && reg as u32 <= X86InlineAsmReg::xmm15 as u32 =>
+                        if matches!(
+                            reg.reg_class(),
+                            X86InlineAsmRegClass::xmm_reg
+                                | X86InlineAsmRegClass::ymm_reg
+                                | X86InlineAsmRegClass::zmm_reg
+                        ) =>
                     {
-                        // rustc emits x0 rather than xmm0
-                        write!(generated_asm, "    movups [rbx+0x{:x}], ", offset.bytes()).unwrap();
-                        write!(generated_asm, "xmm{}", reg as u32 - X86InlineAsmReg::xmm0 as u32)
+                        // rustc emits x0/y0/z0 rather than xmm0/ymm0/zmm0
+                        let name = reg.name();
+                        let mov = if name.starts_with("xmm") { "movups" } else { "vmovups" };
+                        write!(generated_asm, "    {mov} [rbx+0x{:x}], {name}", offset.bytes())
                             .unwrap();
                     }
                     _ => {
@@ -761,16 +782,17 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             InlineAsmArch::X86_64 => {
                 match reg {
                     InlineAsmReg::X86(reg)
-                        if reg as u32 >= X86InlineAsmReg::xmm0 as u32
-                            && reg as u32 <= X86InlineAsmReg::xmm15 as u32 =>
+                        if matches!(
+                            reg.reg_class(),
+                            X86InlineAsmRegClass::xmm_reg
+                                | X86InlineAsmRegClass::ymm_reg
+                                | X86InlineAsmRegClass::zmm_reg
+                        ) =>
                     {
-                        // rustc emits x0 rather than xmm0
-                        write!(
-                            generated_asm,
-                            "    movups xmm{}",
-                            reg as u32 - X86InlineAsmReg::xmm0 as u32
-                        )
-                        .unwrap();
+                        // rustc emits x0/y0/z0 rather than xmm0/ymm0/zmm0
+                        let name = reg.name();
+                        let mov = if name.starts_with("xmm") { "movups" } else { "vmovups" };
+                        write!(generated_asm, "    {mov} {name}").unwrap();
                     }
                     _ => {
                         generated_asm.push_str("    mov ");
