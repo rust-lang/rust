@@ -8,7 +8,7 @@ use std::ops::ControlFlow;
 
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
@@ -75,11 +75,46 @@ enum ComesFromAllowExpect {
     No,
 }
 
+/// Carries both the propagated `allow/expect` context and the current item's
+/// own `allow/expect` status.
+///
+/// For example:
+///
+/// ```rust
+/// #[expect(dead_code)]
+/// fn root() { middle() }
+///
+/// fn middle() { leaf() }
+///
+/// #[expect(dead_code)]
+/// fn leaf() {}
+/// ```
+///
+/// The seed for `root` starts as `propagated = Yes, own = Yes`.
+///
+/// When `root` reaches `middle`, the propagated context stays `Yes`, but
+/// `middle` itself does not have `#[allow(dead_code)]` or `#[expect(dead_code)]`,
+/// so its work item becomes `propagated = Yes, own = No`.
+///
+/// When `middle` reaches `leaf`, that same propagated `Yes` context is preserved,
+/// and since `leaf` itself has `#[expect(dead_code)]`, its work item becomes
+/// `propagated = Yes, own = Yes`.
+///
+/// In general, `propagated` controls whether descendants are still explored
+/// under an `allow/expect` context, while `own` controls whether the current
+/// item itself should be excluded from `live_symbols`.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+struct WorkItem {
+    id: LocalDefId,
+    propagated: ComesFromAllowExpect,
+    own: ComesFromAllowExpect,
+}
+
 struct MarkSymbolVisitor<'tcx> {
-    worklist: Vec<(LocalDefId, ComesFromAllowExpect)>,
+    worklist: Vec<WorkItem>,
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    scanned: LocalDefIdSet,
+    scanned: FxHashSet<(LocalDefId, ComesFromAllowExpect)>,
     live_symbols: LocalDefIdSet,
     repr_unconditionally_treats_fields_as_live: bool,
     repr_has_repr_simd: bool,
@@ -89,6 +124,7 @@ struct MarkSymbolVisitor<'tcx> {
     // and the span of their respective impl (i.e., part of the derive
     // macro)
     ignored_derived_traits: LocalDefIdMap<FxIndexSet<DefId>>,
+    propagated_comes_from_allow_expect: ComesFromAllowExpect,
 }
 
 impl<'tcx> MarkSymbolVisitor<'tcx> {
@@ -101,19 +137,45 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             .expect("`MarkSymbolVisitor::typeck_results` called outside of body")
     }
 
+    /// Returns whether `def_id` itself should be treated as coming from
+    /// `#[allow(dead_code)]` or `#[expect(dead_code)]` in the current
+    /// propagated work-item context.
+    fn own_comes_from_allow_expect(&self, def_id: LocalDefId) -> ComesFromAllowExpect {
+        if self.propagated_comes_from_allow_expect == ComesFromAllowExpect::Yes
+            && let Some(ComesFromAllowExpect::Yes) =
+                has_allow_dead_code_or_lang_attr(self.tcx, def_id)
+        {
+            ComesFromAllowExpect::Yes
+        } else {
+            ComesFromAllowExpect::No
+        }
+    }
+
     fn check_def_id(&mut self, def_id: DefId) {
         if let Some(def_id) = def_id.as_local() {
+            let own_comes_from_allow_expect = self.own_comes_from_allow_expect(def_id);
+
             if should_explore(self.tcx, def_id) {
-                self.worklist.push((def_id, ComesFromAllowExpect::No));
+                self.worklist.push(WorkItem {
+                    id: def_id,
+                    propagated: self.propagated_comes_from_allow_expect,
+                    own: own_comes_from_allow_expect,
+                });
             }
-            self.live_symbols.insert(def_id);
+
+            if own_comes_from_allow_expect == ComesFromAllowExpect::No {
+                self.live_symbols.insert(def_id);
+            }
         }
     }
 
     fn insert_def_id(&mut self, def_id: DefId) {
         if let Some(def_id) = def_id.as_local() {
             debug_assert!(!should_explore(self.tcx, def_id));
-            self.live_symbols.insert(def_id);
+
+            if self.own_comes_from_allow_expect(def_id) == ComesFromAllowExpect::No {
+                self.live_symbols.insert(def_id);
+            }
         }
     }
 
@@ -323,7 +385,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn mark_live_symbols(&mut self) -> <MarkSymbolVisitor<'tcx> as Visitor<'tcx>>::Result {
         while let Some(work) = self.worklist.pop() {
-            let (mut id, comes_from_allow_expect) = work;
+            let WorkItem { mut id, propagated, own } = work;
+            self.propagated_comes_from_allow_expect = propagated;
 
             // in the case of tuple struct constructors we want to check the item,
             // not the generated tuple struct constructor function
@@ -352,14 +415,14 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             // this "duplication" is essential as otherwise a function with `#[expect]`
             // called from a `pub fn` may be falsely reported as not live, falsely
             // triggering the `unfulfilled_lint_expectations` lint.
-            match comes_from_allow_expect {
+            match own {
                 ComesFromAllowExpect::Yes => {}
                 ComesFromAllowExpect::No => {
                     self.live_symbols.insert(id);
                 }
             }
 
-            if !self.scanned.insert(id) {
+            if !self.scanned.insert((id, propagated)) {
                 continue;
             }
 
@@ -692,7 +755,11 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                     )
                     .and_then(|item| item.def_id.as_local())
                 {
-                    self.worklist.push((local_def_id, ComesFromAllowExpect::No));
+                    self.worklist.push(WorkItem {
+                        id: local_def_id,
+                        propagated: ComesFromAllowExpect::No,
+                        own: ComesFromAllowExpect::No,
+                    });
                 }
             }
         }
@@ -750,23 +817,27 @@ fn has_allow_dead_code_or_lang_attr(
 fn maybe_record_as_seed<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_id: hir::OwnerId,
-    worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
+    worklist: &mut Vec<WorkItem>,
     unsolved_items: &mut Vec<LocalDefId>,
 ) {
     let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, owner_id.def_id);
     if let Some(comes_from_allow) = allow_dead_code {
-        worklist.push((owner_id.def_id, comes_from_allow));
+        worklist.push(WorkItem {
+            id: owner_id.def_id,
+            propagated: comes_from_allow,
+            own: comes_from_allow,
+        });
     }
 
     match tcx.def_kind(owner_id) {
         DefKind::Enum => {
             if let Some(comes_from_allow) = allow_dead_code {
                 let adt = tcx.adt_def(owner_id);
-                worklist.extend(
-                    adt.variants()
-                        .iter()
-                        .map(|variant| (variant.def_id.expect_local(), comes_from_allow)),
-                );
+                worklist.extend(adt.variants().iter().map(|variant| WorkItem {
+                    id: variant.def_id.expect_local(),
+                    propagated: comes_from_allow,
+                    own: comes_from_allow,
+                }));
             }
         }
         DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::AssocTy => {
@@ -781,7 +852,11 @@ fn maybe_record_as_seed<'tcx>(
                             && let Some(comes_from_allow) =
                                 has_allow_dead_code_or_lang_attr(tcx, trait_item_local_def_id)
                         {
-                            worklist.push((owner_id.def_id, comes_from_allow));
+                            worklist.push(WorkItem {
+                                id: owner_id.def_id,
+                                propagated: comes_from_allow,
+                                own: comes_from_allow,
+                            });
                         }
 
                         // We only care about associated items of traits,
@@ -802,7 +877,11 @@ fn maybe_record_as_seed<'tcx>(
                     && let Some(comes_from_allow) =
                         has_allow_dead_code_or_lang_attr(tcx, trait_def_id)
                 {
-                    worklist.push((owner_id.def_id, comes_from_allow));
+                    worklist.push(WorkItem {
+                        id: owner_id.def_id,
+                        propagated: comes_from_allow,
+                        own: comes_from_allow,
+                    });
                 }
 
                 unsolved_items.push(owner_id.def_id);
@@ -810,38 +889,48 @@ fn maybe_record_as_seed<'tcx>(
         }
         DefKind::GlobalAsm => {
             // global_asm! is always live.
-            worklist.push((owner_id.def_id, ComesFromAllowExpect::No));
+            worklist.push(WorkItem {
+                id: owner_id.def_id,
+                propagated: ComesFromAllowExpect::No,
+                own: ComesFromAllowExpect::No,
+            });
         }
         DefKind::Const { .. } => {
             if tcx.item_name(owner_id.def_id) == kw::Underscore {
                 // `const _` is always live, as that syntax only exists for the side effects
                 // of type checking and evaluating the constant expression, and marking them
                 // as dead code would defeat that purpose.
-                worklist.push((owner_id.def_id, ComesFromAllowExpect::No));
+                worklist.push(WorkItem {
+                    id: owner_id.def_id,
+                    propagated: ComesFromAllowExpect::No,
+                    own: ComesFromAllowExpect::No,
+                });
             }
         }
         _ => {}
     }
 }
 
-fn create_and_seed_worklist(
-    tcx: TyCtxt<'_>,
-) -> (Vec<(LocalDefId, ComesFromAllowExpect)>, Vec<LocalDefId>) {
+fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> (Vec<WorkItem>, Vec<LocalDefId>) {
     let effective_visibilities = &tcx.effective_visibilities(());
     let mut unsolved_impl_item = Vec::new();
     let mut worklist = effective_visibilities
         .iter()
         .filter_map(|(&id, effective_vis)| {
-            effective_vis
-                .is_public_at_level(Level::Reachable)
-                .then_some(id)
-                .map(|id| (id, ComesFromAllowExpect::No))
+            effective_vis.is_public_at_level(Level::Reachable).then_some(id).map(|id| WorkItem {
+                id,
+                propagated: ComesFromAllowExpect::No,
+                own: ComesFromAllowExpect::No,
+            })
         })
         // Seed entry point
-        .chain(
-            tcx.entry_fn(())
-                .and_then(|(def_id, _)| def_id.as_local().map(|id| (id, ComesFromAllowExpect::No))),
-        )
+        .chain(tcx.entry_fn(()).and_then(|(def_id, _)| {
+            def_id.as_local().map(|id| WorkItem {
+                id,
+                propagated: ComesFromAllowExpect::No,
+                own: ComesFromAllowExpect::No,
+            })
+        }))
         .collect::<Vec<_>>();
 
     let crate_items = tcx.hir_crate_items(());
@@ -868,6 +957,7 @@ fn live_symbols_and_ignored_derived_traits(
         in_pat: false,
         ignore_variant_stack: vec![],
         ignored_derived_traits: Default::default(),
+        propagated_comes_from_allow_expect: ComesFromAllowExpect::No,
     };
     if let ControlFlow::Break(guar) = symbol_visitor.mark_live_symbols() {
         return Err(guar);
@@ -882,9 +972,11 @@ fn live_symbols_and_ignored_derived_traits(
         .collect();
 
     while !items_to_check.is_empty() {
-        symbol_visitor
-            .worklist
-            .extend(items_to_check.drain(..).map(|id| (id, ComesFromAllowExpect::No)));
+        symbol_visitor.worklist.extend(items_to_check.drain(..).map(|id| WorkItem {
+            id,
+            propagated: ComesFromAllowExpect::No,
+            own: ComesFromAllowExpect::No,
+        }));
         if let ControlFlow::Break(guar) = symbol_visitor.mark_live_symbols() {
             return Err(guar);
         }
