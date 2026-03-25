@@ -310,3 +310,14 @@ impl<'tcx> From<FlagComputation<TyCtxt<'tcx>>> for TypeInfo {
         }
     }
 }
+
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // tidy-alphabetical-start
+    static_assert_size!(&List<u32>, 8); // thin pointer
+    static_assert_size!(&RawList<u8, u32>, 8); // thin pointer
+    // tidy-alphabetical-end
+}
