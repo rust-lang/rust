@@ -1212,7 +1212,7 @@ impl char {
     /// returned by [`Self::to_uppercase`]. Prefer this method when seeking to capitalize
     /// Only The First Letter of a word, but use [`Self::to_uppercase`] for ALL CAPS.
     ///
-    /// If this `char` does not have an titlecase mapping, the iterator yields the same `char`.
+    /// If this `char` does not have a titlecase mapping, the iterator yields the same `char`.
     ///
     /// If this `char` has a one-to-one titlecase mapping given by the [Unicode Character
     /// Database][ucd] [`UnicodeData.txt`], the iterator yields that `char`.
