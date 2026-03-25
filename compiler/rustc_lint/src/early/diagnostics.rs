@@ -82,15 +82,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                 target,
             }
             .into_diag(dcx, level),
-            &AttributeLintKind::UnsafeAttrOutsideUnsafe { attribute_name_span, sugg_spans } => {
-                lints::UnsafeAttrOutsideUnsafeLint {
-                    span: attribute_name_span,
-                    suggestion: sugg_spans.map(|(left, right)| {
-                        lints::UnsafeAttrOutsideUnsafeSuggestion { left, right }
-                    }),
-                }
-                .into_diag(dcx, level)
-            }
             &AttributeLintKind::UnexpectedCfgName(name, value) => {
                 check_cfg::unexpected_cfg_name(self.sess, self.tcx, name, value)
                     .into_diag(dcx, level)

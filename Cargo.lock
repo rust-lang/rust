@@ -4004,6 +4004,7 @@ dependencies = [
  "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_error_messages",
+ "rustc_errors",
  "rustc_hashes",
  "rustc_hir_id",
  "rustc_index",

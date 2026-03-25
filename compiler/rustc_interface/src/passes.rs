@@ -13,6 +13,7 @@ use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal, par_fns};
 use rustc_data_structures::thousands;
+use rustc_errors::DiagCallback;
 use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
@@ -1044,6 +1045,12 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
                             },
                         );
                     }
+                    DelayedLint::Dynamic(attribute_lint) => tcx.emit_node_span_lint(
+                        attribute_lint.lint_id.lint,
+                        attribute_lint.id,
+                        attribute_lint.span.clone(),
+                        DiagCallback(&attribute_lint.callback),
+                    ),
                 }
             }
         }

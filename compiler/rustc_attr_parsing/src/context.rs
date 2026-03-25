@@ -17,7 +17,6 @@ use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
-use crate::AttributeParser;
 // Glob imports to avoid big, bitrotty import lists
 use crate::attributes::allow_unstable::*;
 use crate::attributes::autodiff::*;
@@ -66,6 +65,7 @@ use crate::session_diagnostics::{
     ParsedDescription,
 };
 use crate::target_checking::AllowedTargets;
+use crate::{AttributeParser, EmitAttribute};
 type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
 pub(super) struct GroupTypeInner<S: Stage> {
@@ -473,7 +473,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
         ) {
             return;
         }
-        (self.emit_lint)(LintId::of(lint), span.into(), kind);
+        (self.emit_lint)(LintId::of(lint), span.into(), EmitAttribute::Static(kind));
     }
 
     pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
@@ -569,7 +569,7 @@ pub struct SharedContext<'p, 'sess, S: Stage> {
 
     /// The second argument of the closure is a [`NodeId`] if `S` is `Early` and a [`HirId`] if `S`
     /// is `Late` and is the ID of the syntactical component this attribute was applied to.
-    pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, AttributeLintKind),
+    pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, EmitAttribute),
 }
 
 /// Context given to every attribute parser during finalization.

@@ -1,4 +1,6 @@
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::MultiSpan;
+use rustc_errors::{Diag, DiagCtxtHandle, Level};
 use rustc_lint_defs::LintId;
 pub use rustc_lint_defs::{AttributeLintKind, FormatWarning};
 
@@ -14,13 +16,33 @@ pub type DelayedLints = Box<[DelayedLint]>;
 /// AST lowering to be emitted once HIR is built.
 #[derive(Debug)]
 pub enum DelayedLint {
-    AttributeParsing(AttributeLint<HirId>),
+    AttributeParsing(AttributeLint),
+    Dynamic(DynAttribute),
 }
 
 #[derive(Debug)]
-pub struct AttributeLint<Id> {
+pub struct AttributeLint {
     pub lint_id: LintId,
-    pub id: Id,
+    pub id: HirId,
     pub span: MultiSpan,
     pub kind: AttributeLintKind,
+}
+
+pub struct DynAttribute {
+    pub lint_id: LintId,
+    pub id: HirId,
+    pub span: MultiSpan,
+    pub callback: Box<
+        dyn for<'a> Fn(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + DynSync + 'static,
+    >,
+}
+
+impl std::fmt::Debug for DynAttribute {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DynAttribute")
+            .field("lint_id", &self.lint_id)
+            .field("id", &self.id)
+            .field("span", &self.span)
+            .finish()
+    }
 }
