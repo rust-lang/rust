@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/4735>
 //@ run-pass
 
 use std::mem::transmute;
