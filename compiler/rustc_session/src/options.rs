@@ -2264,6 +2264,10 @@ options! {
         "cache the results of derive proc macro invocations (potentially unsound!) (default: no"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
+    cgu_dedup_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "deduplicate inlined mono items across CGUs when the dominated cost \
+        (size_estimate * (num_cgus - 1)) exceeds this threshold \
+        (default: 0 = disabled, recommended: 300)"),
     check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
         "show all expected values in check-cfg diagnostics (default: no)"),
     checksum_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_cargo_src_file_hash, [TRACKED],

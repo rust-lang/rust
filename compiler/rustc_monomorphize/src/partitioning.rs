@@ -162,6 +162,15 @@ where
         placed
     };
 
+    // Deduplicate high-cost inlined items that appear in multiple CGUs.
+    // This reduces redundant LLVM optimization work by keeping a single
+    // External+Hidden copy and removing duplicates.
+    {
+        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_dedup_inlined");
+        dedup_inlined_items(tcx, &mut codegen_units);
+        debug_dump(tcx, "DEDUP", &codegen_units);
+    }
+
     // Merge until we don't exceed the max CGU count.
     // `merge_codegen_units` is responsible for updating the CGU size
     // estimates.
@@ -509,6 +518,118 @@ fn compute_inlined_overlap<'tcx>(cgu1: &CodegenUnit<'tcx>, cgu2: &CodegenUnit<'t
         }
     }
     overlap
+}
+
+/// For inlined items duplicated across multiple CGUs, remove redundant copies
+/// and promote one copy to `External+Hidden` linkage, reducing redundant LLVM
+/// optimization work.
+///
+/// An inlined (`LocalCopy`) item may be placed in every CGU that transitively
+/// references it. When such an item is large and appears in many CGUs, LLVM
+/// independently optimizes each identical copy — a significant waste. This pass
+/// identifies items whose "dominated cost" (`size_estimate * (num_cgus - 1)`)
+/// exceeds a configurable threshold, keeps a single copy with `External+Hidden`
+/// linkage in one "home" CGU, and removes the duplicates. Other CGUs will
+/// reference the single definition via the linker, and ThinLTO can re-import
+/// the function when inlining is profitable.
+///
+/// Items that already have a root (non-inlined) placement in any CGU are
+/// skipped, since other CGUs' inlined copies will naturally link to that root
+/// definition. `#[inline(always)]` items are also never deduplicated.
+fn dedup_inlined_items<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    codegen_units: &mut Vec<CodegenUnit<'tcx>>,
+) {
+    let threshold = tcx.sess.opts.unstable_opts.cgu_dedup_threshold.unwrap_or(0);
+    if threshold == 0 || codegen_units.len() <= 1 {
+        return;
+    }
+
+    // Step 1: For each inlined item, collect which CGU indices contain it.
+    // Also track items that have a root (non-inlined) placement — those must
+    // be skipped since promoting an inlined copy would create a duplicate
+    // External definition conflicting with the root.
+    //
+    // We use FxIndexMap for deterministic iteration order (insertion order),
+    // which is itself deterministic because codegen_units is sorted by name.
+    let mut item_cgus: FxIndexMap<MonoItem<'tcx>, Vec<usize>> = FxIndexMap::default();
+    let mut has_root_placement: FxIndexSet<MonoItem<'tcx>> = FxIndexSet::default();
+
+    for (cgu_idx, cgu) in codegen_units.iter().enumerate() {
+        for (item, data) in cgu.items() {
+            if data.inlined {
+                item_cgus.entry(*item).or_default().push(cgu_idx);
+            } else {
+                has_root_placement.insert(*item);
+            }
+        }
+    }
+
+    // Step 2: Determine which items to deduplicate.
+    let mut items_to_remove: Vec<(usize, MonoItem<'tcx>)> = Vec::new();
+    let mut items_to_promote: Vec<(usize, MonoItem<'tcx>)> = Vec::new();
+
+    for (item, cgu_indices) in &item_cgus {
+        // Skip items that already have a root placement somewhere — other
+        // CGUs' inlined copies will link to the root via the linker.
+        if has_root_placement.contains(item) {
+            continue;
+        }
+
+        let n = cgu_indices.len();
+        if n < 2 {
+            continue;
+        }
+
+        // Compute the dominated cost: the total redundant LLVM work from
+        // optimizing (N-1) extra copies of this item.
+        let size_estimate = codegen_units[cgu_indices[0]].items()[item].size_estimate;
+        let dominated_cost = size_estimate.saturating_mul(n - 1);
+
+        if dominated_cost <= threshold {
+            continue;
+        }
+
+        // Never deduplicate #[inline(always)] items — the user explicitly
+        // wants them inlined everywhere.
+        if let MonoItem::Fn(instance) = item {
+            if tcx.codegen_fn_attrs(instance.def_id()).inline.always() {
+                continue;
+            }
+        }
+
+        // Home CGU = first index. CGUs are sorted by name at this point,
+        // so this choice is deterministic across compilations.
+        let home_idx = cgu_indices[0];
+        items_to_promote.push((home_idx, *item));
+
+        for &cgu_idx in &cgu_indices[1..] {
+            items_to_remove.push((cgu_idx, *item));
+        }
+    }
+
+    if items_to_promote.is_empty() {
+        return;
+    }
+
+    // Step 3: Remove redundant copies from non-home CGUs.
+    for &(cgu_idx, ref item) in &items_to_remove {
+        codegen_units[cgu_idx].items_mut().swap_remove(item);
+    }
+
+    // Step 4: Promote home copies from Internal to External+Hidden.
+    for &(cgu_idx, ref item) in &items_to_promote {
+        if let Some(data) = codegen_units[cgu_idx].items_mut().get_mut(item) {
+            data.inlined = false;
+            data.linkage = Linkage::External;
+            data.visibility = Visibility::Hidden;
+        }
+    }
+
+    // Step 5: Recompute size estimates since items were removed.
+    for cgu in codegen_units.iter_mut() {
+        cgu.compute_size_estimate();
+    }
 }
 
 fn internalize_symbols<'tcx>(
