@@ -733,10 +733,11 @@ fn generate_impl_text_inner(
 /// Generates the corresponding `impl Type {}` including type and lifetime
 /// parameters.
 pub(crate) fn generate_impl_with_item(
+    make: &SyntaxFactory,
     adt: &ast::Adt,
     body: Option<ast::AssocItemList>,
 ) -> ast::Impl {
-    generate_impl_inner(false, adt, None, true, body)
+    generate_impl_inner_with_factory(make, false, adt, None, true, body)
 }
 
 pub(crate) fn generate_impl_with_factory(make: &SyntaxFactory, adt: &ast::Adt) -> ast::Impl {
