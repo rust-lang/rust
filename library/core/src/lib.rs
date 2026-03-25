@@ -110,6 +110,7 @@
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(pattern_type_macro)]
+#![feature(sealed)]
 #![feature(ub_checks)]
 // tidy-alphabetical-end
 //
@@ -214,6 +215,14 @@ pub use crate::macros::{assert_matches, debug_assert_matches};
 pub mod from {
     #[unstable(feature = "derive_from", issue = "144889")]
     pub use crate::macros::builtin::From;
+}
+
+mod sealed {
+    /// This trait being unreachable from outside the crate
+    /// prevents outside implementations of our extension traits.
+    /// This allows adding more trait methods in the future.
+    #[unstable(feature = "sealed", issue = "none")]
+    pub trait Sealed {}
 }
 
 // We don't export this through #[macro_export] for now, to avoid breakage.
