@@ -543,9 +543,9 @@ impl<T: PointeeSized> NonNull<T> {
     /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
     ///
     /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
-    ///   [allocation], and the entire memory range between `self` and the result must be in
-    ///   bounds of that allocation. In particular, this range must not "wrap around" the edge
-    ///   of the address space.
+    ///   [allocation], and the entire memory range between `self` and the result (not including
+    ///   result) must be in bounds of that allocation. In particular, this range must not "wrap
+    ///   around" the edge of the address space.
     ///
     /// Allocations can never be larger than `isize::MAX` bytes, so if the computed offset
     /// stays in bounds of the allocation, it is guaranteed to satisfy the first requirement.
@@ -619,9 +619,9 @@ impl<T: PointeeSized> NonNull<T> {
     /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
     ///
     /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
-    ///   [allocation], and the entire memory range between `self` and the result must be in
-    ///   bounds of that allocation. In particular, this range must not "wrap around" the edge
-    ///   of the address space.
+    ///   [allocation], and the entire memory range between `self` and the result (not including
+    ///   result) must be in bounds of that allocation. In particular, this range must not "wrap
+    ///   around" the edge of the address space.
     ///
     /// Allocations can never be larger than `isize::MAX` bytes, so if the computed offset
     /// stays in bounds of the allocation, it is guaranteed to satisfy the first requirement.
@@ -696,9 +696,9 @@ impl<T: PointeeSized> NonNull<T> {
     /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
     ///
     /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
-    ///   [allocation], and the entire memory range between `self` and the result must be in
-    ///   bounds of that allocation. In particular, this range must not "wrap around" the edge
-    ///   of the address space.
+    ///   [allocation], and the entire memory range between `self` and the result (not including
+    ///   result) must be in bounds of that allocation. In particular, this range must not "wrap
+    ///   around" the edge of the address space.
     ///
     /// Allocations can never be larger than `isize::MAX` bytes, so if the computed offset
     /// stays in bounds of the allocation, it is guaranteed to satisfy the first requirement.
