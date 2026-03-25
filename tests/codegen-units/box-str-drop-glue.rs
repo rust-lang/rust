@@ -1,6 +1,6 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/17734>
 //@ run-pass
 // Test that generating drop glue for Box<str> doesn't ICE
-
 
 fn f(s: Box<str>) -> Box<str> {
     s
