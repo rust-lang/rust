@@ -1943,12 +1943,12 @@ impl<'a> State<'a> {
                     self.print_expr(e, FixupContext::default());
                 }
             }
-            PatKind::Guard(subpat, condition) => {
+            PatKind::Guard(subpat, guard) => {
                 self.popen();
                 self.print_pat(subpat);
                 self.space();
                 self.word_space("if");
-                self.print_expr(condition, FixupContext::default());
+                self.print_expr(&guard.cond, FixupContext::default());
                 self.pclose();
             }
             PatKind::Slice(elts) => {
