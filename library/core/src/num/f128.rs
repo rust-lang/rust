@@ -339,14 +339,55 @@ impl f128 {
     #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
     pub const MIN_EXACT_INTEGER: i128 = -Self::MAX_EXACT_INTEGER;
 
-    /// Sign bit
-    pub(crate) const SIGN_MASK: u128 = 0x8000_0000_0000_0000_0000_0000_0000_0000;
+    /// The mask of the bit used to encode the sign of an [`f128`].
+    /// 
+    /// This bit is set when the sign is negative an unset when the sign is
+    /// positive.
+    /// It is generally recommended to use `is_sign_positive` and `is_sign_negative` when
+    /// checking the sign of a float.
+    /// 
+    /// [`is_sign_positive`]: f128::is_sign_positive
+    /// [`is_sign_negative`]: f128::is_sign_negative
+    /// ```rust
+    /// #![feature(float_masks)]
+    /// let sign_mask = f128::SIGN_MASK;
+    /// let a = 1.6552f128;
+    /// let a_bits = a.to_bits();
+    ///
+    /// assert_eq!(a_bits & sign_mask, 0x0);
+    /// assert_eq!(f128::from_bits(a_bits ^ sign_mask), -a);
+    /// assert_eq!(sign_mask, (-0.0f128).to_bits());
+    /// ```
+    #[unstable(feature = "float_masks", issue = "154064")]
+    pub const SIGN_MASK: u128 = 0x8000_0000_0000_0000_0000_0000_0000_0000;
 
-    /// Exponent mask
-    pub(crate) const EXP_MASK: u128 = 0x7fff_0000_0000_0000_0000_0000_0000_0000;
+    /// The mask of the bits used to encode the exponent of an [`f64`].
+    /// 
+    /// The exponent is encoded with a bias.
+    /// 
+    /// ```rust
+    /// #![feature(float_masks)]
+    /// todo!()
+    /// ```
+    #[unstable(feature = "float_masks", issue = "154064")]
+    pub const EXPONENT_MASK: u128 = 0x7fff_0000_0000_0000_0000_0000_0000_0000;
 
-    /// Mantissa mask
-    pub(crate) const MAN_MASK: u128 = 0x0000_ffff_ffff_ffff_ffff_ffff_ffff_ffff;
+    /// The mask of the bits used to encode the mantissa of an [`f128`].
+    ///
+    /// Note that the implicit bit 
+    /// 
+    /// ```rust
+    /// #![feature(float_masks)]
+    /// let mantissa_mask = f128::MANTISSA_MASK;
+    /// let a = 1.6552f128;
+    /// let b = 4.0 * a;
+    ///
+    /// assert_eq!(a.to_bits() & mantissa_mask, b.to_bits() & mantissa_mask);
+    /// assert_eq!(0f128.to_bits() & mantissa_mask, 0x0);
+    /// assert_eq!(1f128.to_bits() & mantissa_mask, 0x0);
+    /// ```
+    #[unstable(feature = "float_masks", issue = "154064")]
+    pub const MANTISSA_MASK: u128 = 0x0000_ffff_ffff_ffff_ffff_ffff_ffff_ffff;
 
     /// Minimum representable positive value (min subnormal)
     const TINY_BITS: u128 = 0x1;
@@ -510,9 +551,9 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     pub const fn classify(self) -> FpCategory {
         let bits = self.to_bits();
-        match (bits & Self::MAN_MASK, bits & Self::EXP_MASK) {
-            (0, Self::EXP_MASK) => FpCategory::Infinite,
-            (_, Self::EXP_MASK) => FpCategory::Nan,
+        match (bits & Self::MANTISSA_MASK, bits & Self::EXPONENT_MASK) {
+            (0, Self::EXPONENT_MASK) => FpCategory::Infinite,
+            (_, Self::EXPONENT_MASK) => FpCategory::Nan,
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
