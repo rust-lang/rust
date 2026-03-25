@@ -3,7 +3,7 @@
 
 //@ needs-target-std
 
-use run_make_support::assertion_helpers::assert_contains;
+use run_make_support::assertion_helpers::{assert_contains, assert_not_contains};
 use run_make_support::{path, rfs, rustdoc};
 
 fn main() {
@@ -63,4 +63,33 @@ fn main() {
     rustdoc().input("example.md").arg("-Zunstable-options").emit("dep-info").run();
     let content = rfs::read_to_string("doc/example.d");
     assert_contains(&content, "example.md:");
+    assert_not_contains(&content, "lib.rs:");
+    assert_not_contains(&content, "foo.rs:");
+    assert_not_contains(&content, "bar.rs:");
+    assert_not_contains(&content, "doc.md:");
+    assert_not_contains(&content, "after.md:");
+    assert_not_contains(&content, "before.html:");
+    assert_not_contains(&content, "extend.css:");
+    assert_not_contains(&content, "theme.css:");
+
+    // combine --emit=dep-info=filename with plain markdown input
+    rustdoc()
+        .input("example.md")
+        .arg("-Zunstable-options")
+        .arg("--html-before-content=before.html")
+        .arg("--markdown-after-content=after.md")
+        .arg("--extend-css=extend.css")
+        .arg("--theme=theme.css")
+        .emit("dep-info=example.d")
+        .run();
+    let content = rfs::read_to_string("example.d");
+    assert_contains(&content, "example.md:");
+    assert_not_contains(&content, "lib.rs:");
+    assert_not_contains(&content, "foo.rs:");
+    assert_not_contains(&content, "bar.rs:");
+    assert_not_contains(&content, "doc.md:");
+    assert_contains(&content, "after.md:");
+    assert_contains(&content, "before.html:");
+    assert_contains(&content, "extend.css:");
+    assert_contains(&content, "theme.css:");
 }

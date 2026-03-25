@@ -862,6 +862,11 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                         let has_dep_info = render_options.dep_info().is_some();
                         markdown::render_and_write(file, render_options, edition)?;
                         if has_dep_info {
+                            // Register the loaded external files in the source map so they show up in depinfo.
+                            // We can't load them via the source map because it gets created after we process the options.
+                            for external_path in &loaded_paths {
+                                let _ = compiler.sess.source_map().load_binary_file(external_path);
+                            }
                             rustc_interface::passes::write_dep_info(tcx);
                         }
                         Ok(())
