@@ -275,6 +275,7 @@ const PERMITTED_RUSTC_DEPS_LOCATION: ListLocation = location!(+6);
 /// rustc. Please check with the compiler team before adding an entry.
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
+    "addr2line",
     "adler2",
     "aho-corasick",
     "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
@@ -287,6 +288,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "ar_archive_writer",
     "arrayref",
     "arrayvec",
+    "backtrace",
     "bitflags",
     "blake3",
     "block-buffer",
