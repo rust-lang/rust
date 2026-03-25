@@ -210,7 +210,7 @@ pub(crate) fn layout_of<'tcx>(
                 ControlFlow::Continue(())
             }
         },
-        || create_cycle_error(tcx, &cycle),
+        || create_cycle_error(tcx, &cycle, false),
     );
 
     diag.emit().raise_fatal()
