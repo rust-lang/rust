@@ -58,4 +58,9 @@ fn main() {
     assert!(!path("precedence1.d").exists());
     assert!(!path("-").exists()); // `-` shouldn't be treated as a file path
     assert!(!result.stdout().is_empty()); // Something emitted to stdout
+
+    // test --emit=dep-info combined with plain markdown input
+    rustdoc().input("example.md").arg("-Zunstable-options").emit("dep-info").run();
+    let content = rfs::read_to_string("doc/example.d");
+    assert_contains(&content, "example.md:");
 }

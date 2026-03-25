@@ -70,12 +70,14 @@ use std::io::{self, IsTerminal};
 use std::path::Path;
 use std::process::ExitCode;
 
+use rustc_ast::ast;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
 use rustc_session::{EarlyDiagCtxt, getopts};
+use rustc_span::{BytePos, Span, SyntaxContext};
 use tracing::info;
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_VERSION;
@@ -836,8 +838,34 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             // `run_compiler`.
             return wrap_return(
                 dcx,
-                interface::run_compiler(config, |_compiler| {
-                    markdown::render_and_write(&md_input, render_options, edition)
+                interface::run_compiler(config, |compiler| {
+                    // construct a phony "crate" without actually running the parser
+                    // allows us to use other compiler infrastructure like dep-info
+                    let file =
+                        compiler.sess.source_map().load_file(&md_input).map_err(|e| {
+                            format!("{md_input}: {e}", md_input = md_input.display())
+                        })?;
+                    let inner_span = Span::new(
+                        file.start_pos,
+                        BytePos(file.start_pos.0 + file.normalized_source_len.0),
+                        SyntaxContext::root(),
+                        None,
+                    );
+                    let krate = ast::Crate {
+                        attrs: Default::default(),
+                        items: Default::default(),
+                        spans: ast::ModSpans { inner_span, ..Default::default() },
+                        id: ast::DUMMY_NODE_ID,
+                        is_placeholder: false,
+                    };
+                    rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
+                        let has_dep_info = render_options.dep_info().is_some();
+                        markdown::render_and_write(file, render_options, edition)?;
+                        if has_dep_info {
+                            rustc_interface::passes::write_dep_info(tcx);
+                        }
+                        Ok(())
+                    })
                 }),
             );
         }
