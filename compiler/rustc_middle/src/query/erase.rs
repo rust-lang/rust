@@ -135,62 +135,6 @@ impl<T> Erasable for Result<(&'_ T, crate::thir::ExprId), ErrorGuaranteed> {
     type Storage = [u8; size_of::<Result<(&'_ (), crate::thir::ExprId), ErrorGuaranteed>>()];
 }
 
-impl Erasable for Result<Option<ty::Instance<'_>>, ErrorGuaranteed> {
-    type Storage = [u8; size_of::<Result<Option<ty::Instance<'_>>, ErrorGuaranteed>>()];
-}
-
-impl Erasable for Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, ErrorGuaranteed> {
-    type Storage = [u8; size_of::<
-        Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, ErrorGuaranteed>,
-    >()];
-}
-
-impl Erasable for Result<ty::GenericArg<'_>, traits::query::NoSolution> {
-    type Storage = [u8; size_of::<Result<ty::GenericArg<'_>, traits::query::NoSolution>>()];
-}
-
-impl Erasable for Result<bool, &ty::layout::LayoutError<'_>> {
-    type Storage = [u8; size_of::<Result<bool, &'_ ty::layout::LayoutError<'_>>>()];
-}
-
-impl Erasable for Result<rustc_abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::LayoutError<'_>> {
-    type Storage = [u8; size_of::<
-        Result<
-            rustc_abi::TyAndLayout<'_, Ty<'_>>,
-            &'_ ty::layout::LayoutError<'_>,
-        >,
-    >()];
-}
-
-impl Erasable for Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
-    type Storage =
-        [u8; size_of::<Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled>>()];
-}
-
-impl Erasable for Option<(mir::ConstValue, Ty<'_>)> {
-    type Storage = [u8; size_of::<Option<(mir::ConstValue, Ty<'_>)>>()];
-}
-
-impl Erasable for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
-    type Storage =
-        [u8; size_of::<Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop>>()];
-}
-
-impl Erasable
-    for Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]), NormalizationErrorInMono>
-{
-    type Storage = [u8; size_of::<
-        Result<
-            (&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]),
-            NormalizationErrorInMono,
-        >,
-    >()];
-}
-
-impl Erasable for Result<&'_ TokenStream, ()> {
-    type Storage = [u8; size_of::<Result<&'_ TokenStream, ()>>()];
-}
-
 impl<T> Erasable for Option<&'_ T> {
     type Storage = [u8; size_of::<Option<&'_ ()>>()];
 }
@@ -199,29 +143,8 @@ impl<T> Erasable for Option<&'_ [T]> {
     type Storage = [u8; size_of::<Option<&'_ [()]>>()];
 }
 
-impl Erasable for Option<&'_ OsStr> {
-    type Storage = [u8; size_of::<Option<&'_ OsStr>>()];
-}
-
-impl Erasable for Option<ty::EarlyBinder<'_, Ty<'_>>> {
-    type Storage = [u8; size_of::<Option<ty::EarlyBinder<'_, Ty<'_>>>>()];
-}
-
-impl Erasable for Option<ty::Value<'_>> {
-    type Storage = [u8; size_of::<Option<ty::Value<'_>>>()];
-}
-
 impl<T: Erasable> Erasable for ty::EarlyBinder<'_, T> {
     type Storage = T::Storage;
-}
-
-impl Erasable for ty::Binder<'_, ty::FnSig<'_>> {
-    type Storage = [u8; size_of::<ty::Binder<'_, ty::FnSig<'_>>>()];
-}
-
-impl Erasable for ty::Binder<'_, ty::CoroutineWitnessTypes<TyCtxt<'_>>> {
-    type Storage =
-        [u8; size_of::<ty::Binder<'_, ty::CoroutineWitnessTypes<TyCtxt<'_>>>>()];
 }
 
 impl<T0, T1> Erasable for (&'_ T0, &'_ T1) {
@@ -236,7 +159,7 @@ impl<T0> Erasable for (&'_ T0, Result<(), ErrorGuaranteed>) {
     type Storage = [u8; size_of::<(&'_ (), Result<(), ErrorGuaranteed>)>()];
 }
 
-macro_rules! impl_erasable_for_simple_types {
+macro_rules! impl_erasable_for_types_with_no_type_params {
     ($($ty:ty),+ $(,)?) => {
         $(
             impl Erasable for $ty {
@@ -246,11 +169,13 @@ macro_rules! impl_erasable_for_simple_types {
     }
 }
 
-// For concrete types with no lifetimes, the erased storage for `Foo` is
-// `[u8; size_of::<Foo>()]`.
-impl_erasable_for_simple_types! {
+// For types with no type parameters the erased storage for `Foo` is
+// `[u8; size_of::<Foo>()]`. ('_ lifetimes are allowed.)
+impl_erasable_for_types_with_no_type_params! {
     // tidy-alphabetical-start
     (),
+    Option<&'_ OsStr>,
+    Option<(mir::ConstValue, Ty<'_>)>,
     Option<(rustc_span::def_id::DefId, rustc_session::config::EntryFnType)>,
     Option<rustc_abi::Align>,
     Option<rustc_ast::expand::allocator::AllocatorKind>,
@@ -269,16 +194,29 @@ impl_erasable_for_simple_types! {
     Option<rustc_span::def_id::DefId>,
     Option<rustc_span::def_id::LocalDefId>,
     Option<rustc_target::spec::PanicStrategy>,
+    Option<ty::EarlyBinder<'_, Ty<'_>>>,
+    Option<ty::Value<'_>>,
     Option<usize>,
+    Result<&'_ TokenStream, ()>,
+    Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop>,
+    Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]), NormalizationErrorInMono>,
     Result<(), ErrorGuaranteed>,
+    Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, ErrorGuaranteed>,
+    Result<Option<ty::Instance<'_>>, ErrorGuaranteed>,
+    Result<bool, &ty::layout::LayoutError<'_>>,
+    Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled>,
     Result<mir::ConstValue, mir::interpret::ErrorHandled>,
+    Result<rustc_abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::LayoutError<'_>>,
     Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,
     Result<rustc_middle::ty::adjustment::CoerceUnsizedInfo, ErrorGuaranteed>,
+    Result<ty::GenericArg<'_>, traits::query::NoSolution>,
+    Ty<'_>,
     bool,
     rustc_data_structures::svh::Svh,
     rustc_hir::Constness,
     rustc_hir::Defaultness,
     rustc_hir::HirId,
+    rustc_hir::MaybeOwner<'_>,
     rustc_hir::OpaqueTyOrigin<rustc_hir::def_id::DefId>,
     rustc_hir::def::DefKind,
     rustc_hir::def_id::DefId,
@@ -287,10 +225,26 @@ impl_erasable_for_simple_types! {
     rustc_middle::mir::ConstQualifs,
     rustc_middle::mir::ConstValue,
     rustc_middle::mir::interpret::AllocId,
+    rustc_middle::mir::interpret::EvalStaticInitializerRawResult<'_>,
+    rustc_middle::mir::interpret::EvalToValTreeResult<'_>,
+    rustc_middle::mir::mono::MonoItemPartitions<'_>,
+    rustc_middle::traits::query::MethodAutoderefStepsResult<'_>,
+    rustc_middle::ty::AdtDef<'_>,
     rustc_middle::ty::AnonConstKind,
     rustc_middle::ty::AssocItem,
     rustc_middle::ty::Asyncness,
+    rustc_middle::ty::Binder<'_, ty::CoroutineWitnessTypes<TyCtxt<'_>>>,
+    rustc_middle::ty::Binder<'_, ty::FnSig<'_>>,
+    rustc_middle::ty::ClosureTypeInfo<'_>,
+    rustc_middle::ty::Const<'_>,
+    rustc_middle::ty::ConstConditions<'_>,
+    rustc_middle::ty::GenericPredicates<'_>,
+    rustc_middle::ty::ImplTraitHeader<'_>,
+    rustc_middle::ty::ParamEnv<'_>,
+    rustc_middle::ty::SymbolName<'_>,
+    rustc_middle::ty::TypingEnv<'_>,
     rustc_middle::ty::Visibility<rustc_span::def_id::DefId>,
+    rustc_middle::ty::inhabitedness::InhabitedPredicate<'_>,
     rustc_session::Limits,
     rustc_session::config::OptLevel,
     rustc_session::config::SymbolManglingVersion,
@@ -300,38 +254,5 @@ impl_erasable_for_simple_types! {
     rustc_span::Symbol,
     rustc_target::spec::PanicStrategy,
     usize,
-    // tidy-alphabetical-end
-}
-
-macro_rules! impl_erasable_for_single_lifetime_types {
-    ($($($fake_path:ident)::+),+ $(,)?) => {
-        $(
-            impl Erasable for $($fake_path)::+<'_> {
-                type Storage = [u8; size_of::<$($fake_path)::+<'_>>()];
-            }
-        )*
-    }
-}
-
-// For types containing a single lifetime and no other generics, e.g.
-// `Foo<'tcx>`, the erased storage is `[u8; size_of::<Foo<'_>>()]`.
-impl_erasable_for_single_lifetime_types! {
-    // tidy-alphabetical-start
-    rustc_hir::MaybeOwner,
-    rustc_middle::mir::interpret::EvalStaticInitializerRawResult,
-    rustc_middle::mir::interpret::EvalToValTreeResult,
-    rustc_middle::mir::mono::MonoItemPartitions,
-    rustc_middle::traits::query::MethodAutoderefStepsResult,
-    rustc_middle::ty::AdtDef,
-    rustc_middle::ty::ClosureTypeInfo,
-    rustc_middle::ty::Const,
-    rustc_middle::ty::ConstConditions,
-    rustc_middle::ty::GenericPredicates,
-    rustc_middle::ty::ImplTraitHeader,
-    rustc_middle::ty::ParamEnv,
-    rustc_middle::ty::SymbolName,
-    rustc_middle::ty::Ty,
-    rustc_middle::ty::TypingEnv,
-    rustc_middle::ty::inhabitedness::InhabitedPredicate,
     // tidy-alphabetical-end
 }
