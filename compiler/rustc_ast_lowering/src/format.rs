@@ -161,9 +161,32 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             let size_old_world = args_old_world * 16;
             let size_with_opt = args_after_dedup * 16;
 
+            // Source location for cross-target dedup.
+            let loc = {
+                let sm = self.tcx.sess.source_map();
+                let pos =
+                    sm.lookup_char_pos(fmt.span.lo());
+                format!(
+                    "{}:{}:{}",
+                    pos.file
+                        .name
+                        .prefer_local_unconditionally(),
+                    pos.line,
+                    pos.col.0,
+                )
+            };
+            // Escape for JSON embedding.  File paths on
+            // Linux rarely contain `\` or `"`, but a
+            // malformed loc would silently break JSON
+            // parsing for that record.
+            let loc =
+                loc.replace('\\', "\\\\")
+                    .replace('"', "\\\"");
+
             eprintln!(
                 "[FMTARGS] {{\
                 \"crate\":\"{krate}\",\
+                \"loc\":\"{loc}\",\
                 \"p\":{},\"ph\":{},\"wa\":{},\"pa\":{},\
                 \"a\":{},\"pos\":{},\"named\":{},\
                 \"cap\":{},\
