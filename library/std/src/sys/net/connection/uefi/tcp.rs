@@ -9,9 +9,9 @@ pub(crate) enum Tcp {
     V4(tcp4::Tcp4),
 }
 
-// SAFETY: UEFI has no regular threads. It does have interrupt handlers and can run code
-// on other CPU cores, but those are constrained execution environments that `std` does
-// not support, so they are not considered to be relevant for `Send` of `std` types.
+// SAFETY: UEFI has no regular threads, and as per <https://github.com/rust-lang/rust/issues/133604>
+// std does not support being invoked from "irregular threads" such as interrupt handlers or other
+// CPU cores that run outside the scope of UEFI.
 unsafe impl Send for Tcp {}
 
 impl Tcp {
