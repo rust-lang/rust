@@ -3641,49 +3641,48 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             match use_set {
                 Some(LifetimeUseSet::Many) => {}
                 Some(LifetimeUseSet::One { use_span, use_ctxt }) => {
-                    debug!(?param.ident, ?param.ident.span, ?use_span);
-
-                    let elidable = matches!(use_ctxt, LifetimeCtxt::Ref);
+                    let param_ident = param.ident;
                     let deletion_span =
                         if param.bounds.is_empty() { deletion_span() } else { None };
-
-                    let tcx = self.r.tcx;
-                    let param_ident = param.ident;
-                    let sugg_data = deletion_span.map(|deletion_span| {
-                        if elidable {
-                            let use_span =
-                                tcx.sess.source_map().span_extend_while_whitespace(use_span);
-                            (deletion_span, use_span, String::new())
-                        } else {
-                            (deletion_span, use_span, "'_".to_owned())
-                        }
-                    });
-                    self.r.lint_buffer.dyn_buffer_lint(
+                    self.r.lint_buffer.dyn_buffer_lint_any(
                         lint::builtin::SINGLE_USE_LIFETIMES,
                         param.id,
-                        param.ident.span,
-                        move |dcx, level| {
-                            let suggestion =
-                                sugg_data.map(|(deletion_span, use_span, replace_lt)| {
-                                    // issue 107998 for the case such as a wrong function pointer type
-                                    // `deletion_span` is empty and there is no need to report lifetime uses here
-                                    let deletion_span = if deletion_span.is_empty() {
-                                        None
-                                    } else {
-                                        Some(deletion_span)
-                                    };
-                                    errors::SingleUseLifetimeSugg {
-                                        deletion_span,
-                                        use_span,
-                                        replace_lt,
-                                    }
-                                });
-                            let param_span = param_ident.span;
-                            debug!(?param_span, ?use_span, ?deletion_span);
+                        param_ident.span,
+                        move |dcx, level, sess| {
+                            debug!(?param_ident, ?param_ident.span, ?use_span);
 
+                            let elidable = matches!(use_ctxt, LifetimeCtxt::Ref);
+                            let suggestion = if let Some(deletion_span) = deletion_span {
+                                let (use_span, replace_lt) = if elidable {
+                                    let use_span = sess
+                                        .downcast_ref::<Session>()
+                                        .expect("expected a `Session`")
+                                        .source_map()
+                                        .span_extend_while_whitespace(use_span);
+                                    (use_span, String::new())
+                                } else {
+                                    (use_span, "'_".to_owned())
+                                };
+                                debug!(?deletion_span, ?use_span);
+
+                                // issue 107998 for the case such as a wrong function pointer type
+                                // `deletion_span` is empty and there is no need to report lifetime uses here
+                                let deletion_span = if deletion_span.is_empty() {
+                                    None
+                                } else {
+                                    Some(deletion_span)
+                                };
+                                Some(errors::SingleUseLifetimeSugg {
+                                    deletion_span,
+                                    use_span,
+                                    replace_lt,
+                                })
+                            } else {
+                                None
+                            };
                             errors::SingleUseLifetime {
                                 suggestion,
-                                param_span,
+                                param_span: param_ident.span,
                                 use_span,
                                 ident: param_ident,
                             }

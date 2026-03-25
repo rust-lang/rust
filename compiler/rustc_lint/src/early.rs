@@ -15,9 +15,9 @@ use rustc_session::lint::LintPass;
 use rustc_span::{Ident, Span};
 use tracing::debug;
 
-use crate::DecorateBuiltinLint;
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
+use crate::{DecorateBuiltinLint, DiagAndSess};
 
 pub(super) mod diagnostics;
 
@@ -49,8 +49,12 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
                         },
                     );
                 }
-                DecorateDiagCompat::Dynamic(d) => {
-                    self.context.opt_span_lint(lint_id.lint, span, d);
+                DecorateDiagCompat::Dynamic(callback) => {
+                    self.context.opt_span_lint(
+                        lint_id.lint,
+                        span,
+                        DiagAndSess { callback, sess: self.context.sess() },
+                    );
                 }
             }
         }
