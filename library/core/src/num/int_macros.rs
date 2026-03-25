@@ -3944,5 +3944,85 @@ macro_rules! int_impl {
                 self
             }
         }
+
+        /// Truncate an integer to an integer of the same size or smaller, preserving the least
+        /// significant bits.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_extend_truncate)]
+        #[doc = concat!("assert_eq!(120i8, 120", stringify!($SelfT), ".truncate());")]
+        #[doc = concat!("assert_eq!(-120i8, (-120", stringify!($SelfT), ").truncate());")]
+        /// assert_eq!(120i8, 376i32.truncate());
+        /// ```
+        #[must_use = "this returns the truncated value and does not modify the original"]
+        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[inline]
+        pub fn truncate<Target>(self) -> Target
+            where Self: traits::TruncateTarget<Target>
+        {
+            traits::TruncateTarget::internal_truncate(self)
+        }
+
+        /// Truncate an integer to an integer of the same size or smaller, saturating at numeric bounds
+        /// instead of truncating.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_extend_truncate)]
+        #[doc = concat!("assert_eq!(120i8, 120", stringify!($SelfT), ".saturating_truncate());")]
+        #[doc = concat!("assert_eq!(-120i8, (-120", stringify!($SelfT), ").saturating_truncate());")]
+        /// assert_eq!(127i8, 376i32.saturating_truncate());
+        /// assert_eq!(-128i8, (-1000i32).saturating_truncate());
+        /// ```
+        #[must_use = "this returns the truncated value and does not modify the original"]
+        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[inline]
+        pub fn saturating_truncate<Target>(self) -> Target
+            where Self: traits::TruncateTarget<Target>
+        {
+            traits::TruncateTarget::internal_saturating_truncate(self)
+        }
+
+        /// Truncate an integer to an integer of the same size or smaller, returning `None` if the value
+        /// is outside the bounds of the smaller type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_extend_truncate)]
+        #[doc = concat!("assert_eq!(Some(120i8), 120", stringify!($SelfT), ".checked_truncate());")]
+        #[doc = concat!("assert_eq!(Some(-120i8), (-120", stringify!($SelfT), ").checked_truncate());")]
+        /// assert_eq!(None, 376i32.checked_truncate::<i8>());
+        /// assert_eq!(None, (-1000i32).checked_truncate::<i8>());
+        /// ```
+        #[must_use = "this returns the truncated value and does not modify the original"]
+        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[inline]
+        pub fn checked_truncate<Target>(self) -> Option<Target>
+            where Self: traits::TruncateTarget<Target>
+        {
+            traits::TruncateTarget::internal_checked_truncate(self)
+        }
+
+        /// Extend to an integer of the same size or larger, preserving its value.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_extend_truncate)]
+        #[doc = concat!("assert_eq!(120i128, 120i8.extend());")]
+        #[doc = concat!("assert_eq!(-120i128, (-120i8).extend());")]
+        /// ```
+        #[must_use = "this returns the extended value and does not modify the original"]
+        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[inline]
+        pub fn extend<Target>(self) -> Target
+            where Self: traits::ExtendTarget<Target>
+        {
+            traits::ExtendTarget::internal_extend(self)
+        }
     }
 }
