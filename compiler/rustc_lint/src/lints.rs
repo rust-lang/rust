@@ -3081,30 +3081,6 @@ pub(crate) enum UnusedImportsSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag("lifetime parameter `{$ident}` only used once")]
-pub(crate) struct SingleUseLifetime {
-    #[label("this lifetime...")]
-    pub param_span: Span,
-    #[label("...is used only here")]
-    pub use_span: Span,
-    #[subdiagnostic]
-    pub suggestion: Option<SingleUseLifetimeSugg>,
-
-    pub ident: Ident,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion("elide the single-use lifetime", applicability = "machine-applicable")]
-pub(crate) struct SingleUseLifetimeSugg {
-    #[suggestion_part(code = "")]
-    pub deletion_span: Option<Span>,
-    #[suggestion_part(code = "{replace_lt}")]
-    pub use_span: Span,
-
-    pub replace_lt: String,
-}
-
-#[derive(Diagnostic)]
 #[diag("named argument `{$named_arg_name}` is not used by name")]
 pub(crate) struct NamedArgumentUsedPositionally {
     #[label("this named argument is referred to by position in formatting string")]

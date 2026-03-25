@@ -1688,3 +1688,27 @@ pub(crate) struct AssociatedConstElidedLifetime {
     #[note("cannot automatically infer `'static` because of other lifetimes in scope")]
     pub lifetimes_in_scope: MultiSpan,
 }
+
+#[derive(Diagnostic)]
+#[diag("lifetime parameter `{$ident}` only used once")]
+pub(crate) struct SingleUseLifetime {
+    #[label("this lifetime...")]
+    pub param_span: Span,
+    #[label("...is used only here")]
+    pub use_span: Span,
+    #[subdiagnostic]
+    pub suggestion: Option<SingleUseLifetimeSugg>,
+
+    pub ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("elide the single-use lifetime", applicability = "machine-applicable")]
+pub(crate) struct SingleUseLifetimeSugg {
+    #[suggestion_part(code = "")]
+    pub deletion_span: Option<Span>,
+    #[suggestion_part(code = "{replace_lt}")]
+    pub use_span: Span,
+
+    pub replace_lt: String,
+}

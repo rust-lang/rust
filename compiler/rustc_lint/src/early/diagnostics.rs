@@ -8,7 +8,6 @@ use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
-use tracing::debug;
 
 use crate::lints;
 
@@ -86,36 +85,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
                     ),
                 }
                 .into_diag(dcx, level)
-            }
-            BuiltinLintDiag::SingleUseLifetime {
-                param_span,
-                use_span,
-                elidable,
-                deletion_span,
-                ident,
-            } => {
-                debug!(?param_span, ?use_span, ?deletion_span);
-                let suggestion = if let Some(deletion_span) = deletion_span {
-                    let (use_span, replace_lt) = if elidable {
-                        let use_span =
-                            self.sess.source_map().span_extend_while_whitespace(use_span);
-                        (use_span, String::new())
-                    } else {
-                        (use_span, "'_".to_owned())
-                    };
-                    debug!(?deletion_span, ?use_span);
-
-                    // issue 107998 for the case such as a wrong function pointer type
-                    // `deletion_span` is empty and there is no need to report lifetime uses here
-                    let deletion_span =
-                        if deletion_span.is_empty() { None } else { Some(deletion_span) };
-                    Some(lints::SingleUseLifetimeSugg { deletion_span, use_span, replace_lt })
-                } else {
-                    None
-                };
-
-                lints::SingleUseLifetime { suggestion, param_span, use_span, ident }
-                    .into_diag(dcx, level)
             }
             BuiltinLintDiag::NamedArgumentUsedPositionally {
                 position_sp_to_replace,

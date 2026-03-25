@@ -14,7 +14,7 @@ use rustc_ast_pretty::pprust::{path_to_string, where_bound_predicate_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, SuggestionStyle, pluralize,
+    Applicability, Diag, Diagnostic, ErrorGuaranteed, MultiSpan, SuggestionStyle, pluralize,
     struct_span_code_err,
 };
 use rustc_hir as hir;
@@ -3647,16 +3647,47 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     let deletion_span =
                         if param.bounds.is_empty() { deletion_span() } else { None };
 
-                    self.r.lint_buffer.buffer_lint(
+                    let tcx = self.r.tcx;
+                    let param_ident = param.ident;
+                    let sugg_data = deletion_span.map(|deletion_span| {
+                        if elidable {
+                            let use_span =
+                                tcx.sess.source_map().span_extend_while_whitespace(use_span);
+                            (deletion_span, use_span, String::new())
+                        } else {
+                            (deletion_span, use_span, "'_".to_owned())
+                        }
+                    });
+                    self.r.lint_buffer.dyn_buffer_lint(
                         lint::builtin::SINGLE_USE_LIFETIMES,
                         param.id,
                         param.ident.span,
-                        lint::BuiltinLintDiag::SingleUseLifetime {
-                            param_span: param.ident.span,
-                            use_span,
-                            elidable,
-                            deletion_span,
-                            ident: param.ident,
+                        move |dcx, level| {
+                            let suggestion =
+                                sugg_data.map(|(deletion_span, use_span, replace_lt)| {
+                                    // issue 107998 for the case such as a wrong function pointer type
+                                    // `deletion_span` is empty and there is no need to report lifetime uses here
+                                    let deletion_span = if deletion_span.is_empty() {
+                                        None
+                                    } else {
+                                        Some(deletion_span)
+                                    };
+                                    errors::SingleUseLifetimeSugg {
+                                        deletion_span,
+                                        use_span,
+                                        replace_lt,
+                                    }
+                                });
+                            let param_span = param_ident.span;
+                            debug!(?param_span, ?use_span, ?deletion_span);
+
+                            errors::SingleUseLifetime {
+                                suggestion,
+                                param_span,
+                                use_span,
+                                ident: param_ident,
+                            }
+                            .into_diag(dcx, level)
                         },
                     );
                 }
