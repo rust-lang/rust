@@ -702,7 +702,9 @@ pub(crate) fn global_llvm_features(sess: &Session, only_base_features: bool) -> 
 
                 features_string
             };
-            features.extend(features_string.split(',').map(String::from));
+            if !features_string.is_empty() {
+                features.extend(features_string.split(',').map(String::from));
+            }
         }
         Some(_) | None => {}
     };
