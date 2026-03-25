@@ -1211,23 +1211,108 @@ impl<'a> Ancestors<'a> {
         }
     }
 
-    /// Skip any trailing separators in the forward direction
+    /// Normalizes away trailing separators and current directory ('.') components
+    /// in the forward direction.
     #[inline]
     fn advance_through_trailing_sep_front(&mut self) {
+        // `Some(false)` is used to denote that
+        // we haven't seen a '.' component *yet*,
+        // `Some(true)` means we have seen a '.' component,
+        // and `None` means that the component is not '.'
+        let mut curr_dir = Some(false);
+        // We rebound to the original index for path components
+        // like '..' or 'abc.'
+        let mut rebound_ind: Option<usize> = None;
         loop {
-            if self.front == self.back || !is_sep_byte(self.path[self.front]) {
+            if self.front == self.back {
+                if let Some(front_ind) = rebound_ind {
+                    self.front = front_ind;
+                }
                 break;
             }
+
+            if is_sep_byte(self.path[self.front]) {
+                if let Some(curr_dir_present) = curr_dir
+                    && curr_dir_present
+                {
+                    curr_dir = Some(false);
+                    rebound_ind = None;
+                }
+            } else {
+                if self.path[self.front] == b'.' {
+                    if let Some(curr_dir_present) = curr_dir {
+                        if !curr_dir_present {
+                            curr_dir = Some(true);
+                            rebound_ind = Some(self.front);
+                        } else {
+                            curr_dir = None;
+                        }
+                    } else {
+                        if let Some(front_ind) = rebound_ind {
+                            self.front = front_ind;
+                        }
+                        break;
+                    }
+                } else {
+                    if let Some(front_ind) = rebound_ind {
+                        self.front = front_ind;
+                    }
+                    break;
+                }
+            }
+
             self.front += 1;
         }
     }
 
-    /// Skip any trailing separators in the backward direction
+    /// Normalizes away trailing separators and current directory ('.') components
+    /// in the backward direction
     #[inline]
     fn advance_through_trailing_sep_back(&mut self) {
+        // `Some(false)` is used to denote that
+        // we haven't seen a '.' component *yet*,
+        // `Some(true)` means we have seen a '.' component,
+        // and `None` means that the component is not '.'
+        let mut curr_dir = Some(false);
+        // We rebound to the original index for path components
+        // like '..' or 'abc.'
+        let mut rebound_ind: Option<usize> = None;
         loop {
-            if self.back == self.front || !is_sep_byte(self.path[self.back - 1]) {
+            if self.back == self.front {
+                if let Some(back_ind) = rebound_ind {
+                    self.back = back_ind;
+                }
                 break;
+            }
+
+            if is_sep_byte(self.path[self.back - 1]) {
+                if let Some(curr_dir_present) = curr_dir
+                    && curr_dir_present
+                {
+                    curr_dir = Some(false);
+                    rebound_ind = None;
+                }
+            } else {
+                if self.path[self.back - 1] == b'.' {
+                    if let Some(curr_dir_present) = curr_dir {
+                        if !curr_dir_present {
+                            curr_dir = Some(true);
+                            rebound_ind = Some(self.back);
+                        } else {
+                            curr_dir = None;
+                        }
+                    } else {
+                        if let Some(back_ind) = rebound_ind {
+                            self.back = back_ind;
+                        }
+                        break;
+                    }
+                } else {
+                    if let Some(back_ind) = rebound_ind {
+                        self.back = back_ind;
+                    }
+                    break;
+                }
             }
             self.back -= 1;
         }
@@ -1235,7 +1320,7 @@ impl<'a> Ancestors<'a> {
 
     /// Increments our front pointer until we find the
     /// next separator byte or have reached the component
-    /// that back index is pointing at
+    /// that back index is pointing at.
     #[inline]
     fn find_next_separator_front(&mut self) {
         while self.front < self.back {
@@ -1249,7 +1334,7 @@ impl<'a> Ancestors<'a> {
 
     /// Decrements our back pointer until we find the
     /// next separator byte or have reached the component
-    /// that front index is pointing to
+    /// that front index is pointing to.
     #[inline]
     fn find_next_separator_back(&mut self) {
         while self.back > self.front {
@@ -1284,7 +1369,8 @@ impl<'a> Iterator for Ancestors<'a> {
         // separator byte. This prepares the path we return on the next
         // call to this function.
         self.find_next_separator_back();
-        // Skip trailing seps
+        // Normalizes trailing seps and curr dirs in preparation for
+        // next front component
         self.advance_through_trailing_sep_back();
 
         // The first path our back pointer must return is the original path
@@ -1322,7 +1408,11 @@ impl<'a> DoubleEndedIterator for Ancestors<'a> {
         // We trace our `self.front` idx down the path until
         // we hit a separator.
         self.find_next_separator_front();
-        // Skip trailing seps
+        // In case paths like "././././a", we just want the first
+        // '.' path and normalize the rest away
+        let curr_front = self.front;
+        // Normalizes trailing seps and curr dirs in preparation for
+        // next front component
         self.advance_through_trailing_sep_front();
 
         // The last path front must return is the original path
@@ -1334,7 +1424,7 @@ impl<'a> DoubleEndedIterator for Ancestors<'a> {
 
         // SAFETY: Our front index always stops at an ascii separator byte
         // so our u8 slice will always contain a valid path
-        let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..self.front]) };
+        let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..curr_front]) };
         Some(Path::new(sliced_path).trim_trailing_sep())
     }
 }
@@ -2876,23 +2966,63 @@ impl Path {
     #[stable(feature = "path_ancestors", since = "1.28.0")]
     #[inline]
     pub fn ancestors(&self) -> Ancestors<'_> {
-        let os_str_path = self.as_os_str();
-        let path_bytes = os_str_path.as_encoded_bytes();
-        let path_len = path_bytes.len();
-        let trailing_seps = if self.has_trailing_sep() {
+        /// Normalizes the trailing portion of given path
+        /// and returns the number of bytes that it occupied
+        #[inline]
+        fn trailing_path_length(path_bytes: &[u8]) -> usize {
+            let path_len = path_bytes.len();
             // this won't panic because "" does not have
             // a trailing separator
             let mut idx = path_len;
+
+            // `Some(false)` is used to denote that
+            // we haven't seen a '.' component *yet*,
+            // `Some(true)` means we have seen a '.' component,
+            // and `None` means that the component is not '.'
+            let mut curr_dir = false;
+            // We rebound to the original index for path components
+            // like '..' or 'abc.'
+            let mut rebound_idx: Option<usize> = None;
             while idx > 0 {
-                if !is_sep_byte(path_bytes[idx - 1]) {
-                    break;
+                if is_sep_byte(path_bytes[idx - 1]) {
+                    if curr_dir {
+                        rebound_idx = None;
+                        curr_dir = false;
+                    }
+                } else {
+                    if path_bytes[idx - 1] == b'.' {
+                        if !curr_dir {
+                            rebound_idx = Some(idx);
+                            curr_dir = true;
+                        } else {
+                            if let Some(r_idx) = rebound_idx {
+                                curr_dir = false;
+                                idx = r_idx;
+                            }
+                            break;
+                        }
+                    } else {
+                        if let Some(r_idx) = rebound_idx {
+                            curr_dir = false;
+                            idx = r_idx;
+                        }
+                        break;
+                    }
                 }
                 idx -= 1;
             }
+
+            // If our path is `./a/b/c`, this `.` is not normalized
+            // away because it's treated as its own component
+            if curr_dir {
+                idx += 1;
+            }
             path_len - idx
-        } else {
-            0
-        };
+        }
+
+        let os_str_path = self.as_os_str();
+        let path_bytes = os_str_path.as_encoded_bytes();
+        let trailing_seps = trailing_path_length(path_bytes);
 
         // Windows specific component
         let prefix = parse_prefix(os_str_path);
@@ -2913,7 +3043,7 @@ impl Path {
         let front = prefix.map(|prefix| prefix.len()).unwrap_or(0);
         // Set our back pointer to the last separator byte (without trailing)
         // or last byte
-        let back = path_len - trailing_seps;
+        let back = path_bytes.len() - trailing_seps;
 
         Ancestors { path: path_bytes, front, back, trailing_seps, first_comp }
     }

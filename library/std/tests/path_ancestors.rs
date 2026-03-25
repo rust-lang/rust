@@ -125,6 +125,26 @@ fn curr_dir_relative_path_ancestors() {
 }
 
 #[test]
+fn multiple_curr_dir_relative_path_ancestors() {
+    let path = Path::new("././././baz/beam/boo");
+    let mut ancestors = path.ancestors();
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("././././baz/beam/boo"));
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("././././baz/beam"));
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("././././baz"));
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("."));
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new(""));
+    assert_eq!(ancestors.next(), None);
+
+    let mut rev_ancestors = path.ancestors();
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new(""));
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("."));
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("././././baz"));
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("././././baz/beam"));
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("././././baz/beam/boo"));
+    assert_eq!(rev_ancestors.next_back(), None);
+}
+
+#[test]
 fn parent_dir_only_path_ancestors() {
     let path = Path::new("..");
     let mut ancestors = path.ancestors();
@@ -229,6 +249,44 @@ fn absolute_path_ancestors() {
 }
 
 #[test]
+fn absolute_path_with_curr_dir_path_ancestors() {
+    let path = Path::new("/.");
+    let mut ancestors = path.ancestors();
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("/."));
+    assert_eq!(ancestors.next(), None);
+
+    let mut rev_ancestors = path.ancestors();
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/."));
+    assert_eq!(rev_ancestors.next_back(), None);
+}
+
+#[test]
+fn absolute_path_with_trailing_curr_dir_path_ancestors() {
+    let path = Path::new("/./././././.");
+    let mut ancestors = path.ancestors();
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("/./././././."));
+    assert_eq!(ancestors.next(), None);
+
+    let mut rev_ancestors = path.ancestors();
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/./././././."));
+    assert_eq!(rev_ancestors.next_back(), None);
+}
+
+#[test]
+fn absolute_path_with_parent_dir_path_ancestors() {
+    let path = Path::new("/..");
+    let mut ancestors = path.ancestors();
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("/.."));
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("/"));
+    assert_eq!(ancestors.next(), None);
+
+    let mut rev_ancestors = path.ancestors();
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/"));
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/.."));
+    assert_eq!(rev_ancestors.next_back(), None);
+}
+
+#[test]
 fn absolute_with_in_between_trailing_seps_path_ancestors() {
     let path = Path::new("/foo/////bar/");
     let mut ancestors = path.ancestors();
@@ -241,6 +299,38 @@ fn absolute_with_in_between_trailing_seps_path_ancestors() {
     assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/"));
     assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/foo"));
     assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/foo/////bar/"));
+    assert_eq!(rev_ancestors.next_back(), None);
+}
+
+#[test]
+fn absolute_curr_dir_and_trailing_seps_path_ancestors() {
+    let path = Path::new("/foo/bar/./././.");
+    let mut ancestors = path.ancestors();
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("/foo/bar/./././."));
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("/foo"));
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("/"));
+    assert_eq!(ancestors.next(), None);
+
+    let mut rev_ancestors = path.ancestors();
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/"));
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/foo"));
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/foo/bar/./././."));
+    assert_eq!(rev_ancestors.next_back(), None);
+}
+
+#[test]
+fn absolute_curr_dir_and_in_between_trailing_seps_path_ancestors() {
+    let path = Path::new("/foo////.////bar");
+    let mut ancestors = path.ancestors();
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("/foo////.////bar"));
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("/foo"));
+    assert_eq!(ancestors.next().unwrap().as_os_str(), OsStr::new("/"));
+    assert_eq!(ancestors.next(), None);
+
+    let mut rev_ancestors = path.ancestors();
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/"));
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/foo"));
+    assert_eq!(rev_ancestors.next_back().unwrap().as_os_str(), OsStr::new("/foo////.////bar"));
     assert_eq!(rev_ancestors.next_back(), None);
 }
 
