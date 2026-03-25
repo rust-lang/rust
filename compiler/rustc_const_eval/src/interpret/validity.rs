@@ -1532,6 +1532,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
 }
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
+    /// The internal core entry point for all validation operations.
     fn validate_operand_internal(
         &mut self,
         val: &PlaceTy<'tcx, M::Provenance>,
@@ -1539,6 +1540,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ref_tracking: Option<&mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Path<'tcx>>>,
         ctfe_mode: Option<CtfeValidationMode>,
         reset_provenance_and_padding: bool,
+        start_in_may_dangle: bool,
     ) -> InterpResult<'tcx> {
         trace!("validate_operand_internal: {:?}, {:?}", *val, val.layout.ty);
 
@@ -1556,7 +1558,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ecx,
                 reset_provenance_and_padding,
                 data_bytes: reset_padding.then_some(RangeSet(Vec::new())),
-                may_dangle: false,
+                may_dangle: start_in_may_dangle,
             };
             v.visit_value(val)?;
             v.reset_padding(val)?;
@@ -1599,6 +1601,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Some(ref_tracking),
             Some(ctfe_mode),
             /*reset_provenance*/ false,
+            /*start_in_may_dangle*/ false,
         )
     }
 
@@ -1629,6 +1632,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 None,
                 None,
                 reset_provenance_and_padding,
+                /*start_in_may_dangle*/ false,
             );
         }
         // Do a recursive check.
@@ -1639,15 +1643,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Some(&mut ref_tracking),
             None,
             reset_provenance_and_padding,
+            /*start_in_may_dangle*/ false,
         )?;
         while let Some((mplace, path)) = ref_tracking.todo.pop() {
-            // Things behind reference do *not* have the provenance reset.
+            // Things behind reference do *not* have the provenance reset. In fact
+            // we treat the entire thing as being inside MaybeDangling, i.e., references
+            // do not have to be dereferenceable.
             self.validate_operand_internal(
                 &mplace.into(),
                 path,
-                Some(&mut ref_tracking),
+                None, // no further recursion
                 None,
                 /*reset_provenance_and_padding*/ false,
+                /*start_in_may_dangle*/ true,
             )?;
         }
         interp_ok(())
