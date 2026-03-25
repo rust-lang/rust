@@ -104,3 +104,6 @@ flake.lock
 /default.nix
 
 # Before adding new lines, see the comment at the top.
+compile_commands.json
+.cache
+.clangd

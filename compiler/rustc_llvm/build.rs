@@ -126,10 +126,11 @@ fn parse_simple_toml(path: &Path) -> HashMap<String, String> {
 
 /// Build Triton using cmake, driven by triton.toml config and the LLVM install
 /// pointed to by `llvm_config`. Returns the Triton build output directory.
-fn build_triton(llvm_config: &Path, out_dir: &Path) -> PathBuf {
+///
+/// Triton is built at `<workspace_root>/target/build/triton-build/` (a fixed, predictable
+/// path) so that `rustc_mlir` can locate it without knowing this crate's cargo OUT_DIR.
+fn build_triton(llvm_config: &Path, workspace_root: &Path) -> PathBuf {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    // compiler/rustc_llvm/ -> workspace root (two levels up)
-    let workspace_root = manifest_dir.parent().unwrap().parent().unwrap();
     let triton_src = workspace_root.join("src/triton");
 
     println!("cargo:rerun-if-changed=triton.toml");
@@ -149,7 +150,8 @@ fn build_triton(llvm_config: &Path, out_dir: &Path) -> PathBuf {
     let mlir_cmake_dir = llvm_prefix.join("lib/cmake/mlir");
     let lld_cmake_dir = llvm_prefix.join("lib/cmake/lld");
 
-    let triton_build_out = out_dir.join("triton-build");
+    // Use a fixed path so rustc_mlir can locate the Triton build without knowing OUT_DIR.
+    let triton_build_out = workspace_root.join("target/build/triton-build");
     std::fs::create_dir_all(&triton_build_out)
         .unwrap_or_else(|e| panic!("failed to create {}: {}", triton_build_out.display(), e));
 
@@ -201,7 +203,7 @@ fn main() {
     let triton_src = workspace_root.join("src/triton");
 
     // Build Triton (requires LLVM with MLIR and LLD built via --enable-projects=lld;mlir)
-    let triton_build_dir = build_triton(&llvm_config, &out_dir);
+    let triton_build_dir = build_triton(&llvm_config, workspace_root);
 
     // Test whether we're cross-compiling LLVM. This is a pretty rare case
     // currently where we're producing an LLVM for a different platform than

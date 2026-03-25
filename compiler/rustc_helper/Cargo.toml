@@ -1,0 +1,7 @@
+[package]
+name = "rustc_helper"
+version = "0.0.0"
+edition = "2021"
+description = "Helper utilities for build scripts in the MLIR/Triton codegen backend"
+
+[dependencies]
