@@ -38,6 +38,9 @@ fn main() {
     test_getsockname_ipv4_random_port();
     test_getsockname_ipv4_unbound();
     test_getsockname_ipv6();
+
+    test_getpeername_ipv4();
+    test_getpeername_ipv6();
 }
 
 fn test_socket_close() {
@@ -183,7 +186,6 @@ fn test_listen() {
 /// - Connecting when the server is already accepting
 /// - Accepting when there is already an incoming connection
 fn test_accept_connect() {
-    // Create a new non-blocking server socket.
     let server_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let client_sockfd =
@@ -377,6 +379,132 @@ fn test_getsockname_ipv6() {
     assert_eq!(addr.sin6_flowinfo, sock_addr.sin6_flowinfo);
     assert_eq!(addr.sin6_scope_id, sock_addr.sin6_scope_id);
     assert_eq!(addr.sin6_addr.s6_addr, sock_addr.sin6_addr.s6_addr);
+}
+
+/// Test the `getpeername` syscall on an IPv4 socket.
+/// For a connected socket, the `getpeername` syscall should
+/// return the same address as the socket was connected to.
+fn test_getpeername_ipv4() {
+    let server_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+    let addr = net::ipv4_sock_addr(net::IPV4_LOCALHOST, 0);
+    unsafe {
+        errno_check(libc::bind(
+            server_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ));
+    }
+
+    unsafe {
+        errno_check(libc::listen(server_sockfd, 16));
+    }
+
+    // Retrieve actual listener address because we used a randomized port.
+    let (_, server_addr) =
+        sockname(|storage, len| unsafe { libc::getsockname(server_sockfd, storage, len) }).unwrap();
+
+    let LibcSocketAddr::V4(addr) = server_addr else {
+        // We bound an IPv4 address so we also expect
+        // an IPv4 address to be returned.
+        panic!()
+    };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (_peerfd, _peer_addr) =
+            sockname(|storage, len| unsafe { libc::accept(server_sockfd, storage, len) }).unwrap();
+    });
+
+    // Test connecting to an already accepting server.
+    unsafe {
+        errno_check(libc::connect(
+            client_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ));
+    }
+
+    let (_, peer_addr) =
+        sockname(|storage, len| unsafe { libc::getpeername(client_sockfd, storage, len) }).unwrap();
+
+    let LibcSocketAddr::V4(peer_addr) = peer_addr else {
+        // We connected to an IPv4 address so we also expect
+        // an IPv4 address to be returned.
+        panic!()
+    };
+
+    assert_eq!(addr.sin_family, peer_addr.sin_family);
+    assert_eq!(addr.sin_port, peer_addr.sin_port);
+    assert_eq!(addr.sin_addr.s_addr, peer_addr.sin_addr.s_addr);
+
+    server_thread.join().unwrap();
+}
+
+/// Test the `getpeername` syscall on an IPv6 socket.
+/// For a connected socket, the `getpeername` syscall should
+/// return the same address as the socket was connected to.
+fn test_getpeername_ipv6() {
+    let server_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0)).unwrap() };
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0)).unwrap() };
+    let addr = net::ipv6_sock_addr(net::IPV6_LOCALHOST, 0);
+    unsafe {
+        errno_check(libc::bind(
+            server_sockfd,
+            (&addr as *const libc::sockaddr_in6).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in6>() as libc::socklen_t,
+        ));
+    }
+
+    unsafe {
+        errno_check(libc::listen(server_sockfd, 16));
+    }
+
+    // Retrieve actual listener address because we used a randomized port.
+    let (_, server_addr) =
+        sockname(|storage, len| unsafe { libc::getsockname(server_sockfd, storage, len) }).unwrap();
+
+    let LibcSocketAddr::V6(addr) = server_addr else {
+        // We bound an IPv6 address so we also expect
+        // an IPv6 address to be returned.
+        panic!()
+    };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (_peerfd, _peer_addr) =
+            sockname(|storage, len| unsafe { libc::accept(server_sockfd, storage, len) }).unwrap();
+    });
+
+    // Test connecting to an already accepting server.
+    unsafe {
+        errno_check(libc::connect(
+            client_sockfd,
+            (&addr as *const libc::sockaddr_in6).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in6>() as libc::socklen_t,
+        ));
+    }
+
+    let (_, peer_addr) =
+        sockname(|storage, len| unsafe { libc::getpeername(client_sockfd, storage, len) }).unwrap();
+
+    let LibcSocketAddr::V6(peer_addr) = peer_addr else {
+        // We connected to an IPv6 address so we also expect
+        // an IPv6 address to be returned.
+        panic!()
+    };
+
+    assert_eq!(addr.sin6_family, peer_addr.sin6_family);
+    assert_eq!(addr.sin6_port, peer_addr.sin6_port);
+    assert_eq!(addr.sin6_flowinfo, peer_addr.sin6_flowinfo);
+    assert_eq!(addr.sin6_scope_id, peer_addr.sin6_scope_id);
+    assert_eq!(addr.sin6_addr.s6_addr, peer_addr.sin6_addr.s6_addr);
+
+    server_thread.join().unwrap();
 }
 
 /// Set a socket option. It's the caller's responsibility to ensure that `T` is
