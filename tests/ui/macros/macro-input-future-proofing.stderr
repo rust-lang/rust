@@ -20,7 +20,7 @@ error: `$pa:pat` is followed by `>`, which is not allowed for `pat` fragments
 LL |     ($pa:pat >) => ();
    |              ^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
 
 error: `$pa:pat` is followed by `$pb:pat`, which is not allowed for `pat` fragments
   --> $DIR/macro-input-future-proofing.rs:14:14
@@ -28,7 +28,7 @@ error: `$pa:pat` is followed by `$pb:pat`, which is not allowed for `pat` fragme
 LL |     ($pa:pat $pb:pat $ty:ty ,) => ();
    |              ^^^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
 
 error: `$pb:pat` is followed by `$ty:ty`, which is not allowed for `pat` fragments
   --> $DIR/macro-input-future-proofing.rs:14:22
@@ -36,7 +36,7 @@ error: `$pb:pat` is followed by `$ty:ty`, which is not allowed for `pat` fragmen
 LL |     ($pa:pat $pb:pat $ty:ty ,) => ();
    |                      ^^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
 
 error: `$ty:ty` is followed by `-`, which is not allowed for `ty` fragments
   --> $DIR/macro-input-future-proofing.rs:17:17
