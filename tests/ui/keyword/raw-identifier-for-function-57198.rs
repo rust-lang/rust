@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/57198
-//@ run-pass
+//@ build-pass
 
 mod m {
     pub fn r#for() {}

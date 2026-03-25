@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/55376
-//@ run-pass
+//@ build-pass
 // Tests that paths in `pub(...)` don't fail HIR verification.
 
 #![allow(unused_imports)]

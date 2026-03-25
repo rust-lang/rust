@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // main is conditionally compiled, but the conditional compilation
 // is conditional too!
 

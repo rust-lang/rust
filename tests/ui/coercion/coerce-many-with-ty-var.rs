@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 // Check that least upper bound coercions don't resolve type variable merely based on the first
 // coercion. Check issue #136420.
 

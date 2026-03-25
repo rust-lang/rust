@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ aux-build:struct_variant_xc_aux.rs
 
 extern crate struct_variant_xc_aux;

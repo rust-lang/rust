@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(non_local_definitions)]

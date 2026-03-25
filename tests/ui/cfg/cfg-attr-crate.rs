@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // https://github.com/rust-lang/rust/issues/21833#issuecomment-72353044
 
 

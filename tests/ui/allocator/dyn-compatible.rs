@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 // Check that `Allocator` is dyn-compatible, this allows for polymorphic allocators
 

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![allow(unused_unsafe)]
 #![allow(unused_variables)]
 

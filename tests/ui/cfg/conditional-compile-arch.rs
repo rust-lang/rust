@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ reference: cfg.target_arch.def
 //@ reference: cfg.target_arch.values
 

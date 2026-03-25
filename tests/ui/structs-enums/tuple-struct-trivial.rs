@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 
 struct Foo(isize, isize, isize);

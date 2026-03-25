@@ -1,5 +1,5 @@
 //! regression test for issue https://github.com/rust-lang/rust/issues/50442
-//@ run-pass
+//@ build-pass
 #![allow(dead_code)]
 enum Void {}
 

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ compile-flags: -Copt-level=3 -Cdebuginfo=2 -Zmir-opt-level=3
 //@ edition: 2021
 

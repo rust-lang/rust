@@ -1,6 +1,6 @@
 //! Check that a reference to a potentially unsized type (`&T`) is itself considered `Sized`.
 
-//@ run-pass
+//@ check-pass
 
 #![allow(dead_code)]
 

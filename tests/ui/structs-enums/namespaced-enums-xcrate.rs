@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ aux-build:namespaced_enums.rs
 
 

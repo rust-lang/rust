@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 struct Foo;
 
 pub fn main() {

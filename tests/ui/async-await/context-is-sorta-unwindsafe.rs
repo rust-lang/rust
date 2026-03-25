@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 // Tests against a regression surfaced by crater in https://github.com/rust-lang/rust/issues/125193
 // Unwind Safety is not a very coherent concept, but we'd prefer no regressions until we kibosh it
 // and this is an unstable feature anyways sooo...

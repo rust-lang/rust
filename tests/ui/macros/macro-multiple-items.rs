@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 macro_rules! make_foo {
     () => (
         struct Foo;

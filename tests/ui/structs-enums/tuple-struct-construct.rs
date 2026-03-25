@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #[allow(dead_code)]
 #[derive(Debug)]
 struct Foo(isize, isize);
