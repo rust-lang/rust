@@ -16,7 +16,7 @@ note: the `get` call is resolved to the method in `Target`, shadowing the method
    |
 LL |     target.get(10.0); // (used to crash here)
    |            ^^^ refers to `Target::get`
-   = note: additionally, there are 1 other available methods that aren't in scope
+   = note: additionally, there is 1 other available method that isn't in scope
 help: you might have meant to call one of the other methods; you can use the fully-qualified path to call one of them explicitly
    |
 LL -     target.get(10.0); // (used to crash here)

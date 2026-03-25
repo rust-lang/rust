@@ -1,4 +1,4 @@
-use rustc_errors::{Applicability, Diag, MultiSpan, listify};
+use rustc_errors::{Applicability, Diag, MultiSpan, listify, pluralize};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, find_attr};
@@ -1072,9 +1072,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
         );
         if suggestions.len() > other_methods_in_scope.len() {
+            let n = suggestions.len() - other_methods_in_scope.len();
             err.note(format!(
-                "additionally, there are {} other available methods that aren't in scope",
-                suggestions.len() - other_methods_in_scope.len()
+                "additionally, there {are} {n} other available method{s} that {are}n't in scope",
+                are = pluralize!("is", n),
+                s = pluralize!(n),
             ));
         }
         err.multipart_suggestions(
