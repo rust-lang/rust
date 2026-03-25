@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a null reference
+error: Undefined Behavior: constructing invalid value of type std::mem::MaybeDangling<&u8>: encountered a null reference
   --> tests/fail/validity/maybe_dangling_null.rs:LL:CC
    |
 LL |     unsafe { transmute::<MaybeDangling<*const u8>, MaybeDangling<&u8>>(null) };

@@ -4,7 +4,6 @@
 //@ check-pass
 
 #![feature(non_lifetime_binders)]
-//~^ WARN the feature `non_lifetime_binders` is incomplete and may not be safe
 
 fn trivial<A>()
 where

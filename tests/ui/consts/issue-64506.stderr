@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value at .inner: encountered a value of uninhabited type `AnonPipe`
+error[E0080]: constructing invalid value of type ChildStdin: at .inner, encountered a value of uninhabited type `AnonPipe`
   --> $DIR/issue-64506.rs:16:22
    |
 LL |     let x = unsafe { Foo { b: () }.a };

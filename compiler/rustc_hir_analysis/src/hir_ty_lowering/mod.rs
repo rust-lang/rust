@@ -2947,7 +2947,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
             if def_id.is_local() {
                 let name = tcx.def_path_str(def_id);
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     tcx.def_span(def_id).shrink_to_lo(),
                     format!("add `type` before `const` for `{name}`"),
                     format!("type "),
@@ -2960,12 +2960,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    fn lower_delegation_ty(&self, idx: hir::InferDelegationKind<'tcx>) -> Ty<'tcx> {
-        let delegation_sig = self.tcx().inherit_sig_for_delegation_item(self.item_def_id());
+    fn lower_delegation_ty(&self, infer: hir::InferDelegation<'tcx>) -> Ty<'tcx> {
+        match infer {
+            hir::InferDelegation::DefId(def_id) => {
+                self.tcx().type_of(def_id).instantiate_identity()
+            }
+            rustc_hir::InferDelegation::Sig(_, idx) => {
+                let delegation_sig = self.tcx().inherit_sig_for_delegation_item(self.item_def_id());
 
-        match idx {
-            hir::InferDelegationKind::Input(idx) => delegation_sig[idx],
-            hir::InferDelegationKind::Output { .. } => *delegation_sig.last().unwrap(),
+                match idx {
+                    hir::InferDelegationSig::Input(idx) => delegation_sig[idx],
+                    hir::InferDelegationSig::Output { .. } => *delegation_sig.last().unwrap(),
+                }
+            }
         }
     }
 
@@ -2975,7 +2982,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         let result_ty = match &hir_ty.kind {
-            hir::TyKind::InferDelegation(_, idx) => self.lower_delegation_ty(*idx),
+            hir::TyKind::InferDelegation(infer) => self.lower_delegation_ty(*infer),
             hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.lower_ty(ty)),
             hir::TyKind::Ptr(mt) => Ty::new_ptr(tcx, self.lower_ty(mt.ty), mt.mutbl),
             hir::TyKind::Ref(region, mt) => {

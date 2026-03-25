@@ -244,7 +244,7 @@ impl VaList<'_> {
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
 impl<'f> const Clone for VaList<'f> {
-    #[inline]
+    #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     fn clone(&self) -> Self {
         // We only implement Clone and not Copy because some future target might not be able to
         // implement Copy (e.g. because it allocates). For the same reason we use an intrinsic
@@ -256,6 +256,7 @@ impl<'f> const Clone for VaList<'f> {
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
 impl<'f> const Drop for VaList<'f> {
+    #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     fn drop(&mut self) {
         // SAFETY: this variable argument list is being dropped, so won't be read from again.
         unsafe { va_end(self) }
@@ -326,7 +327,7 @@ impl<'f> VaList<'f> {
     ///
     /// Calling this function with an incompatible type, an invalid value, or when there
     /// are no more variable arguments, is unsound.
-    #[inline]
+    #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
     pub const unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.

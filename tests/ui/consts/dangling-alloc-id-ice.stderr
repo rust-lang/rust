@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value: encountered a dangling reference (use-after-free)
+error[E0080]: constructing invalid value of type &(): encountered a dangling reference (use-after-free)
   --> $DIR/dangling-alloc-id-ice.rs:12:1
    |
 LL | const FOO: &() = {

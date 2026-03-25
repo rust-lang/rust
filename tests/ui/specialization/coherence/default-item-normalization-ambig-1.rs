@@ -1,5 +1,5 @@
 // regression test for #73299.
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 trait X {
     type U;

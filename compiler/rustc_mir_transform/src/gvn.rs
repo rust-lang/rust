@@ -48,8 +48,15 @@
 //! # Handling of references
 //!
 //! We handle references by assigning a different "provenance" index to each Ref/RawPtr rvalue.
-//! This ensure that we do not spuriously merge borrows that should not be merged. Meanwhile, we
-//! consider all the derefs of an immutable reference to a freeze type to give the same value:
+//! This ensure that we do not spuriously merge borrows that should not be merged. For instance:
+//! ```ignore (MIR)
+//! _x = &_a;
+//! _a = 0;
+//! _y = &_a; // cannot be turned into `_y = _x`!
+//! ```
+//!
+//! On top of that, we consider all the derefs of an immutable reference to a freeze type to give
+//! the same value:
 //! ```ignore (MIR)
 //! _a = *_b // _b is &Freeze
 //! _c = *_b // replaced by _c = _a

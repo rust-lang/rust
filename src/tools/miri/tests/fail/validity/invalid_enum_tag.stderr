@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at .<enum-tag>: encountered $HEX, but expected a valid enum tag
+error: Undefined Behavior: constructing invalid value of type Foo: at .<enum-tag>, encountered $HEX, but expected a valid enum tag
   --> tests/fail/validity/invalid_enum_tag.rs:LL:CC
    |
 LL |     let _f = unsafe { std::mem::transmute::<i32, Foo>(42) };

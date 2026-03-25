@@ -131,10 +131,10 @@ use crate::{mir, thir};
 // `Providers` that the driver creates (using several `rustc_*` crates).
 //
 // The result type of each query must implement `Clone`. Additionally
-// `ty::query::from_cycle_error::FromCycleError` can be implemented which produces an appropriate
+// `QueryVTable::handle_cycle_error_fn` can be used to produce an appropriate
 // placeholder (error) value if the query resulted in a query cycle.
-// Queries without a `FromCycleError` implementation will raise a fatal error on query
-// cycles instead.
+// Queries without a custom `handle_cycle_error_fn` implementation will raise a
+// fatal error on query cycles instead.
 rustc_queries! {
     /// Caches the expansion of a derive proc macro, e.g. `#[derive(Serialize)]`.
     /// The key is:
@@ -577,7 +577,7 @@ rustc_queries! {
 
     /// Checks whether a type is representable or infinitely sized
     //
-    // Infinitely sized types will cause a cycle. The `value_from_cycle_error` impl will print
+    // Infinitely sized types will cause a cycle. The query's `handle_cycle_error_fn` will print
     // a custom error about the infinite size and then abort compilation. (In the past we
     // recovered and continued, but in practice that leads to confusing subsequent error
     // messages about cycles that then abort.)
