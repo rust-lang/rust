@@ -24,28 +24,6 @@ pub struct DecorateBuiltinLint<'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            BuiltinLintDiag::AbsPathWithModule(mod_span) => {
-                let (replacement, applicability) =
-                    match self.sess.source_map().span_to_snippet(mod_span) {
-                        Ok(ref s) => {
-                            // FIXME(Manishearth) ideally the emitting code
-                            // can tell us whether or not this is global
-                            let opt_colon =
-                                if s.trim_start().starts_with("::") { "" } else { "::" };
-
-                            (format!("crate{opt_colon}{s}"), Applicability::MachineApplicable)
-                        }
-                        Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
-                    };
-                lints::AbsPathWithModule {
-                    sugg: lints::AbsPathWithModuleSugg {
-                        span: mod_span,
-                        applicability,
-                        replacement,
-                    },
-                }
-                .into_diag(dcx, level)
-            }
             BuiltinLintDiag::ElidedLifetimesInPaths(
                 n,
                 path_span,
