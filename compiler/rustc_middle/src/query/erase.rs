@@ -10,12 +10,12 @@ use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
 
 use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::steal::Steal;
 use rustc_span::{ErrorGuaranteed, Spanned};
 
 use crate::mir::mono::{MonoItem, NormalizationErrorInMono};
-use crate::traits::solve;
 use crate::ty::{self, Ty, TyCtxt};
-use crate::{mir, traits};
+use crate::{mir, thir, traits};
 
 /// Internal implementation detail of [`Erased`].
 #[derive(Copy, Clone)]
@@ -123,24 +123,8 @@ impl<T> Erasable for Result<&'_ T, ErrorGuaranteed> {
     type Storage = [u8; size_of::<Result<&'_ (), ErrorGuaranteed>>()];
 }
 
-impl<T> Erasable for Result<&'_ T, traits::CodegenObligationError> {
-    type Storage = [u8; size_of::<Result<&'_ (), traits::CodegenObligationError>>()];
-}
-
-impl<T> Erasable for Result<&'_ T, &'_ ty::layout::FnAbiError<'_>> {
-    type Storage = [u8; size_of::<Result<&'_ (), &'_ ty::layout::FnAbiError<'_>>>()];
-}
-
-impl<T> Erasable for Result<(&'_ T, crate::thir::ExprId), ErrorGuaranteed> {
-    type Storage = [u8; size_of::<Result<(&'_ (), crate::thir::ExprId), ErrorGuaranteed>>()];
-}
-
 impl<T> Erasable for Option<&'_ T> {
     type Storage = [u8; size_of::<Option<&'_ ()>>()];
-}
-
-impl<T> Erasable for Option<&'_ [T]> {
-    type Storage = [u8; size_of::<Option<&'_ [()]>>()];
 }
 
 impl<T: Erasable> Erasable for ty::EarlyBinder<'_, T> {
@@ -149,14 +133,6 @@ impl<T: Erasable> Erasable for ty::EarlyBinder<'_, T> {
 
 impl<T0, T1> Erasable for (&'_ T0, &'_ T1) {
     type Storage = [u8; size_of::<(&'_ (), &'_ ())>()];
-}
-
-impl<T0> Erasable for (solve::QueryResult<'_>, &'_ T0) {
-    type Storage = [u8; size_of::<(solve::QueryResult<'_>, &'_ ())>()];
-}
-
-impl<T0> Erasable for (&'_ T0, Result<(), ErrorGuaranteed>) {
-    type Storage = [u8; size_of::<(&'_ (), Result<(), ErrorGuaranteed>)>()];
 }
 
 macro_rules! impl_erasable_for_types_with_no_type_params {
@@ -173,8 +149,11 @@ macro_rules! impl_erasable_for_types_with_no_type_params {
 // `[u8; size_of::<Foo>()]`. ('_ lifetimes are allowed.)
 impl_erasable_for_types_with_no_type_params! {
     // tidy-alphabetical-start
+    (&'_ ty::CrateInherentImpls, Result<(), ErrorGuaranteed>),
     (),
+    (traits::solve::QueryResult<'_>, &'_ traits::solve::inspect::Probe<TyCtxt<'_>>),
     Option<&'_ OsStr>,
+    Option<&'_ [rustc_hir::PreciseCapturingArgKind<rustc_span::Symbol, rustc_span::Symbol>]>,
     Option<(mir::ConstValue, Ty<'_>)>,
     Option<(rustc_span::def_id::DefId, rustc_session::config::EntryFnType)>,
     Option<rustc_abi::Align>,
@@ -198,7 +177,10 @@ impl_erasable_for_types_with_no_type_params! {
     Option<ty::Value<'_>>,
     Option<usize>,
     Result<&'_ TokenStream, ()>,
+    Result<&'_ rustc_target::callconv::FnAbi<'_, Ty<'_>>, &'_ ty::layout::FnAbiError<'_>>,
+    Result<&'_ traits::ImplSource<'_, ()>, traits::CodegenObligationError>,
     Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop>,
+    Result<(&'_ Steal<thir::Thir<'_>>, thir::ExprId), ErrorGuaranteed>,
     Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]), NormalizationErrorInMono>,
     Result<(), ErrorGuaranteed>,
     Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, ErrorGuaranteed>,
