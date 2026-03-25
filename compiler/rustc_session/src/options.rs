@@ -604,6 +604,10 @@ macro_rules! tmod_enum {
 /// necessary code. The main gotcha of this macro is the `cgsetters` module which is a bunch of
 /// generated code to parse an option into its respective field in the struct. There are a few
 /// hand-written parsers for parsing specific types of values in this module.
+///
+/// Note: this macro's invocation is also parsed by a `syn`-based parser in
+/// `src/tools/unstable-book-gen/src/main.rs` to extract unstable option names and descriptions.
+/// If the format of this macro changes, that parser may need to be updated as well.
 macro_rules! options {
     ($struct_name:ident, $tmod_enum_name:ident, $stat:ident, $optmod:ident, $prefix:expr, $outputname:expr,
      $($( #[$attr:meta] )* $opt:ident : $t:ty = (

@@ -158,7 +158,7 @@ impl Parse for ParsedOptionEntry {
             return Err(syn::Error::new(
                 name.span(),
                 format!(
-                    "unexpected field count for option `{name}`: expected 4 or 5, found {}",
+                    "unexpected field count for option `{name}`: expected {REQUIRED_FIELDS} or {OPTIONAL_FIELDS}, found {}",
                     tuple_fields.len()
                 ),
             ));
