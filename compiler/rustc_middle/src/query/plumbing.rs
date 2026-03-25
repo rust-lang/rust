@@ -432,6 +432,7 @@ macro_rules! define_callbacks {
             }
 
             /// Returns the default span for this query if `span` is a dummy span.
+            #[tracing::instrument(level = "debug", skip(tcx, span))]
             pub fn default_span(&self, tcx: TyCtxt<'tcx>, span: Span) -> Span {
                 if !span.is_dummy() {
                     return span
