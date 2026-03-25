@@ -1,6 +1,9 @@
 //@aux-build:proc_macros.rs
 
 #![allow(clippy::let_unit_value, clippy::needless_pass_by_ref_mut)]
+#![deny(clippy::unnecessary_safety_doc)]
+#![expect(incomplete_features)]
+#![feature(unsafe_fields)]
 
 extern crate proc_macros;
 use proc_macros::external;
@@ -37,6 +40,45 @@ mod private_mod {
 }
 
 pub use private_mod::republished;
+
+struct UnsafeStruct {
+    // Unsafe fields are almost always private, so excluding according to
+    // `check-private-items` does not make sense (they are also not items).
+    unsafe field: u8,
+    //~^ missing_safety_doc
+}
+
+enum UnsafeEnum {
+    Variant {
+        unsafe field: u8,
+        //~^ missing_safety_doc
+    }
+}
+
+union UnsafeUnion {
+    unsafe field: u8,
+    //~^ missing_safety_doc
+}
+
+struct SafeStruct {
+    /// # Safety
+    field: u8,
+    //~^ unnecessary_safety_doc
+}
+
+enum SafeEnum {
+    Variant {
+        /// # Safety
+        field: u8,
+        //~^ unnecessary_safety_doc
+    }
+}
+
+union SafeUnion {
+    /// # Safety
+    field: u8,
+    //~^ unnecessary_safety_doc
+}
 
 pub trait SafeTraitUnsafeMethods {
     unsafe fn woefully_underdocumented(self);

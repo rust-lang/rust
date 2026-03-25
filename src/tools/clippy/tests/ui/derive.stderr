@@ -65,5 +65,14 @@ LL | | }
    |
    = help: consider deriving `Clone` or removing `Copy`
 
-error: aborting due to 5 previous errors
+error: docs for unsafe field missing `# Safety` section
+  --> tests/ui/derive.rs:119:9
+   |
+LL |         pub unsafe actual: (),
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::missing-safety-doc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_safety_doc)]`
+
+error: aborting due to 6 previous errors
 

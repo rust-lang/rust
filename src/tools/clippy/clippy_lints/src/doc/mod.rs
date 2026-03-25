@@ -6,7 +6,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_the
 use clippy_utils::{is_entrypoint_fn, is_trait_impl_item};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{Attribute, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
+use rustc_hir::{Attribute, FieldDef, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_resolve::rustdoc::pulldown_cmark::Event::{
     Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
@@ -754,6 +754,23 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
         };
 
         match cx.tcx.hir_node(cx.last_node_with_lint_attrs) {
+            Node::Field(FieldDef { span, safety, .. }) => {
+                match (headers.safety, safety) {
+                    (false, Safety::Unsafe) => span_lint(
+                        cx,
+                        MISSING_SAFETY_DOC,
+                        *span,
+                        "docs for unsafe field missing `# Safety` section",
+                    ),
+                    (true, Safety::Safe) => span_lint(
+                        cx,
+                        UNNECESSARY_SAFETY_DOC,
+                        *span,
+                        "docs for safe field have unnecessary `# Safety` section",
+                    ),
+                    _ => (),
+                }
+            }
             Node::Item(item) => {
                 too_long_first_doc_paragraph::check(
                     cx,
