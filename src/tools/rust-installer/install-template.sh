@@ -433,8 +433,8 @@ uninstall_components() {
             local _directive
             while read _directive; do
 
-            local _command=`echo $_directive | cut -f1 -d:`
-            local _file=`echo $_directive | cut -f2 -d:`
+            local _command="${_directive%%:*}"
+            local _file="${_directive#*:}"
 
             # Sanity checks
             if [ ! -n "$_command" ]; then critical_err "malformed installation directive"; fi
@@ -541,8 +541,8 @@ install_components() {
     local _directive
     while read _directive; do
 
-        local _command=`echo $_directive | cut -f1 -d:`
-        local _file=`echo $_directive | cut -f2 -d:`
+        local _command="${_directive%%:*}"
+        local _file="${_directive#*:}"
 
         # Sanity checks
         if [ ! -n "$_command" ]; then critical_err "malformed installation directive"; fi
