@@ -1,5 +1,5 @@
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/issue-28625.rs:12:14
+  --> $DIR/transmute-associated-types-different-sizes.rs:13:14
    |
 LL |     unsafe { std::mem::transmute(a) }
    |              ^^^^^^^^^^^^^^^^^^^
