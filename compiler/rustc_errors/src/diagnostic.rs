@@ -7,6 +7,7 @@ use std::panic;
 use std::path::PathBuf;
 use std::thread::panicking;
 
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::{DiagArgMap, DiagArgName, DiagArgValue, IntoDiagArg};
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
@@ -115,6 +116,28 @@ where
 {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         self.node.into_diag(dcx, level).with_span(self.span)
+    }
+}
+
+impl<'a> Diagnostic<'a, ()>
+    for Box<
+        dyn for<'b> FnOnce(DiagCtxtHandle<'b>, Level) -> Diag<'b, ()> + DynSync + DynSend + 'static,
+    >
+{
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        self(dcx, level)
+    }
+}
+
+pub struct DiagCallback<'a>(
+    pub  &'a Box<
+        dyn for<'b> Fn(DiagCtxtHandle<'b>, Level) -> Diag<'b, ()> + DynSend + DynSync + 'static,
+    >,
+);
+
+impl<'a, 'b> Diagnostic<'a, ()> for DiagCallback<'b> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        (self.0)(dcx, level)
     }
 }
 

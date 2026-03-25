@@ -682,10 +682,6 @@ pub enum AttributeLintKind {
         target: &'static str,
         target_span: Span,
     },
-    UnsafeAttrOutsideUnsafe {
-        attribute_name_span: Span,
-        sugg_spans: Option<(Span, Span)>,
-    },
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DuplicateDocAlias {
