@@ -200,7 +200,7 @@ fn layout_of<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> &'tcx ty::layout::L
                 ControlFlow::Continue(())
             }
         },
-        || create_cycle_error(tcx, &cycle),
+        || create_cycle_error(tcx, &cycle, false),
     );
 
     let guar = diag.emit();

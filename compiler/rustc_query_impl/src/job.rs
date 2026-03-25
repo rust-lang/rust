@@ -454,15 +454,16 @@ pub fn print_query_stack<'tcx>(
 pub(crate) fn create_cycle_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     Cycle { usage, frames }: &Cycle<'tcx>,
+    nested: bool,
 ) -> Diag<'tcx> {
     assert!(!frames.is_empty());
 
-    let span = frames[0].tagged_key.default_span(tcx, frames[1 % frames.len()].span);
+    let span = frames[0].tagged_key.catch_default_span(tcx, frames[1 % frames.len()].span);
 
     let mut cycle_stack = Vec::new();
 
     use crate::error::StackCount;
-    let stack_bottom = frames[0].tagged_key.description(tcx);
+    let stack_bottom = frames[0].tagged_key.catch_description(tcx);
     let stack_count = if frames.len() == 1 {
         StackCount::Single { stack_bottom: stack_bottom.clone() }
     } else {
@@ -471,14 +472,14 @@ pub(crate) fn create_cycle_error<'tcx>(
 
     for i in 1..frames.len() {
         let frame = &frames[i];
-        let span = frame.tagged_key.default_span(tcx, frames[(i + 1) % frames.len()].span);
+        let span = frame.tagged_key.catch_default_span(tcx, frames[(i + 1) % frames.len()].span);
         cycle_stack
-            .push(crate::error::CycleStack { span, desc: frame.tagged_key.description(tcx) });
+            .push(crate::error::CycleStack { span, desc: frame.tagged_key.catch_description(tcx) });
     }
 
     let cycle_usage = usage.as_ref().map(|usage| crate::error::CycleUsage {
-        span: usage.tagged_key.default_span(tcx, usage.span),
-        usage: usage.tagged_key.description(tcx),
+        span: usage.tagged_key.catch_default_span(tcx, usage.span),
+        usage: usage.tagged_key.catch_description(tcx),
     });
 
     let is_all_def_kind = |def_kind| {
@@ -495,23 +496,36 @@ pub(crate) fn create_cycle_error<'tcx>(
         })
     };
 
-    let alias = if is_all_def_kind(DefKind::TyAlias) {
-        Some(crate::error::Alias::Ty)
-    } else if is_all_def_kind(DefKind::TraitAlias) {
-        Some(crate::error::Alias::Trait)
+    let alias = if !nested {
+        if is_all_def_kind(DefKind::TyAlias) {
+            Some(crate::error::Alias::Ty)
+        } else if is_all_def_kind(DefKind::TraitAlias) {
+            Some(crate::error::Alias::Trait)
+        } else {
+            None
+        }
     } else {
         None
     };
 
-    let cycle_diag = crate::error::Cycle {
-        span,
-        cycle_stack,
-        stack_bottom,
-        alias,
-        cycle_usage,
-        stack_count,
-        note_span: (),
-    };
-
-    tcx.sess.dcx().create_err(cycle_diag)
+    if nested {
+        tcx.sess.dcx().create_err(crate::error::NestedCycle {
+            span,
+            cycle_stack,
+            stack_bottom,
+            cycle_usage,
+            stack_count,
+            note_span: (),
+        })
+    } else {
+        tcx.sess.dcx().create_err(crate::error::Cycle {
+            span,
+            cycle_stack,
+            stack_bottom,
+            alias,
+            cycle_usage,
+            stack_count,
+            note_span: (),
+        })
+    }
 }
