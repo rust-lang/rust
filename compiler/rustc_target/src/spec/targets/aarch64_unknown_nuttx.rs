@@ -21,7 +21,9 @@ pub(crate) fn target() -> Target {
             &["--fix-cortex-a53-843419"],
         ),
         features: "+v8a,+strict-align,+neon".into(),
-        supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
+        supported_sanitizers: SanitizerSet::KCFI
+            | SanitizerSet::KERNELADDRESS
+            | SanitizerSet::KERNELHWADDRESS,
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(128),
