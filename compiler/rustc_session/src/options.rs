@@ -106,6 +106,7 @@ mod target_modifier_consistency_check {
             | SanitizerSet::SHADOWCALLSTACK
             | SanitizerSet::KCFI
             | SanitizerSet::KERNELADDRESS
+            | SanitizerSet::KERNELHWADDRESS
             | SanitizerSet::SAFESTACK
             | SanitizerSet::DATAFLOW;
 
@@ -817,7 +818,7 @@ mod desc {
     pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-    pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
+    pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
     pub(crate) const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
     pub(crate) const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -1265,6 +1266,7 @@ pub mod parse {
                     "dataflow" => SanitizerSet::DATAFLOW,
                     "kcfi" => SanitizerSet::KCFI,
                     "kernel-address" => SanitizerSet::KERNELADDRESS,
+                    "kernel-hwaddress" => SanitizerSet::KERNELHWADDRESS,
                     "leak" => SanitizerSet::LEAK,
                     "memory" => SanitizerSet::MEMORY,
                     "memtag" => SanitizerSet::MEMTAG,
