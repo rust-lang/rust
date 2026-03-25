@@ -78,18 +78,16 @@ mod test_6 {
     }
 }
 
-// FIXME(fn_delegation): Uncomment this test when impl Traits in function params are supported
+mod test_7 {
+    fn foo<T, U>(t: T, u: U, f: impl FnOnce(T, U) -> U) -> U {
+        f(t, u)
+    }
 
-// mod test_7 {
-//     fn foo<T, U>(t: T, u: U, f: impl FnOnce(T, U) -> U) -> U {
-//         f(t, u)
-//     }
-
-//     pub fn check() {
-//         reuse foo as bar;
-//         assert_eq!(bar::<i32, i32>(1, 2, |x, y| y), 2);
-//     }
-// }
+    pub fn check() {
+        reuse foo as bar;
+        assert_eq!(bar::<i32, i32>(1, 2, |_, y| y), 2);
+    }
+}
 
 // Testing reuse of local fn with delegation parent generic params specified,
 // late-bound lifetimes + types + consts, reusing with user args,
@@ -126,7 +124,7 @@ pub fn main() {
     test_4::check::<i32, String>();
     test_5::check::<i32, String>();
     test_6::check::<i32, String>();
-    // test_7::check();
+    test_7::check();
     test_8::check::<i32, String>();
     test_9::check::<String, i32>();
 }

@@ -337,7 +337,6 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         // HACK: for now we generate predicates such that all lifetimes are early bound,
         // we can not not generate early-bound lifetimes, but we can't know which of them
         // are late-bound at this level of compilation.
-        // FIXME(fn_delegation): proper support for late bound lifetimes.
         let predicates =
             self.arena.alloc_from_iter(params.iter().filter_map(|p| {
                 p.is_lifetime().then(|| self.generate_lifetime_predicate(p, span))
@@ -391,7 +390,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         self.arena.alloc(hir::GenericArgs {
             args: self.arena.alloc_from_iter(params.iter().filter_map(|p| {
                 // Skip self generic arg, we do not need to propagate it.
-                if p.name.ident().name == kw::SelfUpper {
+                if p.name.ident().name == kw::SelfUpper || p.is_impl_trait() {
                     return None;
                 }
 
