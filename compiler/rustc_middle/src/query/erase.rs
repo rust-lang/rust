@@ -9,15 +9,20 @@ use std::ffi::OsStr;
 use std::intrinsics::transmute_unchecked;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
+use std::sync::Arc;
 
 use rustc_abi::Align;
+use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefIdMap;
+use rustc_index::IndexVec;
 use rustc_middle::traits::solve::QueryResult;
 use rustc_middle::traits::solve::inspect::Probe;
 use rustc_session::Limits;
@@ -28,14 +33,20 @@ use rustc_span::{ErrorGuaranteed, ExpnId, Span, Spanned, Symbol};
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::PanicStrategy;
 
+use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::middle::codegen_fn_attrs::SanitizerFnAttrs;
 use crate::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use crate::middle::stability::DeprecationEntry;
 use crate::mir::mono::{MonoItem, NormalizationErrorInMono};
-use crate::traits::query::{MethodAutoderefStepsResult, NoSolution};
-use crate::traits::{CodegenObligationError, EvaluationResult, ImplSource, OverflowError};
+use crate::traits::query::{
+    DropckOutlivesResult, MethodAutoderefStepsResult, NoSolution, NormalizationResult,
+    OutlivesBound,
+};
+use crate::traits::{
+    CodegenObligationError, EvaluationResult, ImplSource, OverflowError, specialization_graph,
+};
 use crate::ty::{self, Ty, TyCtxt};
-use crate::{mir, thir, traits};
+use crate::{mir, thir};
 
 unsafe extern "C" {
     type NoAutoTraits;
@@ -59,6 +70,11 @@ unsafe impl<Storage: Copy> DynSend for ErasedData<Storage> {}
 /// Trait for types that can be erased into [`Erased<Self>`].
 ///
 /// Erasing and unerasing values is performed by [`erase_val`] and [`restore_val`].
+///
+/// Most impls are done via the `impl_erasable_for_types_with_no_type_params!`
+/// macro. A small number of hand-written generic impls are used for common
+/// types like `&T` and `Option<&T>`; these generic impls avoid many concrete
+/// entries being needed in the macro.
 ///
 /// FIXME: This whole trait could potentially be replaced by `T: Copy` and the
 /// storage type `[u8; size_of::<T>()]` when support for that is more mature.
@@ -135,34 +151,8 @@ impl<T> Erasable for &'_ [T] {
     type Storage = [u8; size_of::<&'_ [()]>()];
 }
 
-// Note: this impl does not overlap with the impl for `&'_ T` above because `RawList` is unsized
-// and does not satisfy the implicit `T: Sized` bound.
-//
-// Furthermore, even if that implicit bound was removed (by adding `T: ?Sized`) this impl still
-// wouldn't overlap because `?Sized` is equivalent to `MetaSized` and `RawList` does not satisfy
-// `MetaSized` because it contains an extern type.
-impl<H, T> Erasable for &'_ ty::RawList<H, T> {
-    type Storage = [u8; size_of::<&'_ ty::RawList<(), ()>>()];
-}
-
-impl<T> Erasable for Result<&'_ T, traits::query::NoSolution> {
-    type Storage = [u8; size_of::<Result<&'_ (), traits::query::NoSolution>>()];
-}
-
-impl<T> Erasable for Result<&'_ T, ErrorGuaranteed> {
-    type Storage = [u8; size_of::<Result<&'_ (), ErrorGuaranteed>>()];
-}
-
 impl<T> Erasable for Option<&'_ T> {
     type Storage = [u8; size_of::<Option<&'_ ()>>()];
-}
-
-impl<T: Erasable> Erasable for ty::EarlyBinder<'_, T> {
-    type Storage = T::Storage;
-}
-
-impl<T0, T1> Erasable for (&'_ T0, &'_ T1) {
-    type Storage = [u8; size_of::<(&'_ (), &'_ ())>()];
 }
 
 macro_rules! impl_erasable_for_types_with_no_type_params {
@@ -179,6 +169,18 @@ macro_rules! impl_erasable_for_types_with_no_type_params {
 // `[u8; size_of::<Foo>()]`. ('_ lifetimes are allowed.)
 impl_erasable_for_types_with_no_type_params! {
     // tidy-alphabetical-start
+    // Note: these `List` impls do not overlap with the impl for `&'_ T` above because `List` is
+    // unsized and does not satisfy the implicit `T: Sized` bound.
+    //
+    // Furthermore, even if that implicit bound was removed (by adding `T: ?Sized`) these impls
+    // still wouldn't overlap because `?Sized` is equivalent to `MetaSized` and `RawList` does not
+    // satisfy `MetaSized` because it contains an extern type.
+    &'_ ty::List<DefId>,
+    &'_ ty::List<LocalDefId>,
+    &'_ ty::List<Ty<'_>>,
+    &'_ ty::ListWithCachedTypeInfo<ty::Clause<'_>>,
+    (&'_ Steal<(ty::ResolverAstLowering<'_>, Arc<ast::Crate>)>, &'_ ty::ResolverGlobalCtxt),
+    (&'_ Steal<mir::Body<'_>>, &'_ Steal<IndexVec<mir::Promoted, mir::Body<'_>>>),
     (&'_ ty::CrateInherentImpls, Result<(), ErrorGuaranteed>),
     (),
     (QueryResult<'_>, &'_ Probe<TyCtxt<'_>>),
@@ -215,9 +217,20 @@ impl_erasable_for_types_with_no_type_params! {
     Option<ty::Value<'_>>,
     Option<usize>,
     PanicStrategy,
+    Result<&'_ Canonical<'_, QueryResponse<'_, ()>>, NoSolution>,
+    Result<&'_ Canonical<'_, QueryResponse<'_, DropckOutlivesResult<'_>>>, NoSolution>,
+    Result<&'_ Canonical<'_, QueryResponse<'_, NormalizationResult<'_>>>, NoSolution>,
+    Result<&'_ Canonical<'_, QueryResponse<'_, Ty<'_>>>, NoSolution>,
+    Result<&'_ Canonical<'_, QueryResponse<'_, Vec<OutlivesBound<'_>>>>, NoSolution>,
+    Result<&'_ Canonical<'_, QueryResponse<'_, ty::Clause<'_>>>, NoSolution>,
+    Result<&'_ Canonical<'_, QueryResponse<'_, ty::FnSig<'_>>>, NoSolution>,
+    Result<&'_ Canonical<'_, QueryResponse<'_, ty::PolyFnSig<'_>>>, NoSolution>,
+    Result<&'_ DefIdMap<ty::EarlyBinder<'_, Ty<'_>>>, ErrorGuaranteed>,
     Result<&'_ FnAbi<'_, Ty<'_>>, &'_ ty::layout::FnAbiError<'_>>,
+    Result<&'_ FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'_>>, ErrorGuaranteed>,
     Result<&'_ ImplSource<'_, ()>, CodegenObligationError>,
     Result<&'_ TokenStream, ()>,
+    Result<&'_ specialization_graph::Graph, ErrorGuaranteed>,
     Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop>,
     Result<(&'_ Steal<thir::Thir<'_>>, thir::ExprId), ErrorGuaranteed>,
     Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]), NormalizationErrorInMono>,
@@ -258,6 +271,13 @@ impl_erasable_for_types_with_no_type_params! {
     ty::ClosureTypeInfo<'_>,
     ty::Const<'_>,
     ty::ConstConditions<'_>,
+    ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]>,
+    ty::EarlyBinder<'_, &'_ [(ty::PolyTraitRef<'_>, Span)]>,
+    ty::EarlyBinder<'_, Ty<'_>>,
+    ty::EarlyBinder<'_, ty::Binder<'_, ty::CoroutineWitnessTypes<TyCtxt<'_>>>>,
+    ty::EarlyBinder<'_, ty::Clauses<'_>>,
+    ty::EarlyBinder<'_, ty::Const<'_>>,
+    ty::EarlyBinder<'_, ty::PolyFnSig<'_>>,
     ty::GenericPredicates<'_>,
     ty::ImplTraitHeader<'_>,
     ty::ParamEnv<'_>,
