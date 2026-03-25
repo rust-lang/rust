@@ -12,7 +12,6 @@ use std::mem::MaybeUninit;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_span::{ErrorGuaranteed, Spanned};
 
-use crate::mir::interpret::EvalToValTreeResult;
 use crate::mir::mono::{MonoItem, NormalizationErrorInMono};
 use crate::traits::solve;
 use crate::ty::{self, Ty, TyCtxt};
@@ -172,10 +171,6 @@ impl Erasable for Option<(mir::ConstValue, Ty<'_>)> {
     type Storage = [u8; size_of::<Option<(mir::ConstValue, Ty<'_>)>>()];
 }
 
-impl Erasable for EvalToValTreeResult<'_> {
-    type Storage = [u8; size_of::<EvalToValTreeResult<'static>>()];
-}
-
 impl Erasable for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
     type Storage =
         [u8; size_of::<Result<&'static ty::List<Ty<'static>>, ty::util::AlwaysRequiresDrop>>()];
@@ -208,20 +203,12 @@ impl Erasable for Option<&'_ OsStr> {
     type Storage = [u8; size_of::<Option<&'static OsStr>>()];
 }
 
-impl Erasable for ty::ImplTraitHeader<'_> {
-    type Storage = [u8; size_of::<ty::ImplTraitHeader<'static>>()];
-}
-
 impl Erasable for Option<ty::EarlyBinder<'_, Ty<'_>>> {
     type Storage = [u8; size_of::<Option<ty::EarlyBinder<'static, Ty<'static>>>>()];
 }
 
 impl Erasable for Option<ty::Value<'_>> {
     type Storage = [u8; size_of::<Option<ty::Value<'static>>>()];
-}
-
-impl Erasable for rustc_hir::MaybeOwner<'_> {
-    type Storage = [u8; size_of::<rustc_hir::MaybeOwner<'static>>()];
 }
 
 impl<T: Erasable> Erasable for ty::EarlyBinder<'_, T> {
@@ -328,12 +315,11 @@ macro_rules! impl_erasable_for_single_lifetime_types {
 
 // For types containing a single lifetime and no other generics, e.g.
 // `Foo<'tcx>`, the erased storage is `[u8; size_of::<Foo<'static>>()]`.
-//
-// FIXME(#151565): Some of the hand-written impls above that only use one
-// lifetime can probably be migrated here.
 impl_erasable_for_single_lifetime_types! {
     // tidy-alphabetical-start
+    rustc_hir::MaybeOwner,
     rustc_middle::mir::interpret::EvalStaticInitializerRawResult,
+    rustc_middle::mir::interpret::EvalToValTreeResult,
     rustc_middle::mir::mono::MonoItemPartitions,
     rustc_middle::traits::query::MethodAutoderefStepsResult,
     rustc_middle::ty::AdtDef,
@@ -341,6 +327,7 @@ impl_erasable_for_single_lifetime_types! {
     rustc_middle::ty::Const,
     rustc_middle::ty::ConstConditions,
     rustc_middle::ty::GenericPredicates,
+    rustc_middle::ty::ImplTraitHeader,
     rustc_middle::ty::ParamEnv,
     rustc_middle::ty::SymbolName,
     rustc_middle::ty::Ty,
