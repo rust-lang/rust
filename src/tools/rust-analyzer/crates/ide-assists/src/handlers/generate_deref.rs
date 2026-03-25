@@ -144,20 +144,12 @@ fn generate_edit(
 
     let assoc_items: Vec<ast::AssocItem> = match deref_type {
         DerefType::Deref => {
-            let target_alias = make.ty_alias(
-                [],
-                "Target",
-                None,
-                None,
-                None,
-                Some((field_type, None)),
-            );
+            let target_alias =
+                make.ty_alias([], "Target", None, None, None, Some((field_type, None)));
             let ret_ty =
                 make.ty_ref(make.ty_path(make.path_from_text("Self::Target")).into(), false);
-            let field_expr =
-                make.expr_field(make.expr_path(make.ident_path("self")), field_name);
-            let body =
-                make.block_expr([], Some(make.expr_ref(field_expr.into(), false)));
+            let field_expr = make.expr_field(make.expr_path(make.ident_path("self")), field_name);
+            let body = make.block_expr([], Some(make.expr_ref(field_expr.into(), false)));
             let fn_ = make
                 .fn_(
                     [],
@@ -174,18 +166,13 @@ fn generate_edit(
                     false,
                 )
                 .indent(1.into());
-            vec![
-                ast::AssocItem::TypeAlias(target_alias),
-                ast::AssocItem::Fn(fn_),
-            ]
+            vec![ast::AssocItem::TypeAlias(target_alias), ast::AssocItem::Fn(fn_)]
         }
         DerefType::DerefMut => {
             let ret_ty =
                 make.ty_ref(make.ty_path(make.path_from_text("Self::Target")).into(), true);
-            let field_expr =
-                make.expr_field(make.expr_path(make.ident_path("self")), field_name);
-            let body =
-                make.block_expr([], Some(make.expr_ref(field_expr.into(), true)));
+            let field_expr = make.expr_field(make.expr_path(make.ident_path("self")), field_name);
+            let body = make.block_expr([], Some(make.expr_ref(field_expr.into(), true)));
             let fn_ = make
                 .fn_(
                     [],
