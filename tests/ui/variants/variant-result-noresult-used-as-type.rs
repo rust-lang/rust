@@ -1,5 +1,6 @@
 //@ edition:2015
 //@ ignore-sgx std::os::fortanix_sgx::usercalls::raw::Result changes compiler suggestions
+// https://github.com/rust-lang/rust/issues/17546
 
 use foo::MyEnum::Result;
 use foo::NoResult; // Through a re-export
