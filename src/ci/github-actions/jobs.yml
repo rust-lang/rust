@@ -509,7 +509,7 @@ auto:
   - name: dist-aarch64-apple
     env:
       SCRIPT: >-
-        ./x.py dist bootstrap
+        ./x.py dist bootstrap enzyme
         --include-default-paths
         --host=aarch64-apple-darwin
         --target=aarch64-apple-darwin
