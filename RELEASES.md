@@ -7,10 +7,11 @@ Version 1.94.1 (2026-03-26)
 * [Remove new methods added to `std::os::windows::fs::OpenOptionsExt`](https://github.com/rust-lang/rust/pull/153491)
   The new methods were unstable, but the trait itself is not sealed and so
   cannot be extended with non-default methods.
-* [[Clippy] Fix ICE in `match_same_arms`](https://github.com/rust-lang/rust-clippy/pull/16685)
-* [[Cargo] Update tar to 0.4.45](https://github.com/rust-lang/cargo/pull/16769)
+* [Clippy: fix ICE in `match_same_arms`](https://github.com/rust-lang/rust-clippy/pull/16685)
+* [Cargo: update tar to 0.4.45](https://github.com/rust-lang/cargo/pull/16769)
   This resolves CVE-2026-33055 and CVE-2026-33056. Users of crates.io are not affected.
   See [blog](https://blog.rust-lang.org/2026/03/21/cve-2026-33056/) for more details.
+* [Cargo: fix certificate validation errors on FreeBSD](https://github.com/rust-lang/cargo/pull/16787)
 
 Version 1.94.0 (2026-03-05)
 ==========================
