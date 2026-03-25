@@ -24,19 +24,23 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
         Bn::Powi => 1000,
 
         // Operations that only return non-float results
-        Bn::Eq
-        | Bn::Ne
-        | Bn::Gt
-        | Bn::Ge
-        | Bn::Lt
-        | Bn::Le
-        | Bn::Unord
-        | Bn::Ilogb
-        | Bn::Ashl
+        Bn::Eq | Bn::Ne | Bn::Gt | Bn::Ge | Bn::Lt | Bn::Le | Bn::Unord | Bn::Ilogb => return None,
+
+        // Integer ops
+        Bn::Ashl
         | Bn::Ashr
         | Bn::Lshr
         | Bn::LeadingZeros
-        | Bn::TrailingZeros => return None,
+        | Bn::TrailingZeros
+        | Bn::Iadd
+        | Bn::Iaddo
+        | Bn::Isub
+        | Bn::Isubo
+        | Bn::Imul
+        | Bn::Imulo
+        | Bn::Idiv
+        | Bn::Imod
+        | Bn::Idivmod => return None,
 
         // Convrsion operations must be precise.
         Bn::Extend | Bn::Narrow | Bn::Ftoi | Bn::Itof => 0,
@@ -556,9 +560,16 @@ impl MaybeOverride<(i128,)> for SpecialCase {}
 impl MaybeOverride<(u32,)> for SpecialCase {}
 impl MaybeOverride<(u64,)> for SpecialCase {}
 impl MaybeOverride<(u128,)> for SpecialCase {}
+
+impl MaybeOverride<(i32, i32)> for SpecialCase {}
+impl MaybeOverride<(i64, i64)> for SpecialCase {}
+impl MaybeOverride<(i128, i128)> for SpecialCase {}
+impl MaybeOverride<(u32, u32)> for SpecialCase {}
+impl MaybeOverride<(u64, u64)> for SpecialCase {}
+impl MaybeOverride<(u128, u128)> for SpecialCase {}
+
 impl MaybeOverride<(i32, u32)> for SpecialCase {}
 impl MaybeOverride<(i64, u32)> for SpecialCase {}
 impl MaybeOverride<(i128, u32)> for SpecialCase {}
-impl MaybeOverride<(u32, u32)> for SpecialCase {}
 impl MaybeOverride<(u64, u32)> for SpecialCase {}
 impl MaybeOverride<(u128, u32)> for SpecialCase {}

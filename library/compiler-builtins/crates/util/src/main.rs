@@ -310,7 +310,7 @@ impl_parse_tuple!(f64);
 impl_parse_tuple_via_rug!(f128);
 
 macro_rules! impl_parse_tuple_int {
-    ($ty:ty) => {
+    (@skip_u32 $ty:ty) => {
         impl ParseTuple for ($ty,) {
             fn parse(input: &[&str]) -> Self {
                 assert_eq!(input.len(), 1, "expected a single argument, got {input:?}");
@@ -318,7 +318,7 @@ macro_rules! impl_parse_tuple_int {
             }
         }
 
-        impl ParseTuple for ($ty, u32) {
+        impl ParseTuple for ($ty, $ty) {
             fn parse(input: &[&str]) -> Self {
                 assert_eq!(input.len(), 2, "expected two arguments, got {input:?}");
                 (parse(input, 0), parse(input, 1))
@@ -332,12 +332,22 @@ macro_rules! impl_parse_tuple_int {
             }
         }
     };
+    ($ty:ty) => {
+        impl_parse_tuple_int!(@skip_u32 $ty);
+
+        impl ParseTuple for ($ty, u32) {
+            fn parse(input: &[&str]) -> Self {
+                assert_eq!(input.len(), 2, "expected two arguments, got {input:?}");
+                (parse(input, 0), parse(input, 1))
+            }
+        }
+    };
 }
 
 impl_parse_tuple_int!(i32);
 impl_parse_tuple_int!(i64);
 impl_parse_tuple_int!(i128);
-impl_parse_tuple_int!(u32);
+impl_parse_tuple_int!(@skip_u32 u32);
 impl_parse_tuple_int!(u64);
 impl_parse_tuple_int!(u128);
 

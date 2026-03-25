@@ -595,6 +595,157 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         fn_list: &["itof_u128_f128"],
         scope: OpScope::BuiltinsPublic,
     },
+    /* int arithmetic */
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I32, Ty::I32],
+            returns: &[Ty::I32],
+        },
+        c_sig: None,
+        fn_list: &["idiv_i32", "imod_i32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I32, Ty::I32],
+            returns: &[Ty::I32, Ty::I32],
+        },
+        c_sig: None,
+        fn_list: &["idivmod_i32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I32, Ty::I32],
+            returns: &[Ty::I32, Ty::Bool],
+        },
+        c_sig: None,
+        fn_list: &["imulo_i32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U32, Ty::U32],
+            returns: &[Ty::U32],
+        },
+        c_sig: None,
+        fn_list: &["idiv_u32", "imod_u32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U32, Ty::U32],
+            returns: &[Ty::U32, Ty::U32],
+        },
+        c_sig: None,
+        fn_list: &["idivmod_u32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I64, Ty::I64],
+            returns: &[Ty::I64],
+        },
+        c_sig: None,
+        fn_list: &["idiv_i64", "imod_i64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I64, Ty::I64],
+            returns: &[Ty::I64, Ty::I64],
+        },
+        c_sig: None,
+        fn_list: &["idivmod_i64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U64, Ty::U64],
+            returns: &[Ty::U64],
+        },
+        c_sig: None,
+        fn_list: &["idiv_u64", "imod_u64", "imul_u64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U64, Ty::U64],
+            returns: &[Ty::U64, Ty::U64],
+        },
+        c_sig: None,
+        fn_list: &["idivmod_u64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I64, Ty::I64],
+            returns: &[Ty::I64, Ty::Bool],
+        },
+        c_sig: None,
+        fn_list: &["imulo_i64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I128, Ty::I128],
+            returns: &[Ty::I128],
+        },
+        c_sig: None,
+        fn_list: &[
+            "iadd_i128",
+            "idiv_i128",
+            "imod_i128",
+            "imul_i128",
+            "isub_i128",
+        ],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I128, Ty::I128],
+            returns: &[Ty::I128, Ty::I128],
+        },
+        c_sig: None,
+        fn_list: &["idivmod_i128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I128, Ty::I128],
+            returns: &[Ty::I128, Ty::Bool],
+        },
+        c_sig: None,
+        fn_list: &["iaddo_i128", "imulo_i128", "isubo_i128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U128, Ty::U128],
+            returns: &[Ty::U128],
+        },
+        c_sig: None,
+        fn_list: &["iadd_u128", "idiv_u128", "imod_u128", "isub_u128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U128, Ty::U128],
+            returns: &[Ty::U128, Ty::U128],
+        },
+        c_sig: None,
+        fn_list: &["idivmod_u128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U128, Ty::U128],
+            returns: &[Ty::U128, Ty::Bool],
+        },
+        c_sig: None,
+        fn_list: &["iaddo_u128", "imulo_u128", "isubo_u128"],
+        scope: OpScope::BuiltinsPublic,
+    },
     /* int shifts */
     NestedOp {
         rust_sig: Signature {

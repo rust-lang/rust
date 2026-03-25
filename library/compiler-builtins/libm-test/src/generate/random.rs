@@ -120,7 +120,7 @@ impl_random_input!(f64);
 impl_random_input!(f128);
 
 macro_rules! impl_random_input_int {
-    ($ity:ty) => {
+    (@skip_u32 $ity:ty) => {
         impl RandomInput for ($ity,) {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let count = iteration_count(ctx, 0);
@@ -130,11 +130,27 @@ macro_rules! impl_random_input_int {
             }
         }
 
+        impl RandomInput for ($ity, $ity) {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let count0 = iteration_count(ctx, 0);
+                let count1 = iteration_count(ctx, 1);
+                let range0 = int_range::<$ity>(ctx, 0).unwrap_or(full_range());
+                let range1 = int_range::<$ity>(ctx, 1).unwrap_or(full_range());
+                let iter = random_ints(count0, range0).flat_map(move |f1: $ity| {
+                    random_ints(count1, range1.clone()).map(move |f2: $ity| (f1, f2))
+                });
+                (iter, count0 * count1)
+            }
+        }
+    };
+    ($ity:ty) => {
+        impl_random_input_int!(@skip_u32 $ity);
+
         impl RandomInput for ($ity, u32) {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let count0 = iteration_count(ctx, 0);
                 let count1 = iteration_count(ctx, 1);
-                let range0 = int_range::<$ity>(ctx, 1).unwrap_or(full_range());
+                let range0 = int_range::<$ity>(ctx, 0).unwrap_or(full_range());
                 let range1 = int_range::<u32>(ctx, 1).unwrap_or(full_range());
                 let iter = random_ints(count0, range0).flat_map(move |f1: $ity| {
                     random_ints(count1, range1.clone()).map(move |f2: u32| (f1, f2))
@@ -148,7 +164,7 @@ macro_rules! impl_random_input_int {
 impl_random_input_int!(i32);
 impl_random_input_int!(i64);
 impl_random_input_int!(i128);
-impl_random_input_int!(u32);
+impl_random_input_int!(@skip_u32 u32);
 impl_random_input_int!(u64);
 impl_random_input_int!(u128);
 

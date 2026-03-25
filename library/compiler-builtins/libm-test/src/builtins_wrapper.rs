@@ -58,6 +58,43 @@ macro_rules! cb_op {
             compiler_builtins::float::$mod::$cb_name(a, b) >= 0
         }
     };
+    (@int_binop_oflow $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        pub fn $new_name(a: $ty, b: $ty) -> ($ty, bool) {
+            let mut oflow = 0;
+            let res = compiler_builtins::int::$mod::$cb_name(a, b, &mut oflow);
+            (res, oflow != 0)
+        }
+    };
+
+    // Make division by 0 well-defined so testing is easier.
+    (@int_div $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        pub fn $new_name(a: $ty, b: $ty) -> $ty {
+            if b == 0 {
+                return <$ty>::MIN;
+            }
+            compiler_builtins::int::$mod::$cb_name(a, b)
+        }
+    };
+    (@int_divmod $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        pub fn $new_name(a: $ty, b: $ty) -> ($ty, $ty) {
+            if b == 0 {
+                return (<$ty>::MIN, <$ty>::MIN);
+            }
+            let mut rem = 0;
+            let div = compiler_builtins::int::$mod::$cb_name(a, b, &mut rem);
+            (div, rem)
+        }
+    };
+    (@int_udivmod $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
+        pub fn $new_name(a: $ty, b: $ty) -> ($ty, $ty) {
+            if b == 0 {
+                return (<$ty>::MIN, <$ty>::MIN);
+            }
+            let mut rem = 0;
+            let div = compiler_builtins::int::$mod::$cb_name(a, b, Some(&mut rem));
+            (div, rem)
+        }
+    };
 }
 
 #[cfg(f16_enabled)]
@@ -218,6 +255,42 @@ cb_op!(conv, __floatunditf, itof_u64_f128, (a: u64) -> f128);
 cb_op!(conv, __floatuntitf, itof_u128_f128, (a: u128) -> f128);
 
 /* int ops */
+
+cb_op!(@int addsub, __rust_i128_add, iadd_i128, (a: i128, b: i128) -> i128);
+cb_op!(@int addsub, __rust_i128_sub, isub_i128, (a: i128, b: i128) -> i128);
+cb_op!(@int addsub, __rust_u128_add, iadd_u128, (a: u128, b: u128) -> u128);
+cb_op!(@int addsub, __rust_u128_sub, isub_u128, (a: u128, b: u128) -> u128);
+cb_op!(@int_binop_oflow i128, addsub, __rust_i128_addo, iaddo_i128);
+cb_op!(@int_binop_oflow i128, addsub, __rust_i128_subo, isubo_i128);
+cb_op!(@int_binop_oflow u128, addsub, __rust_u128_addo, iaddo_u128);
+cb_op!(@int_binop_oflow u128, addsub, __rust_u128_subo, isubo_u128);
+
+cb_op!(@int mul, __muldi3, imul_u64, (a: u64, b: u64) -> u64);
+cb_op!(@int mul, __multi3, imul_i128, (a: i128, b: i128) -> i128);
+cb_op!(@int_binop_oflow i32, mul, __mulosi4, imulo_i32);
+cb_op!(@int_binop_oflow i64, mul, __mulodi4, imulo_i64);
+cb_op!(@int_binop_oflow i128, mul, __muloti4, imulo_i128);
+cb_op!(@int_binop_oflow u128, mul, __rust_u128_mulo, imulo_u128);
+
+cb_op!(@int_div i32, sdiv, __divsi3, idiv_i32);
+cb_op!(@int_div i64, sdiv, __divdi3, idiv_i64);
+cb_op!(@int_div i128, sdiv, __divti3, idiv_i128);
+cb_op!(@int_div i32, sdiv, __modsi3, imod_i32);
+cb_op!(@int_div i64, sdiv, __moddi3, imod_i64);
+cb_op!(@int_div i128, sdiv, __modti3, imod_i128);
+cb_op!(@int_divmod i32, sdiv, __divmodsi4, idivmod_i32);
+cb_op!(@int_divmod i64, sdiv, __divmoddi4, idivmod_i64);
+cb_op!(@int_divmod i128, sdiv, __divmodti4, idivmod_i128);
+
+cb_op!(@int_div u32, udiv, __udivsi3, idiv_u32);
+cb_op!(@int_div u64, udiv, __udivdi3, idiv_u64);
+cb_op!(@int_div u128, udiv, __udivti3, idiv_u128);
+cb_op!(@int_div u32, udiv, __umodsi3, imod_u32);
+cb_op!(@int_div u64, udiv, __umoddi3, imod_u64);
+cb_op!(@int_div u128, udiv, __umodti3, imod_u128);
+cb_op!(@int_udivmod u32, udiv, __udivmodsi4, idivmod_u32);
+cb_op!(@int_udivmod u64, udiv, __udivmoddi4, idivmod_u64);
+cb_op!(@int_udivmod u128, udiv, __udivmodti4, idivmod_u128);
 
 cb_op!(@int shift, __ashlsi3, ashl_u32, (a: u32, b: u32) -> u32);
 cb_op!(@int shift, __ashldi3, ashl_u64, (a: u64, b: u32) -> u64);

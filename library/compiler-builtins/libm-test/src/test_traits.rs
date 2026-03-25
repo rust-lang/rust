@@ -428,6 +428,22 @@ macro_rules! impl_tuples {
 }
 
 impl_tuples!(
+    (i32, i32);
+    (i64, i64);
+    (i128, i128);
+
+    (u32, u32);
+    (u64, u64);
+    (u128, u128);
+
+    (i32, bool);
+    (i64, bool);
+    (i128, bool);
+
+    (u32, bool);
+    (u64, bool);
+    (u128, bool);
+
     (f32, i32);
     (f64, i32);
     (f32, f32);

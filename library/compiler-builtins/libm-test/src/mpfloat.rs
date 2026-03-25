@@ -6,7 +6,7 @@
 use std::cmp::Ordering;
 
 use rug::Assign;
-use rug::az::{self, Az, CheckedCast, WrappingAs};
+use rug::az::{self, Az, CheckedCast, OverflowingCast, WrappingAs};
 use rug::float::Round::Nearest;
 use rug::ops::{
     AddAssignRound, DivAssignRound, MulAssignRound, PowAssignRound, RemAssignRound, SubAssignRound,
@@ -215,10 +215,42 @@ libm_macros::for_each_function! {
         gtf16,
         gtf32,
         gtf64,
+        iadd_i128,
+        iadd_u128,
+        iaddo_i128,
+        iaddo_u128,
+        idiv_i128,
+        idiv_i32,
+        idiv_i64,
+        idiv_u128,
+        idiv_u32,
+        idiv_u64,
+        idivmod_i128,
+        idivmod_i32,
+        idivmod_i64,
+        idivmod_u128,
+        idivmod_u32,
+        idivmod_u64,
         ilogb,
         ilogbf,
         ilogbf128,
         ilogbf16,
+        imod_i128,
+        imod_i32,
+        imod_i64,
+        imod_u128,
+        imod_u32,
+        imod_u64,
+        imul_i128,
+        imul_u64,
+        imulo_i128,
+        imulo_i32,
+        imulo_i64,
+        imulo_u128,
+        isub_i128,
+        isub_u128,
+        isubo_i128,
+        isubo_u128,
         itof_i128_f128,
         itof_i128_f32,
         itof_i128_f64,
@@ -1040,6 +1072,77 @@ impl MpOp for crate::op::nextafterf::Routine {
 macro_rules! impl_int_ops {
     ($ity:ty) => {
         paste::paste! {
+            impl MpOp for crate::op::[<idiv_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    if input.1 == 0 {
+                        // Make divide by 0 well-defined to match our wrappers.
+                        return <$ity>::MIN;
+                    }
+                    this.assign(input.0);
+                    *this /= input.1;
+                    (&*this).wrapping_as::<Self::RustRet>()
+                }
+            }
+
+            impl MpOp for crate::op::[<imod_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    if input.1 == 0 {
+                        // Make divide by 0 well-defined to match our wrappers.
+                        return <$ity>::MIN;
+                    }
+                    this.assign(input.0);
+                    *this %= input.1;
+                    (&*this).wrapping_as::<Self::RustRet>()
+                }
+            }
+
+            impl MpOp for crate::op::[<idivmod_ $ity>]::Routine {
+                type MpTy = (MpInt, MpInt);
+
+                fn new_mp() -> Self::MpTy {
+                    (MpInt::new(), MpInt::new())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    if input.1 == 0 {
+                        // Make divide by 0 well-defined to match our wrappers.
+                        return (<$ity>::MIN, <$ity>::MIN);
+                    }
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    this.0.div_rem_mut(&mut this.1);
+                    (
+                        (&this.0).wrapping_as::<Ret0<Self>>(),
+                        (&this.1).wrapping_as::<Ret1<Self>>(),
+                    )
+                }
+            }
+        }
+    };
+}
+
+impl_int_ops!(i32);
+impl_int_ops!(i64);
+impl_int_ops!(i128);
+impl_int_ops!(u32);
+impl_int_ops!(u64);
+impl_int_ops!(u128);
+
+macro_rules! impl_unsigned_int_ops {
+    ($ity:ty) => {
+        paste::paste! {
             impl MpOp for crate::op::[<ashl_ $ity>]::Routine {
                 type MpTy = MpInt;
 
@@ -1099,9 +1202,9 @@ macro_rules! impl_int_ops {
     };
 }
 
-impl_int_ops!(u32);
-impl_int_ops!(u64);
-impl_int_ops!(u128);
+impl_unsigned_int_ops!(u32);
+impl_unsigned_int_ops!(u64);
+impl_unsigned_int_ops!(u128);
 
 macro_rules! impl_signed_int_ops {
     ($ity:ty) => {
@@ -1117,7 +1220,21 @@ macro_rules! impl_signed_int_ops {
                     assert!(input.1 < Arg0::<Self>::BITS, "got UB shift {}", input.1);
                     this.assign(input.0);
                     *this >>= input.1;
-                    (&*this).wrapping_as::<Arg0<Self>>()
+                    (&*this).wrapping_as::<Self::RustRet>()
+                }
+            }
+
+            impl MpOp for crate::op::[<imulo_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    *this *= input.1;
+                    (&*this).overflowing_cast()
                 }
             }
         }
@@ -1127,3 +1244,110 @@ macro_rules! impl_signed_int_ops {
 impl_signed_int_ops!(i32);
 impl_signed_int_ops!(i64);
 impl_signed_int_ops!(i128);
+
+macro_rules! impl_u128_i128_int_ops {
+    ($ity:ty) => {
+        paste::paste! {
+            impl MpOp for crate::op::[<iadd_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    *this += input.1;
+                    (&*this).wrapping_as::<Self::RustRet>()
+                }
+            }
+
+            impl MpOp for crate::op::[<isub_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    *this -= input.1;
+                    (&*this).wrapping_as::<Self::RustRet>()
+                }
+            }
+
+            impl MpOp for crate::op::[<iaddo_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    *this += input.1;
+                    (&*this).overflowing_cast()
+                }
+            }
+
+            impl MpOp for crate::op::[<isubo_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    *this -= input.1;
+                    (&*this).overflowing_cast()
+                }
+            }
+        }
+    };
+}
+
+impl_u128_i128_int_ops!(i128);
+impl_u128_i128_int_ops!(u128);
+
+impl MpOp for crate::op::imul_u64::Routine {
+    type MpTy = MpInt;
+
+    fn new_mp() -> Self::MpTy {
+        MpInt::new()
+    }
+
+    fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+        this.assign(input.0);
+        *this *= input.1;
+        (&*this).wrapping_as()
+    }
+}
+
+impl MpOp for crate::op::imul_i128::Routine {
+    type MpTy = MpInt;
+
+    fn new_mp() -> Self::MpTy {
+        MpInt::new()
+    }
+
+    fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+        this.assign(input.0);
+        *this *= input.1;
+        (&*this).wrapping_as()
+    }
+}
+
+impl MpOp for crate::op::imulo_u128::Routine {
+    type MpTy = MpInt;
+
+    fn new_mp() -> Self::MpTy {
+        MpInt::new()
+    }
+
+    fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+        this.assign(input.0);
+        *this *= input.1;
+        (&*this).overflowing_cast()
+    }
+}

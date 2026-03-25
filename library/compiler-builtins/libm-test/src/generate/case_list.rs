@@ -468,6 +468,136 @@ fn itof_u128_f128_cases() -> Vec<TestCase<op::itof_u128_f128::Routine>> {
     vec![]
 }
 
+/* int arithmetic */
+
+fn iadd_i128_cases() -> Vec<TestCase<op::iadd_i128::Routine>> {
+    vec![]
+}
+
+fn iadd_u128_cases() -> Vec<TestCase<op::iadd_u128::Routine>> {
+    vec![]
+}
+
+fn iaddo_i128_cases() -> Vec<TestCase<op::iaddo_i128::Routine>> {
+    vec![]
+}
+
+fn iaddo_u128_cases() -> Vec<TestCase<op::iaddo_u128::Routine>> {
+    vec![]
+}
+
+fn isub_i128_cases() -> Vec<TestCase<op::isub_i128::Routine>> {
+    vec![]
+}
+
+fn isub_u128_cases() -> Vec<TestCase<op::isub_u128::Routine>> {
+    vec![]
+}
+
+fn isubo_i128_cases() -> Vec<TestCase<op::isubo_i128::Routine>> {
+    vec![]
+}
+
+fn isubo_u128_cases() -> Vec<TestCase<op::isubo_u128::Routine>> {
+    vec![]
+}
+
+fn idiv_i128_cases() -> Vec<TestCase<op::idiv_i128::Routine>> {
+    vec![]
+}
+
+fn idiv_i32_cases() -> Vec<TestCase<op::idiv_i32::Routine>> {
+    vec![]
+}
+
+fn idiv_i64_cases() -> Vec<TestCase<op::idiv_i64::Routine>> {
+    vec![]
+}
+
+fn idiv_u128_cases() -> Vec<TestCase<op::idiv_u128::Routine>> {
+    vec![]
+}
+
+fn idiv_u32_cases() -> Vec<TestCase<op::idiv_u32::Routine>> {
+    vec![]
+}
+
+fn idiv_u64_cases() -> Vec<TestCase<op::idiv_u64::Routine>> {
+    vec![]
+}
+
+fn idivmod_i128_cases() -> Vec<TestCase<op::idivmod_i128::Routine>> {
+    vec![]
+}
+
+fn idivmod_i32_cases() -> Vec<TestCase<op::idivmod_i32::Routine>> {
+    vec![]
+}
+
+fn idivmod_i64_cases() -> Vec<TestCase<op::idivmod_i64::Routine>> {
+    vec![]
+}
+
+fn idivmod_u128_cases() -> Vec<TestCase<op::idivmod_u128::Routine>> {
+    vec![]
+}
+
+fn idivmod_u32_cases() -> Vec<TestCase<op::idivmod_u32::Routine>> {
+    vec![]
+}
+
+fn idivmod_u64_cases() -> Vec<TestCase<op::idivmod_u64::Routine>> {
+    vec![]
+}
+
+fn imod_i128_cases() -> Vec<TestCase<op::imod_i128::Routine>> {
+    vec![]
+}
+
+fn imod_i32_cases() -> Vec<TestCase<op::imod_i32::Routine>> {
+    vec![]
+}
+
+fn imod_i64_cases() -> Vec<TestCase<op::imod_i64::Routine>> {
+    vec![]
+}
+
+fn imod_u128_cases() -> Vec<TestCase<op::imod_u128::Routine>> {
+    vec![]
+}
+
+fn imod_u32_cases() -> Vec<TestCase<op::imod_u32::Routine>> {
+    vec![]
+}
+
+fn imod_u64_cases() -> Vec<TestCase<op::imod_u64::Routine>> {
+    vec![]
+}
+
+fn imul_i128_cases() -> Vec<TestCase<op::imul_i128::Routine>> {
+    vec![]
+}
+
+fn imul_u64_cases() -> Vec<TestCase<op::imul_u64::Routine>> {
+    vec![]
+}
+
+fn imulo_i128_cases() -> Vec<TestCase<op::imulo_i128::Routine>> {
+    vec![]
+}
+
+fn imulo_i32_cases() -> Vec<TestCase<op::imulo_i32::Routine>> {
+    vec![]
+}
+
+fn imulo_i64_cases() -> Vec<TestCase<op::imulo_i64::Routine>> {
+    vec![]
+}
+
+fn imulo_u128_cases() -> Vec<TestCase<op::imulo_u128::Routine>> {
+    vec![]
+}
+
 /* int shifts */
 
 fn ashl_u32_cases() -> Vec<TestCase<op::ashl_u32::Routine>> {

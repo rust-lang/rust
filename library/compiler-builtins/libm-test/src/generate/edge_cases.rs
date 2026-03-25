@@ -315,7 +315,7 @@ impl_edge_case_input!(f64);
 impl_edge_case_input!(f128);
 
 macro_rules! impl_edge_case_input_int {
-    ($ity:ty) => {
+    (@skip_u32 $ity:ty) => {
         impl<Op> EdgeCaseInput<Op> for ($ity,)
         where
             Op: MathOp<RustArgs = Self>,
@@ -326,6 +326,23 @@ macro_rules! impl_edge_case_input_int {
                 (iter0, steps0)
             }
         }
+
+        impl<Op> EdgeCaseInput<Op> for ($ity, $ity)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let (iter0, steps0) = int_edge_cases(ctx, 0);
+                let (iter1, steps1) = int_edge_cases(ctx, 1);
+                let iter =
+                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let count = steps0.checked_mul(steps1).unwrap();
+                (iter, count)
+            }
+        }
+    };
+    ($ity:ty) => {
+        impl_edge_case_input_int!(@skip_u32 $ity);
 
         impl<Op> EdgeCaseInput<Op> for ($ity, u32)
         where
@@ -346,7 +363,7 @@ macro_rules! impl_edge_case_input_int {
 impl_edge_case_input_int!(i32);
 impl_edge_case_input_int!(i64);
 impl_edge_case_input_int!(i128);
-impl_edge_case_input_int!(u32);
+impl_edge_case_input_int!(@skip_u32 u32);
 impl_edge_case_input_int!(u64);
 impl_edge_case_input_int!(u128);
 
