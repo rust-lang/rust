@@ -46,6 +46,7 @@ mod error;
 mod float_parse;
 mod nonzero;
 mod saturating;
+mod traits;
 mod wrapping;
 
 /// 100% perma-unstable
