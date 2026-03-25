@@ -45,7 +45,6 @@
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![feature(ptr_alignment_type)]
 #![feature(range_bounds_is_empty)]
 #![feature(rustc_attrs)]
 #![feature(sized_hierarchy)]
