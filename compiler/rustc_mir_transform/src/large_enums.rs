@@ -32,8 +32,8 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
     fn is_enabled(&self, sess: &Session) -> bool {
         // There are some differences in behavior on wasm and ARM that are not properly
         // understood, so we conservatively treat this optimization as unsound:
-        // https://github.com/rust-lang/rust/pull/85158#issuecomment-1101836457
-        sess.opts.unstable_opts.unsound_mir_opts || sess.mir_opt_level() >= 3
+        // https://github.com/rust-lang/rust/issues/154413
+        sess.opts.unstable_opts.unsound_mir_opts && sess.mir_opt_level() >= 3
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
