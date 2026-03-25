@@ -120,7 +120,8 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     if enabled.contains(SanitizerSet::THREAD) {
         attrs.push(llvm::AttributeKind::SanitizeThread.create_attr(cx.llcx));
     }
-    if enabled.contains(SanitizerSet::HWADDRESS) {
+    if enabled.contains(SanitizerSet::HWADDRESS) || enabled.contains(SanitizerSet::KERNELHWADDRESS)
+    {
         attrs.push(llvm::AttributeKind::SanitizeHWAddress.create_attr(cx.llcx));
     }
     if enabled.contains(SanitizerSet::SHADOWCALLSTACK) {
