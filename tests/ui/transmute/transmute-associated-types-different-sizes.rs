@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/28625>
 //@ normalize-stderr: "\d+ bits" -> "N bits"
 
 trait Bar {
