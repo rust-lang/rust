@@ -17,10 +17,7 @@ impl Trait for F {}
 
 mod to_reuse {
     pub fn foo(x: i32) -> i32 { x + 1 }
-    pub fn zero_args() -> i32 { 15 }
 }
-
-reuse to_reuse::zero_args { self }
 
 struct S(F);
 impl Trait for S {
@@ -49,5 +46,4 @@ fn main() {
     #[inline]
     reuse to_reuse::foo;
     assert_eq!(43, foo(42));
-    assert_eq!(15, zero_args());
 }
