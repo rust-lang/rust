@@ -19,7 +19,7 @@ pub unsafe fn rangefrom_increments(range: RangeFrom<i32>) -> RangeFrom<i32> {
     // Iterator is contained entirely within this function, so the optimizer should
     // be able to see that `exhausted` is never set and optimize out any branches.
 
-    //         CHECK: i32 noundef %range
+    //         CHECK: i32 noundef {{(signext )?}}%range
     //         DEBUG: switch i32 %range
     //         DEBUG: call core::panicking::panic_const::panic_const_add_overflow
     //         DEBUG: unreachable
