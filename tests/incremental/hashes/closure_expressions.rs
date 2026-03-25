@@ -43,9 +43,9 @@ pub fn add_parameter() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_parameter() {
     let x = 0u32;
@@ -61,9 +61,9 @@ pub fn change_parameter_pattern() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_parameter_pattern() {
     let _ = |(x,): (u32,)| x;
@@ -96,9 +96,9 @@ pub fn add_type_ascription_to_parameter() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2", except = "opt_hir_owner_nodes, typeck")]
+#[rustc_clean(cfg = "cfail2", except = "opt_hir_owner_nodes, typeck_root")]
 #[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5", except = "opt_hir_owner_nodes, typeck")]
+#[rustc_clean(cfg = "cfail5", except = "opt_hir_owner_nodes, typeck_root")]
 #[rustc_clean(cfg = "cfail6")]
 pub fn add_type_ascription_to_parameter() {
     let closure = |x: u32| x + 1u32;
@@ -115,9 +115,9 @@ pub fn change_parameter_type() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir, typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir, typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir, typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir, typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_parameter_type() {
     let closure = |x: u16| (x as u64) + 1;
