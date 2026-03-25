@@ -103,11 +103,11 @@ pub(crate) fn wrap_paren(expr: ast::Expr, make: &SyntaxFactory, prec: ExprPreced
 }
 
 pub(crate) fn wrap_paren_in_call(expr: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
-    if needs_parens_in_call(&expr) { make.expr_paren(expr).into() } else { expr }
+    if needs_parens_in_call(make, &expr) { make.expr_paren(expr).into() } else { expr }
 }
 
-fn needs_parens_in_call(param: &ast::Expr) -> bool {
-    let call = make::expr_call(make::ext::expr_unit(), make::arg_list(Vec::new()));
+fn needs_parens_in_call(make: &SyntaxFactory, param: &ast::Expr) -> bool {
+    let call = make.expr_call(make.expr_unit(), make.arg_list(Vec::new()));
     let callable = call.expr().expect("invalid make call");
     param.needs_parens_in_place_of(call.syntax(), callable.syntax())
 }
@@ -739,6 +739,10 @@ pub(crate) fn generate_impl_with_item(
     generate_impl_inner(false, adt, None, true, body)
 }
 
+pub(crate) fn generate_impl_with_factory(make: &SyntaxFactory, adt: &ast::Adt) -> ast::Impl {
+    generate_impl_inner_with_factory(make, false, adt, None, true, None)
+}
+
 pub(crate) fn generate_impl(adt: &ast::Adt) -> ast::Impl {
     generate_impl_inner(false, adt, None, true, None)
 }
@@ -760,8 +764,12 @@ pub(crate) fn generate_trait_impl(
 /// and lifetime parameters, with `impl`'s generic parameters' bounds kept as-is.
 ///
 /// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
-pub(crate) fn generate_trait_impl_intransitive(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
-    generate_impl_inner(false, adt, Some(trait_), false, None)
+pub(crate) fn generate_trait_impl_intransitive(
+    make: &SyntaxFactory,
+    adt: &ast::Adt,
+    trait_: ast::Type,
+) -> ast::Impl {
+    generate_impl_inner_with_factory(make, false, adt, Some(trait_), false, None)
 }
 
 fn generate_impl_inner(
