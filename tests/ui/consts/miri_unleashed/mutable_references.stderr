@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value at .<deref>: encountered mutable reference or box pointing to read-only memory
+error[E0080]: constructing invalid value of type &&mut u32: at .<deref>, encountered mutable reference or box pointing to read-only memory
   --> $DIR/mutable_references.rs:13:1
    |
 LL | static FOO: &&mut u32 = &&mut 42;
@@ -9,7 +9,7 @@ LL | static FOO: &&mut u32 = &&mut 42;
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+error[E0080]: constructing invalid value of type &mut i32: encountered mutable reference or box pointing to read-only memory
   --> $DIR/mutable_references.rs:15:1
    |
 LL | static OH_YES: &mut i32 = &mut 42;
@@ -32,7 +32,7 @@ error: encountered mutable pointer in final value of static
 LL | static BOO: &mut Foo<()> = &mut Foo(());
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+error[E0080]: constructing invalid value of type &mut i32: encountered mutable reference or box pointing to read-only memory
   --> $DIR/mutable_references.rs:25:1
    |
 LL | const BLUNT: &mut i32 = &mut 42;
@@ -43,7 +43,7 @@ LL | const BLUNT: &mut i32 = &mut 42;
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .x.<deref>: encountered `UnsafeCell` in read-only memory
+error[E0080]: constructing invalid value of type Meh: at .x.<deref>, encountered `UnsafeCell` in read-only memory
   --> $DIR/mutable_references.rs:40:1
    |
 LL | static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
@@ -54,7 +54,7 @@ LL | static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .x.<deref>: encountered `UnsafeCell` in read-only memory
+error[E0080]: constructing invalid value of type Meh: at .x.<deref>, encountered `UnsafeCell` in read-only memory
   --> $DIR/mutable_references.rs:45:1
    |
 LL | const MUH: Meh = Meh {
@@ -65,7 +65,7 @@ LL | const MUH: Meh = Meh {
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .<deref>.<dyn-downcast>.x: encountered `UnsafeCell` in read-only memory
+error[E0080]: constructing invalid value of type &dyn Sync: at .<deref>.<dyn-downcast(Synced)>.x, encountered `UnsafeCell` in read-only memory
   --> $DIR/mutable_references.rs:56:1
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
@@ -76,7 +76,7 @@ LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+error[E0080]: constructing invalid value of type &mut i32: encountered mutable reference or box pointing to read-only memory
   --> $DIR/mutable_references.rs:62:1
    |
 LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };

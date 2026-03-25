@@ -1,4 +1,4 @@
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 trait Foo { fn foo() {} }
 impl<T: Clone> Foo for T {}

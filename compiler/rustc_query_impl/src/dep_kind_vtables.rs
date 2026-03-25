@@ -4,7 +4,7 @@ use rustc_middle::dep_graph::{DepKindVTable, DepNodeKey, KeyFingerprintStyle};
 use rustc_middle::query::QueryCache;
 
 use crate::GetQueryVTable;
-use crate::plumbing::{force_from_dep_node_inner, promote_from_disk_inner};
+use crate::plumbing::promote_from_disk_inner;
 
 /// [`DepKindVTable`] constructors for special dep kinds that aren't queries.
 #[expect(non_snake_case, reason = "use non-snake case to avoid collision with query names")]
@@ -111,10 +111,16 @@ where
     DepKindVTable {
         is_eval_always,
         key_fingerprint_style,
-        force_from_dep_node_fn: (can_recover && !is_no_force)
-            .then_some(force_from_dep_node_inner::<Q>),
-        promote_from_disk_fn: (can_recover && is_cache_on_disk)
-            .then_some(promote_from_disk_inner::<Q>),
+        force_from_dep_node_fn: (can_recover && !is_no_force).then_some(
+            |tcx, dep_node, _prev_index| {
+                let query = Q::query_vtable(tcx);
+                crate::execution::force_query_dep_node(tcx, query, dep_node)
+            },
+        ),
+        promote_from_disk_fn: (can_recover && is_cache_on_disk).then_some(|tcx, dep_node| {
+            let query = Q::query_vtable(tcx);
+            promote_from_disk_inner(tcx, query, dep_node)
+        }),
     }
 }
 

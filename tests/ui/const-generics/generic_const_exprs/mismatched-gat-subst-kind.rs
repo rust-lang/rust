@@ -1,5 +1,4 @@
 #![feature(generic_const_exprs)]
-//~^ WARN the feature `generic_const_exprs` is incomplete
 
 trait B {
     type U<T>;

@@ -238,6 +238,8 @@ impl_marker_trait!(
 
 impl Sync for () {}
 
+impl<T, const N: usize> Sync for [T; N] {}
+
 #[lang = "drop_in_place"]
 fn drop_in_place<T>(_: *mut T) {}
 

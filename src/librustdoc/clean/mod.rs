@@ -2776,7 +2776,12 @@ fn clean_maybe_renamed_item<'tcx>(
         // These kinds of item either don't need a `name` or accept a `None` one so we handle them
         // before.
         match item.kind {
-            ItemKind::Impl(ref impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
+            ItemKind::Impl(ref impl_) => {
+                // If `renamed` is `Some()` for an `impl`, it means it's been inlined because we use
+                // it as a marker to indicate that this is an inlined impl and that we should
+                // generate an impl placeholder and not a "real" impl item.
+                return clean_impl(impl_, item.owner_id.def_id, cx, renamed.is_some());
+            }
             ItemKind::Use(path, kind) => {
                 return clean_use_statement(
                     item,
@@ -2909,10 +2914,27 @@ fn clean_impl<'tcx>(
     impl_: &hir::Impl<'tcx>,
     def_id: LocalDefId,
     cx: &mut DocContext<'tcx>,
+    // If true, this is an inlined impl and it will be handled later on in the code.
+    // In here, we will generate a placeholder for it in order to be able to compute its
+    // `doc_cfg` info.
+    is_inlined: bool,
 ) -> Vec<Item> {
     let tcx = cx.tcx;
     let mut ret = Vec::new();
-    let trait_ = impl_.of_trait.map(|t| clean_trait_ref(&t.trait_ref, cx));
+    let trait_ = match impl_.of_trait {
+        Some(t) => {
+            if is_inlined {
+                return vec![Item::from_def_id_and_parts(
+                    def_id.to_def_id(),
+                    None,
+                    PlaceholderImplItem,
+                    cx,
+                )];
+            }
+            Some(clean_trait_ref(&t.trait_ref, cx))
+        }
+        None => None,
+    };
     let items = impl_
         .items
         .iter()

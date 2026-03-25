@@ -1,6 +1,13 @@
-//@ only-aarch64
-//@ needs-asm-support
-use std::arch::asm;
+//@ add-minicore
+//@ compile-flags: --target aarch64-unknown-linux-gnu
+//@ needs-llvm-components: aarch64
+//@ ignore-backends: gcc
+#![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
+
+extern crate minicore;
+use minicore::*;
 
 macro_rules! m {
     ($in:ident $out:ident $lateout:ident $inout:ident $inlateout:ident $const:ident $sym:ident

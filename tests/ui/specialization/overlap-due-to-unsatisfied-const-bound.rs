@@ -1,8 +1,6 @@
 // Regression test for #140571. The compiler used to ICE
 
 #![feature(min_generic_const_args, specialization)]
-//~^ WARN the feature `specialization` is incomplete
-//~| WARN the feature `min_generic_const_args` is incomplete
 
 pub trait IsVoid {
 

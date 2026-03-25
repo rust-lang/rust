@@ -389,6 +389,8 @@ impl DocFolder for CacheBuilder<'_, '_> {
                 // So would rather leave them to an expert,
                 // as at least the list is better than `_ => {}`.
             }
+
+            clean::PlaceholderImplItem => return None,
         }
 
         // Maintain the parent stack.

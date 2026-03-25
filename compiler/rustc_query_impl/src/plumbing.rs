@@ -2,28 +2,24 @@ use std::num::NonZero;
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::limit::Limit;
-use rustc_index::Idx;
 use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
-use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex};
+use rustc_middle::dep_graph::{DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::erase::{Erasable, Erased};
-use rustc_middle::query::on_disk_cache::{
-    AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
-};
+use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder};
 use rustc_middle::query::{QueryCache, QueryJobId, QueryMode, QueryVTable, erase};
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::LOCAL_CRATE;
 
 use crate::error::{QueryOverflow, QueryOverflowNote};
-use crate::execution::{all_inactive, force_query};
+use crate::execution::all_inactive;
 use crate::job::find_dep_kind_root;
 use crate::query_impl::for_each_query_vtable;
-use crate::{CollectActiveJobsKind, GetQueryVTable, collect_active_query_jobs};
+use crate::{CollectActiveJobsKind, collect_active_query_jobs};
 
 fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
     let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::Full);
@@ -79,13 +75,9 @@ pub(crate) fn start_query<R>(
     })
 }
 
-pub(crate) fn encode_query_values<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    encoder: &mut CacheEncoder<'_, 'tcx>,
-    query_result_index: &mut EncodedDepNodeIndex,
-) {
+pub(crate) fn encode_query_values<'tcx>(tcx: TyCtxt<'tcx>, encoder: &mut CacheEncoder<'_, 'tcx>) {
     for_each_query_vtable!(CACHE_ON_DISK, tcx, |query| {
-        encode_query_values_inner(tcx, query, encoder, query_result_index)
+        encode_query_values_inner(tcx, query, encoder)
     });
 }
 
@@ -93,7 +85,6 @@ fn encode_query_values_inner<'a, 'tcx, C, V>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
-    query_result_index: &mut EncodedDepNodeIndex,
 ) where
     C: QueryCache<Value = Erased<V>>,
     V: Erasable + Encodable<CacheEncoder<'a, 'tcx>>,
@@ -103,14 +94,7 @@ fn encode_query_values_inner<'a, 'tcx, C, V>(
     assert!(all_inactive(&query.state));
     query.cache.for_each(&mut |key, value, dep_node| {
         if (query.will_cache_on_disk_for_key_fn)(tcx, *key) {
-            let dep_node = SerializedDepNodeIndex::new(dep_node.index());
-
-            // Record position of the cache entry.
-            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
-
-            // Encode the type check tables with the `SerializedDepNodeIndex`
-            // as tag.
-            encoder.encode_tagged(dep_node, &erase::restore_val::<V>(*value));
+            encoder.encode_query_value::<V>(dep_node, &erase::restore_val::<V>(*value));
         }
     });
 }
@@ -151,15 +135,15 @@ fn verify_query_key_hashes_inner<'tcx, C: QueryCache>(
     });
 }
 
-/// Implementation of [`DepKindVTable::promote_from_disk_fn`] for queries.
-pub(crate) fn promote_from_disk_inner<'tcx, Q: GetQueryVTable<'tcx>>(
+/// Inner implementation of [`DepKindVTable::promote_from_disk_fn`] for queries.
+pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
+    query: &'tcx QueryVTable<'tcx, C>,
     dep_node: DepNode,
 ) {
-    let query = Q::query_vtable(tcx);
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
-    let key = <Q::Cache as QueryCache>::Key::try_recover_key(tcx, &dep_node).unwrap_or_else(|| {
+    let key = C::Key::try_recover_key(tcx, &dep_node).unwrap_or_else(|| {
         panic!(
             "Failed to recover key for {dep_node:?} with key fingerprint {}",
             dep_node.key_fingerprint
@@ -214,44 +198,9 @@ where
     // details.
     let value = tcx
         .dep_graph
-        .with_query_deserialization(|| on_disk_cache.try_load_query_result(tcx, prev_index));
+        .with_query_deserialization(|| on_disk_cache.try_load_query_value(tcx, prev_index));
 
     prof_timer.finish_with_query_invocation_id(index.into());
 
     value
-}
-
-/// Implementation of [`DepKindVTable::force_from_dep_node_fn`] for queries.
-pub(crate) fn force_from_dep_node_inner<'tcx, Q: GetQueryVTable<'tcx>>(
-    tcx: TyCtxt<'tcx>,
-    dep_node: DepNode,
-    // Needed by the vtable function signature, but not used when forcing queries.
-    _prev_index: SerializedDepNodeIndex,
-) -> bool {
-    let query = Q::query_vtable(tcx);
-
-    // We must avoid ever having to call `force_from_dep_node()` for a
-    // `DepNode::codegen_unit`:
-    // Since we cannot reconstruct the query key of a `DepNode::codegen_unit`, we
-    // would always end up having to evaluate the first caller of the
-    // `codegen_unit` query that *is* reconstructible. This might very well be
-    // the `compile_codegen_unit` query, thus re-codegenning the whole CGU just
-    // to re-trigger calling the `codegen_unit` query with the right key. At
-    // that point we would already have re-done all the work we are trying to
-    // avoid doing in the first place.
-    // The solution is simple: Just explicitly call the `codegen_unit` query for
-    // each CGU, right after partitioning. This way `try_mark_green` will always
-    // hit the cache instead of having to go through `force_from_dep_node`.
-    // This assertion makes sure, we actually keep applying the solution above.
-    debug_assert!(
-        dep_node.kind != DepKind::codegen_unit,
-        "calling force_from_dep_node() on dep_kinds::codegen_unit"
-    );
-
-    if let Some(key) = <Q::Cache as QueryCache>::Key::try_recover_key(tcx, &dep_node) {
-        force_query(query, tcx, key, dep_node);
-        true
-    } else {
-        false
-    }
 }
