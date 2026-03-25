@@ -1,0 +1,319 @@
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:61:17
+   |
+LL |     consume_int({ 7 });
+   |                 ^^ ^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused_braces-issue-154247.rs:6:9
+   |
+LL | #![warn(unused_braces)]
+   |         ^^^^^^^^^^^^^
+help: remove these braces
+   |
+LL -     consume_int({ 7 });
+LL +     consume_int(7);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:64:17
+   |
+LL |     consume_int({ x });
+   |                 ^^ ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ x });
+LL +     consume_int(x);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:67:17
+   |
+LL |     consume_int({ x as usize });
+   |                 ^^          ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ x as usize });
+LL +     consume_int(x as usize);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:70:17
+   |
+LL |     consume_int({ (x, 7) });
+   |                 ^^      ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ (x, 7) });
+LL +     consume_int((x, 7));
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:73:17
+   |
+LL |     consume_int({ [x, 7] });
+   |                 ^^      ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ [x, 7] });
+LL +     consume_int([x, 7]);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:76:17
+   |
+LL |     consume_int({ !false });
+   |                 ^^      ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ !false });
+LL +     consume_int(!false);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:79:17
+   |
+LL |     consume_int({ x + 1 });
+   |                 ^^     ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ x + 1 });
+LL +     consume_int(x + 1);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:82:17
+   |
+LL |     consume_int({ [x, 7][0] });
+   |                 ^^         ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ [x, 7][0] });
+LL +     consume_int([x, 7][0]);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:85:17
+   |
+LL |     consume_int({ 0..x });
+   |                 ^^    ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ 0..x });
+LL +     consume_int(0..x);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:88:17
+   |
+LL |     consume_int({ const { 7 } });
+   |                 ^^           ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ const { 7 } });
+LL +     consume_int(const { 7 });
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:91:17
+   |
+LL |     consume_int({ if x > 0 { x } else { 0 } });
+   |                 ^^                         ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ if x > 0 { x } else { 0 } });
+LL +     consume_int(if x > 0 { x } else { 0 });
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:94:17
+   |
+LL |     consume_int({ while false {} });
+   |                 ^^              ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ while false {} });
+LL +     consume_int(while false {});
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:97:17
+   |
+LL |     consume_int({ for _ in 0..0 {} });
+   |                 ^^                ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ for _ in 0..0 {} });
+LL +     consume_int(for _ in 0..0 {});
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:100:17
+   |
+LL |     consume_int({ loop { break x; } });
+   |                 ^^                 ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ loop { break x; } });
+LL +     consume_int(loop { break x; });
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:103:17
+   |
+LL |     consume_int({ match x { 0 => 1, _ => x } });
+   |                 ^^                          ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ match x { 0 => 1, _ => x } });
+LL +     consume_int(match x { 0 => 1, _ => x });
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:106:17
+   |
+LL |     consume_int({ { x } });
+   |                 ^^     ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ { x } });
+LL +     consume_int({ x });
+   |
+
+warning: unnecessary braces around block return value
+  --> $DIR/unused_braces-issue-154247.rs:106:19
+   |
+LL |     consume_int({ { x } });
+   |                   ^^ ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ { x } });
+LL +     consume_int({ x });
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:110:17
+   |
+LL |     consume_int({ || x });
+   |                 ^^    ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ || x });
+LL +     consume_int(|| x);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:115:17
+   |
+LL |     consume_int({ y += 1 });
+   |                 ^^      ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ y += 1 });
+LL +     consume_int(y += 1);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:120:17
+   |
+LL |     consume_int({ y = x });
+   |                 ^^     ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ y = x });
+LL +     consume_int(y = x);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:125:17
+   |
+LL |     consume_int({ Point { _x: x } });
+   |                 ^^               ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ Point { _x: x } });
+LL +     consume_int(Point { _x: x });
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:128:17
+   |
+LL |     consume_int({ [x; 2] });
+   |                 ^^      ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ [x; 2] });
+LL +     consume_int([x; 2]);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:131:17
+   |
+LL |     consume_int({ &x });
+   |                 ^^  ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ &x });
+LL +     consume_int(&x);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:135:21
+   |
+LL |         consume_int({ move(x) });
+   |                     ^^       ^^
+   |
+help: remove these braces
+   |
+LL -         consume_int({ move(x) });
+LL +         consume_int(move(x));
+   |
+
+warning: unnecessary braces around method argument
+  --> $DIR/unused_braces-issue-154247.rs:142:42
+   |
+LL |     Lockable(Mutex::new(vec![1])).update({ 7 });
+   |                                          ^^ ^^
+   |
+help: remove these braces
+   |
+LL -     Lockable(Mutex::new(vec![1])).update({ 7 });
+LL +     Lockable(Mutex::new(vec![1])).update(7);
+   |
+
+warning: unnecessary braces around method argument
+  --> $DIR/unused_braces-issue-154247.rs:145:42
+   |
+LL |     Lockable(Mutex::new(vec![1])).update({ x as usize });
+   |                                          ^^          ^^
+   |
+help: remove these braces
+   |
+LL -     Lockable(Mutex::new(vec![1])).update({ x as usize });
+LL +     Lockable(Mutex::new(vec![1])).update(x as usize);
+   |
+
+warning: 26 warnings emitted
+
