@@ -34,8 +34,11 @@ use crate::alloc::Layout;
 use crate::clone::TrivialClone;
 use crate::marker::{Destruct, DiscriminantKind};
 use crate::panic::const_assert;
-use crate::ptr::Alignment;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
+
+mod alignment;
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+pub use alignment::Alignment;
 
 mod manually_drop;
 #[stable(feature = "manually_drop", since = "1.20.0")]
