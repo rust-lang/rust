@@ -353,7 +353,7 @@ trait TraitChangeModeSelfOwnToMut: Sized {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitChangeModeSelfOwnToMut: Sized {
     #[rustc_clean(except="opt_hir_owner_nodes,typeck_root,optimized_mir", cfg="cfail2")]

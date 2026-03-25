@@ -76,7 +76,7 @@ impl ChangeMethodBodyTrait for Foo {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl ChangeMethodBodyTrait for Foo {
     #[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="cfail2")]
@@ -111,7 +111,7 @@ impl ChangeMethodBodyTraitInlined for Foo {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl ChangeMethodBodyTraitInlined for Foo {
     #[rustc_clean(except="opt_hir_owner_nodes,typeck_root,optimized_mir", cfg="cfail2")]
@@ -222,7 +222,7 @@ pub trait ChangeMethodSelfmutnessTrait {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl ChangeMethodSelfmutnessTrait for Foo {
     #[rustc_clean(except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir", cfg="cfail2")]
@@ -404,7 +404,7 @@ pub trait AddArgumentTrait {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl AddArgumentTrait for Foo {
     #[rustc_clean(except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir", cfg="cfail2")]
@@ -438,7 +438,7 @@ pub trait ChangeArgumentTypeTrait {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl ChangeArgumentTypeTrait for Foo {
     #[rustc_clean(except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir", cfg="cfail2")]
