@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `A: const Deref` is not satisfied
-  --> $DIR/issue-25901.rs:4:24
+  --> $DIR/static-ref-deref-non-const-trait.rs:6:24
    |
 LL | static S: &'static B = &A;
    |                        ^^

@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/46604
+//!
 static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];   //~ ERROR mutable borrows of temporaries
 fn write<T: AsRef<[u8]>>(buffer: T) { }
 
