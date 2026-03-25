@@ -256,8 +256,15 @@ impl<'ra> NameResolution<'ra> {
         NameResolution { single_imports: FxIndexSet::default(), orig_ident_span, .. }
     }
 
-    /// Returns the binding for the name if it is known or None if it not known.
-    pub(crate) fn binding(&self) -> Option<Decl<'ra>> {
+    /// Returns the best declaration if it is not going to change, and `None` if the best
+    /// declaration may still change to something else.
+    /// FIXME: this function considers `single_imports`, but not `unexpanded_invocations`, so
+    /// the returned declaration may actually change after expanding macros in the same module,
+    /// because of this fact we have glob overwriting (`select_glob_decl`). Consider using
+    /// `unexpanded_invocations` here and avoiding glob overwriting entirely, if it doesn't cause
+    /// code breakage in practice.
+    /// FIXME: relationship between this function and similar `DeclData::determined` is unclear.
+    pub(crate) fn determined_decl(&self) -> Option<Decl<'ra>> {
         self.best_decl().and_then(|binding| {
             if !binding.is_glob_import() || self.single_imports.is_empty() {
                 Some(binding)
@@ -509,11 +516,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let resolution = &mut *self
                 .resolution_or_default(module, key, orig_ident_span)
                 .borrow_mut_unchecked();
-            let old_decl = resolution.binding();
+            let old_decl = resolution.determined_decl();
 
             let t = f(self, resolution);
 
-            if let Some(binding) = resolution.binding()
+            if let Some(binding) = resolution.determined_decl()
                 && old_decl != Some(binding)
             {
                 (binding, t, warn_ambiguity || old_decl.is_some())
@@ -1601,7 +1608,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .iter()
             .filter_map(|(key, resolution)| {
                 let resolution = resolution.borrow();
-                resolution.binding().map(|binding| (*key, binding, resolution.orig_ident_span))
+                resolution.determined_decl().map(|decl| (*key, decl, resolution.orig_ident_span))
             })
             .collect::<Vec<_>>();
         for (mut key, binding, orig_ident_span) in bindings {
@@ -1617,7 +1624,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let import_decl = self.new_import_decl(binding, import);
                 let warn_ambiguity = self
                     .resolution(import.parent_scope.module, key)
-                    .and_then(|r| r.binding())
+                    .and_then(|r| r.determined_decl())
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
                 let _ = self.try_plant_decl_into_local_module(
                     key.ident,
