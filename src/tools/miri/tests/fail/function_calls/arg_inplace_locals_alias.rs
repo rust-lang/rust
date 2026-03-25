@@ -21,8 +21,6 @@ fn main() {
             // This specifically uses a type with scalar representation to tempt Miri to use the
             // efficient way of storing local variables (outside adressable memory).
             Call(_unit = callee(Move(non_copy), Move(non_copy)), ReturnTo(after_call), UnwindContinue())
-            //~[stack]^ ERROR: not granting access
-            //~[tree]| ERROR: /read access .* forbidden/
         }
         after_call = {
             Return()
@@ -32,6 +30,8 @@ fn main() {
 
 #[expect(unused_variables, unused_assignments)]
 fn callee(x: S, mut y: S) {
+    //~[stack]^ ERROR: not granting access
+    //~[tree]| ERROR: /read access .* forbidden/
     // With the setup above, if `x` and `y` are both moved,
     // then writing to `y` will change the value stored in `x`!
     y.0 = 0;
