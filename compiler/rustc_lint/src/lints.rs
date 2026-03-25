@@ -3139,6 +3139,12 @@ pub(crate) struct RefOfMutStatic<'a> {
         "mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives"
     )]
     pub mut_note: bool,
+    #[help(
+        "use a type that relies on \"interior mutability\" instead; to read more on this, visit <https://doc.rust-lang.org/reference/interior-mutability.html>"
+    )]
+    pub interior_mutability_help: bool,
+    #[subdiagnostic]
+    pub interior_mutability_sugg: Option<StaticMutRefsInteriorMutabilitySugg>,
 }
 
 #[derive(Subdiagnostic)]
@@ -3161,6 +3167,18 @@ pub(crate) enum MutRefSugg {
         #[suggestion_part(code = "&raw mut ")]
         span: Span,
     },
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "this type already provides \"interior mutability\", so its binding doesn't need to be declared as mutable",
+    style = "verbose",
+    applicability = "maybe-incorrect",
+    code = ""
+)]
+pub(crate) struct StaticMutRefsInteriorMutabilitySugg {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
