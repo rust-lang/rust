@@ -103,11 +103,11 @@ pub(crate) fn wrap_paren(expr: ast::Expr, make: &SyntaxFactory, prec: ExprPreced
 }
 
 pub(crate) fn wrap_paren_in_call(expr: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
-    if needs_parens_in_call(&expr) { make.expr_paren(expr).into() } else { expr }
+    if needs_parens_in_call(make, &expr) { make.expr_paren(expr).into() } else { expr }
 }
 
-fn needs_parens_in_call(param: &ast::Expr) -> bool {
-    let call = make::expr_call(make::ext::expr_unit(), make::arg_list(Vec::new()));
+fn needs_parens_in_call(make: &SyntaxFactory, param: &ast::Expr) -> bool {
+    let call = make.expr_call(make.expr_unit(), make.arg_list(Vec::new()));
     let callable = call.expr().expect("invalid make call");
     param.needs_parens_in_place_of(call.syntax(), callable.syntax())
 }
