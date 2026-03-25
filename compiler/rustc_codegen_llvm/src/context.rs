@@ -66,7 +66,7 @@ impl<'ll, 'tcx> Deref for FullCx<'ll, 'tcx> {
     }
 }
 
-pub(crate) struct GenericCx<'ll, T: Borrow<SCx<'ll>>>(T, PhantomData<SCx<'ll>>);
+pub(crate) struct GenericCx<'ll, T: Borrow<SCx<'ll>>>(pub T, pub PhantomData<SCx<'ll>>);
 
 impl<'ll, T: Borrow<SCx<'ll>>> Deref for GenericCx<'ll, T> {
     type Target = T;

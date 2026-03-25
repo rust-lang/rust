@@ -1,0 +1,67 @@
+Triton
+
+Getting Started
+
+-   Installation
+-   Tutorials
+
+Python API
+
+-   triton
+-   triton.language
+    -   Programming Model
+    -   Creation Ops
+    -   Shape Manipulation Ops
+    -   Linear Algebra Ops
+    -   Memory/Pointer Ops
+    -   Indexing Ops
+    -   Math Ops
+    -   Reduction Ops
+    -   Scan/Sort Ops
+    -   Atomic Ops
+    -   Random Number Generation
+    -   Iterators
+    -   Inline Assembly
+    -   Compiler Hint Ops
+        -   triton.language.assume
+            -   `assume()`
+        -   triton.language.debug_barrier
+        -   triton.language.max_constancy
+        -   triton.language.max_contiguous
+        -   triton.language.multiple_of
+    -   Debug Ops
+-   triton.testing
+-   Triton Semantics
+
+Triton MLIR Dialects
+
+-   Triton MLIR Dialects and Ops
+
+Programming Guide
+
+-   Introduction
+-   Related Work
+-   Debugging Triton
+
+Triton
+
+-   
+-   triton.language
+-   triton.language.assume
+-   View page source
+
+------------------------------------------------------------------------
+
+# triton.language.assume¶
+
+triton.language.assume(*cond*, *\_semantic=None*)¶
+
+:   Allow compiler to assume the `cond` is True.
+
+Previous Next
+
+------------------------------------------------------------------------
+
+© Copyright 2020, Philippe Tillet.
+
+Built with Sphinx using a theme provided by Read the Docs.

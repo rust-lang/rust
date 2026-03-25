@@ -38,6 +38,9 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
+rustc_mlir = { path = "../rustc_mlir" }
+melior = { path = "../../src/melior/melior" }
+mlir-sys = { path = "../../src/mlir-sys" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 # tidy-alphabetical-end
@@ -47,5 +50,11 @@ tracing = "0.1"
 check_only = ["rustc_llvm/check_only"]
 llvm_enzyme = []
 llvm_offload = []
+mlir = []
 # tidy-alphabetical-end
+
+[dev-dependencies]
+rustc_driver = { path = "../rustc_driver" }
+rustc_interface = { path = "../rustc_interface" }
+tracing-subscriber = "0.3.22"
 

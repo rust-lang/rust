@@ -1,0 +1,33 @@
+[package]
+name = "rustc_mlir"
+version = "0.0.0"
+edition = "2021"
+build = "build.rs"
+
+[lib]
+doctest = false
+
+[features]
+default = ["triton"]
+triton = []
+
+[dependencies]
+melior = { path = "../../src/melior/melior", features = ["ods-dialects"] }
+melior-macro = { path = "../../src/melior/macro" }
+mlir-sys = { path = "../../src/mlir-sys" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_ast = { path = "../rustc_ast" }
+
+[dev-dependencies]
+rstest = "0.26.1"
+
+[build-dependencies]
+cc = "1.2.16"
+cmake = "0.1.57"
+cargo_metadata = "0.23.1"
+bindgen = "0.72.1"
+rustc_helper = { path = "../rustc_helper" }
+rustc_llvm = { path = "../rustc_llvm" }

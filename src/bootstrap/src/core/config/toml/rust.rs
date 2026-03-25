@@ -404,7 +404,7 @@ pub fn check_incompatible_options_for_ci_rustc(
     Ok(())
 }
 
-pub(crate) const BUILTIN_CODEGEN_BACKENDS: &[&str] = &["llvm", "cranelift", "gcc"];
+pub(crate) const BUILTIN_CODEGEN_BACKENDS: &[&str] = &["cranelift", "gcc", "llvm", "mlir"];
 
 pub(crate) fn parse_codegen_backends(
     backends: Vec<String>,
@@ -428,9 +428,10 @@ pub(crate) fn parse_codegen_backends(
             );
         }
         let backend = match backend.as_str() {
-            "llvm" => CodegenBackendKind::Llvm,
             "cranelift" => CodegenBackendKind::Cranelift,
             "gcc" => CodegenBackendKind::Gcc,
+            "llvm" => CodegenBackendKind::Llvm,
+            "mlir" => CodegenBackendKind::Mlir,
             backend => CodegenBackendKind::Custom(backend.to_string()),
         };
         found_backends.push(backend);

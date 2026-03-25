@@ -1,0 +1,4 @@
+# llvm config
+build_type = "Release"
+enabled_projects = "lld;mlir"
+enabled_targets = "X86;AMDGPU;NVPTX"

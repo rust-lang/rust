@@ -1,0 +1,7 @@
+# triton config
+build_type = "Release"
+enable_projects = "mlir"
+backends = "amd;nvidia;spirv"
+python_module = "ON"
+proton = "OFF"
+

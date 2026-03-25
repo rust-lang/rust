@@ -129,6 +129,7 @@ pub enum CodegenBackendKind {
     Llvm,
     Cranelift,
     Gcc,
+    Mlir,
     Custom(String),
 }
 
@@ -140,6 +141,7 @@ impl CodegenBackendKind {
             CodegenBackendKind::Llvm => "llvm",
             CodegenBackendKind::Cranelift => "cranelift",
             CodegenBackendKind::Gcc => "gcc",
+            CodegenBackendKind::Mlir => "mlir",
             CodegenBackendKind::Custom(name) => name,
         }
     }
@@ -160,6 +162,10 @@ impl CodegenBackendKind {
     pub fn is_gcc(&self) -> bool {
         matches!(self, Self::Gcc)
     }
+
+    pub fn is_mlir(&self) -> bool {
+        matches!(self, Self::Mlir)
+    }
 }
 
 impl std::str::FromStr for CodegenBackendKind {
@@ -171,6 +177,7 @@ impl std::str::FromStr for CodegenBackendKind {
             "gcc" => Ok(Self::Gcc),
             "llvm" => Ok(Self::Llvm),
             "cranelift" => Ok(Self::Cranelift),
+            "mlir" => Ok(Self::Mlir),
             _ => Ok(Self::Custom(s.to_string())),
         }
     }
@@ -869,6 +876,15 @@ impl Build {
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
+        }
+        if self.config.enabled_codegen_backends(target).contains(&CodegenBackendKind::Mlir)
+            && check("mlir")
+        {
+            features.push("mlir");
+            // MLIR backend depends on LLVM, so ensure llvm is enabled too.
+            if check("llvm") {
+                features.push("llvm");
+            }
         }
         if self.config.llvm_enzyme {
             features.push("llvm_enzyme");

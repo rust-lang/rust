@@ -342,6 +342,8 @@ pub fn get_codegen_backend(
             "dummy" => || Box::new(DummyCodegenBackend { target_config_override: None }),
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
+            #[cfg(feature = "mlir")]
+            "mlir" => rustc_codegen_llvm::mlir::MlirCodegenBackend::new,
             backend_name => get_codegen_sysroot(early_dcx, sysroot, backend_name),
         }
     });

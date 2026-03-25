@@ -2507,7 +2507,9 @@ impl Step for Assemble {
                         // library sysroots, so that they are available for cg_gcc.
                         dylib_set.install_to(builder, target_compiler);
                     }
-                    CodegenBackendKind::Llvm | CodegenBackendKind::Custom(_) => continue,
+                    CodegenBackendKind::Llvm
+                    | CodegenBackendKind::Mlir
+                    | CodegenBackendKind::Custom(_) => continue,
                 }
             }
         }

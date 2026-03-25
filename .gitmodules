@@ -24,9 +24,19 @@
 	shallow = true
 [submodule "src/llvm-project"]
 	path = src/llvm-project
-	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/21.1-2025-08-01
-	shallow = true
+	url = git@github.com:teenygrad/llvm-project.git
+[submodule "src/triton"]
+	path = src/triton
+	url = git@github.com:teenygrad/triton.git
+[submodule "src/mlir-sys"]
+	path = src/mlir-sys
+	url = git@github.com:teenygrad/mlir-sys.git
+[submodule "src/melior"]
+	path = src/melior
+	url = git@github.com:teenygrad/melior.git
+[submodule "src/tblgen-rs"]
+	path = src/tblgen-rs
+	url = git@github.com:teenygrad/tblgen-rs.git
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git

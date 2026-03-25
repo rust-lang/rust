@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
@@ -104,6 +105,75 @@ fn output(cmd: &mut Command) -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
+/// Parse a simple TOML file with only `key = "value"` lines (no sections, no arrays).
+fn parse_simple_toml(path: &Path) -> HashMap<String, String> {
+    let content = std::fs::read_to_string(path)
+        .unwrap_or_else(|e| panic!("failed to read {}: {}", path.display(), e));
+    let mut map = HashMap::new();
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with('#') || line.is_empty() {
+            continue;
+        }
+        if let Some((key, val)) = line.split_once('=') {
+            let key = key.trim().to_string();
+            let val = val.trim().trim_matches('"').to_string();
+            map.insert(key, val);
+        }
+    }
+    map
+}
+
+/// Build Triton using cmake, driven by triton.toml config and the LLVM install
+/// pointed to by `llvm_config`. Returns the Triton build output directory.
+fn build_triton(llvm_config: &Path, out_dir: &Path) -> PathBuf {
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    // compiler/rustc_llvm/ -> workspace root (two levels up)
+    let workspace_root = manifest_dir.parent().unwrap().parent().unwrap();
+    let triton_src = workspace_root.join("src/triton");
+
+    println!("cargo:rerun-if-changed=triton.toml");
+    let cfg = parse_simple_toml(&manifest_dir.join("triton.toml"));
+    let build_type = cfg.get("build_type").map(|s| s.as_str()).unwrap_or("Release");
+    let backends = cfg.get("backends").map(|s| s.as_str()).unwrap_or("amd;nvidia");
+    let python_module = cfg.get("python_module").map(|s| s.as_str()).unwrap_or("OFF");
+    let proton = cfg.get("proton").map(|s| s.as_str()).unwrap_or("OFF");
+
+    // Derive LLVM paths from llvm-config
+    let llvm_prefix =
+        PathBuf::from(output(Command::new(llvm_config).arg("--prefix")).trim().to_string());
+    let llvm_include_dir =
+        PathBuf::from(output(Command::new(llvm_config).arg("--includedir")).trim().to_string());
+    let llvm_lib_dir =
+        PathBuf::from(output(Command::new(llvm_config).arg("--libdir")).trim().to_string());
+    let mlir_cmake_dir = llvm_prefix.join("lib/cmake/mlir");
+    let lld_cmake_dir = llvm_prefix.join("lib/cmake/lld");
+
+    let triton_build_out = out_dir.join("triton-build");
+    std::fs::create_dir_all(&triton_build_out)
+        .unwrap_or_else(|e| panic!("failed to create {}: {}", triton_build_out.display(), e));
+
+    cmake::Config::new(&triton_src)
+        .generator("Ninja")
+        .env("LLVM_BUILD_DIR", &llvm_prefix)
+        .env("LLVM_INCLUDE_DIRS", &llvm_include_dir)
+        .env("LLVM_LIBRARY_DIR", &llvm_lib_dir)
+        .define("MLIR_DIR", &mlir_cmake_dir)
+        .define("LLD_DIR", &lld_cmake_dir)
+        .define("LLVM_SYSPATH", &llvm_prefix)
+        .define("TRITON_BUILD_PYTHON_MODULE", python_module)
+        .define("TRITON_BUILD_PROTON", proton)
+        .define("TRITON_CODEGEN_BACKENDS", backends)
+        .define("TRITON_WHEEL_DIR", "/tmp")
+        .define("CMAKE_BUILD_TYPE", build_type)
+        .define("CMAKE_INCLUDE_PATH", triton_src.join("third_party"))
+        .out_dir(&triton_build_out)
+        .build();
+
+    // The cmake crate places build artifacts in <out_dir>/build/
+    triton_build_out.join("build")
+}
+
 fn main() {
     if cfg!(feature = "check_only") {
         return;
@@ -124,6 +194,14 @@ fn main() {
         PathBuf::from(tracked_env_var_os("LLVM_CONFIG").expect("LLVM_CONFIG was not set"));
 
     println!("cargo:rerun-if-changed={}", llvm_config.display());
+
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let workspace_root = manifest_dir.parent().unwrap().parent().unwrap();
+    let triton_src = workspace_root.join("src/triton");
+
+    // Build Triton (requires LLVM with MLIR and LLD built via --enable-projects=lld;mlir)
+    let triton_build_dir = build_triton(&llvm_config, &out_dir);
 
     // Test whether we're cross-compiling LLVM. This is a pretty rare case
     // currently where we're producing an LLVM for a different platform than
@@ -226,15 +304,35 @@ fn main() {
         cfg.define("NDEBUG", None);
     }
 
+    // Add Triton include directories for the MLIR/Triton wrapper files
+    cfg.include(triton_src.join("include"))
+        .include(triton_src.join("third_party"))
+        .include(triton_build_dir.join("include"))
+        .include(triton_build_dir.join("third_party"));
+
     rerun_if_changed_anything_in_dir(Path::new("llvm-wrapper"));
     cfg.file("llvm-wrapper/PassWrapper.cpp")
         .file("llvm-wrapper/RustWrapper.cpp")
         .file("llvm-wrapper/CoverageMappingWrapper.cpp")
         .file("llvm-wrapper/SymbolWrapper.cpp")
         .file("llvm-wrapper/Linker.cpp")
+        .file("llvm-wrapper/MLIRWrapper.cpp")
+        .file("llvm-wrapper/triton/TritonWrapper.cpp")
         .cpp(true)
         .cpp_link_stdlib(None) // we handle this below
         .compile("llvm-wrapper");
+
+    // Link Triton (built above via cmake)
+    println!("cargo:rustc-link-search=native={}", triton_build_dir.display());
+    println!("cargo:rustc-link-lib=static=triton");
+
+    // Link MLIR libraries (built as part of LLVM via --enable-projects=mlir)
+    let llvm_lib_dir =
+        PathBuf::from(output(Command::new(&llvm_config).arg("--libdir")).trim().to_string());
+    println!("cargo:rustc-link-search=native={}", llvm_lib_dir.display());
+    for lib in MLIR_LIBS {
+        println!("cargo:rustc-link-lib=static={lib}");
+    }
 
     let (llvm_kind, llvm_link_arg) = detect_llvm_link();
 
@@ -441,3 +539,96 @@ fn main() {
         println!("cargo:rustc-link-lib=static:-bundle=pthread");
     }
 }
+
+/// MLIR libraries required by the MLIR/Triton wrapper.
+/// These are built as part of LLVM when configured with -DLLVM_ENABLE_PROJECTS=mlir.
+const MLIR_LIBS: &[&str] = &[
+    "MLIRNVVMToLLVM",
+    "MLIRCAPIIR",
+    "MLIRCallInterfaces",
+    "MLIRIndexingMapOpInterface",
+    "MLIRControlFlowInterfaces",
+    "MLIRFunctionInterfaces",
+    "MLIRInferTypeOpInterface",
+    "MLIRArithUtils",
+    "MLIRCastInterfaces",
+    "MLIRInferIntRangeInterface",
+    "MLIRShapedOpInterfaces",
+    "MLIRLoopLikeInterface",
+    "MLIRSCFDialect",
+    "MLIRInferIntRangeCommon",
+    "MLIRArithDialect",
+    "MLIRMathDialect",
+    "MLIRSCFTransforms",
+    "MLIRControlFlowDialect",
+    "MLIRUBDialect",
+    "MLIRDialectUtils",
+    "MLIRIR",
+    "MLIRSupport",
+    "MLIRPass",
+    "MLIRTensorDialect",
+    "MLIRTensorTransforms",
+    "MLIRViewLikeInterface",
+    "MLIRSideEffectInterfaces",
+    "MLIRParallelCombiningOpInterface",
+    "MLIRDestinationStyleOpInterface",
+    "MLIRComplexDialect",
+    "MLIRAffineDialect",
+    "MLIRMemRefDialect",
+    "MLIRTargetLLVMIRImport",
+    "MLIRLLVMDialect",
+    "MLIRDataLayoutInterfaces",
+    "MLIRDLTIDialect",
+    "MLIRMemorySlotInterfaces",
+    "MLIRTransforms",
+    "MLIRSCFToControlFlow",
+    "MLIRControlFlowToLLVM",
+    "MLIRIndexToLLVM",
+    "MLIRArithToLLVM",
+    "MLIRArithTransforms",
+    "MLIRAnalysis",
+    "MLIRTransformUtils",
+    "MLIRMathToLLVM",
+    "MLIRGPUDialect",
+    "MLIRGPUToNVVMTransforms",
+    "MLIRLLVMCommonConversion",
+    "MLIRNVVMDialect",
+    "MLIRIndexDialect",
+    "MLIRFuncToLLVM",
+    "MLIRLLVMIRTransforms",
+    "MLIRFuncDialect",
+    "MLIRTransformDialect",
+    "MLIRRewrite",
+    "MLIRVectorDialect",
+    "MLIRVectorTransforms",
+    "MLIRArithAttrToLLVMConversion",
+    "MLIRAffineTransforms",
+    "MLIRSubsetOpInterface",
+    "MLIRGPUToGPURuntimeTransforms",
+    "MLIRConvertToLLVMPass",
+    "MLIRAffineUtils",
+    "MLIRSCFTransformOps",
+    "MLIRSCFUtils",
+    "MLIRReconcileUnrealizedCasts",
+    "MLIRUBToLLVM",
+    "MLIRGPUTransformOps",
+    "MLIRGPUTransforms",
+    "MLIRPDLDialect",
+    "MLIRPDLToPDLInterp",
+    "MLIRRewritePDL",
+    "MLIRLinalgDialect",
+    "MLIRLinalgTransforms",
+    "MLIRVectorInterfaces",
+    "MLIRValueBoundsOpInterface",
+    "MLIRMaskingOpInterface",
+    "MLIRMaskableOpInterface",
+    "MLIRConvertToLLVMInterface",
+    "MLIRGPUUtils",
+    "MLIRPDLInterpDialect",
+    "MLIRPresburger",
+    "MLIRBuiltinToLLVMIRTranslation",
+    "MLIRGPUToLLVMIRTranslation",
+    "MLIRLLVMToLLVMIRTranslation",
+    "MLIRNVVMToLLVMIRTranslation",
+    "MLIRTargetLLVMIRExport",
+];

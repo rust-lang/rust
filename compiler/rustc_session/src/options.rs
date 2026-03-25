@@ -429,6 +429,8 @@ top_level_options!(
         cg: CodegenOptions [SUBSTRUCT CodegenOptionsTargetModifiers CodegenOptions],
         externs: Externs [UNTRACKED],
         crate_name: Option<String> [TRACKED],
+        /// The frontend to use (e.g. triton)
+        frontend: Option<Frontend> [TRACKED],
         /// Indicates how the compiler should treat unstable features.
         unstable_features: UnstableFeatures [TRACKED],
 

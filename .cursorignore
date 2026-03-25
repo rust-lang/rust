@@ -1,0 +1,59 @@
+# Build artifacts and generated files
+/target/
+/build/
+/obj/
+/dist/
+/inst/
+/dl/
+/vendor/
+/src/
+
+# LLVM project (very large, mostly C++ - exclude unless specifically needed)
+# Uncomment if you need to search LLVM code:
+/src/llvm-project/
+
+# Triton third-party dependencies (large, less relevant)
+/src/triton/third_party/
+
+# Test artifacts and benchmarks
+/src/tools/rustc-perf/collector/compile-benchmarks/
+*.pyc
+__pycache__/
+*.py[cod]
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*~
+.#*
+\#*
+
+# Cache directories
+.cache/
+.citool-cache/
+.bv/
+
+# Generated tags
+tags
+tags.*
+TAGS
+TAGS.*
+
+# Node modules (if any)
+node_modules/
+
+# Rust build artifacts (already in .gitignore but explicit here)
+**/target/
+**/Cargo.lock
+
+# Large generated documentation
+/src/doc/
+
+# Beads local files
+.bv/
+todo.md
+context.md

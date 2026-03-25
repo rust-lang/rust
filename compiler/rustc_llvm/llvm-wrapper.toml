@@ -1,0 +1,2 @@
+# llvm-wrapper config
+build_type = "Release"

@@ -19,7 +19,7 @@ use crate::common::AsCCharPtr;
 mod conversions;
 pub(crate) mod diagnostic;
 pub(crate) mod enzyme_ffi;
-mod ffi;
+pub(crate) mod ffi;
 mod metadata_kind;
 
 pub(crate) use self::enzyme_ffi::*;

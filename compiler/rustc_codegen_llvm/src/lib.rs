@@ -66,6 +66,7 @@ mod intrinsic;
 mod llvm;
 mod llvm_util;
 mod macros;
+pub mod mlir;
 mod mono_item;
 mod type_;
 mod type_of;
