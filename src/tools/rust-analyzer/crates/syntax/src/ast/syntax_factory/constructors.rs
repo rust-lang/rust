@@ -1496,7 +1496,20 @@ impl SyntaxFactory {
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
 
-            builder.map_node(name.syntax().clone(), ast.name_ref().unwrap().syntax().clone());
+            if let Some(ast_name_ref) = ast.name_ref() {
+                // NameRef is a direct child
+                builder.map_node(name.syntax().clone(), ast_name_ref.syntax().clone());
+            } else {
+                // NameRef is nested inside PathExpr > Path > PathSegment.
+                // map_node requires the output to be a direct child of the builder's parent, so
+                // we need a separate builder scoped to PathSegment.
+                let ast::Expr::PathExpr(path_expr) = ast.expr().unwrap() else { unreachable!() };
+                let path_segment = path_expr.path().unwrap().segment().unwrap();
+                let inner_name_ref = path_segment.name_ref().unwrap();
+                let mut inner_builder = SyntaxMappingBuilder::new(path_segment.syntax().clone());
+                inner_builder.map_node(name.syntax().clone(), inner_name_ref.syntax().clone());
+                inner_builder.finish(&mut mapping);
+            }
             if let Some(expr) = expr {
                 builder.map_node(expr.syntax().clone(), ast.expr().unwrap().syntax().clone());
             }
