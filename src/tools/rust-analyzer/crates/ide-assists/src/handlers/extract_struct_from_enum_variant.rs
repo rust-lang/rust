@@ -16,9 +16,7 @@ use syntax::{
     SyntaxKind::*,
     SyntaxNode, T,
     ast::{
-        self, AstNode, HasAttrs, HasGenericParams, HasName, HasVisibility,
-        edit::{AstNodeEdit, IndentLevel},
-        make,
+        self, AstNode, HasAttrs, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit, make,
     },
     match_ast, ted,
 };
@@ -290,7 +288,6 @@ fn create_struct_def(
             field_list.clone().into()
         }
     };
-    let field_list = field_list.indent(IndentLevel::zero());
 
     let strukt = make::struct_(enum_vis, name, generics, field_list).clone_for_update();
 
