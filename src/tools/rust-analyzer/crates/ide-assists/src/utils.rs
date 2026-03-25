@@ -630,29 +630,6 @@ pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
     generate_impl_text_inner(adt, None, true, code)
 }
 
-/// Generates the surrounding `impl <trait> for Type { <code> }` including type
-/// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
-///
-/// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
-// FIXME: migrate remaining uses to `generate_trait_impl`
-#[allow(dead_code)]
-pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &str) -> String {
-    generate_impl_text_inner(adt, Some(trait_text), true, code)
-}
-
-/// Generates the surrounding `impl <trait> for Type { <code> }` including type
-/// and lifetime parameters, with `impl`'s generic parameters' bounds kept as-is.
-///
-/// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
-// FIXME: migrate remaining uses to `generate_trait_impl_intransitive`
-pub(crate) fn generate_trait_impl_text_intransitive(
-    adt: &ast::Adt,
-    trait_text: &str,
-    code: &str,
-) -> String {
-    generate_impl_text_inner(adt, Some(trait_text), false, code)
-}
-
 fn generate_impl_text_inner(
     adt: &ast::Adt,
     trait_text: Option<&str>,
@@ -771,6 +748,15 @@ pub(crate) fn generate_trait_impl_intransitive(
     trait_: ast::Type,
 ) -> ast::Impl {
     generate_impl_inner_with_factory(make, false, adt, Some(trait_), false, None)
+}
+
+pub(crate) fn generate_trait_impl_intransitive_with_item(
+    make: &SyntaxFactory,
+    adt: &ast::Adt,
+    trait_: ast::Type,
+    body: ast::AssocItemList,
+) -> ast::Impl {
+    generate_impl_inner_with_factory(make, false, adt, Some(trait_), false, Some(body))
 }
 
 fn generate_impl_inner(
