@@ -324,7 +324,7 @@ pub fn add_trait_assoc_items_to_impl_with_factory(
                     ExprFillDefaultMode::Underscore => make.expr_underscore().into(),
                 };
                 let new_body = make.block_expr(None::<ast::Stmt>, Some(fill_expr));
-                let new_body = AstNodeEdit::indent(&new_body, IndentLevel::single());
+                let new_body = AstNodeEdit::indent(&new_body, IndentLevel::zero());
                 let mut fn_editor = SyntaxEditor::new(fn_.syntax().clone());
                 fn_.replace_or_insert_body(&mut fn_editor, new_body);
                 let new_fn_ = fn_editor.finish().new_root().clone();
