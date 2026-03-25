@@ -739,6 +739,10 @@ pub(crate) fn generate_impl_with_item(
     generate_impl_inner(false, adt, None, true, body)
 }
 
+pub(crate) fn generate_impl_with_factory(make: &SyntaxFactory, adt: &ast::Adt) -> ast::Impl {
+    generate_impl_inner_with_factory(make, false, adt, None, true, None)
+}
+
 pub(crate) fn generate_impl(adt: &ast::Adt) -> ast::Impl {
     generate_impl_inner(false, adt, None, true, None)
 }
@@ -760,8 +764,12 @@ pub(crate) fn generate_trait_impl(
 /// and lifetime parameters, with `impl`'s generic parameters' bounds kept as-is.
 ///
 /// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
-pub(crate) fn generate_trait_impl_intransitive(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
-    generate_impl_inner(false, adt, Some(trait_), false, None)
+pub(crate) fn generate_trait_impl_intransitive(
+    make: &SyntaxFactory,
+    adt: &ast::Adt,
+    trait_: ast::Type,
+) -> ast::Impl {
+    generate_impl_inner_with_factory(make, false, adt, Some(trait_), false, None)
 }
 
 fn generate_impl_inner(
