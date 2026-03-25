@@ -53,11 +53,9 @@ use rustc_index::{Idx, IndexVec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
-#[cfg_attr(feature = "nightly", allow(rustc::non_glob_import_of_type_ir_inherent))]
-use crate::inherent::Ty as _;
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
-use crate::{self as ty, BoundVarIndexKind, Interner, Ty, TypeFlags};
+use crate::{self as ty, BoundVarIndexKind, Interner, TypeFlags};
 
 /// This trait is implemented for every type that can be folded,
 /// providing the skeleton of the traversal.
@@ -137,7 +135,7 @@ pub trait TypeFolder<I: Interner>: Sized {
         t.super_fold_with(self)
     }
 
-    fn fold_ty(&mut self, t: Ty<I>) -> Ty<I> {
+    fn fold_ty(&mut self, t: ty::Ty<I>) -> ty::Ty<I> {
         t.super_fold_with(self)
     }
 
@@ -179,7 +177,7 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
         t.try_super_fold_with(self)
     }
 
-    fn try_fold_ty(&mut self, t: Ty<I>) -> Result<Ty<I>, Self::Error> {
+    fn try_fold_ty(&mut self, t: ty::Ty<I>) -> Result<ty::Ty<I>, Self::Error> {
         t.try_super_fold_with(self)
     }
 
@@ -410,13 +408,13 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
         }
     }
 
-    fn fold_ty(&mut self, ty: Ty<I>) -> Ty<I> {
+    fn fold_ty(&mut self, ty: ty::Ty<I>) -> ty::Ty<I> {
         match ty.kind() {
             ty::Bound(BoundVarIndexKind::Bound(debruijn), bound_ty)
                 if debruijn >= self.current_index =>
             {
                 let debruijn = debruijn.shifted_in(self.amount);
-                I::Ty::new_bound(self.cx, debruijn, bound_ty)
+                Ty::new_bound(self.cx, debruijn, bound_ty)
             }
 
             _ if ty.has_vars_bound_at_or_above(self.current_index) => ty.super_fold_with(self),
@@ -540,7 +538,7 @@ where
         }
     }
 
-    fn fold_ty(&mut self, t: Ty<I>) -> Ty<I> {
+    fn fold_ty(&mut self, t: ty::Ty<I>) -> ty::Ty<I> {
         if t.has_type_flags(
             TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_RE_BOUND | TypeFlags::HAS_RE_ERASED,
         ) {

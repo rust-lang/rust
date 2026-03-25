@@ -6,15 +6,13 @@ use std::cell::Cell;
 use std::ops::ControlFlow;
 
 use derive_where::derive_where;
-#[cfg_attr(feature = "nightly", allow(rustc::non_glob_import_of_type_ir_inherent))]
-use rustc_type_ir::inherent::Ty as _;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::Certainty::Maybe;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{
-    self as ty, Interner, Ty, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    self as ty, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
     elaborate,
 };
@@ -48,11 +46,11 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn self_ty(self) -> Ty<I>;
+    fn self_ty(self) -> ty::Ty<I>;
 
     fn trait_ref(self, cx: I) -> ty::TraitRef<I>;
 
-    fn with_replaced_self_ty(self, cx: I, self_ty: Ty<I>) -> Self;
+    fn with_replaced_self_ty(self, cx: I, self_ty: ty::Ty<I>) -> Self;
 
     fn trait_def_id(self, cx: I) -> I::TraitId;
 
@@ -685,7 +683,7 @@ where
     // hitting another overflow error something. Add a depth parameter needed later.
     fn assemble_alias_bound_candidates_recur<G: GoalKind<D>>(
         &mut self,
-        self_ty: Ty<I>,
+        self_ty: ty::Ty<I>,
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
         consider_self_bounds: AliasBoundKind,
@@ -1019,13 +1017,13 @@ where
             struct ReplaceOpaque<I: Interner> {
                 cx: I,
                 alias_ty: ty::AliasTy<I>,
-                self_ty: Ty<I>,
+                self_ty: ty::Ty<I>,
             }
             impl<I: Interner> TypeFolder<I> for ReplaceOpaque<I> {
                 fn cx(&self) -> I {
                     self.cx
                 }
-                fn fold_ty(&mut self, ty: Ty<I>) -> Ty<I> {
+                fn fold_ty(&mut self, ty: ty::Ty<I>) -> ty::Ty<I> {
                     if let ty::Alias(ty::Opaque, alias_ty) = ty.kind() {
                         if alias_ty == self.alias_ty {
                             return self.self_ty;
@@ -1282,7 +1280,7 @@ where
         ControlFlow::Continue(())
     }
 
-    fn visit_ty(&mut self, ty: Ty<I>) -> Self::Result {
+    fn visit_ty(&mut self, ty: ty::Ty<I>) -> Self::Result {
         let ty = self.ecx.replace_bound_vars(ty, &mut self.universes);
         let Ok(ty) = self.ecx.structurally_normalize_ty(self.param_env, ty) else {
             return ControlFlow::Break(Err(NoSolution));
