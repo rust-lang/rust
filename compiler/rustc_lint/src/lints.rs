@@ -3473,24 +3473,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("unsafe attribute used without unsafe")]
-pub(crate) struct UnsafeAttrOutsideUnsafeLint {
-    #[label("usage of unsafe attribute")]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: Option<UnsafeAttrOutsideUnsafeSuggestion>,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion("wrap the attribute in `unsafe(...)`", applicability = "machine-applicable")]
-pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
-    #[suggestion_part(code = "unsafe(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("doc alias is duplicated")]
 pub(crate) struct DocAliasDuplicated {
     #[label("first defined here")]
