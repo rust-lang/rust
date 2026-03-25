@@ -249,7 +249,7 @@ where
     Ok(())
 }
 
-impl_int!(u16, i16, u32, i32, u64, i64, u128, i128);
+impl_int!(u16, i16, u32, i32, u64, i64, u128, i128, usize);
 
 /* trait implementations for floats */
 

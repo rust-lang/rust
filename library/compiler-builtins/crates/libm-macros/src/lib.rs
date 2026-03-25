@@ -535,6 +535,7 @@ impl ToTokens for Ty {
             Ty::U32 => quote! { u32 },
             Ty::U64 => quote! { u64 },
             Ty::U128 => quote! { u128 },
+            Ty::USize => quote! { usize },
             Ty::Bool => quote! { bool },
             Ty::CInt => quote! { ::core::ffi::c_int },
             Ty::MutF16 => quote! { &'a mut f16 },

@@ -169,6 +169,22 @@ where
         int_count_around((emin_sn - emax).cast(), near_points, &mut values);
     }
 
+    if matches!(
+        ctx.base_name,
+        BaseName::Ashl | BaseName::Ashr | BaseName::Lshr
+    ) {
+        // Don't test shift values that are allowed to invoke UB.
+        let max = match ctx.fn_ident.math_op().rust_sig.args[0] {
+            Ty::U32 | Ty::I32 => 31,
+            Ty::U64 | Ty::I64 => 63,
+            Ty::U128 | Ty::I128 => 127,
+            ty => panic!("unexpected type {ty}"),
+        };
+        let max: I = max.cast();
+        int_count_around(max, near_points, &mut values);
+        values.retain(|v| *v <= max);
+    }
+
     values.sort();
     values.dedup();
     let count = values.len().try_into().unwrap();
@@ -308,6 +324,20 @@ macro_rules! impl_edge_case_input_int {
                 let (iter0, steps0) = int_edge_cases(ctx, 0);
                 let iter0 = iter0.map(|v| (v,));
                 (iter0, steps0)
+            }
+        }
+
+        impl<Op> EdgeCaseInput<Op> for ($ity, u32)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let (iter0, steps0) = int_edge_cases(ctx, 0);
+                let (iter1, steps1) = int_edge_cases(ctx, 1);
+                let iter =
+                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let count = steps0.checked_mul(steps1).unwrap();
+                (iter, count)
             }
         }
     };

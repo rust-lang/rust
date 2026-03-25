@@ -6,12 +6,12 @@
 use std::cmp::Ordering;
 
 use rug::Assign;
-pub use rug::Float as MpFloat;
-use rug::az::{self, Az, CheckedCast};
+use rug::az::{self, Az, CheckedCast, WrappingAs};
 use rug::float::Round::Nearest;
 use rug::ops::{
     AddAssignRound, DivAssignRound, MulAssignRound, PowAssignRound, RemAssignRound, SubAssignRound,
 };
+pub use rug::{Float as MpFloat, Integer as MpInt};
 
 use crate::{Arg0, Arg1, Arg2, Float, MathOp, Ret0, Ret1};
 
@@ -139,6 +139,12 @@ libm_macros::for_each_function! {
         addf16,
         addf32,
         addf64,
+        ashl_u128,
+        ashl_u32,
+        ashl_u64,
+        ashr_i128,
+        ashr_i32,
+        ashr_i64,
         ceil,
         ceilf,
         ceilf128,
@@ -237,6 +243,9 @@ libm_macros::for_each_function! {
         ldexpf,
         ldexpf128,
         ldexpf16,
+        leading_zeros_u128,
+        leading_zeros_u32,
+        leading_zeros_u64,
         lef128,
         lef16,
         lef32,
@@ -245,6 +254,9 @@ libm_macros::for_each_function! {
         lgamma_r,
         lgammaf,
         lgammaf_r,
+        lshr_u128,
+        lshr_u32,
+        lshr_u64,
         ltf128,
         ltf16,
         ltf32,
@@ -294,6 +306,9 @@ libm_macros::for_each_function! {
         subf16,
         subf32,
         subf64,
+        trailing_zeros_u128,
+        trailing_zeros_u32,
+        trailing_zeros_u64,
         trunc,
         truncf,
         truncf128,
@@ -1021,3 +1036,94 @@ impl MpOp for crate::op::nextafterf::Routine {
         unimplemented!("nextafter does not yet have a MPFR operation");
     }
 }
+
+macro_rules! impl_int_ops {
+    ($ity:ty) => {
+        paste::paste! {
+            impl MpOp for crate::op::[<ashl_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    assert!(input.1 < Arg0::<Self>::BITS, "got UB shift {}", input.1);
+                    this.assign(input.0);
+                    *this <<= input.1;
+                    (&*this).wrapping_as::<Arg0<Self>>()
+                }
+            }
+
+            impl MpOp for crate::op::[<lshr_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    assert!(input.1 < Arg0::<Self>::BITS, "got UB shift {}", input.1);
+                    this.assign(input.0);
+                    *this >>= input.1;
+                    (&*this).wrapping_as::<Arg0<Self>>()
+                }
+            }
+
+            impl MpOp for crate::op::[<leading_zeros_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    (Arg0::<Self>::BITS - this.significant_bits()).try_into().unwrap()
+                }
+            }
+
+            impl MpOp for crate::op::[<trailing_zeros_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    this.find_one(0).unwrap_or(Arg0::<Self>::BITS).try_into().unwrap()
+                }
+            }
+        }
+    };
+}
+
+impl_int_ops!(u32);
+impl_int_ops!(u64);
+impl_int_ops!(u128);
+
+macro_rules! impl_signed_int_ops {
+    ($ity:ty) => {
+        paste::paste! {
+            impl MpOp for crate::op::[<ashr_ $ity>]::Routine {
+                type MpTy = MpInt;
+
+                fn new_mp() -> Self::MpTy {
+                    MpInt::new()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    assert!(input.1 < Arg0::<Self>::BITS, "got UB shift {}", input.1);
+                    this.assign(input.0);
+                    *this >>= input.1;
+                    (&*this).wrapping_as::<Arg0<Self>>()
+                }
+            }
+        }
+    };
+}
+
+impl_signed_int_ops!(i32);
+impl_signed_int_ops!(i64);
+impl_signed_int_ops!(i128);

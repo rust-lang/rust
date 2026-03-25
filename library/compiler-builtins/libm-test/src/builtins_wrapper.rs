@@ -11,6 +11,11 @@ macro_rules! cb_op {
             compiler_builtins::float::$mod::$cb_name($($arg),*)
         }
     };
+    (@int $mod:ident, $cb_name:ident, $new_name:ident, ($($arg:ident: $ArgTy:ty),*) -> $RetTy:ty) => {
+        pub fn $new_name($($arg: $ArgTy),*) -> $RetTy {
+            compiler_builtins::int::$mod::$cb_name($($arg),*)
+        }
+    };
 
     // Common signatures
     (@binop $ty:ty, $mod:ident, $cb_name:ident, $new_name:ident) => {
@@ -211,3 +216,22 @@ cb_op!(conv, __floatunsitf, itof_u32_f128, (a: u32) -> f128);
 cb_op!(conv, __floatunditf, itof_u64_f128, (a: u64) -> f128);
 #[cfg(f128_enabled)]
 cb_op!(conv, __floatuntitf, itof_u128_f128, (a: u128) -> f128);
+
+/* int ops */
+
+cb_op!(@int shift, __ashlsi3, ashl_u32, (a: u32, b: u32) -> u32);
+cb_op!(@int shift, __ashldi3, ashl_u64, (a: u64, b: u32) -> u64);
+cb_op!(@int shift, __ashlti3, ashl_u128, (a: u128, b: u32) -> u128);
+cb_op!(@int shift, __ashrsi3, ashr_i32, (a: i32, b: u32) -> i32);
+cb_op!(@int shift, __ashrdi3, ashr_i64, (a: i64, b: u32) -> i64);
+cb_op!(@int shift, __ashrti3, ashr_i128, (a: i128, b: u32) -> i128);
+cb_op!(@int shift, __lshrsi3, lshr_u32, (a: u32, b: u32) -> u32);
+cb_op!(@int shift, __lshrdi3, lshr_u64, (a: u64, b: u32) -> u64);
+cb_op!(@int shift, __lshrti3, lshr_u128, (a: u128, b: u32) -> u128);
+
+cb_op!(@int leading_zeros, __clzsi2, leading_zeros_u32, (a: u32) -> usize);
+cb_op!(@int leading_zeros, __clzdi2, leading_zeros_u64, (a: u64) -> usize);
+cb_op!(@int leading_zeros, __clzti2, leading_zeros_u128, (a: u128) -> usize);
+cb_op!(@int trailing_zeros, __ctzsi2, trailing_zeros_u32, (a: u32) -> usize);
+cb_op!(@int trailing_zeros, __ctzdi2, trailing_zeros_u64, (a: u64) -> usize);
+cb_op!(@int trailing_zeros, __ctzti2, trailing_zeros_u128, (a: u128) -> usize);

@@ -318,6 +318,13 @@ macro_rules! impl_parse_tuple_int {
             }
         }
 
+        impl ParseTuple for ($ty, u32) {
+            fn parse(input: &[&str]) -> Self {
+                assert_eq!(input.len(), 2, "expected two arguments, got {input:?}");
+                (parse(input, 0), parse(input, 1))
+            }
+        }
+
         impl FromStrRadix for $ty {
             fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
                 let s = strip_radix_prefix(s, radix);

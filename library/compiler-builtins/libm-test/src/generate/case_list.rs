@@ -468,6 +468,70 @@ fn itof_u128_f128_cases() -> Vec<TestCase<op::itof_u128_f128::Routine>> {
     vec![]
 }
 
+/* int shifts */
+
+fn ashl_u32_cases() -> Vec<TestCase<op::ashl_u32::Routine>> {
+    vec![]
+}
+
+fn ashl_u64_cases() -> Vec<TestCase<op::ashl_u64::Routine>> {
+    vec![]
+}
+
+fn ashl_u128_cases() -> Vec<TestCase<op::ashl_u128::Routine>> {
+    vec![]
+}
+
+fn ashr_i32_cases() -> Vec<TestCase<op::ashr_i32::Routine>> {
+    vec![]
+}
+
+fn ashr_i64_cases() -> Vec<TestCase<op::ashr_i64::Routine>> {
+    vec![]
+}
+
+fn ashr_i128_cases() -> Vec<TestCase<op::ashr_i128::Routine>> {
+    vec![]
+}
+
+fn lshr_u32_cases() -> Vec<TestCase<op::lshr_u32::Routine>> {
+    vec![]
+}
+
+fn lshr_u64_cases() -> Vec<TestCase<op::lshr_u64::Routine>> {
+    vec![]
+}
+
+fn lshr_u128_cases() -> Vec<TestCase<op::lshr_u128::Routine>> {
+    vec![]
+}
+
+/* int bitwise ops */
+
+fn leading_zeros_u32_cases() -> Vec<TestCase<op::leading_zeros_u32::Routine>> {
+    vec![]
+}
+
+fn leading_zeros_u64_cases() -> Vec<TestCase<op::leading_zeros_u64::Routine>> {
+    vec![]
+}
+
+fn leading_zeros_u128_cases() -> Vec<TestCase<op::leading_zeros_u128::Routine>> {
+    vec![]
+}
+
+fn trailing_zeros_u32_cases() -> Vec<TestCase<op::trailing_zeros_u32::Routine>> {
+    vec![]
+}
+
+fn trailing_zeros_u64_cases() -> Vec<TestCase<op::trailing_zeros_u64::Routine>> {
+    vec![]
+}
+
+fn trailing_zeros_u128_cases() -> Vec<TestCase<op::trailing_zeros_u128::Routine>> {
+    vec![]
+}
+
 /*******************
  * libm test cases *
  *******************/

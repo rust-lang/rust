@@ -246,6 +246,15 @@ pub fn get_domain<F: Float, I: Int>(
         BaseName::Ftoi => &EitherPrim::UNBOUNDED1[..],
         BaseName::Itof => &EitherPrim::UNBOUNDED1[..],
 
+        // Integer ops
+        // Shifts technically aren't unbounded, but its range is restricted elsewhere in
+        // our test generators.
+        BaseName::Ashl => &EitherPrim::UNBOUNDED2[..],
+        BaseName::Ashr => &EitherPrim::UNBOUNDED2[..],
+        BaseName::Lshr => &EitherPrim::UNBOUNDED2[..],
+        BaseName::LeadingZeros => &EitherPrim::UNBOUNDED1[..],
+        BaseName::TrailingZeros => &EitherPrim::UNBOUNDED1[..],
+
         // Math functions
         BaseName::Acos => &EitherPrim::INVERSE_TRIG_PERIODIC[..],
         BaseName::Acosh => &EitherPrim::ACOSH[..],

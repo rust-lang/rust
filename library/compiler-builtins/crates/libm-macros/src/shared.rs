@@ -595,6 +595,116 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         fn_list: &["itof_u128_f128"],
         scope: OpScope::BuiltinsPublic,
     },
+    /* int shifts */
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U32, Ty::U32],
+            returns: &[Ty::U32],
+        },
+        c_sig: None,
+        fn_list: &["ashl_u32", "lshr_u32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U64, Ty::U32],
+            returns: &[Ty::U64],
+        },
+        c_sig: None,
+        fn_list: &["ashl_u64", "lshr_u64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U128, Ty::U32],
+            returns: &[Ty::U128],
+        },
+        c_sig: None,
+        fn_list: &["ashl_u128", "lshr_u128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I32, Ty::U32],
+            returns: &[Ty::I32],
+        },
+        c_sig: None,
+        fn_list: &["ashr_i32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I64, Ty::U32],
+            returns: &[Ty::I64],
+        },
+        c_sig: None,
+        fn_list: &["ashr_i64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::I128, Ty::U32],
+            returns: &[Ty::I128],
+        },
+        c_sig: None,
+        fn_list: &["ashr_i128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    /* int bitwise ops */
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U32],
+            returns: &[Ty::USize],
+        },
+        c_sig: None,
+        fn_list: &["leading_zeros_u32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U64],
+            returns: &[Ty::USize],
+        },
+        c_sig: None,
+        fn_list: &["leading_zeros_u64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U128],
+            returns: &[Ty::USize],
+        },
+        c_sig: None,
+        fn_list: &["leading_zeros_u128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U32],
+            returns: &[Ty::USize],
+        },
+        c_sig: None,
+        fn_list: &["trailing_zeros_u32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U64],
+            returns: &[Ty::USize],
+        },
+        c_sig: None,
+        fn_list: &["trailing_zeros_u64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        rust_sig: Signature {
+            args: &[Ty::U128],
+            returns: &[Ty::USize],
+        },
+        c_sig: None,
+        fn_list: &["trailing_zeros_u128"],
+        scope: OpScope::BuiltinsPublic,
+    },
     /*******************
      * libm operations *
      *******************/
@@ -1098,6 +1208,7 @@ pub enum Ty {
     U32,
     U64,
     U128,
+    USize,
     Bool,
     CInt,
     MutF16,
@@ -1119,6 +1230,7 @@ impl Ty {
             Ty::F32 | Ty::I32 | Ty::U32 | Ty::MutF32 | Ty::MutI32 => 32,
             Ty::F64 | Ty::I64 | Ty::U64 | Ty::MutF64 => 64,
             Ty::F128 | Ty::I128 | Ty::U128 | Ty::MutF128 => 128,
+            Ty::USize => usize::BITS,
             // Assume we're not testing on a 16-bit system
             Ty::CInt | Ty::MutCInt => 32,
         }
@@ -1137,6 +1249,7 @@ impl Ty {
             | Ty::U32
             | Ty::U64
             | Ty::U128
+            | Ty::USize
             | Ty::Bool
             | Ty::CInt
             | Ty::MutI32
@@ -1160,6 +1273,7 @@ impl Ty {
             | Ty::U32
             | Ty::U64
             | Ty::U128
+            | Ty::USize
             | Ty::Bool
             | Ty::CInt
             | Ty::MutI32
@@ -1192,6 +1306,7 @@ impl fmt::Display for Ty {
             Ty::U32 => "u32",
             Ty::U64 => "u64",
             Ty::U128 => "u128",
+            Ty::USize => "usize",
             Ty::Bool => "bool",
             Ty::CInt => "::core::ffi::c_int",
             Ty::MutF16 => "&mut f16",

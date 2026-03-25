@@ -129,6 +129,19 @@ macro_rules! impl_random_input_int {
                 (iter, count)
             }
         }
+
+        impl RandomInput for ($ity, u32) {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let count0 = iteration_count(ctx, 0);
+                let count1 = iteration_count(ctx, 1);
+                let range0 = int_range::<$ity>(ctx, 1).unwrap_or(full_range());
+                let range1 = int_range::<u32>(ctx, 1).unwrap_or(full_range());
+                let iter = random_ints(count0, range0).flat_map(move |f1: $ity| {
+                    random_ints(count1, range1.clone()).map(move |f2: u32| (f1, f2))
+                });
+                (iter, count0 * count1)
+            }
+        }
     };
 }
 

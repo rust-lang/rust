@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 use std::{env, fmt, str};
 
 use crate::generate::random::{SEED, SEED_ENV};
-use crate::{BaseName, Group, Identifier, test_log};
+use crate::{BaseName, Group, Identifier, Ty, test_log};
 
 /// The environment variable indicating which extensive tests should be run.
 pub const EXTENSIVE_ENV: &str = "LIBM_EXTENSIVE_TESTS";
@@ -361,6 +361,22 @@ where
         "requested argnum {argnum} of only {argcount} args"
     );
 
+    // Shift operations can have UB if the shift value exceeds their range
+    if matches!(
+        ctx.base_name,
+        BaseName::Ashl | BaseName::Ashr | BaseName::Lshr
+    ) && argnum == 1
+    {
+        let max = match ctx.fn_ident.math_op().rust_sig.args[0] {
+            Ty::U32 | Ty::I32 => 31,
+            Ty::U64 | Ty::I64 => 63,
+            Ty::U128 | Ty::I128 => 127,
+            ty => panic!("unexpected type {ty}"),
+        };
+
+        return Some(map_range(0..=max));
+    }
+
     // Use the whole range for most functions.
     if !matches!(ctx.base_name, BaseName::Jn | BaseName::Yn) {
         return None;
@@ -388,7 +404,14 @@ where
         GeneratorKind::List => unimplemented!("shoudn't need range for {:?}", ctx.gen_kind),
     };
 
-    Some(I::try_from(*ret.start()).unwrap()..=I::try_from(*ret.end()).unwrap())
+    Some(map_range(ret))
+}
+
+fn map_range<I>(r: RangeInclusive<i32>) -> RangeInclusive<I>
+where
+    I: TryFrom<i32, Error: fmt::Debug>,
+{
+    I::try_from(*r.start()).unwrap()..=I::try_from(*r.end()).unwrap()
 }
 
 /// For domain tests, limit how many asymptotes or specified check points we test.

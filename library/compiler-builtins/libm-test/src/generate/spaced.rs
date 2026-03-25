@@ -275,6 +275,35 @@ macro_rules! impl_spaced_input_int {
                 }
             }
         }
+
+        impl<Op> SpacedInput<Op> for ($ity, u32)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let range0 = int_range(ctx, 0).unwrap_or(full_range());
+                let range1 = int_range(ctx, 1).unwrap_or(full_range());
+                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps1 = iteration_count(ctx, 0);
+                match value_count_int::<Arg0<Op>>() {
+                    Some(count) if count <= max_steps0 && count < max_steps1 => {
+                        let iter = range0.flat_map(move |first| {
+                            range1.clone().map(move |second| (first, second))
+                        });
+                        (EitherIter::A(iter), count.checked_mul(count).unwrap())
+                    }
+                    _ => {
+                        let (iter0, steps0) = linear_ints::<Arg0<Op>>(range0, max_steps0);
+                        let (iter1, steps1) = linear_ints::<Arg1<Op>>(range1, max_steps1);
+                        let iter = iter0.flat_map(move |first| {
+                            iter1.clone().map(move |second| (first, second))
+                        });
+                        let count = steps0.checked_mul(steps1).unwrap();
+                        (EitherIter::B(iter), count)
+                    }
+                }
+            }
+        }
     };
 }
 
