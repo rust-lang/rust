@@ -510,9 +510,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         match tcx.anon_const_kind(parent_def_id) {
             ty::AnonConstKind::MCG => Some(ForbidParamContext::ConstArgument),
             ty::AnonConstKind::NonTypeSystem => {
-                let hir_id = tcx.local_def_id_to_hir_id(parent_def_id);
-                matches!(tcx.parent_hir_node(hir_id), hir::Node::Variant(_))
-                    .then_some(ForbidParamContext::EnumDiscriminant)
+                // NonTypeSystem anon consts only have accessible generic parameters in specific
+                // positions (ty patterns and field defaults — see `generics_of`). In all other
+                // positions (e.g. enum discriminants) generic parameters are not in scope.
+                if tcx.generics_of(parent_def_id).count() == 0 {
+                    Some(ForbidParamContext::EnumDiscriminant)
+                } else {
+                    None
+                }
             }
             ty::AnonConstKind::GCE
             | ty::AnonConstKind::OGCA
