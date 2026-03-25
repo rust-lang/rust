@@ -509,22 +509,26 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         }
 
-        let (replacement, applicability) =
-            match self.tcx.sess.source_map().span_to_snippet(root_span) {
-                Ok(ref s) => {
-                    // FIXME(Manishearth) ideally the emitting code
-                    // can tell us whether or not this is global
-                    let opt_colon = if s.trim_start().starts_with("::") { "" } else { "::" };
-
-                    (format!("crate{opt_colon}{s}"), Applicability::MachineApplicable)
-                }
-                Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
-            };
-        self.lint_buffer.dyn_buffer_lint(
+        self.lint_buffer.dyn_buffer_lint_any(
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             node_id,
             root_span,
-            move |dcx, level| {
+            move |dcx, level, sess| {
+                let (replacement, applicability) = match sess
+                    .downcast_ref::<Session>()
+                    .expect("expected a `Session`")
+                    .source_map()
+                    .span_to_snippet(root_span)
+                {
+                    Ok(ref s) => {
+                        // FIXME(Manishearth) ideally the emitting code
+                        // can tell us whether or not this is global
+                        let opt_colon = if s.trim_start().starts_with("::") { "" } else { "::" };
+
+                        (format!("crate{opt_colon}{s}"), Applicability::MachineApplicable)
+                    }
+                    Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
+                };
                 errors::AbsPathWithModule {
                     sugg: errors::AbsPathWithModuleSugg {
                         span: root_span,

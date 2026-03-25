@@ -1,5 +1,7 @@
+use std::any::Any;
 use std::borrow::Cow;
 
+use rustc_data_structures::sync::DynSend;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, Level,
     elided_lifetime_in_path_suggestion,
@@ -12,6 +14,19 @@ use rustc_session::lint::BuiltinLintDiag;
 use crate::lints;
 
 mod check_cfg;
+
+pub struct DiagAndSess<'sess> {
+    pub callback: Box<
+        dyn for<'b> FnOnce(DiagCtxtHandle<'b>, Level, &dyn Any) -> Diag<'b, ()> + DynSend + 'static,
+    >,
+    pub sess: &'sess Session,
+}
+
+impl<'a> Diagnostic<'a, ()> for DiagAndSess<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        (self.callback)(dcx, level, self.sess)
+    }
+}
 
 /// This is a diagnostic struct that will decorate a `BuiltinLintDiag`
 /// Directly creating the lint structs is expensive, using this will only decorate the lint structs when needed.
