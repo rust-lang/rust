@@ -120,8 +120,8 @@ impl<T> Erasable for Result<&'_ T, traits::query::NoSolution> {
     type Storage = [u8; size_of::<Result<&'static (), traits::query::NoSolution>>()];
 }
 
-impl<T> Erasable for Result<&'_ T, rustc_errors::ErrorGuaranteed> {
-    type Storage = [u8; size_of::<Result<&'static (), rustc_errors::ErrorGuaranteed>>()];
+impl<T> Erasable for Result<&'_ T, ErrorGuaranteed> {
+    type Storage = [u8; size_of::<Result<&'static (), ErrorGuaranteed>>()];
 }
 
 impl<T> Erasable for Result<&'_ T, traits::CodegenObligationError> {
@@ -132,22 +132,17 @@ impl<T> Erasable for Result<&'_ T, &'_ ty::layout::FnAbiError<'_>> {
     type Storage = [u8; size_of::<Result<&'static (), &'static ty::layout::FnAbiError<'static>>>()];
 }
 
-impl<T> Erasable for Result<(&'_ T, crate::thir::ExprId), rustc_errors::ErrorGuaranteed> {
-    type Storage = [u8; size_of::<
-        Result<(&'static (), crate::thir::ExprId), rustc_errors::ErrorGuaranteed>,
-    >()];
+impl<T> Erasable for Result<(&'_ T, crate::thir::ExprId), ErrorGuaranteed> {
+    type Storage = [u8; size_of::<Result<(&'static (), crate::thir::ExprId), ErrorGuaranteed>>()];
 }
 
-impl Erasable for Result<Option<ty::Instance<'_>>, rustc_errors::ErrorGuaranteed> {
-    type Storage =
-        [u8; size_of::<Result<Option<ty::Instance<'static>>, rustc_errors::ErrorGuaranteed>>()];
+impl Erasable for Result<Option<ty::Instance<'_>>, ErrorGuaranteed> {
+    type Storage = [u8; size_of::<Result<Option<ty::Instance<'static>>, ErrorGuaranteed>>()];
 }
 
-impl Erasable
-    for Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, rustc_errors::ErrorGuaranteed>
-{
+impl Erasable for Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, ErrorGuaranteed> {
     type Storage = [u8; size_of::<
-        Result<Option<ty::EarlyBinder<'static, ty::Const<'static>>>, rustc_errors::ErrorGuaranteed>,
+        Result<Option<ty::EarlyBinder<'static, ty::Const<'static>>>, ErrorGuaranteed>,
     >()];
 }
 
@@ -288,10 +283,10 @@ impl_erasable_for_simple_types! {
     Option<rustc_span::def_id::LocalDefId>,
     Option<rustc_target::spec::PanicStrategy>,
     Option<usize>,
-    Result<(), rustc_errors::ErrorGuaranteed>,
+    Result<(), ErrorGuaranteed>,
     Result<mir::ConstValue, mir::interpret::ErrorHandled>,
     Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,
-    Result<rustc_middle::ty::adjustment::CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed>,
+    Result<rustc_middle::ty::adjustment::CoerceUnsizedInfo, ErrorGuaranteed>,
     bool,
     rustc_data_structures::svh::Svh,
     rustc_hir::Constness,
