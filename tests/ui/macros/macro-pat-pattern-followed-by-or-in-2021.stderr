@@ -1,5 +1,5 @@
 error: `$x:pat` is followed by `|`, which is not allowed for `pat` fragments
-  --> $DIR/macro-pat-pattern-followed-by-or-in-2021.rs:3:28
+  --> $DIR/macro-pat-pattern-followed-by-or-in-2021.rs:4:28
    |
 LL | macro_rules! foo { ($x:pat | $y:pat) => {} }
    |                     ------ ^ not allowed after `pat` fragments
@@ -9,7 +9,7 @@ LL | macro_rules! foo { ($x:pat | $y:pat) => {} }
    = note: allowed there are: `=>`, `,`, `=`, `if` or `in`
 
 error: `$x:pat` is followed by `|`, which is not allowed for `pat` fragments
-  --> $DIR/macro-pat-pattern-followed-by-or-in-2021.rs:4:32
+  --> $DIR/macro-pat-pattern-followed-by-or-in-2021.rs:5:32
    |
 LL | macro_rules! bar { ($($x:pat)+ | $($y:pat)+) => {} }
    |                       ------   ^ not allowed after `pat` fragments
@@ -19,7 +19,7 @@ LL | macro_rules! bar { ($($x:pat)+ | $($y:pat)+) => {} }
    = note: allowed there are: `=>`, `,`, `=`, `if` or `in`
 
 error: `$pat:pat` may be followed by `|`, which is not allowed for `pat` fragments
-  --> $DIR/macro-pat-pattern-followed-by-or-in-2021.rs:7:36
+  --> $DIR/macro-pat-pattern-followed-by-or-in-2021.rs:8:36
    |
 LL |     ( $expr:expr , $( $( $pat:pat )|+ => $expr_arm:expr ),+ ) => {
    |                          --------  ^ not allowed after `pat` fragments
