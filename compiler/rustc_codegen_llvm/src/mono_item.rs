@@ -135,7 +135,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         let ty = self.get_type_of_global(aliasee);
 
         for (alias, linkage, visibility) in aliases {
-            let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, *alias));
+            let instance = Instance::mono(self.tcx, *alias);
+            let symbol_name = self.tcx.symbol_name(instance);
             tracing::debug!("STATIC ALIAS: {alias:?} {linkage:?} {visibility:?}");
 
             let lldecl = llvm::add_alias(
@@ -144,6 +145,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 AddressSpace::ZERO,
                 aliasee,
                 &CString::new(symbol_name.name).unwrap(),
+            );
+            // Add the alias name to the set of cached items, so there is no duplicate
+            // instance added to it during the normal `external static` codegen
+            assert!(
+                self.instances.borrow_mut().insert(instance, lldecl).is_none(),
+                "An instance was already present for {instance:?}"
             );
 
             llvm::set_visibility(lldecl, base::visibility_to_llvm(*visibility));
