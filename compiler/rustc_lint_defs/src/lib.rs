@@ -654,11 +654,6 @@ pub enum DeprecatedSinceKind {
 
 #[derive(Debug)]
 pub enum AttributeLintKind {
-    UnusedDuplicate {
-        this: Span,
-        other: Span,
-        warning: bool,
-    },
     IllFormedAttributeInput {
         suggestions: Vec<String>,
         docs: Option<&'static str>,
