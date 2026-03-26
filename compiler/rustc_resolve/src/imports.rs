@@ -456,13 +456,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             warn_ambiguity,
             |this, resolution| {
                 assert!(!decl.warn_ambiguity.get());
-                if res == Res::Err
-                    && let Some(old_decl) = resolution.best_decl()
-                    && old_decl.res() != Res::Err
-                {
-                    // Do not override real declarations with `Res::Err`s from error recovery.
-                    return Ok(());
-                }
                 if decl.is_glob_import() {
                     resolution.glob_decl = Some(match resolution.glob_decl {
                         Some(old_decl) => this.select_glob_decl(
@@ -533,13 +526,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             if self.is_accessible_from(binding.vis(), scope) {
                 let import_decl = self.new_import_decl(binding, *import);
-                let _ = self.try_plant_decl_into_local_module(
+                self.try_plant_decl_into_local_module(
                     ident,
                     orig_ident_span,
                     key.ns,
                     import_decl,
                     warn_ambiguity,
-                );
+                )
+                .expect("planting a glob cannot fail");
             }
         }
 
@@ -558,6 +552,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.per_ns(|this, ns| {
                 let module = import.parent_scope.module;
                 let ident = IdentKey::new(target);
+                // This can fail, dummies are inserted only in non-occupied slots.
                 let _ = this.try_plant_decl_into_local_module(
                     ident,
                     target.span,
@@ -1613,13 +1608,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .resolution(import.parent_scope.module, key)
                     .and_then(|r| r.determined_decl())
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                let _ = self.try_plant_decl_into_local_module(
+                self.try_plant_decl_into_local_module(
                     key.ident,
                     orig_ident_span,
                     key.ns,
                     import_decl,
                     warn_ambiguity,
-                );
+                )
+                .expect("planting a glob cannot fail");
             }
         }
 
