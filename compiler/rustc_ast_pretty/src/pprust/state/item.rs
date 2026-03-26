@@ -43,6 +43,7 @@ impl<'a> State<'a> {
                 expr,
                 safety,
                 define_opaque,
+                eii_impls,
             }) => self.print_item_const(
                 *ident,
                 Some(*mutability),
@@ -53,6 +54,7 @@ impl<'a> State<'a> {
                 *safety,
                 ast::Defaultness::Implicit,
                 define_opaque.as_deref(),
+                eii_impls,
             ),
             ast::ForeignItemKind::TyAlias(box ast::TyAlias {
                 defaultness,
@@ -93,8 +95,12 @@ impl<'a> State<'a> {
         safety: ast::Safety,
         defaultness: ast::Defaultness,
         define_opaque: Option<&[(ast::NodeId, ast::Path)]>,
+        eii_impls: &[EiiImpl],
     ) {
         self.print_define_opaques(define_opaque);
+        for eii_impl in eii_impls {
+            self.print_eii_impl(eii_impl);
+        }
         let (cb, ib) = self.head("");
         self.print_visibility(vis);
         self.print_safety(safety);
@@ -191,6 +197,7 @@ impl<'a> State<'a> {
                 mutability: mutbl,
                 expr: body,
                 define_opaque,
+                eii_impls,
             }) => {
                 self.print_safety(*safety);
                 self.print_item_const(
@@ -203,6 +210,7 @@ impl<'a> State<'a> {
                     ast::Safety::Default,
                     ast::Defaultness::Implicit,
                     define_opaque.as_deref(),
+                    eii_impls,
                 );
             }
             ast::ItemKind::ConstBlock(ast::ConstBlockItem { id: _, span: _, block }) => {
@@ -234,6 +242,7 @@ impl<'a> State<'a> {
                     ast::Safety::Default,
                     *defaultness,
                     define_opaque.as_deref(),
+                    &[],
                 );
             }
             ast::ItemKind::Fn(func) => {
@@ -602,6 +611,7 @@ impl<'a> State<'a> {
                     ast::Safety::Default,
                     *defaultness,
                     define_opaque.as_deref(),
+                    &[],
                 );
             }
             ast::AssocItemKind::Type(box ast::TyAlias {
@@ -703,18 +713,8 @@ impl<'a> State<'a> {
 
         self.print_define_opaques(define_opaque.as_deref());
 
-        for EiiImpl { eii_macro_path, impl_safety, .. } in eii_impls {
-            self.word("#[");
-            if let Safety::Unsafe(..) = impl_safety {
-                self.word("unsafe");
-                self.popen();
-            }
-            self.print_path(eii_macro_path, false, 0);
-            if let Safety::Unsafe(..) = impl_safety {
-                self.pclose();
-            }
-            self.word("]");
-            self.hardbreak();
+        for eii_impl in eii_impls {
+            self.print_eii_impl(eii_impl);
         }
 
         let body_cb_ib = body.as_ref().map(|body| (body, self.head("")));
@@ -739,6 +739,20 @@ impl<'a> State<'a> {
         } else {
             self.word(";");
         }
+    }
+
+    fn print_eii_impl(&mut self, eii: &ast::EiiImpl) {
+        self.word("#[");
+        if let Safety::Unsafe(..) = eii.impl_safety {
+            self.word("unsafe");
+            self.popen();
+        }
+        self.print_path(&eii.eii_macro_path, false, 0);
+        if let Safety::Unsafe(..) = eii.impl_safety {
+            self.pclose();
+        }
+        self.word("]");
+        self.hardbreak();
     }
 
     fn print_define_opaques(&mut self, define_opaque: Option<&[(ast::NodeId, ast::Path)]>) {
