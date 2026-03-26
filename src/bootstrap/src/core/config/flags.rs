@@ -433,6 +433,15 @@ pub enum Subcommand {
         #[arg(long)]
         #[doc(hidden)]
         no_doc: bool,
+
+        #[arg(long)]
+        /// Record all the failed tests in a file in the build directory.
+        ///
+        /// On subsequent invocations, this set of tests can be rerun by passing `--rerun`
+        record: bool,
+        #[arg(long)]
+        /// Rerun tests that previously failed, and stored with `--record`.
+        rerun: bool,
     },
     /// Build and run some test suites *in Miri*
     Miri {
@@ -704,6 +713,13 @@ impl Subcommand {
     pub fn bypass_ignore_backends(&self) -> bool {
         match self {
             Subcommand::Test { bypass_ignore_backends, .. } => *bypass_ignore_backends,
+            _ => false,
+        }
+    }
+
+    pub fn record(&self) -> bool {
+        match self {
+            Subcommand::Test { record, .. } => *record,
             _ => false,
         }
     }
