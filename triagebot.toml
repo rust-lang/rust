@@ -194,6 +194,11 @@ Hi relnotes-interest-group, this issue/PR could use some help in reviewing /
 adjusting release notes. Could you take a look if available? Thanks <3
 """
 
+[ping.gpu-target]
+message = """\
+Hi GPU experts, this issue/PR could use some guidance on how this should be
+resolved/implemented. Could you take a look if available? Thanks <3
+"""
 
 # ------------------------------------------------------------------------------
 # Autolabels
