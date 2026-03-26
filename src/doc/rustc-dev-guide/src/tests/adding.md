@@ -18,10 +18,9 @@ guidelines:
     illustrate and exercise typical API behavior.
   - Additional [unit tests](intro.md#package-tests) should go in
     `library/${crate}/tests` (where `${crate}` is usually `std`).
-  - Tests for the `alloc` or `core` crates must go within their respective
-    `library/${crate}tests/tests` folder.
+  - Tests for the `alloc` or `core` crates must go in separate crates: `alloctests` or `coretests` respectively.
     - NOTE: That when adding unit tests for unstable features the `#![feature(...)]`
-      declaration **must** be added to `library/${crate}tests/tests/lib.rs` and not to
+      declaration must be added to `library/${crate}tests/tests/lib.rs` and not to
       `library/${crate}tests/lib.rs`.
 - If the code is part of an isolated system, and you are not testing compiler
   output, consider using a [unit or integration test](intro.md#package-tests).
