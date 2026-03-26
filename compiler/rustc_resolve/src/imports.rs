@@ -265,13 +265,13 @@ impl<'ra> NameResolution<'ra> {
     /// code breakage in practice.
     /// FIXME: relationship between this function and similar `DeclData::determined` is unclear.
     pub(crate) fn determined_decl(&self) -> Option<Decl<'ra>> {
-        self.best_decl().and_then(|binding| {
-            if !binding.is_glob_import() || self.single_imports.is_empty() {
-                Some(binding)
-            } else {
-                None
-            }
-        })
+        if self.non_glob_decl.is_some() {
+            self.non_glob_decl
+        } else if self.glob_decl.is_some() && self.single_imports.is_empty() {
+            self.glob_decl
+        } else {
+            None
+        }
     }
 
     pub(crate) fn best_decl(&self) -> Option<Decl<'ra>> {
