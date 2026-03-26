@@ -521,7 +521,7 @@ impl<'db> Evaluator<'db> {
             "sched_getaffinity" => {
                 let [_pid, _set_size, set] = args else {
                     return Err(MirEvalError::InternalError(
-                        "libc::write args are not provided".into(),
+                        "sched_getaffinity args are not provided".into(),
                     ));
                 };
                 let set = Address::from_bytes(set.get(self)?)?;
@@ -533,9 +533,7 @@ impl<'db> Evaluator<'db> {
             }
             "getenv" => {
                 let [name] = args else {
-                    return Err(MirEvalError::InternalError(
-                        "libc::write args are not provided".into(),
-                    ));
+                    return Err(MirEvalError::InternalError("getenv args are not provided".into()));
                 };
                 let mut name_buf = vec![];
                 let name = {
