@@ -12,7 +12,7 @@
 use std::borrow::Cow;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use std::{env, fs};
+use std::{array, env, fs};
 
 use rustc_data_structures::memmap::Mmap;
 use rustc_serialize::Encoder;
@@ -30,12 +30,12 @@ const HEADER_FORMAT_VERSION: u16 = 0;
 
 pub(crate) fn write_file_header(stream: &mut FileEncoder, sess: &Session) {
     stream.emit_raw_bytes(FILE_MAGIC);
-    stream
-        .emit_raw_bytes(&[(HEADER_FORMAT_VERSION >> 0) as u8, (HEADER_FORMAT_VERSION >> 8) as u8]);
+    stream.emit_raw_bytes(&u16::to_le_bytes(HEADER_FORMAT_VERSION));
 
     let rustc_version = rustc_version(sess);
-    assert_eq!(rustc_version.len(), (rustc_version.len() as u8) as usize);
-    stream.emit_raw_bytes(&[rustc_version.len() as u8]);
+    let rustc_version_len =
+        u8::try_from(rustc_version.len()).expect("version string should not exceed 255 bytes");
+    stream.emit_raw_bytes(&[rustc_version_len]);
     stream.emit_raw_bytes(rustc_version.as_bytes());
 }
 
@@ -147,8 +147,7 @@ pub(crate) fn open_incremental_file(
         debug_assert!(size_of_val(&HEADER_FORMAT_VERSION) == 2);
         let mut header_format_version = [0u8; 2];
         file.read_exact(&mut header_format_version)?;
-        let header_format_version =
-            (header_format_version[0] as u16) | ((header_format_version[1] as u16) << 8);
+        let header_format_version = u16::from_le_bytes(header_format_version);
 
         if header_format_version != HEADER_FORMAT_VERSION {
             report_format_mismatch(sess, path, "Wrong HEADER_FORMAT_VERSION");
@@ -158,10 +157,9 @@ pub(crate) fn open_incremental_file(
 
     // Check RUSTC_VERSION
     {
-        let mut rustc_version_str_len = [0u8; 1];
-        file.read_exact(&mut rustc_version_str_len)?;
-        let rustc_version_str_len = rustc_version_str_len[0] as usize;
-        let mut buffer = vec![0; rustc_version_str_len];
+        let mut rustc_version_str_len = 0u8;
+        file.read_exact(array::from_mut(&mut rustc_version_str_len))?;
+        let mut buffer = vec![0; usize::from(rustc_version_str_len)];
         file.read_exact(&mut buffer)?;
 
         if buffer != rustc_version(sess).as_bytes() {
