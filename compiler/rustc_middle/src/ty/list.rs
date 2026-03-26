@@ -35,13 +35,6 @@ pub type List<T> = RawList<(), T>;
 /// [`Hash`] and [`Encodable`].
 #[repr(C)]
 pub struct RawList<H, T> {
-    skel: ListSkeleton<H, T>,
-}
-
-/// A [`RawList`] without the unsized tail. This type is used for layout computation
-/// and constructing empty lists.
-#[repr(C)]
-struct ListSkeleton<H, T> {
     header: H,
     len: usize,
     /// Although this claims to be a zero-length array, in practice `len`
@@ -58,7 +51,7 @@ impl<T> Default for &List<T> {
 impl<H, T> RawList<H, T> {
     #[inline(always)]
     pub fn len(&self) -> usize {
-        self.skel.len
+        self.len
     }
 
     #[inline(always)]
@@ -89,18 +82,18 @@ impl<H, T> RawList<H, T> {
         assert!(!slice.is_empty());
 
         let (layout, _offset) =
-            Layout::new::<ListSkeleton<H, T>>().extend(Layout::for_value::<[T]>(slice)).unwrap();
+            Layout::new::<RawList<H, T>>().extend(Layout::for_value::<[T]>(slice)).unwrap();
 
         let mem = arena.dropless.alloc_raw(layout) as *mut RawList<H, T>;
         unsafe {
             // Write the header
-            (&raw mut (*mem).skel.header).write(header);
+            (&raw mut (*mem).header).write(header);
 
             // Write the length
-            (&raw mut (*mem).skel.len).write(slice.len());
+            (&raw mut (*mem).len).write(slice.len());
 
             // Write the elements
-            (&raw mut (*mem).skel.data)
+            (&raw mut (*mem).data)
                 .cast::<T>()
                 .copy_from_nonoverlapping(slice.as_ptr(), slice.len());
 
@@ -144,8 +137,8 @@ macro_rules! impl_list_empty {
                 #[repr(align(64))]
                 struct MaxAlign;
 
-                static EMPTY: ListSkeleton<$header_ty, MaxAlign> =
-                    ListSkeleton { header: $header_init, len: 0, data: [] };
+                static EMPTY: RawList<$header_ty, MaxAlign> =
+                    RawList { header: $header_init, len: 0, data: [] };
 
                 assert!(align_of::<T>() <= align_of::<MaxAlign>());
 
@@ -229,12 +222,12 @@ impl<H, T> Deref for RawList<H, T> {
 impl<H, T> AsRef<[T]> for RawList<H, T> {
     #[inline(always)]
     fn as_ref(&self) -> &[T] {
-        let data_ptr = (&raw const self.skel.data).cast::<T>();
+        let data_ptr = (&raw const self.data).cast::<T>();
         // SAFETY: `data_ptr` has the same provenance as `self` and can therefore
         // access the `self.skel.len` elements stored at `self.skel.data`.
         // Note that we specifically don't reborrow `&self.skel.data`, because that
         // would give us a pointer with provenance over 0 bytes.
-        unsafe { slice::from_raw_parts(data_ptr, self.skel.len) }
+        unsafe { slice::from_raw_parts(data_ptr, self.len) }
     }
 }
 
@@ -256,12 +249,12 @@ pub type ListWithCachedTypeInfo<T> = RawList<TypeInfo, T>;
 impl<T> ListWithCachedTypeInfo<T> {
     #[inline(always)]
     pub fn flags(&self) -> TypeFlags {
-        self.skel.header.flags
+        self.header.flags
     }
 
     #[inline(always)]
     pub fn outer_exclusive_binder(&self) -> DebruijnIndex {
-        self.skel.header.outer_exclusive_binder
+        self.header.outer_exclusive_binder
     }
 }
 
