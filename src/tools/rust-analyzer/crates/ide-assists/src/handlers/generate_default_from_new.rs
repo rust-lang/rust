@@ -1,8 +1,12 @@
 use ide_db::famous_defs::FamousDefs;
-use stdx::format_to;
 use syntax::{
     AstNode,
-    ast::{self, HasGenericParams, HasName, HasTypeBounds, Impl, syntax_factory::SyntaxFactory},
+    ast::{
+        self, HasGenericParams, HasName, HasTypeBounds, Impl,
+        edit::{AstNodeEdit, IndentLevel},
+        syntax_factory::SyntaxFactory,
+    },
+    syntax_editor::Position,
 };
 
 use crate::{
@@ -62,32 +66,32 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext<'
         return None;
     }
 
-    let insert_location = impl_.syntax().text_range();
+    let target = impl_.syntax().text_range();
 
     acc.add(
         AssistId::generate("generate_default_from_new"),
         "Generate a Default impl from a new fn",
-        insert_location,
+        target,
         move |builder| {
-            let default_code = "    fn default() -> Self {
-        Self::new()
-    }";
             let make = SyntaxFactory::without_mappings();
-            let code =
-                generate_trait_impl_text_from_impl(&impl_, self_ty, "Default", default_code, &make);
-            builder.insert(insert_location.end(), code);
+            let default_impl = generate_default_impl(&make, &impl_, self_ty);
+            let indent = IndentLevel::from_node(impl_.syntax());
+            let default_impl = default_impl.indent(indent);
+
+            let mut editor = builder.make_editor(impl_.syntax());
+            editor.insert_all(
+                Position::after(impl_.syntax()),
+                vec![
+                    make.whitespace(&format!("\n\n{indent}")).into(),
+                    default_impl.syntax().clone().into(),
+                ],
+            );
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
 
-// FIXME: based on from utils::generate_impl_text_inner
-fn generate_trait_impl_text_from_impl(
-    impl_: &ast::Impl,
-    self_ty: ast::Type,
-    trait_text: &str,
-    code: &str,
-    make: &SyntaxFactory,
-) -> String {
+fn generate_default_impl(make: &SyntaxFactory, impl_: &ast::Impl, self_ty: ast::Type) -> ast::Impl {
     let generic_params = impl_.generic_param_list().map(|generic_params| {
         let lifetime_params =
             generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
@@ -109,26 +113,45 @@ fn generate_trait_impl_text_from_impl(
         make.generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
     });
 
-    let mut buf = String::with_capacity(code.len());
-    buf.push_str("\n\n");
+    let trait_ty: ast::Type = make.ty_path(make.ident_path("Default")).into();
 
-    // `impl{generic_params} {trait_text} for {impl_.self_ty()}`
-    buf.push_str("impl");
-    if let Some(generic_params) = &generic_params {
-        format_to!(buf, "{generic_params}")
-    }
-    format_to!(buf, " {trait_text} for {self_ty}");
+    let self_new_path = make.path_concat(make.ident_path("Self"), make.ident_path("new"));
+    let self_new_call =
+        make.expr_call(make.expr_path(self_new_path), make.arg_list(std::iter::empty()));
+    let fn_body = make.block_expr(std::iter::empty(), Some(self_new_call.into()));
+    let self_ty_ret: ast::Type = make.ty_path(make.ident_path("Self")).into();
+    let default_fn = make
+        .fn_(
+            [],
+            None,
+            make.name("default"),
+            None,
+            None,
+            make.param_list(None, std::iter::empty()),
+            fn_body,
+            Some(make.ret_type(self_ty_ret)),
+            false,
+            false,
+            false,
+            false,
+        )
+        .indent(1.into());
+    let body = make.assoc_item_list(Some(ast::AssocItem::from(default_fn)));
 
-    match impl_.where_clause() {
-        Some(where_clause) => {
-            format_to!(buf, "\n{where_clause}\n{{\n{code}\n}}");
-        }
-        None => {
-            format_to!(buf, " {{\n{code}\n}}");
-        }
-    }
-
-    buf
+    make.impl_trait(
+        [],
+        false,
+        None,
+        None,
+        generic_params,
+        None,
+        false,
+        trait_ty,
+        self_ty,
+        None,
+        impl_.where_clause(),
+        Some(body),
+    )
 }
 
 fn is_default_implemented(ctx: &AssistContext<'_>, impl_: &Impl) -> bool {
@@ -631,11 +654,11 @@ mod test {
         }
     }
 
-impl Default for Example {
-    fn default() -> Self {
-        Self::new()
+    impl Default for Example {
+        fn default() -> Self {
+            Self::new()
+        }
     }
-}
 }
 "#,
         );
