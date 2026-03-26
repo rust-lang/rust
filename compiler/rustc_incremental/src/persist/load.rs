@@ -7,8 +7,8 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
 use rustc_middle::dep_graph::{DepGraph, SerializedDepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
-use rustc_serialize::Decodable;
-use rustc_serialize::opaque::MemDecoder;
+use rustc_serialize::opaque::{FileEncoder, MemDecoder};
+use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::IncrementalStateAssertion;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::Symbol;
@@ -16,7 +16,6 @@ use tracing::{debug, warn};
 
 use super::data::*;
 use super::fs::*;
-use super::save::build_dep_graph;
 use super::{file_format, work_product};
 use crate::errors;
 use crate::persist::file_format::{OpenFile, OpenFileError};
@@ -232,4 +231,39 @@ pub fn setup_dep_graph(
         build_dep_graph(sess, prev_graph, prev_work_products)
     })
     .unwrap_or_else(DepGraph::new_disabled)
+}
+
+/// Builds the dependency graph.
+///
+/// This function creates the *staging dep-graph*. When the dep-graph is modified by a query
+/// execution, the new dependency information is not kept in memory but directly
+/// output to this file. `save_dep_graph` then finalizes the staging dep-graph
+/// and moves it to the permanent dep-graph path
+pub(crate) fn build_dep_graph(
+    sess: &Session,
+    prev_graph: Arc<SerializedDepGraph>,
+    prev_work_products: WorkProductMap,
+) -> Option<DepGraph> {
+    if sess.opts.incremental.is_none() {
+        // No incremental compilation.
+        return None;
+    }
+
+    // Stream the dep-graph to an alternate file, to avoid overwriting anything in case of errors.
+    let path_buf = staging_dep_graph_path(sess);
+
+    let mut encoder = match FileEncoder::new(&path_buf) {
+        Ok(encoder) => encoder,
+        Err(err) => {
+            sess.dcx().emit_err(errors::CreateDepGraph { path: &path_buf, err });
+            return None;
+        }
+    };
+
+    file_format::write_file_header(&mut encoder, sess);
+
+    // First encode the commandline arguments hash
+    sess.opts.dep_tracking_hash(false).encode(&mut encoder);
+
+    Some(DepGraph::new(sess, prev_graph, prev_work_products, encoder))
 }
