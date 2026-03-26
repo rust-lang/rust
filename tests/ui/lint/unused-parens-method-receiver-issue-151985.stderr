@@ -15,5 +15,17 @@ LL -     (x).method();
 LL +     x.method();
    |
 
-error: aborting due to 1 previous error
+error: unnecessary parentheses around method receiver
+  --> $DIR/unused-parens-method-receiver-issue-151985.rs:28:13
+   |
+LL |     let _ = (std::cmp::Ordering::Equal).is_eq();
+   |             ^                         ^
+   |
+help: remove these parentheses
+   |
+LL -     let _ = (std::cmp::Ordering::Equal).is_eq();
+LL +     let _ = std::cmp::Ordering::Equal.is_eq();
+   |
+
+error: aborting due to 2 previous errors
 

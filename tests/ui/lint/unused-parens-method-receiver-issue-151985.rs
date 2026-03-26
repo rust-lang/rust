@@ -25,5 +25,5 @@ fn main() {
     let _ = (unsafe { std::mem::zeroed::<i32>() }).abs(); // Unsafe block expression
 
     // lint for path with multiple segments
-    let _ = (Float::MIN_POSITIVE).midpoint(-Float::MAX);
+    let _ = (std::cmp::Ordering::Equal).is_eq(); //~ ERROR unnecessary parentheses around method receiver
 }
