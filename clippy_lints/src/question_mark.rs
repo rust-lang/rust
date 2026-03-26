@@ -2,10 +2,10 @@ use crate::manual_let_else::MANUAL_LET_ELSE;
 use crate::question_mark_used::QUESTION_MARK_USED;
 use clippy_config::Conf;
 use clippy_config::types::MatchLintBehaviour;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
-use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
+use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::usage::local_used_after_expr;
@@ -24,6 +24,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
+use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
@@ -367,7 +368,11 @@ fn extract_binding_pat(pat: &Pat<'_>) -> Option<HirId> {
     }
 }
 
-fn check_arm_is_some_or_ok<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &Arm<'tcx>) -> bool {
+fn check_arm_is_some_or_ok<'tcx>(
+    cx: &LateContext<'tcx>,
+    mode: TryMode,
+    arm: &Arm<'tcx>,
+) -> Option<IfLetOrMatchThen<'tcx>> {
     let happy_ctor = match mode {
         TryMode::Result => ResultOk,
         TryMode::Option => OptionSome,
@@ -378,13 +383,16 @@ fn check_arm_is_some_or_ok<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &Ar
         && let Some(val_binding) = extract_ctor_call(cx, happy_ctor, arm.pat)
         // Extract out `val`
         && let Some(binding) = extract_binding_pat(val_binding)
-        // Check body is just `=> val`
-        && peel_blocks(arm.body).res_local_id() == Some(binding)
     {
-        true
-    } else {
-        false
+        // Check body is just `=> val`
+        return Some(if peel_blocks(arm.body).res_local_id() == Some(binding) {
+            IfLetOrMatchThen::DirectReturn
+        } else {
+            IfLetOrMatchThen::ManualUnwrap(val_binding.span, arm.body)
+        });
     }
+
+    None
 }
 
 fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &Arm<'tcx>) -> bool {
@@ -439,9 +447,23 @@ fn is_local_or_local_into(cx: &LateContext<'_>, expr: &Expr<'_>, val: HirId) -> 
     }
 }
 
-fn check_arms_are_try<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm1: &Arm<'tcx>, arm2: &Arm<'tcx>) -> bool {
-    (check_arm_is_some_or_ok(cx, mode, arm1) && check_arm_is_none_or_err(cx, mode, arm2))
-        || (check_arm_is_some_or_ok(cx, mode, arm2) && check_arm_is_none_or_err(cx, mode, arm1))
+fn check_arms_are_try<'tcx>(
+    cx: &LateContext<'tcx>,
+    mode: TryMode,
+    arm1: &Arm<'tcx>,
+    arm2: &Arm<'tcx>,
+) -> Option<IfLetOrMatchThen<'tcx>> {
+    (check_arm_is_none_or_err(cx, mode, arm2).then(|| check_arm_is_some_or_ok(cx, mode, arm1)))
+        .or_else(|| check_arm_is_none_or_err(cx, mode, arm1).then(|| check_arm_is_some_or_ok(cx, mode, arm2)))
+        .flatten()
+}
+
+#[derive(Debug)]
+enum IfLetOrMatchThen<'tcx> {
+    /// Return the binding from an if let or match arm as is.
+    DirectReturn,
+    /// Working on the binding from an if let or match arm as if it comes from a `?`.
+    ManualUnwrap(Span, &'tcx Expr<'tcx>),
 }
 
 fn check_if_try_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
@@ -449,19 +471,47 @@ fn check_if_try_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         && !expr.span.from_expansion()
         && let Some(mode) = find_try_mode(cx, scrutinee)
         && !span_contains_cfg(cx, expr.span)
-        && check_arms_are_try(cx, mode, arm1, arm2)
+        && let Some(if_let_or_match_then) = check_arms_are_try(cx, mode, arm1, arm2)
     {
-        let mut applicability = Applicability::MachineApplicable;
-        let snippet = snippet_with_applicability(cx, scrutinee.span.source_callsite(), "..", &mut applicability);
-
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             QUESTION_MARK,
             expr.span,
             "this `match` expression can be replaced with `?`",
-            "try instead",
-            snippet.into_owned() + "?",
-            applicability,
+            |diag| {
+                let mut applicability = Applicability::MachineApplicable;
+                let scrutinee_snippet =
+                    snippet_with_applicability(cx, scrutinee.span.source_callsite(), "..", &mut applicability);
+                match if_let_or_match_then {
+                    IfLetOrMatchThen::DirectReturn => {
+                        diag.span_suggestion(
+                            expr.span,
+                            "try instead",
+                            scrutinee_snippet.into_owned() + "?",
+                            applicability,
+                        );
+                    },
+                    IfLetOrMatchThen::ManualUnwrap(binding_span, arm_body) => {
+                        let indent = indent_of(cx, expr.span).unwrap_or_default();
+                        let arm_body_snippet = snippet_with_applicability(cx, arm_body.span, "..", &mut applicability);
+                        let mut sugg = reindent_multiline(&arm_body_snippet, true, Some(indent));
+                        let binding_snippet = snippet_with_applicability(cx, binding_span, "..", &mut applicability);
+                        let inner_indent = " ".repeat(indent + 4);
+                        if matches!(arm_body.kind, ExprKind::Block(..)) {
+                            sugg.insert_str(
+                                1,
+                                &format!("\n{inner_indent}let {binding_snippet} = {scrutinee_snippet}?;"),
+                            );
+                        } else {
+                            let outer_indent = " ".repeat(indent);
+                            sugg = format!(
+                                "{{\n{inner_indent}let {binding_snippet} = {scrutinee_snippet}?;\n{inner_indent}{sugg}\n{outer_indent}}}"
+                            );
+                        }
+                        diag.span_suggestion(expr.span, "try instead", sugg, applicability);
+                    },
+                }
+            },
         );
     }
 }

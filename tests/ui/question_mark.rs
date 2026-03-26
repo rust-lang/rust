@@ -1,5 +1,5 @@
 #![feature(try_blocks)]
-#![allow(clippy::unnecessary_wraps, clippy::no_effect)]
+#![allow(clippy::unnecessary_wraps, clippy::no_effect, clippy::needless_return)]
 
 use std::sync::MutexGuard;
 
@@ -178,6 +178,7 @@ fn func() -> Option<i32> {
     };
 
     match f() {
+        //~^ question_mark
         Some(val) => {
             println!("{val}");
             val
@@ -667,4 +668,29 @@ fn issue16654() -> Result<(), i32> {
     }];
 
     Ok(())
+}
+
+#[rustfmt::skip]
+fn issue16751(v: Option<usize>) -> Option<usize> {
+    let _ = match &v {
+        Some(n) => {
+            println!("{n}");
+            Some(42)
+        }
+        None => return None,
+    };
+
+    let _ = match v {
+        Some(ref n) => {
+            println!("{n}");
+            Some(42)
+        }
+        None => return None,
+    };
+
+    match v {
+        //~^ question_mark
+        Some(n) => if n > 10 { Some(42) } else { None },
+        None => return None,
+    }
 }

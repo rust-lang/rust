@@ -143,14 +143,35 @@ LL | |         None => return None,
 LL | |     };
    | |_____^ help: try instead: `opt_none!()?`
 
+error: this `match` expression can be replaced with `?`
+  --> tests/ui/question_mark.rs:180:5
+   |
+LL | /     match f() {
+LL | |
+LL | |         Some(val) => {
+LL | |             println!("{val}");
+...  |
+LL | |         None => return None,
+LL | |     };
+   | |_____^
+   |
+help: try instead
+   |
+LL ~     {
+LL +         let val = f()?;
+LL +         println!("{val}");
+LL +         val
+LL ~     };
+   |
+
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:196:13
+  --> tests/ui/question_mark.rs:197:13
    |
 LL |     let _ = if let Ok(x) = x { x } else { return x };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x?`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:199:5
+  --> tests/ui/question_mark.rs:200:5
    |
 LL | /     if x.is_err() {
 LL | |
@@ -159,7 +180,7 @@ LL | |     }
    | |_____^ help: replace it with: `x?;`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:204:16
+  --> tests/ui/question_mark.rs:205:16
    |
 LL |       let _val = match func_returning_result() {
    |  ________________^
@@ -170,7 +191,7 @@ LL | |     };
    | |_____^ help: try instead: `func_returning_result()?`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:210:5
+  --> tests/ui/question_mark.rs:211:5
    |
 LL | /     match func_returning_result() {
 LL | |
@@ -180,7 +201,7 @@ LL | |     };
    | |_____^ help: try instead: `func_returning_result()?`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:302:5
+  --> tests/ui/question_mark.rs:303:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |
@@ -189,7 +210,7 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:310:5
+  --> tests/ui/question_mark.rs:311:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |
@@ -198,7 +219,7 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:393:13
+  --> tests/ui/question_mark.rs:394:13
    |
 LL | /             if a.is_none() {
 LL | |
@@ -208,7 +229,7 @@ LL | |             }
    | |_____________^ help: replace it with: `a?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:454:5
+  --> tests/ui/question_mark.rs:455:5
    |
 LL | /     let Some(v) = bar.foo.owned.clone() else {
 LL | |         return None;
@@ -216,7 +237,7 @@ LL | |     };
    | |______^ help: replace it with: `let v = bar.foo.owned.clone()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:469:5
+  --> tests/ui/question_mark.rs:470:5
    |
 LL | /     let Some(ref x) = foo.opt_x else {
 LL | |         return None;
@@ -224,7 +245,7 @@ LL | |     };
    | |______^ help: replace it with: `let x = foo.opt_x.as_ref()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:479:5
+  --> tests/ui/question_mark.rs:480:5
    |
 LL | /     let Some(ref mut x) = foo.opt_x else {
 LL | |         return None;
@@ -232,7 +253,7 @@ LL | |     };
    | |______^ help: replace it with: `let x = foo.opt_x.as_mut()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:490:5
+  --> tests/ui/question_mark.rs:491:5
    |
 LL | /     let Some(ref x @ ref y) = foo.opt_x else {
 LL | |         return None;
@@ -240,7 +261,7 @@ LL | |     };
    | |______^ help: replace it with: `let x @ y = foo.opt_x.as_ref()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:494:5
+  --> tests/ui/question_mark.rs:495:5
    |
 LL | /     let Some(ref x @ WrapperStructWithString(_)) = bar else {
 LL | |         return None;
@@ -248,7 +269,7 @@ LL | |     };
    | |______^ help: replace it with: `let x @ &WrapperStructWithString(_) = bar.as_ref()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:498:5
+  --> tests/ui/question_mark.rs:499:5
    |
 LL | /     let Some(ref mut x @ WrapperStructWithString(_)) = bar else {
 LL | |         return None;
@@ -256,7 +277,7 @@ LL | |     };
    | |______^ help: replace it with: `let x @ &mut WrapperStructWithString(_) = bar.as_mut()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:520:5
+  --> tests/ui/question_mark.rs:521:5
    |
 LL | /     if arg.is_none() {
 LL | |
@@ -265,7 +286,7 @@ LL | |     }
    | |_____^ help: replace it with: `arg?;`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:524:15
+  --> tests/ui/question_mark.rs:525:15
    |
 LL |       let val = match arg {
    |  _______________^
@@ -276,7 +297,7 @@ LL | |     };
    | |_____^ help: try instead: `arg?`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:534:5
+  --> tests/ui/question_mark.rs:535:5
    |
 LL | /     let Some(a) = *a else {
 LL | |         return None;
@@ -284,7 +305,7 @@ LL | |     };
    | |______^ help: replace it with: `let a = (*a)?;`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:566:5
+  --> tests/ui/question_mark.rs:567:5
    |
 LL | /     match some_result {
 LL | |
@@ -294,7 +315,7 @@ LL | |     };
    | |_____^ help: try instead: `some_result?`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:572:5
+  --> tests/ui/question_mark.rs:573:5
    |
 LL | /     match some_result {
 LL | |
@@ -304,7 +325,7 @@ LL | |     };
    | |_____^ help: try instead: `some_result?`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:578:5
+  --> tests/ui/question_mark.rs:579:5
    |
 LL | /     match some_result {
 LL | |
@@ -314,7 +335,7 @@ LL | |     };
    | |_____^ help: try instead: `some_result?`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:596:17
+  --> tests/ui/question_mark.rs:597:17
    |
 LL |           let x = match result {
    |  _________________^
@@ -325,7 +346,7 @@ LL | |         };
    | |_________^ help: try instead: `result?`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:609:9
+  --> tests/ui/question_mark.rs:610:9
    |
 LL | /         if let Err(reason) = result {
 LL | |
@@ -334,7 +355,7 @@ LL | |         }
    | |_________^ help: replace it with: `result?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:626:5
+  --> tests/ui/question_mark.rs:627:5
    |
 LL | /     let Some(x) = test_expr!(42) else {
 LL | |         return None;
@@ -342,7 +363,7 @@ LL | |     };
    | |______^ help: replace it with: `let x = test_expr!(42)?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:632:5
+  --> tests/ui/question_mark.rs:633:5
    |
 LL | /     if test_expr!(42).is_none() {
 LL | |
@@ -351,7 +372,7 @@ LL | |     }
    | |_____^ help: replace it with: `test_expr!(42)?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:643:12
+  --> tests/ui/question_mark.rs:644:12
    |
 LL |       } else if let Some(x) = a {
    |  ____________^
@@ -363,7 +384,7 @@ LL | |     };
    | |_____^ help: replace it with: `{ a? }`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:658:9
+  --> tests/ui/question_mark.rs:659:9
    |
 LL | /         if let Err(err) = result {
 LL | |
@@ -372,7 +393,7 @@ LL | |         }
    | |_________^ help: replace it with: `result?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:664:10
+  --> tests/ui/question_mark.rs:665:10
    |
 LL |       _ = [if let Err(err) = result {
    |  __________^
@@ -381,5 +402,23 @@ LL | |         return Err(err);
 LL | |     }];
    | |_____^ help: replace it with: `{ result?; }`
 
-error: aborting due to 40 previous errors
+error: this `match` expression can be replaced with `?`
+  --> tests/ui/question_mark.rs:691:5
+   |
+LL | /     match v {
+LL | |
+LL | |         Some(n) => if n > 10 { Some(42) } else { None },
+LL | |         None => return None,
+LL | |     }
+   | |_____^
+   |
+help: try instead
+   |
+LL ~     {
+LL +         let n = v?;
+LL +         if n > 10 { Some(42) } else { None }
+LL +     }
+   |
+
+error: aborting due to 42 previous errors
 
