@@ -704,6 +704,8 @@ pub use core::cfg_select;
     reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
 pub use core::concat_bytes;
+#[unstable(feature = "derive_macro_global_path", issue = "none")]
+pub use core::derive;
 #[stable(feature = "matches_macro", since = "1.42.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::matches;
