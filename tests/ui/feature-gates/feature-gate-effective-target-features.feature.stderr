@@ -1,14 +1,18 @@
 warning: the feature `effective_target_features` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/feature-gate-effective-target-features.rs:3:30
+  --> $DIR/feature-gate-effective-target-features.rs:4:30
    |
 LL | #![cfg_attr(feature, feature(effective_target_features))]
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #143352 <https://github.com/rust-lang/rust/issues/143352> for more information
-   = note: `#[warn(incomplete_features)]` on by default
+note: the lint level is defined here
+  --> $DIR/feature-gate-effective-target-features.rs:3:9
+   |
+LL | #![warn(incomplete_features)]
+   |         ^^^^^^^^^^^^^^^^^^^
 
 error: `#[target_feature(..)]` cannot be applied to safe trait method
-  --> $DIR/feature-gate-effective-target-features.rs:21:5
+  --> $DIR/feature-gate-effective-target-features.rs:22:5
    |
 LL |     #[target_feature(enable = "avx2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method
@@ -17,13 +21,13 @@ LL |     fn foo(&self) {}
    |     ------------- not an `unsafe` function
 
 error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/feature-gate-effective-target-features.rs:23:5
+  --> $DIR/feature-gate-effective-target-features.rs:24:5
    |
 LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^ expected safe fn, found unsafe fn
    |
 note: type in trait
-  --> $DIR/feature-gate-effective-target-features.rs:7:5
+  --> $DIR/feature-gate-effective-target-features.rs:8:5
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^

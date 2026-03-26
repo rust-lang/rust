@@ -1,7 +1,7 @@
 #!/usr/bin/env run-cargo-script
 
 //@ check-pass
-//@ reference: input.shebang.inner-attribute
+//@ reference: shebang.syntax-description
 #![allow(unused_variables)]
 
 

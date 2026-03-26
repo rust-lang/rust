@@ -5,7 +5,6 @@
 //@ assembly-output: emit-asm
 //@ needs-llvm-components: aarch64
 //@ compile-flags: --target aarch64-unknown-linux-gnu
-//@ [GCS] min-llvm-version: 21
 //@ [GCS] ignore-apple (XCode version needs updating)
 //@ [GCS] compile-flags: -Z branch-protection=gcs
 //@ [PACRET] compile-flags: -Z branch-protection=pac-ret,leaf

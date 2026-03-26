@@ -1,7 +1,3 @@
-#![allow(unused_imports)]
-
-use core::intrinsics;
-
 intrinsics! {
     #[unsafe(naked)]
     #[cfg(any(all(windows, target_env = "gnu"), target_os = "uefi"))]

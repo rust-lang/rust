@@ -437,7 +437,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 assert_eq!(
                     None,
                     num_untupled.replace(tupled_arg_tys.len()),
-                    "Replaced existing num_tupled"
+                    "Replaced existing num_untupled"
                 );
 
                 return LocalRef::Place(place);

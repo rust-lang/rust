@@ -1,5 +1,6 @@
 //@ check-pass
 //@ compile-flags: --crate-type=lib
+//@ only-aarch64
 #![feature(rustc_attrs)]
 
 #[rustc_scalable_vector(16)]

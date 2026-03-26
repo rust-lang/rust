@@ -1,6 +1,5 @@
 //@ compile-flags: -O -Zmerge-functions=disabled
 //@ needs-deterministic-layouts
-//@ min-llvm-version: 21
 //@ ignore-std-debug-assertions (causes different value naming)
 #![crate_type = "lib"]
 

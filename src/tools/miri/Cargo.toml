@@ -28,6 +28,7 @@ chrono-tz = "0.10"
 directories = "6"
 bitflags = "2.6"
 serde_json = { version = "1.0", optional = true }
+mio = { version = "1.1.1", features = ["os-poll", "net"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

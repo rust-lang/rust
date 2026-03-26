@@ -1,5 +1,5 @@
 // regression test for #118987
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 trait Assoc {
     type Output;

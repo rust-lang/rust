@@ -151,7 +151,7 @@ rustc_index::newtype_index! {
     /// integers starting at zero, so a mapping that maps all or most nodes within
     /// an "item-like" to something else can be implemented by a `Vec` instead of a
     /// tree or hash map.
-    #[derive(HashStable_Generic)]
+    #[stable_hash_generic]
     #[encodable]
     #[orderable]
     pub struct ItemLocalId {}

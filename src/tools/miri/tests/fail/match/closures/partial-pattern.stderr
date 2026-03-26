@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a dangling reference (use-after-free)
+error: Undefined Behavior: constructing invalid value of type &u32: encountered a dangling reference (use-after-free)
   --> tests/fail/match/closures/partial-pattern.rs:LL:CC
    |
 LL |       let _ = || {

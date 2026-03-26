@@ -2426,9 +2426,6 @@ impl<T: ?Sized, A: Allocator> Deref for Arc<T, A> {
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Arc<T, A> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Weak<T, A> {}
-
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Arc<T, A> {}
 
@@ -4421,6 +4418,15 @@ impl<T: ?Sized, A: Allocator> AsRef<T> for UniqueArc<T, A> {
 impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueArc<T, A> {
     fn as_mut(&mut self) -> &mut T {
         &mut **self
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T> From<T> for UniqueArc<T> {
+    #[inline(always)]
+    fn from(value: T) -> Self {
+        Self::new(value)
     }
 }
 

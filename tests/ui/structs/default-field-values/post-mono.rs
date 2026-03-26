@@ -1,6 +1,6 @@
 //@ build-fail
 //@ revisions: direct indirect
-
+//@ ignore-parallel-frontend post-monomorphization errors
 #![feature(default_field_values)]
 
 struct Z<const X: usize> {

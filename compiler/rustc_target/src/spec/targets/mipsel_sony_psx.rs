@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, Target, TargetMetadata,
+    Arch, Cc, LinkerFlavor, Lld, LlvmAbi, Os, PanicStrategy, RelocModel, Target, TargetMetadata,
     TargetOptions, cvs,
 };
 
@@ -41,7 +41,7 @@ pub(crate) fn target() -> Target {
 
             // PSX does not support trap-on-condition instructions.
             llvm_args: cvs!["-mno-check-zero-division"],
-            llvm_abiname: "o32".into(),
+            llvm_abiname: LlvmAbi::O32,
             panic_strategy: PanicStrategy::Abort,
             ..Default::default()
         },

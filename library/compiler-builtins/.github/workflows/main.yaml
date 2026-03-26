@@ -13,7 +13,7 @@ env:
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
   RUST_BACKTRACE: full
-  BENCHMARK_RUSTC: nightly-2025-12-01 # Pin the toolchain for reproducable results
+  BENCHMARK_RUSTC: nightly-2026-02-10 # Pin the toolchain for reproducable results
 
 jobs:
   # Determine which tests should be run based on changed files.
@@ -70,14 +70,12 @@ jobs:
           os: ubuntu-24.04
         - target: powerpc64le-unknown-linux-gnu
           os: ubuntu-24.04
-        # - target: powerpc64le-unknown-linux-gnu
-        #   os: ubuntu-24.04-ppc64le
-        #   # FIXME(rust#151807): remove once PPC builds work again.
-        #   channel: nightly-2026-01-23
+        - target: powerpc64le-unknown-linux-gnu
+          os: ubuntu-24.04-ppc64le
         - target: riscv64gc-unknown-linux-gnu
           os: ubuntu-24.04
-        # - target: s390x-unknown-linux-gnu
-        #   os: ubuntu-24.04-s390x
+        - target: s390x-unknown-linux-gnu
+          os: ubuntu-24.04-s390x
         - target: thumbv6m-none-eabi
           os: ubuntu-24.04
         - target: thumbv7em-none-eabi
@@ -289,7 +287,7 @@ jobs:
         path: ${{ env.BASELINE_NAME }}.tar.xz
 
     - name: Run wall time benchmarks
-      run: ./ci/bench-runtime.sh
+      run: ./ci/bench-walltime.sh
 
     - name: Print test logs if available
       if: always()
@@ -303,7 +301,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install Rust (rustup)
-      run: rustup update nightly --no-self-update && rustup default nightly
+      # FIXME(ci): not working in the 2026-02-11 nightly
+      # https://rust-lang.zulipchat.com/#narrow/channel/269128-miri/topic/build-script-build.20contains.20outdated.20or.20invalid.20JSON/with/573426109
+      run: rustup update nightly-2026-02-10 --no-self-update && rustup default nightly-2026-02-10
       shell: bash
     - run: rustup component add miri
     - run: cargo miri setup

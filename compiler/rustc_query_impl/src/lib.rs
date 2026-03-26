@@ -10,27 +10,23 @@
 
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::dep_graph;
-use rustc_middle::queries::{self, ExternProviders, Providers};
-use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
-use rustc_middle::query::plumbing::{QuerySystem, QueryVTable};
-use rustc_middle::query::{AsLocalQueryKey, QueryCache, QueryMode};
+use rustc_middle::queries::{ExternProviders, Providers};
+use rustc_middle::query::on_disk_cache::OnDiskCache;
+use rustc_middle::query::{QueryCache, QuerySystem, QueryVTable};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
 
 pub use crate::dep_kind_vtables::make_dep_kind_vtables;
-use crate::from_cycle_error::FromCycleError;
+pub use crate::execution::{CollectActiveJobsKind, collect_active_query_jobs};
 pub use crate::job::{QueryJobMap, break_query_cycles, print_query_stack};
-use crate::profiling_support::QueryKeyStringCache;
-
-#[macro_use]
-mod plumbing;
 
 mod dep_kind_vtables;
 mod error;
 mod execution;
-mod from_cycle_error;
+mod handle_cycle_error;
 mod job;
+mod plumbing;
 mod profiling_support;
+mod query_impl;
 
 /// Trait that knows how to look up the [`QueryVTable`] for a particular query.
 ///
@@ -52,9 +48,12 @@ pub fn query_system<'tcx>(
     on_disk_cache: Option<OnDiskCache>,
     incremental: bool,
 ) -> QuerySystem<'tcx> {
+    let mut query_vtables = query_impl::make_query_vtables(incremental);
+    handle_cycle_error::specialize_query_vtables(&mut query_vtables);
     QuerySystem {
         arenas: Default::default(),
-        query_vtables: make_query_vtables(incremental),
+        query_vtables,
+        side_effects: Default::default(),
         on_disk_cache,
         local_providers,
         extern_providers,
@@ -62,10 +61,9 @@ pub fn query_system<'tcx>(
     }
 }
 
-rustc_middle::rustc_with_all_queries! { define_queries! }
-
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
-    providers.hooks.alloc_self_profile_query_strings = alloc_self_profile_query_strings;
-    providers.hooks.query_key_hash_verify_all = query_key_hash_verify_all;
-    providers.hooks.encode_all_query_results = encode_all_query_results;
+    providers.hooks.alloc_self_profile_query_strings =
+        profiling_support::alloc_self_profile_query_strings;
+    providers.hooks.verify_query_key_hashes = plumbing::verify_query_key_hashes;
+    providers.hooks.encode_query_values = plumbing::encode_query_values;
 }

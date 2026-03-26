@@ -2502,14 +2502,6 @@ pub(crate) macro const_eval_select {
 /// particular value, ever. However, the compiler will generally make it
 /// return `true` only if the value of the argument is actually known.
 ///
-/// # Stability concerns
-///
-/// While it is safe to call, this intrinsic may behave differently in
-/// a `const` context than otherwise. See the [`const_eval_select()`]
-/// documentation for an explanation of the issues this can cause. Unlike
-/// `const_eval_select`, this intrinsic isn't guaranteed to behave
-/// deterministically even in a `const` context.
-///
 /// # Type Requirements
 ///
 /// `T` must be either a `bool`, a `char`, a primitive numeric type (e.g. `f32`,
@@ -2590,6 +2582,12 @@ pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
 /// assertions are enabled whenever the *user crate* has UB checks enabled. However, if the
 /// user has UB checks disabled, the checks will still get optimized out. This intrinsic is
 /// primarily used by [`crate::ub_checks::assert_unsafe_precondition`].
+///
+/// # Consteval
+///
+/// In consteval, this function currently returns `true`. This is because the value of the `ub_checks`
+/// configuration can differ across crates, but we need this function to always return the same
+/// value in consteval in order to avoid unsoundness.
 #[rustc_intrinsic_const_stable_indirect] // just for UB checks
 #[inline(always)]
 #[rustc_intrinsic]
@@ -2609,6 +2607,12 @@ pub const fn ub_checks() -> bool {
 /// `#[inline]`), gating assertions on `overflow_checks()` rather than `cfg!(overflow_checks)` means that
 /// assertions are enabled whenever the *user crate* has overflow checks enabled. However if the
 /// user has overflow checks disabled, the checks will still get optimized out.
+///
+/// # Consteval
+///
+/// In consteval, this function currently returns `true`. This is because the value of the `overflow_checks`
+/// configuration can differ across crates, but we need this function to always return the same
+/// value in consteval in order to avoid unsoundness.
 #[inline(always)]
 #[rustc_intrinsic]
 pub const fn overflow_checks() -> bool {
@@ -2987,6 +2991,8 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 
 /// Returns the minimum of two `f16` values, ignoring NaN.
 ///
+/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular:
 /// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
 /// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
 /// and `-0.0`), either input may be returned non-deterministically.
@@ -2999,10 +3005,19 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 /// The stabilized version of this intrinsic is [`f16::min`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn minnumf16(x: f16, y: f16) -> f16;
+pub const fn minimum_number_nsz_f16(x: f16, y: f16) -> f16 {
+    if x.is_nan() || y <= x {
+        y
+    } else {
+        // Either y > x or y is a NaN.
+        x
+    }
+}
 
 /// Returns the minimum of two `f32` values, ignoring NaN.
 ///
+/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular:
 /// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
 /// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
 /// and `-0.0`), either input may be returned non-deterministically.
@@ -3016,10 +3031,19 @@ pub const fn minnumf16(x: f16, y: f16) -> f16;
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn minnumf32(x: f32, y: f32) -> f32;
+pub const fn minimum_number_nsz_f32(x: f32, y: f32) -> f32 {
+    if x.is_nan() || y <= x {
+        y
+    } else {
+        // Either y > x or y is a NaN.
+        x
+    }
+}
 
 /// Returns the minimum of two `f64` values, ignoring NaN.
 ///
+/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular:
 /// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
 /// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
 /// and `-0.0`), either input may be returned non-deterministically.
@@ -3033,10 +3057,19 @@ pub const fn minnumf32(x: f32, y: f32) -> f32;
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn minnumf64(x: f64, y: f64) -> f64;
+pub const fn minimum_number_nsz_f64(x: f64, y: f64) -> f64 {
+    if x.is_nan() || y <= x {
+        y
+    } else {
+        // Either y > x or y is a NaN.
+        x
+    }
+}
 
 /// Returns the minimum of two `f128` values, ignoring NaN.
 ///
+/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular:
 /// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
 /// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
 /// and `-0.0`), either input may be returned non-deterministically.
@@ -3049,7 +3082,14 @@ pub const fn minnumf64(x: f64, y: f64) -> f64;
 /// The stabilized version of this intrinsic is [`f128::min`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn minnumf128(x: f128, y: f128) -> f128;
+pub const fn minimum_number_nsz_f128(x: f128, y: f128) -> f128 {
+    if x.is_nan() || y <= x {
+        y
+    } else {
+        // Either y > x or y is a NaN.
+        x
+    }
+}
 
 /// Returns the minimum of two `f16` values, propagating NaN.
 ///
@@ -3153,6 +3193,8 @@ pub const fn minimumf128(x: f128, y: f128) -> f128 {
 
 /// Returns the maximum of two `f16` values, ignoring NaN.
 ///
+/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular:
 /// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
 /// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
 /// and `-0.0`), either input may be returned non-deterministically.
@@ -3165,10 +3207,19 @@ pub const fn minimumf128(x: f128, y: f128) -> f128 {
 /// The stabilized version of this intrinsic is [`f16::max`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn maxnumf16(x: f16, y: f16) -> f16;
+pub const fn maximum_number_nsz_f16(x: f16, y: f16) -> f16 {
+    if x.is_nan() || y >= x {
+        y
+    } else {
+        // Either y < x or y is a NaN.
+        x
+    }
+}
 
 /// Returns the maximum of two `f32` values, ignoring NaN.
 ///
+/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular:
 /// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
 /// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
 /// and `-0.0`), either input may be returned non-deterministically.
@@ -3182,10 +3233,19 @@ pub const fn maxnumf16(x: f16, y: f16) -> f16;
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn maxnumf32(x: f32, y: f32) -> f32;
+pub const fn maximum_number_nsz_f32(x: f32, y: f32) -> f32 {
+    if x.is_nan() || y >= x {
+        y
+    } else {
+        // Either y < x or y is a NaN.
+        x
+    }
+}
 
 /// Returns the maximum of two `f64` values, ignoring NaN.
 ///
+/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular:
 /// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
 /// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
 /// and `-0.0`), either input may be returned non-deterministically.
@@ -3199,10 +3259,19 @@ pub const fn maxnumf32(x: f32, y: f32) -> f32;
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn maxnumf64(x: f64, y: f64) -> f64;
+pub const fn maximum_number_nsz_f64(x: f64, y: f64) -> f64 {
+    if x.is_nan() || y >= x {
+        y
+    } else {
+        // Either y < x or y is a NaN.
+        x
+    }
+}
 
 /// Returns the maximum of two `f128` values, ignoring NaN.
 ///
+/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular:
 /// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
 /// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
 /// and `-0.0`), either input may be returned non-deterministically.
@@ -3215,7 +3284,14 @@ pub const fn maxnumf64(x: f64, y: f64) -> f64;
 /// The stabilized version of this intrinsic is [`f128::max`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn maxnumf128(x: f128, y: f128) -> f128;
+pub const fn maximum_number_nsz_f128(x: f128, y: f128) -> f128 {
+    if x.is_nan() || y >= x {
+        y
+    } else {
+        // Either y < x or y is a NaN.
+        x
+    }
+}
 
 /// Returns the maximum of two `f16` values, propagating NaN.
 ///

@@ -154,7 +154,7 @@ fn check_arm<'tcx>(
                 } else {
                     outer_pat.span.shrink_to_hi()
                 };
-                let (paren_start, inner_if_span, paren_end) = peel_parens(cx.tcx.sess.source_map(), inner_expr.span);
+                let (paren_start, inner_if_span, paren_end) = peel_parens(cx, inner_expr.span);
                 let inner_if = inner_if_span.split_at(2).0;
                 let mut sugg = vec![
                     (inner.then.span.shrink_to_lo(), "=> ".to_string()),

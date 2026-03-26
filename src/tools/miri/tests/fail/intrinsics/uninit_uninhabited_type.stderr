@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a value of the never type `!`
+error: Undefined Behavior: constructing invalid value of type !: encountered a value of the never type `!`
   --> tests/fail/intrinsics/uninit_uninhabited_type.rs:LL:CC
    |
 LL |     let _ = unsafe { std::mem::uninitialized::<!>() };

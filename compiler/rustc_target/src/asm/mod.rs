@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 
-use crate::spec::{Abi, Arch, RelocModel, Target};
+use crate::spec::{Arch, CfgAbi, RelocModel, Target};
 
 pub struct ModifierInfo {
     pub modifier: char,
@@ -1001,7 +1001,7 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => match name {
-                "C" | "system" => Ok(if target.abi == Abi::Spe {
+                "C" | "system" => Ok(if target.cfg_abi == CfgAbi::Spe {
                     InlineAsmClobberAbi::PowerPCSPE
                 } else {
                     InlineAsmClobberAbi::PowerPC

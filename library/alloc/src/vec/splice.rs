@@ -1,4 +1,4 @@
-use core::{ptr, slice};
+use core::ptr;
 
 use super::{Drain, Vec};
 use crate::alloc::{Allocator, Global};
@@ -107,15 +107,13 @@ impl<T, A: Allocator> Drain<'_, T, A> {
         let vec = unsafe { self.vec.as_mut() };
         let range_start = vec.len;
         let range_end = self.tail_start;
-        let range_slice = unsafe {
-            slice::from_raw_parts_mut(vec.as_mut_ptr().add(range_start), range_end - range_start)
-        };
+        // The elements in this range are not initialized so we avoid creating a slice.
 
-        for place in range_slice {
+        for idx in range_start..range_end {
             let Some(new_item) = replace_with.next() else {
                 return false;
             };
-            unsafe { ptr::write(place, new_item) };
+            unsafe { vec.as_mut_ptr().add(idx).write(new_item) };
             vec.len += 1;
         }
         true

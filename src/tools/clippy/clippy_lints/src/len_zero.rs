@@ -13,8 +13,7 @@ use rustc_hir::{BinOpKind, Expr, ExprKind, PatExprKind, PatKind, RustcVersion, S
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Spanned, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does

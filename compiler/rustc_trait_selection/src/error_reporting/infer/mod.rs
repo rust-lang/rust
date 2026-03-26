@@ -392,7 +392,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     {
                         err.span_suggestion_verbose(
                             span,
-                            "consider dereferencing to access the inner value using the Deref trait",
+                            "consider dereferencing to access the inner value using the `Deref` trait",
                             format!("{prefix}{peeled_snippet}"),
                             Applicability::MaybeIncorrect,
                         );

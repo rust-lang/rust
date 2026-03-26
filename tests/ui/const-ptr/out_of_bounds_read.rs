@@ -1,6 +1,6 @@
 fn main() {
     use std::ptr;
-
+//@ ignore-parallel-frontend different alloc ids
     const DATA: [u32; 1] = [42];
 
     const PAST_END_PTR: *const u32 = unsafe { DATA.as_ptr().add(1) };

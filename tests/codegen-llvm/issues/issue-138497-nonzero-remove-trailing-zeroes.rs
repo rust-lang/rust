@@ -1,7 +1,6 @@
 //! This test checks that removing trailing zeroes from a `NonZero`,
 //! then creating a new `NonZero` from the result does not panic.
 
-//@ min-llvm-version: 21
 //@ compile-flags: -O -Zmerge-functions=disabled
 #![crate_type = "lib"]
 

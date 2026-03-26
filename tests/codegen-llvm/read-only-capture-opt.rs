@@ -1,5 +1,4 @@
 //@ compile-flags: -C opt-level=3 -Z mir-opt-level=0
-//@ min-llvm-version: 21
 
 #![crate_type = "lib"]
 

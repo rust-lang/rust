@@ -30,6 +30,11 @@ LL |     foo::<42>();
    |
    = note: expected opaque type `Foo`
                      found type `{integer}`
+note: expected because of the type of the const parameter
+  --> $DIR/opaque_types.rs:6:8
+   |
+LL | fn foo<const C: Foo>() {}
+   |        ^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

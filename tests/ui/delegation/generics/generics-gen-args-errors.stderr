@@ -537,10 +537,8 @@ LL |         bar::<1, 2, 3, 4, 5, 6>();
 note: function defined here, with 3 generic parameters: `T`, `U`, `N`
   --> $DIR/generics-gen-args-errors.rs:8:18
    |
-LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
-   |                            -         -         --------------
 LL |     reuse foo as bar;
-   |                  ^^^
+   |           ---    ^^^
 
 error[E0107]: function takes 2 lifetime arguments but 5 lifetime arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:17:9
@@ -553,10 +551,8 @@ LL |         bar::<'static, 'static, 'static, 'static, 'static>();
 note: function defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/generics-gen-args-errors.rs:8:18
    |
-LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
-   |            --      --
 LL |     reuse foo as bar;
-   |                  ^^^
+   |           ---    ^^^
 
 error[E0747]: constant provided when a type was expected
   --> $DIR/generics-gen-args-errors.rs:20:23
@@ -575,10 +571,8 @@ LL |         bar::<_, _, _, _, _>();
 note: function defined here, with 3 generic parameters: `T`, `U`, `N`
   --> $DIR/generics-gen-args-errors.rs:8:18
    |
-LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
-   |                            -         -         --------------
 LL |     reuse foo as bar;
-   |                  ^^^
+   |           ---    ^^^
 
 error[E0747]: unresolved item provided when a constant was expected
   --> $DIR/generics-gen-args-errors.rs:28:25

@@ -555,7 +555,10 @@ fn parse_source(
                     // consider it only as a crate-level attribute.
                     if attr.has_name(sym::allow)
                         && let Some(list) = attr.meta_item_list()
-                        && list.iter().any(|sub_attr| sub_attr.has_name(sym::internal_features))
+                        && list.iter().any(|sub_attr| {
+                            sub_attr.has_name(sym::internal_features)
+                                || sub_attr.has_name(sym::incomplete_features)
+                        })
                     {
                         push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
                     } else {

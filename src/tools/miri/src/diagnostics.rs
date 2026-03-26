@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use rustc_abi::{Align, Size};
 use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
-use rustc_errors::{Diag, DiagMessage, Level};
+use rustc_errors::{Diag, Level};
 use rustc_span::{DUMMY_SP, Span, SpanData, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
@@ -106,16 +106,7 @@ impl fmt::Debug for TerminationInfo {
     }
 }
 
-impl MachineStopType for TerminationInfo {
-    fn diagnostic_message(&self) -> DiagMessage {
-        self.to_string().into()
-    }
-    fn add_args(
-        self: Box<Self>,
-        _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagArgValue),
-    ) {
-    }
-}
+impl MachineStopType for TerminationInfo {}
 
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
@@ -354,16 +345,14 @@ pub fn report_result<'tcx>(
         (title, helps)
     } else {
         let title = match res.kind() {
-            UndefinedBehavior(ValidationError(validation_err))
-                if matches!(
-                    validation_err.kind,
-                    ValidationErrorKind::PointerAsInt { .. } | ValidationErrorKind::PartialPointer
-                ) =>
-            {
+            UndefinedBehavior(UndefinedBehaviorInfo::ValidationError {
+                ptr_bytes_warning: true,
+                ..
+            }) => {
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
                 bug!(
                     "This validation error should be impossible in Miri: {}",
-                    format_interp_error(ecx.tcx.dcx(), res)
+                    format_interp_error(res)
                 );
             }
             UndefinedBehavior(_) => "Undefined Behavior",
@@ -380,10 +369,7 @@ pub fn report_result<'tcx>(
             ) => "post-monomorphization error",
             _ => {
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
-                bug!(
-                    "This error should be impossible in Miri: {}",
-                    format_interp_error(ecx.tcx.dcx(), res)
-                );
+                bug!("This error should be impossible in Miri: {}", format_interp_error(res));
             }
         };
         #[rustfmt::skip]
@@ -411,10 +397,10 @@ pub fn report_result<'tcx>(
                 match info {
                     PointerUseAfterFree(alloc_id, _) | PointerOutOfBounds { alloc_id, .. } => {
                         if let Some(span) = ecx.machine.allocated_span(*alloc_id) {
-                            helps.push(note_span!(span, "{:?} was allocated here:", alloc_id));
+                            helps.push(note_span!(span, "{alloc_id} was allocated here:"));
                         }
                         if let Some(span) = ecx.machine.deallocated_span(*alloc_id) {
-                            helps.push(note_span!(span, "{:?} was deallocated here:", alloc_id));
+                            helps.push(note_span!(span, "{alloc_id} was deallocated here:"));
                         }
                     }
                     AbiMismatchArgument { .. } | AbiMismatchReturn { .. } => {
@@ -447,7 +433,7 @@ pub fn report_result<'tcx>(
         UndefinedBehavior(InvalidUninitBytes(Some((alloc_id, access)))) => {
             writeln!(
                 extra,
-                "Uninitialized memory occurred at {alloc_id:?}{range:?}, in this allocation:",
+                "Uninitialized memory occurred at {alloc_id}{range}, in this allocation:",
                 range = access.bad,
             )
             .unwrap();
@@ -460,7 +446,7 @@ pub fn report_result<'tcx>(
     if let Some(title) = title {
         write!(primary_msg, "{title}: ").unwrap();
     }
-    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), res)).unwrap();
+    write!(primary_msg, "{}", format_interp_error(res)).unwrap();
 
     if labels.is_empty() {
         labels.push(format!(
@@ -510,7 +496,7 @@ pub fn report_leaks<'tcx>(
     let mut any_pruned = false;
     for (id, kind, alloc) in leaks {
         let mut title = format!(
-            "memory leaked: {id:?} ({}, size: {:?}, align: {:?})",
+            "memory leaked: {id:?} ({}, size: {}, align: {})",
             kind,
             alloc.size().bytes(),
             alloc.align.bytes()
@@ -665,17 +651,17 @@ impl<'tcx> MiriMachine<'tcx> {
                 format!("created {tag:?} with {perm} derived from unknown tag"),
             CreatedPointerTag(tag, Some(perm), Some((alloc_id, range, orig_tag))) =>
                 format!(
-                    "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
+                    "created tag {tag:?} with {perm} at {alloc_id}{range} derived from {orig_tag:?}"
                 ),
             PoppedPointerTag(item, cause) => format!("popped tracked tag for item {item:?}{cause}"),
             TrackingAlloc(id, size, align) =>
                 format!(
-                    "now tracking allocation {id:?} of {size} bytes (alignment {align} bytes)",
+                    "now tracking allocation {id} of {size} bytes (alignment {align} bytes)",
                     size = size.bytes(),
                     align = align.bytes(),
                 ),
             AccessedAlloc(id, range, access_kind) =>
-                format!("{access_kind} at {id:?}[{}..{}]", range.start.bytes(), range.end().bytes()),
+                format!("{access_kind} at {id}{range}"),
             FreedAlloc(id) => format!("freed allocation {id:?}"),
             RejectedIsolatedOp(op) => format!("{op} was made to return an error due to isolation"),
             ProgressReport { .. } =>
@@ -704,7 +690,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 };
                 format!("GenMC currently does not model the failure ordering for `compare_exchange`. {was_upgraded_msg}. Miri with GenMC might miss bugs related to this memory access.")
             }
-            FileInProcOpened => format!("files in `/proc` can bypass the Abstract Machine and might not work properly in Miri")
+            FileInProcOpened => format!("files in `/proc` can bypass the Abstract Machine and might not work properly in Miri"),
         };
 
         let notes = match &e {

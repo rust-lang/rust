@@ -2,7 +2,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -14,12 +14,12 @@ pub(crate) fn provide(providers: &mut Providers) {
     };
 }
 
-fn check_representability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Representability {
+fn check_representability(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     match tcx.def_kind(def_id) {
         DefKind::Struct | DefKind::Union | DefKind::Enum => {
             for variant in tcx.adt_def(def_id).variants() {
                 for field in variant.fields.iter() {
-                    let _ = tcx.check_representability(field.did.expect_local());
+                    tcx.ensure_ok().check_representability(field.did.expect_local());
                 }
             }
         }
@@ -28,7 +28,6 @@ fn check_representability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Representabili
         }
         def_kind => bug!("unexpected {def_kind:?}"),
     }
-    Representability
 }
 
 fn check_representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
@@ -36,7 +35,7 @@ fn check_representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
         // This one must be a query rather than a vanilla `check_representability_adt_ty` call. See
         // the comment on `check_representability_adt_ty` below for why.
         ty::Adt(..) => {
-            let _ = tcx.check_representability_adt_ty(ty);
+            tcx.ensure_ok().check_representability_adt_ty(ty);
         }
         // FIXME(#11924) allow zero-length arrays?
         ty::Array(ty, _) => {
@@ -59,7 +58,7 @@ fn check_representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
 //     -> check_representability_adt_ty(Bar<Foo>)
 //     -> check_representability(Foo)
 //
-// For the diagnostic output (in `Value::from_cycle_error`), we want to detect
+// For the diagnostic output (in `check_representability`), we want to detect
 // that the `Foo` in the *second* field of the struct is culpable. This
 // requires traversing the HIR of the struct and calling `params_in_repr(Bar)`.
 // But we can't call params_in_repr for a given type unless it is known to be
@@ -67,10 +66,10 @@ fn check_representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
 // Looking at the query cycle above, we know that `Bar` is representable
 // because `check_representability_adt_ty(Bar<..>)` is in the cycle and
 // `check_representability(Bar)` is *not* in the cycle.
-fn check_representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representability {
+fn check_representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
     let ty::Adt(adt, args) = ty.kind() else { bug!("expected adt") };
     if let Some(def_id) = adt.did().as_local() {
-        let _ = tcx.check_representability(def_id);
+        tcx.ensure_ok().check_representability(def_id);
     }
     // At this point, we know that the item of the ADT type is representable;
     // but the type parameters may cause a cycle with an upstream type
@@ -82,7 +81,6 @@ fn check_representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Repre
             }
         }
     }
-    Representability
 }
 
 fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DenseBitSet<u32> {

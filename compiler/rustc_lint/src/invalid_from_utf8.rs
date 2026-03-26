@@ -3,8 +3,7 @@ use std::str::Utf8Error;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::source_map::Spanned;
-use rustc_span::sym;
+use rustc_span::{Spanned, sym};
 
 use crate::lints::InvalidFromUtf8Diag;
 use crate::{LateContext, LateLintPass, LintContext};

@@ -24,7 +24,9 @@ error[E0308]: mismatched types
   --> $DIR/pat-lt-bracket-6.rs:10:30
    |
 LL | const RECOVERY_WITNESS: () = 0;
-   |                              ^ expected `()`, found integer
+   |                         --   ^ expected `()`, found integer
+   |                         |
+   |                         expected because of the type of the constant
 
 error: aborting due to 3 previous errors
 

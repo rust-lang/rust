@@ -76,12 +76,11 @@ COPY scripts/nodejs.sh /scripts/
 RUN sh /scripts/nodejs.sh /node
 ENV PATH="/node/bin:${PATH}"
 
-ENV RUST_CONFIGURE_ARGS \
-  --build=x86_64-unknown-linux-gnu \
+ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu \
   --save-toolstates=/tmp/toolstate/toolstates.json \
-  --enable-new-symbol-mangling
+  --enable-new-symbol-mangling"
 
-ENV HOST_TARGET x86_64-unknown-linux-gnu
+ENV HOST_TARGET="x86_64-unknown-linux-gnu"
 
 # FIXME(#133381): currently rustc alt builds do *not* have rustc debug
 # assertions enabled! Therefore, we cannot force download CI rustc.
@@ -89,5 +88,5 @@ ENV HOST_TARGET x86_64-unknown-linux-gnu
 
 COPY scripts/shared.sh /scripts/
 
-ENV SCRIPT /tmp/checktools.sh ../x.py && \
-  python3 ../x.py test tests/rustdoc-gui --stage 2 --test-args "'--jobs 1'"
+ENV SCRIPT="/tmp/checktools.sh ../x.py && \
+  python3 ../x.py test tests/rustdoc-gui --stage 2 --test-args '--jobs 1'"

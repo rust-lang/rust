@@ -661,10 +661,11 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
 ///
 /// Doing so on all calls to `extract_tupled_inputs_and_output_from_callable`
 /// would be wasteful.
+#[instrument(level = "trace", skip(cx), ret)]
 pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
     cx: I,
     self_ty: I::Ty,
-) -> Result<(ty::Binder<I, (I::Ty, I::Ty)>, I::FunctionId, I::GenericArgs), NoSolution> {
+) -> Result<(ty::Binder<I, (I::Ty, I::Ty)>, I::DefId, I::GenericArgs), NoSolution> {
     match self_ty.kind() {
         ty::FnDef(def_id, args) => {
             let sig = cx.fn_sig(def_id);
@@ -675,7 +676,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
                 Ok((
                     sig.instantiate(cx, args)
                         .map_bound(|sig| (Ty::new_tup(cx, sig.inputs().as_slice()), sig.output())),
-                    def_id,
+                    def_id.into(),
                     args,
                 ))
             } else {
@@ -686,9 +687,19 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         ty::FnPtr(..) => {
             return Err(NoSolution);
         }
-        // `Closure`s are not const for now.
-        ty::Closure(..) => {
-            return Err(NoSolution);
+        ty::Closure(def, args) => {
+            if cx.closure_is_const(def) {
+                let closure_args = args.as_closure();
+                Ok((
+                    closure_args
+                        .sig()
+                        .map_bound(|sig| (sig.inputs().get(0).unwrap(), sig.output())),
+                    def.into(),
+                    args,
+                ))
+            } else {
+                return Err(NoSolution);
+            }
         }
         // `CoroutineClosure`s are not const for now.
         ty::CoroutineClosure(..) => {
@@ -786,12 +797,16 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
         | ty::Error(_) => Ok(vec![]),
 
-        // Coroutines and closures could implement `[const] Drop`,
+        // Closures are [const] Destruct when all of their upvars (captures) are [const] Destruct.
+        ty::Closure(_, args) => {
+            let closure_args = args.as_closure();
+            Ok(vec![ty::TraitRef::new(cx, destruct_def_id, [closure_args.tupled_upvars_ty()])])
+        }
+        // Coroutines could implement `[const] Drop`,
         // but they don't really need to right now.
-        ty::Closure(_, _)
-        | ty::CoroutineClosure(_, _)
-        | ty::Coroutine(_, _)
-        | ty::CoroutineWitness(_, _) => Err(NoSolution),
+        ty::CoroutineClosure(_, _) | ty::Coroutine(_, _) | ty::CoroutineWitness(_, _) => {
+            Err(NoSolution)
+        }
 
         // FIXME(unsafe_binders): Unsafe binders could implement `[const] Drop`
         // if their inner type implements it.

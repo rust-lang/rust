@@ -36,8 +36,8 @@ pub use anstyle::{
 pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
-    BugAbort, Diag, DiagInner, DiagLocation, DiagStyledString, Diagnostic, EmissionGuarantee,
-    FatalAbort, StringPart, Subdiag, Subdiagnostic,
+    BugAbort, Diag, DiagDecorator, DiagInner, DiagLocation, DiagStyledString, Diagnostic,
+    EmissionGuarantee, FatalAbort, StringPart, Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
@@ -136,6 +136,14 @@ impl Suggestions {
             Suggestions::Enabled(suggestions) => suggestions,
             Suggestions::Sealed(suggestions) => suggestions.into_vec(),
             Suggestions::Disabled => Vec::new(),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        match self {
+            Suggestions::Enabled(suggestions) => suggestions.len(),
+            Suggestions::Sealed(suggestions) => suggestions.len(),
+            Suggestions::Disabled => 0,
         }
     }
 }
@@ -371,8 +379,6 @@ pub enum StashKey {
     MaybeFruTypo,
     CallAssocMethod,
     AssociatedTypeSuggestion,
-    /// Query cycle detected, stashing in favor of a better error.
-    Cycle,
     UndeterminedMacroResolution,
     /// Used by `Parser::maybe_recover_trailing_expr`
     ExprInPat,
@@ -380,6 +386,7 @@ pub enum StashKey {
     /// it's a method call without parens. If later on in `hir_typeck` we find out that this is
     /// the case we suppress this message and we give a better suggestion.
     GenericInFieldExpr,
+    ReturnTypeNotation,
 }
 
 fn default_track_diagnostic<R>(diag: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {

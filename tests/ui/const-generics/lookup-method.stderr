@@ -7,8 +7,7 @@ LL | struct Builder<const A: bool, const B: bool>;
 LL |     b.cast().build();
    |              ^^^^^ method not found in `Builder<false, true>`
    |
-   = note: the method was found for
-           - `Builder<true, true>`
+   = note: the method was found for `Builder<true, true>`
 
 error: aborting due to 1 previous error
 

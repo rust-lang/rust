@@ -1,10 +1,10 @@
-error[E0080]: constructing invalid value: encountered a value of uninhabited type `Bar`
+error[E0080]: constructing invalid value of type Bar: encountered a value of uninhabited type `Bar`
   --> $DIR/ub-uninhabit.rs:20:35
    |
 LL | const BAD_BAD_BAD: Bar = unsafe { MaybeUninit { uninit: () }.init };
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_BAD_BAD` failed here
 
-error[E0080]: constructing invalid value: encountered a reference pointing to uninhabited type Bar
+error[E0080]: constructing invalid value of type &Bar: encountered a reference pointing to uninhabited type Bar
   --> $DIR/ub-uninhabit.rs:23:1
    |
 LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
@@ -15,13 +15,13 @@ LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at [0]: encountered a value of uninhabited type `Bar`
+error[E0080]: constructing invalid value of type [Bar; 1]: at [0], encountered a value of uninhabited type `Bar`
   --> $DIR/ub-uninhabit.rs:26:42
    |
 LL | const BAD_BAD_ARRAY: [Bar; 1] = unsafe { MaybeUninit { uninit: () }.init };
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_BAD_ARRAY` failed here
 
-error[E0080]: constructing invalid value: encountered a value of the never type `!`
+error[E0080]: constructing invalid value of type !: encountered a value of the never type `!`
   --> $DIR/ub-uninhabit.rs:32:16
    |
 LL |     let _val = intrinsics::read_via_copy(ptr);
