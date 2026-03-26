@@ -1,7 +1,10 @@
 //! This module contains functions to generate default trait impl function bodies where possible.
 
 use hir::TraitRef;
-use syntax::ast::{self, AstNode, BinaryOp, CmpOp, HasName, LogicOp, edit::AstNodeEdit, syntax_factory::SyntaxFactory};
+use syntax::ast::{
+    self, AstNode, BinaryOp, CmpOp, HasName, LogicOp, edit::AstNodeEdit,
+    syntax_factory::SyntaxFactory,
+};
 
 /// Generate custom trait bodies without default implementation where possible.
 ///
@@ -94,8 +97,7 @@ fn gen_clone_impl(make: &SyntaxFactory, adt: &ast::Adt) -> Option<ast::BlockExpr
                         }
                         let pat = make.tuple_struct_pat(variant_name.clone(), pats.into_iter());
                         let struct_name = make.expr_path(variant_name);
-                        let tuple_expr =
-                            make.expr_call(struct_name, make.arg_list(fields)).into();
+                        let tuple_expr = make.expr_call(struct_name, make.arg_list(fields)).into();
                         arms.push(make.match_arm(pat.into(), None, tuple_expr));
                     }
 
@@ -197,8 +199,7 @@ fn gen_debug_impl(make: &SyntaxFactory, adt: &ast::Adt) -> Option<ast::BlockExpr
 
                         // => <expr>.finish()
                         let method = make.name_ref("finish");
-                        let expr =
-                            make.expr_method_call(expr, method, make.arg_list([])).into();
+                        let expr = make.expr_method_call(expr, method, make.arg_list([])).into();
 
                         // => MyStruct { fields.. } => f.debug_struct("MyStruct")...finish(),
                         let pat_field_list = make.record_pat_field_list(pats, None);
@@ -232,19 +233,16 @@ fn gen_debug_impl(make: &SyntaxFactory, adt: &ast::Adt) -> Option<ast::BlockExpr
 
                         // => <expr>.finish()
                         let method = make.name_ref("finish");
-                        let expr=
-                            make.expr_method_call(expr, method, make.arg_list([])).into();
+                        let expr = make.expr_method_call(expr, method, make.arg_list([])).into();
 
                         // => MyStruct (fields..) => f.debug_tuple("MyStruct")...finish(),
                         let pat = make.tuple_struct_pat(variant_name.clone(), pats.into_iter());
                         arms.push(make.match_arm(pat.into(), None, expr));
                     }
                     None => {
-                        let fmt_string =
-                            make.expr_literal(&(format!("\"{name}\""))).into();
-                        let args = make.token_tree_from_node(
-                            make.arg_list([target, fmt_string]).syntax(),
-                        );
+                        let fmt_string = make.expr_literal(&(format!("\"{name}\""))).into();
+                        let args =
+                            make.token_tree_from_node(make.arg_list([target, fmt_string]).syntax());
                         let macro_name = make.ident_path("write");
                         let macro_call = make.expr_macro(macro_name, args);
 
@@ -278,8 +276,7 @@ fn gen_debug_impl(make: &SyntaxFactory, adt: &ast::Adt) -> Option<ast::BlockExpr
                     let mut expr = make.expr_method_call(target, method, args).into();
                     for field in field_list.fields() {
                         let name = field.name()?;
-                        let f_name =
-                            make.expr_literal(&(format!("\"{name}\""))).into();
+                        let f_name = make.expr_literal(&(format!("\"{name}\""))).into();
                         let f_path = make.expr_path(make.ident_path("self"));
                         let f_path = make.expr_field(f_path, &format!("{name}")).into();
                         let f_path = make.expr_ref(f_path, false);
@@ -298,9 +295,7 @@ fn gen_debug_impl(make: &SyntaxFactory, adt: &ast::Adt) -> Option<ast::BlockExpr
                         let f_path = make.expr_field(f_path, &format!("{i}")).into();
                         let f_path = make.expr_ref(f_path, false);
                         let method = make.name_ref("field");
-                        expr = make
-                            .expr_method_call(expr, method, make.arg_list([f_path]))
-                            .into();
+                        expr = make.expr_method_call(expr, method, make.arg_list([f_path])).into();
                     }
                     expr
                 }
@@ -354,9 +349,8 @@ fn gen_default_impl(make: &SyntaxFactory, adt: &ast::Adt) -> Option<ast::BlockEx
                     make.record_expr(struct_name, fields).into()
                 }
             };
-            let body = make
-                .block_expr(None::<ast::Stmt>, Some(expr))
-                .indent(ast::edit::IndentLevel(1));
+            let body =
+                make.block_expr(None::<ast::Stmt>, Some(expr)).indent(ast::edit::IndentLevel(1));
             Some(body)
         }
     }
@@ -391,8 +385,7 @@ fn gen_hash_impl(make: &SyntaxFactory, adt: &ast::Adt) -> Option<ast::BlockExpr>
                 let mut stmts = vec![];
                 for field in field_list.fields() {
                     let base = make.expr_path(make.ident_path("self"));
-                    let target =
-                        make.expr_field(base, &field.name()?.to_string()).into();
+                    let target = make.expr_field(base, &field.name()?.to_string()).into();
                     stmts.push(gen_hash_call(target));
                 }
                 make.block_expr(stmts, None).indent(ast::edit::IndentLevel(1))
