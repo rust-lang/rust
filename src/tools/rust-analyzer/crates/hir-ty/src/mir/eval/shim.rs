@@ -843,7 +843,7 @@ impl<'db> Evaluator<'db> {
                 // cases.
                 let [lhs, rhs] = args else {
                     return Err(MirEvalError::InternalError(
-                        "wrapping_add args are not provided".into(),
+                        "ptr_guaranteed_cmp args are not provided".into(),
                     ));
                 };
                 let ans = lhs.get(self)? == rhs.get(self)?;
