@@ -442,6 +442,7 @@ macro_rules! common_visitor_and_walkers {
             FormatArguments,
             FormatPlaceholder,
             GenericParamKind,
+            Guard,
             Impl,
             ImplPolarity,
             Inline,
