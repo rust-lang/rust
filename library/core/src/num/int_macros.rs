@@ -3958,9 +3958,10 @@ macro_rules! int_impl {
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
         #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_truncate_extend", issue = "154330")]
         #[inline]
-        pub fn truncate<Target>(self) -> Target
-            where Self: traits::TruncateTarget<Target>
+        pub const fn truncate<Target>(self) -> Target
+            where Self: [const] traits::TruncateTarget<Target>
         {
             traits::TruncateTarget::internal_truncate(self)
         }
@@ -3979,9 +3980,10 @@ macro_rules! int_impl {
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
         #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_truncate_extend", issue = "154330")]
         #[inline]
-        pub fn saturating_truncate<Target>(self) -> Target
-            where Self: traits::TruncateTarget<Target>
+        pub const fn saturating_truncate<Target>(self) -> Target
+            where Self: [const] traits::TruncateTarget<Target>
         {
             traits::TruncateTarget::internal_saturating_truncate(self)
         }
@@ -4000,9 +4002,10 @@ macro_rules! int_impl {
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
         #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_truncate_extend", issue = "154330")]
         #[inline]
-        pub fn checked_truncate<Target>(self) -> Option<Target>
-            where Self: traits::TruncateTarget<Target>
+        pub const fn checked_truncate<Target>(self) -> Option<Target>
+            where Self: [const] traits::TruncateTarget<Target>
         {
             traits::TruncateTarget::internal_checked_truncate(self)
         }
@@ -4018,9 +4021,10 @@ macro_rules! int_impl {
         /// ```
         #[must_use = "this returns the extended value and does not modify the original"]
         #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_truncate_extend", issue = "154330")]
         #[inline]
-        pub fn extend<Target>(self) -> Target
-            where Self: traits::ExtendTarget<Target>
+        pub const fn extend<Target>(self) -> Target
+            where Self: [const] traits::ExtendTarget<Target>
         {
             traits::ExtendTarget::internal_extend(self)
         }
