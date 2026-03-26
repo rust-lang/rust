@@ -30,6 +30,8 @@ pub(crate) struct CycleStack {
     #[primary_span]
     pub span: Span,
     pub desc: String,
+    #[subdiagnostic]
+    pub location: Option<QueryLocationNote>,
 }
 
 #[derive(Subdiagnostic)]
@@ -58,6 +60,14 @@ pub(crate) struct CycleUsage {
     #[primary_span]
     pub span: Span,
     pub usage: String,
+    #[subdiagnostic]
+    pub location: Option<QueryLocationNote>,
+}
+
+#[derive(Subdiagnostic)]
+#[note("at {$location}")]
+pub(crate) struct QueryLocationNote {
+    pub location: String,
 }
 
 #[derive(Diagnostic)]
@@ -70,6 +80,8 @@ pub(crate) struct Cycle {
     pub cycle_stack: Vec<CycleStack>,
     #[subdiagnostic]
     pub stack_count: StackCount,
+    #[subdiagnostic]
+    pub stack_bottom_location: Option<QueryLocationNote>,
     #[subdiagnostic]
     pub alias: Option<Alias>,
     #[subdiagnostic]
@@ -90,6 +102,8 @@ pub(crate) struct NestedCycle {
     pub cycle_stack: Vec<CycleStack>,
     #[subdiagnostic]
     pub stack_count: StackCount,
+    #[subdiagnostic]
+    pub stack_bottom_location: Option<QueryLocationNote>,
     #[subdiagnostic]
     pub cycle_usage: Option<CycleUsage>,
     #[note(

@@ -8,12 +8,12 @@ use rustc_data_structures::{defer, outline, sharded, sync};
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::{
-    ActiveKeyStatus, Cycle, EnsureMode, QueryCache, QueryJob, QueryJobId, QueryKey, QueryLatch,
-    QueryMode, QueryState, QueryVTable,
+    ActiveKeyStatus, Cycle, EnsureMode, QueryCache, QueryCallContext, QueryJob, QueryJobId,
+    QueryKey, QueryLatch, QueryMode, QueryState, QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::DUMMY_SP;
 use tracing::warn;
 
 use crate::dep_graph::{DepNode, DepNodeIndex};
@@ -221,13 +221,13 @@ fn find_and_handle_cycle<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
     key: C::Key,
     try_execute: QueryJobId,
-    span: Span,
+    call_context: QueryCallContext,
 ) -> (C::Value, Option<DepNodeIndex>) {
     // Ensure there were no errors collecting all active jobs.
     // We need the complete map to ensure we find a cycle to break.
     let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::FullNoContention);
 
-    let cycle = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
+    let cycle = find_cycle_in_stack(try_execute, job_map, &current_query_job(), call_context);
     (handle_cycle(query, tcx, key, cycle), None)
 }
 
@@ -235,7 +235,7 @@ fn find_and_handle_cycle<'tcx, C: QueryCache>(
 fn wait_for_query<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
-    span: Span,
+    call_context: QueryCallContext,
     key: C::Key,
     key_hash: u64,
     latch: QueryLatch<'tcx>,
@@ -247,7 +247,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
     let query_blocked_prof_timer = tcx.prof.query_blocked();
 
     // With parallel queries we might just have to wait on some other thread.
-    let result = latch.wait_on(tcx, current, span);
+    let result = latch.wait_on(tcx, current, call_context);
 
     match result {
         Ok(()) => {
@@ -281,7 +281,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
 fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
-    span: Span,
+    call_context: QueryCallContext,
     key: C::Key,
     dep_node: Option<DepNode>, // `None` for non-incremental, `Some` for incremental
 ) -> (C::Value, Option<DepNodeIndex>) {
@@ -308,7 +308,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
             // Nothing has computed or is computing the query, so we start a new job and insert it
             // in the state map.
             let id = next_job_id(tcx);
-            let job = QueryJob::new(id, span, current_job_id);
+            let job = QueryJob::new(id, call_context, current_job_id);
             entry.insert((key, ActiveKeyStatus::Started(job)));
 
             // Drop the lock before we start executing the query.
@@ -345,14 +345,22 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool
                         // as it will attempt to mark the worker thread as blocked.
-                        wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id)
+                        wait_for_query(
+                            query,
+                            tcx,
+                            call_context,
+                            key,
+                            key_hash,
+                            latch,
+                            current_job_id,
+                        )
                     } else {
                         let id = job.id;
                         drop(state_lock);
 
                         // If we are single-threaded we know that we have cycle error,
                         // so we just return the error.
-                        find_and_handle_cycle(query, tcx, key, id, span)
+                        find_and_handle_cycle(query, tcx, key, id, call_context)
                     }
                 }
                 ActiveKeyStatus::Poisoned => FatalError.raise(),
@@ -612,10 +620,10 @@ fn ensure_can_skip_execution<'tcx, C: QueryCache>(
 pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
-    span: Span,
+    call_context: QueryCallContext,
     key: C::Key,
 ) -> C::Value {
-    ensure_sufficient_stack(|| try_execute_query::<C, false>(query, tcx, span, key, None).0)
+    ensure_sufficient_stack(|| try_execute_query::<C, false>(query, tcx, call_context, key, None).0)
 }
 
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
@@ -624,7 +632,7 @@ pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
 pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
-    span: Span,
+    call_context: QueryCallContext,
     key: C::Key,
     mode: QueryMode,
 ) -> Option<C::Value> {
@@ -638,7 +646,7 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     }
 
     let (result, dep_node_index) = ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, span, key, Some(dep_node))
+        try_execute_query::<C, true>(query, tcx, call_context, key, Some(dep_node))
     });
     if let Some(dep_node_index) = dep_node_index {
         tcx.dep_graph.read_index(dep_node_index)
@@ -662,7 +670,13 @@ pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
     };
 
     ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
+        try_execute_query::<C, true>(
+            query,
+            tcx,
+            QueryCallContext { span: DUMMY_SP, location: None },
+            key,
+            Some(dep_node),
+        )
     });
 
     // We did manage to recover a key and force the node, though it's up to

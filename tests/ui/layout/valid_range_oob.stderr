@@ -4,5 +4,7 @@ error: the compiler unexpectedly panicked. This is a bug
 
 query stack during panic:
 #0 [layout_of] computing layout of `Foo`
+ - compiler/rustc_middle/src/ty/layout.rs:704:17
 #1 [eval_to_allocation_raw] const-evaluating + checking `FOO`
+ - compiler/rustc_const_eval/src/const_eval/eval_queries.rs:333:9
 ... and 2 other queries... use `env RUST_BACKTRACE=1` to see the full query stack

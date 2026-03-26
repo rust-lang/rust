@@ -13,7 +13,7 @@ use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNode
 use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{QueryCache, QueryJob, QueryStackFrame};
+use crate::query::{QueryCache, QueryCallContext, QueryJob, QueryStackFrame};
 use crate::ty::TyCtxt;
 
 /// For a particular query, keeps track of "active" keys, i.e. keys whose
@@ -130,7 +130,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// and putting the obtained value into the in-memory cache.
     ///
     /// [^1]: [`TyCtxt`], [`TyCtxtAt`], [`TyCtxtEnsureOk`], [`TyCtxtEnsureDone`]
-    pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
+    pub execute_query_fn: fn(TyCtxt<'tcx>, QueryCallContext, C::Key, QueryMode) -> Option<C::Value>,
 }
 
 impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
@@ -206,6 +206,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns a transparent wrapper for `TyCtxt` which uses
     /// `span` as the location of queries performed through it.
     #[inline(always)]
+    #[track_caller]
     pub fn at(self, span: Span) -> TyCtxtAt<'tcx> {
         TyCtxtAt { tcx: self, span }
     }
@@ -233,6 +234,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Therefore, this call mode is not appropriate for callers that want to
     /// ensure that the query is _never_ executed in the future.
     #[inline(always)]
+    #[track_caller]
     pub fn ensure_ok(self) -> TyCtxtEnsureOk<'tcx> {
         TyCtxtEnsureOk { tcx: self }
     }
@@ -243,6 +245,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// but nothing else. As with `ensure_ok`, this can be more efficient than
     /// a normal query call.
     #[inline(always)]
+    #[track_caller]
     pub fn ensure_result(self) -> TyCtxtEnsureResult<'tcx> {
         TyCtxtEnsureResult { tcx: self }
     }
@@ -264,6 +267,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// [`Steal`]: rustc_data_structures::steal::Steal
     #[inline(always)]
+    #[track_caller]
     pub fn ensure_done(self) -> TyCtxtEnsureDone<'tcx> {
         TyCtxtEnsureDone { tcx: self }
     }
@@ -542,6 +546,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
+                #[track_caller]
                 #[must_use]
                 pub fn $name(self, key: maybe_into_query_key!($($K)*)) -> $V {
                     self.at(DUMMY_SP).$name(key)
@@ -553,6 +558,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
+                #[track_caller]
                 pub fn $name(self, key: maybe_into_query_key!($($K)*)) -> $V {
                     use $crate::query::{erase, inner};
 
@@ -570,6 +576,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
+                #[track_caller]
                 pub fn $name(self, key: maybe_into_query_key!($($K)*)) {
                     $crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,
@@ -587,6 +594,7 @@ macro_rules! define_callbacks {
                 #[cfg($returns_error_guaranteed)]
                 $(#[$attr])*
                 #[inline(always)]
+                #[track_caller]
                 pub fn $name(
                     self,
                     key: maybe_into_query_key!($($K)*),
@@ -604,6 +612,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
+                #[track_caller]
                 pub fn $name(self, key: maybe_into_query_key!($($K)*)) {
                     $crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,

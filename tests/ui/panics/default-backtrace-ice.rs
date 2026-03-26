@@ -2,6 +2,7 @@
 //@ compile-flags:-Z treat-err-as-bug=1
 //@ failure-status:101
 //@ ignore-msvc
+//@ normalize-stderr: "(compiler/[^ )]+\.rs):\d+:\d+" -> "$1:LL:CC"
 //@ normalize-stderr: "note: .*" -> ""
 //@ normalize-stderr: "thread 'rustc' .*" -> ""
 //@ normalize-stderr: " +\d+:.*__rust_begin_short_backtrace.*" -> "(begin_short_backtrace)"

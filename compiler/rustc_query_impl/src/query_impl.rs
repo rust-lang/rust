@@ -1,8 +1,7 @@
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::erase::{self, Erased};
-use rustc_middle::query::{AsLocalQueryKey, QueryMode, QueryVTable};
+use rustc_middle::query::{AsLocalQueryKey, QueryCallContext, QueryMode, QueryVTable};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
 
 use crate::GetQueryVTable;
 
@@ -50,7 +49,7 @@ macro_rules! define_queries {
                     #[inline(never)]
                     pub(crate) fn __rust_end_short_backtrace<'tcx>(
                         tcx: TyCtxt<'tcx>,
-                        span: Span,
+                        call_context: QueryCallContext,
                         key: Key<'tcx>,
                         mode: QueryMode,
                     ) -> Option<Erased<Value<'tcx>>> {
@@ -59,7 +58,7 @@ macro_rules! define_queries {
                         crate::execution::execute_query_incr_inner(
                             &tcx.query_system.query_vtables.$name,
                             tcx,
-                            span,
+                            call_context,
                             key,
                             mode
                         )
@@ -73,14 +72,14 @@ macro_rules! define_queries {
                     #[inline(never)]
                     pub(crate) fn __rust_end_short_backtrace<'tcx>(
                         tcx: TyCtxt<'tcx>,
-                        span: Span,
+                        call_context: QueryCallContext,
                         key: Key<'tcx>,
                         __mode: QueryMode,
                     ) -> Option<Erased<Value<'tcx>>> {
                         Some(crate::execution::execute_query_non_incr_inner(
                             &tcx.query_system.query_vtables.$name,
                             tcx,
-                            span,
+                            call_context,
                             key,
                         ))
                     }
