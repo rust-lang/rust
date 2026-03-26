@@ -1,5 +1,6 @@
 //@ check-fail
 //@ compile-flags:--cfg foo --check-cfg=cfg(foo)
+//@ reference: cfg.cfg_attr.attr-restriction
 
 #![cfg_attr(foo, crate_type="bin")]
 //~^ERROR `crate_type` within

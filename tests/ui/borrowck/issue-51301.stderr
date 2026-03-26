@@ -4,8 +4,7 @@ error[E0507]: cannot move out of a shared reference
 LL |             .find(|(&event_type, _)| event == event_type)
    |                    ^^----------^^^^
    |                      |
-   |                      data moved here
-   |                      move occurs because `event_type` has type `EventType`, which does not implement the `Copy` trait
+   |                      data moved here because `event_type` has type `EventType`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |

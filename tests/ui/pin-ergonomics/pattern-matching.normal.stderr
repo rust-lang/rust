@@ -28,7 +28,7 @@ LL |     let Foo { x, y } = foo_mut;
    |
    = note: expected struct `Pin<&mut Foo<T, U>>`
               found struct `Foo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let Foo { x, y } = *foo_mut;
    |                        +
@@ -43,7 +43,7 @@ LL |     let Foo { x, y } = foo_const;
    |
    = note: expected struct `Pin<&Foo<T, U>>`
               found struct `Foo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let Foo { x, y } = *foo_const;
    |                        +
@@ -58,7 +58,7 @@ LL |         Bar::Foo(x, y) => {
    |
    = note: expected struct `Pin<&mut Bar<T, U>>`
                 found enum `Bar<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *bar_mut {
    |           +
@@ -73,7 +73,7 @@ LL |         _ if let Bar::Bar { x, y } = bar_mut => {
    |
    = note: expected struct `Pin<&mut Bar<T, U>>`
                 found enum `Bar<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |         _ if let Bar::Bar { x, y } = *bar_mut => {
    |                                      +
@@ -88,7 +88,7 @@ LL |         Bar::Bar { x, y } => {
    |
    = note: expected struct `Pin<&Bar<T, U>>`
                 found enum `Bar<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *bar_const {
    |           +
@@ -103,7 +103,7 @@ LL |         _ if let Bar::Foo(x, y) = bar_const => {
    |
    = note: expected struct `Pin<&Bar<T, U>>`
                 found enum `Bar<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |         _ if let Bar::Foo(x, y) = *bar_const => {
    |                                   +
@@ -118,7 +118,7 @@ LL |     let (Foo { x, y },) = foo_mut;
    |
    = note: expected struct `Pin<&mut (Foo<T, U>,)>`
                found tuple `(_,)`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let (Foo { x, y },) = *foo_mut;
    |                           +
@@ -133,7 +133,7 @@ LL |     let (Foo { x, y },) = foo_const;
    |
    = note: expected struct `Pin<&(Foo<T, U>,)>`
                found tuple `(_,)`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let (Foo { x, y },) = *foo_const;
    |                           +

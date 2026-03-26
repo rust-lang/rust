@@ -1,4 +1,5 @@
 //@ edition: 2021
+//@ compile-flags: --crate-type=lib
 
 // Regression test for issue #148439
 // Ensure that when using misspelled Cargo environment variables in env!(),
@@ -44,7 +45,14 @@ fn test_cargo_unknown_var() {
     // Cargo-prefixed but not similar to any known variable
     let _ = env!("CARGO_SOMETHING_TOTALLY_UNKNOWN");
     //~^ ERROR environment variable `CARGO_SOMETHING_TOTALLY_UNKNOWN` not defined at compile time
+    //~| HELP `CARGO_SOMETHING_TOTALLY_UNKNOWN` may not be available for the current Cargo target
     //~| HELP Cargo sets build script variables at run time. Use `std::env::var("CARGO_SOMETHING_TOTALLY_UNKNOWN")` instead
 }
 
-fn main() {}
+fn test_cargo_conditional_var() {
+    // Only set for binairies
+    let _ = env!("CARGO_BIN_NAME");
+    //~^ ERROR environment variable `CARGO_BIN_NAME` not defined at compile time
+    //~| HELP `CARGO_BIN_NAME` may not be available for the current Cargo target
+    //~| HELP Cargo sets build script variables at run time. Use `std::env::var("CARGO_BIN_NAME")` instead
+}

@@ -1,11 +1,11 @@
 error: `test` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-test.rs:4:1
+  --> $DIR/issue-43106-gating-of-test.rs:3:1
    |
 LL | #![test                    = "4200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | fn main() {}
-   |    ---- the inner attribute doesn't annotate this function
+   | ------------ the inner attribute doesn't annotate this item
    |
 help: perhaps you meant to use an outer attribute
    |

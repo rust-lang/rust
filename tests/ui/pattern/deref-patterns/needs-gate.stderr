@@ -18,7 +18,7 @@ LL |         0 => {}
    |
    = note: expected struct `Box<{integer}>`
                 found type `{integer}`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *Box::new(0) {
    |           +

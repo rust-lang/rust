@@ -4,10 +4,7 @@ error[E0507]: cannot move out of `arg.field` as enum variant `Some` which is beh
 LL |     match arg.field {
    |           ^^^^^^^^^
 LL |         Some(s) => s.push('a'),
-   |              -
-   |              |
-   |              data moved here
-   |              move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |              - data moved here because `s` has type `String`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -31,10 +28,7 @@ error[E0507]: cannot move out of a shared reference
 LL |     match &arg.field {
    |           ^^^^^^^^^^
 LL |         Some(mut s) => s.push('a'),
-   |              -----
-   |              |
-   |              data moved here
-   |              move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |              ----- data moved here because `s` has type `String`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |

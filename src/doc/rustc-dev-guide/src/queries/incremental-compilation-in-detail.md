@@ -418,6 +418,13 @@ deal with all of the above but so far that seemed like more trouble than it woul
 
 ## Query modifiers
 
+> FIXME: Make [`rustc_middle::query::modifiers`] the home for query modifier documentation,
+> and migrate all other useful modifier docs there after verifying that they are still accurate.
+
+[`rustc_middle::query::modifiers`]:
+    https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/query/modifiers/index.html
+
+
 The query system allows for applying [modifiers][mod] to queries.
 These modifiers affect certain aspects of how the system treats the query with
 respect to incremental compilation:
@@ -436,6 +443,9 @@ respect to incremental compilation:
       In this case `eval_always` can be used
       as an optimization because the system can skip recording dependencies in
       the first place.
+
+ - `no_force` - Never "force" the dep nodes for this query, even if the query's
+   key type is recoverable.
 
  - `no_hash` - Applying `no_hash` to a query tells the system to not compute
    the fingerprint of the query's result.
@@ -474,13 +484,6 @@ respect to incremental compilation:
    The attribute takes an expression that allows per query invocation decisions.
    For example, it makes no sense to store values from upstream
    crates in the cache because they are already available in the upstream crate's metadata.
-
- - `anon` - This attribute makes the system use "anonymous" dep-nodes for the given query.
-   An anonymous dep-node is not identified by the corresponding query key.
-   Instead, its ID is computed from the IDs of its dependencies.
-   This allows the red-green system to do its change detection even if there is no
-   query key available for a given dep-node -- something which is needed for
-   handling trait selection because it is not based on queries.
 
 [mod]: ../query.html#adding-a-new-kind-of-query
 

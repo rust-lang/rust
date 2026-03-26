@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value at .<deref>.v: encountered `UnsafeCell` in read-only memory
+error[E0080]: constructing invalid value of type &Atomic<i32>: at .<deref>.v, encountered `UnsafeCell` in read-only memory
   --> $DIR/static-no-inner-mut.rs:8:1
    |
 LL | static REF: &AtomicI32 = &AtomicI32::new(42);
@@ -9,7 +9,7 @@ LL | static REF: &AtomicI32 = &AtomicI32::new(42);
                ╾ALLOC0╼                         │ ╾──────╼
            }
 
-error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+error[E0080]: constructing invalid value of type &mut i32: encountered mutable reference or box pointing to read-only memory
   --> $DIR/static-no-inner-mut.rs:11:1
    |
 LL | static REFMUT: &mut i32 = &mut 0;
@@ -20,7 +20,7 @@ LL | static REFMUT: &mut i32 = &mut 0;
                ╾ALLOC1╼                         │ ╾──────╼
            }
 
-error[E0080]: constructing invalid value at .<deref>.v: encountered `UnsafeCell` in read-only memory
+error[E0080]: constructing invalid value of type &Atomic<i32>: at .<deref>.v, encountered `UnsafeCell` in read-only memory
   --> $DIR/static-no-inner-mut.rs:15:1
    |
 LL | static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
@@ -31,7 +31,7 @@ LL | static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
                ╾ALLOC2╼                         │ ╾──────╼
            }
 
-error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+error[E0080]: constructing invalid value of type &mut i32: encountered mutable reference or box pointing to read-only memory
   --> $DIR/static-no-inner-mut.rs:17:1
    |
 LL | static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};

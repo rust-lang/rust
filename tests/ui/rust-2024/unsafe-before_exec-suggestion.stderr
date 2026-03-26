@@ -13,7 +13,7 @@ LL | #![deny(deprecated_safe_2024)]
    |         ^^^^^^^^^^^^^^^^^^^^
 help: you can wrap the call in an `unsafe` block if you can guarantee that the closure is async-signal-safe
    |
-LL +     // TODO: Audit that the closure is async-signal-safe.
+LL +     // FIXME: Audit that the closure is async-signal-safe.
 LL ~     unsafe { cmd.before_exec(|| Ok(())) };
    |
 

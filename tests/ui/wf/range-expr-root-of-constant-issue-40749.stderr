@@ -6,6 +6,7 @@ LL |     [0; ..10];
    |
    = note: expected type `usize`
             found struct `RangeTo<{integer}>`
+   = note: array length can only be `usize`
 
 error: aborting due to 1 previous error
 

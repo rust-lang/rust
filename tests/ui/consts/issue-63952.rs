@@ -1,6 +1,6 @@
 // Regression test for #63952, shouldn't hang.
 //@ stderr-per-bitwidth
-
+//@ ignore-parallel-frontend different alloc ids
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct SliceRepr {

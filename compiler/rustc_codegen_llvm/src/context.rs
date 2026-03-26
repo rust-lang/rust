@@ -25,11 +25,10 @@ use rustc_session::Session;
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{
-    Abi, Arch, Env, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
+    Arch, CfgAbi, Env, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
 };
 use smallvec::SmallVec;
 
@@ -191,17 +190,6 @@ pub(crate) unsafe fn create_module<'ll>(
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
 
-    if llvm_version < (21, 0, 0) {
-        if sess.target.arch == Arch::Nvptx64 {
-            // LLVM 21 updated the default layout on nvptx: https://github.com/llvm/llvm-project/pull/124961
-            target_data_layout = target_data_layout.replace("e-p6:32:32-i64", "e-i64");
-        }
-        if sess.target.arch == Arch::AmdGpu {
-            // LLVM 21 adds the address width for address space 8.
-            // See https://github.com/llvm/llvm-project/pull/139419
-            target_data_layout = target_data_layout.replace("p8:128:128:128:48", "p8:128:128")
-        }
-    }
     if llvm_version < (22, 0, 0) {
         if sess.target.arch == Arch::Avr {
             // LLVM 22.0 updated the default layout on avr: https://github.com/llvm/llvm-project/pull/153010
@@ -343,11 +331,6 @@ pub(crate) unsafe fn create_module<'ll>(
         // Add "kcfi-arity" module flag if KCFI arity indicator is enabled. (See
         // https://github.com/llvm/llvm-project/pull/117121.)
         if sess.is_sanitizer_kcfi_arity_enabled() {
-            // KCFI arity indicator requires LLVM 21.0.0 or later.
-            if llvm_version < (21, 0, 0) {
-                tcx.dcx().emit_err(crate::errors::SanitizerKcfiArityRequiresLLVM2100);
-            }
-
             llvm::add_module_flag_u32(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Override,
@@ -361,7 +344,7 @@ pub(crate) unsafe fn create_module<'ll>(
     if sess.target.is_like_msvc
         || (sess.target.options.os == Os::Windows
             && sess.target.options.env == Env::Gnu
-            && sess.target.options.abi == Abi::Llvm)
+            && sess.target.options.cfg_abi == CfgAbi::Llvm)
     {
         match sess.opts.cg.control_flow_guard {
             CFGuard::Disabled => {}
@@ -526,14 +509,13 @@ pub(crate) unsafe fn create_module<'ll>(
     // to workaround lld as the LTO plugin not
     // correctly setting target-abi for the LTO object
     // FIXME: https://github.com/llvm/llvm-project/issues/50591
-    // If llvm_abiname is empty, emit nothing.
     let llvm_abiname = &sess.target.options.llvm_abiname;
-    if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64) && !llvm_abiname.is_empty() {
+    if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64) {
         llvm::add_module_flag_str(
             llmod,
             llvm::ModuleFlagMergeBehavior::Error,
             "target-abi",
-            llvm_abiname,
+            llvm_abiname.desc(),
         );
     }
 
@@ -1136,7 +1118,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         | LayoutError::ReferencesError(_)
         | LayoutError::InvalidSimd { .. } = err
         {
-            self.tcx.dcx().emit_fatal(Spanned { span, node: err.into_diagnostic() })
+            self.tcx.dcx().span_fatal(span, err.to_string())
         } else {
             self.tcx.dcx().emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
         }

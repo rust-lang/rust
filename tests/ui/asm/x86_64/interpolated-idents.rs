@@ -1,6 +1,12 @@
-//@ only-x86_64
+//@ add-minicore
+//@ compile-flags: --target x86_64-unknown-linux-gnu
+//@ needs-llvm-components: x86
+#![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
 
-use std::arch::asm;
+extern crate minicore;
+use minicore::*;
 
 macro_rules! m {
     ($in:ident $out:ident $lateout:ident $inout:ident $inlateout:ident $const:ident $sym:ident

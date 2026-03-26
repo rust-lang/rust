@@ -2,6 +2,8 @@
 //@ compile-flags: -C panic=abort
 //@ no-prefer-dynamic
 //@ ignore-backends: gcc
+//@ reference: cfg.panic.def
+//@ reference: cfg.panic.values
 
 #[cfg(panic = "unwind")]
 pub fn bad() -> i32 { }

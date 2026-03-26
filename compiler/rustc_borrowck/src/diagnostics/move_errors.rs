@@ -990,30 +990,25 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let bind_to = &self.body.local_decls[*local];
             let binding_span = bind_to.source_info.span;
 
-            if j == 0 {
-                err.span_label(binding_span, "data moved here");
-            } else {
-                err.span_label(binding_span, "...and here");
-            }
-
             if binds_to.len() == 1 {
                 let place_desc = self.local_name(*local).map(|sym| format!("`{sym}`"));
 
-                if !desugar_spans.contains(&binding_span)
-                    && let Some(expr) = self.find_expr(binding_span)
-                {
-                    // The binding_span doesn't correspond to a let binding desugaring
-                    // and is an expression where calling `.clone()` would be valid.
-                    let local_place: PlaceRef<'tcx> = (*local).into();
-                    self.suggest_cloning(err, local_place, bind_to.ty, expr, None);
-                }
-
-                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
-                    is_partial_move: false,
+                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::LabelMovedHere {
                     ty: bind_to.ty,
                     place: place_desc.as_deref().unwrap_or("the place"),
                     span: binding_span,
                 });
+
+                if !desugar_spans.contains(&binding_span)
+                    && let Some(expr) = self.find_expr(binding_span)
+                {
+                    let local_place: PlaceRef<'tcx> = (*local).into();
+                    self.suggest_cloning(err, local_place, bind_to.ty, expr, None);
+                }
+            } else if j == 0 {
+                err.span_label(binding_span, "data moved here");
+            } else {
+                err.span_label(binding_span, "...and here");
             }
         }
 

@@ -471,7 +471,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // FIXME(eddyb) does this need to be separate from `loc.line` for some reason?
         let scope_line = loc.line;
 
-        let mut flags = DIFlags::FlagPrototyped;
+        let mut flags = DIFlags::FlagPrototyped | DIFlags::FlagAllCallsDescribed;
 
         if fn_abi.ret.layout.is_uninhabited() {
             flags |= DIFlags::FlagNoReturn;
@@ -494,6 +494,9 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // LLVM LTO can't unify type definitions when a child DIE is a full subprogram definition.
         // When we use this `decl` below, the subprogram definition gets created at the CU level
         // with a DW_AT_specification pointing back to the type's declaration.
+        // FlagAllCallsDescribed cannot appear on the method declaration DIE
+        // because it has no body, which LLVM's verifier rejects.
+        let decl_flags = flags & !DIFlags::FlagAllCallsDescribed;
         let decl = is_method.then(|| unsafe {
             llvm::LLVMRustDIBuilderCreateMethod(
                 DIB(self),
@@ -505,7 +508,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 file_metadata,
                 loc.line,
                 function_type_metadata,
-                flags,
+                decl_flags,
                 spflags & !DISPFlags::SPFlagDefinition,
                 template_parameters,
             )

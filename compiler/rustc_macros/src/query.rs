@@ -140,15 +140,13 @@ struct CacheOnDiskIf {
 /// See `rustc_middle::query::modifiers` for documentation of each query modifier.
 struct QueryModifiers {
     // tidy-alphabetical-start
-    anon: Option<Ident>,
     arena_cache: Option<Ident>,
     cache_on_disk_if: Option<CacheOnDiskIf>,
-    cycle_delay_bug: Option<Ident>,
-    cycle_stash: Option<Ident>,
     depth_limit: Option<Ident>,
     desc: Desc,
     eval_always: Option<Ident>,
     feedable: Option<Ident>,
+    no_force: Option<Ident>,
     no_hash: Option<Ident>,
     separate_provide_extern: Option<Ident>,
     // tidy-alphabetical-end
@@ -158,10 +156,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut arena_cache = None;
     let mut cache_on_disk_if = None;
     let mut desc = None;
-    let mut cycle_delay_bug = None;
-    let mut cycle_stash = None;
+    let mut no_force = None;
     let mut no_hash = None;
-    let mut anon = None;
     let mut eval_always = None;
     let mut depth_limit = None;
     let mut separate_provide_extern = None;
@@ -193,14 +189,10 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(cache_on_disk_if = CacheOnDiskIf { modifier, block });
         } else if modifier == "arena_cache" {
             try_insert!(arena_cache = modifier);
-        } else if modifier == "cycle_delay_bug" {
-            try_insert!(cycle_delay_bug = modifier);
-        } else if modifier == "cycle_stash" {
-            try_insert!(cycle_stash = modifier);
+        } else if modifier == "no_force" {
+            try_insert!(no_force = modifier);
         } else if modifier == "no_hash" {
             try_insert!(no_hash = modifier);
-        } else if modifier == "anon" {
-            try_insert!(anon = modifier);
         } else if modifier == "eval_always" {
             try_insert!(eval_always = modifier);
         } else if modifier == "depth_limit" {
@@ -220,10 +212,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         arena_cache,
         cache_on_disk_if,
         desc,
-        cycle_delay_bug,
-        cycle_stash,
+        no_force,
         no_hash,
-        anon,
         eval_always,
         depth_limit,
         separate_provide_extern,
@@ -253,35 +243,24 @@ fn returns_error_guaranteed(ret_ty: &ReturnType) -> bool {
 fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
     let QueryModifiers {
         // tidy-alphabetical-start
-        anon,
         arena_cache,
         cache_on_disk_if,
-        cycle_delay_bug,
-        cycle_stash,
         depth_limit,
         desc: _,
         eval_always,
         feedable,
+        no_force,
         no_hash,
         separate_provide_extern,
         // tidy-alphabetical-end
     } = &query.modifiers;
 
-    let anon = anon.is_some();
     let arena_cache = arena_cache.is_some();
     let cache_on_disk = cache_on_disk_if.is_some();
-
-    let cycle_error_handling = if cycle_delay_bug.is_some() {
-        quote! { DelayBug }
-    } else if cycle_stash.is_some() {
-        quote! { Stash }
-    } else {
-        quote! { Error }
-    };
-
     let depth_limit = depth_limit.is_some();
     let eval_always = eval_always.is_some();
     let feedable = feedable.is_some();
+    let no_force = no_force.is_some();
     let no_hash = no_hash.is_some();
     let returns_error_guaranteed = returns_error_guaranteed(&query.return_ty);
     let separate_provide_extern = separate_provide_extern.is_some();
@@ -294,13 +273,12 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         query_name_span =>
         // Search for (QMODLIST) to find all occurrences of this query modifier list.
         // tidy-alphabetical-start
-        anon: #anon,
         arena_cache: #arena_cache,
         cache_on_disk: #cache_on_disk,
-        cycle_error_handling: #cycle_error_handling,
         depth_limit: #depth_limit,
         eval_always: #eval_always,
         feedable: #feedable,
+        no_force: #no_force,
         no_hash: #no_hash,
         returns_error_guaranteed: #returns_error_guaranteed,
         separate_provide_extern: #separate_provide_extern,
@@ -409,15 +387,15 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
     }
 
     doc_link!(
+        // tidy-alphabetical-start
         arena_cache,
-        cycle_delay_bug,
-        cycle_stash,
-        no_hash,
-        anon,
-        eval_always,
         depth_limit,
-        separate_provide_extern,
+        eval_always,
         feedable,
+        no_force,
+        no_hash,
+        separate_provide_extern,
+        // tidy-alphabetical-end
     );
 
     let name = &query.name;
@@ -501,11 +479,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
 
         if let Some(feedable) = &modifiers.feedable {
             assert!(
-                modifiers.anon.is_none(),
-                feedable.span(),
-                "Query {name} cannot be both `feedable` and `anon`."
-            );
-            assert!(
                 modifiers.eval_always.is_none(),
                 feedable.span(),
                 "Query {name} cannot be both `feedable` and `eval_always`."
@@ -522,8 +495,8 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
         /// Higher-order macro that invokes the specified macro with (a) a list of all query
         /// signatures (including modifiers), and (b) a list of non-query names. This allows
         /// multiple simpler macros to each have access to these lists.
-        #[macro_export]
-        macro_rules! rustc_with_all_queries {
+        #[rustc_macro_transparency = "semiopaque"] // Use `macro_rules!` hygiene.
+        pub macro rustc_with_all_queries {
             (
                 // The macro to invoke once, on all queries and non-queries.
                 $macro:ident!

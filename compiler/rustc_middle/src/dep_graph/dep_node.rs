@@ -94,10 +94,14 @@ impl DepKind {
 pub struct DepNode {
     pub kind: DepKind,
 
-    /// This is _typically_ a hash of the query key, but sometimes not.
+    /// If `kind` is a query method, then its "key fingerprint" is always a
+    /// stable hash of the query key.
     ///
-    /// For example, `anon` nodes have a fingerprint that is derived from their
-    /// dependencies instead of a key.
+    /// For non-query nodes, the content of this field varies:
+    /// - Some dep kinds always use a dummy `ZERO` fingerprint.
+    /// - Some dep kinds use the stable hash of some relevant key-like value.
+    /// - Some dep kinds use the `with_anon_task` mechanism, and set their key
+    ///   fingerprint to a hash derived from the task's dependencies.
     ///
     /// In some cases the key value can be reconstructed from this fingerprint;
     /// see [`KeyFingerprintStyle`].
@@ -331,7 +335,7 @@ macro_rules! define_dep_nodes {
 }
 
 // Create various data structures for each query, and also for a few things that aren't queries.
-rustc_with_all_queries! { define_dep_nodes! }
+crate::queries::rustc_with_all_queries! { define_dep_nodes! }
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
 // Be very careful changing this type signature!
@@ -408,9 +412,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(DepKind, 2);
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     static_assert_size!(DepNode, 18);
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-    static_assert_size!(DepNode, 24);
     // tidy-alphabetical-end
 }

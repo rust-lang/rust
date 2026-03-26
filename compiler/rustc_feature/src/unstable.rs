@@ -257,6 +257,8 @@ declare_features! (
     (internal, rustc_attrs, "1.0.0", None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
+    /// Perma-unstable, only used to test the `incomplete_features` lint.
+    (incomplete, test_incomplete_feature, "CURRENT_RUSTC_VERSION", None),
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None),
     /// Use for stable + negative coherence and strict coherence depending on trait's
@@ -429,7 +431,7 @@ declare_features! (
     /// Allows defining and calling c-variadic functions in const contexts.
     (unstable, const_c_variadic, "1.95.0", Some(151787)),
     /// Allows `const || {}` closures in const contexts.
-    (incomplete, const_closures, "1.68.0", Some(106003)),
+    (unstable, const_closures, "1.68.0", Some(106003)),
     /// Allows using `[const] Destruct` bounds and calling drop impls in const contexts.
     (unstable, const_destruct, "1.85.0", Some(133214)),
     /// Allows `for _ in _` loops in const contexts.
@@ -465,11 +467,13 @@ declare_features! (
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
     /// Allows deref patterns.
-    (incomplete, deref_patterns, "1.79.0", Some(87121)),
+    (unstable, deref_patterns, "1.79.0", Some(87121)),
     /// Allows deriving the From trait on single-field structs.
     (unstable, derive_from, "1.91.0", Some(144889)),
     /// Allows giving non-const impls custom diagnostic messages if attempted to be used as const
     (unstable, diagnostic_on_const, "1.93.0", Some(143874)),
+    /// Allows giving on-move borrowck custom diagnostic messages for a type
+    (unstable, diagnostic_on_move, "CURRENT_RUSTC_VERSION", Some(154181)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
@@ -565,6 +569,8 @@ declare_features! (
     (unstable, macro_attr, "1.91.0", Some(143547)),
     /// Allow `macro_rules!` derive rules
     (unstable, macro_derive, "1.91.0", Some(143549)),
+    /// Allow `$x:guard` matcher in macros
+    (unstable, macro_guard_matcher, "CURRENT_RUSTC_VERSION", Some(153104)),
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.

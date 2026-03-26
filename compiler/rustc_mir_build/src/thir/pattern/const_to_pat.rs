@@ -25,7 +25,7 @@ use crate::errors::{
     PointerPattern, TypeNotPartialEq, TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
-impl<'tcx> PatCtxt<'tcx> {
+impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
     /// Converts a constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
@@ -61,7 +61,7 @@ struct ConstToPat<'tcx> {
 }
 
 impl<'tcx> ConstToPat<'tcx> {
-    fn new(pat_ctxt: &PatCtxt<'tcx>, id: hir::HirId, span: Span, c: ty::Const<'tcx>) -> Self {
+    fn new(pat_ctxt: &PatCtxt<'tcx, '_>, id: hir::HirId, span: Span, c: ty::Const<'tcx>) -> Self {
         trace!(?pat_ctxt.typeck_results.hir_owner);
         ConstToPat { tcx: pat_ctxt.tcx, typing_env: pat_ctxt.typing_env, span, id, c }
     }

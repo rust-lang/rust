@@ -17,6 +17,9 @@ use crate::infer::TyOrConstInferVar;
 /// points for correctness.
 pub struct OpportunisticVarResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
+    /// If true, we don't resolve ty/const vars to their roots.
+    /// See comments on [`InferCtxt::resolve_vars_if_possible_for_fudging`]
+    for_fudging: bool,
     /// We're able to use a cache here as the folder does
     /// not have any mutable state.
     cache: DelayedMap<Ty<'tcx>, Ty<'tcx>>,
@@ -25,7 +28,12 @@ pub struct OpportunisticVarResolver<'a, 'tcx> {
 impl<'a, 'tcx> OpportunisticVarResolver<'a, 'tcx> {
     #[inline]
     pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        OpportunisticVarResolver { infcx, cache: Default::default() }
+        OpportunisticVarResolver { infcx, for_fudging: false, cache: Default::default() }
+    }
+
+    #[inline]
+    pub fn new_for_fudging(infcx: &'a InferCtxt<'tcx>) -> Self {
+        OpportunisticVarResolver { infcx, for_fudging: true, cache: Default::default() }
     }
 }
 
@@ -43,6 +51,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
         } else {
             let shallow = self.infcx.shallow_resolve(t);
             let res = shallow.super_fold_with(self);
+            let res = if self.for_fudging && res.is_ty_var() { t } else { res };
             assert!(self.cache.insert(t, res));
             res
         }
@@ -52,8 +61,11 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
         if !ct.has_non_region_infer() {
             ct // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
-            let ct = self.infcx.shallow_resolve_const(ct);
-            ct.super_fold_with(self)
+            let res = self.infcx.shallow_resolve_const(ct);
+            if self.for_fudging && res.is_ct_infer() {
+                return ct;
+            };
+            res.super_fold_with(self)
         }
     }
 

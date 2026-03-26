@@ -20,9 +20,11 @@ use rustc_ast::{
     RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
 };
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{SourceMap, Spanned};
+use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::IdentPrinter;
-use rustc_span::{BytePos, CharPos, DUMMY_SP, FileName, Ident, Pos, Span, Symbol, kw, sym};
+use rustc_span::{
+    BytePos, CharPos, DUMMY_SP, FileName, Ident, Pos, Span, Spanned, Symbol, kw, sym,
+};
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, BoxMarker, Breaks};
@@ -327,6 +329,19 @@ fn print_crate_inner<'a>(
 /// - #63896: `#[allow(unused,` must be printed rather than `#[allow(unused ,`
 /// - #73345: `#[allow(unused)]` must be printed rather than `# [allow(unused)]`
 ///
+/// Returns `true` if both token trees are identifier-like tokens that would
+/// merge into a single token if printed without a space between them.
+/// E.g. `ident` + `where` would merge into `identwhere`.
+fn idents_would_merge(tt1: &TokenTree, tt2: &TokenTree) -> bool {
+    fn is_ident_like(tt: &TokenTree) -> bool {
+        matches!(
+            tt,
+            TokenTree::Token(Token { kind: token::Ident(..) | token::NtIdent(..), .. }, _,)
+        )
+    }
+    is_ident_like(tt1) && is_ident_like(tt2)
+}
+
 fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     use Delimiter::*;
     use TokenTree::{Delimited as Del, Token as Tok};
@@ -735,6 +750,23 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             TokenTree::Token(token, spacing) => {
                 let token_str = self.token_to_string_ext(token, convert_dollar_crate);
                 self.word(token_str);
+                // Emit hygiene annotations for identity-bearing tokens,
+                // matching how print_ident() and print_lifetime() call ann_post().
+                match token.kind {
+                    token::Ident(name, _) => {
+                        self.ann_post(Ident::new(name, token.span));
+                    }
+                    token::NtIdent(ident, _) => {
+                        self.ann_post(ident);
+                    }
+                    token::Lifetime(name, _) => {
+                        self.ann_post(Ident::new(name, token.span));
+                    }
+                    token::NtLifetime(ident, _) => {
+                        self.ann_post(ident);
+                    }
+                    _ => {}
+                }
                 if let token::DocComment(..) = token.kind {
                     self.hardbreak()
                 }
@@ -791,6 +823,13 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             let spacing = self.print_tt(tt, convert_dollar_crate);
             if let Some(next) = iter.peek() {
                 if spacing == Spacing::Alone && space_between(tt, next) {
+                    self.space();
+                } else if spacing != Spacing::Alone && idents_would_merge(tt, next) {
+                    // When tokens from macro `tt` captures preserve their
+                    // original `Joint`/`JointHidden` spacing, adjacent
+                    // identifier-like tokens can be concatenated without a
+                    // space (e.g. `$x:identwhere`). Insert a space to
+                    // prevent this.
                     self.space();
                 }
             }
@@ -1747,6 +1786,23 @@ impl<'a> State<'a> {
         }
     }
 
+    /// Print a pattern, parenthesizing it if it is an or-pattern (`A | B`).
+    ///
+    /// Or-patterns have the lowest precedence among patterns, so they need
+    /// parentheses when nested inside `@` bindings, `&` references, or `box`
+    /// patterns — otherwise `x @ A | B` parses as `(x @ A) | B`, `&A | B`
+    /// parses as `(&A) | B`, etc.
+    fn print_pat_paren_if_or(&mut self, pat: &ast::Pat) {
+        let needs_paren = matches!(pat.kind, PatKind::Or(..));
+        if needs_paren {
+            self.popen();
+        }
+        self.print_pat(pat);
+        if needs_paren {
+            self.pclose();
+        }
+    }
+
     fn print_pat(&mut self, pat: &ast::Pat) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
@@ -1774,7 +1830,7 @@ impl<'a> State<'a> {
                 if let Some(p) = sub {
                     self.space();
                     self.word_space("@");
-                    self.print_pat(p);
+                    self.print_pat_paren_if_or(p);
                 }
             }
             PatKind::TupleStruct(qself, path, elts) => {
@@ -1846,7 +1902,7 @@ impl<'a> State<'a> {
             }
             PatKind::Box(inner) => {
                 self.word("box ");
-                self.print_pat(inner);
+                self.print_pat_paren_if_or(inner);
             }
             PatKind::Deref(inner) => {
                 self.word("deref!");
@@ -1870,7 +1926,7 @@ impl<'a> State<'a> {
                     self.print_pat(inner);
                     self.pclose();
                 } else {
-                    self.print_pat(inner);
+                    self.print_pat_paren_if_or(inner);
                 }
             }
             PatKind::Expr(e) => self.print_expr(e, FixupContext::default()),
@@ -1887,12 +1943,12 @@ impl<'a> State<'a> {
                     self.print_expr(e, FixupContext::default());
                 }
             }
-            PatKind::Guard(subpat, condition) => {
+            PatKind::Guard(subpat, guard) => {
                 self.popen();
                 self.print_pat(subpat);
                 self.space();
                 self.word_space("if");
-                self.print_expr(condition, FixupContext::default());
+                self.print_expr(&guard.cond, FixupContext::default());
                 self.pclose();
             }
             PatKind::Slice(elts) => {

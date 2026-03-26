@@ -4,7 +4,7 @@ use rustc_abi::{
 };
 
 use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
-use crate::spec::HasTargetSpec;
+use crate::spec::{HasTargetSpec, LlvmAbi};
 
 #[derive(Copy, Clone)]
 enum RegPassKind {
@@ -88,7 +88,7 @@ where
         BackendRepr::SimdVector { .. } => {
             return Err(CannotUseFpConv);
         }
-        BackendRepr::ScalableVector { .. } => panic!("scalable vectors are unsupported"),
+        BackendRepr::SimdScalableVector { .. } => panic!("scalable vectors are unsupported"),
         BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => match arg_layout.fields {
             FieldsShape::Primitive => {
                 unreachable!("aggregates can't have `FieldsShape::Primitive`")
@@ -415,9 +415,9 @@ where
     C: HasDataLayout + HasTargetSpec,
 {
     let xlen = cx.data_layout().pointer_size().bits();
-    let flen = match &cx.target_spec().llvm_abiname[..] {
-        "ilp32f" | "lp64f" => 32,
-        "ilp32d" | "lp64d" => 64,
+    let flen = match &cx.target_spec().llvm_abiname {
+        LlvmAbi::Ilp32f | LlvmAbi::Lp64f => 32,
+        LlvmAbi::Ilp32d | LlvmAbi::Lp64d => 64,
         _ => 0,
     };
 

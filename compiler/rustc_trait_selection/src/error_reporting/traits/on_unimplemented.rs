@@ -124,8 +124,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             }
 
-            if let Some(true) = self_ty.ty_adt_def().map(|def| def.did().is_local()) {
-                crate_local = true;
+            if let Some(adt) = self_ty.ty_adt_def() {
+                if adt.did().is_local() {
+                    crate_local = true;
+                }
+                self_types.push(format!("{{{}}}", adt.descr()))
             }
 
             // Allow targeting all integers using `{integral}`, even if the exact type was resolved

@@ -1,6 +1,6 @@
 //@build-fail
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend post-monomorphization errors
 //! Make sure that monomorphization-time const errors from `static_assert` take priority over the
 //! error from simd_extract. Basically this checks that if a const fails to evaluate in some
 //! function, we don't bother codegen'ing the function.

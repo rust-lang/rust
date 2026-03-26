@@ -1,7 +1,7 @@
 #!
 [allow(unused_variables)]
 //@ check-pass
-//@ reference: input.shebang.inner-attribute
+//@ reference: shebang.syntax-description
 
 fn main() {
     let x = 5;

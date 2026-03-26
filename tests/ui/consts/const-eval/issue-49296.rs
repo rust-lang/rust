@@ -1,5 +1,5 @@
 // issue-49296: Unsafe shenigans in constants can result in missing errors
-
+//@ ignore-parallel-frontend different alloc ids
 use std::mem::transmute;
 
 const fn wat(x: u64) -> &'static u64 {

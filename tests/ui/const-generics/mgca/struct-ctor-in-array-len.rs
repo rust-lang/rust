@@ -6,7 +6,6 @@
 // It should now produce a proper type error.
 
 #![feature(min_generic_const_args)]
-//~^ WARN the feature `min_generic_const_args` is incomplete
 
 struct S;
 

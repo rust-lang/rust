@@ -14,7 +14,7 @@ use rustc_abi::{FieldIdx, VariantIdx};
 pub use rustc_ast::{Mutability, Pinnedness};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{
@@ -24,8 +24,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol};
 use tracing::{debug, trace};
 
 pub use self::query::*;
@@ -840,7 +839,7 @@ impl SourceInfo {
 // Variables and temps
 
 rustc_index::newtype_index! {
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "_{}"]
@@ -1264,7 +1263,7 @@ rustc_index::newtype_index! {
     ///     https://rustc-dev-guide.rust-lang.org/appendix/background.html#what-is-a-dataflow-analysis
     /// [`CriticalCallEdges`]: ../../rustc_mir_transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
     /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "bb{}"]
@@ -1398,7 +1397,7 @@ impl<'tcx> BasicBlockData<'tcx> {
 // Scopes
 
 rustc_index::newtype_index! {
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[debug_format = "scope[{}]"]
     pub struct SourceScope {
@@ -1537,7 +1536,7 @@ pub struct UserTypeProjection {
 }
 
 rustc_index::newtype_index! {
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "promoted[{}]"]

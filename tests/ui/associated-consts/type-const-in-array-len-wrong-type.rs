@@ -1,9 +1,6 @@
 #![feature(generic_const_exprs)]
-//~^ WARN the feature `generic_const_exprs` is incomplete
 #![feature(min_generic_const_args)]
-//~^ WARN the feature `min_generic_const_args` is incomplete
 #![feature(inherent_associated_types)]
-//~^ WARN the feature `inherent_associated_types` is incomplete
 
 struct OnDiskDirEntry<'a>(&'a ());
 

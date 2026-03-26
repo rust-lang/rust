@@ -13,7 +13,7 @@
 //! ```
 //!
 //! We want the diagnostics to point to the relevant user code.
-
+//@ ignore-parallel-frontend post-monomorphization errors
 //@ build-fail
 //@ compile-flags: -Zmir-opt-level=1 -Zinline-mir
 

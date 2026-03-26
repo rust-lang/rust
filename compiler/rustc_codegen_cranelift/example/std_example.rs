@@ -1,14 +1,8 @@
-#![feature(
-    core_intrinsics,
-    coroutines,
-    stmt_expr_attributes,
-    coroutine_trait,
-    repr_simd,
-    tuple_trait,
-    unboxed_closures
-)]
+#![feature(core_intrinsics, coroutines, coroutine_trait, repr_simd, tuple_trait, unboxed_closures)]
 #![allow(internal_features)]
 
+#[cfg(target_arch = "x86_64")]
+use std::arch::asm;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 use std::hint::black_box;
@@ -173,6 +167,9 @@ fn main() {
 
     rust_call_abi();
 
+    // #[cfg(target_arch = "x86_64")]
+    // inline_asm_call_custom_abi();
+
     const fn no_str() -> Option<Box<str>> {
         None
     }
@@ -279,6 +276,17 @@ unsafe fn test_simd() {
 
         #[cfg(not(jit))]
         test_crc32();
+
+        #[cfg(not(jit))]
+        test_xmm_roundtrip();
+        #[cfg(not(jit))]
+        if is_x86_feature_detected!("avx") {
+            test_ymm_roundtrip();
+        }
+        #[cfg(not(jit))]
+        if is_x86_feature_detected!("avx512f") {
+            test_zmm_roundtrip();
+        }
     }
 }
 
@@ -576,6 +584,65 @@ unsafe fn test_mm_cvtps_ph() {
     assert_eq_m128i(r, e);
 }
 
+#[cfg(target_arch = "x86_64")]
+#[cfg(not(jit))]
+unsafe fn test_xmm_roundtrip() {
+    unsafe {
+        let input = [1u8; 16];
+        let mut output = [0u8; 16];
+
+        asm!(
+            "movups {xmm}, [{input}]",
+            "movups [{output}], {xmm}",
+            input = in(reg) input.as_ptr(),
+            output = in(reg) output.as_mut_ptr(),
+            xmm = out(xmm_reg) _,
+        );
+
+        assert_eq!(input, output);
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx")]
+#[cfg(not(jit))]
+unsafe fn test_ymm_roundtrip() {
+    unsafe {
+        let input = [1u8; 32];
+        let mut output = [0u8; 32];
+
+        asm!(
+            "vmovups {ymm}, [{input}]",
+            "vmovups [{output}], {ymm}",
+            input = in(reg) input.as_ptr(),
+            output = in(reg) output.as_mut_ptr(),
+            ymm = out(ymm_reg) _,
+        );
+
+        assert_eq!(input, output);
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx512f")]
+#[cfg(not(jit))]
+unsafe fn test_zmm_roundtrip() {
+    unsafe {
+        let input = [1u8; 64];
+        let mut output = [0u8; 64];
+
+        asm!(
+            "vmovups {zmm}, [{input}]",
+            "vmovups [{output}], {zmm}",
+            input = in(reg) input.as_ptr(),
+            output = in(reg) output.as_mut_ptr(),
+            zmm = out(zmm_reg) _,
+        );
+
+        assert_eq!(input, output);
+    }
+}
+
 fn test_checked_mul() {
     let u: Option<u8> = u8::from_str_radix("1000", 10).ok();
     assert_eq!(u, None);
@@ -614,3 +681,18 @@ fn map(a: Option<(u8, Box<Instruction>)>) -> Option<Box<Instruction>> {
         Some((_, instr)) => Some(instr),
     }
 }
+
+// FIXME enable once inline asm sym references are stabilized in cg_clif
+// #[cfg(target_arch = "x86_64")]
+// fn inline_asm_call_custom_abi() {
+//     use std::arch::{asm, naked_asm};
+//
+//     #[unsafe(naked)]
+//     unsafe extern "custom" fn double() {
+//         naked_asm!("add rax, rax", "ret");
+//     }
+//
+//     let mut x: u64 = 21;
+//     unsafe { asm!("call {}", sym double, inout("rax") x) };
+//     assert_eq!(x, 42);
+// }

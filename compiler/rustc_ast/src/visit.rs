@@ -15,8 +15,7 @@
 
 pub use rustc_ast_ir::visit::VisitorResult;
 pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{Ident, Span, Spanned, Symbol};
 use thin_vec::ThinVec;
 
 use crate::ast::*;
@@ -443,6 +442,7 @@ macro_rules! common_visitor_and_walkers {
             FormatArguments,
             FormatPlaceholder,
             GenericParamKind,
+            Guard,
             Impl,
             ImplPolarity,
             Inline,

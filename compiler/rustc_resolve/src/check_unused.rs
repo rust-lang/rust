@@ -36,7 +36,7 @@ use rustc_session::lint::builtin::{
 use rustc_span::{DUMMY_SP, Ident, Span, kw};
 
 use crate::imports::{Import, ImportKind};
-use crate::{DeclKind, IdentKey, LateDecl, Resolver, module_to_string};
+use crate::{DeclKind, IdentKey, LateDecl, Resolver, errors, module_to_string};
 
 struct UnusedImport {
     use_tree: ast::UseTree,
@@ -554,7 +554,7 @@ impl Resolver<'_, '_> {
                 UNUSED_QUALIFICATIONS,
                 unn_qua.node_id,
                 unn_qua.path_span,
-                BuiltinLintDiag::UnusedQualifications { removal_span: unn_qua.removal_span },
+                errors::UnusedQualifications { removal_span: unn_qua.removal_span },
             );
         }
 

@@ -1,14 +1,18 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-39974.rs:6:19
+  --> $DIR/issue-39974.rs:7:19
    |
 LL |     f: [[f64; 2]; LENGTH],
    |                   ^^^^^^ expected `usize`, found `f64`
+   |
+   = note: array length can only be `usize`
 
 error[E0308]: mismatched types
   --> $DIR/issue-39974.rs:1:21
    |
 LL | const LENGTH: f64 = 2;
-   |                     ^ expected `f64`, found integer
+   |               ---   ^ expected `f64`, found integer
+   |               |
+   |               expected because of the type of the constant
    |
 help: use a float literal
    |

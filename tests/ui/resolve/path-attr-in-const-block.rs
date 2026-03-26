@@ -5,6 +5,5 @@ fn main() {
     const {
         #![path = foo!()]
         //~^ ERROR: cannot find macro `foo` in this scope
-        //~| ERROR: attribute value must be a literal
     }
 }

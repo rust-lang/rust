@@ -164,9 +164,10 @@ impl DepGraph {
         );
         assert_eq!(red_node_index, DepNodeIndex::FOREVER_RED_NODE);
         if prev_graph_node_count > 0 {
-            colors.insert_red(SerializedDepNodeIndex::from_u32(
-                DepNodeIndex::FOREVER_RED_NODE.as_u32(),
-            ));
+            let prev_index =
+                const { SerializedDepNodeIndex::from_u32(DepNodeIndex::FOREVER_RED_NODE.as_u32()) };
+            let result = colors.try_set_color(prev_index, DesiredColor::Red);
+            assert_matches!(result, TrySetColorResult::Success);
         }
 
         DepGraph {
@@ -292,7 +293,7 @@ impl DepGraph {
 
     pub fn with_anon_task<'tcx, OP, R>(
         &self,
-        cx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         dep_kind: DepKind,
         op: OP,
     ) -> (R, DepNodeIndex)
@@ -301,7 +302,7 @@ impl DepGraph {
     {
         match self.data() {
             Some(data) => {
-                let (result, index) = data.with_anon_task_inner(cx, dep_kind, op);
+                let (result, index) = data.with_anon_task_inner(tcx, dep_kind, op);
                 self.read_index(index);
                 (result, index)
             }
@@ -375,18 +376,17 @@ impl DepGraphData {
     /// incorrectly marked green.
     ///
     /// FIXME: This could perhaps return a `WithDepNode` to ensure that the
-    /// user of this function actually performs the read; we'll have to see
-    /// how to make that work with `anon` in `execute_job_incr`, though.
-    pub fn with_anon_task_inner<'tcx, OP, R>(
+    /// user of this function actually performs the read.
+    fn with_anon_task_inner<'tcx, OP, R>(
         &self,
-        cx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         dep_kind: DepKind,
         op: OP,
     ) -> (R, DepNodeIndex)
     where
         OP: FnOnce() -> R,
     {
-        debug_assert!(!cx.is_eval_always(dep_kind));
+        debug_assert!(!tcx.is_eval_always(dep_kind));
 
         // Large numbers of reads are common enough here that pre-sizing `read_set`
         // to 128 actually helps perf on some benchmarks.
@@ -709,7 +709,7 @@ impl DepGraphData {
             // side effect.
             std::iter::once(DepNodeIndex::FOREVER_RED_NODE).collect(),
         );
-        tcx.store_side_effect(dep_node_index, side_effect);
+        tcx.query_system.side_effects.borrow_mut().insert(dep_node_index, side_effect);
         dep_node_index
     }
 
@@ -718,7 +718,13 @@ impl DepGraphData {
     #[inline]
     fn force_side_effect<'tcx>(&self, tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) {
         with_deps(TaskDepsRef::Ignore, || {
-            let side_effect = tcx.load_side_effect(prev_index).unwrap();
+            let side_effect = tcx
+                .query_system
+                .on_disk_cache
+                .as_ref()
+                .unwrap()
+                .load_side_effect(tcx, prev_index)
+                .unwrap();
 
             // Use `send_and_color` as `promote_node_and_deps_to_current` expects all
             // green dependencies. `send_and_color` will also prevent multiple nodes
@@ -745,7 +751,7 @@ impl DepGraphData {
             }
 
             // This will just overwrite the same value for concurrent calls.
-            tcx.store_side_effect(dep_node_index, side_effect);
+            tcx.query_system.side_effects.borrow_mut().insert(dep_node_index, side_effect);
         })
     }
 
@@ -865,7 +871,7 @@ impl DepGraph {
         dep_node_debug.borrow_mut().insert(dep_node, debug_str);
     }
 
-    pub fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
+    pub(crate) fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
         self.data.as_ref()?.dep_node_debug.borrow().get(&dep_node).cloned()
     }
 
@@ -1103,7 +1109,7 @@ impl DepGraph {
         }
     }
 
-    pub fn finish_encoding(&self) -> FileEncodeResult {
+    pub(crate) fn finish_encoding(&self) -> FileEncodeResult {
         if let Some(data) = &self.data { data.current.encoder.finish(&data.current) } else { Ok(0) }
     }
 
@@ -1416,28 +1422,29 @@ impl DepNodeColorMap {
         if value <= DepNodeIndex::MAX_AS_U32 { Some(DepNodeIndex::from_u32(value)) } else { None }
     }
 
-    /// This tries to atomically mark a node green and assign `index` as the new
-    /// index if `green` is true, otherwise it will try to atomicaly mark it red.
+    /// Atomically sets the color of a previous-session dep node to either green
+    /// or red, if it has not already been colored.
     ///
-    /// This returns `Ok` if `index` gets assigned or the node is marked red, otherwise it returns
-    /// the already allocated index in `Err` if it is green already. If it was already
-    /// red, `Err(None)` is returned.
+    /// If the node already has a color, the new color is ignored, and the
+    /// return value indicates the existing color.
     #[inline(always)]
-    pub(super) fn try_mark(
+    pub(super) fn try_set_color(
         &self,
         prev_index: SerializedDepNodeIndex,
-        index: DepNodeIndex,
-        green: bool,
-    ) -> Result<(), Option<DepNodeIndex>> {
-        let value = &self.values[prev_index];
-        match value.compare_exchange(
+        color: DesiredColor,
+    ) -> TrySetColorResult {
+        match self.values[prev_index].compare_exchange(
             COMPRESSED_UNKNOWN,
-            if green { index.as_u32() } else { COMPRESSED_RED },
+            match color {
+                DesiredColor::Red => COMPRESSED_RED,
+                DesiredColor::Green { index } => index.as_u32(),
+            },
             Ordering::Relaxed,
             Ordering::Relaxed,
         ) {
-            Ok(_) => Ok(()),
-            Err(v) => Err(if v == COMPRESSED_RED { None } else { Some(DepNodeIndex::from_u32(v)) }),
+            Ok(_) => TrySetColorResult::Success,
+            Err(COMPRESSED_RED) => TrySetColorResult::AlreadyRed,
+            Err(index) => TrySetColorResult::AlreadyGreen { index: DepNodeIndex::from_u32(index) },
         }
     }
 
@@ -1455,13 +1462,28 @@ impl DepNodeColorMap {
             DepNodeColor::Unknown
         }
     }
+}
 
-    #[inline]
-    pub(super) fn insert_red(&self, index: SerializedDepNodeIndex) {
-        let value = self.values[index].swap(COMPRESSED_RED, Ordering::Release);
-        // Sanity check for duplicate nodes
-        assert_eq!(value, COMPRESSED_UNKNOWN, "tried to color an already colored node as red");
-    }
+/// The color that [`DepNodeColorMap::try_set_color`] should try to apply to a node.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum DesiredColor {
+    /// Try to mark the node red.
+    Red,
+    /// Try to mark the node green, associating it with a current-session node index.
+    Green { index: DepNodeIndex },
+}
+
+/// Return value of [`DepNodeColorMap::try_set_color`], indicating success or failure,
+/// and (on failure) what the existing color is.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum TrySetColorResult {
+    /// The [`DesiredColor`] was freshly applied to the node.
+    Success,
+    /// Coloring failed because the node was already marked red.
+    AlreadyRed,
+    /// Coloring failed because the node was already marked green,
+    /// and corresponds to node `index` in the current-session dep graph.
+    AlreadyGreen { index: DepNodeIndex },
 }
 
 #[inline(never)]
@@ -1532,24 +1554,5 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     fn is_eval_always(self, kind: DepKind) -> bool {
         self.dep_kind_vtable(kind).is_eval_always
-    }
-
-    // Interactions with on_disk_cache
-    fn load_side_effect(
-        self,
-        prev_dep_node_index: SerializedDepNodeIndex,
-    ) -> Option<QuerySideEffect> {
-        self.query_system
-            .on_disk_cache
-            .as_ref()
-            .and_then(|c| c.load_side_effect(self, prev_dep_node_index))
-    }
-
-    #[inline(never)]
-    #[cold]
-    fn store_side_effect(self, dep_node_index: DepNodeIndex, side_effect: QuerySideEffect) {
-        if let Some(c) = self.query_system.on_disk_cache.as_ref() {
-            c.store_side_effect(dep_node_index, side_effect)
-        }
     }
 }

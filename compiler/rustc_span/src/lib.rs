@@ -90,6 +90,20 @@ use sha2::Sha256;
 #[cfg(test)]
 mod tests;
 
+#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable_Generic)]
+pub struct Spanned<T> {
+    pub node: T,
+    pub span: Span,
+}
+
+pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
+    Spanned { node: t, span: sp }
+}
+
+pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
+    respan(DUMMY_SP, t)
+}
+
 /// Per-session global variables: this struct is stored in thread-local storage
 /// in such a way that it is accessible without any kind of handle to all
 /// threads within the compilation session, but is not accessible outside the

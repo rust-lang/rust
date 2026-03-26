@@ -6,7 +6,7 @@ LL |     qux(Bar.into());
    |     |
    |     required by a bound introduced by this call
    |
-   = note: cannot satisfy `_: From<Bar>`
+   = note: the type must implement `From<Bar>`
 note: required by a bound in `qux`
   --> $DIR/argument-with-unnecessary-method-call.rs:6:16
    |

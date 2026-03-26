@@ -68,8 +68,8 @@ impl fmt::Debug for TcpStream {
 ///
 /// SGX doesn't support DNS resolution but rather accepts hostnames in
 /// the same place as socket addresses. So, to make e.g.
-/// ```rust
-/// TcpStream::connect("example.com:80")`
+/// ```rust,ignore (incomplete example)
+/// TcpStream::connect("example.com:80")
 /// ```
 /// work, the DNS lookup returns a special error (`NonIpSockAddr`) instead,
 /// which contains the hostname being looked up. When `.to_socket_addrs()`
