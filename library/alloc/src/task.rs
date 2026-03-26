@@ -37,6 +37,12 @@ use crate::sync::Arc;
 ///      link ../../std/task/struct.Waker.html#impl-From%3CArc%3CW,+Global%3E%3E-for-Waker
 ///      without getting a link-checking error in CI. -->
 ///
+/// # Memory Ordering
+///
+/// The executor must guarantee that the call to `wake` _happens-before_ the corresponding woken `poll`. 
+/// In addition, the executor must also guarantee that multiple calls to `wake` that were coalesced into a single 
+/// `poll()` invocation all _happens-before_ the corresponding woken `poll`.
+///
 /// # Examples
 ///
 /// A basic `block_on` function that takes a future and runs it to completion on
