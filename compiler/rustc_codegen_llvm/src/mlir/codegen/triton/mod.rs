@@ -90,15 +90,10 @@ impl<'a> TritonCodegen<'a> {
                         match const_val.kind() {
                             ConstKind::Param(param) => {
                                 let value = instance.args.const_at(param.index as usize).to_value();
-                                let scalar = value.valtree.try_to_scalar().ok_or_else(|| {
+                                let scalar_int = value.try_to_leaf().ok_or_else(|| {
                                     MlirError::InvalidScalar { node: format!("{:?}", node) }
                                 })?;
-                                match scalar {
-                                    Scalar::Int(scalar_int) => Ok(scalar_int),
-                                    _ => Err(MlirError::InvalidScalar {
-                                        node: format!("{:?}", node),
-                                    }),
-                                }
+                                Ok(scalar_int)
                             }
                             _ => Err(MlirError::InvalidScalar { node: format!("{:?}", node) }),
                         }
@@ -426,7 +421,6 @@ impl<'a> TritonCodegen<'a> {
                     ssa_values.insert(place.local, value);
                 }
             }
-            Rvalue::NullaryOp(null_op) => todo!("NullaryOp: {:?}", null_op),
             Rvalue::UnaryOp(un_op, operand) => todo!("UnaryOp: {:?} {:?}", un_op, operand),
             Rvalue::Discriminant(place) => todo!("Discriminant: {:?}", place),
             Rvalue::ShallowInitBox(operand, ty) => todo!("ShallowInitBox: {:?} {:?}", operand, ty),
@@ -456,7 +450,7 @@ impl<'a> TritonCodegen<'a> {
             AggregateKind::Adt(def_id, _, raw_list, _, _) => {
                 // Get the ADT definition and a human-readable name for debugging.
                 let adt_def = tcx.adt_def(*def_id);
-                let adt_name = tcx.def_path_str(*def_id);
+                let adt_name = format!("{:?}", adt_def);
 
                 if "triton::llvm::triton::tensor::Tensor" == adt_name {
                     self.codegen_create_tensor(
@@ -806,6 +800,7 @@ impl<'a> TritonCodegen<'a> {
             Operand::Constant(const_operand) => {
                 self.codegen_constant_cast(tcx, instance, const_operand, normalized_ty, mlir_block)
             }
+            Operand::RuntimeChecks(_) => todo!("RuntimeChecks operand not yet supported"),
         }
     }
 
@@ -918,7 +913,7 @@ impl<'a> TritonCodegen<'a> {
         value: ty::Value<'tcx>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
-        let scalar = value.valtree.try_to_scalar();
+        let scalar = value.try_to_scalar();
 
         if let Some(scalar) = scalar {
             self.codegen_scalar(value.ty, scalar, mlir_block)

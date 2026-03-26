@@ -31,8 +31,6 @@ unsafe extern "C" {
 
     pub fn mlirCreateTritonPointerType(pointee: MlirType, address_space: i32) -> MlirType;
 
-    pub fn mlirApplyTritonPasses(module: MlirModule) -> bool;
-
     // Triton compiler opaque handle API
     pub fn mlirTritonCompilerCreate(
         context: MlirContext,

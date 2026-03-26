@@ -40,7 +40,6 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_middle::dep_graph;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
-use rustc_mlir::ffi::{MlirTritonCompiler, mlirApplyTritonPasses};
 use rustc_mlir::triton::TritonCompiler;
 use rustc_session::Session;
 use rustc_session::config::{OutputFilenames, PrintKind, PrintRequest};

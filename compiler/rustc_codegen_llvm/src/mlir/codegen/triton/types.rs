@@ -21,6 +21,7 @@ use rustc_ast::{FloatTy, IntTy, UintTy};
 use rustc_middle::ty::{
     AdtDef, AliasTy, AliasTyKind, GenericArg, ParamTy, Ty, TyCtxt, TyKind, TypingEnv,
 };
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_mlir::shared::builtin::tensor_type;
 use rustc_mlir::triton::pointer_type;
 
@@ -99,7 +100,7 @@ impl TypeMapper {
         def: &AdtDef,
         args: &[GenericArg<'tcx>],
     ) -> Type<'c> {
-        let name = tcx.def_path_str(def.did());
+        let name = with_no_trimmed_paths!(tcx.def_path_str(def.did()));
         println!("map_adt_ty: name:{:?} {:?} {:?}", name, def, args);
 
         let handler = get_adt_handler(&name);

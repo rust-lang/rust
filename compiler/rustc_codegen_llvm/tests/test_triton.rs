@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#![feature(rustc_private)]
+
 use std::env;
 use std::path::{Path, PathBuf};
 

@@ -6,9 +6,6 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/Lint.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
-#if LLVM_VERSION_GE(22, 0)
-#include "llvm/Analysis/RuntimeLibcallInfo.h"
-#endif
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/CodeGen/CommandFlags.h"
@@ -23,11 +20,7 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Passes/PassBuilder.h"
-#if LLVM_VERSION_GE(22, 0)
-#include "llvm/Plugins/PassPlugin.h"
-#else
 #include "llvm/Passes/PassPlugin.h"
-#endif
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
@@ -395,11 +388,6 @@ extern "C" void LLVMRustAddLibraryInfo(LLVMTargetMachineRef T,
   if (DisableSimplifyLibCalls)
     TLII.disableAllFunctions();
   unwrap(PMR)->add(new TargetLibraryInfoWrapperPass(TLII));
-#if LLVM_VERSION_GE(22, 0)
-  unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
-      TargetTriple, Options->ExceptionModel, Options->FloatABIType,
-      Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
-#endif
 }
 
 extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
@@ -1237,11 +1225,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // being lifted from `lib/LTO/LTO.cpp` as well
   DenseMap<GlobalValue::GUID, const GlobalValueSummary *> PrevailingCopy;
   for (auto &I : Ret->Index) {
-#if LLVM_VERSION_GE(22, 0)
-    const auto &SummaryList = I.second.getSummaryList();
-#else
     const auto &SummaryList = I.second.SummaryList;
-#endif
     if (SummaryList.size() > 1)
       PrevailingCopy[I.first] = getFirstDefinitionForLinker(SummaryList);
   }
@@ -1274,11 +1258,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // linkage will stay as external, and internal will stay as internal.
   std::set<GlobalValue::GUID> ExportedGUIDs;
   for (auto &List : Ret->Index) {
-#if LLVM_VERSION_GE(22, 0)
-    const auto &SummaryList = List.second.getSummaryList();
-#else
     const auto &SummaryList = List.second.SummaryList;
-#endif
     for (auto &GVS : SummaryList) {
       if (GlobalValue::isLocalLinkage(GVS->linkage()))
         continue;

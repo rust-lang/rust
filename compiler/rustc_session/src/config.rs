@@ -2753,10 +2753,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let frontend = matches.opt_str("frontend").map(|s| match s.to_lowercase().as_str() {
         "triton" => Frontend::Triton,
         _ => {
-            early_dcx.early_fatal(format!(
-                "unknown frontend: `{}`. Supported frontends: triton",
-                s
-            ));
+            early_dcx
+                .early_fatal(format!("unknown frontend: `{}`. Supported frontends: triton", s));
         }
     });
 
@@ -3095,11 +3093,12 @@ pub(crate) mod dep_tracking {
 
     use super::{
         AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CoverageOptions,
-        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
-        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
-        OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks, SourceFileHashAlgorithm,
-        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, Frontend,
+        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
+        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel,
+        OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;

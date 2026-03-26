@@ -318,8 +318,6 @@ fn main() {
         .file("llvm-wrapper/CoverageMappingWrapper.cpp")
         .file("llvm-wrapper/SymbolWrapper.cpp")
         .file("llvm-wrapper/Linker.cpp")
-        .file("llvm-wrapper/MLIRWrapper.cpp")
-        .file("llvm-wrapper/triton/TritonWrapper.cpp")
         .cpp(true)
         .cpp_link_stdlib(None) // we handle this below
         .compile("llvm-wrapper");

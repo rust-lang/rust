@@ -173,12 +173,6 @@ impl Clone for bool {
     }
 }
 
-impl From<i32> for i32 {
-    fn from(val: i32) -> i32 {
-        val
-    }
-}
-
 pub enum Option<T> {
     None,
     Some(T),
@@ -194,6 +188,12 @@ pub const trait Into<T>: Sized {
 pub const trait From<T>: Sized {
     /// Converts to this type from the input type.
     fn from(value: T) -> Self;
+}
+
+impl<T> From<T> for T {
+    fn from(value: T) -> Self {
+        value
+    }
 }
 
 impl<T, U> Into<U> for T
@@ -318,6 +318,7 @@ pub mod std {
     }
 }
 pub mod triton {
+    pub use super::*;
     /*
      * Copyright (c) 2026 Teenygrad.
      *
@@ -333,12 +334,12 @@ pub mod triton {
      * See the License for the specific language governing permissions and
      * limitations under the License.
      */
+
     use std::ops::Add;
 
-    pub use types::*;
-
     use self::types::{self as ty};
-    pub use super::*;
+
+    pub use types::*;
 
     #[repr(i32)]
     pub enum Axis {
@@ -377,6 +378,7 @@ pub mod triton {
         );
     }
     pub mod types {
+        pub use super::*;
         /*
          * Copyright (c) 2026 Teenygrad.
          *
@@ -392,9 +394,8 @@ pub mod triton {
          * See the License for the specific language governing permissions and
          * limitations under the License.
          */
-        use std::ops::{Add, Mul};
 
-        pub use super::*;
+        use std::ops::{Add, Mul};
 
         // Dtype Type
         pub trait Dtype: Copy + Clone {}
@@ -521,6 +522,7 @@ pub mod triton {
              * See the License for the specific language governing permissions and
              * limitations under the License.
              */
+
             use super::super::Triton;
             use super::super::{Axis, types as ty};
 
@@ -589,6 +591,7 @@ pub mod triton {
                  */
             }
             pub mod pointer {
+                pub use super::super::super::*;
                 /*
                  * Copyright (c) 2026 Teenygrad.
                  *
@@ -604,11 +607,12 @@ pub mod triton {
                  * See the License for the specific language governing permissions and
                  * limitations under the License.
                  */
+
                 use std::ops::Add;
 
-                use super::super::super::types::{self as ty};
-                pub use super::super::super::*;
                 use crate::triton::llvm::triton::tensor::{I32Tensor, Tensor};
+
+                use super::super::super::types::{self as ty};
 
                 pub struct Pointer<D: ty::Dtype>(pub *mut D);
                 impl<D: ty::Dtype> Clone for Pointer<D> {
@@ -647,6 +651,7 @@ pub mod triton {
                 }
             }
             pub mod num {
+                pub use super::super::super::*;
                 /*
                  * Copyright (c) 2026 Teenygrad.
                  *
@@ -662,8 +667,8 @@ pub mod triton {
                  * See the License for the specific language governing permissions and
                  * limitations under the License.
                  */
+
                 use super::super::super::types as ty;
-                pub use super::super::super::*;
 
                 /*--------------------------------- BF16 ---------------------------------*/
 
@@ -682,6 +687,7 @@ pub mod triton {
                 impl ty::BF16 for BF16 {}
             }
             pub mod tensor {
+                pub use super::super::super::*;
                 /*
                  * Copyright (c) 2026 Teenygrad.
                  *
@@ -697,10 +703,10 @@ pub mod triton {
                  * See the License for the specific language governing permissions and
                  * limitations under the License.
                  */
+
                 use std::ops::Add;
 
                 use super::super::super::types::{self as ty};
-                pub use super::super::super::*;
 
                 /*--------------------------------- Tensor ---------------------------------*/
 
@@ -760,9 +766,10 @@ pub mod triton {
         }
     }
 }
+pub use triton::*;
+
 use triton::llvm::triton::num::*;
 use triton::llvm::triton::pointer::Pointer;
-pub use triton::*;
 
 type LlvmTriton = triton::llvm::triton::LlvmTriton;
 

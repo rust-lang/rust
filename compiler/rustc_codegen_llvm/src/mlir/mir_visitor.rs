@@ -293,9 +293,6 @@ impl<'tcx> MirVisitor<'tcx> {
                     this.visit_operand(rhs);
                 });
             }
-            Rvalue::NullaryOp(null_op) => {
-                this.log(&format!("NullaryOp: {:?}", null_op));
-            }
             Rvalue::UnaryOp(un_op, operand) => {
                 this.log(&format!("UnaryOp: {:?}", un_op));
                 this.visit_operand(operand);
@@ -348,6 +345,9 @@ impl<'tcx> MirVisitor<'tcx> {
                     this.log(&format!("Type: {:?}", constant.ty()));
                     this.log(&format!("Const: {:?}", constant.const_));
                 });
+            }
+            Operand::RuntimeChecks(checks) => {
+                this.log(&format!("RuntimeChecks: {:?}", checks));
             }
         });
     }

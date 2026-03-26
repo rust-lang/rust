@@ -20,7 +20,8 @@ use melior::ir::operation::OperationLike;
 use melior::ir::r#type::TupleType;
 use melior::ir::{BlockLike, BlockRef, Location, Operation, TypeLike, Value};
 use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, Terminator, UnwindAction};
-use rustc_middle::ty::{Instance, TyCtxt, TyKind, TypingEnv};
+use rustc_middle::ty::{self, EarlyBinder, Instance, TyCtxt, TyKind, TypingEnv};
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_mlir::shared::cf::create_cf_br;
 use rustc_mlir::triton::call;
 use rustc_span::Span;
@@ -159,7 +160,7 @@ impl<'a> TritonCodegen<'a> {
         let func_name = match func {
             Operand::Constant(c) => {
                 if let TyKind::FnDef(def_id, _) = c.ty().kind() {
-                    tcx.def_path_str(*def_id)
+                    with_no_trimmed_paths!(tcx.def_path_str(*def_id))
                 } else {
                     format!("{:?}", func)
                 }
@@ -245,6 +246,11 @@ impl<'a> TritonCodegen<'a> {
             .collect::<Result<Vec<_>, MlirError>>()?;
 
         let fn_ty = func.ty(mir, tcx);
+        let fn_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            TypingEnv::fully_monomorphized(),
+            ty::EarlyBinder::bind(fn_ty),
+        );
         let ret_ty = match fn_ty.kind() {
             // Function definitions (e.g., closures and fn items).
             TyKind::FnDef(def_id, substs) => {
@@ -265,6 +271,11 @@ impl<'a> TritonCodegen<'a> {
         let callee_name = match func {
             Operand::Constant(constant) => {
                 let ty = constant.const_.ty();
+                let ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
+                    TypingEnv::fully_monomorphized(),
+                    EarlyBinder::bind(ty),
+                );
                 println!("[DEBUG] AXM TritonCodegen::codegen_call: ty: {:?}", ty);
                 match ty.kind() {
                     TyKind::FnDef(def_id, substs) => {
