@@ -1,6 +1,6 @@
+use std::cell::Cell;
 use std::hint::{likely, unlikely};
 use std::io::{self, Write};
-use std::sync::atomic::{AtomicU16, Ordering};
 
 use backtrace::{Backtrace, BacktraceFrame};
 
@@ -18,7 +18,7 @@ const STACK_PER_RECURSION: usize = 1024 * 1024; // 1MB
 const STACK_PER_RECURSION: usize = 16 * 1024 * 1024; // 16MB
 
 thread_local! {
-    static TIMES_GROWN: AtomicU16 = const { AtomicU16::new(0) };
+    static TIMES_GROWN: Cell<u16> = const { Cell::new(0) };
 }
 
 // Give up if we expand the stack this many times and are still trying to recurse deeper.
@@ -39,12 +39,13 @@ pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     if likely(enough_space) {
         f()
     } else {
-        let times = TIMES_GROWN.with(|times| times.fetch_add(1, Ordering::Relaxed));
+        let times = TIMES_GROWN.get();
         if unlikely(times > MAX_STACK_GROWTH) {
             too_much_stack();
         }
+        TIMES_GROWN.set(times + 1);
         let out = stacker::grow(STACK_PER_RECURSION, f);
-        TIMES_GROWN.with(|times| times.fetch_sub(1, Ordering::Relaxed));
+        TIMES_GROWN.set(times);
         out
     }
 }
