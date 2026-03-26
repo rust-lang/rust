@@ -1035,8 +1035,8 @@ enum ReferenceConversionType {
 }
 
 impl<'db> ReferenceConversion<'db> {
-    pub(crate) fn convert_type(&self, db: &'db dyn HirDatabase, module: hir::Module) -> ast::Type {
-        let ty = match self.conversion {
+    fn type_to_string(&self, db: &'db dyn HirDatabase, module: hir::Module) -> String {
+        match self.conversion {
             ReferenceConversionType::Copy => self
                 .ty
                 .display_source_code(db, module.into(), true)
@@ -1086,25 +1086,38 @@ impl<'db> ReferenceConversion<'db> {
                     .unwrap_or_else(|_| "_".to_owned());
                 format!("Result<&{first_type_argument_name}, &{second_type_argument_name}>")
             }
-        };
+        }
+    }
 
+    pub(crate) fn convert_type(&self, db: &'db dyn HirDatabase, module: hir::Module) -> ast::Type {
+        let ty = self.type_to_string(db, module);
         make::ty(&ty)
     }
 
-    pub(crate) fn getter(&self, field_name: String) -> ast::Expr {
-        let expr = make::expr_field(make::ext::expr_self(), &field_name);
+    pub(crate) fn convert_type_with_factory(
+        &self,
+        make: &SyntaxFactory,
+        db: &'db dyn HirDatabase,
+        module: hir::Module,
+    ) -> ast::Type {
+        let ty = self.type_to_string(db, module);
+        make.ty(&ty)
+    }
+
+    pub(crate) fn getter(&self, make: &SyntaxFactory, field_name: String) -> ast::Expr {
+        let expr = make.expr_field(make.expr_self(), &field_name);
 
         match self.conversion {
-            ReferenceConversionType::Copy => expr,
+            ReferenceConversionType::Copy => expr.into(),
             ReferenceConversionType::AsRefStr
             | ReferenceConversionType::AsRefSlice
             | ReferenceConversionType::Dereferenced
             | ReferenceConversionType::Option
             | ReferenceConversionType::Result => {
                 if self.impls_deref {
-                    make::expr_ref(expr, false)
+                    make.expr_ref(expr.into(), false)
                 } else {
-                    make::expr_method_call(expr, make::name_ref("as_ref"), make::arg_list([]))
+                    make.expr_method_call(expr.into(), make.name_ref("as_ref"), make.arg_list([]))
                         .into()
                 }
             }

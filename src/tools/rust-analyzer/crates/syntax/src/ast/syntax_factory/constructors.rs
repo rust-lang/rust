@@ -29,6 +29,10 @@ impl SyntaxFactory {
         make::ext::expr_todo().clone_for_update()
     }
 
+    pub fn expr_self(&self) -> ast::Expr {
+        make::ext::expr_self().clone_for_update()
+    }
+
     pub fn lifetime(&self, text: &str) -> ast::Lifetime {
         make::lifetime(text).clone_for_update()
     }
