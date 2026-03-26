@@ -185,7 +185,7 @@ impl Generics {
         if param.parent == self.def {
             let idx = param.local_id.into_raw().into_u32() as usize;
             debug_assert!(
-                idx <= self.params.len_type_or_consts(),
+                idx < self.params.len_type_or_consts(),
                 "idx: {} len: {}",
                 idx,
                 self.params.len_type_or_consts()
