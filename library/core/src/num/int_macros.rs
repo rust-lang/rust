@@ -1827,7 +1827,8 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the square root of the number, rounded down.
+        /// Returns the non-negative (principal) square root of the number,
+        /// rounded down.
         ///
         /// Returns `None` if `self` is negative.
         ///
@@ -3122,7 +3123,8 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the square root of the number, rounded down.
+        /// Returns the non-negative (principal) square root of the number,
+        /// rounded down.
         ///
         /// # Panics
         ///
