@@ -172,9 +172,6 @@ pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            &AttributeLintKind::UnusedDuplicate { this, other, warning } => {
-                lints::UnusedDuplicate { this, other, warning }.into_diag(dcx, level)
-            }
             AttributeLintKind::IllFormedAttributeInput { suggestions, docs } => {
                 lints::IllFormedAttributeInput {
                     num_suggestions: suggestions.len(),
