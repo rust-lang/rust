@@ -256,7 +256,7 @@ pub struct CompiledModules {
     pub allocator_module: Option<CompiledModule>,
 }
 
-pub enum CodegenErrors {
+pub enum CodegenError {
     WrongFileType,
     EmptyVersionNumber,
     EncodingVersionMismatch { version_array: String, rlink_version: u32 },
@@ -317,32 +317,32 @@ impl CompiledModules {
     pub fn deserialize_rlink(
         sess: &Session,
         data: Vec<u8>,
-    ) -> Result<(Self, CrateInfo, EncodedMetadata, OutputFilenames), CodegenErrors> {
+    ) -> Result<(Self, CrateInfo, EncodedMetadata, OutputFilenames), CodegenError> {
         // The Decodable machinery is not used here because it panics if the input data is invalid
         // and because its internal representation may change.
         if !data.starts_with(RLINK_MAGIC) {
-            return Err(CodegenErrors::WrongFileType);
+            return Err(CodegenError::WrongFileType);
         }
         let data = &data[RLINK_MAGIC.len()..];
         if data.len() < 4 {
-            return Err(CodegenErrors::EmptyVersionNumber);
+            return Err(CodegenError::EmptyVersionNumber);
         }
 
         let mut version_array: [u8; 4] = Default::default();
         version_array.copy_from_slice(&data[..4]);
         if u32::from_be_bytes(version_array) != RLINK_VERSION {
-            return Err(CodegenErrors::EncodingVersionMismatch {
+            return Err(CodegenError::EncodingVersionMismatch {
                 version_array: String::from_utf8_lossy(&version_array).to_string(),
                 rlink_version: RLINK_VERSION,
             });
         }
 
         let Ok(mut decoder) = MemDecoder::new(&data[4..], 0) else {
-            return Err(CodegenErrors::CorruptFile);
+            return Err(CodegenError::CorruptFile);
         };
         let rustc_version = decoder.read_str();
         if rustc_version != sess.cfg_version {
-            return Err(CodegenErrors::RustcVersionMismatch {
+            return Err(CodegenError::RustcVersionMismatch {
                 rustc_version: rustc_version.to_string(),
             });
         }
