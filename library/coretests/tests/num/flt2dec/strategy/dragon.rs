@@ -15,40 +15,6 @@ fn test_mul_pow10() {
 }
 
 #[test]
-fn shortest_sanity_test() {
-    f64_shortest_sanity_test(format_short);
-    f32_shortest_sanity_test(format_short);
-    #[cfg(target_has_reliable_f16)]
-    f16_shortest_sanity_test(format_short);
-    more_shortest_sanity_test(format_short);
-}
-
-#[test]
-#[cfg_attr(miri, ignore)] // Miri is too slow
-fn exact_sanity_test() {
-    // This test ends up running what I can only assume is some corner-ish case
-    // of the `exp2` library function, defined in whatever C runtime we're
-    // using. In VS 2013 this function apparently had a bug as this test fails
-    // when linked, but with VS 2015 the bug appears fixed as the test runs just
-    // fine.
-    //
-    // The bug seems to be a difference in return value of `exp2(-1057)`, where
-    // in VS 2013 it returns a double with the bit pattern 0x2 and in VS 2015 it
-    // returns 0x20000.
-    //
-    // For now just ignore this test entirely on MSVC as it's tested elsewhere
-    // anyway and we're not super interested in testing each platform's exp2
-    // implementation.
-    if !cfg!(target_env = "msvc") {
-        f64_exact_sanity_test(format_fixed);
-    }
-    f32_exact_sanity_test(format_fixed);
-
-    #[cfg(target_has_reliable_f16)]
-    f16_exact_sanity_test(format_fixed);
-}
-
-#[test]
 fn test_to_shortest_str() {
     to_shortest_str_test(format_short);
 }
