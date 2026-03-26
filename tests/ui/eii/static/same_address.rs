@@ -3,23 +3,19 @@
 //@ ignore-backends: gcc
 // FIXME: linking on windows (specifically mingw) not yet supported, see tracking issue #125418
 //@ ignore-windows
-// Tests whether one function could implement two EIIs.
+// Tests whether EIIs and their declarations share the same address
 #![feature(extern_item_impls)]
 
-#[eii]
-fn a(x: u64);
+#[eii(hello)]
+static HELLO: u64;
 
-#[eii]
-fn b(x: u64);
-
-#[a]
-#[b]
-fn implementation(x: u64) {
-    println!("{x:?}")
-}
+#[hello]
+static HELLO_IMPL: u64 = 5;
 
 // what you would write:
 fn main() {
-    a(42);
-    b(42);
+    assert_eq!(
+        &HELLO as *const u64 as usize,
+        &HELLO_IMPL as *const u64 as usize,
+    )
 }

@@ -1,23 +1,21 @@
 //@ run-pass
 //@ check-run-results
-//@ aux-build: codegen_cross_crate_other_crate.rs
+//@ aux-build: cross_crate_decl.rs
 //@ compile-flags: -O
 //@ ignore-backends: gcc
 // FIXME: linking on windows (specifically mingw) not yet supported, see tracking issue #125418
 //@ ignore-windows
 // Tests whether calling EIIs works with the declaration in another crate.
 
-extern crate codegen_cross_crate_other_crate as codegen;
+extern crate cross_crate_decl as codegen;
 
 #[codegen::eii1]
-fn eii1_impl(x: u64) {
-    println!("{x:?}")
-}
+static EII1_IMPL: u64 = 5;
 
 // what you would write:
 fn main() {
     // directly
-    eii1_impl(21);
+    println!("{}", EII1_IMPL);
     // through the alias
-    codegen::decl1(42);
+    println!("{}", codegen::DECL1);
 }
