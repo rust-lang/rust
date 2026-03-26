@@ -18,11 +18,16 @@ const STACK_PER_RECURSION: usize = 1024 * 1024; // 1MB
 const STACK_PER_RECURSION: usize = 16 * 1024 * 1024; // 16MB
 
 thread_local! {
-    static TIMES_GROWN: Cell<u16> = const { Cell::new(0) };
+    static TIMES_GROWN: Cell<u32> = const { Cell::new(0) };
 }
 
-// Give up if we expand the stack this many times and are still trying to recurse deeper.
-const MAX_STACK_GROWTH: u16 = 1000;
+/// Give up if we expand the stack this many times and are still trying to recurse deeper.
+const MAX_STACK_GROWTH: u32 = 1000;
+/// Estimate number of frames used per call to `grow`.
+///
+/// This is only used on platforms where we can't tell how much stack we have left, so we `grow`
+/// unconditionally.
+const ESTIMATED_FRAME_SIZE: u32 = 10000;
 
 /// Grows the stack on demand to prevent stack overflow. Call this in strategic locations
 /// to "break up" recursive calls. E.g. almost any call to `visit_expr` or equivalent can benefit
@@ -32,15 +37,15 @@ const MAX_STACK_GROWTH: u16 = 1000;
 pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     // if we can't guess the remaining stack (unsupported on some platforms) we immediately grow
     // the stack and then cache the new stack size (which we do know now because we allocated it.
-    let enough_space = match stacker::remaining_stack() {
-        Some(remaining) => remaining >= RED_ZONE,
-        None => false,
+    let (enough_space, max_stack) = match stacker::remaining_stack() {
+        Some(remaining) => (remaining >= RED_ZONE, MAX_STACK_GROWTH),
+        None => (false, MAX_STACK_GROWTH * ESTIMATED_FRAME_SIZE),
     };
     if likely(enough_space) {
         f()
     } else {
         let times = TIMES_GROWN.get();
-        if unlikely(times > MAX_STACK_GROWTH) {
+        if unlikely(times > max_stack) {
             too_much_stack();
         }
         TIMES_GROWN.set(times + 1);
