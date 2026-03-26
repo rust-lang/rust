@@ -522,6 +522,18 @@ impl Options {
             }
         }
 
+        if output_format == OutputFormat::Json {
+            if let Some(emit_flag) = emit.iter().find_map(|emit| match emit {
+                EmitType::HtmlStaticFiles => Some("html-static-files"),
+                EmitType::HtmlNonStaticFiles => Some("html-non-static-files"),
+                EmitType::DepInfo(_) => None,
+            }) {
+                dcx.fatal(format!(
+                    "the `--emit={emit_flag}` flag is not supported with `--output-format=json`",
+                ));
+            }
+        }
+
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
             let mut content =
