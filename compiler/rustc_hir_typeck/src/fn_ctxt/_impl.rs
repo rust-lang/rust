@@ -342,7 +342,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // `&mut T: DerefMut` tho, so it's kinda moot.
                 }
                 Adjust::GenericReborrow(_) => {
-                    // No effects to enforce here.
+                    // FIXME(reborrow): figure out if we have effects to enforce here.
                 }
                 Adjust::Borrow(_) => {
                     // No effects to enforce here.
