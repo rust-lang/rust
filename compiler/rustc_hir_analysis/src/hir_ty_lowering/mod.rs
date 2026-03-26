@@ -504,16 +504,34 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn anon_const_forbids_generic_params(&self) -> Option<ForbidParamContext> {
         let tcx = self.tcx();
         let parent_def_id = self.item_def_id();
-        if tcx.def_kind(parent_def_id) != DefKind::AnonConst {
-            return None;
-        }
-        match tcx.anon_const_kind(parent_def_id) {
+
+        // Inline consts and closures can be nested inside anon consts that forbid generic
+        // params (e.g. an enum discriminant). Walk up the def parent chain to find the
+        // nearest enclosing AnonConst and use that to determine the context.
+        let anon_const_def_id = match tcx.def_kind(parent_def_id) {
+            DefKind::AnonConst => parent_def_id,
+            DefKind::InlineConst | DefKind::Closure => {
+                let mut current = tcx.local_parent(parent_def_id);
+                loop {
+                    match tcx.def_kind(current) {
+                        DefKind::AnonConst => break current,
+                        DefKind::InlineConst | DefKind::Closure => {
+                            current = tcx.local_parent(current);
+                        }
+                        _ => return None,
+                    }
+                }
+            }
+            _ => return None,
+        };
+
+        match tcx.anon_const_kind(anon_const_def_id) {
             ty::AnonConstKind::MCG => Some(ForbidParamContext::ConstArgument),
             ty::AnonConstKind::NonTypeSystem => {
                 // NonTypeSystem anon consts only have accessible generic parameters in specific
                 // positions (ty patterns and field defaults — see `generics_of`). In all other
                 // positions (e.g. enum discriminants) generic parameters are not in scope.
-                if tcx.generics_of(parent_def_id).count() == 0 {
+                if tcx.generics_of(anon_const_def_id).count() == 0 {
                     Some(ForbidParamContext::EnumDiscriminant)
                 } else {
                     None
