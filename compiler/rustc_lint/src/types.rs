@@ -1,8 +1,6 @@
 use std::iter;
 
 use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
-use rustc_ast as ast;
-use rustc_hir as hir;
 use rustc_hir::{Expr, ExprKind, HirId, LangItem, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
@@ -10,6 +8,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
+use {rustc_ast as ast, rustc_hir as hir};
 
 mod improper_ctypes; // these files do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
 pub(crate) use improper_ctypes::ImproperCTypesLint;

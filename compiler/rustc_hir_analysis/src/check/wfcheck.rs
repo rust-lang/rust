@@ -3,11 +3,9 @@ use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
 use rustc_abi::{ExternAbi, ScalableElt};
-use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, msg, pluralize, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_hir::attrs::{EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -40,6 +38,7 @@ use rustc_trait_selection::traits::{
     WellFormedLoc,
 };
 use tracing::{debug, instrument};
+use {rustc_ast as ast, rustc_hir as hir};
 
 use super::compare_eii::compare_eii_function_types;
 use crate::autoderef::Autoderef;

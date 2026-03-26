@@ -1,11 +1,10 @@
 //! This module contains `HashStable` implementations for various data types
 //! from various crates in no particular order.
 
-use rustc_ast as ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir as hir;
 use rustc_span::{SourceFile, Symbol, sym};
 use smallvec::SmallVec;
+use {rustc_ast as ast, rustc_hir as hir};
 
 use super::StableHashingContext;
 

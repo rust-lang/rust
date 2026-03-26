@@ -1,6 +1,4 @@
-use rustc_ast as ast;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
@@ -12,6 +10,7 @@ use rustc_middle::ty::adjustment::{
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 use tracing::debug;
+use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::method::{MethodCallee, TreatNotYetDefinedOpaques};
 use crate::{FnCtxt, PlaceOp};

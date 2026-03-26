@@ -1589,8 +1589,7 @@ macro_rules! serialize_index_impl {
         }
     };
 }
-pub(crate) use index_impl;
-pub(crate) use serialize_index_impl;
+pub(crate) use {index_impl, serialize_index_impl};
 
 index_impl!(TyConstId);
 index_impl!(MirConstId);

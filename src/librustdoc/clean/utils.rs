@@ -3,11 +3,9 @@ use std::fmt::{self, Display, Write as _};
 use std::sync::LazyLock as Lazy;
 use std::{ascii, mem};
 
-use rustc_ast as ast;
 use rustc_ast::join_path_idents;
 use rustc_ast::tokenstream::TokenTree;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
-use rustc_hir as hir;
 use rustc_hir::attrs::DocAttribute;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -17,6 +15,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::{debug, warn};
+use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::clean::auto_trait::synthesize_auto_trait_impls;
 use crate::clean::blanket_impl::synthesize_blanket_impls;

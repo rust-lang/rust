@@ -649,8 +649,7 @@ macro_rules! define_callbacks {
 }
 
 // Re-export `macro_rules!` macros as normal items, so that they can be imported normally.
-pub(crate) use define_callbacks;
-pub(crate) use maybe_into_query_key;
+pub(crate) use {define_callbacks, maybe_into_query_key};
 
 #[cold]
 pub(crate) fn default_query(name: &str, key: &dyn std::fmt::Debug) -> ! {

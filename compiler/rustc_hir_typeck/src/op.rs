@@ -1,10 +1,8 @@
 //! Code related to processing overloaded binary and unary operators.
 
-use rustc_ast as ast;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{
@@ -17,6 +15,7 @@ use rustc_span::{Span, Spanned, Symbol, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
 use tracing::debug;
+use {rustc_ast as ast, rustc_hir as hir};
 
 use super::FnCtxt;
 use super::method::MethodCallee;

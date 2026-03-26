@@ -6,7 +6,6 @@
 use std::cell::Cell;
 use std::slice;
 
-use rustc_abi as abi;
 use rustc_ast::BindingMode;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
@@ -14,7 +13,6 @@ use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diagnostic, LintBuffer, MultiSpan};
 use rustc_feature::Features;
-use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
@@ -30,6 +28,7 @@ use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::{Ident, Span, Symbol, sym};
 use tracing::debug;
+use {rustc_abi as abi, rustc_hir as hir};
 
 use self::TargetLint::*;
 use crate::levels::LintLevelsBuilder;

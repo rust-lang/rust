@@ -1,4 +1,3 @@
-use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AsmMacro, token};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -6,11 +5,11 @@ use rustc_errors::PResult;
 use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::parser::asm::*;
-use rustc_parse_format as parse;
 use rustc_session::lint;
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span, Symbol, sym};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
+use {rustc_ast as ast, rustc_parse_format as parse};
 
 use crate::errors;
 use crate::util::{ExprToSpannedString, expr_to_spanned_string};

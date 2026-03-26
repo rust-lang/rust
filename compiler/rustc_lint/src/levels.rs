@@ -1,11 +1,9 @@
-use rustc_ast as ast;
 use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, MultiSpan, msg};
 use rustc_feature::{Features, GateIssue};
-use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
@@ -25,6 +23,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
+use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::builtin::MISSING_DOCS;
 use crate::context::{CheckLintNameResult, LintStore};
