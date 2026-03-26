@@ -21,6 +21,7 @@ use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::{get_completion_paths, get_help_path};
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::test::compiletest::CompiletestMode;
+use crate::core::build_steps::test::failed_tests::{RecordFailedTests, SetupFailedTestsFile};
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, Tool,
     ToolTargetBuildMode, get_tool_target_compiler,
@@ -45,6 +46,7 @@ use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envify};
 
 mod compiletest;
+pub mod failed_tests;
 
 /// Runs `cargo test` on various internal tools used by bootstrap.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -86,6 +88,7 @@ impl Step for CrateBootstrap {
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.host_target;
         let compiler = builder.compiler(0, bootstrap_host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
         let mut path = self.path.to_str().unwrap();
 
         // Map alias `tidyselftest` back to the actual crate path of tidy.
@@ -105,7 +108,7 @@ impl Step for CrateBootstrap {
         );
 
         let crate_name = path.rsplit_once('/').unwrap().1;
-        run_cargo_test(cargo, &[], &[], crate_name, bootstrap_host, builder);
+        run_cargo_test(cargo, &[], &[], crate_name, bootstrap_host, builder, record_failed_tests);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -162,6 +165,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         // Test the linkchecker itself.
         let bootstrap_host = builder.config.host_target;
         let compiler = builder.compiler(0, bootstrap_host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -173,7 +177,15 @@ You can skip linkcheck with --skip src/tools/linkchecker"
             SourceType::InTree,
             &[],
         );
-        run_cargo_test(cargo, &[], &[], "linkchecker self tests", bootstrap_host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "linkchecker self tests",
+            bootstrap_host,
+            builder,
+            record_failed_tests,
+        );
 
         if !builder.test_target.runs_doctests() {
             return;
@@ -365,6 +377,7 @@ impl Step for Cargo {
         // using stage 1 cargo. So we actually build cargo using the stage 0 compiler, and then
         // run its tests against the stage 1 compiler (called `tested_compiler` below).
         builder.ensure(tool::Cargo::from_build_compiler(self.build_compiler, self.host));
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let tested_compiler = builder.compiler(self.build_compiler.stage + 1, self.host);
         builder.std(tested_compiler, self.host);
@@ -429,7 +442,7 @@ impl Step for Cargo {
         );
 
         let _time = helpers::timeit(builder);
-        add_flags_and_try_run_tests(builder, &mut cargo);
+        add_flags_and_try_run_tests(builder, &mut cargo, record_failed_tests);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -468,6 +481,7 @@ impl Step for RustAnalyzer {
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.compilers.build_compiler();
         let target = self.compilers.target();
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         // NOTE: rust-analyzer repo currently (as of 2025-12-11) does not run tests against 32-bit
         // targets, so we also don't run them in rust-lang/rust CI (because that will just mean that
@@ -482,13 +496,14 @@ impl Step for RustAnalyzer {
             return;
         }
 
+        let suite = "src/tools/rust-analyzer";
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             build_compiler,
             Mode::ToolRustcPrivate,
             target,
             Kind::Test,
-            "src/tools/rust-analyzer",
+            suite,
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
         );
@@ -539,7 +554,15 @@ impl Step for RustAnalyzer {
         let skip_tests = skip_tests.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
         cargo.add_rustc_lib_path(builder);
-        run_cargo_test(cargo, skip_tests.as_slice(), &[], "rust-analyzer", target, builder);
+        run_cargo_test(
+            cargo,
+            skip_tests.as_slice(),
+            &[],
+            "rust-analyzer",
+            target,
+            builder,
+            record_failed_tests,
+        );
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -578,6 +601,7 @@ impl Step for Rustfmt {
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.compilers.build_compiler();
         let target = self.compilers.target();
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -596,7 +620,7 @@ impl Step for Rustfmt {
 
         cargo.add_rustc_lib_path(builder);
 
-        run_cargo_test(cargo, &[], &[], "rustfmt", target, builder);
+        run_cargo_test(cargo, &[], &[], "rustfmt", target, builder, record_failed_tests);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -867,6 +891,7 @@ impl Step for CompiletestTest {
     /// Runs `cargo test` for compiletest.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         // Now that compiletest uses only stable Rust, building it always uses
         // the stage 0 compiler. However, some of its unit tests need to be able
@@ -900,7 +925,15 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // format, namely that of the staged compiler.
         cargo.env("TEST_RUSTC", builder.rustc(staged_compiler));
 
-        run_cargo_test(cargo, &[], &[], "compiletest self test", host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "compiletest self test",
+            host,
+            builder,
+            record_failed_tests,
+        );
     }
 }
 
@@ -1240,6 +1273,7 @@ impl Step for RustdocGUI {
 
     fn run(self, builder: &Builder<'_>) {
         builder.std(self.test_compiler, self.target);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let mut cmd = builder.tool_cmd(Tool::RustdocGUITest);
 
@@ -1308,7 +1342,7 @@ impl Step for RustdocGUI {
 
         let _time = helpers::timeit(builder);
         let _guard = builder.msg_test("rustdoc-gui", self.target, self.test_compiler.stage);
-        try_run_tests(builder, &mut cmd, true);
+        try_run_tests(builder, &mut cmd, true, record_failed_tests);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -1476,6 +1510,7 @@ impl Step for CrateRunMakeSupport {
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
         let compiler = builder.compiler(0, host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -1488,7 +1523,15 @@ impl Step for CrateRunMakeSupport {
             &[],
         );
         cargo.allow_features("test");
-        run_cargo_test(cargo, &[], &[], "run-make-support self test", host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "run-make-support self test",
+            host,
+            builder,
+            record_failed_tests,
+        );
     }
 }
 
@@ -1513,6 +1556,7 @@ impl Step for CrateBuildHelper {
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
         let compiler = builder.compiler(0, host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -1525,7 +1569,15 @@ impl Step for CrateBuildHelper {
             &[],
         );
         cargo.allow_features("test");
-        run_cargo_test(cargo, &[], &[], "build_helper self test", host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "build_helper self test",
+            host,
+            builder,
+            record_failed_tests,
+        );
     }
 }
 
@@ -1908,6 +1960,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let target = self.target;
         let mode = self.mode;
         let suite = self.suite;
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         // Path for test suite
         let suite_path = self.path;
@@ -2552,7 +2605,7 @@ Please disable assertions with `rust.debug-assertions = false`.
             target,
             test_compiler.stage,
         );
-        try_run_tests(builder, &mut cmd, false);
+        try_run_tests(builder, &mut cmd, false, record_failed_tests.clone());
 
         if let Some(compare_mode) = compare_mode {
             cmd.arg("--compare-mode").arg(compare_mode);
@@ -2575,7 +2628,7 @@ Please disable assertions with `rust.debug-assertions = false`.
                 suite, mode, compare_mode, &test_compiler.host, target
             ));
             let _time = helpers::timeit(builder);
-            try_run_tests(builder, &mut cmd, false);
+            try_run_tests(builder, &mut cmd, false, record_failed_tests);
         }
     }
 
@@ -2967,6 +3020,7 @@ fn run_cargo_test<'a>(
     description: impl Into<Option<&'a str>>,
     target: TargetSelection,
     builder: &Builder<'_>,
+    record_failed_tests: RecordFailedTests,
 ) -> bool {
     let compiler = cargo.compiler();
     let stage = match cargo.mode() {
@@ -2989,7 +3043,7 @@ fn run_cargo_test<'a>(
         },
         builder,
     );
-    add_flags_and_try_run_tests(builder, &mut cargo)
+    add_flags_and_try_run_tests(builder, &mut cargo, record_failed_tests)
 }
 
 /// Given a `cargo test` subcommand, pass it the appropriate test flags given a `builder`.
@@ -3119,6 +3173,7 @@ impl Step for Crate {
         // Prepare sysroot
         // See [field@compile::Std::force_recompile].
         builder.ensure(Std::new(build_compiler, build_compiler.host).force_recompile(true));
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let mut cargo = if builder.kind == Kind::Miri {
             if builder.top_stage == 0 {
@@ -3213,9 +3268,9 @@ impl Step for Crate {
         }
         if crates.iter().any(|crate_| crate_ == "alloc") {
             crates.push("alloctests".to_owned());
-        }
-
-        run_cargo_test(cargo, &[], &crates, &*crate_description(&self.crates), target, builder);
+        };
+        let description = crate_description(&self.crates);
+        run_cargo_test(cargo, &[], &crates, &*description, target, builder, record_failed_tests);
     }
 }
 
@@ -3246,6 +3301,7 @@ impl Step for CrateRustdoc {
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.host;
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let compiler = if builder.download_rustc() {
             builder.compiler(builder.top_stage, target)
@@ -3312,7 +3368,15 @@ impl Step for CrateRustdoc {
         dylib_path.insert(0, PathBuf::from(&*libdir));
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-        run_cargo_test(cargo, &[], &["rustdoc:0.0.0".to_string()], "rustdoc", target, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &["rustdoc:0.0.0".to_string()],
+            "rustdoc",
+            target,
+            builder,
+            record_failed_tests,
+        );
     }
 }
 
@@ -3348,6 +3412,7 @@ impl Step for CrateRustdocJsonTypes {
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -3374,6 +3439,7 @@ impl Step for CrateRustdocJsonTypes {
             "rustdoc-json-types",
             target,
             builder,
+            record_failed_tests,
         );
     }
 }
@@ -3620,6 +3686,7 @@ impl Step for Bootstrap {
     fn run(self, builder: &Builder<'_>) {
         let host = builder.config.host_target;
         let build_compiler = builder.compiler(0, host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         // Some tests require cargo submodule to be present.
         builder.build.require_submodule("src/tools/cargo", None);
@@ -3651,7 +3718,7 @@ impl Step for Bootstrap {
             cargo.env("INSTA_UPDATE", "always");
         }
 
-        run_cargo_test(cargo, &[], &[], None, host, builder);
+        run_cargo_test(cargo, &[], &[], None, host, builder, record_failed_tests);
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3788,6 +3855,7 @@ impl Step for RustInstaller {
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.host_target;
         let build_compiler = builder.compiler(0, bootstrap_host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
         let cargo = tool::prepare_tool_cargo(
             builder,
             build_compiler,
@@ -3800,7 +3868,7 @@ impl Step for RustInstaller {
         );
 
         let _guard = builder.msg_test("rust-installer", bootstrap_host, 1);
-        run_cargo_test(cargo, &[], &[], None, bootstrap_host, builder);
+        run_cargo_test(cargo, &[], &[], None, bootstrap_host, builder, record_failed_tests);
 
         // We currently don't support running the test.sh script outside linux(?) environments.
         // Eventually this should likely migrate to #[test]s in rust-installer proper rather than a
@@ -4167,6 +4235,7 @@ impl Step for TestFloatParse {
         // Build the standard library that will be tested, and a stdlib for host code
         builder.std(build_compiler, target);
         builder.std(build_compiler, builder.host_target);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         // Run any unit tests in the crate
         let mut cargo_test = tool::prepare_tool_cargo(
@@ -4181,7 +4250,15 @@ impl Step for TestFloatParse {
         );
         cargo_test.allow_features(TEST_FLOAT_PARSE_ALLOW_FEATURES);
 
-        run_cargo_test(cargo_test, &[], &[], "test-float-parse", target, builder);
+        run_cargo_test(
+            cargo_test,
+            &[],
+            &[],
+            "test-float-parse",
+            target,
+            builder,
+            record_failed_tests,
+        );
 
         // Run the actual parse tests.
         let mut cargo_run = tool::prepare_tool_cargo(
@@ -4263,6 +4340,7 @@ impl Step for RemoteTestClientTests {
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.host_target;
         let compiler = builder.compiler(0, bootstrap_host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -4275,6 +4353,14 @@ impl Step for RemoteTestClientTests {
             &[],
         );
 
-        run_cargo_test(cargo, &[], &[], "remote-test-client", bootstrap_host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "remote-test-client",
+            bootstrap_host,
+            builder,
+            record_failed_tests,
+        );
     }
 }
