@@ -34,7 +34,9 @@ jobs:
           persist-credentials: false
 
       - name: Log in to registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+        run: echo "${GITHUB_TOKEN}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Download crane in the current directory.
       # We use crane because it copies the docker image for all the architectures available in
