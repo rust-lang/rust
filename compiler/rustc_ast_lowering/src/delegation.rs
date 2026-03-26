@@ -432,6 +432,17 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 args.push(arg);
             }
 
+            // If we have no params in signature function but user still wrote some code in
+            // delegation body, then add this code as first arg, eventually an error will be shown,
+            // also nested delegations may need to access information about this code (#154332),
+            // so it is better to leave this code as opposed to bodies of extern functions,
+            // which are completely erased from existence.
+            if param_count == 0
+                && let Some(block) = block
+            {
+                args.push(this.lower_target_expr(&block));
+            }
+
             let final_expr = this.finalize_body_lowering(delegation, args, generics, span);
 
             (this.arena.alloc_from_iter(parameters), final_expr)

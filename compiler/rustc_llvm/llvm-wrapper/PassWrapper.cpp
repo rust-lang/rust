@@ -540,6 +540,8 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeHWAddressRecover;
   bool SanitizeKernelAddress;
   bool SanitizeKernelAddressRecover;
+  bool SanitizeKernelHWAddress;
+  bool SanitizeKernelHWAddressRecover;
 };
 
 extern "C" typedef void (*registerEnzymeAndPassPipelineFn)(
@@ -767,13 +769,15 @@ extern "C" LLVMRustResult LLVMRustOptimize(
                                  !TM->getTargetTriple().isOSWindows()));
       });
     }
-    if (SanitizerOptions->SanitizeHWAddress) {
+    if (SanitizerOptions->SanitizeHWAddress ||
+        SanitizerOptions->SanitizeKernelHWAddress) {
       OptimizerLastEPCallbacks.push_back(
           [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level,
                              ThinOrFullLTOPhase phase) {
             HWAddressSanitizerOptions opts(
-                /*CompileKernel=*/false,
-                SanitizerOptions->SanitizeHWAddressRecover,
+                SanitizerOptions->SanitizeKernelHWAddress,
+                SanitizerOptions->SanitizeHWAddressRecover ||
+                    SanitizerOptions->SanitizeKernelHWAddressRecover,
                 /*DisableOptimization=*/false);
             MPM.addPass(HWAddressSanitizerPass(opts));
           });

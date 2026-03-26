@@ -547,6 +547,13 @@ impl ModuleKind {
             ModuleKind::Def(.., name) => name,
         }
     }
+
+    fn opt_def_id(&self) -> Option<DefId> {
+        match self {
+            ModuleKind::Def(_, def_id, _) => Some(*def_id),
+            _ => None,
+        }
+    }
 }
 
 /// Combination of a symbol and its macros 2.0 normalized hygiene context.
@@ -784,10 +791,7 @@ impl<'ra> Module<'ra> {
     }
 
     fn opt_def_id(self) -> Option<DefId> {
-        match self.kind {
-            ModuleKind::Def(_, def_id, _) => Some(def_id),
-            _ => None,
-        }
+        self.kind.opt_def_id()
     }
 
     // `self` resolves to the first module ancestor that `is_normal`.
@@ -1450,14 +1454,19 @@ impl<'ra> ResolverArenas<'ra> {
         &'ra self,
         parent: Option<Module<'ra>>,
         kind: ModuleKind,
+        vis: Visibility<DefId>,
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
     ) -> Module<'ra> {
         let self_decl = match kind {
-            ModuleKind::Def(def_kind, def_id, _) => {
-                Some(self.new_pub_def_decl(Res::Def(def_kind, def_id), span, LocalExpnId::ROOT))
-            }
+            ModuleKind::Def(def_kind, def_id, _) => Some(self.new_def_decl(
+                Res::Def(def_kind, def_id),
+                vis,
+                span,
+                LocalExpnId::ROOT,
+                None,
+            )),
             ModuleKind::Block => None,
         };
         Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
@@ -1639,6 +1648,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let graph_root = arenas.new_module(
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, None),
+            Visibility::Public,
             ExpnId::root(),
             crate_span,
             attr::contains_name(attrs, sym::no_implicit_prelude),
@@ -1648,6 +1658,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let empty_module = arenas.new_module(
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, None),
+            Visibility::Public,
             ExpnId::root(),
             DUMMY_SP,
             true,
@@ -1749,7 +1760,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
         no_implicit_prelude: bool,
     ) -> Module<'ra> {
-        let module = self.arenas.new_module(parent, kind, expn_id, span, no_implicit_prelude);
+        let vis =
+            kind.opt_def_id().map_or(Visibility::Public, |def_id| self.tcx.visibility(def_id));
+        let module = self.arenas.new_module(parent, kind, vis, expn_id, span, no_implicit_prelude);
         self.local_modules.push(module);
         if let Some(def_id) = module.opt_def_id() {
             self.local_module_map.insert(def_id.expect_local(), module);
@@ -1765,7 +1778,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
         no_implicit_prelude: bool,
     ) -> Module<'ra> {
-        let module = self.arenas.new_module(parent, kind, expn_id, span, no_implicit_prelude);
+        let vis =
+            kind.opt_def_id().map_or(Visibility::Public, |def_id| self.tcx.visibility(def_id));
+        let module = self.arenas.new_module(parent, kind, vis, expn_id, span, no_implicit_prelude);
         self.extern_module_map.borrow_mut().insert(module.def_id(), module);
         module
     }

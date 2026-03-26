@@ -938,7 +938,7 @@ pub enum PatKind {
     Never,
 
     /// A guard pattern (e.g., `x if guard(x)`).
-    Guard(Box<Pat>, Box<Expr>),
+    Guard(Box<Pat>, Box<Guard>),
 
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(Box<Pat>),
@@ -1346,7 +1346,7 @@ pub struct Arm {
     /// Match arm pattern, e.g. `10` in `match foo { 10 => {}, _ => {} }`.
     pub pat: Box<Pat>,
     /// Match arm guard, e.g. `n > 10` in `match foo { n if n > 10 => {}, _ => {} }`.
-    pub guard: Option<Box<Expr>>,
+    pub guard: Option<Box<Guard>>,
     /// Match arm body. Omitted if the pattern is a never pattern.
     pub body: Option<Box<Expr>>,
     pub span: Span,
@@ -3952,6 +3952,18 @@ pub struct ConstBlockItem {
 
 impl ConstBlockItem {
     pub const IDENT: Ident = Ident { name: kw::Underscore, span: DUMMY_SP };
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct Guard {
+    pub cond: Expr,
+    pub span_with_leading_if: Span,
+}
+
+impl Guard {
+    pub fn span(&self) -> Span {
+        self.cond.span
+    }
 }
 
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.

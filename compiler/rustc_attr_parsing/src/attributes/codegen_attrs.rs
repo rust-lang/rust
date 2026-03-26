@@ -582,6 +582,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
         r#"kernel_address = "on|off""#,
         r#"cfi = "on|off""#,
         r#"hwaddress = "on|off""#,
+        r#"kernel_hwaddress = "on|off""#,
         r#"kcfi = "on|off""#,
         r#"memory = "on|off""#,
         r#"memtag = "on|off""#,
@@ -648,7 +649,9 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
                 Some(sym::memtag) => apply(SanitizerSet::MEMTAG),
                 Some(sym::shadow_call_stack) => apply(SanitizerSet::SHADOWCALLSTACK),
                 Some(sym::thread) => apply(SanitizerSet::THREAD),
-                Some(sym::hwaddress) => apply(SanitizerSet::HWADDRESS),
+                Some(sym::hwaddress) | Some(sym::kernel_hwaddress) => {
+                    apply(SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
+                }
                 Some(sym::realtime) => match value.value_as_str() {
                     Some(sym::nonblocking) => rtsan = Some(RtsanSetting::Nonblocking),
                     Some(sym::blocking) => rtsan = Some(RtsanSetting::Blocking),
@@ -673,6 +676,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
                             sym::shadow_call_stack,
                             sym::thread,
                             sym::hwaddress,
+                            sym::kernel_hwaddress,
                             sym::realtime,
                         ],
                     );

@@ -569,6 +569,8 @@ declare_features! (
     (unstable, macro_attr, "1.91.0", Some(143547)),
     /// Allow `macro_rules!` derive rules
     (unstable, macro_derive, "1.91.0", Some(143549)),
+    /// Allow `$x:guard` matcher in macros
+    (unstable, macro_guard_matcher, "CURRENT_RUSTC_VERSION", Some(153104)),
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
