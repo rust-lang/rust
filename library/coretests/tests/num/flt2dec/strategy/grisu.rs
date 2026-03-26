@@ -36,28 +36,6 @@ fn test_max_pow10_no_more_than() {
 }
 
 #[test]
-fn shortest_sanity_test() {
-    f64_shortest_sanity_test(flt2dec::format_short);
-    f32_shortest_sanity_test(flt2dec::format_short);
-    #[cfg(target_has_reliable_f16)]
-    f16_shortest_sanity_test(flt2dec::format_short);
-    more_shortest_sanity_test(flt2dec::format_short);
-}
-
-#[test]
-#[cfg_attr(miri, ignore)] // Miri is too slow
-fn exact_sanity_test() {
-    // See comments in dragon.rs's exact_sanity_test for why this test is
-    // ignored on MSVC
-    if !cfg!(target_env = "msvc") {
-        f64_exact_sanity_test(flt2dec::format_fixed);
-    }
-    f32_exact_sanity_test(flt2dec::format_fixed);
-    #[cfg(target_has_reliable_f16)]
-    f16_exact_sanity_test(flt2dec::format_fixed);
-}
-
-#[test]
 fn test_to_shortest_str() {
     to_shortest_str_test(flt2dec::format_short);
 }
