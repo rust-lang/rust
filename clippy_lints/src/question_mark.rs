@@ -361,7 +361,7 @@ fn extract_ctor_call<'a, 'tcx>(
 
 // Extracts the local ID of a plain `val` pattern.
 fn extract_binding_pat(pat: &Pat<'_>) -> Option<HirId> {
-    if let PatKind::Binding(BindingMode::NONE, binding, _, None) = pat.kind {
+    if let PatKind::Binding(_, binding, _, None) = pat.kind {
         Some(binding)
     } else {
         None
