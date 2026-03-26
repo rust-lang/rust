@@ -2500,6 +2500,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             DefKind::InlineConst => args.as_inline_const().parent_args(),
             other => bug!("unexpected item {:?}", other),
         };
+
+        self.prove_predicates(
+            args.iter().filter_map(|arg| {
+                let term = arg.as_term()?;
+                Some(ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term))))
+            }),
+            location.to_locations(),
+            ConstraintCategory::Boring,
+        );
+
         let parent_args = tcx.mk_args(parent_args);
 
         assert_eq!(typeck_root_args.len(), parent_args.len());
