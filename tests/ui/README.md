@@ -1462,7 +1462,7 @@ Tests for the `#[doc(hidden)]` items.
 
 ## `tests/ui/try-block/`
 
-`#![feature(try_blocks)]`. See [Tracking issue for `?` operator and `try` blocks (RFC 243, `question_mark` & `try_blocks` features)](https://github.com/rust-lang/rust/issues/31436).
+`#![feature(try_blocks)]` & `#![feature(try_blocks_heterogeneous)]`. See [Tracking Issue for homogeneous `try_blocks`](https://github.com/rust-lang/rust/issues/154391) & [Experimental Tracking Issue for Heterogeneous Try Blocks](https://github.com/rust-lang/rust/issues/149488).
 
 ## `tests/ui/try-trait/`
 

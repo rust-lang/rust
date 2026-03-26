@@ -673,7 +673,7 @@ declare_features! (
     /// Allows inconsistent bounds in where clauses.
     (unstable, trivial_bounds, "1.28.0", Some(48214)),
     /// Allows using `try {...}` expressions.
-    (unstable, try_blocks, "1.29.0", Some(31436)),
+    (unstable, try_blocks, "1.29.0", Some(154391)),
     /// Allows using `try bikeshed TargetType {...}` expressions.
     (unstable, try_blocks_heterogeneous, "1.94.0", Some(149488)),
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
