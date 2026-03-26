@@ -4,12 +4,12 @@ error[E0391]: cycle detected when computing type of `Foo::T`
 LL | pub struct Foo<T = Box<dyn Trait<DefaultFoo>>>;
    |                                  ^^^^^^^^^^
    |
-note: ...which requires expanding type alias `DefaultFoo`...
+   - which requires expanding type alias `DefaultFoo`...
   --> $DIR/issue-34373.rs:9:19
    |
 LL | type DefaultFoo = Foo;
    |                   ^^^
-   = note: ...which again requires computing type of `Foo::T`, completing the cycle
+   - which again requires computing type of `Foo::T`, completing the cycle
 note: cycle used when checking that `Foo` is well-formed
   --> $DIR/issue-34373.rs:7:1
    |

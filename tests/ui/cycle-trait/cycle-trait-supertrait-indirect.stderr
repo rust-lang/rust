@@ -4,12 +4,12 @@ error[E0391]: cycle detected when computing the super predicates of `B`
 LL | trait B: C {
    |          ^
    |
-note: ...which requires computing the super predicates of `C`...
+   - which requires computing the super predicates of `C`...
   --> $DIR/cycle-trait-supertrait-indirect.rs:11:10
    |
 LL | trait C: B { }
    |          ^
-   = note: ...which again requires computing the super predicates of `B`, completing the cycle
+   - which again requires computing the super predicates of `B`, completing the cycle
 note: cycle used when computing the super predicates of `A`
   --> $DIR/cycle-trait-supertrait-indirect.rs:4:10
    |

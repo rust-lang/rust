@@ -25,7 +25,7 @@ impl ErrorKind {
         match s {
             "help" => ErrorKind::Help,
             "error" | "error: internal compiler error" => ErrorKind::Error,
-            "note" | "failure-note" => ErrorKind::Note,
+            "note" | "failure-note" | "bullet-point" => ErrorKind::Note,
             "warning" => ErrorKind::Warning,
             _ => panic!("unexpected compiler diagnostic kind `{s}`"),
         }

@@ -237,6 +237,7 @@ impl DiagnosticDeriveVariantBuilder {
         let fn_ident = format_ident!("{}", subdiag);
         match subdiag {
             SubdiagnosticKind::Note
+            | SubdiagnosticKind::BulletPoint
             | SubdiagnosticKind::NoteOnce
             | SubdiagnosticKind::Help
             | SubdiagnosticKind::HelpOnce
@@ -362,6 +363,7 @@ impl DiagnosticDeriveVariantBuilder {
                 Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, message, variant))
             }
             SubdiagnosticKind::Note
+            | SubdiagnosticKind::BulletPoint
             | SubdiagnosticKind::NoteOnce
             | SubdiagnosticKind::Help
             | SubdiagnosticKind::HelpOnce
