@@ -76,9 +76,14 @@ macro_rules! check_fixed_mix {
         let mut want_buf = [b'_'; 1024];
 
         let cut = digits.iter().position(|&c| c == b' ');
+        let end = cut.unwrap_or(digits.len());
 
-        // check significant digits
-        for i in 1..cut.unwrap_or(digits.len() - 1) {
+        // Verify base assertion.
+        check_match!($v => &digits[..end], pow10);
+        check_resolution!($v, pow10 - end as i16 => &digits[..end], pow10);
+
+        // Verify at a lower resolution with substrings of `$digits`.
+        for i in 1..(end - 1) {
             want_buf[..i].copy_from_slice(&digits[..i]);
             let mut want_pow10 = pow10;
             if digits[i] >= b'5' {
@@ -264,7 +269,7 @@ fn f32_fixed_sanity_test() {
     check_fixed_mix!(3.141592f32       => b"31415920257568359375                    ", 1);
     check_fixed_mix!(3.141592e17f32    => b"314159196796878848                      ", 18);
     check_fixed_mix!(f32::MAX          => b"34028234663852885981170418348451692544  ", 39);
-    check_fixed_mix!(f32::MIN_POSITIVE => b"1175494350822287507968736537222245677818", -37);
+    check_fixed_mix!(f32::MIN_POSITIVE => b"1175494350822287507968736537222245677819", -37);
     check_fixed_mix!(minf32            => b"1401298464324817070923729583289916131280", -44);
 
     // [1], Table 16: Stress Inputs for Converting 24-bit Binary to Decimal, < 1/2 ULP
@@ -379,17 +384,17 @@ fn f64_short_sanity_test() {
 fn f64_fixed_sanity_test() {
     let minf64 = ldexp_f64(1.0, -1074);
 
-    check_fixed_mix!(0.1f64            => b"1000000000000000055511151231257827021181", 0);
+    check_fixed_mix!(0.1f64            => b"1000000000000000055511151231257827021182", 0);
     check_fixed_mix!(0.45f64           => b"4500000000000000111022302462515654042363", 0);
     check_fixed_mix!(0.5f64            => b"5                                       ", 0);
     check_fixed_mix!(0.95f64           => b"9499999999999999555910790149937383830547", 0);
     check_fixed_mix!(100.0f64          => b"1                                       ", 3);
     check_fixed_mix!(999.5f64          => b"9995000000000000000000000000000000000000", 3);
-    check_fixed_mix!(1.0f64/3.0        => b"3333333333333333148296162562473909929394", 0);
+    check_fixed_mix!(1.0f64/3.0        => b"3333333333333333148296162562473909929395", 0);
     check_fixed_mix!(3.141592f64       => b"3141592000000000162174274009885266423225", 1);
     check_fixed_mix!(3.141592e17f64    => b"3141592                                 ", 18);
     check_fixed_mix!(1.0e23f64         => b"99999999999999991611392                 ", 23);
-    check_fixed_mix!(f64::MAX          => b"1797693134862315708145274237317043567980", 309);
+    check_fixed_mix!(f64::MAX          => b"1797693134862315708145274237317043567981", 309);
     check_fixed_mix!(f64::MIN_POSITIVE => b"2225073858507201383090232717332404064219", -307);
     check_fixed_mix!(minf64            => b"4940656458412465441765687928682213723650\
                                             5980261432476442558568250067550727020875\
