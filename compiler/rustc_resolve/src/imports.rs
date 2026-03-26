@@ -455,41 +455,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             orig_ident_span,
             warn_ambiguity,
             |this, resolution| {
-                if let Some(old_decl) = resolution.best_decl() {
-                    assert_ne!(decl, old_decl);
-                    assert!(!decl.warn_ambiguity.get());
-                    if res == Res::Err && old_decl.res() != Res::Err {
-                        // Do not override real declarations with `Res::Err`s from error recovery.
-                        return Ok(());
-                    }
-                    match (old_decl.is_glob_import(), decl.is_glob_import()) {
-                        (true, true) => {
-                            resolution.glob_decl =
-                                Some(this.select_glob_decl(old_decl, decl, warn_ambiguity));
-                        }
-                        (old_glob @ true, false) | (old_glob @ false, true) => {
-                            let (glob_decl, non_glob_decl) =
-                                if old_glob { (old_decl, decl) } else { (decl, old_decl) };
-                            resolution.non_glob_decl = Some(non_glob_decl);
-                            if let Some(old_glob_decl) = resolution.glob_decl
-                                && old_glob_decl != glob_decl
-                            {
-                                resolution.glob_decl =
-                                    Some(this.select_glob_decl(old_glob_decl, glob_decl, false));
-                            } else {
-                                resolution.glob_decl = Some(glob_decl);
-                            }
-                        }
-                        (false, false) => {
-                            return Err(old_decl);
-                        }
-                    }
+                assert!(!decl.warn_ambiguity.get());
+                if res == Res::Err
+                    && let Some(old_decl) = resolution.best_decl()
+                    && old_decl.res() != Res::Err
+                {
+                    // Do not override real declarations with `Res::Err`s from error recovery.
+                    return Ok(());
+                }
+                if decl.is_glob_import() {
+                    resolution.glob_decl = Some(match resolution.glob_decl {
+                        Some(old_decl) => this.select_glob_decl(
+                            old_decl,
+                            decl,
+                            warn_ambiguity && resolution.non_glob_decl.is_none(),
+                        ),
+                        None => decl,
+                    })
                 } else {
-                    if decl.is_glob_import() {
-                        resolution.glob_decl = Some(decl);
-                    } else {
-                        resolution.non_glob_decl = Some(decl);
-                    }
+                    resolution.non_glob_decl = Some(match resolution.non_glob_decl {
+                        Some(old_decl) => return Err(old_decl),
+                        None => decl,
+                    })
                 }
 
                 Ok(())
