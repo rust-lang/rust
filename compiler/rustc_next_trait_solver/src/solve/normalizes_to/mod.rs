@@ -29,7 +29,6 @@ where
         &mut self,
         goal: Goal<I, NormalizesTo<I>>,
     ) -> QueryResult<I> {
-        debug_assert!(self.term_is_fully_unconstrained(goal));
         let cx = self.cx();
         match goal.predicate.alias.kind(cx) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
@@ -39,49 +38,64 @@ where
                         let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
                         ecx.compute_trait_goal(trait_goal)
                     })?;
-                self.assemble_and_merge_candidates(
-                    proven_via,
-                    goal,
-                    |ecx| {
-                        // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
-                        //
-                        // If this type is a GAT with currently unconstrained arguments, we do not
-                        // want to normalize it via a candidate which only applies for a specific
-                        // instantiation. We could otherwise keep the GAT as rigid and succeed this way.
-                        // See tests/ui/generic-associated-types/no-incomplete-gat-arg-inference.rs.
-                        //
-                        // This only avoids normalization if a GAT argument is fully unconstrained.
-                        // This is quite arbitrary but fixing it causes some ambiguity, see #125196.
-                        for arg in goal.predicate.alias.own_args(cx).iter() {
-                            let Some(term) = arg.as_term() else {
-                                continue;
-                            };
-                            match ecx.structurally_normalize_term(goal.param_env, term) {
-                                Ok(term) => {
-                                    if term.is_infer() {
-                                        return Some(
+
+                let term = self.next_term_infer_of_kind(goal.predicate.term);
+                self.eq(goal.param_env, goal.predicate.term, term)?;
+
+                let (probed_term, certainty) =
+                    self.probe_with_unconstrained_projection_term(goal, |ecx, goal| {
+                        ecx.assemble_and_merge_candidates(
+                            proven_via,
+                            goal,
+                            |ecx| {
+                                // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
+                                //
+                                // If this type is a GAT with currently unconstrained arguments, we do not
+                                // want to normalize it via a candidate which only applies for a specific
+                                // instantiation. We could otherwise keep the GAT as rigid and succeed this way.
+                                // See tests/ui/generic-associated-types/no-incomplete-gat-arg-inference.rs.
+                                //
+                                // This only avoids normalization if a GAT argument is fully unconstrained.
+                                // This is quite arbitrary but fixing it causes some ambiguity, see #125196.
+                                for arg in goal.predicate.alias.own_args(cx).iter() {
+                                    let Some(term) = arg.as_term() else {
+                                        continue;
+                                    };
+                                    match ecx.structurally_normalize_term(goal.param_env, term) {
+                                        Ok(term) => {
+                                            if term.is_infer() {
+                                                return Some(
                                             ecx.evaluate_added_goals_and_make_canonical_response(
                                                 Certainty::AMBIGUOUS,
                                             ),
                                         );
+                                            }
+                                        }
+                                        Err(NoSolution) => return Some(Err(NoSolution)),
                                     }
                                 }
-                                Err(NoSolution) => return Some(Err(NoSolution)),
-                            }
-                        }
 
-                        None
-                    },
-                    |ecx| {
-                        ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
-                            this.structurally_instantiate_normalizes_to_term(
-                                goal,
-                                goal.predicate.alias,
-                            );
-                            this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                        })
-                    },
-                )
+                                None
+                            },
+                            |ecx| {
+                                ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(
+                                    |this| {
+                                        this.structurally_instantiate_normalizes_to_term(
+                                            goal,
+                                            goal.predicate.alias,
+                                        );
+                                        this.evaluate_added_goals_and_make_canonical_response(
+                                            Certainty::Yes,
+                                        )
+                                    },
+                                )
+                            },
+                        )
+                    })?;
+
+                self.eq_structurally_relating_aliases(goal.param_env, term, probed_term)?;
+
+                self.evaluate_added_goals_and_make_canonical_response(certainty)
             }
             ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => {
                 self.normalize_inherent_associated_term(goal)
