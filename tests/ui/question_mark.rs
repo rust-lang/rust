@@ -696,6 +696,14 @@ fn issue16751(mut v: Option<usize>) -> Option<usize> {
         None => return None,
     };
 
+    let _ = if let Some(ref mut n) = v {
+        //~^ question_mark
+        println!("{n}");
+        42
+    } else {
+        return None;
+    };
+
     match v {
         //~^ question_mark
         Some(n) => if n > 10 { Some(42) } else { None },

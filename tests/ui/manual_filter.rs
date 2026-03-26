@@ -1,5 +1,5 @@
 #![warn(clippy::manual_filter)]
-#![allow(unused_variables, dead_code, clippy::useless_vec)]
+#![allow(unused_variables, clippy::question_mark, clippy::useless_vec)]
 
 fn main() {
     match Some(0) {

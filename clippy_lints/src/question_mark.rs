@@ -223,13 +223,11 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
                         // We only need to check `if let Some(x) = option` not `if let None = option`,
                         // because the later one will be suggested as `if option.is_none()` thus causing conflict.
                         res.ctor_parent(cx).is_lang_item(cx, OptionSome)
-                            && if_else.is_some()
-                            && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, None)
+                            && matches!(if_else, Some(inner) if expr_return_none_or_err(smbl, cx, inner, let_expr, None))
                     },
                     sym::Result => {
                         (res.ctor_parent(cx).is_lang_item(cx, ResultOk)
-                            && if_else.is_some()
-                            && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, Some(let_pat_sym)))
+                            && matches!(if_else, Some(inner) if expr_return_none_or_err(smbl, cx, inner, let_expr, Some(let_pat_sym))))
                             || res.ctor_parent(cx).is_lang_item(cx, ResultErr)
                                 && expr_return_none_or_err(smbl, cx, if_then, let_expr, Some(let_pat_sym))
                                 && if_else.is_none()
@@ -536,8 +534,8 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             if_then,
             if_else,
         )
-        && ((is_early_return(sym::Option, cx, &if_block) && peel_blocks(if_then).res_local_id() == Some(bind_id))
-            || is_early_return(sym::Result, cx, &if_block))
+        && let is_option_early_return = is_early_return(sym::Option, cx, &if_block)
+        && (is_option_early_return || is_early_return(sym::Result, cx, &if_block))
         && if_else
             .map(|e| eq_expr_value(cx, let_expr, peel_blocks(e)))
             .is_none_or(|e| !e)
@@ -549,32 +547,53 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             return;
         }
 
-        let mut applicability = Applicability::MachineApplicable;
-        let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
-        let parent = cx.tcx.parent_hir_node(expr.hir_id);
-        let requires_semi = matches!(parent, Node::Stmt(_)) || cx.typeck_results().expr_ty(expr).is_unit();
-        let method_call_str = match by_ref {
-            ByRef::Yes(_, Mutability::Mut) => ".as_mut()",
-            ByRef::Yes(_, Mutability::Not) => ".as_ref()",
-            ByRef::No => "",
-        };
-
-        let mut sugg = format!(
-            "{receiver_str}{method_call_str}?{}",
-            if requires_semi { ";" } else { "" }
-        );
-        if is_else_clause(cx.tcx, expr) || (requires_semi && !matches!(parent, Node::Stmt(_) | Node::Block(_))) {
-            sugg = format!("{{ {sugg} }}");
+        // Leave `if let Some(x) = opt { .. } else { None }` to `needless_match` or `manual_map_option`.
+        if is_option_early_return
+            && if_else.is_some_and(|else_| !matches!(peel_blocks_with_stmt(else_).kind, ExprKind::Ret(_)))
+        {
+            return;
         }
 
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             QUESTION_MARK,
             expr.span,
             "this block may be rewritten with the `?` operator",
-            "replace it with",
-            sugg,
-            applicability,
+            |diag| {
+                let mut applicability = Applicability::MachineApplicable;
+                let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
+                if !is_option_early_return || peel_blocks(if_then).res_local_id() == Some(bind_id) {
+                    let parent = cx.tcx.parent_hir_node(expr.hir_id);
+                    let requires_semi = matches!(parent, Node::Stmt(_)) || cx.typeck_results().expr_ty(expr).is_unit();
+                    let method_call_str = match by_ref {
+                        ByRef::Yes(_, Mutability::Mut) => ".as_mut()",
+                        ByRef::Yes(_, Mutability::Not) => ".as_ref()",
+                        ByRef::No => "",
+                    };
+
+                    let mut sugg = format!(
+                        "{receiver_str}{method_call_str}?{}",
+                        if requires_semi { ";" } else { "" }
+                    );
+                    if is_else_clause(cx.tcx, expr)
+                        || (requires_semi && !matches!(parent, Node::Stmt(_) | Node::Block(_)))
+                    {
+                        sugg = format!("{{ {sugg} }}");
+                    }
+
+                    diag.span_suggestion(expr.span, "replace it with", sugg, applicability);
+                    return;
+                }
+
+                let mut sugg = snippet_with_applicability(cx, if_then.span, "..", &mut applicability).into_owned();
+                let binding_snippet = snippet_with_applicability(cx, field.span, "..", &mut applicability);
+                let indent = indent_of(cx, expr.span).unwrap_or_default();
+                sugg.insert_str(
+                    1,
+                    &format!("\n{}let {binding_snippet} = {receiver_str}?;", " ".repeat(indent + 4)),
+                );
+                diag.span_suggestion(expr.span, "replace it with", sugg, applicability);
+            },
         );
     }
 }

@@ -457,8 +457,31 @@ LL +         Some(42)
 LL ~     };
    |
 
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:699:13
+   |
+LL |       let _ = if let Some(ref mut n) = v {
+   |  _____________^
+LL | |
+LL | |         println!("{n}");
+LL | |         42
+LL | |     } else {
+LL | |         return None;
+LL | |     };
+   | |_____^
+   |
+help: replace it with
+   |
+LL ~     let _ = {
+LL +         let ref mut n = v?;
+LL +
+LL +         println!("{n}");
+LL +         42
+LL ~     };
+   |
+
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:699:5
+  --> tests/ui/question_mark.rs:707:5
    |
 LL | /     match v {
 LL | |
@@ -475,5 +498,5 @@ LL +         if n > 10 { Some(42) } else { None }
 LL +     }
    |
 
-error: aborting due to 45 previous errors
+error: aborting due to 46 previous errors
 
