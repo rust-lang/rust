@@ -784,7 +784,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn max(self, other: f16) -> f16 {
-        intrinsics::maxnumf16(self, other)
+        intrinsics::maximum_number_nsz_f16(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -815,7 +815,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn min(self, other: f16) -> f16 {
-        intrinsics::minnumf16(self, other)
+        intrinsics::minimum_number_nsz_f16(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.

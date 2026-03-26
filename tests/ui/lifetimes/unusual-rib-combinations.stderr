@@ -37,6 +37,8 @@ error[E0308]: mismatched types
    |
 LL | fn a() -> [u8; foo()] {
    |                ^^^^^ expected `usize`, found `()`
+   |
+   = note: array length can only be `usize`
 
 error: aborting due to 6 previous errors
 

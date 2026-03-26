@@ -1,5 +1,5 @@
 error: environment variable `CARGO_PACKAGE_VERSION` not defined at compile time
-  --> $DIR/env-cargo-var-typo-issue-148439.rs:7:13
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:8:13
    |
 LL |     let _ = env!("CARGO_PACKAGE_VERSION");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     let _ = env!("CARGO_PACKAGE_VERSION");
    = help: there is a similar Cargo environment variable: `CARGO_PKG_VERSION`
 
 error: environment variable `CARGO_PACKAGE_NAME` not defined at compile time
-  --> $DIR/env-cargo-var-typo-issue-148439.rs:13:13
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:14:13
    |
 LL |     let _ = env!("CARGO_PACKAGE_NAME");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     let _ = env!("CARGO_PACKAGE_NAME");
    = help: there is a similar Cargo environment variable: `CARGO_PKG_NAME`
 
 error: environment variable `CARGO_PACKAGE_AUTHORS` not defined at compile time
-  --> $DIR/env-cargo-var-typo-issue-148439.rs:19:13
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:20:13
    |
 LL |     let _ = env!("CARGO_PACKAGE_AUTHORS");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     let _ = env!("CARGO_PACKAGE_AUTHORS");
    = help: there is a similar Cargo environment variable: `CARGO_PKG_AUTHORS`
 
 error: environment variable `CARGO_MANIFEST_DIRECTORY` not defined at compile time
-  --> $DIR/env-cargo-var-typo-issue-148439.rs:25:13
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:26:13
    |
 LL |     let _ = env!("CARGO_MANIFEST_DIRECTORY");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     let _ = env!("CARGO_MANIFEST_DIRECTORY");
    = help: there is a similar Cargo environment variable: `CARGO_MANIFEST_DIR`
 
 error: environment variable `CARGO_PKG_VERSIO` not defined at compile time
-  --> $DIR/env-cargo-var-typo-issue-148439.rs:31:13
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:32:13
    |
 LL |     let _ = env!("CARGO_PKG_VERSIO");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |     let _ = env!("CARGO_PKG_VERSIO");
    = help: there is a similar Cargo environment variable: `CARGO_PKG_VERSION`
 
 error: environment variable `MY_CUSTOM_VAR` not defined at compile time
-  --> $DIR/env-cargo-var-typo-issue-148439.rs:38:13
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:39:13
    |
 LL |     let _ = env!("MY_CUSTOM_VAR");
    |             ^^^^^^^^^^^^^^^^^^^^^
@@ -47,12 +47,22 @@ LL |     let _ = env!("MY_CUSTOM_VAR");
    = help: use `std::env::var("MY_CUSTOM_VAR")` to read the variable at run time
 
 error: environment variable `CARGO_SOMETHING_TOTALLY_UNKNOWN` not defined at compile time
-  --> $DIR/env-cargo-var-typo-issue-148439.rs:45:13
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:46:13
    |
 LL |     let _ = env!("CARGO_SOMETHING_TOTALLY_UNKNOWN");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: `CARGO_SOMETHING_TOTALLY_UNKNOWN` may not be available for the current Cargo target
    = help: Cargo sets build script variables at run time. Use `std::env::var("CARGO_SOMETHING_TOTALLY_UNKNOWN")` instead
 
-error: aborting due to 7 previous errors
+error: environment variable `CARGO_BIN_NAME` not defined at compile time
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:54:13
+   |
+LL |     let _ = env!("CARGO_BIN_NAME");
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `CARGO_BIN_NAME` may not be available for the current Cargo target
+   = help: Cargo sets build script variables at run time. Use `std::env::var("CARGO_BIN_NAME")` instead
+
+error: aborting due to 8 previous errors
 

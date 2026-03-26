@@ -5,6 +5,10 @@
 use std::intrinsics;
 use std::mem::{discriminant, size_of, size_of_val, size_of_val_raw};
 
+#[path = "../../utils/mod.rs"]
+mod utils;
+use utils::check_nondet;
+
 struct Bomb;
 
 impl Drop for Bomb {
@@ -36,20 +40,7 @@ fn main() {
     // Skip this test when we use the fallback bodies, as that one is deterministic.
     // (CI sets `--cfg force_intrinsic_fallback` together with `-Zmiri-force-intrinsic-fallback`.)
     if !cfg!(force_intrinsic_fallback) {
-        let mut saw_true = false;
-        let mut saw_false = false;
-
-        for _ in 0..50 {
-            if intrinsics::is_val_statically_known(0) {
-                saw_true = true;
-            } else {
-                saw_false = true;
-            }
-        }
-        assert!(
-            saw_true && saw_false,
-            "`is_val_statically_known` failed to return both true and false. Congrats, you won the lottery!"
-        );
+        check_nondet(|| intrinsics::is_val_statically_known(0));
     }
 
     intrinsics::forget(Bomb);

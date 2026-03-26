@@ -4037,12 +4037,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => return false,
         };
         let is_derivable_trait = match diagnostic_name {
-            sym::Default => !adt.is_enum(),
+            sym::Copy | sym::Clone => true,
+            _ if adt.is_union() => false,
             sym::PartialEq | sym::PartialOrd => {
                 let rhs_ty = trait_pred.skip_binder().trait_ref.args.type_at(1);
                 trait_pred.skip_binder().self_ty() == rhs_ty
             }
-            sym::Eq | sym::Ord | sym::Clone | sym::Copy | sym::Hash | sym::Debug => true,
+            sym::Eq | sym::Ord | sym::Hash | sym::Debug | sym::Default => true,
             _ => false,
         };
         is_derivable_trait &&
@@ -4913,6 +4914,79 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 vec![(arg_span.shrink_to_lo(), "(".into()), (arg_span.shrink_to_hi(), ",)".into())],
                 Applicability::MaybeIncorrect,
             );
+        }
+    }
+
+    pub(super) fn suggest_shadowed_inherent_method(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        trait_predicate: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        let ObligationCauseCode::FunctionArg { call_hir_id, .. } = obligation.cause.code() else {
+            return;
+        };
+        let Node::Expr(call) = self.tcx.hir_node(*call_hir_id) else { return };
+        let hir::ExprKind::MethodCall(segment, rcvr, args, ..) = call.kind else { return };
+        let Some(typeck) = &self.typeck_results else { return };
+        let Some(rcvr_ty) = typeck.expr_ty_adjusted_opt(rcvr) else { return };
+        let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
+        let autoderef = (self.autoderef_steps)(rcvr_ty);
+        for (ty, def_id) in autoderef.iter().filter_map(|(ty, obligations)| {
+            if let ty::Adt(def, _) = ty.kind()
+                && *ty != rcvr_ty.peel_refs()
+                && obligations.iter().all(|obligation| self.predicate_may_hold(obligation))
+            {
+                Some((ty, def.did()))
+            } else {
+                None
+            }
+        }) {
+            for impl_def_id in self.tcx.inherent_impls(def_id) {
+                if *impl_def_id == trait_predicate.def_id() {
+                    continue;
+                }
+                for m in self
+                    .tcx
+                    .provided_trait_methods(*impl_def_id)
+                    .filter(|m| m.name() == segment.ident.name)
+                {
+                    let fn_sig = self.tcx.fn_sig(m.def_id);
+                    if fn_sig.skip_binder().inputs().skip_binder().len() != args.len() + 1 {
+                        continue;
+                    }
+                    let rcvr_ty = fn_sig.skip_binder().input(0).skip_binder();
+                    let (mutability, _ty) = match rcvr_ty.kind() {
+                        ty::Ref(_, ty, hir::Mutability::Mut) => ("&mut ", ty),
+                        ty::Ref(_, ty, _) => ("&", ty),
+                        _ => ("", &rcvr_ty),
+                    };
+                    let path = self.tcx.def_path_str(def_id);
+                    err.note(format!(
+                        "there's an inherent method on `{ty}` of the same name, which can be \
+                         auto-dereferenced from `{rcvr_ty}`"
+                    ));
+                    err.multipart_suggestion(
+                        format!(
+                            "to access the inherent method on `{ty}`, use the fully-qualified path",
+                        ),
+                        vec![
+                            (
+                                call.span.until(rcvr.span),
+                                format!("{path}::{}({}", m.name(), mutability),
+                            ),
+                            match &args {
+                                [] => (
+                                    rcvr.span.shrink_to_hi().with_hi(call.span.hi()),
+                                    ")".to_string(),
+                                ),
+                                [first, ..] => (rcvr.span.between(first.span), ", ".to_string()),
+                            },
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
         }
     }
 

@@ -6,8 +6,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{self as hir, LangItem, Target};
 use rustc_middle::span_bug;
-use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{DesugaringKind, Ident, Span};
+use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan};
 
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
@@ -15,7 +14,7 @@ use super::errors::{
 use super::{ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt};
 use crate::{AllowReturnTypeNotation, ImplTraitPosition};
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     pub(crate) fn lower_pat(&mut self, pattern: &Pat) -> &'hir hir::Pat<'hir> {
         self.arena.alloc(self.lower_pat_mut(pattern))
     }
@@ -134,8 +133,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.lower_range_end(end, e2.is_some()),
                         );
                     }
-                    PatKind::Guard(inner, cond) => {
-                        break hir::PatKind::Guard(self.lower_pat(inner), self.lower_expr(cond));
+                    PatKind::Guard(inner, guard) => {
+                        break hir::PatKind::Guard(
+                            self.lower_pat(inner),
+                            self.lower_expr(&guard.cond),
+                        );
                     }
                     PatKind::Slice(pats) => break self.lower_pat_slice(pats),
                     PatKind::Rest => {

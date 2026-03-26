@@ -81,25 +81,21 @@ const fn slice_error_fail_ct(_: &str, _: usize, _: usize) -> ! {
 
 #[track_caller]
 fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
-    const MAX_DISPLAY_LENGTH: usize = 256;
-    let trunc_len = s.floor_char_boundary(MAX_DISPLAY_LENGTH);
-    let s_trunc = &s[..trunc_len];
-    let ellipsis = if trunc_len < s.len() { "[...]" } else { "" };
     let len = s.len();
 
     // 1. begin is OOB.
     if begin > len {
-        panic!("start byte index {begin} is out of bounds of `{s_trunc}`{ellipsis}");
+        panic!("start byte index {begin} is out of bounds for string of length {len}");
     }
 
     // 2. end is OOB.
     if end > len {
-        panic!("end byte index {end} is out of bounds of `{s_trunc}`{ellipsis}");
+        panic!("end byte index {end} is out of bounds for string of length {len}");
     }
 
     // 3. range is backwards.
     if begin > end {
-        panic!("begin > end ({begin} > {end}) when slicing `{s_trunc}`{ellipsis}")
+        panic!("byte range starts at {begin} but ends at {end}");
     }
 
     // 4. begin is inside a character.
@@ -109,7 +105,7 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
         let range = floor..ceil;
         let ch = s[floor..ceil].chars().next().unwrap();
         panic!(
-            "start byte index {begin} is not a char boundary; it is inside {ch:?} (bytes {range:?}) of `{s_trunc}`{ellipsis}"
+            "start byte index {begin} is not a char boundary; it is inside {ch:?} (bytes {range:?} of string)"
         )
     }
 
@@ -120,7 +116,7 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
         let range = floor..ceil;
         let ch = s[floor..ceil].chars().next().unwrap();
         panic!(
-            "end byte index {end} is not a char boundary; it is inside {ch:?} (bytes {range:?}) of `{s_trunc}`{ellipsis}"
+            "end byte index {end} is not a char boundary; it is inside {ch:?} (bytes {range:?} of string)"
         )
     }
 
@@ -128,7 +124,7 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     // This test cannot be combined with 2. above because for cases like
     // `"abcαβγ"[4..9]` the error is that 4 is inside 'α', not that 9 is OOB.
     debug_assert_eq!(end, len);
-    panic!("end byte index {end} is out of bounds of `{s_trunc}`{ellipsis}");
+    panic!("end byte index {end} is out of bounds for string of length {len}");
 }
 
 impl str {

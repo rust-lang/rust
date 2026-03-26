@@ -23,8 +23,7 @@ use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Vis
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_span::Span;
-use rustc_span::source_map::Spanned;
+use rustc_span::{Span, Spanned};
 use tracing::{debug, instrument};
 
 /// A `MirPass` for promotion.

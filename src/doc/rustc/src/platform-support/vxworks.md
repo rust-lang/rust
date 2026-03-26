@@ -28,6 +28,12 @@ Target triplets available:
 
 The minimum supported version is VxWorks 7.
 
+### Environment
+
+#### `WIND_RELEASE_ID`
+
+In VxWorks build environment, the environment variable `WIND_RELEASE_ID` indicates the VxWorks release version used for the build. The `WIND_RELEASE_ID` can be used to conditionally compile features/code or handle version specific behaviour.
+
 ## Building
 
 Rust for each target can be cross-compiled with its specific target vsb configuration. Std support is added but not yet fully tested.

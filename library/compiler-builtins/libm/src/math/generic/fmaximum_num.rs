@@ -9,7 +9,8 @@
 //! - Non-NaN if one operand is NaN
 //! - qNaN if both operands are NaNx
 //!
-//! Excluded from our implementation is sNaN handling.
+//! Note that the IEEE 754-2019 specifies that a sNaN in either argument should signal invalid,
+//! but we do not implement this.
 
 use crate::support::Float;
 

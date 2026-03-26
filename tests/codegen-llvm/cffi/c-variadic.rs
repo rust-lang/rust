@@ -1,6 +1,5 @@
 //@ needs-unwind
 //@ compile-flags: -C no-prepopulate-passes -Copt-level=0
-//@ min-llvm-version: 21
 
 #![crate_type = "lib"]
 #![feature(c_variadic)]

@@ -12,8 +12,8 @@ pub(super) use thin_vec::ThinVec;
 
 #[doc(hidden)]
 pub(super) use crate::attributes::{
-    AcceptMapping, AttributeOrder, AttributeParser, CombineAttributeParser, ConvertFn,
-    NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
+    AcceptMapping, AttributeParser, CombineAttributeParser, ConvertFn, NoArgsAttributeParser,
+    OnDuplicate, SingleAttributeParser,
 };
 // contexts
 #[doc(hidden)]

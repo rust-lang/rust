@@ -1050,11 +1050,12 @@ impl<'tcx> StmtDebugInfos<'tcx> {
         self.0.extend_from_slice(debuginfos);
     }
 
-    pub fn retain<F>(&mut self, f: F)
-    where
-        F: FnMut(&StmtDebugInfo<'tcx>) -> bool,
-    {
-        self.0.retain(f);
+    pub fn retain_locals(&mut self, locals: &DenseBitSet<Local>) {
+        self.retain(|debuginfo| match debuginfo {
+            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
+                locals.contains(*local)
+            }
+        });
     }
 }
 

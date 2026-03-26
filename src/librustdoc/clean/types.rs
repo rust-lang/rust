@@ -885,6 +885,9 @@ pub(crate) enum ItemKind {
     TraitItem(Box<Trait>),
     TraitAliasItem(TraitAlias),
     ImplItem(Box<Impl>),
+    /// This variant is used only as a placeholder for trait impls in order to correctly compute
+    /// `doc_cfg` as trait impls are added to `clean::Crate` after we went through the whole tree.
+    PlaceholderImplItem,
     /// A required method in a trait declaration meaning it's only a function signature.
     RequiredMethodItem(Box<Function>, Defaultness),
     /// A method in a trait impl or a provided method in a trait declaration.
@@ -964,7 +967,8 @@ impl ItemKind {
             | AssocTypeItem(..)
             | StrippedItem(_)
             | KeywordItem
-            | AttributeItem => [].iter(),
+            | AttributeItem
+            | PlaceholderImplItem => [].iter(),
         }
     }
 }
@@ -2430,7 +2434,7 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 8);
-    static_assert_size!(ItemInner, 144);
+    static_assert_size!(ItemInner, 136);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);

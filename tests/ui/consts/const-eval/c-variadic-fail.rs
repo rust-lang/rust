@@ -1,5 +1,5 @@
 //@ build-fail
-
+//@ ignore-parallel-frontend different alloc ids
 #![feature(c_variadic)]
 #![feature(const_c_variadic)]
 #![feature(const_trait_impl)]

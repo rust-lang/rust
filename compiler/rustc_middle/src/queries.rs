@@ -23,27 +23,10 @@
 //! ## Query Modifiers
 //!
 //! Query modifiers are special flags that alter the behavior of a query. They are parsed and processed by the `rustc_macros`
-//! The main modifiers are:
 //!
-//! - `desc { ... }`: Sets the human-readable description for diagnostics and profiling. Required
-//!   for every query. The block should contain a `format!`-style string literal followed by
-//!   optional arguments. The query key identifier is available for use within the block, as is
-//!   `tcx`.
-//! - `arena_cache`: Use an arena for in-memory caching of the query result.
-//! - `cache_on_disk_if { ... }`: Cache the query result to disk if the provided block evaluates to
-//!   true. The query key identifier is available for use within the block, as is `tcx`.
-//! - `cycle_delay_bug`: If a dependency cycle is detected, emit a delayed bug instead of aborting immediately.
-//! - `cycle_stash`: If a dependency cycle is detected, stash the error for later handling.
-//! - `no_hash`: Do not hash the query result for incremental compilation; just mark as dirty if recomputed.
-//! - `anon`: Make the query anonymous in the dependency graph (no dep node is created).
-//! - `eval_always`: Always evaluate the query, ignoring its dependencies and cached results.
-//! - `depth_limit`: Impose a recursion depth limit on the query to prevent stack overflows.
-//! - `separate_provide_extern`: Use separate provider functions for local and external crates.
-//! - `feedable`: Allow the query result to be set from another query ("fed" externally).
+//! For the list of modifiers, see [`rustc_middle::query::modifiers`].
 //!
-//! For the up-to-date list, see the `QueryModifiers` struct in
-//! [`rustc_macros/src/query.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_macros/src/query.rs)
-//! and for more details in incremental compilation, see the
+//! For more details on incremental compilation, see the
 //! [Query modifiers in incremental compilation](https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation-in-detail.html#query-modifiers) section of the rustc-dev-guide.
 //!
 //! ## Query Expansion and Code Generation
@@ -85,7 +68,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
+use rustc_hir::{ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
@@ -96,10 +79,10 @@ use rustc_session::cstore::{
 };
 use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, LocalExpnId, Span, Symbol};
+use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
+use crate::hir::Crate;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
@@ -119,7 +102,7 @@ use crate::mir::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
 use crate::query::describe_as_module;
-use crate::query::plumbing::CyclePlaceholder;
+use crate::query::plumbing::{define_callbacks, maybe_into_query_key};
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
     CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
@@ -139,7 +122,7 @@ use crate::ty::{
     self, CrateInherentImpls, GenericArg, GenericArgsRef, LitToConstInput, PseudoCanonicalInput,
     SizedTraitKind, Ty, TyCtxt, TyCtxtFeed,
 };
-use crate::{dep_graph, mir, thir};
+use crate::{mir, thir};
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -148,10 +131,10 @@ use crate::{dep_graph, mir, thir};
 // `Providers` that the driver creates (using several `rustc_*` crates).
 //
 // The result type of each query must implement `Clone`. Additionally
-// `ty::query::from_cycle_error::FromCycleError` can be implemented which produces an appropriate
+// `QueryVTable::handle_cycle_error_fn` can be used to produce an appropriate
 // placeholder (error) value if the query resulted in a query cycle.
-// Queries without a `FromCycleError` implementation will raise a fatal error on query
-// cycles instead.
+// Queries without a custom `handle_cycle_error_fn` implementation will raise a
+// fatal error on query cycles instead.
 rustc_queries! {
     /// Caches the expansion of a derive proc macro, e.g. `#[derive(Serialize)]`.
     /// The key is:
@@ -226,6 +209,16 @@ rustc_queries! {
         arena_cache
         eval_always
         desc { "getting the crate HIR" }
+    }
+
+    query lower_delayed_owner(def_id: LocalDefId) {
+        eval_always
+        desc { "lowering the delayed AST owner `{}`", tcx.def_path_str(def_id) }
+    }
+
+    query delayed_owner(def_id: LocalDefId) -> hir::MaybeOwner<'tcx>  {
+        feedable
+        desc { "getting child of lowered delayed AST owner `{}`", tcx.def_path_str(def_id) }
     }
 
     /// All items in the crate.
@@ -340,22 +333,16 @@ rustc_queries! {
         feedable
     }
 
-    /// Returns the *hidden type* of the opaque type given by `DefId` unless a cycle occurred.
-    ///
-    /// This is a specialized instance of [`Self::type_of`] that detects query cycles.
-    /// Unless `CyclePlaceholder` needs to be handled separately, call [`Self::type_of`] instead.
-    /// This is used to improve the error message in cases where revealing the hidden type
-    /// for auto-trait leakage cycles.
+    /// Returns the *hidden type* of the opaque type given by `DefId`.
     ///
     /// # Panics
     ///
     /// This query will panic if the given definition is not an opaque type.
-    query type_of_opaque(key: DefId) -> Result<ty::EarlyBinder<'tcx, Ty<'tcx>>, CyclePlaceholder> {
+    query type_of_opaque(key: DefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         desc {
             "computing type of opaque `{path}`",
             path = tcx.def_path_str(key),
         }
-        cycle_stash
     }
     query type_of_opaque_hir_typeck(key: LocalDefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         desc {
@@ -589,26 +576,24 @@ rustc_queries! {
     }
 
     /// Checks whether a type is representable or infinitely sized
-    query check_representability(key: LocalDefId) -> rustc_middle::ty::Representability {
+    //
+    // Infinitely sized types will cause a cycle. The query's `handle_cycle_error_fn` will print
+    // a custom error about the infinite size and then abort compilation. (In the past we
+    // recovered and continued, but in practice that leads to confusing subsequent error
+    // messages about cycles that then abort.)
+    query check_representability(key: LocalDefId) {
         desc { "checking if `{}` is representable", tcx.def_path_str(key) }
-        // Infinitely sized types will cause a cycle. The custom `FromCycleError` impl for
-        // `Representability` will print a custom error about the infinite size and then abort
-        // compilation. (In the past we recovered and continued, but in practice that leads to
-        // confusing subsequent error messages about cycles that then abort.)
-        cycle_delay_bug
         // We don't want recursive representability calls to be forced with
         // incremental compilation because, if a cycle occurs, we need the
-        // entire cycle to be in memory for diagnostics. This means we can't
-        // use `ensure_ok()` with this query.
-        anon
+        // entire cycle to be in memory for diagnostics.
+        no_force
     }
 
     /// An implementation detail for the `check_representability` query. See that query for more
     /// details, particularly on the modifiers.
-    query check_representability_adt_ty(key: Ty<'tcx>) -> rustc_middle::ty::Representability {
+    query check_representability_adt_ty(key: Ty<'tcx>) {
         desc { "checking if `{}` is representable", key }
-        cycle_delay_bug
-        anon
+        no_force
     }
 
     /// Set of param indexes for type params that are in the type's representation
@@ -782,14 +767,10 @@ rustc_queries! {
     /// Normally you would just use `tcx.erase_and_anonymize_regions(value)`,
     /// however, which uses this query as a kind of cache.
     query erase_and_anonymize_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
-        // This query is not expected to have input -- as a result, it
-        // is not a good candidates for "replay" because it is essentially a
-        // pure function of its input (and hence the expectation is that
-        // no caller would be green **apart** from just these
-        // queries). Making it anonymous avoids hashing the result, which
-        // may save a bit of time.
-        anon
         desc { "erasing regions from `{}`", ty }
+        // Not hashing the return value appears to give marginally better perf for this query,
+        // which should always be marked green for having no dependencies anyway.
+        no_hash
     }
 
     query wasm_import_module_map(_: CrateNum) -> &'tcx DefIdMap<String> {
@@ -1052,7 +1033,6 @@ rustc_queries! {
         desc { "computing the variances of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
-        cycle_delay_bug
     }
 
     /// Gets a map with the inferred outlives-predicates of every item in the local crate.
@@ -1185,7 +1165,6 @@ rustc_queries! {
         desc { "computing function signature of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
-        cycle_delay_bug
     }
 
     /// Performs lint checking for the module.
@@ -1776,8 +1755,6 @@ rustc_queries! {
     ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
         depth_limit
         desc { "computing layout of `{}`", key.value }
-        // we emit our own error during query cycle handling
-        cycle_delay_bug
     }
 
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.

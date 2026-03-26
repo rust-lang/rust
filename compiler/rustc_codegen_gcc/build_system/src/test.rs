@@ -285,7 +285,7 @@ fn build_sysroot(env: &Env, args: &TestArg) -> Result<(), String> {
     Ok(())
 }
 
-// TODO(GuillaumeGomez): when rewriting in Rust, refactor with the code in tests/lang_tests_common.rs if possible.
+// FIXME(GuillaumeGomez): when rewriting in Rust, refactor with the code in tests/lang_tests_common.rs if possible.
 fn maybe_run_command_in_vm(
     command: &[&dyn AsRef<OsStr>],
     env: &Env,
@@ -648,16 +648,16 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
         "https://github.com/BurntSushi/memchr",
         "https://github.com/dtolnay/itoa",
         "https://github.com/rust-lang/cfg-if",
-        //"https://github.com/rust-lang-nursery/lazy-static.rs", // TODO: re-enable when the
+        //"https://github.com/rust-lang-nursery/lazy-static.rs", // FIXME: re-enable when the
         //failing test is fixed upstream.
         //"https://github.com/marshallpierce/rust-base64", // FIXME: one test is OOM-killed.
-        // TODO: ignore the base64 test that is OOM-killed.
+        // FIXME: ignore the base64 test that is OOM-killed.
         //"https://github.com/time-rs/time", // FIXME: one test fails (https://github.com/time-rs/time/issues/719).
         "https://github.com/rust-lang/log",
         "https://github.com/bitflags/bitflags",
         //"https://github.com/serde-rs/serde", // FIXME: one test fails.
-        //"https://github.com/rayon-rs/rayon", // TODO: very slow, only run on master?
-        //"https://github.com/rust-lang/cargo", // TODO: very slow, only run on master?
+        //"https://github.com/rayon-rs/rayon", // FIXME: very slow, only run on master?
+        //"https://github.com/rust-lang/cargo", // FIXME: very slow, only run on master?
     ];
 
     let mut env = env.clone();
@@ -699,7 +699,7 @@ fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     println!("[TEST] libcore");
     let path = get_sysroot_dir().join("sysroot_src/library/coretests");
     let _ = remove_dir_all(path.join("target"));
-    // TODO(antoyo): run in release mode when we fix the failures.
+    // FIXME(antoyo): run in release mode when we fix the failures.
     run_cargo_command(&[&"test"], Some(&path), env, args)?;
     Ok(())
 }

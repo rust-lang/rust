@@ -2424,9 +2424,6 @@ unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Rc<T, A> {}
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for UniqueRc<T, A> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Weak<T, A> {}
-
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Rc<T, A> {}
 
@@ -3979,6 +3976,15 @@ impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueRc<T, A> {
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> Unpin for UniqueRc<T, A> {}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T> From<T> for UniqueRc<T> {
+    #[inline(always)]
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for UniqueRc<T, A> {

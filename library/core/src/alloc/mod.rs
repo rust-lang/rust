@@ -100,6 +100,13 @@ impl fmt::Display for AllocError {
 /// A memory block which is [*currently allocated*] may be passed to
 /// any method of the allocator that accepts such an argument.
 ///
+/// Additionally, any memory block returned by the allocator must
+/// satisfy the allocation invariants described in `core::ptr`.
+/// In particular, if a block has base address `p` and size `n`,
+/// then `p as usize + n <= usize::MAX` must hold.
+///
+/// This ensures that pointer arithmetic within the allocation
+/// (for example, `ptr.add(len)`) cannot overflow the address space.
 /// [*currently allocated*]: #currently-allocated-memory
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]

@@ -1,7 +1,7 @@
 #![warn(unused)]
 #![allow(dead_code)]
 #![deny(non_snake_case)]
-
+//@ ignore-parallel-frontend `note`s on different source lines
 mod foo {
     pub enum Foo { Foo }
 }

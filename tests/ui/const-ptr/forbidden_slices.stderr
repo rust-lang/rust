@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value: encountered a null reference
+error[E0080]: constructing invalid value of type &[u32]: encountered a null reference
   --> $DIR/forbidden_slices.rs:16:1
    |
 LL | pub static S0: &[u32] = unsafe { from_raw_parts(ptr::null(), 0) };
@@ -9,7 +9,7 @@ LL | pub static S0: &[u32] = unsafe { from_raw_parts(ptr::null(), 0) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered a null reference
+error[E0080]: constructing invalid value of type &[()]: encountered a null reference
   --> $DIR/forbidden_slices.rs:18:1
    |
 LL | pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
@@ -20,7 +20,7 @@ LL | pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
+error[E0080]: constructing invalid value of type &[u32]: encountered a dangling reference (going beyond the bounds of its allocation)
   --> $DIR/forbidden_slices.rs:22:1
    |
 LL | pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 2) };
@@ -31,7 +31,7 @@ LL | pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 2) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .<deref>[0]: encountered uninitialized memory, but expected an integer
+error[E0080]: constructing invalid value of type &[u8]: at .<deref>[0], encountered uninitialized memory, but expected an integer
   --> $DIR/forbidden_slices.rs:26:1
    |
 LL | pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) };
@@ -42,7 +42,7 @@ LL | pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) }
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .<deref>[0]: encountered a pointer, but expected an integer
+error[E0080]: constructing invalid value of type &[u8]: at .<deref>[0], encountered a pointer, but expected an integer
   --> $DIR/forbidden_slices.rs:28:1
    |
 LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size_of::<&u32>()) };
@@ -55,7 +55,7 @@ LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .<deref>[0]: encountered 0x11, but expected a boolean
+error[E0080]: constructing invalid value of type &[bool]: at .<deref>[0], encountered 0x11, but expected a boolean
   --> $DIR/forbidden_slices.rs:30:1
    |
 LL | pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) };
@@ -66,7 +66,7 @@ LL | pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4)
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .<deref>[1]: encountered uninitialized memory, but expected an integer
+error[E0080]: constructing invalid value of type &[u16]: at .<deref>[1], encountered uninitialized memory, but expected an integer
   --> $DIR/forbidden_slices.rs:33:1
    |
 LL | pub static S7: &[u16] = unsafe {
@@ -77,7 +77,7 @@ LL | pub static S7: &[u16] = unsafe {
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
+error[E0080]: constructing invalid value of type &[u64]: encountered a dangling reference (going beyond the bounds of its allocation)
   --> $DIR/forbidden_slices.rs:41:1
    |
 LL | pub static S8: &[u64] = unsafe {
@@ -88,7 +88,7 @@ LL | pub static S8: &[u64] = unsafe {
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered a null reference
+error[E0080]: constructing invalid value of type &[u32]: encountered a null reference
   --> $DIR/forbidden_slices.rs:48:1
    |
 LL | pub static R0: &[u32] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
@@ -111,7 +111,7 @@ error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer 
 LL |     from_ptr_range(ptr..ptr.add(2)) // errors inside libcore
    |                         ^^^^^^^^^^ evaluation of `R2` failed here
 
-error[E0080]: constructing invalid value at .<deref>[0]: encountered uninitialized memory, but expected an integer
+error[E0080]: constructing invalid value of type &[u8]: at .<deref>[0], encountered uninitialized memory, but expected an integer
   --> $DIR/forbidden_slices.rs:57:1
    |
 LL | pub static R4: &[u8] = unsafe {
@@ -122,7 +122,7 @@ LL | pub static R4: &[u8] = unsafe {
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .<deref>[0]: encountered a pointer, but expected an integer
+error[E0080]: constructing invalid value of type &[u8]: at .<deref>[0], encountered a pointer, but expected an integer
   --> $DIR/forbidden_slices.rs:62:1
    |
 LL | pub static R5: &[u8] = unsafe {
@@ -135,7 +135,7 @@ LL | pub static R5: &[u8] = unsafe {
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .<deref>[0]: encountered 0x11, but expected a boolean
+error[E0080]: constructing invalid value of type &[bool]: at .<deref>[0], encountered 0x11, but expected a boolean
   --> $DIR/forbidden_slices.rs:67:1
    |
 LL | pub static R6: &[bool] = unsafe {
@@ -146,7 +146,7 @@ LL | pub static R6: &[bool] = unsafe {
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
+error[E0080]: constructing invalid value of type &[u16]: encountered an unaligned reference (required 2 byte alignment but found 1)
   --> $DIR/forbidden_slices.rs:72:1
    |
 LL | pub static R7: &[u16] = unsafe {

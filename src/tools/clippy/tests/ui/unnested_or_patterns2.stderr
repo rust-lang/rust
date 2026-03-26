@@ -93,7 +93,7 @@ LL |     if let box box 0 | box (box 2 | box 4) = Box::new(Box::new(0)) {}
 help: nest the patterns
    |
 LL -     if let box box 0 | box (box 2 | box 4) = Box::new(Box::new(0)) {}
-LL +     if let box box (0 | 2 | 4) = Box::new(Box::new(0)) {}
+LL +     if let box (box (0 | 2 | 4)) = Box::new(Box::new(0)) {}
    |
 
 error: aborting due to 8 previous errors

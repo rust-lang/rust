@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: expr.arith-logic.behavior
 
 #![allow(unused_imports)]
 #![deny(unused_assignments)]

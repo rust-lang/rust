@@ -65,7 +65,7 @@ fn classify<'a, Ty, C>(
             Primitive::Int(_, _) | Primitive::Pointer(_) => { /* pass in integer registers */ }
         },
         BackendRepr::SimdVector { .. } => {}
-        BackendRepr::ScalableVector { .. } => {}
+        BackendRepr::SimdScalableVector { .. } => {}
         BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => match arg_layout.fields {
             FieldsShape::Primitive => {
                 unreachable!("aggregates can't have `FieldsShape::Primitive`")

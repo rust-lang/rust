@@ -2,7 +2,6 @@ use crate::clone::TrivialClone;
 use crate::fmt;
 use crate::marker::{PhantomData, PointeeSized, Unsize};
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
-use crate::pin::PinCoerceUnsized;
 use crate::ptr::NonNull;
 
 /// A wrapper around a raw non-null `*mut T` that indicates that the possessor
@@ -175,9 +174,6 @@ impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<Unique<U>> for Unique<T> wh
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 impl<T: PointeeSized, U: PointeeSized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: PointeeSized> PinCoerceUnsized for Unique<T> {}
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 impl<T: PointeeSized> fmt::Debug for Unique<T> {

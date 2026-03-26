@@ -4,7 +4,7 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 
 use crate::spec::{
-    Abi, BinaryFormat, Cc, DebuginfoKind, Env, FloatAbi, FramePointer, LinkerFlavor, Lld, Os,
+    BinaryFormat, Cc, CfgAbi, DebuginfoKind, Env, FloatAbi, FramePointer, LinkerFlavor, Lld, Os,
     RustcAbi, SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions, cvs,
 };
 
@@ -108,11 +108,11 @@ impl TargetEnv {
     //
     // But let's continue setting them for backwards compatibility.
     // FIXME(madsmtm): Warn about using these in the future.
-    fn target_abi(self) -> Abi {
+    fn target_abi(self) -> CfgAbi {
         match self {
-            Self::Normal => Abi::Unspecified,
-            Self::MacCatalyst => Abi::MacAbi,
-            Self::Simulator => Abi::Sim,
+            Self::Normal => CfgAbi::Unspecified,
+            Self::MacCatalyst => CfgAbi::MacAbi,
+            Self::Simulator => CfgAbi::Sim,
         }
     }
 }
@@ -127,10 +127,15 @@ pub(crate) fn base(
     let link_env_remove = link_env_remove(&os);
     let unversioned_llvm_target = unversioned_llvm_target(&os, arch, env);
     let mut opts = TargetOptions {
-        llvm_floatabi: Some(FloatAbi::Hard),
+        llvm_floatabi: if arch.target_arch() == crate::spec::Arch::Arm {
+            Some(FloatAbi::Hard)
+        } else {
+            // `llvm_floatabi` makes no sense on x86 and aarch64.
+            None
+        },
         os,
         env: env.target_env(),
-        abi: env.target_abi(),
+        cfg_abi: env.target_abi(),
         cpu: arch.target_cpu(env).into(),
         link_env_remove,
         vendor: "apple".into(),

@@ -518,17 +518,6 @@ pub(crate) struct FailedToCreateProfiler {
 }
 
 #[derive(Diagnostic)]
-#[diag("`-Csoft-float` is ignored on this target; it only has an effect on *eabihf targets")]
-#[note("this may become a hard error in a future version of Rust")]
-pub(crate) struct SoftFloatIgnored;
-
-#[derive(Diagnostic)]
-#[diag("`-Csoft-float` is unsound and deprecated; use a corresponding *eabi target instead")]
-#[note("it will be removed or ignored in a future version of Rust")]
-#[note("see issue #129893 <https://github.com/rust-lang/rust/issues/129893> for more information")]
-pub(crate) struct SoftFloatDeprecated;
-
-#[derive(Diagnostic)]
 #[diag("unexpected `--cfg {$cfg}` flag")]
 #[note("config `{$cfg_name}` is only supposed to be controlled by `{$controlled_by}`")]
 #[note("manually setting a built-in cfg can and does create incoherent behaviors")]

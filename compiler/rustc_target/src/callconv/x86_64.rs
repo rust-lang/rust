@@ -59,7 +59,7 @@ where
 
             BackendRepr::SimdVector { .. } => Class::Sse,
 
-            BackendRepr::ScalableVector { .. } => panic!("scalable vectors are unsupported"),
+            BackendRepr::SimdScalableVector { .. } => panic!("scalable vectors are unsupported"),
 
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => {
                 for i in 0..layout.fields.count() {

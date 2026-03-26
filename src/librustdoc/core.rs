@@ -232,6 +232,9 @@ pub(crate) fn create_config(
         rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_string(),
         rustc_lint::builtin::UNKNOWN_LINTS.name.to_string(),
         rustc_lint::builtin::UNEXPECTED_CFGS.name.to_string(),
+        rustc_lint::builtin::DUPLICATE_FEATURES.name.to_string(),
+        rustc_lint::builtin::UNUSED_FEATURES.name.to_string(),
+        rustc_lint::builtin::STABLE_FEATURES.name.to_string(),
         // this lint is needed to support `#[expect]` attributes
         rustc_lint::builtin::UNFULFILLED_LINT_EXPECTATIONS.name.to_string(),
     ];
@@ -293,7 +296,7 @@ pub(crate) fn create_config(
         file_loader: None,
         lint_caps,
         psess_created: None,
-        hash_untracked_state: None,
+        track_state: None,
         register_lints: Some(Box::new(crate::lint::register_lints)),
         override_queries: Some(|_sess, providers| {
             // We do not register late module lints, so this only runs `MissingDoc`.
@@ -400,16 +403,16 @@ pub(crate) fn run_global_ctxt(
             {}/rustdoc/how-to-write-documentation.html",
             crate::DOC_RUST_LANG_ORG_VERSION
         );
-        tcx.node_lint(
+        tcx.emit_node_lint(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
             DocContext::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
-            |lint| {
+            rustc_errors::DiagDecorator(|lint| {
                 if let Some(local_def_id) = krate.module.item_id.as_local_def_id() {
                     lint.span(tcx.def_span(local_def_id));
                 }
                 lint.primary_message("no documentation found for this crate's top-level module");
                 lint.help(help);
-            },
+            }),
         );
     }
 

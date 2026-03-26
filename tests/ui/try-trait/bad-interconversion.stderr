@@ -9,16 +9,16 @@ LL |     Ok(Err(123_i32)?)
    |        this can't be annotated with `?` because it has type `Result<_, i32>`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-help: the following other types implement trait `From<T>`
+help: `u8` implements trait `From<T>`
   --> $SRC_DIR/core/src/convert/num.rs:LL:COL
    |
-   = note: `u8` implements `From<bool>`
+   = note: `From<bool>`
   ::: $SRC_DIR/core/src/convert/num.rs:LL:COL
    |
    = note: in this macro invocation
   --> $SRC_DIR/core/src/ascii/ascii_char.rs:LL:COL
    |
-   = note: `u8` implements `From<std::ascii::Char>`
+   = note: `From<std::ascii::Char>`
   ::: $SRC_DIR/core/src/ascii/ascii_char.rs:LL:COL
    |
    = note: in this macro invocation

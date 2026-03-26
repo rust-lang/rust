@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Abi, Arch, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, CfgAbi, LlvmAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -15,14 +15,14 @@ pub(crate) fn target() -> Target {
         data_layout: "E-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".into(),
         arch: Arch::Mips64r6,
         options: TargetOptions {
-            abi: Abi::Abi64,
+            cfg_abi: CfgAbi::Abi64,
             endian: Endian::Big,
             // NOTE(mips64r6) matches C toolchain
             cpu: "mips64r6".into(),
             features: "+mips64r6".into(),
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),
-            llvm_abiname: "n64".into(),
+            llvm_abiname: LlvmAbi::N64,
 
             ..base::linux_gnu::opts()
         },

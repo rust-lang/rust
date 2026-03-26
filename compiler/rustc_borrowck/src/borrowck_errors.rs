@@ -324,18 +324,23 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         verb: &str,
         optional_adverb_for_moved: &str,
         moved_path: Option<String>,
+        primary_message: Option<String>,
     ) -> Diag<'infcx> {
-        let moved_path = moved_path.map(|mp| format!(": `{mp}`")).unwrap_or_default();
+        if let Some(primary_message) = primary_message {
+            struct_span_code_err!(self.dcx(), use_span, E0382, "{}", primary_message)
+        } else {
+            let moved_path = moved_path.map(|mp| format!(": `{mp}`")).unwrap_or_default();
 
-        struct_span_code_err!(
-            self.dcx(),
-            use_span,
-            E0382,
-            "{} of {}moved value{}",
-            verb,
-            optional_adverb_for_moved,
-            moved_path,
-        )
+            struct_span_code_err!(
+                self.dcx(),
+                use_span,
+                E0382,
+                "{} of {}moved value{}",
+                verb,
+                optional_adverb_for_moved,
+                moved_path,
+            )
+        }
     }
 
     pub(crate) fn cannot_borrow_path_as_mutable_because(

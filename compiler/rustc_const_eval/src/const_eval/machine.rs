@@ -5,7 +5,6 @@ use std::hash::Hash;
 use rustc_abi::{Align, FIRST_VARIANT, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
-use rustc_errors::msg;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem, find_attr};
 use rustc_middle::mir::AssertMessage;
@@ -24,7 +23,7 @@ use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, Scalar,
     compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok, throw_exhaust,
-    throw_inval, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
+    throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
     type_implements_dyn_trait,
 };
 
@@ -489,18 +488,9 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let align = match Align::from_bytes(align) {
                     Ok(a) => a,
-                    Err(err) => throw_ub_custom!(
-                        msg!(
-                            "invalid align passed to `{$name}`: {$align} is {$err_kind ->
-                                [not_power_of_two] not a power of 2
-                                [too_large] too large
-                                *[other] {\"\"}
-                            }"
-                        ),
-                        name = "const_allocate",
-                        err_kind = err.diag_ident(),
-                        align = err.align()
-                    ),
+                    Err(err) => {
+                        throw_ub_format!("invalid align passed to `const_allocate`: {err}")
+                    }
                 };
 
                 let ptr = ecx.allocate_ptr(
@@ -519,18 +509,9 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let size = Size::from_bytes(size);
                 let align = match Align::from_bytes(align) {
                     Ok(a) => a,
-                    Err(err) => throw_ub_custom!(
-                        msg!(
-                            "invalid align passed to `{$name}`: {$align} is {$err_kind ->
-                                [not_power_of_two] not a power of 2
-                                [too_large] too large
-                                *[other] {\"\"}
-                            }"
-                        ),
-                        name = "const_deallocate",
-                        err_kind = err.diag_ident(),
-                        align = err.align()
-                    ),
+                    Err(err) => {
+                        throw_ub_format!("invalid align passed to `const_deallocate`: {err}")
+                    }
                 };
 
                 // If an allocation is created in an another const,

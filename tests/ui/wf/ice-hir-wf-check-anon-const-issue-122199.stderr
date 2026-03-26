@@ -20,7 +20,7 @@ LL |     fn fnc<const N: dyn Trait = u32>(&self) -> dyn Trait {
    |                                 ^^^ not a value
 
 error[E0425]: cannot find value `bar` in this scope
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:8:9
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:7:9
    |
 LL |         bar
    |         ^^^ not found in this scope
@@ -39,13 +39,7 @@ LL | trait Trait<const N: dyn Trait = bar> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: defaults for generic parameters are not allowed here
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:4:12
-   |
-LL |     fn fnc<const N: dyn Trait = u32>(&self) -> dyn Trait {
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0391, E0403, E0423, E0425.
 For more information about an error, try `rustc --explain E0391`.

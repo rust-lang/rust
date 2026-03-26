@@ -2,7 +2,6 @@
 
 #![feature(sized_hierarchy)]
 #![feature(non_lifetime_binders)]
-//~^ WARN the feature `non_lifetime_binders` is incomplete
 
 use std::marker::PointeeSized;
 

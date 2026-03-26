@@ -12,7 +12,7 @@ use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
-    LevelAndSource, LintExpectation, LintLevelSource, ShallowLintLevelMap, diag_lint_level,
+    LevelAndSource, LintExpectation, LintLevelSource, ShallowLintLevelMap, emit_lint_base,
     reveal_actual_level,
 };
 use rustc_middle::query::Providers;
@@ -981,7 +981,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         if self.lint_added_lints {
             let lint = builtin::UNKNOWN_LINTS;
             let level = self.lint_level(builtin::UNKNOWN_LINTS);
-            diag_lint_level(
+            emit_lint_base(
                 self.sess,
                 lint,
                 level,
@@ -1001,14 +1001,14 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Used to emit a lint-related diagnostic based on the current state of
     /// this lint context.
     #[track_caller]
-    pub(crate) fn opt_span_diag_lint(
+    pub(crate) fn opt_span_lint(
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level(lint);
-        diag_lint_level(self.sess, lint, level, span, decorator)
+        emit_lint_base(self.sess, lint, level, span, decorator)
     }
 
     #[track_caller]
@@ -1019,13 +1019,13 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level(lint);
-        diag_lint_level(self.sess, lint, level, Some(span), decorator);
+        emit_lint_base(self.sess, lint, level, Some(span), decorator);
     }
 
     #[track_caller]
     pub fn emit_lint(&self, lint: &'static Lint, decorator: impl for<'a> Diagnostic<'a, ()>) {
         let level = self.lint_level(lint);
-        diag_lint_level(self.sess, lint, level, None, decorator);
+        emit_lint_base(self.sess, lint, level, None, decorator);
     }
 }
 

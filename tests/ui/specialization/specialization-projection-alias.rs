@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 // Regression test for ICE when combining specialized associated types and type
 // aliases

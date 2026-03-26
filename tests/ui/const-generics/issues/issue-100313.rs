@@ -1,5 +1,5 @@
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend different alloc ids
 #![allow(incomplete_features)]
 #![feature(adt_const_params, unsized_const_params)]
 

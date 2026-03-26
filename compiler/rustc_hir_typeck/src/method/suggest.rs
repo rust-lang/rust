@@ -14,7 +14,7 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, MultiSpan, StashKey, listify, pluralize, struct_span_code_err,
+    Applicability, Diag, MultiSpan, StashKey, StringPart, listify, pluralize, struct_span_code_err,
 };
 use rustc_hir::attrs::diagnostic::OnUnimplementedNote;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -1413,33 +1413,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     })
                     .collect::<Vec<_>>();
-                if !inherent_impls_candidate.is_empty() {
-                    inherent_impls_candidate.sort_by_key(|&id| self.tcx.def_path_str(id));
-                    inherent_impls_candidate.dedup();
-
-                    // number of types to show at most
-                    let limit = if inherent_impls_candidate.len() == 5 { 5 } else { 4 };
-                    let type_candidates = inherent_impls_candidate
-                        .iter()
-                        .take(limit)
-                        .map(|impl_item| {
-                            format!(
-                                "- `{}`",
-                                self.tcx.at(span).type_of(*impl_item).instantiate_identity()
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    let additional_types = if inherent_impls_candidate.len() > limit {
-                        format!("\nand {} more types", inherent_impls_candidate.len() - limit)
-                    } else {
-                        "".to_string()
-                    };
-                    err.note(format!(
-                        "the {item_kind} was found for\n{type_candidates}{additional_types}"
-                    ));
-                    *find_candidate_for_method = mode == Mode::MethodCall;
-                }
+                inherent_impls_candidate.sort_by_key(|&id| self.tcx.def_path_str(id));
+                inherent_impls_candidate.dedup();
+                let msg = match &inherent_impls_candidate[..] {
+                    [] => return,
+                    [only] => {
+                        vec![
+                            StringPart::normal(format!("the {item_kind} was found for `")),
+                            StringPart::highlighted(
+                                self.tcx.at(span).type_of(*only).instantiate_identity().to_string(),
+                            ),
+                            StringPart::normal(format!("`")),
+                        ]
+                    }
+                    candidates => {
+                        // number of types to show at most
+                        let limit = if candidates.len() == 5 { 5 } else { 4 };
+                        let type_candidates = candidates
+                            .iter()
+                            .take(limit)
+                            .map(|impl_item| {
+                                format!(
+                                    "- `{}`",
+                                    self.tcx.at(span).type_of(*impl_item).instantiate_identity()
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n");
+                        let additional_types = if candidates.len() > limit {
+                            format!("\nand {} more types", candidates.len() - limit)
+                        } else {
+                            "".to_string()
+                        };
+                        vec![StringPart::normal(format!(
+                            "the {item_kind} was found for\n{type_candidates}{additional_types}"
+                        ))]
+                    }
+                };
+                err.highlighted_note(msg);
+                *find_candidate_for_method = mode == Mode::MethodCall;
             }
         } else {
             let ty_str = if ty_str.len() > 50 { String::new() } else { format!("on `{ty_str}` ") };
@@ -2279,8 +2291,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             fn_sig,
                         );
                         let name = inherent_method.name();
+                        let inputs = fn_sig.inputs();
+                        let expected_inputs =
+                            if inherent_method.is_method() { &inputs[1..] } else { inputs };
                         if let Some(ref args) = call_args
-                            && fn_sig.inputs()[1..]
+                            && expected_inputs
                                 .iter()
                                 .eq_by(args, |expected, found| self.may_coerce(*expected, *found))
                         {
@@ -3448,13 +3463,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let diagnostic_name = self.tcx.get_diagnostic_name(trait_pred.def_id())?;
 
         let can_derive = match diagnostic_name {
+            sym::Copy | sym::Clone => true,
+            _ if adt.is_union() => false,
             sym::Default
             | sym::Eq
             | sym::PartialEq
             | sym::Ord
             | sym::PartialOrd
-            | sym::Clone
-            | sym::Copy
             | sym::Hash
             | sym::Debug => true,
             _ => false,

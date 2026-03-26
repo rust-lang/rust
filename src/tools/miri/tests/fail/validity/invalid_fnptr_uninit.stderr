@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at [0]: encountered uninitialized memory, but expected a function pointer
+error: Undefined Behavior: constructing invalid value of type [fn(); 1]: at [0], encountered uninitialized memory, but expected a function pointer
   --> tests/fail/validity/invalid_fnptr_uninit.rs:LL:CC
    |
 LL |     let _b = unsafe { MyUninit { init: () }.uninit };

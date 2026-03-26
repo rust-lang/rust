@@ -20,7 +20,8 @@ use crate::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, CoroutineDef, Discr, FieldDef, FnDef,
     ForeignDef, ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates,
     Generics, ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy, Span,
-    TraitDecl, TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef, VariantIdx,
+    TraitDecl, TraitDef, TraitRef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef, VariantIdx,
+    VtblEntry,
 };
 use crate::unstable::{RustcInternal, Stable, new_item_kind};
 use crate::{
@@ -837,6 +838,25 @@ impl<'tcx> CompilerInterface<'tcx> {
         let cx = &*self.cx.borrow();
         let did = tables[def_id];
         cx.associated_items(did).iter().map(|assoc| assoc.stable(&mut *tables, cx)).collect()
+    }
+
+    /// Get all vtable entries of a trait.
+    pub(crate) fn vtable_entries(&self, trait_ref: &TraitRef) -> Vec<VtblEntry> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.vtable_entries(trait_ref.internal(&mut *tables, cx.tcx))
+            .iter()
+            .map(|v| v.stable(&mut *tables, cx))
+            .collect()
+    }
+
+    /// Returns the vtable entry at the given index.
+    ///
+    /// Returns `None` if the index is out of bounds.
+    pub(crate) fn vtable_entry(&self, trait_ref: &TraitRef, idx: usize) -> Option<VtblEntry> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.vtable_entry(trait_ref.internal(&mut *tables, cx.tcx), idx).stable(&mut *tables, cx)
     }
 }
 

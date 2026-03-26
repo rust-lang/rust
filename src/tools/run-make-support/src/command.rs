@@ -6,7 +6,7 @@ use std::{ffi, panic};
 
 use build_helper::drop_bomb::DropBomb;
 
-use crate::util::handle_failed_output;
+use crate::util::{handle_failed_output, verbose_print_command};
 use crate::{
     assert_contains, assert_contains_regex, assert_equals, assert_not_contains,
     assert_not_contains_regex,
@@ -156,7 +156,7 @@ impl Command {
 
     /// Inspect what the underlying [`std::process::Command`] is up to the
     /// current construction.
-    pub fn inspect<I>(&mut self, inspector: I) -> &mut Self
+    pub fn inspect<I>(&self, inspector: I) -> &Self
     where
         I: FnOnce(&StdCommand),
     {
@@ -233,6 +233,8 @@ impl Command {
         let output = self.command_output();
         if !output.status().success() {
             handle_failed_output(&self, output, panic::Location::caller().line());
+        } else {
+            verbose_print_command(self, &output);
         }
         output
     }
@@ -245,6 +247,8 @@ impl Command {
         let output = self.command_output();
         if output.status().success() {
             handle_failed_output(&self, output, panic::Location::caller().line());
+        } else {
+            verbose_print_command(self, &output);
         }
         output
     }

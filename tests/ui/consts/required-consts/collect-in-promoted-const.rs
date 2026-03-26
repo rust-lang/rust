@@ -3,7 +3,7 @@
 //@[noopt] compile-flags: -Copt-level=0
 //@[opt] compile-flags: -O
 //! Make sure we error on erroneous consts even if they get promoted.
-
+//@ ignore-parallel-frontend post-monomorphization errors
 struct Fail<T>(T);
 impl<T> Fail<T> {
     const C: () = panic!(); //~ERROR evaluation panicked: explicit panic

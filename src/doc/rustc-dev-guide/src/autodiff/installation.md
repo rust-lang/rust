@@ -1,6 +1,50 @@
 # Installation
 
-In the near future, `std::autodiff` should become available in nightly builds for users. As a contributor however, you will still need to build rustc from source. Please be aware that the msvc target is not supported at the moment, all other tier 1 targets should work. Please open an issue if you encounter any problems on a supported tier 1 target, or if you successfully build this project on a tier2/tier3 target.
+In the near future, `std::autodiff` should become available for users via rustup. As a rustc/enzyme/autodiff contributor however, you will still need to build rustc from source. 
+For the meantime, you can download up-to-date builds to enable `std::autodiff` on your latest nightly toolchain, if you are using either of:  
+**Linux**, with `x86_64-unknown-linux-gnu` or `aarch64-unknown-linux-gnu`  
+**Windows**, with `x86_64-llvm-mingw` or `aarch64-llvm-mingw`  
+
+You can also download slightly outdated builds for **Apple** (aarch64-apple), which should generally work for now. 
+
+If you need any other platform, you can build rustc including autodiff from source. Please open an issue if you want to help enabling automatic builds for your prefered target.
+
+## Installation guide
+
+If you want to use `std::autodiff` and don't plan to contribute PR's to the project, then we recommend to just use your existing nightly installation and download the missing component. In the future, rustup will be able to do it for you.
+For now, you'll have to manually download and copy it.
+
+1) On our github repository, find the last merged PR: [`Repo`]
+2) Scroll down to the lower end of the PR, where you'll find a rust-bors message saying `Test successful` with a `CI` link. 
+3) Click on the `CI` link, and grep for your target. E.g. `dist-x86_64-linux` or `dist-aarch64-llvm-mingw` and click `Load summary`. 
+4) Under the `CI artifacts` section, find the `enzyme-nightly` artifact, download, and unpack it.
+5) Copy the artifact (libEnzyme-22.so for linux, libEnzyme-22.dylib for apple, etc.), which should be in a folder named `enzyme-preview`, to your rust toolchain directory. E.g. for linux: `cp  ~/Downloads/enzyme-nightly-x86_64-unknown-linux-gnu/enzyme-preview/lib/rustlib/x86_64-unknown-linux-gnu/lib/libEnzyme-22.so ~/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/lib`
+
+Apple support was temporarily reverted, due to downstream breakages. If you want to download autodiff for apple, please look at the artifacts from this [`run`].
+
+## Installation guide for Nix user.
+
+This setup was recommended by a nix and autodiff user. It uses [`Overlay`]. Please verify for yourself if you are comfortable using that repository.
+In that case you might use the following nix configuration to get a rustc that supports `std::autodiff`.
+```nix
+{
+  enzymeLib = pkgs.fetchzip {
+    url = "https://ci-artifacts.rust-lang.org/rustc-builds/ec818fda361ca216eb186f5cf45131bd9c776bb4/enzyme-nightly-x86_64-unknown-linux-gnu.tar.xz";
+    sha256 = "sha256-Rnrop44vzS+qmYNaRoMNNMFyAc3YsMnwdNGYMXpZ5VY=";
+  };
+  
+  rustToolchain = pkgs.symlinkJoin {
+    name = "rust-with-enzyme";
+    paths = [pkgs.rust-bin.nightly.latest.default];
+    nativeBuildInputs = [pkgs.makeWrapper];
+    postBuild = ''
+      libdir=$out/lib/rustlib/x86_64-unknown-linux-gnu/lib
+      cp ${enzymeLib}/enzyme-preview/lib/rustlib/x86_64-unknown-linux-gnu/lib/libEnzyme-22.so $libdir/
+      wrapProgram $out/bin/rustc --add-flags "--sysroot $out"
+    '';
+  };
+}
+```
 
 ## Build instructions
 
@@ -87,3 +131,6 @@ ninja
 ```
 This will build Enzyme, and you can find it in `Enzyme/enzyme/build/lib/<LLD/Clang/LLVM/lib>Enzyme.so`. (Endings might differ based on your OS).
 
+[`Repo`]: https://github.com/rust-lang/rust/
+[`run`]: https://github.com/rust-lang/rust/pull/153026#issuecomment-3950046599
+[`Overlay`]: https://github.com/oxalica/rust-overlay

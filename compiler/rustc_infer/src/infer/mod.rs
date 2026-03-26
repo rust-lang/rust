@@ -1250,6 +1250,36 @@ impl<'tcx> InferCtxt<'tcx> {
         value.fold_with(&mut r)
     }
 
+    /// Normally, we shallow-resolve unresolved type variables to their root
+    /// variables. This is mainly done for performance reasons, and in most
+    /// cases resolving to the root variable (instead of the variable itself)
+    /// does not affect type inference.
+    ///
+    /// However, there is an exceptional case: *fudging*. Fudging is intended
+    /// to guide inference rather than impose hard requirements. But our current
+    /// handling here is somewhat janky.
+    ///
+    /// In particular, inference variables that are considered equal within the
+    /// fudging scope may not remain equal outside of it. This makes it observable
+    /// which inference variable we resolve to. For backwards compatibility, we
+    /// avoid resolving to the root variable by using this function inside the
+    /// fudge instead of [`InferCtxt::resolve_vars_if_possible`].
+    ///
+    /// See #153869 for more details.
+    pub fn resolve_vars_if_possible_for_fudging<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        if let Err(guar) = value.error_reported() {
+            self.set_tainted_by_errors(guar);
+        }
+        if !value.has_non_region_infer() {
+            return value;
+        }
+        let mut r = resolve::OpportunisticVarResolver::new_for_fudging(self);
+        value.fold_with(&mut r)
+    }
+
     pub fn resolve_numeric_literals_with_default<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,

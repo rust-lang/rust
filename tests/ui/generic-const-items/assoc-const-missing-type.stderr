@@ -2,8 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/assoc-const-missing-type.rs:12:18
    |
 LL |     const K<T> = ();
-   |             -    ^^ expected type parameter `T`, found `()`
-   |             |
+   |             - -  ^^ expected type parameter `T`, found `()`
+   |             | |
+   |             | expected because of the type of the associated constant
    |             expected this type parameter
    |
    = note: expected type parameter `T`

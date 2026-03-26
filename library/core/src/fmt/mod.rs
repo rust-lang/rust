@@ -1037,9 +1037,10 @@ impl Display for Arguments<'_> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
-        crate_local,
+        all(crate_local, not(Self = "{union}")),
         note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {This} for {Self}`"
     ),
+    on(all(crate_local, Self = "{union}"), note = "manually `impl {This} for {Self}`"),
     on(
         from_desugaring = "FormatLiteral",
         label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{This}`"

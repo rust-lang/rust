@@ -16,9 +16,8 @@ use rustc_errors::{
     pluralize,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::used_keywords;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanSnippetError, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanSnippetError, Spanned, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, trace};
 

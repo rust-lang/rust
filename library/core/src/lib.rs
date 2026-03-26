@@ -48,7 +48,7 @@
     html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(deny(warnings))),
-    test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
+    test(attr(allow(dead_code, deprecated, unused_variables, unused_mut, duplicate_features)))
 )]
 #![doc(rust_logo)]
 #![doc(auto_cfg(hide(
@@ -107,8 +107,6 @@
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
 #![feature(disjoint_bitor)]
-#![feature(internal_impls_macro)]
-#![feature(link_cfg)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(pattern_type_macro)]
@@ -144,6 +142,7 @@
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
+#![feature(link_cfg)]
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
 #![feature(macro_metavar_expr_concat)]
@@ -182,6 +181,7 @@
 #![feature(hexagon_target_feature)]
 #![feature(loongarch_target_feature)]
 #![feature(mips_target_feature)]
+#![feature(movrs_target_feature)]
 #![feature(nvptx_target_feature)]
 #![feature(powerpc_target_feature)]
 #![feature(riscv_target_feature)]

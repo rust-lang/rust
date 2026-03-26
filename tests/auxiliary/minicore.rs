@@ -236,6 +236,10 @@ impl_marker_trait!(
     ]
 );
 
+impl Sync for () {}
+
+impl<T, const N: usize> Sync for [T; N] {}
+
 #[lang = "drop_in_place"]
 fn drop_in_place<T>(_: *mut T) {}
 
@@ -274,6 +278,10 @@ impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a
 trait Drop {
     fn drop(&mut self);
 }
+
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
 pub mod mem {
     #[rustc_nounwind]

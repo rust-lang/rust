@@ -342,14 +342,18 @@ impl Wtf8Buf {
 
     /// Shortens a string to the specified length.
     ///
+    /// If `new_len` is greater than the string's current length, this has no
+    /// effect.
+    ///
     /// # Panics
     ///
-    /// Panics if `new_len` > current length,
-    /// or if `new_len` is not a code point boundary.
+    /// Panics if `new_len` does not lie on a code point boundary.
     #[inline]
     pub fn truncate(&mut self, new_len: usize) {
-        assert!(self.is_code_point_boundary(new_len));
-        self.bytes.truncate(new_len)
+        if new_len <= self.len() {
+            assert!(self.is_code_point_boundary(new_len));
+            self.bytes.truncate(new_len)
+        }
     }
 
     /// Consumes the WTF-8 string and tries to convert it to a vec of bytes.

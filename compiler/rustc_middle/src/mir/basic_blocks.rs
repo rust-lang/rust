@@ -65,7 +65,7 @@ impl<'tcx> BasicBlocks<'tcx> {
 
     /// Returns basic blocks in a reverse postorder.
     ///
-    /// See [`traversal::reverse_postorder`]'s docs to learn what is preorder traversal.
+    /// See [`traversal::reverse_postorder`]'s docs to learn what is postorder traversal.
     ///
     /// [`traversal::reverse_postorder`]: crate::mir::traversal::reverse_postorder
     #[inline]

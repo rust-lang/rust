@@ -263,8 +263,13 @@ impl<T> Trait<T> for X {
                             cause.code(),
                         );
                     }
+                    // Don't suggest constraining a projection to something
+                    // containing itself, e.g. `Item = &<I as Iterator>::Item`.
                     (_, ty::Alias(ty::Projection | ty::Inherent, proj_ty))
-                        if !tcx.is_impl_trait_in_trait(proj_ty.def_id) =>
+                        if !tcx.is_impl_trait_in_trait(proj_ty.def_id)
+                            && !tcx
+                                .erase_and_anonymize_regions(values.expected)
+                                .contains(tcx.erase_and_anonymize_regions(values.found)) =>
                     {
                         let msg = || {
                             format!(
@@ -272,18 +277,21 @@ impl<T> Trait<T> for X {
                                 values.found, values.expected,
                             )
                         };
-                        if !(self.suggest_constraining_opaque_associated_type(
-                            diag,
-                            msg,
-                            proj_ty,
-                            values.expected,
-                        ) || self.suggest_constraint(
-                            diag,
-                            &msg,
-                            body_owner_def_id,
-                            proj_ty,
-                            values.expected,
-                        )) {
+                        let suggested_projection_constraint = proj_ty.kind(tcx)
+                            == ty::AliasTyKind::Projection
+                            && (self.suggest_constraining_opaque_associated_type(
+                                diag,
+                                msg,
+                                proj_ty,
+                                values.expected,
+                            ) || self.suggest_constraint(
+                                diag,
+                                &msg,
+                                body_owner_def_id,
+                                proj_ty,
+                                values.expected,
+                            ));
+                        if !suggested_projection_constraint {
                             diag.help(msg());
                             diag.note(
                                 "for more information, visit \
