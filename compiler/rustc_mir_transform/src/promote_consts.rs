@@ -576,7 +576,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
 
             Rvalue::Reborrow(_, _, place) => {
-                // FIXME(@aapoalas): should probably have a place_simplified like above.
+                // FIXME(reborrow): should probably have a place_simplified like above.
                 let op = &Operand::Copy(*place);
                 self.validate_operand(op)?
             }

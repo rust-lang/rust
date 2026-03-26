@@ -2485,7 +2485,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         if mutability.is_not() {
-            // FIXME(@aapoalas): for CoerceShared we need to relate the types manually, field by
+            // FIXME(reborrow): for CoerceShared we need to relate the types manually, field by
             // field. We cannot just attempt to relate `T` and `<T as CoerceShared>::Target` by
             // calling relate_types as they are (generally) two unrelated user-defined ADTs, such as
             // `CustomMut<'a>` and `CustomRef<'a>`, or `CustomMut<'a, T>` and `CustomRef<'a, T>`.

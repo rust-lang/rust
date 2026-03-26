@@ -610,7 +610,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Reborrow(..) => {
-                // FIXME(@aapoalas): figure out if this is relevant at all.
+                // FIXME(reborrow): figure out if this is relevant at all.
             }
 
             Rvalue::RawPtr(RawPtrKind::FakeForPtrMetadata, place) => {

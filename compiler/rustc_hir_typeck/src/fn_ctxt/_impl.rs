@@ -344,7 +344,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // FIXME(const_trait_impl): We should probably enforce these.
                 }
                 Adjust::GenericReborrow(_) => {
-                    // No effects to enforce here.
+                    // FIXME(reborrow): figure out if we have effects to enforce here.
                 }
                 Adjust::Borrow(_) => {
                     // No effects to enforce here.

@@ -191,7 +191,7 @@ where
                 }
             }
 
-            mir::Rvalue::Reborrow(_target, mutability, borrowed_place) => {
+            mir::Rvalue::Reborrow(_, mutability, borrowed_place) => {
                 if !borrowed_place.is_indirect() && mutability.is_mut() {
                     let place_ty = borrowed_place.ty(self.ccx.body, self.ccx.tcx).ty;
                     if Q::in_any_value_of_ty(self.ccx, place_ty) {

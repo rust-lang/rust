@@ -758,7 +758,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     // on an adjusted value. But this means that adjustment is applied on a
                     // subexpression that is not the final operand/rvalue for function call or
                     // assignment. This is a contradiction.
-                    unreachable!();
+                    unreachable!("Reborrow trait usage during adjustment walk");
                 }
             }
             place_with_id = self.cat_expr_adjusted(expr, place_with_id, adjustment)?;
