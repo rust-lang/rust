@@ -695,11 +695,6 @@ pub enum BuiltinLintDiag {
 
 #[derive(Debug, HashStable_Generic)]
 pub enum AttributeLintKind {
-    UnusedDuplicate {
-        this: Span,
-        other: Span,
-        warning: bool,
-    },
     IllFormedAttributeInput {
         suggestions: Vec<String>,
         docs: Option<&'static str>,
