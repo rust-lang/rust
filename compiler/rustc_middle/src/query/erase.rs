@@ -7,15 +7,21 @@
 
 use std::ffi::OsStr;
 use std::intrinsics::transmute_unchecked;
+use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::steal::Steal;
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_span::{ErrorGuaranteed, Spanned};
 
 use crate::mir::mono::{MonoItem, NormalizationErrorInMono};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, thir, traits};
+
+unsafe extern "C" {
+    type NoAutoTraits;
+}
 
 /// Internal implementation detail of [`Erased`].
 #[derive(Copy, Clone)]
@@ -23,7 +29,14 @@ pub struct ErasedData<Storage: Copy> {
     /// We use `MaybeUninit` here to make sure it's legal to store a transmuted
     /// value that isn't actually of type `Storage`.
     data: MaybeUninit<Storage>,
+    /// `Storage` is an erased type, so we use an external type here to opt-out of auto traits
+    /// as those would be incorrect.
+    no_auto_traits: PhantomData<NoAutoTraits>,
 }
+
+// SAFETY: The bounds on `erase_val` ensure the types we erase are `DynSync` and `DynSend`
+unsafe impl<Storage: Copy> DynSync for ErasedData<Storage> {}
+unsafe impl<Storage: Copy> DynSend for ErasedData<Storage> {}
 
 /// Trait for types that can be erased into [`Erased<Self>`].
 ///
@@ -54,13 +67,11 @@ pub type Erased<T: Erasable> = ErasedData<impl Copy>;
 ///
 /// `Erased<T>` and `Erased<U>` are type-checked as distinct types, but codegen
 /// can see whether they actually have the same storage type.
-///
-/// FIXME: This might have soundness issues with erasable types that don't
-/// implement the same auto-traits as `[u8; _]`; see
-/// <https://github.com/rust-lang/rust/pull/151715#discussion_r2740113250>
 #[inline(always)]
 #[define_opaque(Erased)]
-pub fn erase_val<T: Erasable>(value: T) -> Erased<T> {
+// The `DynSend` and `DynSync` bounds on `T` are used to
+// justify the safety of the implementations of these traits for `ErasedData`.
+pub fn erase_val<T: Erasable + DynSend + DynSync>(value: T) -> Erased<T> {
     // Ensure the sizes match
     const {
         if size_of::<T>() != size_of::<T::Storage>() {
@@ -78,6 +89,7 @@ pub fn erase_val<T: Erasable>(value: T) -> Erased<T> {
         //
         // SAFETY: It is safe to transmute to MaybeUninit for types with the same sizes.
         data: unsafe { transmute_unchecked::<T, MaybeUninit<T::Storage>>(value) },
+        no_auto_traits: PhantomData,
     }
 }
 
@@ -88,7 +100,7 @@ pub fn erase_val<T: Erasable>(value: T) -> Erased<T> {
 #[inline(always)]
 #[define_opaque(Erased)]
 pub fn restore_val<T: Erasable>(erased_value: Erased<T>) -> T {
-    let ErasedData { data }: ErasedData<<T as Erasable>::Storage> = erased_value;
+    let ErasedData { data, .. }: ErasedData<<T as Erasable>::Storage> = erased_value;
     // See comment in `erase_val` for why we use `transmute_unchecked`.
     //
     // SAFETY: Due to the use of impl Trait in `Erased` the only way to safely create an instance
