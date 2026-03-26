@@ -27,10 +27,9 @@ use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_attr_parsing::validate_attr;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DiagCtxtHandle, LintBuffer};
+use rustc_errors::{DiagCtxtHandle, Diagnostic, LintBuffer};
 use rustc_feature::Features;
 use rustc_session::Session;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
     PATTERNS_IN_FNS_WITHOUT_BODY, UNUSED_VISIBILITIES,
@@ -1371,11 +1370,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Struct(ident, generics, vdata) => {
                 self.with_tilde_const(Some(TildeConstReason::Struct { span: item.span }), |this| {
                     // Scalable vectors can only be tuple structs
-                    let is_scalable_vector =
-                        item.attrs.iter().any(|attr| attr.has_name(sym::rustc_scalable_vector));
-                    if is_scalable_vector && !matches!(vdata, VariantData::Tuple(..)) {
-                        this.dcx()
-                            .emit_err(errors::ScalableVectorNotTupleStruct { span: item.span });
+                    let scalable_vector_attr =
+                        item.attrs.iter().find(|attr| attr.has_name(sym::rustc_scalable_vector));
+                    if let Some(attr) = scalable_vector_attr {
+                        if !matches!(vdata, VariantData::Tuple(..)) {
+                            this.dcx()
+                                .emit_err(errors::ScalableVectorNotTupleStruct { span: item.span });
+                        }
+                        if !self.sess.target.arch.supports_scalable_vectors() {
+                            this.dcx().emit_err(errors::ScalableVectorBadArch { span: attr.span });
+                        }
                     }
 
                     match vdata {
@@ -1419,7 +1423,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         UNUSED_VISIBILITIES,
                         item.id,
                         item.vis.span,
-                        BuiltinLintDiag::UnusedVisibility(item.vis.span),
+                        errors::UnusedVisibility { span: item.vis.span },
                     )
                 }
 
@@ -1482,6 +1486,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     ident,
                     sig,
                 );
+
+                if let Some(attr) = attr::find_by_name(fi.attrs(), sym::track_caller)
+                    && self.extern_mod_abi != Some(ExternAbi::Rust)
+                {
+                    self.dcx().emit_err(errors::RequiresRustAbi {
+                        track_caller_span: attr.span,
+                        extern_abi_span: self.current_extern_span(),
+                    });
+                }
             }
             ForeignItemKind::TyAlias(box TyAlias {
                 defaultness,
@@ -1667,10 +1680,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         if let FnKind::Fn(ctxt, _, fun) = fk
-            && let Extern::Explicit(str_lit, _) = fun.sig.header.ext
+            && let Extern::Explicit(str_lit, extern_abi_span) = fun.sig.header.ext
             && let Ok(abi) = ExternAbi::from_str(str_lit.symbol.as_str())
         {
             self.check_extern_fn_signature(abi, ctxt, &fun.ident, &fun.sig);
+
+            if let Some(attr) = attr::find_by_name(attrs, sym::track_caller)
+                && abi != ExternAbi::Rust
+            {
+                self.dcx().emit_err(errors::RequiresRustAbi {
+                    track_caller_span: attr.span,
+                    extern_abi_span,
+                });
+            }
         }
 
         self.check_c_variadic_type(fk, attrs);
@@ -1708,14 +1730,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
                     if let Some(ident) = ident {
-                        self.lint_buffer.buffer_lint(
+                        let is_foreign = matches!(ctxt, FnCtxt::Foreign);
+                        self.lint_buffer.dyn_buffer_lint(
                             PATTERNS_IN_FNS_WITHOUT_BODY,
                             id,
                             span,
-                            BuiltinLintDiag::PatternsInFnsWithoutBody {
-                                span,
-                                ident,
-                                is_foreign: matches!(ctxt, FnCtxt::Foreign),
+                            move |dcx, level| {
+                                let sub = errors::PatternsInFnsWithoutBodySub { ident, span };
+                                if is_foreign {
+                                    errors::PatternsInFnsWithoutBody::Foreign { sub }
+                                } else {
+                                    errors::PatternsInFnsWithoutBody::Bodiless { sub }
+                                }
+                                .into_diag(dcx, level)
                             },
                         )
                     }
@@ -1805,11 +1832,26 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     Some((right, snippet))
                 }
             };
-            self.lint_buffer.buffer_lint(
+            let left_sp = err.span;
+            self.lint_buffer.dyn_buffer_lint(
                 DEPRECATED_WHERE_CLAUSE_LOCATION,
                 item.id,
                 err.span,
-                BuiltinLintDiag::DeprecatedWhereclauseLocation(err.span, sugg),
+                move |dcx, level| {
+                    let suggestion = match sugg {
+                        Some((right_sp, sugg)) => {
+                            errors::DeprecatedWhereClauseLocationSugg::MoveToEnd {
+                                left: left_sp,
+                                right: right_sp,
+                                sugg,
+                            }
+                        }
+                        None => {
+                            errors::DeprecatedWhereClauseLocationSugg::RemoveWhere { span: left_sp }
+                        }
+                    };
+                    errors::DeprecatedWhereClauseLocation { suggestion }.into_diag(dcx, level)
+                },
             );
         }
 

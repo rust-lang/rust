@@ -13,8 +13,9 @@ fn f_i8() {
         Ok = i8::MAX - 1,
         Ok2,
         OhNo = 0_u8,
-        //~^ ERROR mismatched types
-        //~| NOTE expected `i8`, found `u8`
+        //~^ ERROR: mismatched types
+        //~| NOTE: expected `i8`, found `u8`
+        //~| NOTE: enum variant discriminant
     }
 
     let x = A::Ok;
@@ -26,8 +27,9 @@ fn f_u8() {
         Ok = u8::MAX - 1,
         Ok2,
         OhNo = 0_i8,
-        //~^ ERROR mismatched types
-        //~| NOTE expected `u8`, found `i8`
+        //~^ ERROR: mismatched types
+        //~| NOTE: expected `u8`, found `i8`
+        //~| NOTE: enum variant discriminant
     }
 
     let x = A::Ok;
@@ -39,8 +41,9 @@ fn f_i16() {
         Ok = i16::MAX - 1,
         Ok2,
         OhNo = 0_u16,
-        //~^ ERROR mismatched types
-        //~| NOTE expected `i16`, found `u16`
+        //~^ ERROR: mismatched types
+        //~| NOTE: expected `i16`, found `u16`
+        //~| NOTE: enum variant discriminant
     }
 
     let x = A::Ok;
@@ -52,8 +55,9 @@ fn f_u16() {
         Ok = u16::MAX - 1,
         Ok2,
         OhNo = 0_i16,
-        //~^ ERROR mismatched types
-        //~| NOTE expected `u16`, found `i16`
+        //~^ ERROR: mismatched types
+        //~| NOTE: expected `u16`, found `i16`
+        //~| NOTE: enum variant discriminant
     }
 
     let x = A::Ok;
@@ -65,8 +69,9 @@ fn f_i32() {
         Ok = i32::MAX - 1,
         Ok2,
         OhNo = 0_u32,
-        //~^ ERROR mismatched types
-        //~| NOTE expected `i32`, found `u32`
+        //~^ ERROR: mismatched types
+        //~| NOTE: expected `i32`, found `u32`
+        //~| NOTE: enum variant discriminant
     }
 
     let x = A::Ok;
@@ -78,8 +83,9 @@ fn f_u32() {
         Ok = u32::MAX - 1,
         Ok2,
         OhNo = 0_i32,
-        //~^ ERROR mismatched types
-        //~| NOTE expected `u32`, found `i32`
+        //~^ ERROR: mismatched types
+        //~| NOTE: expected `u32`, found `i32`
+        //~| NOTE: enum variant discriminant
     }
 
     let x = A::Ok;
@@ -91,8 +97,9 @@ fn f_i64() {
         Ok = i64::MAX - 1,
         Ok2,
         OhNo = 0_u64,
-        //~^ ERROR mismatched types
-        //~| NOTE expected `i64`, found `u64`
+        //~^ ERROR: mismatched types
+        //~| NOTE: expected `i64`, found `u64`
+        //~| NOTE: enum variant discriminant
     }
 
     let x = A::Ok;
@@ -104,8 +111,9 @@ fn f_u64() {
         Ok = u64::MAX - 1,
         Ok2,
         OhNo = 0_i64,
-        //~^ ERROR mismatched types
-        //~| NOTE expected `u64`, found `i64`
+        //~^ ERROR: mismatched types
+        //~| NOTE: expected `u64`, found `i64`
+        //~| NOTE: enum variant discriminant
     }
 
     let x = A::Ok;

@@ -5,7 +5,6 @@
 // since they are using a different infcx which doesn't preserve the intercrate flag.
 
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
 
 trait Assoc {
     type Output;

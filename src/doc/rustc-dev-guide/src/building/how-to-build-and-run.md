@@ -110,7 +110,6 @@ Also, using `x` rather than `x.py` is recommended as:
 Notice that this is not absolute.
 For instance, using Nushell in VSCode on Win10,
 typing `x` or `./x` still opens `x.py` in an editor rather than invoking the program.
-:)
 
 In the rest of this guide, we use `x` rather than `x.py` directly.
 The following command:

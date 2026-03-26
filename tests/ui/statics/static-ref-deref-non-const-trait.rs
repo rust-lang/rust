@@ -1,0 +1,19 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/25901
+//!
+struct A;
+struct B;
+
+static S: &'static B = &A;
+//~^ ERROR the trait bound `A: const Deref` is not satisfied
+
+use std::ops::Deref;
+
+impl Deref for A {
+    type Target = B;
+    fn deref(&self) -> &B {
+        static B_: B = B;
+        &B_
+    }
+}
+
+fn main() {}

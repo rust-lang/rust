@@ -32,24 +32,21 @@ impl<'tcx> crate::MirPass<'tcx> for StripDebugInfo {
             )
         });
 
-        let debuginfo_locals = debuginfo_locals(body);
-        for data in body.basic_blocks.as_mut_preserves_cfg() {
-            for stmt in data.statements.iter_mut() {
-                stmt.debuginfos.retain(|debuginfo| match debuginfo {
-                    StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
-                        debuginfo_locals.contains(*local)
-                    }
-                });
-            }
-            data.after_last_stmt_debuginfos.retain(|debuginfo| match debuginfo {
-                StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
-                    debuginfo_locals.contains(*local)
-                }
-            });
-        }
+        drop_invalid_debuginfos(body);
     }
 
     fn is_required(&self) -> bool {
         true
+    }
+}
+
+// Drop invalid debuginfos when strip locals in `var_debug_info`.
+pub(super) fn drop_invalid_debuginfos(body: &mut Body<'_>) {
+    let debuginfo_locals = debuginfo_locals(body);
+    for data in body.basic_blocks.as_mut_preserves_cfg() {
+        for stmt in data.statements.iter_mut() {
+            stmt.debuginfos.retain_locals(&debuginfo_locals);
+        }
+        data.after_last_stmt_debuginfos.retain_locals(&debuginfo_locals);
     }
 }

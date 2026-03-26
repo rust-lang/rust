@@ -4,7 +4,6 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::*;
 
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_cmp_fast_path_buf_sort(b: &mut test::Bencher) {
     let prefix = "my/home";
     let mut paths: Vec<_> =
@@ -18,7 +17,6 @@ fn bench_path_cmp_fast_path_buf_sort(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_cmp_fast_path_long(b: &mut test::Bencher) {
     let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
     let paths: Vec<_> =
@@ -37,7 +35,6 @@ fn bench_path_cmp_fast_path_long(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_cmp_fast_path_short(b: &mut test::Bencher) {
     let prefix = "my/home";
     let paths: Vec<_> =
@@ -80,7 +77,6 @@ fn bench_path_file_name(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_hashset(b: &mut test::Bencher) {
     let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
     let paths: Vec<_> =
@@ -99,7 +95,6 @@ fn bench_path_hashset(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_hashset_miss(b: &mut test::Bencher) {
     let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
     let paths: Vec<_> =

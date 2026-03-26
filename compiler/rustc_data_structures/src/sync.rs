@@ -21,11 +21,6 @@
 //! | `Lock<T>`               | `RefCell<T>`        | `RefCell<T>` or                 |
 //! |                         |                     | `parking_lot::Mutex<T>`         |
 //! | `RwLock<T>`             | `RefCell<T>`        | `parking_lot::RwLock<T>`        |
-//! | `MTLock<T>`        [^1] | `T`                 | `Lock<T>`                       |
-//!
-//! [^1]: `MTLock` is similar to `Lock`, but the serial version avoids the cost
-//! of a `RefCell`. This is appropriate when interior mutability is not
-//! required.
 
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
@@ -39,7 +34,9 @@ pub use self::atomic::AtomicU64;
 pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 #[doc(no_inline)]
 pub use self::lock::{Lock, LockGuard, Mode};
-pub use self::mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
+pub use self::mode::{
+    FromDyn, check_dyn_thread_safe, is_dyn_thread_safe, set_dyn_thread_safe_mode,
+};
 pub use self::parallel::{
     broadcast, par_fns, par_for_each_in, par_join, par_map, parallel_guard, spawn,
     try_par_for_each_in,
@@ -69,11 +66,19 @@ mod atomic {
 mod mode {
     use std::sync::atomic::{AtomicU8, Ordering};
 
+    use crate::sync::{DynSend, DynSync};
+
     const UNINITIALIZED: u8 = 0;
     const DYN_NOT_THREAD_SAFE: u8 = 1;
     const DYN_THREAD_SAFE: u8 = 2;
 
     static DYN_THREAD_SAFE_MODE: AtomicU8 = AtomicU8::new(UNINITIALIZED);
+
+    // Whether thread safety is enabled (due to running under multiple threads).
+    #[inline]
+    pub fn check_dyn_thread_safe() -> Option<FromDyn<()>> {
+        is_dyn_thread_safe().then_some(FromDyn(()))
+    }
 
     // Whether thread safety is enabled (due to running under multiple threads).
     #[inline]
@@ -104,37 +109,43 @@ mod mode {
         // Check that the mode was either uninitialized or was already set to the requested mode.
         assert!(previous.is_ok() || previous == Err(set));
     }
-}
 
-// FIXME(parallel_compiler): Get rid of these aliases across the compiler.
+    #[derive(Copy, Clone)]
+    pub struct FromDyn<T>(T);
 
-#[derive(Debug, Default)]
-pub struct MTLock<T>(Lock<T>);
+    impl<T> FromDyn<T> {
+        #[inline(always)]
+        pub fn derive<O>(&self, val: O) -> FromDyn<O> {
+            // We already did the check for `sync::is_dyn_thread_safe()` when creating `Self`
+            FromDyn(val)
+        }
 
-impl<T> MTLock<T> {
-    #[inline(always)]
-    pub fn new(inner: T) -> Self {
-        MTLock(Lock::new(inner))
+        #[inline(always)]
+        pub fn into_inner(self) -> T {
+            self.0
+        }
     }
 
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.0.into_inner()
+    // `FromDyn` is `Send` if `T` is `DynSend`, since it ensures that sync::is_dyn_thread_safe() is true.
+    unsafe impl<T: DynSend> Send for FromDyn<T> {}
+
+    // `FromDyn` is `Sync` if `T` is `DynSync`, since it ensures that sync::is_dyn_thread_safe() is true.
+    unsafe impl<T: DynSync> Sync for FromDyn<T> {}
+
+    impl<T> std::ops::Deref for FromDyn<T> {
+        type Target = T;
+
+        #[inline(always)]
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
     }
 
-    #[inline(always)]
-    pub fn get_mut(&mut self) -> &mut T {
-        self.0.get_mut()
-    }
-
-    #[inline(always)]
-    pub fn lock(&self) -> LockGuard<'_, T> {
-        self.0.lock()
-    }
-
-    #[inline(always)]
-    pub fn lock_mut(&self) -> LockGuard<'_, T> {
-        self.lock()
+    impl<T> std::ops::DerefMut for FromDyn<T> {
+        #[inline(always)]
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
     }
 }
 

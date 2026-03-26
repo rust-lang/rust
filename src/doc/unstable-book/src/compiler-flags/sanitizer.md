@@ -22,6 +22,8 @@ This feature allows for use of one of following sanitizers:
   * [AddressSanitizer](#addresssanitizer) a fast memory error detector.
   * [HWAddressSanitizer](#hwaddresssanitizer) a memory error detector similar to
     AddressSanitizer, but based on partial hardware assistance.
+  * [KernelHWAddressSanitizer](#kernelhwaddresssanitizer) variant of
+    HWAddressSanitizer that is designed for bare metal environments.
   * [LeakSanitizer](#leaksanitizer) a run-time memory leak detector.
   * [MemorySanitizer](#memorysanitizer) a detector of uninitialized reads.
   * [RealtimeSanitizer](#realtimesanitizer) a detector of calls to function with
@@ -621,6 +623,16 @@ Registers where the failure occurred (pc 0xaaaae0ae4a98):
     x28 0000000000000000  x29 0000ffffc30ac5a0  x30 0000aaaae0ae4a98
 SUMMARY: HWAddressSanitizer: tag-mismatch (/.../main+0x54a94)
 ```
+
+# KernelHWAddressSanitizer
+
+KernelHWAddressSanitizer is the kernel version of [HWAddressSanitizer](#hwaddresssanitizer),
+which achieves the same purpose but is designed for bare-metal environments.
+
+HWAddressSanitizer is supported on the `aarch64*-unknown-none` and
+`aarch64*-unknown-none-softfloat` targets.
+
+See the [Clang HWAddressSanitizer documentation][clang-hwasan] for more details.
 
 # KernelControlFlowIntegrity
 

@@ -1,0 +1,21 @@
+error[E0433]: cannot find module or crate `a` in the crate root
+  --> $DIR/pub-in-path-153848.rs:3:8
+   |
+LL | pub(in a) mod aa {
+   |        ^ use of unresolved module or unlinked crate `a`
+   |
+note: found an item that was configured out
+  --> $DIR/pub-in-path-153848.rs:7:16
+   |
+LL |     #[cfg(test)]
+   |           ---- the item is gated here
+LL |     use super::a;
+   |                ^
+help: you might be missing a crate named `a`, add it to your project and import it in your code
+   |
+LL + extern crate a;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

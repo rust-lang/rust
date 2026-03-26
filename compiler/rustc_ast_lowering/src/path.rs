@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use rustc_ast::{self as ast, *};
+use rustc_errors::StashKey;
 use rustc_hir::def::{DefKind, PartialRes, PerNS, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, GenericArg};
@@ -19,7 +20,7 @@ use super::{
     LifetimeRes, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn lower_qpath(
         &mut self,
@@ -298,7 +299,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 sym::return_type_notation,
                             );
                         }
-                        err.emit();
+                        err.stash(path_span, StashKey::ReturnTypeNotation);
                         (
                             GenericArgsCtor {
                                 args: Default::default(),

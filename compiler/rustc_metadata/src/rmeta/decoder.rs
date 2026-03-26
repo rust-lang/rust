@@ -1223,7 +1223,7 @@ impl<'a> CrateMetadataRef<'a> {
             .root
             .stripped_cfg_items
             .decode((self, tcx))
-            .map(|item| item.map_mod_id(|index| DefId { krate: cnum, index }));
+            .map(|item| item.map_scope_id(|index| DefId { krate: cnum, index }));
         tcx.arena.alloc_from_iter(item_names)
     }
 

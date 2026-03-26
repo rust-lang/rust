@@ -4,8 +4,7 @@ error[E0507]: cannot move out of a shared reference
 LL |     for (n, mut m) in &tups {
    |             -----     ^^^^^
    |             |
-   |             data moved here
-   |             move occurs because `m` has type `Foo`, which does not implement the `Copy` trait
+   |             data moved here because `m` has type `Foo`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |

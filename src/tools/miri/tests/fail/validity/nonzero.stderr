@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered 0, but expected something greater or equal to 1
+error: Undefined Behavior: constructing invalid value of type NonZero<i32>: encountered 0, but expected something greater or equal to 1
   --> tests/fail/validity/nonzero.rs:LL:CC
    |
 LL |     let _x = Some(unsafe { NonZero(0) });

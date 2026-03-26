@@ -137,11 +137,7 @@ extern "C" void LLVMRustSetLastError(const char *Err) {
 
 extern "C" void LLVMRustSetNormalizedTarget(LLVMModuleRef M,
                                             const char *Target) {
-#if LLVM_VERSION_GE(21, 0)
   unwrap(M)->setTargetTriple(Triple(Triple::normalize(Target)));
-#else
-  unwrap(M)->setTargetTriple(Triple::normalize(Target));
-#endif
 }
 
 extern "C" void LLVMRustPrintPassTimings(RustStringRef OutBuf) {
@@ -452,11 +448,7 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
   case LLVMRustAttributeKind::DeadOnUnwind:
     return Attribute::DeadOnUnwind;
   case LLVMRustAttributeKind::DeadOnReturn:
-#if LLVM_VERSION_GE(21, 0)
     return Attribute::DeadOnReturn;
-#else
-    report_fatal_error("DeadOnReturn attribute requires LLVM 21 or later");
-#endif
   case LLVMRustAttributeKind::CapturesAddress:
   case LLVMRustAttributeKind::CapturesReadOnly:
   case LLVMRustAttributeKind::CapturesNone:
@@ -514,7 +506,6 @@ extern "C" void LLVMRustEraseInstFromParent(LLVMValueRef Instr) {
 
 extern "C" LLVMAttributeRef
 LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttributeKind RustAttr) {
-#if LLVM_VERSION_GE(21, 0)
   if (RustAttr == LLVMRustAttributeKind::CapturesNone) {
     return wrap(Attribute::getWithCaptureInfo(*unwrap(C), CaptureInfo::none()));
   }
@@ -527,7 +518,6 @@ LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttributeKind RustAttr) {
         *unwrap(C), CaptureInfo(CaptureComponents::Address |
                                 CaptureComponents::ReadProvenance)));
   }
-#endif
 #if LLVM_VERSION_GE(23, 0)
   if (RustAttr == LLVMRustAttributeKind::DeadOnReturn) {
     return wrap(Attribute::getWithDeadOnReturnInfo(*unwrap(C),
@@ -722,6 +712,13 @@ extern "C" void LLVMRustSetAllowReassoc(LLVMValueRef V) {
   }
 }
 
+// Enable the NSZ flag on the given instruction.
+extern "C" void LLVMRustSetNoSignedZeros(LLVMValueRef V) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
+    I->setHasNoSignedZeros(true);
+  }
+}
+
 extern "C" uint64_t LLVMRustGetArrayNumElements(LLVMTypeRef Ty) {
   return unwrap(Ty)->getArrayNumElements();
 }
@@ -782,6 +779,7 @@ ASSERT_DIFLAG_VALUE(FlagThunk, 1 << 25);
 ASSERT_DIFLAG_VALUE(FlagNonTrivial, 1 << 26);
 ASSERT_DIFLAG_VALUE(FlagBigEndian, 1 << 27);
 ASSERT_DIFLAG_VALUE(FlagLittleEndian, 1 << 28);
+static_assert(DINode::DIFlags::FlagAllCallsDescribed == (1 << 29));
 ASSERT_DIFLAG_VALUE(FlagIndirectVirtualBase, (1 << 2) | (1 << 5));
 #undef ASSERT_DIFLAG_VALUE
 
@@ -794,7 +792,7 @@ ASSERT_DIFLAG_VALUE(FlagIndirectVirtualBase, (1 << 2) | (1 << 5));
 // to copying each bit/subvalue.
 static DINode::DIFlags fromRust(LLVMDIFlags Flags) {
   // Check that all set bits are covered by the static assertions above.
-  const unsigned UNKNOWN_BITS = (1 << 31) | (1 << 30) | (1 << 29) | (1 << 21);
+  const unsigned UNKNOWN_BITS = (1 << 31) | (1 << 30) | (1 << 21);
   if (Flags & UNKNOWN_BITS) {
     report_fatal_error("bad LLVMDIFlags");
   }

@@ -108,8 +108,7 @@ error[E0507]: cannot move out of `a` which is behind a shared reference
 LL |     let A(s) = *a;
    |           -    ^^
    |           |
-   |           data moved here
-   |           move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |           data moved here because `s` has type `String`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -123,8 +122,7 @@ error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
 LL |     let C(D(s)) = c;
    |             -     ^ cannot move out of here
    |             |
-   |             data moved here
-   |             move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |             data moved here because `s` has type `String`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |
@@ -170,10 +168,7 @@ LL |     match x {
    |           ^ cannot move out of here
 ...
 LL |         B::U(D(s)) => (),
-   |                -
-   |                |
-   |                data moved here
-   |                move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |                - data moved here because `s` has type `String`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |
@@ -187,10 +182,7 @@ LL |     match x {
    |           ^ cannot move out of here
 ...
 LL |         (D(s), &t) => (),
-   |            -
-   |            |
-   |            data moved here
-   |            move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |            - data moved here because `s` has type `String`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |
@@ -204,10 +196,7 @@ LL |     match x {
    |           ^
 ...
 LL |         (D(s), &t) => (),
-   |                 -
-   |                 |
-   |                 data moved here
-   |                 move occurs because `t` has type `String`, which does not implement the `Copy` trait
+   |                 - data moved here because `t` has type `String`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -243,10 +232,7 @@ LL |     match *x {
    |           ^^
 LL |
 LL |         Ok(s) | Err(s) => (),
-   |            -
-   |            |
-   |            data moved here
-   |            move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |            - data moved here because `s` has type `String`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |

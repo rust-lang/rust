@@ -10,7 +10,7 @@ type BigInt = rug::Integer;
 
 use libm_test::bigint_fuzz_iteration_count;
 use libm_test::generate::random::SEED;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use rug::Assign;
 use rug::integer::Order;

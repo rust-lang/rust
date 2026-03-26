@@ -14,6 +14,7 @@ LL |     [(); & { loop { continue } } ];
    |
    = note:   expected type `usize`
            found reference `&_`
+   = note: array length can only be `usize`
 help: consider removing the borrow
    |
 LL -     [(); & { loop { continue } } ];

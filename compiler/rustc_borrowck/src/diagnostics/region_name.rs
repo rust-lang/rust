@@ -372,6 +372,119 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         }
     }
 
+    /// For closure/coroutine upvar regions, attempts to find a named lifetime
+    /// from the parent function's signature that corresponds to the anonymous
+    /// region `fr`. This handles cases where a parent function's named lifetime
+    /// (like `'a`) appears in a captured variable's type but gets assigned a
+    /// separate `RegionVid` without an `external_name` during region renumbering.
+    ///
+    /// Works by getting the parent function's parameter type (with real named
+    /// lifetimes via `liberate_late_bound_regions`), then structurally walking
+    /// both the parent's parameter type and the closure's upvar type to find
+    /// where `fr` appears and what named lifetime is at the same position.
+    #[instrument(level = "trace", skip(self))]
+    fn give_name_if_we_can_match_upvar_args(
+        &self,
+        fr: RegionVid,
+        upvar_index: usize,
+    ) -> Option<RegionName> {
+        let tcx = self.infcx.tcx;
+        let defining_ty = self.regioncx.universal_regions().defining_ty;
+
+        let closure_def_id = match defining_ty {
+            DefiningTy::Closure(def_id, _)
+            | DefiningTy::Coroutine(def_id, _)
+            | DefiningTy::CoroutineClosure(def_id, _) => def_id,
+            _ => return None,
+        };
+
+        let parent_def_id = tcx.parent(closure_def_id);
+
+        // Only works if the parent is a function with a fn_sig.
+        if !matches!(tcx.def_kind(parent_def_id), DefKind::Fn | DefKind::AssocFn) {
+            return None;
+        }
+
+        // Find which parameter index this upvar corresponds to by matching
+        // the captured variable's HirId against the parent's parameter patterns.
+        // This only matches simple bindings (not destructuring patterns) and
+        // only when the upvar is a direct parameter (not a local variable).
+        let captured_place = self.upvars.get(upvar_index)?;
+        let upvar_hir_id = captured_place.get_root_variable();
+        let parent_local_def_id = parent_def_id.as_local()?;
+        let parent_body = tcx.hir_body_owned_by(parent_local_def_id);
+        let param_index =
+            parent_body.params.iter().position(|param| param.pat.hir_id == upvar_hir_id)?;
+
+        // Get the parent fn's signature with liberated late-bound regions,
+        // so we have `ReLateParam` instead of `ReBound`.
+        let parent_fn_sig = tcx.fn_sig(parent_def_id).instantiate_identity();
+        let liberated_sig = tcx.liberate_late_bound_regions(parent_def_id, parent_fn_sig);
+        let parent_param_ty = *liberated_sig.inputs().get(param_index)?;
+
+        // Get the upvar's NLL type (with ReVar regions from renumbering).
+        let upvar_nll_ty = *defining_ty.upvar_tys().get(upvar_index)?;
+
+        debug!(
+            "give_name_if_we_can_match_upvar_args: parent_param_ty={:?}, upvar_nll_ty={:?}",
+            parent_param_ty, upvar_nll_ty
+        );
+
+        // Collect free regions from both types in structural order.
+        // This only works when both types have the same structure, i.e.
+        // the upvar captures the whole variable, not a partial place like
+        // `x.field`. Bail out if the region counts differ, since that means
+        // the types diverged and positional correspondence is unreliable.
+        let mut parent_regions = vec![];
+        tcx.for_each_free_region(&parent_param_ty, |r| parent_regions.push(r));
+
+        let mut nll_regions = vec![];
+        tcx.for_each_free_region(&upvar_nll_ty, |r| nll_regions.push(r));
+
+        if parent_regions.len() != nll_regions.len() {
+            debug!(
+                "give_name_if_we_can_match_upvar_args: region count mismatch ({} vs {})",
+                parent_regions.len(),
+                nll_regions.len()
+            );
+            return None;
+        }
+
+        for (parent_r, nll_r) in iter::zip(&parent_regions, &nll_regions) {
+            if nll_r.as_var() == fr {
+                match parent_r.kind() {
+                    ty::ReLateParam(late_param) => {
+                        if let Some(name) = late_param.kind.get_name(tcx) {
+                            let span = late_param
+                                .kind
+                                .get_id()
+                                .and_then(|id| tcx.hir_span_if_local(id))
+                                .unwrap_or(DUMMY_SP);
+                            return Some(RegionName {
+                                name,
+                                source: RegionNameSource::NamedLateParamRegion(span),
+                            });
+                        }
+                    }
+                    ty::ReEarlyParam(ebr) => {
+                        if ebr.is_named() {
+                            let def_id =
+                                tcx.generics_of(parent_def_id).region_param(ebr, tcx).def_id;
+                            let span = tcx.hir_span_if_local(def_id).unwrap_or(DUMMY_SP);
+                            return Some(RegionName {
+                                name: ebr.name,
+                                source: RegionNameSource::NamedEarlyParamRegion(span),
+                            });
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        None
+    }
+
     /// Finds an argument that contains `fr` and label it with a fully
     /// elaborated type, returning something like `'1`. Result looks
     /// like:
@@ -644,6 +757,13 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_upvars(&self, fr: RegionVid) -> Option<RegionName> {
         let upvar_index = self.regioncx.get_upvar_index_for_region(self.infcx.tcx, fr)?;
+
+        // Before synthesizing an anonymous name like `'1`, try to find a
+        // named lifetime from the parent function's signature that matches.
+        if let Some(region_name) = self.give_name_if_we_can_match_upvar_args(fr, upvar_index) {
+            return Some(region_name);
+        }
+
         let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
             self.infcx.tcx,
             self.upvars,

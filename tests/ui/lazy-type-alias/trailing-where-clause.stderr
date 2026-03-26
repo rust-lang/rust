@@ -4,13 +4,13 @@ error[E0277]: the trait bound `String: From<()>` is not satisfied
 LL |     let _: Alias<()>;
    |                  ^^ the trait `From<()>` is not implemented for `String`
    |
-   = help: the following other types implement trait `From<T>`:
-             `String` implements `From<&String>`
-             `String` implements `From<&mut str>`
-             `String` implements `From<&str>`
-             `String` implements `From<Box<str>>`
-             `String` implements `From<Cow<'_, str>>`
-             `String` implements `From<char>`
+   = help: `String` implements trait `From<T>`:
+             From<&String>
+             From<&mut str>
+             From<&str>
+             From<Box<str>>
+             From<Cow<'_, str>>
+             From<char>
 note: required by a bound in `Alias`
   --> $DIR/trailing-where-clause.rs:8:13
    |

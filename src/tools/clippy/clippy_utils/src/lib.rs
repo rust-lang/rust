@@ -1710,7 +1710,7 @@ pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
 }
 
 pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    find_attr!(cx.tcx.hir_attrs(hir_id), Repr { .. })
+    find_attr!(cx.tcx, hir_id, Repr { .. })
 }
 
 pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
@@ -1838,11 +1838,36 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// * `|[x, y]| [x, y]`
 /// * `|Foo(bar, baz)| Foo(bar, baz)`
 /// * `|Foo { bar, baz }| Foo { bar, baz }`
+/// * `|x| { let y = x; ...; let z = y; z }`
+/// * `|x| { let y = x; ...; let z = y; return z }`
 ///
 /// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
-fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
+fn is_body_identity_function<'hir>(cx: &LateContext<'_>, func: &Body<'hir>) -> bool {
     let [param] = func.params else {
         return false;
+    };
+
+    let mut param_pat = param.pat;
+
+    // Given a sequence of `Stmt`s of the form `let p = e` where `e` is an expr identical to the
+    // current `param_pat`, advance the current `param_pat` to `p`.
+    //
+    // Note: This is similar to `clippy_utils::get_last_chain_binding_hir_id`, but it works
+    // directly over a `Pattern` rather than a `HirId`. And it checks for compatibility via
+    // `is_expr_identity_of_pat` rather than `HirId` equality
+    let mut advance_param_pat_over_stmts = |stmts: &[Stmt<'hir>]| {
+        for stmt in stmts {
+            if let StmtKind::Let(local) = stmt.kind
+                && let Some(init) = local.init
+                && is_expr_identity_of_pat(cx, param_pat, init, true)
+            {
+                param_pat = local.pat;
+            } else {
+                return false;
+            }
+        }
+
+        true
     };
 
     let mut expr = func.value;
@@ -1873,7 +1898,30 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
                     return false;
                 }
             },
-            _ => return is_expr_identity_of_pat(cx, param.pat, expr, true),
+            ExprKind::Block(
+                &Block {
+                    stmts, expr: Some(e), ..
+                },
+                _,
+            ) => {
+                if !advance_param_pat_over_stmts(stmts) {
+                    return false;
+                }
+
+                expr = e;
+            },
+            ExprKind::Block(&Block { stmts, expr: None, .. }, _) => {
+                if let Some((last_stmt, stmts)) = stmts.split_last()
+                    && advance_param_pat_over_stmts(stmts)
+                    && let StmtKind::Semi(e) | StmtKind::Expr(e) = last_stmt.kind
+                    && let ExprKind::Ret(Some(ret_val)) = e.kind
+                {
+                    expr = ret_val;
+                } else {
+                    return false;
+                }
+            },
+            _ => return is_expr_identity_of_pat(cx, param_pat, expr, true),
         }
     }
 }
@@ -2362,7 +2410,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&
                     && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
                     // We could also check for the type name `test::TestDescAndFn`
                     && let Res::Def(DefKind::Struct, _) = path.res
-                    && find_attr!(tcx.hir_attrs(item.hir_id()), RustcTestMarker(..))
+                    && find_attr!(tcx, item.hir_id(), RustcTestMarker(..))
                 {
                     names.push(ident.name);
                 }
@@ -2420,7 +2468,7 @@ pub fn is_test_function(tcx: TyCtxt<'_>, fn_def_id: LocalDefId) -> bool {
 /// This only checks directly applied attributes, to see if a node is inside a `#[cfg(test)]` parent
 /// use [`is_in_cfg_test`]
 pub fn is_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    if let Some(cfgs) = find_attr!(tcx.hir_attrs(id), CfgTrace(cfgs) => cfgs)
+    if let Some(cfgs) = find_attr!(tcx, id, CfgTrace(cfgs) => cfgs)
         && cfgs
             .iter()
             .any(|(cfg, _)| matches!(cfg, CfgEntry::NameValue { name: sym::test, .. }))
@@ -2762,16 +2810,15 @@ pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str, Inn
 
 /// Checks whether a given span has any comment token
 /// This checks for all types of comment: line "//", block "/**", doc "///" "//!"
-pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
-    let Ok(snippet) = sm.span_to_snippet(span) else {
-        return false;
-    };
-    return tokenize(&snippet, FrontmatterAllowed::No).any(|token| {
-        matches!(
-            token.kind,
-            TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }
-        )
-    });
+pub fn span_contains_comment(cx: &impl source::HasSession, span: Span) -> bool {
+    span.check_source_text(cx, |snippet| {
+        tokenize(snippet, FrontmatterAllowed::No).any(|token| {
+            matches!(
+                token.kind,
+                TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }
+            )
+        })
+    })
 }
 
 /// Checks whether a given span has any significant token. A significant token is a non-whitespace
@@ -2779,30 +2826,32 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
 /// This is useful to determine if there are any actual code tokens in the span that are omitted in
 /// the late pass, such as platform-specific code.
 pub fn span_contains_non_whitespace(cx: &impl source::HasSession, span: Span, skip_comments: bool) -> bool {
-    matches!(span.get_source_text(cx), Some(snippet) if tokenize_with_text(&snippet).any(|(token, _, _)|
-        match token {
+    span.check_source_text(cx, |snippet| {
+        tokenize_with_text(snippet).any(|(token, _, _)| match token {
             TokenKind::Whitespace => false,
             TokenKind::BlockComment { .. } | TokenKind::LineComment { .. } => !skip_comments,
             _ => true,
-        }
-    ))
+        })
+    })
 }
 /// Returns all the comments a given span contains
 ///
 /// Comments are returned wrapped with their relevant delimiters
-pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
-    span_extract_comments(sm, span).join("\n")
+pub fn span_extract_comment(cx: &impl source::HasSession, span: Span) -> String {
+    span_extract_comments(cx, span).join("\n")
 }
 
 /// Returns all the comments a given span contains.
 ///
 /// Comments are returned wrapped with their relevant delimiters.
-pub fn span_extract_comments(sm: &SourceMap, span: Span) -> Vec<String> {
-    let snippet = sm.span_to_snippet(span).unwrap_or_default();
-    tokenize_with_text(&snippet)
-        .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
-        .map(|(_, s, _)| s.to_string())
-        .collect::<Vec<_>>()
+pub fn span_extract_comments(cx: &impl source::HasSession, span: Span) -> Vec<String> {
+    span.with_source_text(cx, |snippet| {
+        tokenize_with_text(snippet)
+            .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
+            .map(|(_, s, _)| s.to_string())
+            .collect::<Vec<_>>()
+    })
+    .unwrap_or_default()
 }
 
 pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {

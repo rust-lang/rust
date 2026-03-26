@@ -17,6 +17,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `addsubiw`
 `adx`
 `aes`
+`allows-misaligned-mem-access`
 `altivec`
 `alu32`
 `amx-avx512`

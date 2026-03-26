@@ -1,5 +1,5 @@
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/references-parent-generics.rs:7:25
+  --> $DIR/references-parent-generics.rs:6:25
    |
 LL |     type Assoc<const N: Self>;
    |                         ^^^^ the type must not depend on the parameter `Self`

@@ -265,7 +265,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
             rustc_abi::BackendRepr::SimdVector { element, count } => {
                 ValueAbi::Vector { element: element.stable(tables, cx), count }
             }
-            rustc_abi::BackendRepr::ScalableVector { element, count } => {
+            rustc_abi::BackendRepr::SimdScalableVector { element, count } => {
                 ValueAbi::ScalableVector { element: element.stable(tables, cx), count }
             }
             rustc_abi::BackendRepr::Memory { sized } => ValueAbi::Aggregate { sized },

@@ -6,7 +6,6 @@
 // This goal is also possible w/ a GAT, but lazy_type_alias
 // makes the behavior a bit more readable.
 #![feature(lazy_type_alias)]
-//~^ WARN the feature `lazy_type_alias` is incomplete
 
 struct Wr<T>(T);
 trait Foo {}

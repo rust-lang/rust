@@ -1,12 +1,11 @@
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, ElidedLifetimeInPathSubdiag,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ElidedLifetimeInPathSubdiag,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{Ident, Span, Spanned, Symbol};
 
 use crate::Res;
 use crate::late::PatternSource;
@@ -562,6 +561,10 @@ pub(crate) struct ExpectedModuleFound {
 pub(crate) struct Indeterminate(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
+#[diag("trait implementation can only be restricted to ancestor modules")]
+pub(crate) struct RestrictionAncestorOnly(#[primary_span] pub(crate) Span);
+
+#[derive(Diagnostic)]
 #[diag("cannot use a tool module through an import")]
 pub(crate) struct ToolModuleImported {
     #[primary_span]
@@ -882,6 +885,21 @@ pub(crate) struct UnexpectedResChangeTyToConstParamSugg {
     pub span: Span,
     #[applicability]
     pub applicability: Applicability,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "you might have meant to introduce a const parameter `{$item_name}` on the {$item_location}",
+    code = "{snippet}",
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub(crate) struct UnexpectedMissingConstParameter {
+    #[primary_span]
+    pub span: Span,
+    pub snippet: String,
+    pub item_name: String,
+    pub item_location: String,
 }
 
 #[derive(Subdiagnostic)]
@@ -1454,17 +1472,6 @@ pub(crate) struct MacroRuleNeverUsed {
     pub name: Symbol,
 }
 
-pub(crate) struct UnstableFeature {
-    pub msg: DiagMessage,
-}
-
-impl<'a> Diagnostic<'a, ()> for UnstableFeature {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        let Self { msg } = self;
-        Diag::new(dcx, level, msg)
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag("`extern crate` is not idiomatic in the new edition")]
 pub(crate) struct ExternCrateNotIdiomatic {
@@ -1575,4 +1582,109 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Ambiguity {
         }
         diag
     }
+}
+
+#[derive(Diagnostic)]
+#[diag("lifetime parameter `{$ident}` never used")]
+pub(crate) struct UnusedLifetime {
+    #[suggestion("elide the unused lifetime", code = "", applicability = "machine-applicable")]
+    pub deletion_span: Option<Span>,
+
+    pub ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag("ambiguous glob re-exports")]
+pub(crate) struct AmbiguousGlobReexports {
+    #[label("the name `{$name}` in the {$namespace} namespace is first re-exported here")]
+    pub first_reexport: Span,
+    #[label("but the name `{$name}` in the {$namespace} namespace is also re-exported here")]
+    pub duplicate_reexport: Span,
+
+    pub name: String,
+    pub namespace: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("private item shadows public glob re-export")]
+pub(crate) struct HiddenGlobReexports {
+    #[note(
+        "the name `{$name}` in the {$namespace} namespace is supposed to be publicly re-exported here"
+    )]
+    pub glob_reexport: Span,
+    #[note("but the private item here shadows it")]
+    pub private_item: Span,
+
+    pub name: String,
+    pub namespace: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("the item `{$ident}` is imported redundantly")]
+pub(crate) struct RedundantImport {
+    #[subdiagnostic]
+    pub subs: Vec<RedundantImportSub>,
+    pub ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum RedundantImportSub {
+    #[label("the item `{$ident}` is already imported here")]
+    ImportedHere {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label("the item `{$ident}` is already defined here")]
+    DefinedHere {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label("the item `{$ident}` is already imported by the extern prelude")]
+    ImportedPrelude {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label("the item `{$ident}` is already defined by the extern prelude")]
+    DefinedPrelude {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag("unnecessary qualification")]
+pub(crate) struct UnusedQualifications {
+    #[suggestion(
+        "remove the unnecessary path segments",
+        style = "verbose",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub removal_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "{$elided ->
+        [true] `&` without an explicit lifetime name cannot be used here
+        *[false] `'_` cannot be used here
+    }"
+)]
+pub(crate) struct AssociatedConstElidedLifetime {
+    #[suggestion(
+        "use the `'static` lifetime",
+        style = "verbose",
+        code = "{code}",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+
+    pub code: &'static str,
+    pub elided: bool,
+    #[note("cannot automatically infer `'static` because of other lifetimes in scope")]
+    pub lifetimes_in_scope: MultiSpan,
 }

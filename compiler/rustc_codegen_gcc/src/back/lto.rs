@@ -10,7 +10,7 @@
 // Maybe that's because the combined object files contain the IR (true) and the final link
 // does not remove it?
 //
-// TODO(antoyo): for performance, check which optimizations the C++ frontend enables.
+// FIXME(antoyo): for performance, check which optimizations the C++ frontend enables.
 // cSpell:disable
 // Fix these warnings:
 // /usr/bin/ld: warning: type of symbol `_RNvNvNvNtCs5JWOrf9uCus_5rayon11thread_pool19WORKER_THREAD_STATE7___getit5___KEY' changed from 1 to 6 in /tmp/ccKeUSiR.ltrans0.ltrans.o
@@ -39,7 +39,7 @@ use crate::errors::LtoBitcodeFromRlib;
 use crate::{GccCodegenBackend, GccContext, LtoMode, to_gcc_opt_level};
 
 struct LtoData {
-    // TODO(antoyo): use symbols_below_threshold.
+    // FIXME(antoyo): use symbols_below_threshold.
     //symbols_below_threshold: Vec<String>,
     upstream_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
@@ -173,7 +173,7 @@ fn fat_lto(
         .filter(|&(_, module)| module.kind == ModuleKind::Regular)
         .map(|(i, _module)| {
             //let cost = unsafe { llvm::LLVMRustModuleCost(module.module_llvm.llmod()) };
-            // TODO(antoyo): compute the cost of a module if GCC allows this.
+            // FIXME(antoyo): compute the cost of a module if GCC allows this.
             (0, i)
         })
         .max();

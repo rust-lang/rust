@@ -133,7 +133,7 @@ Runtime panics and error handling generate backtraces to assist in debugging and
 
 This directory was originally meant to contain tests related to time complexity and benchmarking.
 
-However, only a single test was ever added to this category: https://github.com/rust-lang/rust/pull/32062
+However, only a single test was ever added to this category: <https://github.com/rust-lang/rust/pull/32062>
 
 **FIXME**: It is also unclear what would happen were this test to "fail" - would it cause the test suite to remain stuck on this test for a much greater duration than normal?
 
@@ -344,10 +344,6 @@ Tests for `#![feature(coverage_attribute)]`. See [Tracking issue for function at
 
 Tests for crate resolution and loading behavior, including `extern crate` declarations, `--extern` flags, or the `use` keyword.
 
-## `tests/ui/cross/`: Various tests related to the concept of "cross"
-
-**FIXME**: The unifying topic of these tests appears to be that their filenames begin with the word "cross". The similarities end there - one test is about "cross-borrowing" a `Box<T>` into `&T`, while another is about a global trait used "across" files. Some of this terminology is really outdated and does not match the current terminology. Additionally, "cross" is also way too generic, it's easy to confuse with cross-compile.
-
 ## `tests/ui/cross-crate/`: Cross-Crate Interaction
 
 Tests for behavior spanning multiple crates, including visibility rules, trait implementations, and type resolution across crate boundaries.
@@ -498,10 +494,6 @@ See:
 
 Previously known as "object safety".
 
-## `tests/ui/dyn-drop/`: `dyn Drop`
-
-**FIXME**: Contains a single test, used only to check the `dyn_drop` lint (which is normally `warn` level).
-
 ## `tests/ui/dyn-keyword/`: `dyn` and Dynamic Dispatch
 
 The `dyn` keyword is used to highlight that calls to methods on the associated Trait are dynamically dispatched. To use the trait this way, it must be dyn-compatible - tests about dyn-compatibility belong in `tests/ui/dyn-compatibility/`, while more general tests on dynamic dispatch belong here.
@@ -517,10 +509,6 @@ These tests run in specific Rust editions, such as Rust 2015 or Rust 2018, and c
 ## `tests/ui/eii`: Externally Implementable Items
 
 Exercises `eii` keyword.
-
-## `tests/ui/empty/`: Various tests related to the concept of "empty"
-
-**FIXME**: These tests need better homes, this is not very informative.
 
 ## `tests/ui/entry-point/`: `main` function
 
@@ -706,9 +694,7 @@ This test category revolves around trait objects with `Sized` having illegal ope
 Tests on lifetime elision in impl function signatures. See [Lifetime elision | Nomicon](https://doc.rust-lang.org/nomicon/lifetime-elision.html).
 
 ## `tests/ui/impl-restriction/`
-Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077
-](https://github.com/rust-lang/rust/issues/105077).
-
+Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077](https://github.com/rust-lang/rust/issues/105077).
 
 ## `tests/ui/impl-trait/`
 
@@ -768,12 +754,6 @@ Tests for rustc-internal lints.
 
 Tests for the `{std,core}::intrinsics`, internal implementation detail.
 
-## `tests/ui/invalid/`
-
-Various tests related to rejecting invalid inputs.
-
-**FIXME**: This is rather uninformative, possibly rehome into more meaningful directories.
-
 ## `tests/ui/io-checks/`: Input Output
 
 Tests for I/O related behaviour, covering stdout/stderr handling and error propagation.
@@ -796,10 +776,6 @@ These tests revolve around the `--json` compiler flag. See [JSON Output](https:/
 
 Tests exercising keywords, such as attempting to use them as identifiers when not contextual keywords.
 
-## `tests/ui/kindck/`
-
-**FIXME**: `kindck` is no longer a thing, these tests probably need to be audited and rehomed.
-
 ## `tests/ui/label/`
 
 Exercises block and loop `'label`s.
@@ -818,8 +794,7 @@ See [Type Layout | Reference](https://doc.rust-lang.org/reference/type-layout.ht
 
 ## `tests/ui/lazy-type-alias/`
 
-Tests for `#![feature(lazy_type_alias)]`. See [Tracking issue for lazy type aliases #112792
-](https://github.com/rust-lang/rust/issues/112792).
+Tests for `#![feature(lazy_type_alias)]`. See [Tracking issue for lazy type aliases #112792](https://github.com/rust-lang/rust/issues/112792).
 
 ## `tests/ui/lazy-type-alias-impl-trait/`
 
@@ -874,7 +849,7 @@ See:
 
 Tests exercising analysis for unused variables, unreachable statements, functions which are supposed to return a value but do not, as well as values moved elsewhere before they could be used by a function.
 
-**FIXME**: This seems unrelated to "liveness" as defined in the rustc compiler guide. Is this misleadingly named? https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/lifetime_parameters.html#liveness-and-universal-regions
+**FIXME**: This seems unrelated to "liveness" as defined in the rustc compiler guide. Is this misleadingly named? <https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/lifetime_parameters.html#liveness-and-universal-regions>
 
 ## `tests/ui/loop-match`
 
@@ -939,12 +914,6 @@ Exercises on mismatched type diagnostics.
 Something is missing which could be added to fix (e.g. suggestions).
 
 **FIXME**: this is way too vague, tests should be rehomed.
-
-## `tests/ui/missing-trait-bounds/`
-
-Tests for checking missing trait bounds, and their diagnostics.
-
-**FIXME**: Maybe a subdirectory of `ui/trait-bounds` would be more appropriate.
 
 ## `tests/ui/modules/`
 
@@ -1014,12 +983,6 @@ Tests on lifetimes on objects, such as a lifetime bound not being able to be ded
 
 **FIXME**: Just a more specific subset of `ui/lifetimes`.
 
-## `tests/ui/obsolete-in-place/`
-
-Contains a single test. Check that we reject the ancient Rust syntax `x <- y` and `in(BINDING) {}` construct.
-
-**FIXME**: Definitely should be rehomed, maybe to `tests/ui/deprecation/`.
-
 ## `tests/ui/offload`
 
 Exercises the offload feature.
@@ -1036,10 +999,6 @@ Exercises the [`std::mem::offset_of` macro](https://doc.rust-lang.org/beta/std/m
 ## `tests/ui/on-unimplemented/`
 
 Exercises the `#[rustc_on_unimplemented]`.
-
-## `tests/ui/operator-recovery/`
-
-**FIXME**: Probably move under `tests/ui/binop/` or `tests/ui/parser/`.
 
 ## `tests/ui/or-patterns/`
 
@@ -1172,12 +1131,6 @@ See [Tracking Issue for Reborrow trait lang experiment #145612](https://github.c
 Broad category of tests exercising recursions (compile test and run time), in functions, macros, `type` definitions, and more.
 
 Also exercises the `#![recursion_limit = ""]` attribute.
-
-## `tests/ui/recursion_limit/`: `#![recursion_limit = ""]`
-
-Sets a recursion limit on recursive code.
-
-**FIXME**: Should be merged with `tests/ui/recursion/`.
 
 ## `tests/ui/reflection/`
 
@@ -1600,10 +1553,6 @@ See [Variance | Reference](https://doc.rust-lang.org/reference/subtyping.html#va
 Tests on `enum` variants.
 
 **FIXME**: Should be rehomed with `tests/ui/enum/`.
-
-## `tests/ui/version/`
-
-**FIXME**: Contains a single test described as "Check that rustc accepts various version info flags.", should be rehomed.
 
 ## `tests/ui/wasm/`
 

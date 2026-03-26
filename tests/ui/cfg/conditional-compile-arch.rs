@@ -1,4 +1,6 @@
 //@ run-pass
+//@ reference: cfg.target_arch.def
+//@ reference: cfg.target_arch.values
 
 #[cfg(target_arch = "x86")]
 pub fn main() { }

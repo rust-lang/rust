@@ -1,7 +1,6 @@
 // regression test for #127351
 
 #![feature(lazy_type_alias)]
-//~^ WARN the feature `lazy_type_alias` is incomplete
 
 type ExplicitTypeOutlives<T> = T;
 

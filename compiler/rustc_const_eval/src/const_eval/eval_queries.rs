@@ -88,7 +88,7 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
         &ret.clone().into(),
         ReturnContinuation::Stop { cleanup: false },
     )?;
-    ecx.storage_live_for_always_live_locals()?;
+    ecx.push_stack_frame_done()?;
 
     // The main interpreter loop.
     while ecx.step()? {
@@ -425,7 +425,7 @@ fn const_validate_mplace<'tcx>(
     cid: GlobalId<'tcx>,
 ) -> Result<(), ErrorHandled> {
     let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
-    let mut ref_tracking = RefTracking::new(mplace.clone());
+    let mut ref_tracking = RefTracking::new(mplace.clone(), mplace.layout.ty);
     let mut inner = false;
     while let Some((mplace, path)) = ref_tracking.next() {
         let mode = match ecx.tcx.static_mutability(cid.instance.def_id()) {

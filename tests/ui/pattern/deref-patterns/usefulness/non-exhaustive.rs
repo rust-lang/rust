@@ -1,6 +1,5 @@
 //! Test non-exhaustive matches involving deref patterns.
 #![feature(deref_patterns)]
-#![expect(incomplete_features)]
 #![deny(unreachable_patterns)]
 
 fn main() {

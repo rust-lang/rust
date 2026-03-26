@@ -5,8 +5,7 @@
     os_str_slice,
     os_string_truncate,
     pattern,
-    rustc_private,
-    slice_split_once
+    rustc_private
 )]
 #![warn(
     trivial_casts,

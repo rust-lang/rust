@@ -1,0 +1,27 @@
+error[E0425]: cannot find type `X` in this scope
+  --> $DIR/synth-params-ice-143498.rs:20:6
+   |
+LL | impl X {
+   |      ^ not found in this scope
+
+error[E0575]: expected method or associated constant, found associated type `Iterator::Item`
+  --> $DIR/synth-params-ice-143498.rs:22:10
+   |
+LL |     reuse< std::fmt::Debug as Iterator >::*;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a method or associated constant
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/synth-params-ice-143498.rs:22:12
+   |
+LL |     reuse< std::fmt::Debug as Iterator >::*;
+   |            ^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     reuse< dyn std::fmt::Debug as Iterator >::*;
+   |            +++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0575, E0782.
+For more information about an error, try `rustc --explain E0425`.

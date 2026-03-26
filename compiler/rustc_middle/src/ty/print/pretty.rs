@@ -23,7 +23,7 @@ use smallvec::SmallVec;
 // `pretty` is a separate module only for organization.
 use super::*;
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
-use crate::query::{IntoQueryParam, Providers};
+use crate::query::{IntoQueryKey, Providers};
 use crate::ty::{
     ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitPredicate,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -2180,17 +2180,18 @@ fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
 impl<'t> TyCtxt<'t> {
     /// Returns a string identifying this `DefId`. This string is
     /// suitable for user output.
-    pub fn def_path_str(self, def_id: impl IntoQueryParam<DefId>) -> String {
+    pub fn def_path_str(self, def_id: impl IntoQueryKey<DefId>) -> String {
+        let def_id = def_id.into_query_key();
         self.def_path_str_with_args(def_id, &[])
     }
 
     /// For this one we determine the appropriate namespace for the `def_id`.
     pub fn def_path_str_with_args(
         self,
-        def_id: impl IntoQueryParam<DefId>,
+        def_id: impl IntoQueryKey<DefId>,
         args: &'t [GenericArg<'t>],
     ) -> String {
-        let def_id = def_id.into_query_param();
+        let def_id = def_id.into_query_key();
         let ns = guess_def_namespace(self, def_id);
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
 
@@ -2200,10 +2201,10 @@ impl<'t> TyCtxt<'t> {
     /// For this one we always use value namespace.
     pub fn value_path_str_with_args(
         self,
-        def_id: impl IntoQueryParam<DefId>,
+        def_id: impl IntoQueryKey<DefId>,
         args: &'t [GenericArg<'t>],
     ) -> String {
-        let def_id = def_id.into_query_param();
+        let def_id = def_id.into_query_key();
         let ns = Namespace::ValueNS;
         debug!("value_path_str: def_id={:?}, ns={:?}", def_id, ns);
 

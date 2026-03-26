@@ -49,6 +49,11 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let Some((pat, arg)) = extract_for_loop(expr) else { return };
 
+        // Do not put suggestions for external macros.
+        if pat.span.from_expansion() {
+            return;
+        }
+
         let arg_span = arg.span.source_callsite();
 
         let ty = cx.typeck_results().expr_ty(arg);
@@ -77,6 +82,8 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
         };
 
         let sub = if let Some(recv) = extract_iterator_next_call(cx, arg)
+            && recv.span.can_be_used_for_suggestions()
+            && recv.span.between(arg_span.shrink_to_hi()).can_be_used_for_suggestions()
             && let Ok(recv_snip) = cx.sess().source_map().span_to_snippet(recv.span)
         {
             ForLoopsOverFalliblesLoopSub::RemoveNext {

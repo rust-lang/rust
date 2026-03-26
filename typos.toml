@@ -20,6 +20,7 @@ extend-exclude = [
 # right now. Entries should look like `mipsel = "mipsel"`.
 #
 # tidy-alphabetical-start
+anser = "anser" # an ANSI parsing package used by rust-analyzer
 arange = "arange" # short for A-range
 childs = "childs"
 clonable = "clonable"
@@ -29,10 +30,12 @@ makro = "makro" # deliberate misspelling to avoid `macro` keyword
 misformed = "misformed"
 moreso = "moreso"
 numer = "numer" # short for numerator, not a typo for "number"
+old-skool = "old-skool" # variant spelling of "old-school"
 optin = "optin" # short for opt-in
 publically = "publically"
 rplace = "rplace" # short for R-place
 splitted = "splitted"
+sythetic = "sythetic" # typo in vendored LLVM sources
 taits = "taits" # lowercase for TAITs (type alias impl trait)
 targetting = "targetting"
 unparseable = "unparseable"
@@ -45,6 +48,7 @@ unstalled = "unstalled" # short for un-stalled
 # the non-empty form can be automatically fixed by `--bless`.
 #
 # tidy-alphabetical-start
+atomicaly = "atomically"
 definitinon = "definition"
 dependy = ""
 similarlty = "similarity"

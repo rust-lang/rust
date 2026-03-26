@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/nested.rs:10:63
    |
 LL | const BAD_NESTING: pattern_type!(pattern_type!(u32 is 1..) is 0..) = todo!();
-   |                                                               ^ expected `(u32) is 1..`, found integer
+   |                                  -------------------------    ^ expected `(u32) is 1..`, found integer
+   |                                  |
+   |                                  the pattern must match the type
    |
    = note: expected pattern type `(u32) is 1..`
                       found type `{integer}`

@@ -194,7 +194,7 @@ def minor_version(version):
 INSTALL_TOOLCHAIN = ["rustup", "toolchain", "install", "--profile", "minimal"]
 subprocess.run(INSTALL_TOOLCHAIN + ["nightly"])
 
-LOWER_BOUND = 87
+LOWER_BOUND = 91
 NIGHTLY_VERSION = minor_version(subprocess.run(
     ["rustc", "+nightly", "--version"],
     capture_output=True,
@@ -256,6 +256,6 @@ The following table shows known good combinations of toolchain versions.
 | 1.78 - 1.81  |      18       |
 | 1.82 - 1.86  |      19       |
 | 1.87 - 1.90  |      20       |
-| 1.91 - 1.93  |      21       |
+| 1.91 - 1.94  |      21       |
 
 Note that the compatibility policy for this feature might change in the future.

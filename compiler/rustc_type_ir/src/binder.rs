@@ -26,11 +26,7 @@ use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex};
 /// for more details.
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
-// FIXME(derive-where#136): Need to use separate `derive_where` for
-// `Copy` and `Ord` to prevent the emitted `Clone` and `PartialOrd`
-// impls from incorrectly relying on `T: Copy` and `T: Ord`.
-#[derive_where(Copy; I: Interner, T: Copy)]
-#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, T)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner, T)]
 #[derive(GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct Binder<I: Interner, T> {
@@ -365,12 +361,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 /// `instantiate`.
 ///
 /// See <https://rustc-dev-guide.rust-lang.org/ty_module/early_binder.html> for more details.
-// FIXME(derive-where#136): Need to use separate `derive_where` for
-// `Copy` and `Ord` to prevent the emitted `Clone` and `PartialOrd`
-// impls from incorrectly relying on `T: Copy` and `T: Ord`.
-#[derive_where(Ord; I: Interner, T: Ord)]
-#[derive_where(Copy; I: Interner, T: Copy)]
-#[derive_where(Clone, PartialOrd, PartialEq, Hash, Debug; I: Interner, T)]
+#[derive_where(Clone, Copy, PartialOrd, Ord, PartialEq, Hash, Debug; I: Interner, T)]
 #[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
@@ -964,12 +955,7 @@ pub enum BoundVarIndexKind {
 /// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
 /// regions/types/consts within the same universe simply have an unknown relationship to one
-// FIXME(derive-where#136): Need to use separate `derive_where` for
-// `Copy` and `Ord` to prevent the emitted `Clone` and `PartialOrd`
-// impls from incorrectly relying on `T: Copy` and `T: Ord`.
-#[derive_where(Ord; I: Interner, T: Ord)]
-#[derive_where(Copy; I: Interner, T: Copy)]
-#[derive_where(Clone, PartialOrd, PartialEq, Eq, Hash; I: Interner, T)]
+#[derive_where(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash; I: Interner, T)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",

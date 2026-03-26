@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/const-result-no-expect-suggestion.rs:5:19
    |
 LL | const TEST: u32 = f(2);
-   |                   ^^^^ expected `u32`, found `Result<u32, ()>`
+   |             ---   ^^^^ expected `u32`, found `Result<u32, ()>`
+   |             |
+   |             expected because of the type of the constant
    |
    = note: expected type `u32`
               found enum `Result<u32, ()>`

@@ -1,11 +1,15 @@
 warning: the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/incomplete-feature.rs:7:12
+  --> $DIR/incomplete-feature.rs:8:12
    |
 LL | #![feature(contracts)]
    |            ^^^^^^^^^
    |
    = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
-   = note: `#[warn(incomplete_features)]` on by default
+note: the lint level is defined here
+  --> $DIR/incomplete-feature.rs:7:9
+   |
+LL | #![warn(incomplete_features)]
+   |         ^^^^^^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 
