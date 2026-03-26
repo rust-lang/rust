@@ -34,41 +34,13 @@ pub enum LoadResult<T> {
     LoadDepGraph(PathBuf, std::io::Error),
 }
 
-impl<T: Default> LoadResult<T> {
-    /// Accesses the data returned in [`LoadResult::Ok`].
-    pub fn open(self, sess: &Session) -> T {
-        // Emit a fatal error if `-Zassert-incr-state` is present and unsatisfied.
-        maybe_assert_incr_state(sess, &self);
-
-        match self {
-            LoadResult::LoadDepGraph(path, err) => {
-                sess.dcx().emit_warn(errors::LoadDepGraph { path, err });
-                Default::default()
-            }
-            LoadResult::DataOutOfDate => {
-                if let Err(err) = delete_all_session_dir_contents(sess) {
-                    sess.dcx()
-                        .emit_err(errors::DeleteIncompatible { path: dep_graph_path(sess), err });
-                }
-                Default::default()
-            }
-            LoadResult::Ok { data } => data,
-        }
-    }
-}
-
 fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
     debug!("delete_dirty_work_product({:?})", swp);
     work_product::delete_workproduct_files(sess, &swp.work_product);
 }
 
 fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkProductMap)> {
-    let prof = sess.prof.clone();
-
-    if sess.opts.incremental.is_none() {
-        // No incremental compilation.
-        return LoadResult::Ok { data: Default::default() };
-    }
+    assert!(sess.opts.incremental.is_some());
 
     let _timer = sess.prof.generic_activity("incr_comp_prepare_load_dep_graph");
 
@@ -116,7 +88,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
         }
     }
 
-    let _prof_timer = prof.generic_activity("incr_comp_load_dep_graph");
+    let _prof_timer = sess.prof.generic_activity("incr_comp_load_dep_graph");
 
     match file_format::open_incremental_file(sess, &path) {
         Err(OpenFileError::NotFoundOrHeaderMismatch) => LoadResult::DataOutOfDate,
@@ -202,68 +174,64 @@ fn maybe_assert_incr_state(sess: &Session, load_result: &LoadResult<impl Sized>)
     }
 }
 
-/// Setups the dependency graph by loading an existing graph from disk and set up streaming of a
-/// new graph to an incremental session directory.
+/// Loads the previous session's dependency graph from disk if possible, and
+/// sets up streaming output for the current session's dep graph data into an
+/// incremental session directory.
+///
+/// In non-incremental mode, a dummy dep graph is returned immediately.
 pub fn setup_dep_graph(
     sess: &Session,
     crate_name: Symbol,
     stable_crate_id: StableCrateId,
 ) -> DepGraph {
+    if sess.opts.incremental.is_none() {
+        return DepGraph::new_disabled();
+    }
+
     // `load_dep_graph` can only be called after `prepare_session_directory`.
     prepare_session_directory(sess, crate_name, stable_crate_id);
+    // Try to load the previous session's dep graph and work products.
+    let load_result = load_dep_graph(sess);
 
-    let res = sess.opts.build_dep_graph().then(|| load_dep_graph(sess));
+    sess.time("incr_comp_garbage_collect_session_directories", || {
+        if let Err(e) = garbage_collect_session_directories(sess) {
+            warn!(
+                "Error while trying to garbage collect incremental compilation \
+                cache directory: {e}",
+            );
+        }
+    });
 
-    if sess.opts.incremental.is_some() {
-        sess.time("incr_comp_garbage_collect_session_directories", || {
-            if let Err(e) = garbage_collect_session_directories(sess) {
-                warn!(
-                    "Error while trying to garbage collect incremental \
-                     compilation cache directory: {}",
-                    e
-                );
+    // Emit a fatal error if `-Zassert-incr-state` is present and unsatisfied.
+    maybe_assert_incr_state(sess, &load_result);
+
+    let (prev_graph, prev_work_products) = match load_result {
+        LoadResult::LoadDepGraph(path, err) => {
+            sess.dcx().emit_warn(errors::LoadDepGraph { path, err });
+            Default::default()
+        }
+        LoadResult::DataOutOfDate => {
+            if let Err(err) = delete_all_session_dir_contents(sess) {
+                sess.dcx().emit_err(errors::DeleteIncompatible { path: dep_graph_path(sess), err });
             }
-        });
-    }
-
-    res.and_then(|result| {
-        let (prev_graph, prev_work_products) = result.open(sess);
-        build_dep_graph(sess, prev_graph, prev_work_products)
-    })
-    .unwrap_or_else(DepGraph::new_disabled)
-}
-
-/// Builds the dependency graph.
-///
-/// This function creates the *staging dep-graph*. When the dep-graph is modified by a query
-/// execution, the new dependency information is not kept in memory but directly
-/// output to this file. `save_dep_graph` then finalizes the staging dep-graph
-/// and moves it to the permanent dep-graph path
-pub(crate) fn build_dep_graph(
-    sess: &Session,
-    prev_graph: Arc<SerializedDepGraph>,
-    prev_work_products: WorkProductMap,
-) -> Option<DepGraph> {
-    if sess.opts.incremental.is_none() {
-        // No incremental compilation.
-        return None;
-    }
+            Default::default()
+        }
+        LoadResult::Ok { data } => data,
+    };
 
     // Stream the dep-graph to an alternate file, to avoid overwriting anything in case of errors.
     let path_buf = staging_dep_graph_path(sess);
 
-    let mut encoder = match FileEncoder::new(&path_buf) {
-        Ok(encoder) => encoder,
-        Err(err) => {
-            sess.dcx().emit_err(errors::CreateDepGraph { path: &path_buf, err });
-            return None;
-        }
-    };
+    let mut encoder = FileEncoder::new(&path_buf).unwrap_or_else(|err| {
+        // We're in incremental mode but couldn't set up streaming output of the dep graph.
+        // Exit immediately instead of continuing in an inconsistent and untested state.
+        sess.dcx().emit_fatal(errors::CreateDepGraph { path: &path_buf, err })
+    });
 
     file_format::write_file_header(&mut encoder, sess);
 
     // First encode the commandline arguments hash
     sess.opts.dep_tracking_hash(false).encode(&mut encoder);
 
-    Some(DepGraph::new(sess, prev_graph, prev_work_products, encoder))
+    DepGraph::new(sess, prev_graph, prev_work_products, encoder)
 }
