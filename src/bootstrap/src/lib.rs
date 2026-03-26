@@ -877,15 +877,6 @@ impl Build {
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
         }
-        if self.config.enabled_codegen_backends(target).contains(&CodegenBackendKind::Mlir)
-            && check("mlir")
-        {
-            features.push("mlir");
-            // MLIR backend depends on LLVM, so ensure llvm is enabled too.
-            if check("llvm") {
-                features.push("llvm");
-            }
-        }
         if self.config.llvm_enzyme {
             features.push("llvm_enzyme");
         }
