@@ -110,10 +110,7 @@ fn func() -> Option<i32> {
 
     let _val = f()?;
 
-    let s: &str = match &Some(String::new()) {
-        Some(v) => v,
-        None => return None,
-    };
+    let s: &str = &Some(String::new())?;
 
     f()?;
 
@@ -538,12 +535,10 @@ fn issue16654() -> Result<(), i32> {
 
 #[rustfmt::skip]
 fn issue16751(v: Option<usize>) -> Option<usize> {
-    let _ = match &v {
-        Some(n) => {
-            println!("{n}");
-            Some(42)
-        }
-        None => return None,
+    let _ = {
+        let n = &v?;
+        println!("{n}");
+        Some(42)
     };
 
     let _ = match v {

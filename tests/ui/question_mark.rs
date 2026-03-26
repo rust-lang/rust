@@ -156,6 +156,7 @@ fn func() -> Option<i32> {
     };
 
     let s: &str = match &Some(String::new()) {
+        //~^ question_mark
         Some(v) => v,
         None => return None,
     };
@@ -673,6 +674,7 @@ fn issue16654() -> Result<(), i32> {
 #[rustfmt::skip]
 fn issue16751(v: Option<usize>) -> Option<usize> {
     let _ = match &v {
+        //~^ question_mark
         Some(n) => {
             println!("{n}");
             Some(42)

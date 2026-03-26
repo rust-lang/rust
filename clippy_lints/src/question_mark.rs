@@ -329,7 +329,7 @@ enum TryMode {
 }
 
 fn find_try_mode<'tcx>(cx: &LateContext<'tcx>, scrutinee: &Expr<'tcx>) -> Option<TryMode> {
-    let scrutinee_ty = cx.typeck_results().expr_ty_adjusted(scrutinee);
+    let scrutinee_ty = cx.typeck_results().expr_ty_adjusted(scrutinee).peel_refs();
     let ty::Adt(scrutinee_adt_def, _) = scrutinee_ty.kind() else {
         return None;
     };
