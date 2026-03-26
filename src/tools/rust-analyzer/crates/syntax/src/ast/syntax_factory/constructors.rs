@@ -2049,6 +2049,23 @@ impl SyntaxFactory {
         self.path_unqualified(self.path_segment(self.name_ref(ident)))
     }
 
+    pub fn path_from_idents<'a>(
+        &self,
+        parts: impl IntoIterator<Item = &'a str>,
+    ) -> Option<ast::Path> {
+        let mut iter = parts.into_iter();
+        let base = self.ident_path(iter.next()?);
+        let path = iter.fold(base, |base, s| {
+            let segment = self.ident_path(s);
+            self.path_concat(base, segment)
+        });
+        Some(path)
+    }
+
+    pub fn token_tree_from_node(&self, node: &SyntaxNode) -> ast::TokenTree {
+        make::ext::token_tree_from_node(node).clone_for_update()
+    }
+
     pub fn expr_unit(&self) -> ast::Expr {
         self.expr_tuple([]).into()
     }
