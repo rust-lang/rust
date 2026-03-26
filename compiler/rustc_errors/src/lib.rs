@@ -77,6 +77,7 @@ mod diagnostic_impls;
 pub mod emitter;
 pub mod formatting;
 pub mod json;
+pub mod lints;
 mod lock;
 pub mod markdown;
 pub mod timings;
