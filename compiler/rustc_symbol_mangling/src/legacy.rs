@@ -27,7 +27,7 @@ pub(super) fn mangle<'tcx>(
     let instance_ty;
     loop {
         let key = tcx.def_key(ty_def_id);
-        match key.disambiguated_data.data {
+        match key.disambiguated_data.data.unwrap() {
             DefPathData::TypeNs(_)
             | DefPathData::ValueNs(_)
             | DefPathData::Closure
@@ -365,7 +365,7 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
         print_prefix(self)?;
 
         // Skip `::{{extern}}` blocks and `::{{constructor}}` on tuple/unit structs.
-        if let DefPathData::ForeignMod | DefPathData::Ctor = disambiguated_data.data {
+        if let DefPathData::ForeignMod | DefPathData::Ctor = disambiguated_data.data.unwrap() {
             return Ok(());
         }
 
@@ -376,7 +376,7 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
             self.path.finalize_pending_component();
         }
 
-        write!(self, "{}", disambiguated_data.data)?;
+        write!(self, "{}", disambiguated_data.data.unwrap())?;
 
         Ok(())
     }

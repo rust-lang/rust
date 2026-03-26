@@ -301,7 +301,7 @@ impl<'tcx> InstanceKind<'tcx> {
             _ => return true,
         };
         matches!(
-            tcx.def_key(def_id).disambiguated_data.data,
+            tcx.def_key(def_id).disambiguated_data.data.unwrap(),
             DefPathData::Ctor | DefPathData::Closure
         )
     }

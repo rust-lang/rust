@@ -423,7 +423,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> String {
         self.trait_path(span, expr_hir_id, trait_def_id).unwrap_or_else(|| {
             let key = self.tcx.def_key(trait_def_id);
-            format!("{}", key.disambiguated_data.data)
+            format!("{}", key.disambiguated_data.data.unwrap())
         })
     }
 

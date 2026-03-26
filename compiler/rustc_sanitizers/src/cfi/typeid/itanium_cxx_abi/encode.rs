@@ -10,7 +10,7 @@ use std::fmt::Write as _;
 use rustc_abi::{ExternAbi, Integer};
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::definitions::{DefPathData, DelegationDefPathKind};
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::find_attr;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
@@ -672,14 +672,11 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
     def_path.data.reverse();
     for disambiguated_data in &def_path.data {
         s.push('N');
-
-        const TYPE_NS: &str = "t";
-        const VALUE_NS: &str = "v";
-        s.push_str(match disambiguated_data.data {
+        s.push_str(match disambiguated_data.data.unwrap() {
             DefPathData::Impl => "I",       // Not specified in v0's <namespace>
             DefPathData::ForeignMod => "F", // Not specified in v0's <namespace>
-            DefPathData::TypeNs(..) => TYPE_NS,
-            DefPathData::ValueNs(..) => VALUE_NS,
+            DefPathData::TypeNs(..) => "t",
+            DefPathData::ValueNs(..) => "v",
             DefPathData::Closure => "C",
             DefPathData::Ctor => "c",
             DefPathData::AnonConst => "K",
@@ -687,8 +684,6 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             DefPathData::OpaqueTy => "i",
             DefPathData::SyntheticCoroutineBody => "s",
             DefPathData::NestedStatic => "n",
-            DefPathData::Delegation { kind: DelegationDefPathKind::ConstParam, .. } => VALUE_NS,
-            DefPathData::Delegation { kind: DelegationDefPathKind::TyParam, .. } => TYPE_NS,
 
             DefPathData::CrateRoot
             | DefPathData::Use
@@ -697,9 +692,8 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             | DefPathData::OpaqueLifetime(..)
             | DefPathData::LifetimeNs(..)
             | DefPathData::DesugaredAnonymousLifetime
-            | DefPathData::AnonAssocTy(..)
-            | DefPathData::Delegation { kind: DelegationDefPathKind::Lifetime, .. } => {
-                bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
+            | DefPathData::AnonAssocTy(..) => {
+                bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data.unwrap());
             }
         });
     }
@@ -718,7 +712,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             s.push_str(&to_disambiguator(num));
         }
 
-        let name = disambiguated_data.data.to_string();
+        let name = disambiguated_data.data.unwrap().to_string();
         let _ = write!(s, "{}", name.len());
 
         // Prepend a '_' if name starts with a digit or '_'
