@@ -6,20 +6,16 @@
 // Tests whether one function could implement two EIIs.
 #![feature(extern_item_impls)]
 
-#[eii]
-fn a(x: u64);
+#[eii(a)]
+static A: u64;
 
-#[eii]
-fn b(x: u64);
+#[eii(b)]
+static B: u64;
 
 #[a]
 #[b]
-fn implementation(x: u64) {
-    println!("{x:?}")
-}
+static IMPL: u64 = 5;
 
-// what you would write:
 fn main() {
-    a(42);
-    b(42);
+    println!("{A} {B} {IMPL}")
 }
