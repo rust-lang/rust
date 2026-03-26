@@ -1,5 +1,6 @@
 //! Code to load the dep-graph from files.
 
+use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -22,16 +23,13 @@ use crate::persist::file_format::{OpenFile, OpenFileError};
 
 #[derive(Debug)]
 /// Represents the result of an attempt to load incremental compilation data.
-pub enum LoadResult<T> {
+enum LoadResult {
     /// Loading was successful.
-    Ok {
-        #[allow(missing_docs)]
-        data: T,
-    },
+    Ok { prev_graph: Arc<SerializedDepGraph>, prev_work_products: WorkProductMap },
     /// The file either didn't exist or was produced by an incompatible compiler version.
     DataOutOfDate,
-    /// Loading the dep graph failed.
-    LoadDepGraph(PathBuf, std::io::Error),
+    /// Loading failed due to an unexpected I/O error.
+    IoError { path: PathBuf, err: io::Error },
 }
 
 fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
@@ -39,7 +37,7 @@ fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
     work_product::delete_workproduct_files(sess, &swp.work_product);
 }
 
-fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkProductMap)> {
+fn load_dep_graph(sess: &Session) -> LoadResult {
     assert!(sess.opts.incremental.is_some());
 
     let _timer = sess.prof.generic_activity("incr_comp_prepare_load_dep_graph");
@@ -92,7 +90,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
 
     match file_format::open_incremental_file(sess, &path) {
         Err(OpenFileError::NotFoundOrHeaderMismatch) => LoadResult::DataOutOfDate,
-        Err(OpenFileError::IoError { err }) => LoadResult::LoadDepGraph(path.to_owned(), err),
+        Err(OpenFileError::IoError { err }) => LoadResult::IoError { path: path.to_owned(), err },
         Ok(OpenFile { mmap, start_pos }) => {
             let Ok(mut decoder) = MemDecoder::new(&mmap, start_pos) else {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
@@ -114,9 +112,9 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
                 return LoadResult::DataOutOfDate;
             }
 
-            let dep_graph = SerializedDepGraph::decode(&mut decoder);
+            let prev_graph = SerializedDepGraph::decode(&mut decoder);
 
-            LoadResult::Ok { data: (dep_graph, prev_work_products) }
+            LoadResult::Ok { prev_graph, prev_work_products }
         }
     }
 }
@@ -150,14 +148,14 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
 
 /// Emits a fatal error if the assertion in `-Zassert-incr-state` doesn't match
 /// the outcome of trying to load previous-session state.
-fn maybe_assert_incr_state(sess: &Session, load_result: &LoadResult<impl Sized>) {
+fn maybe_assert_incr_state(sess: &Session, load_result: &LoadResult) {
     // Return immediately if there's nothing to assert.
     let Some(assertion) = sess.opts.unstable_opts.assert_incr_state else { return };
 
     // Match exhaustively to make sure we don't miss any cases.
     let loaded = match load_result {
         LoadResult::Ok { .. } => true,
-        LoadResult::DataOutOfDate | LoadResult::LoadDepGraph(..) => false,
+        LoadResult::DataOutOfDate | LoadResult::IoError { .. } => false,
     };
 
     match assertion {
@@ -206,7 +204,7 @@ pub fn setup_dep_graph(
     maybe_assert_incr_state(sess, &load_result);
 
     let (prev_graph, prev_work_products) = match load_result {
-        LoadResult::LoadDepGraph(path, err) => {
+        LoadResult::IoError { path, err } => {
             sess.dcx().emit_warn(errors::LoadDepGraph { path, err });
             Default::default()
         }
@@ -216,7 +214,7 @@ pub fn setup_dep_graph(
             }
             Default::default()
         }
-        LoadResult::Ok { data } => data,
+        LoadResult::Ok { prev_graph, prev_work_products } => (prev_graph, prev_work_products),
     };
 
     // Stream the dep-graph to an alternate file, to avoid overwriting anything in case of errors.
