@@ -1,5 +1,4 @@
 use std::mem;
-use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_NoContext;
@@ -11,8 +10,7 @@ use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
 use rustc_type_ir::solve::OpaqueTypesJank;
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    TypingMode,
+    TypeSuperFoldable, TypeVisitableExt, TypingMode,
 };
 use tracing::{debug, instrument, trace};
 
@@ -47,13 +45,13 @@ enum CurrentGoalKind {
     /// These are currently the only goals whose impl where-clauses are considered to be
     /// productive steps.
     CoinductiveTrait,
-    /// Unlike other goals, `NormalizesTo` goals act like functions with the expected term
-    /// always being fully unconstrained. This would weaken inference however, as the nested
+    /// When probing and selecting `NormalizesTo` goal's projection candidates, the expected
+    /// term is always fully unconstrained. This would weaken inference however, as the nested
     /// goals never get the inference constraints from the actual normalized-to type.
     ///
-    /// Because of this we return any ambiguous nested goals from `NormalizesTo` to the
-    /// caller when then adds these to its own context. The caller is always an `AliasRelate`
-    /// goal so this never leaks out of the solver.
+    /// Because of this we return any ambiguous nested goals from the candidate probe to the
+    /// root of the `NormalizesTo` goal then adds these to its own context. So this never leaks
+    /// out of the solver.
     NormalizesTo,
 }
 
@@ -67,7 +65,6 @@ impl CurrentGoalKind {
                     CurrentGoalKind::Misc
                 }
             }
-            ty::PredicateKind::NormalizesTo(_) => CurrentGoalKind::NormalizesTo,
             _ => CurrentGoalKind::Misc,
         }
     }
@@ -509,17 +506,6 @@ where
                 HasChanged::No => {
                     let mut stalled_vars = orig_values;
 
-                    // Remove the unconstrained RHS arg, which is expected to have changed.
-                    if let Some(normalizes_to) = goal.predicate.as_normalizes_to() {
-                        let normalizes_to = normalizes_to.skip_binder();
-                        let rhs_arg: I::GenericArg = normalizes_to.term.into();
-                        let idx = stalled_vars
-                            .iter()
-                            .rposition(|arg| *arg == rhs_arg)
-                            .expect("expected unconstrained arg");
-                        stalled_vars.swap_remove(idx);
-                    }
-
                     // Remove the canonicalized universal vars, since we only care about stalled existentials.
                     let mut sub_roots = Vec::new();
                     stalled_vars.retain(|arg| match arg.kind() {
@@ -564,7 +550,12 @@ where
     pub(super) fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
         let Goal { param_env, predicate } = goal;
         let kind = predicate.kind();
-        self.enter_forall(kind, |ecx, kind| match kind {
+
+        if let Some(normalizes_to) = predicate.as_normalizes_to() {
+            assert!(!normalizes_to.skip_binder().has_escaping_bound_vars());
+        }
+
+        let resp = self.enter_forall(kind, |ecx, kind| match kind {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
                 ecx.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
             }
@@ -613,7 +604,11 @@ where
             ty::PredicateKind::Ambiguous => {
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
-        })
+        })?;
+
+        assert!(resp.value.external_constraints.normalization_nested_goals.is_empty());
+
+        Ok(resp)
     }
 
     // Recursively evaluates all the goals added to this `EvalCtxt` to completion, returning
@@ -639,7 +634,6 @@ where
     ///
     /// Goals for the next step get directly added to the nested goals of the `EvalCtxt`.
     fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
-        let cx = self.cx();
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
         for (source, goal, stalled_on) in mem::take(&mut self.nested_goals) {
@@ -654,92 +648,17 @@ where
                 continue;
             }
 
-            // We treat normalizes-to goals specially here. In each iteration we take the
-            // RHS of the projection, replace it with a fresh inference variable, and only
-            // after evaluating that goal do we equate the fresh inference variable with the
-            // actual RHS of the predicate.
-            //
-            // This is both to improve caching, and to avoid using the RHS of the
-            // projection predicate to influence the normalizes-to candidate we select.
-            //
-            // Forgetting to replace the RHS with a fresh inference variable when we evaluate
-            // this goal results in an ICE.
-            if let Some(pred) = goal.predicate.as_normalizes_to() {
-                // We should never encounter higher-ranked normalizes-to goals.
-                let pred = pred.no_bound_vars().unwrap();
-                // Replace the goal with an unconstrained infer var, so the
-                // RHS does not affect projection candidate assembly.
-                let unconstrained_rhs = self.next_term_infer_of_kind(pred.term);
-                let unconstrained_goal =
-                    goal.with(cx, ty::NormalizesTo { alias: pred.alias, term: unconstrained_rhs });
+            let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
+                self.evaluate_goal(source, goal, stalled_on)?;
+            if has_changed == HasChanged::Yes {
+                unchanged_certainty = None;
+            }
 
-                let (
-                    NestedNormalizationGoals(nested_goals),
-                    GoalEvaluation { goal, certainty, stalled_on, has_changed: _ },
-                ) = self.evaluate_goal_raw(source, unconstrained_goal, stalled_on)?;
-                // Add the nested goals from normalization to our own nested goals.
-                trace!(?nested_goals);
-                self.nested_goals.extend(nested_goals.into_iter().map(|(s, g)| (s, g, None)));
-
-                // Finally, equate the goal's RHS with the unconstrained var.
-                //
-                // SUBTLE:
-                // We structurally relate aliases here. This is necessary
-                // as we otherwise emit a nested `AliasRelate` goal in case the
-                // returned term is a rigid alias, resulting in overflow.
-                //
-                // It is correct as both `goal.predicate.term` and `unconstrained_rhs`
-                // start out as an unconstrained inference variable so any aliases get
-                // fully normalized when instantiating it.
-                //
-                // FIXME: Strictly speaking this may be incomplete if the normalized-to
-                // type contains an ambiguous alias referencing bound regions. We should
-                // consider changing this to only use "shallow structural equality".
-                self.eq_structurally_relating_aliases(
-                    goal.param_env,
-                    pred.term,
-                    unconstrained_rhs,
-                )?;
-
-                // We only look at the `projection_ty` part here rather than
-                // looking at the "has changed" return from evaluate_goal,
-                // because we expect the `unconstrained_rhs` part of the predicate
-                // to have changed -- that means we actually normalized successfully!
-                // FIXME: Do we need to eagerly resolve here? Or should we check
-                // if the cache key has any changed vars?
-                let with_resolved_vars = self.resolve_vars_if_possible(goal);
-                if pred.alias
-                    != with_resolved_vars
-                        .predicate
-                        .as_normalizes_to()
-                        .unwrap()
-                        .no_bound_vars()
-                        .unwrap()
-                        .alias
-                {
-                    unchanged_certainty = None;
-                }
-
-                match certainty {
-                    Certainty::Yes => {}
-                    Certainty::Maybe { .. } => {
-                        self.nested_goals.push((source, with_resolved_vars, stalled_on));
-                        unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
-                    }
-                }
-            } else {
-                let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
-                    self.evaluate_goal(source, goal, stalled_on)?;
-                if has_changed == HasChanged::Yes {
-                    unchanged_certainty = None;
-                }
-
-                match certainty {
-                    Certainty::Yes => {}
-                    Certainty::Maybe { .. } => {
-                        self.nested_goals.push((source, goal, stalled_on));
-                        unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
-                    }
+            match certainty {
+                Certainty::Yes => {}
+                Certainty::Maybe { .. } => {
+                    self.nested_goals.push((source, goal, stalled_on));
+                    unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                 }
             }
         }
@@ -800,129 +719,6 @@ where
             ty::TermKind::Ty(_) => self.next_ty_infer().into(),
             ty::TermKind::Const(_) => self.next_const_infer().into(),
         }
-    }
-
-    /// Is the projection predicate is of the form `exists<T> <Ty as Trait>::Assoc = T`.
-    ///
-    /// This is the case if the `term` does not occur in any other part of the predicate
-    /// and is able to name all other placeholder and inference variables.
-    #[instrument(level = "trace", skip(self), ret)]
-    pub(super) fn term_is_fully_unconstrained(&self, goal: Goal<I, ty::NormalizesTo<I>>) -> bool {
-        let universe_of_term = match goal.predicate.term.kind() {
-            ty::TermKind::Ty(ty) => {
-                if let ty::Infer(ty::TyVar(vid)) = ty.kind() {
-                    self.delegate.universe_of_ty(vid).unwrap()
-                } else {
-                    return false;
-                }
-            }
-            ty::TermKind::Const(ct) => {
-                if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
-                    self.delegate.universe_of_ct(vid).unwrap()
-                } else {
-                    return false;
-                }
-            }
-        };
-
-        struct ContainsTermOrNotNameable<'a, D: SolverDelegate<Interner = I>, I: Interner> {
-            term: I::Term,
-            universe_of_term: ty::UniverseIndex,
-            delegate: &'a D,
-            cache: HashSet<I::Ty>,
-        }
-
-        impl<D: SolverDelegate<Interner = I>, I: Interner> ContainsTermOrNotNameable<'_, D, I> {
-            fn check_nameable(&self, universe: ty::UniverseIndex) -> ControlFlow<()> {
-                if self.universe_of_term.can_name(universe) {
-                    ControlFlow::Continue(())
-                } else {
-                    ControlFlow::Break(())
-                }
-            }
-        }
-
-        impl<D: SolverDelegate<Interner = I>, I: Interner> TypeVisitor<I>
-            for ContainsTermOrNotNameable<'_, D, I>
-        {
-            type Result = ControlFlow<()>;
-            fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
-                if self.cache.contains(&t) {
-                    return ControlFlow::Continue(());
-                }
-
-                match t.kind() {
-                    ty::Infer(ty::TyVar(vid)) => {
-                        if let ty::TermKind::Ty(term) = self.term.kind()
-                            && let ty::Infer(ty::TyVar(term_vid)) = term.kind()
-                            && self.delegate.root_ty_var(vid) == self.delegate.root_ty_var(term_vid)
-                        {
-                            return ControlFlow::Break(());
-                        }
-
-                        self.check_nameable(self.delegate.universe_of_ty(vid).unwrap())?;
-                    }
-                    ty::Placeholder(p) => self.check_nameable(p.universe())?,
-                    _ => {
-                        if t.has_non_region_infer() || t.has_placeholders() {
-                            t.super_visit_with(self)?
-                        }
-                    }
-                }
-
-                assert!(self.cache.insert(t));
-                ControlFlow::Continue(())
-            }
-
-            fn visit_const(&mut self, c: I::Const) -> Self::Result {
-                match c.kind() {
-                    ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                        if let ty::TermKind::Const(term) = self.term.kind()
-                            && let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
-                            && self.delegate.root_const_var(vid)
-                                == self.delegate.root_const_var(term_vid)
-                        {
-                            return ControlFlow::Break(());
-                        }
-
-                        self.check_nameable(self.delegate.universe_of_ct(vid).unwrap())
-                    }
-                    ty::ConstKind::Placeholder(p) => self.check_nameable(p.universe()),
-                    _ => {
-                        if c.has_non_region_infer() || c.has_placeholders() {
-                            c.super_visit_with(self)
-                        } else {
-                            ControlFlow::Continue(())
-                        }
-                    }
-                }
-            }
-
-            fn visit_predicate(&mut self, p: I::Predicate) -> Self::Result {
-                if p.has_non_region_infer() || p.has_placeholders() {
-                    p.super_visit_with(self)
-                } else {
-                    ControlFlow::Continue(())
-                }
-            }
-
-            fn visit_clauses(&mut self, c: I::Clauses) -> Self::Result {
-                if c.has_non_region_infer() || c.has_placeholders() {
-                    c.super_visit_with(self)
-                } else {
-                    ControlFlow::Continue(())
-                }
-            }
-        }
-
-        let mut visitor = ContainsTermOrNotNameable {
-            delegate: self.delegate,
-            universe_of_term,
-            term: goal.predicate.term,
-            cache: Default::default(),
-        };
-        goal.predicate.alias.visit_with(&mut visitor).is_continue()
-            && goal.param_env.visit_with(&mut visitor).is_continue()
     }
 
     pub(super) fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
