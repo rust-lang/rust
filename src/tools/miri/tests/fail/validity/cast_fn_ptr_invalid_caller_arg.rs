@@ -5,7 +5,8 @@ use std::intrinsics::mir::*;
 use std::num::NonZero;
 use std::ptr;
 
-fn f(c: u32) { //~ERROR: expected something greater or equal to 1
+fn f(c: u32) {
+    //~^ERROR: expected something greater or equal to 1
     println!("{c}");
 }
 
