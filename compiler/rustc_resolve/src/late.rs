@@ -1082,21 +1082,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         debug!("(resolving function) entering function");
 
         if let FnKind::Fn(_, _, f) = fn_kind {
-            for EiiImpl { node_id, eii_macro_path, known_eii_macro_resolution, .. } in &f.eii_impls
-            {
-                // See docs on the `known_eii_macro_resolution` field:
-                // if we already know the resolution statically, don't bother resolving it.
-                if let Some(target) = known_eii_macro_resolution {
-                    self.smart_resolve_path(
-                        *node_id,
-                        &None,
-                        &target.foreign_item,
-                        PathSource::Expr(None),
-                    );
-                } else {
-                    self.smart_resolve_path(*node_id, &None, &eii_macro_path, PathSource::Macro);
-                }
-            }
+            self.resolve_eii(&f.eii_impls);
         }
 
         // Create a value rib for the function.
@@ -2872,7 +2858,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.parent_scope.module = orig_module;
             }
 
-            ItemKind::Static(box ast::StaticItem { ident, ty, expr, define_opaque, .. }) => {
+            ItemKind::Static(box ast::StaticItem {
+                ident,
+                ty,
+                expr,
+                define_opaque,
+                eii_impls,
+                ..
+            }) => {
                 self.with_static_rib(def_kind, |this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
@@ -2884,6 +2877,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     }
                 });
                 self.resolve_define_opaques(define_opaque);
+                self.resolve_eii(&eii_impls);
             }
 
             ItemKind::Const(box ast::ConstItem {
@@ -5460,6 +5454,23 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         if let Some(define_opaque) = define_opaque {
             for (id, path) in define_opaque {
                 self.smart_resolve_path(*id, &None, path, PathSource::DefineOpaques);
+            }
+        }
+    }
+
+    fn resolve_eii(&mut self, eii_impls: &[EiiImpl]) {
+        for EiiImpl { node_id, eii_macro_path, known_eii_macro_resolution, .. } in eii_impls {
+            // See docs on the `known_eii_macro_resolution` field:
+            // if we already know the resolution statically, don't bother resolving it.
+            if let Some(target) = known_eii_macro_resolution {
+                self.smart_resolve_path(
+                    *node_id,
+                    &None,
+                    &target.foreign_item,
+                    PathSource::Expr(None),
+                );
+            } else {
+                self.smart_resolve_path(*node_id, &None, &eii_macro_path, PathSource::Macro);
             }
         }
     }

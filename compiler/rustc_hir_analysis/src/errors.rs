@@ -1915,3 +1915,12 @@ pub(crate) struct ImplUnpinForPinProjectedType {
     pub adt_span: Span,
     pub adt_name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[{$eii_name}]` must be used on a {$expected_kind}")]
+pub(crate) struct EiiDefkindMismatch {
+    #[primary_span]
+    pub span: Span,
+    pub eii_name: Symbol,
+    pub expected_kind: &'static str,
+}

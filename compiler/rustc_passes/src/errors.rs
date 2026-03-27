@@ -1263,8 +1263,8 @@ pub(crate) struct ReprAlignShouldBeAlignStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag("`eii_macro_for` is only valid on functions")]
-pub(crate) struct EiiImplNotFunction {
+#[diag("`eii_macro_for` is only valid on functions and statics")]
+pub(crate) struct EiiImplTarget {
     #[primary_span]
     pub span: Span,
 }
