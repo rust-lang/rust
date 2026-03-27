@@ -1140,6 +1140,7 @@ cc = [
 cc = ["@ehuss"]
 
 [mentions."src/tools/clippy"]
+message = "The Clippy subtree was changed"
 cc = ["@rust-lang/clippy"]
 
 [mentions."src/tools/compiletest"]
