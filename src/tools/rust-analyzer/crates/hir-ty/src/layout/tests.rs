@@ -379,6 +379,11 @@ struct Goal(Foo<S>);
 
 #[test]
 fn simd_types() {
+    let size = 16;
+    #[cfg(not(target_arch = "s390x"))]
+    let align = 16;
+    #[cfg(target_arch = "s390x")]
+    let align = 8;
     check_size_and_align(
         r#"
             #[repr(simd)]
@@ -386,8 +391,8 @@ fn simd_types() {
             struct Goal(SimdType);
         "#,
         "",
-        16,
-        16,
+        size,
+        align,
     );
 }
 
