@@ -77,10 +77,6 @@ impl<'hir> Crate<'hir> {
         tcx.delayed_owner(def_id)
     }
 
-    pub fn delayed_owners_kinds(&self) -> impl Iterator<Item = (LocalDefId, DelayedOwnerKind)> {
-        self.delayed_ids.iter().copied().map(|id| (id, self.owners[id].expect_delayed().kind))
-    }
-
     pub fn opt_ident(&self, tcx: TyCtxt<'hir>, id: HirId) -> Option<Ident> {
         // If possible don't force lowering of delayed owner, as it can lead to cycles.
         if let MaybeOwner::Delayed(delayed_owner) = self.owners[id.owner.def_id] {
