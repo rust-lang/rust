@@ -74,10 +74,18 @@ pub mod ext {
         expr_from_text("_")
     }
     pub fn expr_ty_default(ty: &ast::Type) -> ast::Expr {
-        expr_from_text(&format!("{ty}::default()"))
+        if !ty.needs_angles_in_path() {
+            expr_from_text(&format!("{ty}::default()"))
+        } else {
+            expr_from_text(&format!("<{ty}>::default()"))
+        }
     }
     pub fn expr_ty_new(ty: &ast::Type) -> ast::Expr {
-        expr_from_text(&format!("{ty}::new()"))
+        if !ty.needs_angles_in_path() {
+            expr_from_text(&format!("{ty}::new()"))
+        } else {
+            expr_from_text(&format!("<{ty}>::new()"))
+        }
     }
     pub fn expr_self() -> ast::Expr {
         expr_from_text("self")
