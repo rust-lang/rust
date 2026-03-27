@@ -80,7 +80,7 @@ impl<'hir> Crate<'hir> {
     pub fn opt_ident(&self, tcx: TyCtxt<'hir>, id: HirId) -> Option<Ident> {
         // If possible don't force lowering of delayed owner, as it can lead to cycles.
         if let MaybeOwner::Delayed(delayed_owner) = self.owners[id.owner.def_id] {
-            return delayed_owner.ident;
+            return Some(delayed_owner.ident);
         }
 
         match tcx.hir_node(id) {

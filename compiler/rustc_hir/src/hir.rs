@@ -1650,7 +1650,7 @@ pub enum DelayedOwnerKind {
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct DelayedOwner {
-    pub ident: Option<Ident>,
+    pub ident: Ident,
     pub kind: DelayedOwnerKind,
 }
 
@@ -1676,7 +1676,7 @@ impl<'tcx> MaybeOwner<'tcx> {
     }
 
     pub fn expect_delayed(self) -> DelayedOwner {
-        if let MaybeOwner::Delayed(kind) = self { *kind } else { panic!("not a delayed owner") }
+        if let MaybeOwner::Delayed(kind) = self { kind } else { panic!("not a delayed owner") }
     }
 }
 
