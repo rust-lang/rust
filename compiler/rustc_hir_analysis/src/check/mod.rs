@@ -101,7 +101,7 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
-use self::region::region_scope_tree;
+use self::region::region_scope_tree_root;
 use crate::{check_c_variadic_abi, errors};
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
@@ -109,7 +109,7 @@ pub(super) fn provide(providers: &mut Providers) {
     *providers = Providers {
         adt_destructor,
         adt_async_destructor,
-        region_scope_tree,
+        region_scope_tree_root,
         collect_return_position_impl_trait_in_trait_tys,
         compare_impl_item: compare_impl_item::compare_impl_item,
         check_coroutine_obligations: check::check_coroutine_obligations,

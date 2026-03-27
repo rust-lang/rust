@@ -849,11 +849,8 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
 /// re-use in incremental scenarios. We may sometimes need to rerun the
 /// type checker even when the HIR hasn't changed, and in those cases
 /// we can avoid reconstructing the region scope tree.
-pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
-    let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
-    if typeck_root_def_id != def_id {
-        return tcx.region_scope_tree(typeck_root_def_id);
-    }
+pub(crate) fn region_scope_tree_root(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
+    assert!(!tcx.is_typeck_child(def_id));
 
     let scope_tree = if let Some(body) = tcx.hir_maybe_body_owned_by(def_id.expect_local()) {
         let mut visitor = ScopeResolutionVisitor {
