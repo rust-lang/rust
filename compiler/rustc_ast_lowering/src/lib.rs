@@ -638,7 +638,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
             AstOwner::Item(Item {
                 kind: ItemKind::Delegation(box Delegation { ident, .. }),
                 ..
-            }) => Some(DelayedOwner { kind: hir::DelayedOwnerKind::Item, ident: Some(*ident) }),
+            }) => Some(DelayedOwner { kind: hir::DelayedOwnerKind::Item, ident: *ident }),
             AstOwner::AssocItem(
                 Item { kind: AssocItemKind::Delegation(box Delegation { ident, .. }), .. },
                 ctx,
@@ -648,7 +648,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
                     AssocCtxt::Impl { .. } => hir::DelayedOwnerKind::ImplItem,
                 };
 
-                Some(DelayedOwner { kind, ident: Some(*ident) })
+                Some(DelayedOwner { kind, ident: *ident })
             }
             _ => None,
         };
