@@ -509,7 +509,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// use std::alloc::System;
     /// use std::collections::LinkedList;
     ///
-    /// let list: LinkedList<u32, _> = LinkedList::new_in(System);
+    /// let list: LinkedList<i32, System> = LinkedList::new_in(System);
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]

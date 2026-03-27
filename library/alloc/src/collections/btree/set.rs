@@ -355,10 +355,11 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # #![allow(unused_mut)]
     /// # #![feature(allocator_api)]
     /// # #![feature(btreemap_alloc)]
+    ///
     /// use std::collections::BTreeSet;
     /// use std::alloc::Global;
     ///
-    /// let mut set: BTreeSet<i32> = BTreeSet::new_in(Global);
+    /// let set: BTreeSet<i32> = BTreeSet::new_in(Global);
     /// ```
     #[unstable(feature = "btreemap_alloc", issue = "32838")]
     #[must_use]

@@ -737,6 +737,7 @@ impl<T, A: Allocator> Rc<T, A> {
     ///
     /// ```
     /// #![feature(allocator_api)]
+    ///
     /// use std::rc::Rc;
     /// use std::alloc::System;
     ///

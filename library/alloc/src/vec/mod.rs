@@ -1054,8 +1054,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// use std::alloc::System;
     ///
-    /// # #[allow(unused_mut)]
-    /// let mut vec: Vec<i32, _> = Vec::new_in(System);
+    /// let vec: Vec<i32, System> = Vec::new_in(System);
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
