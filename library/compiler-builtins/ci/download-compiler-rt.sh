@@ -6,5 +6,5 @@ set -eux
 
 rust_llvm_version=20.1-2025-02-13
 
-curl -L -o code.tar.gz "https://github.com/rust-lang/llvm-project/archive/rustc/${rust_llvm_version}.tar.gz"
+curl -L --retry 3 -o code.tar.gz "https://github.com/rust-lang/llvm-project/archive/rustc/${rust_llvm_version}.tar.gz"
 tar xzf code.tar.gz --strip-components 1 llvm-project-rustc-${rust_llvm_version}/compiler-rt
