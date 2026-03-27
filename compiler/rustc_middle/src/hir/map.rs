@@ -1325,11 +1325,16 @@ impl<'tcx> ItemCollector<'tcx> {
             eiis: Vec::default(),
         };
 
-        let delayed_kinds = tcx.hir_crate(()).delayed_owners_kinds();
-        let delayed_kinds = delayed_kinds.filter(|(id, _)| match collection_kind {
-            ItemCollectionKind::Crate => true,
-            ItemCollectionKind::Mod(mod_id) => tcx.parent_module_from_def_id(*id) == mod_id,
-        });
+        let krate = tcx.hir_crate(());
+        let delayed_kinds = krate
+            .delayed_ids
+            .iter()
+            .copied()
+            .map(|id| (id, krate.owners[id].expect_delayed().kind))
+            .filter(|(id, _)| match collection_kind {
+                ItemCollectionKind::Crate => true,
+                ItemCollectionKind::Mod(mod_id) => tcx.parent_module_from_def_id(*id) == mod_id,
+            });
 
         // FIXME(fn_delegation): need to add delayed lints, eiis
         for (def_id, kind) in delayed_kinds {
