@@ -1,28 +1,44 @@
 # BCI-to-OpenClaw Integration Prototype
 
-Connects Galea BCI hardware (via BrainFlow SDK) to the OpenClaw model integration layer for real-time brain-state classification.
+Connects Galea BCI hardware (via BrainFlow SDK) to the OpenClaw AI agent platform for real-time brain-state-aware AI interactions.
 
-## Architecture
+## Architecture (v2)
 
-A 5-component pipeline: BCI Reader -> Feature Extractor -> OpenClaw Gateway -> Model Backend, with a Monitor UI.
+A 3-component system that integrates with OpenClaw natively:
+
+1. **Signal Processor + State Server** (Python) -- BrainFlow data acquisition, DSP (Welch's method band powers), heuristic brain state classification, FastAPI HTTP server
+2. **OpenClaw BCI Plugin** (TypeScript) -- `before_prompt_build` hook that injects brain state into LLM context
+3. **BCI SKILL.md** -- Teaches the agent how to interpret and adapt to brain states
 
 See [docs/architecture.md](docs/architecture.md) for full details.
 
 ## Schemas
 
-All inter-component communication uses JSON validated against schemas in `schemas/`:
-
 | Schema | Purpose |
 |--------|---------|
-| `bci_stream.schema.json` | Raw BCI packets from Galea/BrainFlow |
+| `bci_stream.schema.json` | Raw BCI packets from BrainFlow |
 | `processed_features.schema.json` | Extracted frequency-domain features |
-| `model_input.schema.json` | Request to OpenClaw model layer |
-| `model_output.schema.json` | Response with classified brain state |
+| `bci_state.schema.json` | LLM-readable brain state (injected via plugin) |
+| `state_server_api.schema.json` | HTTP API contract (GET /state, GET /health) |
 
-## Task Breakdown
+## Quick Start
 
-See [docs/task-breakdown.md](docs/task-breakdown.md) for implementation plan (9 tasks, ~23h).
+```bash
+# 1. Start the signal processor (synthetic mode, no hardware needed)
+cd signal-processor
+pip install -e .
+python -m src --synthetic
+
+# 2. Install the OpenClaw plugin
+cd openclaw-plugin
+npm install
+# Add to OpenClaw's plugin config
+
+# 3. Copy skill/SKILL.md to your OpenClaw skills directory
+```
 
 ## Tech Stack
 
-Python, BrainFlow, ZeroMQ, Flask, scikit-learn, NumPy/SciPy, rich, jsonschema
+- Python: BrainFlow, FastAPI, NumPy, SciPy, Pydantic
+- TypeScript: OpenClaw Plugin SDK
+- Transport: HTTP/JSON (localhost)
