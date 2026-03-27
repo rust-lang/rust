@@ -1676,7 +1676,7 @@ impl<'tcx> MaybeOwner<'tcx> {
     }
 
     pub fn expect_delayed(self) -> DelayedOwner {
-        if let MaybeOwner::Delayed(kind) = self { kind } else { panic!("not a delayed owner") }
+        if let MaybeOwner::Delayed(owner) = self { owner } else { panic!("not a delayed owner") }
     }
 }
 
