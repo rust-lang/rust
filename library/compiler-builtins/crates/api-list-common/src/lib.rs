@@ -1,6 +1,5 @@
 //! A list of API we have available, shared among various test crates.
 
-use std::collections::HashSet;
 use std::fmt;
 use std::sync::LazyLock;
 
@@ -1518,24 +1517,41 @@ pub static ALL_OPERATIONS: LazyLock<Vec<MathOpInfo>> = LazyLock::new(|| {
             };
             ret.push(api);
         }
-
-        if !fn_names.is_sorted() {
-            let mut sorted = (*fn_names).to_owned();
-            sorted.sort_unstable();
-            panic!("names list is not sorted: {fn_names:?}\nExpected: {sorted:?}");
-        }
     }
 
     ret.sort_by_key(|item| item.name);
-
-    let mut names = HashSet::new();
-    let mut paths = HashSet::new();
-    for item in &ret {
-        let new_name = names.insert(item.name);
-        assert!(new_name, "duplicate name `{item:?}`");
-        let new_path = paths.insert(&item.path);
-        assert!(new_path, "duplicate path`{item:?}`");
-    }
-
     ret
 });
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    pub use super::*;
+
+    #[test]
+    fn sorted_fn_list() {
+        for op in ALL_OPERATIONS_NESTED {
+            if !op.fn_list.is_sorted() {
+                let mut sorted = (*op.fn_list).to_owned();
+                sorted.sort_unstable();
+                panic!(
+                    "names list is not sorted: {:?}\nExpected: {sorted:?}",
+                    op.fn_list
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn no_duplicates_in_list() {
+        let mut names = HashSet::new();
+        let mut paths = HashSet::new();
+        for item in &*ALL_OPERATIONS {
+            let new_name = names.insert(item.name);
+            assert!(new_name, "duplicate name `{item:?}`");
+            let new_path = paths.insert(&item.path);
+            assert!(new_path, "duplicate path`{item:?}`");
+        }
+    }
+}
