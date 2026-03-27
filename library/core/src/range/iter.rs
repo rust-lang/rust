@@ -161,7 +161,7 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// Returns the remainder of the range being iterated over.
     ///
     /// If the iterator is exhausted or empty, returns `None`.
-    #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
+    #[unstable(feature = "new_range_remainder", issue = "154458")]
     pub fn remainder(self) -> Option<RangeInclusive<A>> {
         if self.0.is_empty() {
             return None;
