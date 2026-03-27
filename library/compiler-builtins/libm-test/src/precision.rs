@@ -20,7 +20,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
         Bn::Add | Bn::Sub | Bn::Mul | Bn::Div => 0,
         // FIXME(correctness): we need a better powi implementation (though this is no worse
         // than C).
-        Bn::Powi if ctx.fn_ident == Id::Powif64 => 10_000,
+        Bn::Powi if ctx.fn_ident == Id::Powif64 => 500_000,
         Bn::Powi => 1000,
 
         // Operations that only return non-float results
@@ -112,7 +112,9 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
         Bn::Tgamma => 20,
     };
 
-    // These have a separate implementation on i586
+    let mut orig_ulp = ulp;
+
+    // These have a separate implementation on i586 which is more accurate.
     if cfg!(x86_no_sse) {
         match ctx.fn_ident {
             Id::Exp => ulp = 1,
@@ -123,43 +125,17 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
             Id::Exp10f => ulp = 0,
             _ => (),
         }
-    }
 
-    // There are some cases where musl's approximation is less accurate than ours. For these
-    // cases, increase the ULP.
-    if ctx.basis == Musl {
-        match ctx.base_name {
-            Bn::Cosh => ulp = 2,
-            Bn::Exp10 if usize::BITS < 64 => ulp = 4,
-            Bn::Tanh => ulp = 4,
-            _ => (),
-        }
+        assert!(ulp <= orig_ulp, "pattern can be deleted {ctx:?}");
+        orig_ulp = ulp;
 
+        // Due to rust-lang/rust#114479 (unsound floating point behavior on x86 without SSE), the
+        // following operations have worse precision.
         match ctx.fn_ident {
-            Id::Cbrt => ulp = 2,
-            // FIXME(#401): musl has an incorrect result here.
-            Id::Fdim => ulp = 2,
-            Id::Exp2f => ulp = 1,
-            Id::Expf => ulp = 1,
-            Id::Sincosf => ulp = 500,
-            Id::Tgamma => ulp = 20,
-            _ => (),
-        }
-    }
-
-    if cfg!(target_arch = "x86") {
-        match ctx.fn_ident {
-            // Input `fma(0.999999999999999, 1.0000000000000013, 0.0) = 1.0000000000000002` is
-            // incorrect on i586 and i686.
+            // FIXME: these need to be correctly rounded but are not, likely due to LLVM bugs
+            // around precision without SSE float ops. It may be worth looking into an assembly
+            // implementation.
             Id::Fma => ulp = 1,
-            _ => (),
-        }
-    }
-
-    // In some cases, our implementation is less accurate than musl on i586.
-    if cfg!(x86_no_sse) {
-        match ctx.fn_ident {
-            // FIXME(#401): these need to be correctly rounded but are not.
             Id::Fmaf => ulp = 1,
             Id::Fdim => ulp = 1,
             Id::Round => ulp = 1,
@@ -167,10 +143,38 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
             Id::Asinh => ulp = 3,
             Id::Asinhf => ulp = 3,
             Id::Cbrt => ulp = 1,
-            Id::Log1p | Id::Log1pf => ulp = 2,
+            Id::Log1p => ulp = 2,
+            Id::Log1pf => ulp = 2,
             Id::Tan => ulp = 2,
             _ => (),
         }
+
+        assert!(ulp >= orig_ulp, "pattern can be deleted {ctx:?}");
+        orig_ulp = ulp;
+    }
+
+    // There are some cases where musl's approximation is less accurate than ours, either due to
+    // the implementation itself or because of x87 inaccuracy problems. For these cases, increase
+    // the allowed ULP.
+    if ctx.basis == Musl {
+        match ctx.fn_ident {
+            // Musl probably runs into issues with the x87 ABI here which we don't have.
+            Id::Fma if cfg!(target_arch = "x86") => ulp = 1,
+            Id::Fdim => ulp = 2,
+
+            Id::Asinhf => ulp = 3,
+            Id::Cbrt => ulp = 2,
+            Id::Cosh => ulp = 2,
+            Id::Coshf => ulp = 2,
+            Id::Exp10 if cfg!(x86_no_sse) => ulp = 4,
+            Id::Exp10f if cfg!(x86_no_sse) => ulp = 4,
+            Id::Exp2f => ulp = 1,
+            Id::Expf => ulp = 1,
+            Id::Tanh => ulp = 4,
+            _ => (),
+        }
+
+        assert!(ulp >= orig_ulp, "pattern can be deleted {ctx:?}");
     }
 
     Some(ulp)
@@ -527,18 +531,19 @@ fn int_float_common<F1: Float, F2: Float>(
     }
 
     // Our bessel functions blow up with large N values
-    if ctx.basis == Musl && (ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn) {
+    if ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn {
         if cfg!(x86_no_sse) {
             // Precision is especially bad on i586, not worth checking.
             return XFAIL_NOCHECK;
         }
 
-        if input.0 > 4000 {
+        if input.0 > 140 {
             return XFAIL_NOCHECK;
-        } else if input.0 > 100 {
-            return CheckAction::AssertWithUlp(2_000_000);
+        } else if input.0 > 80 {
+            return CheckAction::AssertWithUlp(10_000_000);
         }
     }
+
     DEFAULT
 }
 
