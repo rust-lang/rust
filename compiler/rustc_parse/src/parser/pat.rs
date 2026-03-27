@@ -1749,6 +1749,9 @@ impl<'a> Parser<'a> {
         } else {
             // Parsing a pattern of the form `(box) (ref) (mut) fieldname`.
             let is_box = self.eat_keyword(exp!(Box));
+            if is_box {
+                self.psess.gated_spans.gate(sym::box_patterns, self.prev_token.span);
+            }
             let boxed_span = self.token.span;
             let mutability = self.parse_mutability();
             let by_ref = self.parse_byref();
