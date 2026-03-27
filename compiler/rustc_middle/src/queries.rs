@@ -1411,9 +1411,9 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    /// Per-body `region::ScopeTree`. The `DefId` should be the owner `DefId` for the body;
-    /// in the case of closures, this will be redirected to the enclosing function.
-    query region_scope_tree(def_id: DefId) -> &'tcx crate::middle::region::ScopeTree {
+    /// Do not call directly! It's query implementation for method
+    /// [`TyCtxt::region_scope_tree`] which you should use instead.
+    query region_scope_tree_root(def_id: DefId) -> &'tcx crate::middle::region::ScopeTree {
         desc { "computing drop scopes for `{}`", tcx.def_path_str(def_id) }
     }
 

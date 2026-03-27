@@ -7,13 +7,15 @@ use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_errors::Diag;
+use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
+use crate::middle::region::ScopeTree;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{QueryCache, QueryJob, QueryStackFrame};
+use crate::query::{IntoQueryKey, QueryCache, QueryJob, QueryStackFrame};
 use crate::ty::TyCtxt;
 
 /// For a particular query, keeps track of "active" keys, i.e. keys whose
@@ -201,6 +203,12 @@ pub struct TyCtxtEnsureDone<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    /// Per-body `region::ScopeTree`. The `DefId` should be the owner `DefId` for the body;
+    /// in the case of closures, this will be redirected to the enclosing function.
+    pub fn region_scope_tree(self, def_id: impl IntoQueryKey<DefId>) -> &'tcx ScopeTree {
+        self.region_scope_tree_root(self.typeck_root_def_id(def_id.into_query_key()))
+    }
+
     /// Returns a transparent wrapper for `TyCtxt` which uses
     /// `span` as the location of queries performed through it.
     #[inline(always)]
