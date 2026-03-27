@@ -26,6 +26,8 @@ fn test_format_f64() {
 
 #[test]
 fn test_format_f64_rounds_ties_to_even() {
+    // Use only values exactly representable in IEEE floating-point, i.e.,
+    // multiples of 1/2^n.
     assert_eq!("0", format!("{:.0}", 0.5f64));
     assert_eq!("2", format!("{:.0}", 1.5f64));
     assert_eq!("2", format!("{:.0}", 2.5f64));
@@ -38,7 +40,7 @@ fn test_format_f64_rounds_ties_to_even() {
     assert_eq!("0.8", format!("{:.1}", 0.75f64));
     assert_eq!("0.12", format!("{:.2}", 0.125f64));
     assert_eq!("0.88", format!("{:.2}", 0.875f64));
-    assert_eq!("0.062", format!("{:.3}", 0.062f64));
+    assert_eq!("0.062", format!("{:.3}", 0.0625f64));
     assert_eq!("-0", format!("{:.0}", -0.5f64));
     assert_eq!("-2", format!("{:.0}", -1.5f64));
     assert_eq!("-2", format!("{:.0}", -2.5f64));
@@ -51,7 +53,7 @@ fn test_format_f64_rounds_ties_to_even() {
     assert_eq!("-0.8", format!("{:.1}", -0.75f64));
     assert_eq!("-0.12", format!("{:.2}", -0.125f64));
     assert_eq!("-0.88", format!("{:.2}", -0.875f64));
-    assert_eq!("-0.062", format!("{:.3}", -0.062f64));
+    assert_eq!("-0.062", format!("{:.3}", -0.0625f64));
 
     assert_eq!("2e0", format!("{:.0e}", 1.5f64));
     assert_eq!("2e0", format!("{:.0e}", 2.5f64));
@@ -112,6 +114,8 @@ fn test_format_f32() {
 
 #[test]
 fn test_format_f32_rounds_ties_to_even() {
+    // Use only values exactly representable in IEEE floating-point, i.e.,
+    // multiples of 1/2^n.
     assert_eq!("0", format!("{:.0}", 0.5f32));
     assert_eq!("2", format!("{:.0}", 1.5f32));
     assert_eq!("2", format!("{:.0}", 2.5f32));
@@ -124,7 +128,7 @@ fn test_format_f32_rounds_ties_to_even() {
     assert_eq!("0.8", format!("{:.1}", 0.75f32));
     assert_eq!("0.12", format!("{:.2}", 0.125f32));
     assert_eq!("0.88", format!("{:.2}", 0.875f32));
-    assert_eq!("0.062", format!("{:.3}", 0.062f32));
+    assert_eq!("0.062", format!("{:.3}", 0.0625f32));
     assert_eq!("-0", format!("{:.0}", -0.5f32));
     assert_eq!("-2", format!("{:.0}", -1.5f32));
     assert_eq!("-2", format!("{:.0}", -2.5f32));
@@ -137,7 +141,7 @@ fn test_format_f32_rounds_ties_to_even() {
     assert_eq!("-0.8", format!("{:.1}", -0.75f32));
     assert_eq!("-0.12", format!("{:.2}", -0.125f32));
     assert_eq!("-0.88", format!("{:.2}", -0.875f32));
-    assert_eq!("-0.062", format!("{:.3}", -0.062f32));
+    assert_eq!("-0.062", format!("{:.3}", -0.0625f32));
 
     assert_eq!("2e0", format!("{:.0e}", 1.5f32));
     assert_eq!("2e0", format!("{:.0e}", 2.5f32));
