@@ -48,9 +48,9 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
                     }
                     scope 9 (inlined size_of_val_raw::<[u8; 1024]>) {
                     }
-                    scope 10 (inlined std::ptr::Alignment::of_val_raw::<[u8; 1024]>) {
+                    scope 10 (inlined std::mem::Alignment::of_val_raw::<[u8; 1024]>) {
                         scope 11 {
-                            scope 13 (inlined #[track_caller] std::ptr::Alignment::new_unchecked) {
+                            scope 13 (inlined #[track_caller] std::mem::Alignment::new_unchecked) {
                                 scope 14 (inlined core::ub_checks::check_language_ub) {
                                     scope 15 (inlined core::ub_checks::check_language_ub::runtime) {
                                     }
@@ -69,7 +69,7 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
         StorageLive(_3);
         _2 = copy (((*_1).0: std::ptr::Unique<[u8; 1024]>).0: std::ptr::NonNull<[u8; 1024]>);
         _3 = copy _2 as std::ptr::NonNull<u8> (Transmute);
-        _4 = alloc::alloc::__rust_dealloc(move _3, const 1024_usize, const std::ptr::Alignment {{ _inner_repr_trick: std::ptr::alignment::AlignmentEnum::_Align1Shl0 }}) -> [return: bb1, unwind unreachable];
+        _4 = alloc::alloc::__rust_dealloc(move _3, const 1024_usize, const std::mem::Alignment {{ _inner_repr_trick: mem::alignment::AlignmentEnum::_Align1Shl0 }}) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
