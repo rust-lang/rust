@@ -1915,3 +1915,28 @@ pub(crate) struct ImplUnpinForPinProjectedType {
     pub adt_span: Span,
     pub adt_name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[{$eii_name}]` must be used on a {$expected_kind}")]
+pub(crate) struct EiiDefkindMismatch {
+    #[primary_span]
+    pub span: Span,
+    pub eii_name: Symbol,
+    pub expected_kind: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("mutability does not match with the definition of`#[{$eii_name}]`")]
+pub(crate) struct EiiDefkindMismatchStaticMutability {
+    #[primary_span]
+    pub span: Span,
+    pub eii_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("safety does not match with the definition of`#[{$eii_name}]`")]
+pub(crate) struct EiiDefkindMismatchStaticSafety {
+    #[primary_span]
+    pub span: Span,
+    pub eii_name: Symbol,
+}
