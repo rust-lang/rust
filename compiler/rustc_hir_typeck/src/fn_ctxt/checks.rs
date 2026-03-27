@@ -1,5 +1,5 @@
 use std::ops::Deref;
-use std::{fmt, iter};
+use std::{assert_matches, fmt, iter};
 
 use itertools::Itertools;
 use rustc_ast as ast;
@@ -188,6 +188,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         tuple_arguments: TupleArgumentsFlag,
         // The DefId for the function being called, for better error messages
         fn_def_id: Option<DefId>,
+        // The kind of function being called, with its generics. Only used for splatting. Closures aren't supported.
+        is_method_call: bool,
+        callee_def_kind: Option<DefKind>,
+        callee_generic_args: Option<ty::GenericArgsRef<'tcx>>,
     ) {
         let tcx = self.tcx;
 
@@ -317,7 +321,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 // FIXME(splat): add a new error code before stabilization
                                 E0277,
                                 "cannot resolve splatted arguments; the last type parameter \
-                                for the function must be a tuple or unit: {:?}",
+                                for the function {:?} must be a tuple or unit: {:?}",
+                                callee_def_kind,
                                 ocx_error,
                             )
                             .emit();
@@ -334,7 +339,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 // FIXME(splat): add a new error code before stabilization
                                 E0277,
                                 "cannot resolve splatted arguments; the last type parameter \
-                                for the function must be a tuple or unit: {:?}",
+                                for the function {:?} must be a tuple or unit: {:?}",
+                                callee_def_kind,
                                 type_errors,
                             )
                             .emit();
@@ -376,7 +382,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         None => None,
                     };
-                    // FIXME(splat before merging): if splatting, update the caller's arguments to be a tuple, so MIR typecheck passes
+                    // If splatting, record this call in a side-table, so MIR lowering can tuple the caller's arguments
+                    if tuple_arguments.is_splatted() {
+                        // FIXME(const_trait_impl): does not enforce constness yet
+                        self.write_splatted_call(
+                            call_expr.hir_id,
+                            call_span,
+                            is_method_call,
+                            // FIXME(splat): there's probably a nicer way to do this
+                            callee_def_kind.expect(
+                                "splatting is not implemented for closures or Fn* trait calls",
+                            ),
+                            fn_def_id.expect("splatting is not implemented for FnPtrs"),
+                            callee_generic_args.expect(
+                                "splatting is not implemented for FnPtrs, closures, or Fn* trait calls",
+                            ),
+                            tupled_arg_index.try_into().unwrap(),
+                        );
+                    }
+
                     (
                         formal_input_tys[..tupled_arg_index]
                             .into_iter()

@@ -1500,6 +1500,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     method.sig.c_variadic,
                     tuple_arguments,
                     Some(method.def_id),
+                    true,
+                    // Methods have to be associated functions
+                    Some(DefKind::AssocFn),
+                    Some(method.args),
                 );
 
                 self.check_call_abi(method.sig.abi, expr.span);
@@ -1522,6 +1526,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     false,
                     TupleArgumentsFlag::DontTupleArguments,
                     None,
+                    true,
+                    Some(DefKind::AssocFn),
+                    Some(GenericArgsRef::default()),
                 );
 
                 err_output
