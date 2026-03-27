@@ -2,6 +2,7 @@
 //@ compile-flags: -O -C debug_assertions=no
 
 #![feature(new_range_api)]
+#![feature(new_range_remainder)]
 
 fn main() {
     let mut it = core::range::RangeFrom::from(u8::MAX..).into_iter();
