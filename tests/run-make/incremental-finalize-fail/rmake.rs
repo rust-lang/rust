@@ -1,3 +1,6 @@
+//@ ignore-cross-compile
+//@ needs-crate-type: proc-macro
+
 //! Test that a failure to finalize the incremental compilation session directory
 //! (i.e., the rename from "-working" to the SVH-based name) results in a
 //! note, not an ICE, and that the compilation output is still produced.
