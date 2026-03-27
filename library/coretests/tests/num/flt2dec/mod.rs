@@ -67,38 +67,36 @@ macro_rules! check_match {
 }
 
 /// Assert format_fixed outcome including variants at a lower resolution.
-/// Trailing spaces in `$digits` triggers testing of infinite zeroes.
+/// An equals suffix ("=") on `$digits` triggers testing of infinite zeroes.
 macro_rules! check_fixed_mix {
     ($v:expr => $digits:expr, $pow10:expr) => (
-        let digits: &[u8] = $digits;
+        let (digits, inf_zero): (&[u8], bool) = {
+            let d: &[u8] = $digits;
+            match d.strip_suffix(b"=".as_slice()) {
+                Some(s) => (s, true),
+                None => (d, false),
+            }
+        };
         let pow10: i16 = $pow10;
+
+        // Verify base assertion.
+        check_match!($v => &digits, pow10);
+        check_resolution!($v, pow10 - digits.len() as i16 => &digits, pow10);
 
         let mut want_buf = [b'_'; 1024];
 
-        let cut = digits.iter().position(|&c| c == b' ');
-        let end = cut.unwrap_or(digits.len());
-
-        // Verify base assertion.
-        check_match!($v => &digits[..end], pow10);
-        check_resolution!($v, pow10 - end as i16 => &digits[..end], pow10);
-
         // Verify at a lower resolution with substrings of `$digits`.
-        for i in 1..(end - 1) {
+        for i in 1..(digits.len() - 1) {
             want_buf[..i].copy_from_slice(&digits[..i]);
             let mut want_pow10 = pow10;
             if digits[i] >= b'5' {
-                // check if this is a rounding-to-even case.
-                // we avoid rounding ...x5000... (with infinite zeroes) to ...(x+1) when x is even.
-                if !(i + 1 < digits.len()
-                    && digits[i - 1] & 1 == 0
+                // Include rounding-to-even case (with equals suffix).
+                if !(digits[i - 1] & 1 == 0
                     && digits[i] == b'5'
-                    && digits[i + 1] == b' ')
+                    && digits[i + 1] == b'=')
                 {
-                    // if this returns true, want_buf[..i] is all `9`s and being rounded up.
-                    // we should always return `100..00` (`i` digits) instead, since that's
-                    // what we can came up with `i` digits anyway. `round_up` assumes that
-                    // the adjustment to the length is done by caller, which we simply ignore.
                     if let Some(_) = round_up(&mut want_buf[..i]) {
+                        // All '9's got rounded up to an extra digit.
                         want_pow10 += 1;
                     }
                 }
@@ -120,16 +118,16 @@ macro_rules! check_fixed_mix {
             check_resolution!($v, pow10 - i => b"", pow10);
         }
 
-        // check infinite zero digits
-        if let Some(cut) = cut {
-            for i in cut..digits.len() - 1 {
-                want_buf[..cut].copy_from_slice(&digits[..cut]);
-                for c in &mut want_buf[cut..i] {
-                    *c = b'0';
-                }
-
-                check_match!($v => &want_buf[..i], $pow10);
-                check_resolution!($v, $pow10 - i as i16 => &want_buf[..i], $pow10);
+        // Verify infinite zero digits.
+        if inf_zero {
+            let zero_trail = b"0000000";
+            let trail_range = digits.len()..(digits.len() + zero_trail.len());
+            want_buf[..trail_range.start].copy_from_slice(digits);
+            want_buf[trail_range.clone()].copy_from_slice(&zero_trail[..]);
+            for last in trail_range {
+                let end = last + 1;
+                check_match!($v => &want_buf[..end], pow10);
+                check_resolution!($v, pow10 - end as i16 => &want_buf[..end], pow10);
             }
         }
     )
@@ -201,13 +199,13 @@ fn f16_short_sanity_test() {
 fn f16_fixed_sanity_test() {
     let minf16 = crate::num::ldexp_f16(1.0, -24);
 
-    check_fixed_mix!(0.1f16            => b"999755859375     ", -1);
-    check_fixed_mix!(0.5f16            => b"5                ", 0);
-    check_fixed_mix!(1.0f16/3.0        => b"333251953125     ", 0);
-    check_fixed_mix!(3.141f16          => b"3140625          ", 1);
-    check_fixed_mix!(3.141e4f16        => b"31408            ", 5);
-    check_fixed_mix!(f16::MAX          => b"65504            ", 5);
-    check_fixed_mix!(f16::MIN_POSITIVE => b"6103515625       ", -4);
+    check_fixed_mix!(0.1f16            => b"999755859375=", -1);
+    check_fixed_mix!(0.5f16            => b"5=", 0);
+    check_fixed_mix!(1.0f16/3.0        => b"333251953125=", 0);
+    check_fixed_mix!(3.141f16          => b"3140625=", 1);
+    check_fixed_mix!(3.141e4f16        => b"31408=", 5);
+    check_fixed_mix!(f16::MAX          => b"65504=", 5);
+    check_fixed_mix!(f16::MIN_POSITIVE => b"6103515625=", -4);
     check_fixed_mix!(minf16            => b"59604644775390625", -7);
 
     // FIXME(f16): these should gain the check_coef_pow2 tests like `f32` and `f64` have,
@@ -263,12 +261,12 @@ fn f32_short_sanity_test() {
 fn f32_fixed_sanity_test() {
     let minf32 = ldexp_f32(1.0, -149);
 
-    check_fixed_mix!(0.1f32            => b"100000001490116119384765625             ", 0);
-    check_fixed_mix!(0.5f32            => b"5                                       ", 0);
-    check_fixed_mix!(1.0f32/3.0        => b"3333333432674407958984375               ", 0);
-    check_fixed_mix!(3.141592f32       => b"31415920257568359375                    ", 1);
-    check_fixed_mix!(3.141592e17f32    => b"314159196796878848                      ", 18);
-    check_fixed_mix!(f32::MAX          => b"34028234663852885981170418348451692544  ", 39);
+    check_fixed_mix!(0.1f32            => b"100000001490116119384765625=", 0);
+    check_fixed_mix!(0.5f32            => b"5=", 0);
+    check_fixed_mix!(1.0f32/3.0        => b"3333333432674407958984375=", 0);
+    check_fixed_mix!(3.141592f32       => b"31415920257568359375=", 1);
+    check_fixed_mix!(3.141592e17f32    => b"314159196796878848=", 18);
+    check_fixed_mix!(f32::MAX          => b"34028234663852885981170418348451692544=", 39);
     check_fixed_mix!(f32::MIN_POSITIVE => b"1175494350822287507968736537222245677819", -37);
     check_fixed_mix!(minf32            => b"1401298464324817070923729583289916131280", -44);
 
@@ -386,14 +384,14 @@ fn f64_fixed_sanity_test() {
 
     check_fixed_mix!(0.1f64            => b"1000000000000000055511151231257827021182", 0);
     check_fixed_mix!(0.45f64           => b"4500000000000000111022302462515654042363", 0);
-    check_fixed_mix!(0.5f64            => b"5                                       ", 0);
+    check_fixed_mix!(0.5f64            => b"5=", 0);
     check_fixed_mix!(0.95f64           => b"9499999999999999555910790149937383830547", 0);
-    check_fixed_mix!(100.0f64          => b"1                                       ", 3);
+    check_fixed_mix!(100.0f64          => b"1=", 3);
     check_fixed_mix!(999.5f64          => b"9995000000000000000000000000000000000000", 3);
     check_fixed_mix!(1.0f64/3.0        => b"3333333333333333148296162562473909929395", 0);
     check_fixed_mix!(3.141592f64       => b"3141592000000000162174274009885266423225", 1);
-    check_fixed_mix!(3.141592e17f64    => b"3141592                                 ", 18);
-    check_fixed_mix!(1.0e23f64         => b"99999999999999991611392                 ", 23);
+    check_fixed_mix!(3.141592e17f64    => b"3141592=", 18);
+    check_fixed_mix!(1.0e23f64         => b"99999999999999991611392=", 23);
     check_fixed_mix!(f64::MAX          => b"1797693134862315708145274237317043567981", 309);
     check_fixed_mix!(f64::MIN_POSITIVE => b"2225073858507201383090232717332404064219", -307);
     check_fixed_mix!(minf64            => b"4940656458412465441765687928682213723650\
@@ -414,7 +412,7 @@ fn f64_fixed_sanity_test() {
                                             7017972677717585125660551199131504891101\
                                             4510378627381672509558373897335989936648\
                                             0994116420570263709027924276754456522908\
-                                            7538682506419718265533447265625         ", -323);
+                                            7538682506419718265533447265625=", -323);
 
     // [1], Table 3: Stress Inputs for Converting 53-bit Binary to Decimal, < 1/2 ULP
     check_coef_pow2!(8511030020275656_f64,  -342_f64 => b"9",                       -87);
