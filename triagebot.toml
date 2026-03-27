@@ -940,9 +940,11 @@ message = "`triagebot.toml` has been modified, there may have been changes to th
 cc = ["@davidtwco", "@wesleywiser"]
 
 [mentions."compiler/rustc_codegen_cranelift"]
+message = "The Cranelift subtree was changed"
 cc = ["@bjorn3"]
 
 [mentions."compiler/rustc_codegen_gcc"]
+message = "The GCC codegen subtree was changed"
 cc = ["@antoyo", "@GuillaumeGomez"]
 
 [mentions."compiler/rustc_const_eval/src/"]
@@ -1037,6 +1039,9 @@ cc = ["@Nadrieril"]
 [mentions."compiler/rustc_mir_build/src/thir/pattern"]
 message = "Some changes occurred in match checking"
 cc = ["@Nadrieril"]
+
+[mentions."compiler/rustc_smir"]
+message = "The SMIR subtree was changed"
 
 [mentions."compiler/rustc_pattern_analysis"]
 message = "Some changes occurred in exhaustiveness checking"
@@ -1140,6 +1145,7 @@ cc = [
 cc = ["@ehuss"]
 
 [mentions."src/tools/clippy"]
+message = "The Clippy subtree was changed"
 cc = ["@rust-lang/clippy"]
 
 [mentions."src/tools/compiletest"]
@@ -1169,6 +1175,7 @@ this change to [rust-lang/rust-analyzer] instead.
 cc = ["@rust-lang/rust-analyzer"]
 
 [mentions."src/tools/rustfmt"]
+message = "The Rustfmt subtree was changed"
 cc = ["@rust-lang/rustfmt"]
 
 [mentions."compiler/rustc_middle/src/mir/syntax.rs"]
