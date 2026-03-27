@@ -476,12 +476,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let mut indices = self.compute_indices(fr_static, defining_ty);
         debug!("build: indices={:?}", indices);
 
-        let typeck_root_def_id = self.infcx.tcx.typeck_root_def_id(self.mir_def.to_def_id());
-
         // If this is a 'root' body (not a closure/coroutine/inline const), then
         // there are no extern regions, so the local regions start at the same
         // position as the (empty) sub-list of extern regions
-        let first_local_index = if self.mir_def.to_def_id() == typeck_root_def_id {
+        let first_local_index = if !self.infcx.tcx.is_typeck_child(self.mir_def.to_def_id()) {
             first_extern_index
         } else {
             // If this is a closure, coroutine, or inline-const, then the late-bound regions from the enclosing
@@ -948,16 +946,14 @@ fn for_each_late_bound_region_in_recursive_scope<'tcx>(
     mut mir_def_id: LocalDefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {
-    let typeck_root_def_id = tcx.typeck_root_def_id(mir_def_id.to_def_id());
-
     // Walk up the tree, collecting late-bound regions until we hit the typeck root
     loop {
         for_each_late_bound_region_in_item(tcx, mir_def_id, &mut f);
 
-        if mir_def_id.to_def_id() == typeck_root_def_id {
-            break;
-        } else {
+        if tcx.is_typeck_child(mir_def_id.to_def_id()) {
             mir_def_id = tcx.local_parent(mir_def_id);
+        } else {
+            break;
         }
     }
 }
