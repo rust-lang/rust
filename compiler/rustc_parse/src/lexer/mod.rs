@@ -546,6 +546,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 self.mk_sp(start, self.pos),
                 0,
                 false,
+                true,
                 "doc comment",
             );
         }
@@ -580,6 +581,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             span,
             padding,
             point_at_inner_spans,
+            false,
             label,
         );
     }
@@ -590,6 +592,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         span: Span,
         padding: u32,
         point_at_inner_spans: bool,
+        is_doc_comment: bool,
         label: &str,
     ) {
         // Obtain the `Span`s for each of the forbidden chars.
@@ -610,7 +613,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let sub = if point_at_inner_spans && !spans.is_empty() {
             errors::HiddenUnicodeCodepointsDiagSub::Escape { spans }
         } else {
-            errors::HiddenUnicodeCodepointsDiagSub::NoEscape { spans }
+            errors::HiddenUnicodeCodepointsDiagSub::NoEscape { spans, is_doc_comment }
         };
 
         self.psess.buffer_lint(
