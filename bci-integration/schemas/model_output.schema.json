@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openclaw.dev/schemas/model_output.schema.json",
+  "title": "OpenClawModelOutput",
+  "version": "0.1.0",
+  "description": "Response from the OpenClaw model after processing BCI input.",
+  "type": "object",
+  "required": ["request_id", "timestamp_unix_ms", "latency_ms", "status", "result"],
+  "additionalProperties": false,
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9_.-]{1,128}$"
+    },
+    "timestamp_unix_ms": {
+      "type": "integer"
+    },
+    "latency_ms": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Processing time in milliseconds."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "low_signal", "error", "timeout"]
+    },
+    "error_message": {
+      "type": "string",
+      "maxLength": 1024,
+      "description": "Human-readable error description when status is 'error'."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "brain_state": {
+          "type": "object",
+          "description": "Classified mental state.",
+          "additionalProperties": false,
+          "properties": {
+            "primary_state": {
+              "type": "string",
+              "enum": ["focused", "relaxed", "stressed", "drowsy", "meditative", "active", "unknown"]
+            },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "secondary_states": {
+              "type": "object",
+              "description": "Map of state name to confidence score.",
+              "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "predicted_action": {
+          "type": "object",
+          "description": "If intent was predict_action, the predicted user action.",
+          "additionalProperties": false,
+          "properties": {
+            "action": { "type": "string", "maxLength": 256 },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "alternatives": {
+              "type": "array",
+              "maxItems": 10,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "action": { "type": "string", "maxLength": 256 },
+                  "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+                }
+              }
+            }
+          }
+        },
+        "model_adaptation": {
+          "type": "object",
+          "description": "If intent was adapt_model, feedback on model adaptation.",
+          "additionalProperties": false,
+          "properties": {
+            "adapted": { "type": "boolean" },
+            "parameters_updated": { "type": "integer", "minimum": 0 },
+            "new_accuracy_estimate": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openclaw.dev/schemas/processed_features.schema.json",
+  "title": "ProcessedBCIFeatures",
+  "version": "0.1.0",
+  "description": "Extracted features from raw BCI data, ready for model inference.",
+  "type": "object",
+  "required": ["session_id", "device_id", "timestamp_unix_ms", "window_size_ms", "source_packet_range", "features", "quality"],
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9_.-]{1,128}$",
+      "description": "Session identifier linking back to raw stream."
+    },
+    "device_id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9_.-]{1,128}$",
+      "description": "Device identifier propagated from raw stream."
+    },
+    "timestamp_unix_ms": {
+      "type": "integer",
+      "description": "Timestamp of the center of the analysis window."
+    },
+    "window_size_ms": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Size of the sliding window in milliseconds (e.g. 1000 = 1 second).",
+      "default": 1000
+    },
+    "source_packet_range": {
+      "type": "object",
+      "description": "Range of raw packet IDs that contributed to this feature window.",
+      "required": ["first_packet_id", "last_packet_id"],
+      "properties": {
+        "first_packet_id": { "type": "integer", "minimum": 0 },
+        "last_packet_id": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "features": {
+      "type": "object",
+      "required": ["band_powers"],
+      "additionalProperties": false,
+      "properties": {
+        "band_powers": {
+          "type": "object",
+          "description": "Power spectral density per frequency band, averaged across channels.",
+          "properties": {
+            "delta": { "type": "number", "minimum": 0, "description": "1-4 Hz" },
+            "theta": { "type": "number", "minimum": 0, "description": "4-8 Hz" },
+            "alpha": { "type": "number", "minimum": 0, "description": "8-13 Hz" },
+            "beta": { "type": "number", "minimum": 0, "description": "13-30 Hz" },
+            "gamma": { "type": "number", "minimum": 0, "description": "30-100 Hz" }
+          }
+        },
+        "attention_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Derived attention metric (beta/theta ratio, normalized 0-1)."
+        },
+        "relaxation_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Derived relaxation metric (alpha power, normalized 0-1)."
+        },
+        "cognitive_load": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Derived cognitive load (theta+alpha frontal, normalized 0-1)."
+        },
+        "artifact_probability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Probability that this window contains artifacts."
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": ["signal_quality"],
+      "additionalProperties": false,
+      "properties": {
+        "signal_quality": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall signal quality score."
+        },
+        "channels_good": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 16 },
+          "maxItems": 256,
+          "description": "Channels with acceptable signal quality."
+        },
+        "channels_bad": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 16 },
+          "maxItems": 256,
+          "description": "Channels with poor signal quality."
+        }
+      }
+    }
+  }
+}

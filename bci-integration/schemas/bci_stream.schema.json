@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openclaw.dev/schemas/bci_stream.schema.json",
+  "title": "BCIStreamPacket",
+  "version": "0.1.0",
+  "description": "A single packet of BCI data from Galea/BrainFlow, normalized for downstream consumption.",
+  "type": "object",
+  "required": ["packet_id", "timestamp_unix_ms", "device_id", "session_id", "sample_rate_hz", "channels"],
+  "additionalProperties": false,
+  "properties": {
+    "packet_id": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonically increasing packet sequence number."
+    },
+    "timestamp_unix_ms": {
+      "type": "integer",
+      "description": "Unix timestamp in milliseconds when the sample was captured."
+    },
+    "device_id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9_.-]{1,128}$",
+      "description": "Unique identifier for the BCI device (e.g. 'galea-v4-001')."
+    },
+    "session_id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9_.-]{1,128}$",
+      "description": "Session identifier linking packets to a recording session."
+    },
+    "sample_rate_hz": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000,
+      "description": "Sampling rate in Hz (e.g. 250 for Galea EEG)."
+    },
+    "channels": {
+      "type": "object",
+      "description": "Sensor channel data grouped by modality.",
+      "required": ["eeg"],
+      "additionalProperties": false,
+      "properties": {
+        "eeg": {
+          "type": "object",
+          "description": "Electroencephalography channels (brain activity).",
+          "required": ["values_uv"],
+          "additionalProperties": false,
+          "properties": {
+            "values_uv": {
+              "type": "array",
+              "items": { "type": "number", "minimum": -500, "maximum": 500 },
+              "minItems": 1,
+              "maxItems": 256,
+              "description": "EEG channel values in microvolts. Array index maps to channel_map."
+            },
+            "channel_map": {
+              "type": "array",
+              "items": { "type": "string", "maxLength": 16 },
+              "minItems": 1,
+              "maxItems": 256,
+              "description": "Electrode placement labels (e.g. ['FP1','FP2','Fz','Cz','Pz','Oz']).",
+              "default": ["FP1", "FP2", "Fz", "Cz", "Pz", "Oz", "P3", "P4", "O1", "O2"]
+            }
+          }
+        },
+        "emg": {
+          "type": "object",
+          "description": "Electromyography channels (muscle activity).",
+          "additionalProperties": false,
+          "properties": {
+            "values_uv": {
+              "type": "array",
+              "items": { "type": "number", "minimum": -5000, "maximum": 5000 },
+              "minItems": 1,
+              "maxItems": 64
+            }
+          }
+        },
+        "eog": {
+          "type": "object",
+          "description": "Electrooculography channels (eye movement).",
+          "additionalProperties": false,
+          "properties": {
+            "values_uv": {
+              "type": "array",
+              "items": { "type": "number", "minimum": -1000, "maximum": 1000 },
+              "minItems": 1,
+              "maxItems": 16
+            }
+          }
+        },
+        "eda": {
+          "type": "object",
+          "description": "Electrodermal activity (skin conductance).",
+          "additionalProperties": false,
+          "properties": {
+            "value_us": { "type": "number", "minimum": 0, "maximum": 100, "description": "Conductance in microsiemens." }
+          }
+        },
+        "ppg": {
+          "type": "object",
+          "description": "Photoplethysmography (heart rate).",
+          "additionalProperties": false,
+          "properties": {
+            "value": { "type": "number" },
+            "heart_rate_bpm": { "type": "number", "minimum": 20, "maximum": 250 }
+          }
+        }
+      }
+    },
+    "markers": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": ["label"],
+        "properties": {
+          "label": { "type": "string", "maxLength": 256 },
+          "value": { "type": "number" }
+        }
+      },
+      "description": "Event markers inserted into the stream."
+    }
+  }
+}
