@@ -1,166 +1,260 @@
-# BCI-to-OpenClaw Integration Prototype -- System Architecture
+# BCI-to-OpenClaw Integration Prototype -- Revised System Architecture (v2)
 
 ## 1. High-Level Overview
 
-This system streams raw biosignal data from a Galea headset (via BrainFlow SDK), extracts neurological features in real time, and feeds them to the OpenClaw model integration layer for brain-state classification. The architecture is a simple linear pipeline of five single-purpose processes communicating over local ZeroMQ sockets with JSON payloads conforming to four defined schemas. The prototype targets a single user, single device, running entirely on one machine, with a target end-to-end latency under 200ms from sample capture to classified brain state.
+This system connects a Galea BCI headset (via BrainFlow SDK) to the OpenClaw AI agent platform, enabling the LLM to be aware of the user's real-time brain state. A Python process reads raw EEG data, extracts frequency-domain features, classifies brain state via heuristics, and serves it over a simple HTTP API. An OpenClaw TypeScript plugin fetches this state on every AI turn via the `before_prompt_build` lifecycle hook and injects a natural language summary into the LLM's system context. The architecture has 3 custom components; everything else (LLM routing, messaging, memory) is handled by OpenClaw natively.
 
 ## 2. Component Diagram
 
 ```
- +------------------+       +------------------+       +------------------+
- |                  |  ZMQ  |                  |  ZMQ  |                  |
- |  1. BCI Reader   |------>|  2. Feature      |------>|  3. OpenClaw     |
- |  (BrainFlow)     | PUB/  |     Extractor    | PUB/  |     Gateway      |
- |                  | SUB   |                  | SUB   |                  |
- +------------------+       +------------------+       +------------------+
-   Galea hardware             BCIStreamPacket -->        ProcessedFeatures -->
-   --> BCIStreamPacket        ProcessedFeatures          ModelInput/ModelOutput
-                                                               |
-                                                               | HTTP/JSON
-                                                               v
-                                                  +------------------+
-                                                  |                  |
-                                                  |  4. Model        |
-                                                  |     Backend      |
-                                                  |  (scikit-learn)  |
-                                                  |                  |
-                                                  +------------------+
-                                                               |
-                                                               |
-                                                               v
-                                                  +------------------+
-                                                  |                  |
-                                                  |  5. Monitor UI   |
-                                                  |  (terminal/web)  |
-                                                  |                  |
-                                                  +------------------+
-
- Data flow:  Galea --> [1] --> [2] --> [3] --> [4]
-                                               |
-                                              [5] (subscribes to [3] output)
++---------------------------------------------+
+|           BCI Signal Processor + State Server |
+|           (Python, single process)            |
+|                                               |
+|  +---------------+     +-----------------+    |
+|  | BrainFlow SDK |---->| DSP Pipeline    |    |
+|  | (synthetic or |     | (Welch's method,|    |
+|  |  Galea board) |     |  band powers,   |    |
+|  +---------------+     |  heuristic      |    |
+|    250 Hz EEG          |  classifier)    |    |
+|                        +-----------------+    |
+|                              |                |
+|                              v                |
+|                        +-----------------+    |
+|                        | HTTP Server     |    |
+|                        | GET /state      |    |
+|                        | GET /health     |    |
+|                        | port 7680       |    |
+|                        +-----------------+    |
++---------------------------------------------+
+                               |
+                               | HTTP GET /state
+                               v
++---------------------------------------------+
+|           OpenClaw BCI Plugin (TypeScript)     |
+|                                               |
+|  api.on("before_prompt_build", async () => {  |
+|    const state = await fetch("/state");       |
+|    return { prependSystemContext: summary };   |
+|  })                                           |
++---------------------------------------------+
+                               |
+                               | prependSystemContext
+                               v
++---------------------------------------------+
+|           OpenClaw Gateway (already exists)    |
+|           port 18789                          |
+|                                               |
+|  - Routes to LLM (Claude, GPT, Ollama, etc.) |
+|  - Loads BCI SKILL.md for interpretation      |
+|  - Normal message flow, memory, sessions      |
++---------------------------------------------+
 ```
 
 ## 3. Component Descriptions
 
-### Component 1: BCI Reader
-- **Responsibility:** Acquire raw data from Galea hardware and emit normalized `BCIStreamPacket` JSON.
-- **Single job:** Translate BrainFlow's board-specific array format into the `bci_stream.schema.json` contract.
-- **Language:** Python (BrainFlow has best Python support and examples).
-- **Behavior:** Connects to the Galea board via BrainFlow, reads samples at 250 Hz, packages each sample (or small batch) as a `BCIStreamPacket`, publishes on a ZMQ PUB socket.
-- **Also handles:** Device discovery, connection retry, synthetic/playback mode for development without hardware.
+### Component 1: BCI Signal Processor + State Server (Python)
 
-### Component 2: Feature Extractor
-- **Responsibility:** Buffer raw BCI packets into sliding windows and compute the features defined in `processed_features.schema.json`.
-- **Single job:** Turn raw time-series data into frequency-domain features and derived scores.
-- **Language:** Python (NumPy/SciPy FFT).
-- **Behavior:** Subscribes to BCI Reader's ZMQ stream, maintains a 1-second sliding window (250 samples), computes band powers (delta/theta/alpha/beta/gamma) via Welch's method, derives attention, relaxation, and cognitive load scores, estimates artifact probability, assesses channel signal quality. Publishes `ProcessedBCIFeatures` on its own ZMQ PUB socket. Emits one feature vector per 250ms window step (75% overlap).
+**Single process combining data acquisition, DSP, and HTTP serving.**
 
-### Component 3: OpenClaw Gateway
-- **Responsibility:** Bridge the BCI feature stream to the model backend.
-- **Single job:** Protocol translation and request orchestration between the streaming BCI world and the request/response model world.
-- **Language:** Python.
-- **Behavior:** Subscribes to Feature Extractor's ZMQ stream. For each feature vector: constructs an `OpenClawModelInput` (with `intent: "classify_state"` for the prototype), sends it to the Model Backend via HTTP POST, receives the `OpenClawModelOutput`, and publishes the result on a ZMQ PUB socket for downstream consumers.
+- **BrainFlow integration:** Connects to synthetic board (prototype) or Galea hardware. Reads EEG at 250Hz.
+- **DSP pipeline:** Buffers 1-second sliding windows (250 samples), computes band powers via Welch's method (delta/theta/alpha/beta/gamma), derives attention/relaxation/cognitive_load scores, estimates artifact probability, assesses signal quality.
+- **Heuristic classifier:** Classifies brain state from band powers (high alpha = relaxed, high beta/theta ratio = focused, high theta = drowsy, etc.).
+- **HTTP server:** FastAPI on port 7680. `GET /state` returns current `BCIState` JSON (conforms to `bci_state.schema.json`). `GET /health` returns server status.
+- **Why one process:** KISS. The Signal Processor and State Server share the same state (latest brain features). Splitting them adds IPC complexity for zero benefit in a prototype.
 
-### Component 4: Model Backend
-- **Responsibility:** Run brain-state classification inference.
-- **Single job:** Accept a `ModelInput`, return a `ModelOutput`.
-- **Language:** Python, Flask.
-- **Behavior:** Exposes a single `POST /classify` endpoint. Takes the 5 band powers plus derived scores as feature vector, runs through a pre-trained scikit-learn classifier (or threshold-based heuristic for initial prototype), returns `brain_state` with `primary_state` and `confidence`.
+### Component 2: OpenClaw BCI Plugin (TypeScript)
 
-### Component 5: Monitor UI
-- **Responsibility:** Visualize system state for the developer/operator.
-- **Single job:** Display what the system is doing so humans can verify it works.
-- **Language:** Python (terminal-based with `rich` library).
-- **Behavior:** Subscribes to the OpenClaw Gateway's output ZMQ socket. Displays current brain state, band power bars, signal quality, latency metrics.
+**A thin OpenClaw plugin that bridges BCI state into the agent's context.**
+
+- Uses `definePluginEntry` / `register(api)` pattern.
+- Registers a `before_prompt_build` lifecycle hook.
+- On each hook invocation: fetches `GET http://127.0.0.1:7680/state`, extracts `natural_language_summary`, returns `{ prependSystemContext: summary }`.
+- Handles errors gracefully: if state server is unreachable or data is stale, injects a warning instead of crashing.
+- Configurable: state server URL can be overridden.
+
+### Component 3: BCI SKILL.md
+
+**A skill file teaching the OpenClaw agent how to interpret brain state data.**
+
+- Loaded into the agent's context when relevant.
+- Explains what each brain state means, what the scores represent, and how to adapt responses based on the user's cognitive state.
+- Example: "When the user is drowsy, keep responses shorter and suggest taking a break."
 
 ## 4. Data Flow
 
 ```
-Step  Source              Message                     Destination
-----  ------              -------                     -----------
- 1    Galea hardware      Raw BrainFlow arrays        BCI Reader
- 2    BCI Reader          BCIStreamPacket (JSON)      Feature Extractor
-                          via ZMQ PUB tcp://localhost:5555
- 3    Feature Extractor   ProcessedBCIFeatures (JSON) OpenClaw Gateway
-                          via ZMQ PUB tcp://localhost:5556
- 4    OpenClaw Gateway    OpenClawModelInput (JSON)   Model Backend
-                          via HTTP POST http://localhost:8080/classify
- 5    Model Backend       OpenClawModelOutput (JSON)  OpenClaw Gateway
-                          via HTTP response
- 6    OpenClaw Gateway    OpenClawModelOutput (JSON)  Monitor UI
-                          via ZMQ PUB tcp://localhost:5557
+Step  What                              Where
+----  ----                              -----
+ 1    Raw EEG samples at 250 Hz         BrainFlow SDK -> numpy arrays
+ 2    Sliding window (1s, 250 samples)  DSP buffer in Signal Processor
+ 3    Band powers via Welch's method    scipy.signal.welch
+ 4    Derived scores (attention, etc.)  Simple ratios + normalization
+ 5    Brain state classification        Heuristic thresholds
+ 6    BCIState JSON + NL summary        State Server memory
+ 7    HTTP GET /state                   Plugin -> State Server
+ 8    prependSystemContext injection     Plugin -> OpenClaw Gateway
+ 9    LLM sees brain state in context   Gateway -> LLM provider
 ```
 
-### Timing Budget
-
-| Stage | Budget |
-|---|---|
-| BCI Reader (sample to publish) | < 5ms |
-| Feature Extractor (window to features) | < 30ms |
-| OpenClaw Gateway (overhead) | < 5ms |
-| Model Backend (inference) | < 50ms |
-| **Total end-to-end** | **< 100ms** (plus 250ms window step lag) |
+**Update frequency:**
+- DSP: every 250ms (4 feature windows/second)
+- State Server: latest state always available
+- Plugin: fetches on each AI turn (user-driven, not continuous)
 
 ## 5. Technology Choices
 
 | Choice | Justification |
 |---|---|
-| **Python** (all components) | BrainFlow's primary SDK; NumPy/SciPy for DSP; scikit-learn for ML; one language = one team. |
-| **ZeroMQ** (inter-process) | Boring, fast, zero-config PUB/SUB. No broker needed. |
-| **JSON** over ZMQ | Human-readable, schema-validated, debuggable. Fine for 4 msg/sec at feature level. |
-| **HTTP/JSON** (gateway to model) | Model backends universally speak HTTP. Easy to swap later. |
-| **Flask** (model server) | Simplest Python HTTP framework. One file, no magic. |
-| **scikit-learn** (classifier) | No GPU required. Fast inference (< 1ms). Easy to iterate. |
-| **rich** (terminal UI) | Zero-dependency terminal dashboards. |
-| **jsonschema** (validation) | Validate messages at component boundaries. |
+| **Python** (Signal Processor + State Server) | BrainFlow's primary SDK; NumPy/SciPy for DSP; boring, well-known |
+| **FastAPI** (HTTP server) | Async, fast, auto-generates OpenAPI docs, minimal boilerplate |
+| **TypeScript** (OpenClaw plugin) | Required by OpenClaw plugin SDK; plugins loaded via jiti |
+| **HTTP/JSON** (plugin -> state server) | Simplest possible transport. No WebSocket, no ZMQ, no streaming needed since the plugin only reads on AI turns |
+| **BrainFlow** (BCI SDK) | Supports Galea + 200 other boards; synthetic mode for dev |
+| **Heuristic classifier** (brain state) | No training data needed; transparent logic; good enough for prototype |
+
+**What we're NOT using:**
+- ~~ZeroMQ~~ (HTTP is simpler for request/response)
+- ~~Flask~~ (FastAPI is equally simple and async-native)
+- ~~scikit-learn~~ (heuristic is simpler than ML for prototype)
+- ~~rich terminal UI~~ (the LLM is the consumer, not a human terminal)
 
 ## 6. Interface Contracts
 
-| Interface | Transport | Schema | Rate |
+### State Server API (Python)
+
+| Endpoint | Method | Response Schema | Description |
 |---|---|---|---|
-| BCI Reader -> Feature Extractor | ZMQ PUB/SUB `tcp://localhost:5555` | `bci_stream.schema.json` | 250 msg/s |
-| Feature Extractor -> Gateway | ZMQ PUB/SUB `tcp://localhost:5556` | `processed_features.schema.json` | 4 msg/s |
-| Gateway -> Model Backend | HTTP POST `http://localhost:8080/classify` | `model_input.schema.json` / `model_output.schema.json` | 4 req/s |
-| Gateway -> Monitor UI | ZMQ PUB/SUB `tcp://localhost:5557` | `model_output.schema.json` | 4 msg/s |
+| `/state` | GET | `state_server_api.schema.json#/definitions/state_response` | Current brain state |
+| `/health` | GET | `state_server_api.schema.json#/definitions/health_response` | Server health |
+
+**Base URL:** `http://127.0.0.1:7680`
+
+### OpenClaw Plugin -> Gateway
+
+| Hook | Returns | Description |
+|---|---|---|
+| `before_prompt_build` | `{ prependSystemContext: string }` | Brain state NL summary injected before every AI turn |
+
+### BCI SKILL.md -> Agent
+
+Loaded on-demand when agent determines BCI context is relevant. Provides interpretation instructions.
 
 ## 7. Error Handling Strategy
 
-**Principle: Fail fast, fail loudly.**
+**Principle: Fail fast, fail loudly, degrade gracefully for the LLM.**
 
-| Component | Failure Mode | Response |
+| Component | Failure | Response |
 |---|---|---|
-| BCI Reader | Device disconnected | Log error, retry with backoff. Exit after 30s. |
-| BCI Reader | BrainFlow SDK error | Log traceback, exit. Let supervisor restart. |
-| Feature Extractor | No data > 2s | Emit features with `signal_quality: 0`, `artifact_probability: 1`. |
-| Feature Extractor | NaN/Inf in computation | Replace with zero, set `artifact_probability: 1`, log warning. |
-| Gateway | Model timeout (> 100ms) | Return `status: "timeout"`, `primary_state: "unknown"`. Skip cycle. |
-| Gateway | Model unreachable | Return `status: "error"`. Log. Continue trying. |
-| Model Backend | Invalid input | HTTP 400 with `status: "error"` and message. |
-| Model Backend | Inference crash | HTTP 500. Flask catches exception. Log traceback. |
+| Signal Processor | BrainFlow device disconnected | Log error, retry 3x with backoff, exit after 30s. State Server returns `available: false`. |
+| Signal Processor | NaN/Inf in DSP | Replace with 0, set artifact_probability=1, log warning. |
+| Signal Processor | No data for > 2s | Set signal_quality=0, staleness_ms increases, state becomes "unknown". |
+| State Server | Startup before any BCI data | Return `{ available: false, error: "No BCI data received yet" }`. |
+| Plugin | State Server unreachable | Inject: "BCI state unavailable (state server not responding)". Don't crash. |
+| Plugin | State data stale (> 5s) | Inject warning: "BCI state is stale (Xs old), may be unreliable". |
+| Plugin | State Server returns available=false | Inject: "BCI device not connected". |
 
-**System-level:** Use a Procfile/shell script for process supervision. Structured logging to stderr. Schema validation at boundaries (toggle-able). Health check at `GET /health`.
+## 8. File Structure
 
-## 8. Scope
+```
+bci-integration/
+├── README.md
+├── docs/
+│   ├── architecture.md          (this document)
+│   ├── high-level-changes.md
+│   └── task-breakdown.md        (updated)
+├── schemas/
+│   ├── bci_stream.schema.json
+│   ├── processed_features.schema.json
+│   ├── bci_state.schema.json
+│   └── state_server_api.schema.json
+├── signal-processor/            # Python: BrainFlow + DSP + HTTP server
+│   ├── pyproject.toml
+│   ├── src/
+│   │   ├── __init__.py
+│   │   ├── __main__.py          # Entry point
+│   │   ├── config.py            # Port, sample rate, window size constants
+│   │   ├── brainflow_reader.py  # BrainFlow connection + data acquisition
+│   │   ├── dsp.py               # Pure DSP functions (band powers, scores)
+│   │   ├── classifier.py        # Heuristic brain state classifier
+│   │   ├── state_manager.py     # Thread-safe current state storage
+│   │   └── server.py            # FastAPI app (GET /state, GET /health)
+│   └── tests/
+│       ├── test_dsp.py
+│       ├── test_classifier.py
+│       └── test_server.py
+├── openclaw-plugin/             # TypeScript: OpenClaw plugin
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── src/
+│   │   └── index.ts             # Plugin entry point with before_prompt_build
+│   └── tests/
+│       └── index.test.ts
+└── skill/                       # OpenClaw skill for BCI interpretation
+    └── SKILL.md
+```
+
+## 9. BCI SKILL.md Outline
+
+```yaml
+---
+name: bci-brain-state
+description: Interprets real-time brain-computer interface (BCI) data injected into context. Helps adapt responses based on the user's cognitive state.
+version: 0.1.0
+user-invocable: false
+disable-model-invocation: false
+---
+```
+
+**Skill instructions would cover:**
+- What each brain state means (focused, relaxed, stressed, drowsy, meditative, active)
+- What the scores represent (attention 0-1, relaxation 0-1, cognitive_load 0-1)
+- How to adapt responses based on state:
+  - **Focused**: User is engaged. Provide detailed, in-depth responses.
+  - **Relaxed**: User is calm. Conversational tone is fine.
+  - **Stressed**: User may be frustrated. Be concise, supportive, clear.
+  - **Drowsy**: User is fatigued. Keep it short, suggest breaks.
+  - **Unknown/low signal**: Don't rely on BCI data, respond normally.
+- When to mention brain state vs. use it silently
+- Signal quality caveats (low quality = unreliable data)
+
+## 10. Scope
 
 ### Prototype (In Scope)
-- BCI Reader with BrainFlow synthetic board (no hardware needed)
-- Feature Extractor with Welch's method band powers
-- Derived scores (attention, relaxation, cognitive load) via simple ratios
-- OpenClaw Gateway with `classify_state` intent only
-- Model Backend with threshold-based heuristic classifier
-- Terminal Monitor UI (state, confidence, signal quality)
-- JSON schema validation at boundaries
-- Shell script to start/stop all components
-- Replay mode (record session to file, play back)
+- Signal Processor with BrainFlow synthetic board (no hardware needed)
+- DSP: Welch's method band powers, simple derived scores
+- Heuristic classifier (threshold-based, no ML)
+- FastAPI state server (GET /state, GET /health)
+- OpenClaw plugin with before_prompt_build hook
+- BCI SKILL.md for agent interpretation
+- Schema validation at State Server boundary
+- Basic structured logging
 
 ### Future Work (Out of Scope)
-- `predict_action` and `adapt_model` intents
+- Real Galea hardware support (just change board ID)
 - Trained ML classifier (replace heuristic)
-- Multi-user / multi-device
-- Auth, TLS, security
-- Persistent storage
-- Cloud deployment
-- Web-based UI
 - EMG/EOG/EDA/PPG feature extraction (prototype = EEG only)
 - Artifact rejection (ICA, ASR)
-- Binary serialization / performance optimization
+- Session recording/replay
+- WebSocket streaming (for real-time UI dashboards)
+- Custom OpenClaw Node registration (for node.invoke pattern)
+- Webhook integration (for event-driven state change alerts)
+- Multi-user / multi-device
+- Auth/TLS on state server
+- Persistent storage / time-series DB
+
+## 11. Revised Task Breakdown
+
+| Task | Description | Depends On | Estimate |
+|---|---|---|---|
+| 1 | Project scaffold: Python package, TS package, schemas, config | -- | 1h |
+| 2 | DSP module: band powers, scores, classifier (pure functions + tests) | 1 | 3h |
+| 3 | BrainFlow reader: synthetic board, data acquisition loop | 1 | 2h |
+| 4 | State Server: FastAPI, GET /state, GET /health, schema validation | 1, 2 | 2h |
+| 5 | Integration: connect reader -> DSP -> state manager -> server | 2, 3, 4 | 2h |
+| 6 | OpenClaw plugin: before_prompt_build, fetch /state, error handling | 1, 4 | 2h |
+| 7 | BCI SKILL.md: interpretation instructions for the agent | -- | 1h |
+| 8 | End-to-end test: synthetic board -> state server -> plugin mock | 5, 6 | 2h |
+| **Total** | | | **~15h** |
+
+Compared to the original 9-task / 23h plan, this is **8 tasks / ~15h** -- simpler architecture means less work.

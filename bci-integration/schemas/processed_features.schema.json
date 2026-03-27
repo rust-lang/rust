@@ -1,9 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://openclaw.dev/schemas/processed_features.schema.json",
+  "$id": "urn:bci-integration:processed_features",
   "title": "ProcessedBCIFeatures",
-  "version": "0.1.0",
-  "description": "Extracted features from raw BCI data, ready for model inference.",
+  "version": "0.2.0",
+  "description": "Extracted features from raw BCI data via sliding-window DSP. Produced by the BCI Signal Processor, consumed internally to derive brain state.",
   "type": "object",
   "required": ["session_id", "device_id", "timestamp_unix_ms", "window_size_ms", "source_packet_range", "features", "quality"],
   "additionalProperties": false,
@@ -34,6 +34,7 @@
       "type": "object",
       "description": "Range of raw packet IDs that contributed to this feature window.",
       "required": ["first_packet_id", "last_packet_id"],
+      "additionalProperties": false,
       "properties": {
         "first_packet_id": { "type": "integer", "minimum": 0 },
         "last_packet_id": { "type": "integer", "minimum": 0 }
@@ -47,6 +48,7 @@
         "band_powers": {
           "type": "object",
           "description": "Power spectral density per frequency band, averaged across channels.",
+          "additionalProperties": false,
           "properties": {
             "delta": { "type": "number", "minimum": 0, "description": "1-4 Hz" },
             "theta": { "type": "number", "minimum": 0, "description": "4-8 Hz" },

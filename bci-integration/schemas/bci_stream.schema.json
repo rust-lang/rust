@@ -1,9 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://openclaw.dev/schemas/bci_stream.schema.json",
+  "$id": "urn:bci-integration:bci_stream",
   "title": "BCIStreamPacket",
-  "version": "0.1.0",
-  "description": "A single packet of BCI data from Galea/BrainFlow, normalized for downstream consumption.",
+  "version": "0.2.0",
+  "description": "A single packet of BCI data from a BrainFlow-compatible board, normalized for downstream DSP consumption.",
   "type": "object",
   "required": ["packet_id", "timestamp_unix_ms", "device_id", "session_id", "sample_rate_hz", "channels"],
   "additionalProperties": false,
@@ -21,7 +21,7 @@
       "type": "string",
       "maxLength": 128,
       "pattern": "^[a-zA-Z0-9_.-]{1,128}$",
-      "description": "Unique identifier for the BCI device (e.g. 'galea-v4-001')."
+      "description": "Unique identifier for the BCI device (e.g. 'synthetic-256' or 'galea-v4-001')."
     },
     "session_id": {
       "type": "string",
@@ -33,7 +33,7 @@
       "type": "integer",
       "minimum": 1,
       "maximum": 10000,
-      "description": "Sampling rate in Hz (e.g. 250 for Galea EEG)."
+      "description": "Sampling rate in Hz (e.g. 250 for BrainFlow synthetic board)."
     },
     "channels": {
       "type": "object",
@@ -115,6 +115,7 @@
       "items": {
         "type": "object",
         "required": ["label"],
+        "additionalProperties": false,
         "properties": {
           "label": { "type": "string", "maxLength": 256 },
           "value": { "type": "number" }

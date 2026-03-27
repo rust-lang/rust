@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:bci-integration:bci_state",
+  "title": "BCIState",
+  "version": "0.1.0",
+  "description": "High-level brain state summary suitable for injection into OpenClaw agent context via the before_prompt_build hook. This is what the LLM sees.",
+  "type": "object",
+  "required": ["timestamp_unix_ms", "session_id", "device_id", "state", "scores", "signal_quality", "natural_language_summary"],
+  "additionalProperties": false,
+  "properties": {
+    "timestamp_unix_ms": {
+      "type": "integer",
+      "description": "Unix timestamp in milliseconds when this state was computed."
+    },
+    "session_id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9_.-]{1,128}$",
+      "description": "BCI recording session identifier."
+    },
+    "device_id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9_.-]{1,128}$",
+      "description": "BCI device identifier."
+    },
+    "state": {
+      "type": "object",
+      "required": ["primary", "confidence"],
+      "additionalProperties": false,
+      "description": "Classified mental state derived from band power heuristics.",
+      "properties": {
+        "primary": {
+          "type": "string",
+          "enum": ["focused", "relaxed", "stressed", "drowsy", "meditative", "active", "unknown"],
+          "description": "Dominant classified mental state."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence in the primary state classification (0-1)."
+        },
+        "secondary": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["state", "confidence"],
+            "additionalProperties": false,
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": ["focused", "relaxed", "stressed", "drowsy", "meditative", "active"]
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          },
+          "description": "Other possible states ranked by confidence."
+        }
+      }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Normalized 0-1 scores derived from EEG band powers.",
+      "properties": {
+        "attention": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Attention level (derived from beta/theta ratio)."
+        },
+        "relaxation": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Relaxation level (derived from alpha power)."
+        },
+        "cognitive_load": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Cognitive load (derived from frontal theta+alpha)."
+        }
+      }
+    },
+    "band_powers": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Raw band power values for advanced interpretation.",
+      "properties": {
+        "delta": { "type": "number", "minimum": 0, "description": "1-4 Hz power." },
+        "theta": { "type": "number", "minimum": 0, "description": "4-8 Hz power." },
+        "alpha": { "type": "number", "minimum": 0, "description": "8-13 Hz power." },
+        "beta": { "type": "number", "minimum": 0, "description": "13-30 Hz power." },
+        "gamma": { "type": "number", "minimum": 0, "description": "30-100 Hz power." }
+      }
+    },
+    "signal_quality": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Overall signal quality. Below 0.3 means data is unreliable."
+    },
+    "artifact_probability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Probability that the current window is contaminated by artifacts (eye blinks, jaw clench, etc.)."
+    },
+    "staleness_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "How many milliseconds ago this state was last updated. If > 5000, the BCI data is stale and should be treated as unreliable."
+    },
+    "natural_language_summary": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "Human/LLM-readable one-line summary of current brain state. This is what gets injected as prependSystemContext. Example: 'User brain state: FOCUSED (confidence: 0.82, attention: 0.79, relaxation: 0.23, signal quality: good)'"
+    }
+  }
+}

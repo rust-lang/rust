@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:bci-integration:state_server_api",
+  "title": "BCIStateServerAPI",
+  "version": "0.1.0",
+  "description": "HTTP API contract for the BCI State Server. The OpenClaw BCI plugin calls GET /state on each before_prompt_build to retrieve current brain state for context injection.",
+  "definitions": {
+    "health_response": {
+      "type": "object",
+      "required": ["status", "uptime_seconds"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["ok", "degraded", "no_signal"],
+          "description": "'ok' = BCI data flowing and fresh. 'degraded' = data flowing but signal quality < 0.3 or data stale > 5s. 'no_signal' = no BCI data received yet or device disconnected."
+        },
+        "uptime_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "How long the state server has been running."
+        },
+        "device_connected": {
+          "type": "boolean",
+          "description": "Whether a BCI device (or synthetic board) is actively streaming."
+        },
+        "session_id": {
+          "type": ["string", "null"],
+          "maxLength": 128,
+          "description": "Current session ID, or null if no session is active."
+        },
+        "last_update_unix_ms": {
+          "type": ["integer", "null"],
+          "description": "Timestamp of the last state update, or null if no data has been received."
+        }
+      }
+    },
+    "state_response": {
+      "description": "Response body for GET /state. The BCIState object wrapped with an HTTP-level status indicator.",
+      "type": "object",
+      "required": ["available", "timestamp_unix_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "available": {
+          "type": "boolean",
+          "description": "True if BCI state data is available. False if no data has been received yet or device is disconnected."
+        },
+        "timestamp_unix_ms": {
+          "type": "integer",
+          "description": "Server timestamp when this response was generated."
+        },
+        "bci_state": {
+          "$ref": "bci_state.schema.json"
+        },
+        "error": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Error message when available=false, explaining why state is unavailable."
+        }
+      }
+    },
+    "error_response": {
+      "type": "object",
+      "required": ["error", "status_code"],
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Human-readable error message."
+        },
+        "status_code": {
+          "type": "integer",
+          "description": "HTTP status code."
+        }
+      }
+    }
+  },
+  "type": "object",
+  "description": "API endpoint definitions for the BCI State Server.",
+  "properties": {
+    "endpoints": {
+      "type": "object",
+      "properties": {
+        "get_health": {
+          "type": "object",
+          "description": "GET /health -- Server health check.",
+          "properties": {
+            "method": { "const": "GET" },
+            "path": { "const": "/health" },
+            "response_200": { "$ref": "#/definitions/health_response" }
+          }
+        },
+        "get_state": {
+          "type": "object",
+          "description": "GET /state -- Retrieve current BCI brain state. Called by the OpenClaw BCI plugin on each before_prompt_build hook invocation.",
+          "properties": {
+            "method": { "const": "GET" },
+            "path": { "const": "/state" },
+            "response_200": { "$ref": "#/definitions/state_response" },
+            "response_503": { "$ref": "#/definitions/error_response" }
+          }
+        }
+      }
+    },
+    "server": {
+      "type": "object",
+      "description": "Server configuration defaults.",
+      "properties": {
+        "default_host": { "const": "127.0.0.1" },
+        "default_port": { "const": 7680 },
+        "base_url": {
+          "type": "string",
+          "default": "http://127.0.0.1:7680",
+          "description": "Default base URL. The OpenClaw plugin config should allow overriding this."
+        }
+      }
+    }
+  }
+}
