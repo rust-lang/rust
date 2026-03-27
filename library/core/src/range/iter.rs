@@ -175,7 +175,10 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// If the iterator is exhausted or empty, returns `None`.
     ///
     /// # Examples
+    ///
     /// ```
+    /// #![feature(new_range_remainder)]
+    ///
     /// let range = core::range::RangeInclusive::from(3..=11);
     /// let mut iter = range.into_iter();
     /// assert_eq!(iter.clone().remainder().unwrap(), range);
@@ -184,7 +187,7 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// iter.by_ref().for_each(drop);
     /// assert!(iter.remainder().is_none());
     /// ```
-    #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
+    #[unstable(feature = "new_range_remainder", issue = "154458")]
     pub fn remainder(self) -> Option<RangeInclusive<A>> {
         if self.0.is_empty() {
             return None;
