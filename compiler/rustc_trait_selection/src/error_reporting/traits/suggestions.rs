@@ -1966,10 +1966,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let mut span = obligation.cause.span;
         if let DefKind::Closure = self.tcx.def_kind(obligation.cause.body_id)
-            && let parent = self.tcx.parent(obligation.cause.body_id.into())
+            && let parent = self.tcx.local_parent(obligation.cause.body_id)
             && let DefKind::Fn | DefKind::AssocFn = self.tcx.def_kind(parent)
             && self.tcx.asyncness(parent).is_async()
-            && let Some(parent) = parent.as_local()
             && let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. })
             | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(fn_sig, _), .. })
             | Node::TraitItem(hir::TraitItem {

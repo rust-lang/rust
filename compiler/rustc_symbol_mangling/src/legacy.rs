@@ -155,9 +155,7 @@ fn get_symbol_hash<'tcx>(
             args.hash_stable(hcx, &mut hasher);
 
             if let Some(instantiating_crate) = instantiating_crate {
-                tcx.def_path_hash(instantiating_crate.as_def_id())
-                    .stable_crate_id()
-                    .hash_stable(hcx, &mut hasher);
+                tcx.stable_crate_id(instantiating_crate).hash_stable(hcx, &mut hasher);
             }
 
             // We want to avoid accidental collision between different types of instances.

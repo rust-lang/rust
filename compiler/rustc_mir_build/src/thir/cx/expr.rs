@@ -816,8 +816,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         }
                         hir::InlineAsmOperand::Const { ref anon_const } => {
                             let ty = self.typeck_results.node_type(anon_const.hir_id);
-                            let did = anon_const.def_id.to_def_id();
-                            let typeck_root_def_id = tcx.typeck_root_def_id(did);
+                            let did = anon_const.def_id;
+                            let typeck_root_def_id = tcx.typeck_root_def_id_local(did);
                             let parent_args = tcx.erase_and_anonymize_regions(
                                 GenericArgs::identity_for_item(tcx, typeck_root_def_id),
                             );
@@ -825,7 +825,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                 InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty })
                                     .args;
 
-                            let uneval = mir::UnevaluatedConst::new(did, args);
+                            let uneval = mir::UnevaluatedConst::new(did.to_def_id(), args);
                             let value = mir::Const::Unevaluated(uneval, ty);
                             InlineAsmOperand::Const { value, span: tcx.def_span(did) }
                         }
@@ -895,15 +895,15 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let ty = self.typeck_results.node_type(anon_const.hir_id);
-                let did = anon_const.def_id.to_def_id();
-                let typeck_root_def_id = tcx.typeck_root_def_id(did);
+                let did = anon_const.def_id;
+                let typeck_root_def_id = tcx.typeck_root_def_id_local(did);
                 let parent_args = tcx.erase_and_anonymize_regions(GenericArgs::identity_for_item(
                     tcx,
                     typeck_root_def_id,
                 ));
                 let args = InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty }).args;
 
-                ExprKind::ConstBlock { did, args }
+                ExprKind::ConstBlock { did: did.to_def_id(), args }
             }
             // Now comes the rote stuff:
             hir::ExprKind::Repeat(v, _) => {

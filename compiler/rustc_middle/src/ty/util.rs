@@ -650,6 +650,20 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id
     }
 
+    /// Given the `LocalDefId`, returns the `LocalDefId` of the innermost item that
+    /// has its own type-checking context or "inference environment".
+    ///
+    /// For example, a closure has its own `LocalDefId`, but it is type-checked
+    /// with the containing item. Therefore, when we fetch the `typeck` of the closure,
+    /// for example, we really wind up fetching the `typeck` of the enclosing fn item.
+    pub fn typeck_root_def_id_local(self, def_id: LocalDefId) -> LocalDefId {
+        let mut def_id = def_id;
+        while self.is_typeck_child(def_id.to_def_id()) {
+            def_id = self.local_parent(def_id);
+        }
+        def_id
+    }
+
     /// Given the `DefId` and args a closure, creates the type of
     /// `self` argument that the closure expects. For example, for a
     /// `Fn` closure, this would return a reference type `&T` where
