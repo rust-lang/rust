@@ -507,9 +507,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, term, ty);
-        if let Some(body) = self.tcx.hir_maybe_body_owned_by(
-            self.tcx.typeck_root_def_id(body_def_id.to_def_id()).expect_local(),
-        ) {
+        if let Some(body) =
+            self.tcx.hir_maybe_body_owned_by(self.tcx.typeck_root_def_id_local(body_def_id))
+        {
             let expr = body.value;
             local_visitor.visit_expr(expr);
         }

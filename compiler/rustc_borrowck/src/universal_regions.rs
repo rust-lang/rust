@@ -581,7 +581,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     /// see `DefiningTy` for details.
     fn defining_ty(&self) -> DefiningTy<'tcx> {
         let tcx = self.infcx.tcx;
-        let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.to_def_id());
+        let typeck_root_def_id = tcx.typeck_root_def_id_local(self.mir_def);
 
         match tcx.hir_body_owner_kind(self.mir_def) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
@@ -612,7 +612,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
             BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(..) => {
                 let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
-                if self.mir_def.to_def_id() == typeck_root_def_id {
+                if self.mir_def == typeck_root_def_id {
                     let args = self.infcx.replace_free_regions_with_nll_infer_vars(
                         NllRegionVariableOrigin::FreeRegion,
                         identity_args,
@@ -658,7 +658,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         defining_ty: DefiningTy<'tcx>,
     ) -> UniversalRegionIndices<'tcx> {
         let tcx = self.infcx.tcx;
-        let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.to_def_id());
+        let typeck_root_def_id = tcx.typeck_root_def_id_local(self.mir_def);
         let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
         let renumbered_args = defining_ty.args();
 

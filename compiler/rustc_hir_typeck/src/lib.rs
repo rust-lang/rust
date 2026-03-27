@@ -106,7 +106,7 @@ fn typeck_with_inspect<'tcx>(
 ) -> &'tcx ty::TypeckResults<'tcx> {
     // Closures' typeck results come from their outermost function,
     // as they are part of the same "inference environment".
-    let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id()).expect_local();
+    let typeck_root_def_id = tcx.typeck_root_def_id_local(def_id);
     if typeck_root_def_id != def_id {
         return tcx.typeck(typeck_root_def_id);
     }
