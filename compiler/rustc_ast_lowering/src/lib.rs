@@ -39,6 +39,7 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::visit::AssocCtxt;
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, Late, OmitDoc};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -53,8 +54,8 @@ use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
 use rustc_hir::lints::{AttributeLint, DelayedLint};
 use rustc_hir::{
-    self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
-    LifetimeSyntax, ParamName, Target, TraitCandidate, find_attr,
+    self as hir, AngleBrackets, ConstArg, DelayedOwner, GenericArg, HirId, ItemLocalMap,
+    LifetimeSource, LifetimeSyntax, ParamName, Target, TraitCandidate, find_attr,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -633,13 +634,35 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     let mut delayed_ids: FxIndexSet<LocalDefId> = Default::default();
 
     for def_id in ast_index.indices() {
-        match &ast_index[def_id] {
-            AstOwner::Item(Item { kind: ItemKind::Delegation { .. }, .. })
-            | AstOwner::AssocItem(Item { kind: AssocItemKind::Delegation { .. }, .. }, _) => {
-                delayed_ids.insert(def_id);
+        let delayed_owner = match &ast_index[def_id] {
+            AstOwner::Item(Item {
+                kind: ItemKind::Delegation(box Delegation { ident, .. }),
+                ..
+            }) => Some(DelayedOwner { kind: hir::DelayedOwnerKind::Item, ident: Some(*ident) }),
+            AstOwner::AssocItem(
+                Item { kind: AssocItemKind::Delegation(box Delegation { ident, .. }), .. },
+                ctx,
+            ) => {
+                let kind = match ctx {
+                    AssocCtxt::Trait => hir::DelayedOwnerKind::TraitItem,
+                    AssocCtxt::Impl { .. } => hir::DelayedOwnerKind::ImplItem,
+                };
+
+                Some(DelayedOwner { kind, ident: Some(*ident) })
             }
-            _ => lowerer.lower_node(def_id),
+            _ => None,
         };
+
+        if let Some(delayed_owner) = delayed_owner {
+            delayed_ids.insert(def_id);
+
+            let owner = lowerer.owners.get_or_insert_mut(def_id);
+            if let hir::MaybeOwner::Phantom = owner {
+                *owner = hir::MaybeOwner::Delayed(delayed_owner)
+            }
+        } else {
+            lowerer.lower_node(def_id);
+        }
     }
 
     // Don't hash unless necessary, because it's expensive.

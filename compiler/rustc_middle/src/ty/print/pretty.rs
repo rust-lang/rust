@@ -8,12 +8,11 @@ use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir as hir;
-use rustc_hir::LangItem;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModDefId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_hir::limit::Limit;
+use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_macros::{Lift, extension};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
@@ -3408,10 +3407,10 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
             continue;
         }
 
-        let item = tcx.hir_item(id);
-        let Some(ident) = item.kind.ident() else { continue };
+        let def_id = id.owner_id.def_id;
+        let Some(ident) = tcx.hir_opt_ident(HirId::make_owner(def_id)) else { continue };
 
-        let def_id = item.owner_id.to_def_id();
+        let def_id = def_id.to_def_id();
         let ns = tcx.def_kind(def_id).ns().unwrap_or(Namespace::TypeNS);
         collect_fn(&ident, ns, def_id);
     }
