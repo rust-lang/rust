@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/28839
 //@ run-pass
 
 pub struct Foo;

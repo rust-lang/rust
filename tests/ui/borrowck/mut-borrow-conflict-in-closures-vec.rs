@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/18783
 use std::cell::RefCell;
 
 fn main() {

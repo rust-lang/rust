@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/28971
 enum Foo {
     Bar(u8)
 }
