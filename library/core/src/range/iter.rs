@@ -11,7 +11,7 @@ use crate::{intrinsics, mem};
 pub struct RangeIter<A>(legacy::Range<A>);
 
 impl<A> RangeIter<A> {
-    #[unstable(feature = "new_range_api", issue = "125687")]
+    #[unstable(feature = "new_range_remainder", issue = "154458")]
     /// Returns the remainder of the range being iterated over.
     ///
     /// # Examples
@@ -340,7 +340,7 @@ impl<A: Step> RangeFromIter<A> {
     /// ```
     #[inline]
     #[rustc_inherit_overflow_checks]
-    #[unstable(feature = "new_range_api", issue = "125687")]
+    #[unstable(feature = "new_range_remainder", issue = "154458")]
     pub fn remainder(self) -> RangeFrom<A> {
         // Need to handle this case even if overflow-checks are disabled,
         // because a `RangeFromIter` could be exhausted in a crate with
