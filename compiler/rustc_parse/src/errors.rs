@@ -4344,7 +4344,7 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagLabels {
 
 pub(crate) enum HiddenUnicodeCodepointsDiagSub {
     Escape { spans: Vec<(char, Span)> },
-    NoEscape { spans: Vec<(char, Span)> },
+    NoEscape { spans: Vec<(char, Span)>, is_doc_comment: bool },
 }
 
 // Used because of multiple multipart_suggestion and note
@@ -4370,7 +4370,7 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
                     Applicability::MachineApplicable,
                 );
             }
-            HiddenUnicodeCodepointsDiagSub::NoEscape { spans } => {
+            HiddenUnicodeCodepointsDiagSub::NoEscape { spans, is_doc_comment } => {
                 // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
                 // should do the same here to provide the same good suggestions as we do for
                 // literals above.
@@ -4383,7 +4383,11 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
                         .join(", "),
                 );
                 diag.note(msg!("if their presence wasn't intentional, you can remove them"));
-                diag.note(msg!("if you want to keep them but make them visible in your source code, you can escape them: {$escaped}"));
+                if is_doc_comment {
+                    diag.note(msg!(r#"if you need to keep them and make them explicit in source, rewrite this doc comment as a `#[doc = "..."]` attribute and use Unicode escapes such as {$escaped}"#));
+                } else {
+                    diag.note(msg!("if you want to keep them but make them visible in your source code, you can escape them: {$escaped}"));
+                }
             }
         }
     }

@@ -6,6 +6,8 @@ edition = "2021"
 
 [dependencies]
 tidy = { path = "../tidy" }
+proc-macro2 = { version = "1.0", features = ["span-locations"] }
+syn = { version = "2.0", features = ["full", "parsing"] }
 
 # not actually needed but required for now to unify the feature selection of
 # `num-traits` between this and `rustbook`
