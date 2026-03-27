@@ -5,11 +5,16 @@ use std::env;
 use std::fs::{self, write};
 use std::path::Path;
 
+use proc_macro2::{Span, TokenStream, TokenTree};
+use syn::parse::{Parse, ParseStream};
+use syn::{Attribute, Ident, Item, LitStr, Token, parenthesized};
 use tidy::diagnostics::RunningCheck;
-use tidy::features::{Features, collect_env_vars, collect_lang_features, collect_lib_features};
+use tidy::features::{
+    Feature, Features, Status, collect_env_vars, collect_lang_features, collect_lib_features,
+};
 use tidy::t;
 use tidy::unstable_book::{
-    ENV_VARS_DIR, LANG_FEATURES_DIR, LIB_FEATURES_DIR, PATH_STR,
+    COMPILER_FLAGS_DIR, ENV_VARS_DIR, LANG_FEATURES_DIR, LIB_FEATURES_DIR, PATH_STR,
     collect_unstable_book_section_file_names, collect_unstable_feature_names,
 };
 
@@ -113,6 +118,188 @@ fn copy_recursive(from: &Path, to: &Path) {
     }
 }
 
+fn collect_compiler_flags(compiler_path: &Path) -> Features {
+    let options_path = compiler_path.join("rustc_session/src/options/unstable.rs");
+    let options_rs = t!(fs::read_to_string(&options_path), options_path);
+    parse_compiler_flags(&options_rs, &options_path)
+}
+
+const DESCRIPTION_FIELD: usize = 3;
+const REQUIRED_FIELDS: usize = 4;
+const OPTIONAL_FIELDS: usize = 5;
+
+struct ParsedOptionEntry {
+    name: String,
+    line: usize,
+    description: String,
+}
+
+struct UnstableOptionsInput {
+    struct_name: Ident,
+    entries: Vec<ParsedOptionEntry>,
+}
+
+impl Parse for ParsedOptionEntry {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let _attrs = input.call(Attribute::parse_outer)?;
+
+        let name: Ident = input.parse()?;
+        let line = name.span().start().line;
+        input.parse::<Token![:]>()?;
+        let _ty: syn::Type = input.parse()?;
+        input.parse::<Token![=]>()?;
+
+        let tuple_content;
+        parenthesized!(tuple_content in input);
+        let tuple_tokens: TokenStream = tuple_content.parse()?;
+        let tuple_fields = split_tuple_fields(tuple_tokens);
+
+        if !matches!(tuple_fields.len(), REQUIRED_FIELDS | OPTIONAL_FIELDS) {
+            return Err(syn::Error::new(
+                name.span(),
+                format!(
+                    "unexpected field count for option `{name}`: expected {REQUIRED_FIELDS} or {OPTIONAL_FIELDS}, found {}",
+                    tuple_fields.len()
+                ),
+            ));
+        }
+
+        if tuple_fields.len() == OPTIONAL_FIELDS
+            && !is_deprecated_marker_field(&tuple_fields[REQUIRED_FIELDS])
+        {
+            return Err(syn::Error::new(
+                name.span(),
+                format!(
+                    "unexpected trailing field in option `{name}`: expected `is_deprecated_and_do_nothing: ...`"
+                ),
+            ));
+        }
+
+        let description = parse_description_field(&tuple_fields[DESCRIPTION_FIELD], &name)?;
+        Ok(Self { name: name.to_string(), line, description })
+    }
+}
+
+impl Parse for UnstableOptionsInput {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let struct_name: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let _tmod_enum_name: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let _stat_name: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let _opt_module_name: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let _prefix: LitStr = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let _output_name: LitStr = input.parse()?;
+        input.parse::<Token![,]>()?;
+
+        let entries =
+            syn::punctuated::Punctuated::<ParsedOptionEntry, Token![,]>::parse_terminated(input)?
+                .into_iter()
+                .collect();
+
+        Ok(Self { struct_name, entries })
+    }
+}
+
+fn parse_compiler_flags(options_rs: &str, options_path: &Path) -> Features {
+    let options_input = parse_unstable_options_macro(options_rs).unwrap_or_else(|error| {
+        panic!("failed to parse unstable options from `{}`: {error}", options_path.display())
+    });
+
+    let mut features = Features::new();
+    for entry in options_input.entries {
+        if entry.name == "help" {
+            continue;
+        }
+
+        features.insert(
+            entry.name,
+            Feature {
+                level: Status::Unstable,
+                since: None,
+                has_gate_test: false,
+                tracking_issue: None,
+                file: options_path.to_path_buf(),
+                line: entry.line,
+                description: Some(entry.description),
+            },
+        );
+    }
+
+    features
+}
+
+fn parse_unstable_options_macro(source: &str) -> syn::Result<UnstableOptionsInput> {
+    let ast = syn::parse_file(source)?;
+
+    for item in ast.items {
+        let Item::Macro(item_macro) = item else {
+            continue;
+        };
+
+        if !item_macro.mac.path.is_ident("options") {
+            continue;
+        }
+
+        let parsed = syn::parse2::<UnstableOptionsInput>(item_macro.mac.tokens)?;
+        if parsed.struct_name == "UnstableOptions" {
+            return Ok(parsed);
+        }
+    }
+
+    Err(syn::Error::new(
+        Span::call_site(),
+        "could not find `options!` invocation for `UnstableOptions`",
+    ))
+}
+
+fn parse_description_field(field: &TokenStream, option_name: &Ident) -> syn::Result<String> {
+    let lit = syn::parse2::<LitStr>(field.clone()).map_err(|_| {
+        syn::Error::new_spanned(
+            field.clone(),
+            format!("expected description string literal in option `{option_name}`"),
+        )
+    })?;
+    Ok(lit.value())
+}
+
+fn split_tuple_fields(tuple_tokens: TokenStream) -> Vec<TokenStream> {
+    let mut fields = Vec::new();
+    let mut current = TokenStream::new();
+
+    for token in tuple_tokens {
+        if let TokenTree::Punct(punct) = &token {
+            if punct.as_char() == ',' {
+                fields.push(current);
+                current = TokenStream::new();
+                continue;
+            }
+        }
+        current.extend([token]);
+    }
+    fields.push(current);
+
+    while matches!(fields.last(), Some(field) if field.is_empty()) {
+        fields.pop();
+    }
+
+    fields
+}
+
+fn is_deprecated_marker_field(field: &TokenStream) -> bool {
+    let mut tokens = field.clone().into_iter();
+    let Some(TokenTree::Ident(name)) = tokens.next() else {
+        return false;
+    };
+    let Some(TokenTree::Punct(colon)) = tokens.next() else {
+        return false;
+    };
+    name == "is_deprecated_and_do_nothing" && colon.as_char() == ':'
+}
+
 fn main() {
     let library_path_str = env::args_os().nth(1).expect("library/ path required");
     let compiler_path_str = env::args_os().nth(2).expect("compiler/ path required");
@@ -129,6 +316,7 @@ fn main() {
         .filter(|&(ref name, _)| !lang_features.contains_key(name))
         .collect();
     let env_vars = collect_env_vars(compiler_path);
+    let compiler_flags = collect_compiler_flags(compiler_path);
 
     let doc_src_path = src_path.join(PATH_STR);
 
@@ -144,9 +332,17 @@ fn main() {
         &dest_path.join(LIB_FEATURES_DIR),
         &lib_features,
     );
+    generate_feature_files(
+        &doc_src_path.join(COMPILER_FLAGS_DIR),
+        &dest_path.join(COMPILER_FLAGS_DIR),
+        &compiler_flags,
+    );
     generate_env_files(&doc_src_path.join(ENV_VARS_DIR), &dest_path.join(ENV_VARS_DIR), &env_vars);
 
     copy_recursive(&doc_src_path, &dest_path);
 
     generate_summary(&dest_path, &lang_features, &lib_features);
 }
+
+#[cfg(test)]
+mod tests;
