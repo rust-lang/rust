@@ -38,7 +38,7 @@ pub(super) enum Owners<'a, 'hir> {
 }
 
 impl<'hir> Owners<'_, 'hir> {
-    fn get_or_insert_mut(&mut self, def_id: LocalDefId) -> &mut hir::MaybeOwner<'hir> {
+    pub(super) fn get_or_insert_mut(&mut self, def_id: LocalDefId) -> &mut hir::MaybeOwner<'hir> {
         match self {
             Owners::IndexVec(index_vec) => {
                 index_vec.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom)
