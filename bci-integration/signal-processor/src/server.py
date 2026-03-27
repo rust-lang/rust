@@ -1,8 +1,8 @@
-"""FastAPI HTTP server for BCI state.
+"""FastAPI HTTP server for the BCI State Server.
 
 Endpoints:
-    GET /state  - Current brain state (state_server_api state_response)
-    GET /health - Server health (state_server_api health_response)
+    GET /state  - Returns current BCIState wrapped in state_response
+    GET /health - Returns server health status
 """
 
 import logging
@@ -18,105 +18,103 @@ from .state_manager import StateManager
 
 logger = logging.getLogger(__name__)
 
-# Module-level state shared between lifespan and endpoints
-state_manager = StateManager()
-reader: BCIReader | None = None
+# Module-level references set by create_app()
+_state_manager: StateManager | None = None
+_reader: BCIReader | None = None
 _start_time: float = 0.0
-_synthetic: bool = True
 
 
-def configure(synthetic: bool = True) -> None:
-    """Configure the server before startup. Must be called before app lifespan."""
-    global _synthetic
-    _synthetic = synthetic
+def create_app(synthetic: bool = True) -> FastAPI:
+    """Create and configure the FastAPI application.
 
+    Args:
+        synthetic: Whether to use BrainFlow synthetic board.
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Manage BrainFlow reader lifecycle."""
-    global reader, _start_time
-    _start_time = time.time()
-
-    reader = BCIReader(state_manager=state_manager, synthetic=_synthetic)
-    try:
-        reader.start()
-        logger.info("BCI reader started during server startup")
-    except Exception:
-        logger.exception("Failed to start BCI reader")
-        reader = None
-
-    yield
-
-    if reader is not None:
-        reader.stop()
-        logger.info("BCI reader stopped during server shutdown")
-
-
-app = FastAPI(title="BCI State Server", version="0.1.0", lifespan=lifespan)
-
-
-@app.get("/state")
-def get_state() -> dict[str, Any]:
-    """Return current BCI brain state.
-
-    Conforms to state_server_api.schema.json#/definitions/state_response.
+    Returns:
+        Configured FastAPI app instance.
     """
-    now_ms = int(time.time() * 1000)
+    global _state_manager, _reader, _start_time
 
-    bci_state = state_manager.get_state()
-    if bci_state is None:
+    _state_manager = StateManager()
+    _reader = BCIReader(state_manager=_state_manager, synthetic=synthetic)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        global _start_time
+        _start_time = time.time()
+        logger.info("Starting BCI Signal Processor...")
+        _reader.start()
+        yield
+        logger.info("Shutting down BCI Signal Processor...")
+        _reader.stop()
+
+    app = FastAPI(
+        title="BCI State Server",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+
+    @app.get("/state")
+    def get_state() -> dict[str, Any]:
+        """Return current BCI state (state_response schema)."""
+        now_ms = int(time.time() * 1000)
+        state = _state_manager.get_state()
+
+        if state is None:
+            return {
+                "available": False,
+                "timestamp_unix_ms": now_ms,
+                "error": "No BCI data received yet",
+            }
+
+        staleness = state.get("staleness_ms", 0)
+
+        # If data is stale (>2s), mark signal quality as 0 and state as unknown
+        if staleness > config.STALE_THRESHOLD_MS:
+            state["signal_quality"] = 0.0
+            state["state"] = {
+                "primary": "unknown",
+                "confidence": 0.0,
+                "secondary": [],
+            }
+            state["natural_language_summary"] = (
+                f"User brain state: UNKNOWN - BCI data is stale "
+                f"({staleness}ms old), signal unreliable."
+            )
+
         return {
-            "available": False,
+            "available": True,
             "timestamp_unix_ms": now_ms,
-            "error": "No BCI data received yet",
+            "bci_state": state,
         }
 
-    staleness = bci_state.get("staleness_ms", 0)
+    @app.get("/health")
+    def get_health() -> dict[str, Any]:
+        """Return server health (health_response schema)."""
+        now = time.time()
+        uptime = now - _start_time if _start_time > 0 else 0.0
+        last_update = _state_manager.last_update_ms
+        device_connected = _state_manager.device_connected
 
-    # If data is too stale, mark as degraded
-    if staleness > config.STALE_TIMEOUT_MS:
-        bci_state["signal_quality"] = 0.0
-        bci_state["state"]["primary"] = "unknown"
-        bci_state["state"]["confidence"] = 0.0
-        bci_state["natural_language_summary"] = (
-            f"User brain state: UNKNOWN (BCI data is stale, last update {staleness}ms ago)"
-        )
-
-    return {
-        "available": True,
-        "timestamp_unix_ms": now_ms,
-        "bci_state": bci_state,
-    }
-
-
-@app.get("/health")
-def get_health() -> dict[str, Any]:
-    """Return server health status.
-
-    Conforms to state_server_api.schema.json#/definitions/health_response.
-    """
-    uptime = time.time() - _start_time
-    device_connected = reader is not None and reader.is_running
-    last_update = state_manager.last_update_ms
-    session_id = reader.session_id if reader else None
-
-    # Determine status
-    if not state_manager.has_data:
-        status = "no_signal"
-    else:
-        bci_state = state_manager.get_state()
-        staleness = bci_state.get("staleness_ms", 0) if bci_state else 0
-        sig_quality = bci_state.get("signal_quality", 0) if bci_state else 0
-
-        if staleness > config.DEGRADED_STALE_MS or sig_quality < config.DEGRADED_QUALITY_THRESHOLD:
-            status = "degraded"
+        # Determine status
+        if not device_connected or last_update is None:
+            status = "no_signal"
         else:
-            status = "ok"
+            staleness_ms = int(now * 1000) - last_update
+            state = _state_manager.get_state()
+            sq = state.get("signal_quality", 0) if state else 0
 
-    return {
-        "status": status,
-        "uptime_seconds": round(uptime, 2),
-        "device_connected": device_connected,
-        "session_id": session_id,
-        "last_update_unix_ms": last_update,
-    }
+            if staleness_ms > config.STALE_WARNING_MS or sq < 0.3:
+                status = "degraded"
+            else:
+                status = "ok"
+
+        return {
+            "status": status,
+            "uptime_seconds": round(uptime, 1),
+            "device_connected": device_connected,
+            "session_id": _state_manager.session_id,
+            "last_update_unix_ms": last_update,
+        }
+
+    return app

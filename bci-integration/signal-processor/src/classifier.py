@@ -1,7 +1,7 @@
 """Heuristic brain state classifier.
 
-Classifies mental state from band powers and derived scores using
-threshold-based rules. No ML training needed.
+Classifies brain state from band powers and derived scores using threshold rules.
+No ML -- transparent, deterministic logic suitable for a prototype.
 """
 
 from dataclasses import dataclass
@@ -11,21 +11,14 @@ from dataclasses import dataclass
 class ClassificationResult:
     primary: str
     confidence: float
-    secondary: list[dict]  # [{"state": str, "confidence": float}, ...]
+    secondary: list[dict[str, object]]
 
 
 class HeuristicClassifier:
-    """Classifies brain state from EEG features using heuristic rules.
+    """Classifies brain state using heuristic threshold rules on EEG features."""
 
-    Rules (evaluated in priority order):
-    - High alpha + high relaxation -> relaxed
-    - High beta + high attention -> focused
-    - High theta + low attention -> drowsy
-    - High beta + high cognitive_load + low relaxation -> stressed
-    - High alpha + high theta + high relaxation -> meditative
-    - High beta + high gamma -> active
-    - Otherwise -> unknown
-    """
+    # Valid states matching bci_state.schema.json
+    STATES = ("focused", "relaxed", "stressed", "drowsy", "meditative", "active", "unknown")
 
     def classify(
         self,
@@ -33,6 +26,7 @@ class HeuristicClassifier:
         attention: float,
         relaxation: float,
         cognitive_load: float,
+        signal_quality: float,
     ) -> ClassificationResult:
         """Classify brain state from features.
 
@@ -41,61 +35,109 @@ class HeuristicClassifier:
             attention: Attention score 0-1.
             relaxation: Relaxation score 0-1.
             cognitive_load: Cognitive load score 0-1.
+            signal_quality: Signal quality 0-1.
 
         Returns:
             ClassificationResult with primary state, confidence, and secondary states.
         """
-        total = sum(band_powers.values())
-        if total <= 0:
+        # If signal quality is too low, return unknown
+        if signal_quality < 0.2:
             return ClassificationResult(
-                primary="unknown", confidence=0.0, secondary=[]
+                primary="unknown",
+                confidence=0.0,
+                secondary=[],
             )
 
-        # Normalize band powers to relative proportions
-        rel = {k: v / total for k, v in band_powers.items()}
+        # Compute candidate scores for each state
+        candidates: dict[str, float] = {}
 
-        # Score each state
-        scores: dict[str, float] = {}
+        total = sum(band_powers.values())
+        if total <= 0:
+            return ClassificationResult(primary="unknown", confidence=0.0, secondary=[])
 
-        # Relaxed: high alpha dominance + high relaxation score
-        scores["relaxed"] = (rel.get("alpha", 0) * 2.0 + relaxation) / 3.0
+        delta_ratio = band_powers.get("delta", 0.0) / total
+        theta_ratio = band_powers.get("theta", 0.0) / total
+        alpha_ratio = band_powers.get("alpha", 0.0) / total
+        beta_ratio = band_powers.get("beta", 0.0) / total
+        gamma_ratio = band_powers.get("gamma", 0.0) / total
 
-        # Focused: high beta + high attention
-        scores["focused"] = (rel.get("beta", 0) * 2.0 + attention) / 3.0
+        # Focused: high beta, high attention, low alpha
+        candidates["focused"] = (
+            0.4 * attention
+            + 0.3 * min(beta_ratio / 0.3, 1.0)
+            + 0.2 * (1.0 - relaxation)
+            + 0.1 * (1.0 - min(delta_ratio / 0.3, 1.0))
+        )
 
-        # Drowsy: high theta + low attention
-        scores["drowsy"] = (rel.get("theta", 0) * 2.0 + (1.0 - attention)) / 3.0
+        # Relaxed: high alpha, high relaxation, low beta
+        candidates["relaxed"] = (
+            0.4 * relaxation
+            + 0.3 * min(alpha_ratio / 0.3, 1.0)
+            + 0.2 * (1.0 - attention)
+            + 0.1 * (1.0 - min(beta_ratio / 0.3, 1.0))
+        )
 
-        # Stressed: high beta + high cognitive load + low relaxation
-        scores["stressed"] = (
-            rel.get("beta", 0) + cognitive_load + (1.0 - relaxation)
-        ) / 3.0
+        # Stressed: high beta + high gamma, high cognitive load
+        candidates["stressed"] = (
+            0.3 * cognitive_load
+            + 0.3 * min((beta_ratio + gamma_ratio) / 0.4, 1.0)
+            + 0.2 * (1.0 - relaxation)
+            + 0.2 * attention
+        )
 
-        # Meditative: high alpha + moderate theta + high relaxation
-        scores["meditative"] = (
-            rel.get("alpha", 0) + rel.get("theta", 0) * 0.5 + relaxation
-        ) / 2.5
+        # Drowsy: high theta + high delta, low beta
+        candidates["drowsy"] = (
+            0.4 * min(theta_ratio / 0.3, 1.0)
+            + 0.3 * min(delta_ratio / 0.3, 1.0)
+            + 0.2 * (1.0 - attention)
+            + 0.1 * (1.0 - min(beta_ratio / 0.3, 1.0))
+        )
 
-        # Active: high beta + high gamma
-        scores["active"] = (
-            rel.get("beta", 0) + rel.get("gamma", 0) * 2.0
-        ) / 3.0
+        # Meditative: high alpha + high theta, low beta, moderate relaxation
+        candidates["meditative"] = (
+            0.3 * min(alpha_ratio / 0.3, 1.0)
+            + 0.3 * min(theta_ratio / 0.3, 1.0)
+            + 0.2 * relaxation
+            + 0.2 * (1.0 - min(beta_ratio / 0.3, 1.0))
+        )
+
+        # Active: high gamma + high beta, moderate attention
+        candidates["active"] = (
+            0.3 * min(gamma_ratio / 0.2, 1.0)
+            + 0.3 * min(beta_ratio / 0.3, 1.0)
+            + 0.2 * attention
+            + 0.2 * cognitive_load
+        )
+
+        # Clamp all candidate scores to [0, 1]
+        for state in candidates:
+            candidates[state] = max(0.0, min(1.0, candidates[state]))
 
         # Sort by score descending
-        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        ranked = sorted(candidates.items(), key=lambda x: x[1], reverse=True)
 
         primary_state = ranked[0][0]
-        primary_confidence = float(min(ranked[0][1], 1.0))
+        primary_score = ranked[0][1]
 
-        # Secondary: all other states with non-trivial scores
+        # Confidence: how much the primary stands out from the second
+        if len(ranked) > 1:
+            gap = primary_score - ranked[1][1]
+            # Confidence is based on both absolute score and gap
+            confidence = min(1.0, 0.5 * primary_score + 0.5 * (gap / max(primary_score, 0.01)))
+        else:
+            confidence = primary_score
+
+        # Scale confidence by signal quality
+        confidence *= signal_quality
+
         secondary = [
-            {"state": state, "confidence": round(min(score, 1.0), 4)}
+            {"state": state, "confidence": round(score * signal_quality, 3)}
             for state, score in ranked[1:]
             if score > 0.1
         ]
 
         return ClassificationResult(
             primary=primary_state,
-            confidence=round(primary_confidence, 4),
+            confidence=round(confidence, 3),
             secondary=secondary,
         )

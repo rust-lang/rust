@@ -1,8 +1,7 @@
 """BrainFlow data acquisition and DSP pipeline.
 
-Reads EEG data from a BrainFlow board (synthetic or hardware),
-runs the DSP pipeline, classifies brain state, and updates
-the StateManager.
+Reads EEG data from a BrainFlow board (synthetic or real), runs the DSP
+pipeline, classifies brain state, and updates the state manager.
 """
 
 import logging
@@ -11,7 +10,7 @@ import time
 import uuid
 
 import numpy as np
-from brainflow.board_shim import BoardIds, BoardShim, BrainFlowInputParams
+from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
 
 from . import config
 from .classifier import HeuristicClassifier
@@ -22,13 +21,14 @@ from .dsp import (
     compute_cognitive_load,
     compute_relaxation,
     estimate_artifact_probability,
+    sanitize_data,
 )
 from .state_manager import StateManager
 
 logger = logging.getLogger(__name__)
 
 
-def _build_nl_summary(
+def _generate_nl_summary(
     primary_state: str,
     confidence: float,
     attention: float,
@@ -49,12 +49,12 @@ def _build_nl_summary(
 
 
 class BCIReader:
-    """Reads EEG data from BrainFlow and runs the DSP pipeline.
+    """Manages BrainFlow board connection and background data acquisition.
 
     Args:
-        state_manager: Thread-safe state storage to update.
-        synthetic: If True, use BrainFlow synthetic board. Otherwise, use Galea.
-        board_id: Override board ID (for testing). Defaults based on synthetic flag.
+        state_manager: Thread-safe state storage to write results to.
+        synthetic: If True, use BrainFlow synthetic board (no hardware needed).
+        board_id: BrainFlow board ID override. Ignored if synthetic=True.
     """
 
     def __init__(
@@ -67,136 +67,137 @@ class BCIReader:
         self._synthetic = synthetic
         self._classifier = HeuristicClassifier()
         self._session_id = f"session-{uuid.uuid4().hex[:12]}"
+
+        # Set up BrainFlow board
+        params = BrainFlowInputParams()
+        if synthetic:
+            self._board_id = BoardIds.SYNTHETIC_BOARD.value
+        else:
+            self._board_id = board_id if board_id is not None else BoardIds.SYNTHETIC_BOARD.value
+
+        self._board = BoardShim(self._board_id, params)
+        self._eeg_channels: list[int] = []
         self._running = False
         self._thread: threading.Thread | None = None
 
-        if board_id is not None:
-            self._board_id = board_id
-        elif synthetic:
-            self._board_id = BoardIds.SYNTHETIC_BOARD.value
-        else:
-            self._board_id = BoardIds.GALEA_BOARD_V4.value
-
-        params = BrainFlowInputParams()
-        self._board = BoardShim(self._board_id, params)
-        self._eeg_channels = BoardShim.get_eeg_channels(self._board_id)
-        self._sample_rate = BoardShim.get_sampling_rate(self._board_id)
-        self._device_id = f"{'synthetic' if synthetic else 'galea'}-{self._board_id}"
+    @property
+    def device_id(self) -> str:
+        return f"brainflow-board-{self._board_id}"
 
     def start(self) -> None:
-        """Prepare session, start stream, launch background reader thread."""
-        logger.info("Preparing BrainFlow session (board_id=%d)", self._board_id)
+        """Prepare and start the BrainFlow session, launch background thread."""
+        logger.info("Starting BrainFlow session (board_id=%d, synthetic=%s)", self._board_id, self._synthetic)
         self._board.prepare_session()
+        self._eeg_channels = BoardShim.get_eeg_channels(self._board_id)
         self._board.start_stream()
+        self._state_manager.device_connected = True
+
         self._running = True
-        self._thread = threading.Thread(target=self._read_loop, daemon=True, name="bci-reader")
+        self._thread = threading.Thread(target=self._acquisition_loop, daemon=True, name="bci-reader")
         self._thread.start()
-        logger.info("BCI reader started (session=%s, device=%s)", self._session_id, self._device_id)
+        logger.info("BrainFlow streaming started. EEG channels: %s", self._eeg_channels)
 
     def stop(self) -> None:
-        """Stop stream, release session, join background thread."""
-        logger.info("Stopping BCI reader...")
+        """Stop the background thread and release BrainFlow session."""
+        logger.info("Stopping BrainFlow reader...")
         self._running = False
         if self._thread is not None:
             self._thread.join(timeout=5.0)
             self._thread = None
+
         try:
             self._board.stop_stream()
         except Exception:
-            logger.warning("Error stopping stream (may already be stopped)")
+            logger.warning("Error stopping BrainFlow stream", exc_info=True)
+
         try:
             self._board.release_session()
         except Exception:
-            logger.warning("Error releasing session (may already be released)")
-        logger.info("BCI reader stopped.")
+            logger.warning("Error releasing BrainFlow session", exc_info=True)
 
-    @property
-    def is_running(self) -> bool:
-        return self._running
+        self._state_manager.device_connected = False
+        logger.info("BrainFlow session released.")
 
-    @property
-    def session_id(self) -> str:
-        return self._session_id
-
-    @property
-    def device_id(self) -> str:
-        return self._device_id
-
-    def _read_loop(self) -> None:
-        """Background loop: read data every WINDOW_STEP_MS, run DSP, update state."""
-        step_sec = config.WINDOW_STEP_MS / 1000.0
+    def _acquisition_loop(self) -> None:
+        """Background loop: reads data every WINDOW_STEP_MS, runs DSP, updates state."""
+        step_seconds = config.WINDOW_STEP_MS / 1000.0
         window_samples = config.WINDOW_SIZE_SAMPLES
 
         while self._running:
             try:
-                time.sleep(step_sec)
-                if not self._running:
-                    break
-
-                # Get current board data (up to window_samples)
+                # Get current data from board buffer
                 data = self._board.get_current_board_data(window_samples)
+
                 if data.shape[1] < 4:
-                    # Not enough data yet
+                    # Not enough samples yet
+                    time.sleep(step_seconds)
                     continue
 
                 # Extract EEG channels
                 eeg_data = data[self._eeg_channels, :]
 
-                # Check for NaN/Inf contamination
+                # Sanitize: replace NaN/Inf with 0
                 has_bad_values = not np.all(np.isfinite(eeg_data))
-                if has_bad_values:
-                    logger.warning("NaN/Inf detected in EEG data, sanitizing")
+                eeg_data = sanitize_data(eeg_data)
 
                 # DSP pipeline
-                band_powers = compute_band_powers(eeg_data, self._sample_rate)
-                attention = compute_attention(band_powers)
-                relaxation = compute_relaxation(band_powers)
-                cog_load = compute_cognitive_load(band_powers)
-                artifact_prob = estimate_artifact_probability(
-                    eeg_data, threshold_uv=config.ARTIFACT_AMPLITUDE_UV
-                )
-                sig_quality = assess_signal_quality(eeg_data)
+                signal_quality = assess_signal_quality(eeg_data)
+                artifact_prob = estimate_artifact_probability(eeg_data)
 
                 if has_bad_values:
                     artifact_prob = 1.0
+                    logger.warning("NaN/Inf detected in EEG data, setting artifact_probability=1")
+
+                band_powers = compute_band_powers(eeg_data, config.SAMPLE_RATE)
+                attention = compute_attention(band_powers)
+                relaxation = compute_relaxation(band_powers)
+                cog_load = compute_cognitive_load(band_powers)
 
                 # Classify
                 result = self._classifier.classify(
-                    band_powers, attention, relaxation, cog_load
+                    band_powers=band_powers,
+                    attention=attention,
+                    relaxation=relaxation,
+                    cognitive_load=cog_load,
+                    signal_quality=signal_quality,
                 )
 
-                # Build NL summary
-                summary = _build_nl_summary(
-                    result.primary, result.confidence,
-                    attention, relaxation, cog_load, sig_quality,
+                # Generate NL summary
+                nl_summary = _generate_nl_summary(
+                    primary_state=result.primary,
+                    confidence=result.confidence,
+                    attention=attention,
+                    relaxation=relaxation,
+                    cognitive_load=cog_load,
+                    signal_quality=signal_quality,
                 )
-
-                now_ms = int(time.time() * 1000)
 
                 # Build BCIState
-                bci_state: dict = {
+                now_ms = int(time.time() * 1000)
+                bci_state = {
                     "timestamp_unix_ms": now_ms,
                     "session_id": self._session_id,
-                    "device_id": self._device_id,
+                    "device_id": self.device_id,
                     "state": {
                         "primary": result.primary,
                         "confidence": result.confidence,
                         "secondary": result.secondary,
                     },
                     "scores": {
-                        "attention": round(attention, 4),
-                        "relaxation": round(relaxation, 4),
-                        "cognitive_load": round(cog_load, 4),
+                        "attention": round(attention, 3),
+                        "relaxation": round(relaxation, 3),
+                        "cognitive_load": round(cog_load, 3),
                     },
                     "band_powers": {k: round(v, 6) for k, v in band_powers.items()},
-                    "signal_quality": round(sig_quality, 4),
-                    "artifact_probability": round(artifact_prob, 4),
+                    "signal_quality": round(signal_quality, 3),
+                    "artifact_probability": round(artifact_prob, 3),
                     "staleness_ms": 0,
-                    "natural_language_summary": summary,
+                    "natural_language_summary": nl_summary,
                 }
 
                 self._state_manager.update_state(bci_state)
 
             except Exception:
-                logger.exception("Error in BCI read loop")
-                time.sleep(1.0)
+                logger.error("Error in acquisition loop", exc_info=True)
+
+            time.sleep(step_seconds)

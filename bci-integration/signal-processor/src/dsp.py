@@ -6,6 +6,8 @@ All functions are stateless and operate on numpy arrays.
 import numpy as np
 from scipy.signal import welch
 
+from . import config
+
 # Frequency band definitions (Hz)
 BANDS = {
     "delta": (1.0, 4.0),
@@ -16,67 +18,74 @@ BANDS = {
 }
 
 
-def _sanitize(data: np.ndarray) -> np.ndarray:
-    """Replace NaN/Inf with 0."""
-    result = np.copy(data)
-    mask = ~np.isfinite(result)
-    result[mask] = 0.0
-    return result
+def _band_power(freqs: np.ndarray, psd: np.ndarray, low: float, high: float) -> float:
+    """Compute average power in a frequency band."""
+    mask = (freqs >= low) & (freqs < high)
+    if not np.any(mask):
+        return 0.0
+    return float(np.mean(psd[mask]))
 
 
-def compute_band_powers(data: np.ndarray, sample_rate: int) -> dict[str, float]:
+def compute_band_powers(data: np.ndarray, sample_rate: int = config.SAMPLE_RATE) -> dict[str, float]:
     """Compute power spectral density per frequency band using Welch's method.
 
     Args:
-        data: EEG data array of shape (n_channels, n_samples) or (n_samples,).
+        data: 1D or 2D array of EEG samples. If 2D, shape is (channels, samples)
+              and results are averaged across channels.
         sample_rate: Sampling rate in Hz.
 
     Returns:
-        Dict with keys delta, theta, alpha, beta, gamma and float power values.
+        Dict with keys: delta, theta, alpha, beta, gamma. Values are power (uV^2/Hz).
     """
-    data = _sanitize(data)
-
     if data.ndim == 1:
         data = data.reshape(1, -1)
 
     n_samples = data.shape[1]
-    # nperseg must be <= n_samples; use min of n_samples and sample_rate
+    # nperseg must be <= n_samples; use min of 1 second or available data
     nperseg = min(n_samples, sample_rate)
     if nperseg < 4:
         return {band: 0.0 for band in BANDS}
 
-    band_powers: dict[str, list[float]] = {band: [] for band in BANDS}
+    all_powers = {band: [] for band in BANDS}
 
     for ch in range(data.shape[0]):
-        freqs, psd = welch(data[ch], fs=sample_rate, nperseg=nperseg)
-        for band, (low, high) in BANDS.items():
-            mask = (freqs >= low) & (freqs <= high)
-            if mask.any():
-                power = float(np.trapz(psd[mask], freqs[mask]))
-                band_powers[band].append(max(power, 0.0))
-            else:
-                band_powers[band].append(0.0)
+        channel_data = data[ch]
+        # Skip channels with NaN/Inf
+        if not np.all(np.isfinite(channel_data)):
+            continue
 
-    return {band: float(np.mean(vals)) if vals else 0.0 for band, vals in band_powers.items()}
+        freqs, psd = welch(channel_data, fs=sample_rate, nperseg=nperseg)
+
+        for band, (low, high) in BANDS.items():
+            all_powers[band].append(_band_power(freqs, psd, low, high))
+
+    result = {}
+    for band in BANDS:
+        if all_powers[band]:
+            result[band] = float(np.mean(all_powers[band]))
+        else:
+            result[band] = 0.0
+
+    return result
 
 
 def compute_attention(band_powers: dict[str, float]) -> float:
     """Compute attention score (0-1) from beta/theta ratio.
 
-    Higher beta relative to theta indicates focused attention.
+    Higher beta relative to theta indicates greater attentional engagement.
     """
     theta = band_powers.get("theta", 0.0)
     beta = band_powers.get("beta", 0.0)
     if theta <= 0:
         return 1.0 if beta > 0 else 0.5
     ratio = beta / theta
-    # Normalize: ratio of ~2 -> 1.0, ratio of ~0.5 -> 0.0
-    score = (ratio - 0.5) / 1.5
+    # Normalize: ratio ~0.5-4.0 maps to 0-1
+    score = (ratio - 0.5) / 3.5
     return float(np.clip(score, 0.0, 1.0))
 
 
 def compute_relaxation(band_powers: dict[str, float]) -> float:
-    """Compute relaxation score (0-1) from alpha power dominance.
+    """Compute relaxation score (0-1) from alpha power.
 
     Higher alpha relative to total power indicates relaxation.
     """
@@ -85,15 +94,15 @@ def compute_relaxation(band_powers: dict[str, float]) -> float:
     if total <= 0:
         return 0.0
     ratio = alpha / total
-    # Alpha typically 10-20% of total when relaxed; normalize so 0.3 -> 1.0
-    score = ratio / 0.3
+    # Alpha typically 10-40% of total when relaxed; map 0.05-0.4 -> 0-1
+    score = (ratio - 0.05) / 0.35
     return float(np.clip(score, 0.0, 1.0))
 
 
 def compute_cognitive_load(band_powers: dict[str, float]) -> float:
     """Compute cognitive load (0-1) from theta+alpha power.
 
-    Higher frontal theta+alpha indicates higher cognitive load.
+    Higher frontal theta+alpha indicates greater cognitive load.
     """
     theta = band_powers.get("theta", 0.0)
     alpha = band_powers.get("alpha", 0.0)
@@ -101,83 +110,112 @@ def compute_cognitive_load(band_powers: dict[str, float]) -> float:
     if total <= 0:
         return 0.0
     ratio = (theta + alpha) / total
-    # theta+alpha is typically 20-50% of total; normalize so 0.5 -> 1.0
-    score = ratio / 0.5
+    # Map 0.2-0.7 -> 0-1
+    score = (ratio - 0.2) / 0.5
     return float(np.clip(score, 0.0, 1.0))
 
 
-def estimate_artifact_probability(data: np.ndarray, threshold_uv: float = 100.0) -> float:
+def estimate_artifact_probability(data: np.ndarray, threshold_uv: float = config.ARTIFACT_AMPLITUDE_UV) -> float:
     """Estimate probability that the window contains artifacts.
 
     Uses amplitude threshold: samples exceeding threshold_uv are likely artifacts
     (eye blinks, jaw clenches, movement).
 
     Args:
-        data: EEG data array of shape (n_channels, n_samples) or (n_samples,).
+        data: 1D or 2D array of EEG samples in microvolts.
         threshold_uv: Amplitude threshold in microvolts.
 
     Returns:
         Float 0-1 representing artifact probability.
     """
-    data = _sanitize(data)
-    if data.size == 0:
+    if data.ndim == 1:
+        data = data.reshape(1, -1)
+
+    if not np.all(np.isfinite(data)):
         return 1.0
 
-    exceeding = np.abs(data) > threshold_uv
-    fraction = float(np.mean(exceeding))
-    # Scale: if >10% of samples exceed threshold, artifact_probability = 1.0
-    score = fraction / 0.1
-    return float(np.clip(score, 0.0, 1.0))
+    total_samples = data.size
+    if total_samples == 0:
+        return 1.0
+
+    artifact_samples = np.sum(np.abs(data) > threshold_uv)
+    probability = float(artifact_samples / total_samples)
+    return float(np.clip(probability, 0.0, 1.0))
 
 
 def assess_signal_quality(data: np.ndarray) -> float:
     """Assess overall signal quality (0-1).
 
     Checks for:
-    - Flatline (std dev near zero -> bad)
-    - Excessive amplitude (likely artifact -> bad)
-    - NaN/Inf presence (bad)
+    - NaN/Inf values (bad)
+    - Flat-line (std near zero, bad)
+    - Excessive amplitude (bad)
+    - Reasonable variance (good)
 
     Args:
-        data: EEG data of shape (n_channels, n_samples) or (n_samples,).
+        data: 1D or 2D array of EEG samples.
 
     Returns:
         Float 0-1 where 1.0 is excellent quality.
     """
-    raw = np.copy(data)
-    if raw.size == 0:
+    if data.ndim == 1:
+        data = data.reshape(1, -1)
+
+    if data.size == 0:
         return 0.0
 
-    # Check for NaN/Inf
-    nan_inf_fraction = float(np.mean(~np.isfinite(raw)))
-    if nan_inf_fraction > 0.5:
-        return 0.0
+    scores = []
+    for ch in range(data.shape[0]):
+        channel = data[ch]
 
-    clean = _sanitize(raw)
-    if clean.ndim == 1:
-        clean = clean.reshape(1, -1)
-
-    quality_per_channel = []
-    for ch in range(clean.shape[0]):
-        ch_data = clean[ch]
-        std = float(np.std(ch_data))
-        amp_max = float(np.max(np.abs(ch_data)))
-
-        # Flatline check: std < 0.1 uV is suspicious
-        if std < 0.1:
-            quality_per_channel.append(0.1)
+        # Check for NaN/Inf
+        finite_mask = np.isfinite(channel)
+        finite_ratio = np.mean(finite_mask)
+        if finite_ratio < 0.5:
+            scores.append(0.0)
             continue
 
-        # Amplitude check: penalize if max > 100 uV
-        amp_penalty = min(amp_max / 200.0, 1.0)
+        clean = channel[finite_mask]
+        if len(clean) < 4:
+            scores.append(0.0)
+            continue
 
-        # NaN penalty
-        nan_penalty = nan_inf_fraction
+        # Flat-line check: std should be > 1 uV for real EEG
+        std = np.std(clean)
+        if std < 0.1:
+            scores.append(0.1)
+            continue
 
-        quality = 1.0 - (amp_penalty * 0.5) - (nan_penalty * 0.5)
-        quality_per_channel.append(max(quality, 0.0))
+        # Amplitude check: most samples should be within reasonable range
+        in_range = np.mean(np.abs(clean) < 150.0)
 
-    if not quality_per_channel:
+        # Combine: finite ratio * amplitude ratio
+        ch_quality = finite_ratio * in_range
+        # Bonus for having reasonable variance (5-50 uV std is typical for EEG)
+        if 1.0 < std < 100.0:
+            ch_quality *= 1.0
+        else:
+            ch_quality *= 0.5
+
+        scores.append(float(np.clip(ch_quality, 0.0, 1.0)))
+
+    if not scores:
         return 0.0
 
-    return float(np.clip(np.mean(quality_per_channel), 0.0, 1.0))
+    return float(np.mean(scores))
+
+
+def sanitize_data(data: np.ndarray) -> np.ndarray:
+    """Replace NaN/Inf with 0.
+
+    Args:
+        data: numpy array, potentially containing NaN or Inf.
+
+    Returns:
+        Cleaned copy with NaN/Inf replaced by 0.
+    """
+    cleaned = np.copy(data)
+    bad_mask = ~np.isfinite(cleaned)
+    if np.any(bad_mask):
+        cleaned[bad_mask] = 0.0
+    return cleaned
