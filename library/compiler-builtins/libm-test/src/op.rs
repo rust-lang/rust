@@ -16,13 +16,9 @@
 use std::fmt;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
-pub use shared::{ALL_OPERATIONS, Group, MathOpInfo, Ty};
+pub use api_list_common::{ALL_OPERATIONS, Group, MathOpInfo, Ty};
 
 use crate::{CheckOutput, Tuple, TupleCall};
-
-mod shared {
-    include!("../../crates/libm-macros/src/shared.rs");
-}
 
 /// An enum representing each possible symbol name (`sin`, `sinf`, `sinl`, etc).
 #[libm_macros::function_enum(BaseName)]

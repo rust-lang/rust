@@ -1,4 +1,4 @@
-/* List of all functions that is shared between `libm-macros` and `libm-test`. */
+//! A list of API we have available, shared among various test crates.
 
 use std::collections::HashSet;
 use std::fmt;
@@ -18,7 +18,6 @@ pub enum OpScope {
     /// Part of `libm`'s public API.
     LibmPublic,
     /// Functions internal to `libm`, e.g. `rem_pio2`.
-    #[allow(dead_code)]
     LibmPrivate,
     /// Functions part of the public API for `compiler-builtins`.
     BuiltinsPublic,
@@ -1346,7 +1345,6 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
 ];
 
 /// A type used in a function signature.
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Ty {
     F16,
@@ -1373,7 +1371,6 @@ pub enum Ty {
 impl Ty {
     /// The number of bits needed to represent this type's possible values. That is,
     /// `log2(variant_count)`.
-    #[allow(dead_code)]
     pub fn effective_bits(self) -> u32 {
         match self {
             Ty::Bool => 1,
@@ -1434,7 +1431,6 @@ impl Ty {
 }
 
 /// How a function should get grouped for things like extensive tests.
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Group {
     F16,

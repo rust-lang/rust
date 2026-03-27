@@ -1,13 +1,11 @@
 mod enums;
 mod parse;
-mod shared;
 
+use api_list_common::{ALL_OPERATIONS, Group, MathOpInfo, Ty};
 use parse::{Invocation, StructuredInput};
 use proc_macro as pm;
 use proc_macro2::{self as pm2, Span};
 use quote::{ToTokens, quote};
-use shared::Group;
-pub(crate) use shared::{ALL_OPERATIONS, MathOpInfo, Ty};
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
 use syn::{Ident, ItemEnum, PathArguments, PathSegment};
@@ -383,10 +381,6 @@ fn expand(input: StructuredInput, fn_list: &[&MathOpInfo]) -> syn::Result<pm2::T
             None => pm2::TokenStream::new(),
         };
 
-        let c_args = &func.c_sig.args;
-        let c_ret = &func.c_sig.returns;
-        let rust_args = &func.rust_sig.args;
-        let rust_ret = &func.rust_sig.returns;
         let path = syn::Path {
             leading_colon: None,
             segments: func
@@ -401,6 +395,10 @@ fn expand(input: StructuredInput, fn_list: &[&MathOpInfo]) -> syn::Result<pm2::T
 
         let mut ty_fields = Vec::new();
         for ty in &input.emit_types {
+            let c_args = func.c_sig.args.iter().copied().map(ty_to_tokens);
+            let c_ret = func.c_sig.returns.iter().copied().map(ty_to_tokens);
+            let rust_args = func.rust_sig.args.iter().copied().map(ty_to_tokens);
+            let rust_ret = func.rust_sig.returns.iter().copied().map(ty_to_tokens);
             let field = match ty.to_string().as_str() {
                 "CFn" => quote! { CFn: fn( #(#c_args),* ,) -> ( #(#c_ret),* ), },
                 "CArgs" => quote! { CArgs: ( #(#c_args),* ,), },
@@ -522,30 +520,26 @@ fn base_name(name: &str) -> &str {
     ret
 }
 
-impl ToTokens for Ty {
-    fn to_tokens(&self, tokens: &mut pm2::TokenStream) {
-        let ts = match self {
-            Ty::F16 => quote! { f16 },
-            Ty::F32 => quote! { f32 },
-            Ty::F64 => quote! { f64 },
-            Ty::F128 => quote! { f128 },
-            Ty::I32 => quote! { i32 },
-            Ty::I64 => quote! { i64 },
-            Ty::I128 => quote! { i128 },
-            Ty::U32 => quote! { u32 },
-            Ty::U64 => quote! { u64 },
-            Ty::U128 => quote! { u128 },
-            Ty::USize => quote! { usize },
-            Ty::Bool => quote! { bool },
-            Ty::CInt => quote! { ::core::ffi::c_int },
-            Ty::MutF16 => quote! { &'a mut f16 },
-            Ty::MutF32 => quote! { &'a mut f32 },
-            Ty::MutF64 => quote! { &'a mut f64 },
-            Ty::MutF128 => quote! { &'a mut f128 },
-            Ty::MutI32 => quote! { &'a mut i32 },
-            Ty::MutCInt => quote! { &'a mut core::ffi::c_int },
-        };
-
-        tokens.extend(ts);
+fn ty_to_tokens(ty: Ty) -> pm2::TokenStream {
+    match ty {
+        Ty::F16 => quote! { f16 },
+        Ty::F32 => quote! { f32 },
+        Ty::F64 => quote! { f64 },
+        Ty::F128 => quote! { f128 },
+        Ty::I32 => quote! { i32 },
+        Ty::I64 => quote! { i64 },
+        Ty::I128 => quote! { i128 },
+        Ty::U32 => quote! { u32 },
+        Ty::U64 => quote! { u64 },
+        Ty::U128 => quote! { u128 },
+        Ty::USize => quote! { usize },
+        Ty::Bool => quote! { bool },
+        Ty::CInt => quote! { ::core::ffi::c_int },
+        Ty::MutF16 => quote! { &'a mut f16 },
+        Ty::MutF32 => quote! { &'a mut f32 },
+        Ty::MutF64 => quote! { &'a mut f64 },
+        Ty::MutF128 => quote! { &'a mut f128 },
+        Ty::MutI32 => quote! { &'a mut i32 },
+        Ty::MutCInt => quote! { &'a mut core::ffi::c_int },
     }
 }

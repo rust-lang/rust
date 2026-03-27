@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 proc-macro = true
 
 [dependencies]
+api-list-common.workspace = true
 heck.workspace = true
 proc-macro2.workspace = true
 quote.workspace = true

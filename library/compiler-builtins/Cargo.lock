@@ -89,6 +89,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
 
 [[package]]
+name = "api-list-common"
+version = "0.1.0"
+
+[[package]]
 name = "assert_cmd"
 version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -653,6 +657,7 @@ checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 name = "libm-macros"
 version = "0.1.0"
 dependencies = [
+ "api-list-common",
  "heck",
  "proc-macro2",
  "quote",
@@ -664,6 +669,7 @@ name = "libm-test"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "api-list-common",
  "compiler_builtins",
  "criterion",
  "getrandom",
