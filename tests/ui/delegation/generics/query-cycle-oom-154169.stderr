@@ -21,7 +21,7 @@ LL |         fn foo() -> Self::Assoc;
    |                           ^^^^^ associated type `Assoc` not found
 
 error[E0046]: not all trait items implemented, missing: `foo`
-  --> $DIR/query-cycle-oom-154169.rs:26:5
+  --> $DIR/query-cycle-oom-154169.rs:27:5
    |
 LL |         fn foo() -> Self::Assoc;
    |         ------------------------ `foo` from trait
@@ -37,7 +37,41 @@ LL |         reuse to_reuse::foo { &self.0 }
    |
    = help: you might be missing a crate named `to_reuse`
 
-error: aborting due to 4 previous errors
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/query-cycle-oom-154169.rs:21:12
+   |
+LL |         fn foo() -> Self::Assoc;
+   |            ^^^
+...
+LL |         reuse Trait::* { &self.0 }
+   |                          ------- unexpected argument
+   |
+note: associated function defined here
+  --> $DIR/query-cycle-oom-154169.rs:21:12
+   |
+LL |         fn foo() -> Self::Assoc;
+   |            ^^^
+help: remove the extra argument
+   |
+LL -         fn foo() -> Self::Assoc;
+LL -
+LL -
+LL -         fn bar(&self) -> u8;
+LL -     }
+LL - 
+LL -     impl Trait for u8 {
+LL -
+LL -         fn bar(&self) -> u8 { 1 }
+LL -     }
+LL - 
+LL -     struct S(u8);
+LL - 
+LL -     impl Trait for S {
+LL -         reuse Trait::* { &self.0 }
+LL +         fn fo&self.0 }
+   |
 
-Some errors have detailed explanations: E0046, E0107, E0220, E0433.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0046, E0061, E0107, E0220, E0433.
 For more information about an error, try `rustc --explain E0046`.
