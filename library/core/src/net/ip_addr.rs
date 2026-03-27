@@ -223,7 +223,6 @@ impl Hash for Ipv6Addr {
 /// [IETF RFC 4291 section 2.7]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.7
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[unstable(feature = "ip", issue = "27709")]
-#[repr(u8)]
 pub enum Ipv6MulticastScope {
     /// Reserved by IETF.
     #[doc(hidden)]
