@@ -516,9 +516,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let Some(InferSource { span, kind }) = local_visitor.infer_source else {
             let silence = if let DefKind::AssocFn = self.tcx.def_kind(body_def_id)
-                && let parent = self.tcx.parent(body_def_id.into())
-                && self.tcx.is_automatically_derived(parent)
-                && let Some(parent) = parent.as_local()
+                && let parent = self.tcx.local_parent(body_def_id)
+                && self.tcx.is_automatically_derived(parent.to_def_id())
                 && let hir::Node::Item(item) = self.tcx.hir_node_by_def_id(parent)
                 && let hir::ItemKind::Impl(imp) = item.kind
                 && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = imp.self_ty.kind
