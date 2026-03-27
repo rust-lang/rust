@@ -38,8 +38,8 @@ pub enum LoadResult<T> {
 impl<T: Default> LoadResult<T> {
     /// Accesses the data returned in [`LoadResult::Ok`].
     pub fn open(self, sess: &Session) -> T {
-        // Check for errors when using `-Zassert-incremental-state`
-        match (sess.opts.assert_incr_state, &self) {
+        // Check for errors when using `-Zassert-incr-state`.
+        match (sess.opts.unstable_opts.assert_incr_state, &self) {
             (Some(IncrementalStateAssertion::NotLoaded), LoadResult::Ok { .. }) => {
                 sess.dcx().emit_fatal(errors::AssertNotLoaded);
             }
