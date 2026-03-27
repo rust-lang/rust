@@ -70,7 +70,7 @@ macro_rules! macro_dollar_crate {
 
 fn outer() {}
 
-pub mod foo {
+mod foo {
     pub mod bar {
         pub mod foobar {
             pub mod qux {
