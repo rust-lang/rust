@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*collection` as mutable because it is also borrowed as immutable
-  --> $DIR/issue-42106.rs:3:5
+  --> $DIR/immutable-borrow-prevents-mut-method.rs:4:5
    |
 LL |     let _a = &collection;
    |              ----------- immutable borrow occurs here

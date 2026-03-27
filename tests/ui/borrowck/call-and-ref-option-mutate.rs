@@ -1,6 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/41498
 //@ run-pass
-// regression test for issue #41498.
-
 struct S;
 impl S {
     fn mutate(&mut self) {}

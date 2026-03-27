@@ -1,5 +1,5 @@
 error[E0599]: no variant, associated function, or constant named `Baz` found for enum `Foo` in the current scope
-  --> $DIR/issue-28971.rs:7:18
+  --> $DIR/fnmut-borrow-error-in-closure-match.rs:8:18
    |
 LL | enum Foo {
    | -------- variant, associated function, or constant `Baz` not found for this enum
@@ -14,7 +14,7 @@ LL +             Foo::Bar(..) => (),
    |
 
 error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
-  --> $DIR/issue-28971.rs:15:5
+  --> $DIR/fnmut-borrow-error-in-closure-match.rs:16:5
    |
 LL |     f();
    |     ^ cannot borrow as mutable

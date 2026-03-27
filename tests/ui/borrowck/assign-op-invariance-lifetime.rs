@@ -1,4 +1,5 @@
-// Issue 52126: With respect to variance, the assign-op's like += were
+//! Test for https://github.com/rust-lang/rust/issues/52126
+// With respect to variance, the assign-op's like += were
 // accidentally lumped together with other binary op's. In both cases
 // we were coercing the LHS of the op to the expected supertype.
 //
