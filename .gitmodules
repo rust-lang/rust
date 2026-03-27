@@ -24,8 +24,8 @@
 	shallow = true
 [submodule "src/llvm-project"]
 	path = src/llvm-project
-	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/22.1-2026-01-27
+	url = https://github.com/dianqk/llvm-project.git
+	branch = test-perf-regression
 	shallow = true
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
