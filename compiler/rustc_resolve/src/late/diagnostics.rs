@@ -1130,7 +1130,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             for rib in self.ribs[ns].iter().rev() {
                 let item = path[0].ident;
                 if let RibKind::Module(module) | RibKind::Block(Some(module)) = rib.kind
-                    && let Some(did) = find_doc_alias_name(self.r, module, item.name)
+                    && let Some(did) = find_doc_alias_name(self.r, module.to_module(), item.name)
                 {
                     return Some((did, item));
                 }
@@ -2861,10 +2861,16 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
 
                 if let RibKind::Block(Some(module)) = rib.kind {
-                    self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
+                    self.r.add_module_candidates(
+                        module.to_module(),
+                        &mut names,
+                        &filter_fn,
+                        Some(ctxt),
+                    );
                 } else if let RibKind::Module(module) = rib.kind {
                     // Encountered a module item, abandon ribs and look into that module and preludes.
-                    let parent_scope = &ParentScope { module, ..self.parent_scope };
+                    let parent_scope =
+                        &ParentScope { module: module.to_module(), ..self.parent_scope };
                     self.r.add_scope_set_candidates(
                         &mut names,
                         ScopeSet::All(ns),
@@ -3007,7 +3013,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let mut seen_modules = FxHashSet::default();
         let root_did = self.r.graph_root.def_id();
         let mut worklist = vec![(
-            self.r.graph_root,
+            self.r.graph_root.to_module(),
             ThinVec::new(),
             root_did.is_local() || !self.r.tcx.is_doc_hidden(root_did),
         )];
