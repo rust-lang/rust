@@ -852,6 +852,9 @@ impl char {
     /// `Lowercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
     /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
     ///
+    /// For any `c: char`, `c.is_lowercase()` implies `c.to_lowercase() == c`.
+    /// However, the reverse is not necessarily true, even for cased characters.
+    ///
     /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
@@ -896,6 +899,9 @@ impl char {
     /// (Character Properties) of the [Unicode Standard] and specified in the [Unicode Character
     /// Database][ucd] [`UnicodeData.txt`].
     ///
+    /// For any `c: char`, `c.is_titlecase()` implies `c.to_titlecase() == c`.
+    /// However, the reverse is not usually true, even for cased characters.
+    ///
     /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
@@ -927,6 +933,9 @@ impl char {
     ///
     /// `Uppercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
     /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    ///
+    /// For any `c: char`, `c.is_uppercase()` implies `c.to_uppercase() == c`.
+    /// However, the reverse is not necessarily true, even for cased characters.
     ///
     /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     /// [ucd]: https://www.unicode.org/reports/tr44/
