@@ -1675,7 +1675,7 @@ impl<'tcx> MaybeOwner<'tcx> {
         self.as_owner().unwrap_or_else(|| panic!("not a HIR owner"))
     }
 
-    pub fn expect_delayed(&self) -> DelayedOwner {
+    pub fn expect_delayed(self) -> DelayedOwner {
         if let MaybeOwner::Delayed(kind) = self { *kind } else { panic!("not a delayed owner") }
     }
 }
