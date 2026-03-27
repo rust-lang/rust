@@ -184,7 +184,7 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// iter.by_ref().for_each(drop);
     /// assert!(iter.remainder().is_none());
     /// ```
-    #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
+    #[unstable(feature = "new_range_remainder", issue = "154458")]
     pub fn remainder(self) -> Option<RangeInclusive<A>> {
         if self.0.is_empty() {
             return None;
