@@ -30,6 +30,11 @@ note: ...which requires match-checking `cycle1`...
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires type-checking `cycle1`...
+  --> $DIR/auto-trait-leak.rs:11:1
+   |
+LL | fn cycle1() -> impl Clone {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires type-checking from root `cycle1`...
   --> $DIR/auto-trait-leak.rs:12:5
    |
 LL |     send(cycle2().clone());
@@ -66,6 +71,11 @@ note: ...which requires match-checking `cycle2`...
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires type-checking `cycle2`...
+  --> $DIR/auto-trait-leak.rs:17:1
+   |
+LL | fn cycle2() -> impl Clone {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires type-checking from root `cycle2`...
   --> $DIR/auto-trait-leak.rs:18:5
    |
 LL |     send(cycle1().clone());

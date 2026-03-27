@@ -55,7 +55,7 @@ pub mod fn_calls_methods_in_same_impl {
     // (not just marked green) - for example, `DeadVisitor`
     // always runs during compilation as a "pass", and loads
     // the typeck results for bodies.
-    #[rustc_clean(cfg="cfail2", loaded_from_disk="typeck")]
+    #[rustc_clean(cfg="cfail2", loaded_from_disk="root_typeck")]
     pub fn check() {
         let x = Point { x: 2.0, y: 2.0 };
         x.distance_from_origin();

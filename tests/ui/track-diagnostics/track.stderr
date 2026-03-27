@@ -40,9 +40,9 @@ note: rustc $VERSION running on $TARGET
 note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics
 
 query stack during panic:
-#0 [typeck] type-checking `main`
-#1 [analysis] running analysis passes on crate `track`
-end of query stack
+#0 [root_typeck] type-checking from root `main`
+#1 [typeck] type-checking `main`
+... and 1 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
 error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0268, E0425.

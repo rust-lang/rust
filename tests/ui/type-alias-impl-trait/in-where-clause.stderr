@@ -46,6 +46,13 @@ LL | / fn foo() -> Bar
 LL | | where
 LL | |     Bar: Send,
    | |______________^
+note: ...which requires type-checking from root `foo`...
+  --> $DIR/in-where-clause.rs:9:1
+   |
+LL | / fn foo() -> Bar
+LL | | where
+LL | |     Bar: Send,
+   | |______________^
 note: ...which requires computing revealed normalized predicates of `foo::{constant#0}`...
   --> $DIR/in-where-clause.rs:13:9
    |

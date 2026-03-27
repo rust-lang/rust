@@ -23,7 +23,7 @@ use tracing::{debug, instrument};
 use super::TypingEnv;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
-use crate::query::Providers;
+use crate::query::{IntoQueryKey, Providers};
 use crate::traits::ObligationCause;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
@@ -642,8 +642,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// For example, a closure has its own `DefId`, but it is type-checked
     /// with the containing item. Therefore, when we fetch the `typeck` of the closure,
     /// for example, we really wind up fetching the `typeck` of the enclosing fn item.
-    pub fn typeck_root_def_id(self, def_id: DefId) -> DefId {
-        let mut def_id = def_id;
+    pub fn typeck_root_def_id(self, def_id: impl IntoQueryKey<DefId>) -> DefId {
+        let mut def_id = def_id.into_query_key();
         while self.is_typeck_child(def_id) {
             def_id = self.parent(def_id);
         }

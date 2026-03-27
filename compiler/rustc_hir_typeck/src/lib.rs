@@ -83,7 +83,15 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
 }
 
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
-    typeck_with_inspect(tcx, def_id, None)
+    // Closures' typeck results come from their outermost function,
+    // as they are part of the same "inference environment".
+    // We therefore need to traverse to the def's "typeck root" and check that instead.
+    let root_def_id = tcx.typeck_root_def_id(def_id).expect_local();
+    tcx.root_typeck(root_def_id)
+}
+
+fn root_typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
+    root_typeck_with_inspect(tcx, def_id, None)
 }
 
 /// Same as `typeck` but `inspect` is invoked on evaluation of each root obligation.
@@ -95,21 +103,17 @@ pub fn inspect_typeck<'tcx>(
     def_id: LocalDefId,
     inspect: ObligationInspector<'tcx>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
-    typeck_with_inspect(tcx, def_id, Some(inspect))
+    let root_def_id = tcx.typeck_root_def_id(def_id).expect_local();
+    root_typeck_with_inspect(tcx, root_def_id, Some(inspect))
 }
 
 #[instrument(level = "debug", skip(tcx, inspector), ret)]
-fn typeck_with_inspect<'tcx>(
+fn root_typeck_with_inspect<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     inspector: Option<ObligationInspector<'tcx>>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
-    // Closures' typeck results come from their outermost function,
-    // as they are part of the same "inference environment".
-    let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id()).expect_local();
-    if typeck_root_def_id != def_id {
-        return tcx.typeck(typeck_root_def_id);
-    }
+    assert!(!tcx.is_typeck_child(def_id.to_def_id()));
 
     let id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(id);
@@ -661,6 +665,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         method_autoderef_steps: method::probe::method_autoderef_steps,
         typeck,
+        root_typeck,
         used_trait_imports,
         check_transmutes: intrinsicck::check_transmutes,
         ..*providers

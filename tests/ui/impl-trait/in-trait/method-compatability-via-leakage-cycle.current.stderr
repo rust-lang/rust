@@ -45,6 +45,11 @@ note: ...which requires type-checking `<impl at $DIR/method-compatability-via-le
    |
 LL |     fn foo(b: bool) -> impl Sized {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires type-checking from root `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo`...
+  --> $DIR/method-compatability-via-leakage-cycle.rs:21:5
+   |
+LL |     fn foo(b: bool) -> impl Sized {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo::{anon_assoc#0}`, completing the cycle
 note: cycle used when checking assoc item `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo` is compatible with trait definition
   --> $DIR/method-compatability-via-leakage-cycle.rs:21:5
