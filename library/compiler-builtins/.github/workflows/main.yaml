@@ -283,10 +283,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - target: x86_64-unknown-linux-gnu
-          os: ubuntu-24.04
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-24.04-arm
+        - target: i686-unknown-linux-gnu
+          os: ubuntu-24.04
+        - target: x86_64-unknown-linux-gnu
+          os: ubuntu-24.04
     runs-on: ${{ matrix.os }}
     env:
       JOB_TARGET: ${{ matrix.target }}
@@ -298,7 +300,7 @@ jobs:
         tool: cargo-binstall@1.17.7
 
     - name: Set up dependencies
-      run: ./ci/install-bench-deps.sh
+      run: ./ci/install-bench-deps.sh "$JOB_TARGET"
     - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       with:
         key: ${{ matrix.target }}

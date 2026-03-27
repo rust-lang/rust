@@ -29,6 +29,7 @@ tag="$(echo "$target" | cut -d'-' -f1)"
 # Run benchmarks once
 function run_icount_benchmarks() {
     cargo_args=(
+        "--target" "$target"
         "--bench" "*icount*"
         "--no-default-features"
         "--features" "unstable,unstable-float,icount"
