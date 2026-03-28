@@ -1201,7 +1201,7 @@ impl char {
     /// # Notes on context and locale
     ///
     /// As stated earlier, this method does not take into account language or context.
-    /// Below is a non-exaustive list of situations where this can be relevant.
+    /// Below is a non-exhaustive list of situations where this can be relevant.
     /// If you need to handle locale-depedendent casing in your code, consider using
     /// an external crate, like [`icu_casemap`](https://crates.io/crates/icu_casemap)
     /// which is developed by Unicode.
@@ -1209,7 +1209,7 @@ impl char {
     /// ## Greek sigma
     ///
     /// In Greek, the letter simga (uppercase Σ) has two lowercase forms:
-    /// ς whick is used only at the end of a word, and σ which is used everywhere else.
+    /// ς which is used only at the end of a word, and σ which is used everywhere else.
     /// `to_lowercase()` always uses the second form:
     ///
     /// ```
@@ -1332,7 +1332,7 @@ impl char {
     /// the typical lowercase-like "mkhedruli" form, and a variant uppercase-like "mtavruli"
     /// form. However, unlike uppercase in most cased scripts, mtavruli is not typically used
     /// to start sentences, denote proper nouns, or for any other purpose
-    /// in running text. It is insteaad confined to titles and headings, which are written entirely
+    /// in running text. It is instead confined to titles and headings, which are written entirely
     /// in mtavruli. For this reason, [`to_uppercase()`] applied to a Georgian letter
     /// will return the mtavruli form, but `to_titlecase()` will return the mkhedruli form.
     ///
@@ -1351,7 +1351,7 @@ impl char {
     ///
     /// The standard Latin alphabet for the Serbo-Croatian language
     /// (Bosnian, Croatian, Montenegrin, and Serbian) contains
-    /// three digraphs: Dž, Lj, and Nj. These are usually represeted as
+    /// three digraphs: Dž, Lj, and Nj. These are usually represented as
     /// two characters. However, for compatibility with older character sets,
     /// Unicode includes single-character versions of these digraphs.
     /// Each has a uppercase, titlecase, and lowercase version:
@@ -1363,16 +1363,16 @@ impl char {
     /// Unicode additionally encodes a casing triad for the Dz digraph
     /// without the caron: `'Ǳ'`, `'ǲ'`, `'ǳ'`.
     ///
-    /// ## Iota-subscriped Greek vowels
+    /// ## Iota-subscritped Greek vowels
     ///
     /// In ancient Greek, the long vowels alpha (α), eta (η), and omega (ω)
-    /// were sometimes followed by an iota (ι), forming a dipthong. Over time,
-    /// the dipthong pronunciation was slowly lost, with the iota becoming mute.
+    /// were sometimes followed by an iota (ι), forming a diphthong. Over time,
+    /// the diphthong pronunciation was slowly lost, with the iota becoming mute.
     /// Eventually, the ι disappeared from the spelling as well.
     /// However, there remains a need to represent ancient texts faithfully.
     ///
     /// Modern editions of ancient Greek texts commonly use a reduced-sized
-    /// ι symbol to denote mute iotas, while distingushing them from ιs
+    /// ι symbol to denote mute iotas, while distinguishing them from ιs
     /// which continued to affect pronunciation. The exact standard differs
     /// between different publications. Some render the mute ι below its associated
     /// vowel (subscript), while others place it to the right of said vowel (adscript).
