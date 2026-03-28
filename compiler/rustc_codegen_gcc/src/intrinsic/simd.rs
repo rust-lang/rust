@@ -811,7 +811,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }};
         }
         let ty::Float(ref f) = *in_elem.kind() else {
-            return_error!(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
+            return_error!(InvalidMonomorphization::BasicFloatType { span, name, ty: in_ty });
         };
         let elem_ty = bx.cx.type_float_from_ty(*f);
         let (elem_ty_str, elem_ty, cast_type) = match f.bit_width() {
