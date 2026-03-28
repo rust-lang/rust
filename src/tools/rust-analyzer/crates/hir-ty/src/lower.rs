@@ -1590,7 +1590,7 @@ pub(crate) fn const_param_ty_with_diagnostics<'db>(
         _: (),
         def: ConstParamId,
     ) -> (StoredTy, Diagnostics) {
-        let (parent_data, store) = GenericParams::of(db, def.parent());
+        let (parent_data, store) = GenericParams::with_store(db, def.parent());
         let data = &parent_data[def.local_id()];
         let resolver = def.parent().resolver(db);
         let interner = DbInterner::new_no_crate(db);

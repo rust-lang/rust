@@ -18,7 +18,7 @@ use hir_def::{
     attrs::AttrFlags,
     builtin_derive::BuiltinDeriveImplMethod,
     expr_store::{Body, path::GenericArgs as HirGenericArgs},
-    hir::ExprId,
+    hir::{ExprId, generics::GenericParams},
     lang_item::LangItems,
     nameres::{DefMap, block_def_map, crate_def_map},
     resolver::Resolver,
@@ -397,7 +397,7 @@ pub fn is_dyn_method<'db>(
     let ItemContainerId::TraitId(trait_id) = func.loc(db).container else {
         return None;
     };
-    let trait_params = db.generic_params(trait_id.into()).len();
+    let trait_params = GenericParams::of(db, trait_id.into()).len();
     let fn_params = fn_subst.len() - trait_params;
     let trait_ref = TraitRef::new_from_args(
         interner,
@@ -433,7 +433,7 @@ pub(crate) fn lookup_impl_method_query<'db>(
     let ItemContainerId::TraitId(trait_id) = func.loc(db).container else {
         return (Either::Left(func), fn_subst);
     };
-    let trait_params = db.generic_params(trait_id.into()).len();
+    let trait_params = GenericParams::of(db, trait_id.into()).len();
     let trait_ref = TraitRef::new_from_args(
         interner,
         trait_id.into(),

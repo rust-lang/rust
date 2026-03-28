@@ -14,7 +14,7 @@ use hir_def::{
     Lookup, ModuleDefId, ModuleId, TraitId,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
-    hir::generics::{TypeOrConstParamData, TypeParamProvenance, WherePredicate},
+    hir::generics::{GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate},
     item_scope::ItemInNs,
     item_tree::FieldsShape,
     lang_item::LangItems,
@@ -2141,7 +2141,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for LifetimeRefId {
             LifetimeRef::Placeholder => write!(f, "'_"),
             LifetimeRef::Error => write!(f, "'{{error}}"),
             &LifetimeRef::Param(lifetime_param_id) => {
-                let generic_params = f.db.generic_params(lifetime_param_id.parent);
+                let generic_params = GenericParams::of(f.db, lifetime_param_id.parent);
                 write!(
                     f,
                     "{}",
@@ -2157,7 +2157,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
         match &store[*self] {
             TypeRef::Never => write!(f, "!")?,
             TypeRef::TypeParam(param) => {
-                let generic_params = f.db.generic_params(param.parent());
+                let generic_params = GenericParams::of(f.db, param.parent());
                 match generic_params[param.local_id()].name() {
                     Some(name) => write!(f, "{}", name.display(f.db, f.edition()))?,
                     None => {

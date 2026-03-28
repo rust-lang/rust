@@ -55,7 +55,6 @@ use syntax::{
     SyntaxKind, SyntaxNode, TextRange, TextSize,
     ast::{self, AstNode, RangeItem, RangeOp},
 };
-use triomphe::Arc;
 
 use crate::{
     Adt, AnyFunctionId, AssocItem, BindingMode, BuiltinAttr, BuiltinType, Callable, Const,
@@ -94,7 +93,7 @@ pub(crate) enum BodyOrSig<'db> {
         source_map: &'db ExpressionStoreSourceMap,
         infer: Option<&'db InferenceResult>,
         #[expect(dead_code)]
-        generics: Arc<GenericParams>,
+        generics: &'db GenericParams,
     },
 }
 
@@ -882,7 +881,7 @@ impl<'db> SourceAnalyzer<'db> {
         let name = name.as_name();
         self.resolver
             .all_generic_params()
-            .find_map(|(params, parent)| params.find_type_by_name(&name, *parent))
+            .find_map(|(params, parent)| params.find_type_by_name(&name, parent))
             .map(crate::TypeParam::from)
     }
 

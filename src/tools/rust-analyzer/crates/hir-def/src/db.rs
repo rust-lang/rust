@@ -10,13 +10,11 @@ use triomphe::Arc;
 use crate::{
     AnonConstId, AnonConstLoc, AssocItemId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc,
     EnumId, EnumLoc, EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId,
-    ExternCrateLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id,
-    Macro2Loc, MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags,
-    ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc,
-    TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
+    ExternCrateLoc, FunctionId, FunctionLoc, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc,
+    MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId,
+    ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId,
+    TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
     attrs::AttrFlags,
-    hir::generics::GenericParams,
-    import_map::ImportMap,
     item_tree::{ItemTree, file_item_tree_query},
     nameres::crate_def_map,
     visibility::{self, Visibility},
@@ -97,13 +95,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     /// Turns a MacroId into a MacroDefId, describing the macro's definition post name resolution.
     #[salsa::invoke(macro_def)]
     fn macro_def(&self, m: MacroId) -> MacroDefId;
-
-    #[salsa::transparent]
-    #[salsa::invoke(GenericParams::new)]
-    fn generic_params(&self, def: GenericDefId) -> Arc<GenericParams>;
-
-    #[salsa::invoke(ImportMap::import_map_query)]
-    fn import_map(&self, krate: Crate) -> Arc<ImportMap>;
 
     // region:visibilities
 

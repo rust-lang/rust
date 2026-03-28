@@ -5,6 +5,7 @@ use std::{cell::RefCell, convert::Infallible, ops::ControlFlow};
 
 use hir_def::{
     AssocItemId, FunctionId, GenericParamId, ImplId, ItemContainerId, TraitId,
+    hir::generics::GenericParams,
     signatures::{FunctionSignature, TraitFlags, TraitSignature},
 };
 use hir_expand::name::Name;
@@ -2010,7 +2011,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         // we are given do not include type/lifetime parameters for the
         // method yet. So create fresh variables here for those too,
         // if there are any.
-        let generics = self.db().generic_params(method.into());
+        let generics = GenericParams::of(self.db(), method.into());
 
         let xform_fn_sig = if generics.is_empty() {
             fn_sig.instantiate(self.interner(), args)

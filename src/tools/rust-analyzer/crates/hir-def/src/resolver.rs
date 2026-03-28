@@ -13,7 +13,6 @@ use rustc_hash::FxHashSet;
 use smallvec::{SmallVec, smallvec};
 use span::SyntaxContext;
 use syntax::ast::HasName;
-use triomphe::Arc;
 
 use crate::{
     AdtId, AstIdLoc, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
@@ -87,7 +86,7 @@ enum Scope<'db> {
     BlockScope(ModuleItemMap<'db>),
     /// Brings the generic parameters of an item into scope as well as the `Self` type alias /
     /// generic for ADTs and impls.
-    GenericParams { def: GenericDefId, params: Arc<GenericParams> },
+    GenericParams { def: GenericDefId, params: &'db GenericParams },
     /// Local bindings
     ExprScope(ExprScope<'db>),
     /// Macro definition inside bodies that affects all paths after it in the same block.
@@ -725,14 +724,14 @@ impl<'db> Resolver<'db> {
 
     pub fn generic_params(&self) -> Option<&GenericParams> {
         self.scopes().find_map(|scope| match scope {
-            Scope::GenericParams { params, .. } => Some(&**params),
+            &Scope::GenericParams { params, .. } => Some(params),
             _ => None,
         })
     }
 
-    pub fn all_generic_params(&self) -> impl Iterator<Item = (&GenericParams, &GenericDefId)> {
+    pub fn all_generic_params(&self) -> impl Iterator<Item = (&GenericParams, GenericDefId)> {
         self.scopes().filter_map(|scope| match scope {
-            Scope::GenericParams { params, def } => Some((&**params, def)),
+            &Scope::GenericParams { params, def } => Some((params, def)),
             _ => None,
         })
     }
@@ -1021,7 +1020,7 @@ impl<'db> Scope<'db> {
                     })
                 });
             }
-            &Scope::GenericParams { ref params, def: parent } => {
+            &Scope::GenericParams { params, def: parent } => {
                 if let GenericDefId::ImplId(impl_) = parent {
                     acc.add(&Name::new_symbol_root(sym::Self_), ScopeDef::ImplSelfType(impl_));
                 } else if let GenericDefId::AdtId(adt) = parent {
@@ -1031,7 +1030,7 @@ impl<'db> Scope<'db> {
                 for (local_id, param) in params.iter_type_or_consts() {
                     if let Some(name) = &param.name() {
                         let id = TypeOrConstParamId { parent, local_id };
-                        let data = &db.generic_params(parent)[local_id];
+                        let data = &GenericParams::of(db, parent)[local_id];
                         acc.add(
                             name,
                             ScopeDef::GenericParam(match data {
@@ -1115,7 +1114,7 @@ impl<'db> Resolver<'db> {
         db: &'db dyn DefDatabase,
         def: GenericDefId,
     ) -> Resolver<'db> {
-        let params = db.generic_params(def);
+        let params = GenericParams::of(db, def);
         self.push_scope(Scope::GenericParams { def, params })
     }
 
