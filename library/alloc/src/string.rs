@@ -61,7 +61,9 @@ use crate::alloc::Allocator;
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
-use crate::collections::{TryReserveError, VecDeque};
+use crate::collections::{TryReserveError};
+#[cfg(not(no_global_oom_handling))]
+use crate::collections::VecDeque;
 use crate::str::{self, CharIndices, Chars, Utf8Error, from_utf8_unchecked_mut};
 #[cfg(not(no_global_oom_handling))]
 use crate::str::{FromStr, from_boxed_utf8_unchecked};
