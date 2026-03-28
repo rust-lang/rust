@@ -1742,23 +1742,25 @@ impl<'db> Function<'db> {
         module: hir::Module,
         edition: Edition,
     ) -> ast::ParamList {
-        let this_param = self.make_this_param();
+        let this_param = self.make_this_param().map(|f| f());
         let self_param = self.self_param.clone().filter(|_| this_param.is_none());
         let params = self.params.iter().map(|param| param.to_param(ctx, module, edition));
         make::param_list(self_param, this_param.into_iter().chain(params))
     }
 
-    fn make_this_param(&self) -> Option<ast::Param> {
+    fn make_this_param(&self) -> Option<impl FnOnce() -> ast::Param> {
         if let Some(name) = self.mods.trait_name.clone()
             && let Some(self_param) = &self.self_param
         {
-            let bounds = make::type_bound_list([make::type_bound(name)]);
-            let pat = make::path_pat(make::ext::ident_path("this"));
-            let mut ty = make::impl_trait_type(bounds.unwrap()).into();
-            if self_param.amp_token().is_some() {
-                ty = make::ty_ref(ty, self_param.mut_token().is_some());
-            }
-            Some(make::param(pat, ty))
+            Some(|| {
+                let bounds = make::type_bound_list([make::type_bound(name)]);
+                let pat = make::path_pat(make::ext::ident_path("this"));
+                let mut ty = make::impl_trait_type(bounds.unwrap()).into();
+                if self_param.amp_token().is_some() {
+                    ty = make::ty_ref(ty, self_param.mut_token().is_some());
+                }
+                make::param(pat, ty)
+            })
         } else {
             None
         }
