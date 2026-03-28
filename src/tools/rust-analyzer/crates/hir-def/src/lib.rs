@@ -259,7 +259,7 @@ impl_intern!(StructId, StructLoc, intern_struct, lookup_intern_struct);
 
 impl StructId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self.into())
+        VariantFields::of(db, self.into())
     }
 
     pub fn fields_with_source_map(
@@ -276,7 +276,7 @@ impl_intern!(UnionId, UnionLoc, intern_union, lookup_intern_union);
 
 impl UnionId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self.into())
+        VariantFields::of(db, self.into())
     }
 
     pub fn fields_with_source_map(
@@ -396,7 +396,7 @@ impl_loc!(EnumVariantLoc, id: Variant, parent: EnumId);
 
 impl EnumVariantId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self.into())
+        VariantFields::of(db, self.into())
     }
 
     pub fn fields_with_source_map(
@@ -1027,7 +1027,7 @@ impl_from!(EnumVariantId, StructId, UnionId for VariantId);
 
 impl VariantId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self)
+        VariantFields::of(db, self)
     }
 
     pub fn fields_with_source_map(

@@ -11,7 +11,7 @@ use hir_def::{
         InlineAsmKind, LabelId, Literal, Pat, PatId, RecordSpread, Statement, UnaryOp,
     },
     resolver::ValueNs,
-    signatures::FunctionSignature,
+    signatures::{FunctionSignature, VariantFields},
 };
 use hir_def::{FunctionId, hir::ClosureKind};
 use hir_expand::name::Name;
@@ -609,7 +609,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     Some(def) => {
                         let field_types = self.db.field_types(def);
                         let variant_data = def.fields(self.db);
-                        let visibilities = self.db.field_visibilities(def);
+                        let visibilities = VariantFields::field_visibilities(self.db, def);
                         for field in fields.iter() {
                             let field_def = {
                                 match variant_data.field(&field.name) {
@@ -1625,7 +1625,8 @@ impl<'db> InferenceContext<'_, 'db> {
                 },
                 _ => return None,
             };
-            let is_visible = self.db.field_visibilities(field_id.parent)[field_id.local_id]
+            let is_visible = VariantFields::field_visibilities(self.db, field_id.parent)
+                [field_id.local_id]
                 .is_visible_from(self.db, self.resolver.module());
             if !is_visible {
                 if private_field.is_none() {
