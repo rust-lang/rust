@@ -3658,6 +3658,10 @@ impl String {
         while let Some(l_c) = wc.pop() {
             l_c.to_uppercase().for_each(|u_c| wc.write(u_c));
         }
+        // SAFETY: At this point, none of the methods of wc panicked
+        unsafe {
+            wc.finalize();
+        }
     }
 
     /// Converts this string to its lowercase equivalent in-place.
@@ -3725,6 +3729,10 @@ impl String {
                     u_c.is_cased() || (word_final_so_far && u_c.is_case_ignorable());
             }
         }
+        // SAFETY: At this point, none of the methods of wc panicked
+        unsafe {
+            wc.finalize();
+        }
     }
 }
 
@@ -3734,37 +3742,17 @@ impl String {
 struct WriteChars<'a> {
     // This is the internal buffer of the string temporarily changed to Vec<u8> because
     // it will contain non utf8 bytes.
-    // invariant: self.v.len() == original string until drop is run
+    // invariant: self.v.len() == original string until finalize is run
     v: Vec<u8>,
     // A reference kept to restore the string at the end
-    // (ie drop time)
+    // (ie finalize time)
     s: &'a mut String,
     // invariant: write_offset <= read_offset
     write_offset: usize,
     // invariant: self.read_offset <= self.v.len()
-    // before the Drop
+    // before finalize
     read_offset: usize,
     buffer: VecDeque<u8>,
-}
-
-impl<'a> Drop for WriteChars<'a> {
-    // Set the proper length of the string's storage
-    // or grow it to add what is still in the buffer.
-    fn drop(&mut self) {
-        if self.buffer.is_empty() {
-            // SAFETY: if the queue is empty, then
-            // there were less bytes than in the original so we can simply shrink
-            unsafe {
-                self.v.set_len(self.write_offset);
-            }
-        } else {
-            let (q1, q2) = self.buffer.as_slices();
-            self.v.extend_from_slice(q1);
-            self.v.extend_from_slice(q2);
-        };
-        // SAFETY: this is valid utf8
-        *self.s = unsafe { String::from_utf8_unchecked(core::mem::take(&mut self.v)) }
-    }
 }
 
 #[unstable(issue = "none", feature = "std_internals")]
@@ -3805,5 +3793,27 @@ impl<'a> WriteChars<'a> {
         writable_slice[..direct_copy_length].copy_from_slice(&buffer[..direct_copy_length]);
         self.write_offset += direct_copy_length;
         self.buffer.extend(&buffer[direct_copy_length..len]);
+    }
+
+    // Set the proper length of the string's storage
+    // or grow it to add what is still in the buffer.
+    /// Finalize should be run for the modifications to be actually written back to the string
+    /// # Safety
+    /// Must not be called if one of the previous method calls of self panicked because the buffer
+    /// may contain invalid utf8
+    unsafe fn finalize(mut self) {
+        if self.buffer.is_empty() {
+            // SAFETY: if the queue is empty, then
+            // there were less bytes than in the original so we can simply shrink
+            unsafe {
+                self.v.set_len(self.write_offset);
+            }
+        } else {
+            let (q1, q2) = self.buffer.as_slices();
+            self.v.extend_from_slice(q1);
+            self.v.extend_from_slice(q2);
+        };
+        // SAFETY: this is valid utf8
+        *self.s = unsafe { String::from_utf8_unchecked(core::mem::take(&mut self.v)) }
     }
 }
