@@ -47,7 +47,7 @@ pub fn upvars_mentioned(
     let body = Body::of(db, owner);
     let mut resolver = owner.resolver(db);
     let mut result = FxHashMap::default();
-    handle_expr_outside_closure(db, &mut resolver, owner, body, body.body_expr, &mut result);
+    handle_expr_outside_closure(db, &mut resolver, owner, body, body.root_expr(), &mut result);
     return if result.is_empty() {
         None
     } else {

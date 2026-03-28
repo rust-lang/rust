@@ -6,11 +6,11 @@ use base_db::Crate;
 use hir_expand::{InFile, Lookup};
 use la_arena::ArenaMap;
 use syntax::ast::{self, HasVisibility};
-use triomphe::Arc;
 
 use crate::{
     AssocItemId, HasModule, ItemContainerId, LocalFieldId, ModuleId, TraitId, VariantId,
-    db::DefDatabase, nameres::DefMap, resolver::HasResolver, src::HasSource,
+    db::DefDatabase, nameres::DefMap, resolver::HasResolver, signatures::VariantFields,
+    src::HasSource,
 };
 
 pub use crate::item_tree::{RawVisibility, VisibilityExplicitness};
@@ -277,23 +277,26 @@ impl Visibility {
     }
 }
 
-/// Resolve visibility of all specific fields of a struct or union variant.
-pub(crate) fn field_visibilities_query(
-    db: &dyn DefDatabase,
-    variant_id: VariantId,
-) -> Arc<ArenaMap<LocalFieldId, Visibility>> {
-    let variant_fields = variant_id.fields(db);
-    let fields = variant_fields.fields();
-    if fields.is_empty() {
-        return Arc::default();
+#[salsa::tracked]
+impl VariantFields {
+    /// Resolve visibility of all specific fields of a struct or union variant.
+    #[salsa::tracked(returns(ref))]
+    pub fn field_visibilities(
+        db: &dyn DefDatabase,
+        variant_id: VariantId,
+    ) -> ArenaMap<LocalFieldId, Visibility> {
+        let variant_fields = variant_id.fields(db);
+        let fields = variant_fields.fields();
+        if fields.is_empty() {
+            return ArenaMap::default();
+        }
+        let resolver = variant_id.module(db).resolver(db);
+        let mut res = ArenaMap::with_capacity(fields.len());
+        for (field_id, field_data) in fields.iter() {
+            res.insert(field_id, Visibility::resolve(db, &resolver, &field_data.visibility));
+        }
+        res
     }
-    let resolver = variant_id.module(db).resolver(db);
-    let mut res = ArenaMap::default();
-    for (field_id, field_data) in fields.iter() {
-        res.insert(field_id, Visibility::resolve(db, &resolver, &field_data.visibility));
-    }
-    res.shrink_to_fit();
-    Arc::new(res)
 }
 
 pub fn visibility_from_ast(

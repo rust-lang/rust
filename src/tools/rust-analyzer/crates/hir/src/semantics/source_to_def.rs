@@ -738,7 +738,7 @@ impl ChildContainer {
         }
     }
 
-    fn as_expression_store_owner(self) -> Option<ExpressionStoreOwnerId> {
+    pub(crate) fn as_expression_store_owner(self) -> Option<ExpressionStoreOwnerId> {
         match self {
             ChildContainer::DefWithBodyId(it) => Some(it.into()),
             ChildContainer::ModuleId(_) => None,

@@ -13,9 +13,9 @@ use syntax::{AstNode, ast};
 use tt::TextRange;
 
 use crate::{
-    Adt, AnyFunctionId, Callee, Const, Enum, ExternCrateDecl, Field, FieldSource, Function, Impl,
-    InlineAsmOperand, Label, LifetimeParam, LocalSource, Macro, Module, Param, SelfParam, Static,
-    Struct, Trait, TypeAlias, TypeOrConstParam, Union, Variant, VariantDef, db::HirDatabase,
+    Adt, AnyFunctionId, Callee, Const, Enum, EnumVariant, ExternCrateDecl, Field, FieldSource,
+    Function, Impl, InlineAsmOperand, Label, LifetimeParam, LocalSource, Macro, Module, Param,
+    SelfParam, Static, Struct, Trait, TypeAlias, TypeOrConstParam, Union, Variant, db::HirDatabase,
 };
 
 pub trait HasSource: Sized {
@@ -124,13 +124,13 @@ impl HasSource for Adt {
         }
     }
 }
-impl HasSource for VariantDef {
+impl HasSource for Variant {
     type Ast = ast::VariantDef;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         match self {
-            VariantDef::Struct(s) => Some(s.source(db)?.map(ast::VariantDef::Struct)),
-            VariantDef::Union(u) => Some(u.source(db)?.map(ast::VariantDef::Union)),
-            VariantDef::Variant(v) => Some(v.source(db)?.map(ast::VariantDef::Variant)),
+            Variant::Struct(s) => Some(s.source(db)?.map(ast::VariantDef::Struct)),
+            Variant::Union(u) => Some(u.source(db)?.map(ast::VariantDef::Union)),
+            Variant::EnumVariant(v) => Some(v.source(db)?.map(ast::VariantDef::Variant)),
         }
     }
 }
@@ -152,7 +152,7 @@ impl HasSource for Enum {
         Some(self.id.lookup(db).source(db))
     }
 }
-impl HasSource for Variant {
+impl HasSource for EnumVariant {
     type Ast = ast::Variant;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<ast::Variant>> {
         Some(self.id.lookup(db).source(db))

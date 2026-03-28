@@ -11,7 +11,7 @@ use std::{
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
     Adt, AssocItem, Crate, DefWithBody, FindPathConfig, GenericDef, HasCrate, HasSource,
-    HirDisplay, ModuleDef, Name, crate_lang_items,
+    HirDisplay, ModuleDef, Name, Variant, VariantId, crate_lang_items,
     db::{DefDatabase, ExpandDatabase, HirDatabase},
     next_solver::{DbInterner, GenericArgs},
 };
@@ -230,6 +230,7 @@ impl flags::AnalysisStats {
         let mut num_decls = 0;
         let mut bodies = Vec::new();
         let mut signatures = Vec::new();
+        let mut variants = Vec::new();
         let mut adts = Vec::new();
         let mut file_ids = Vec::new();
 
@@ -247,10 +248,15 @@ impl flags::AnalysisStats {
                     match decl {
                         ModuleDef::Function(f) => bodies.push(DefWithBody::from(f)),
                         ModuleDef::Adt(a) => {
-                            if let Adt::Enum(e) = a {
-                                for v in e.variants(db) {
-                                    bodies.push(DefWithBody::from(v));
+                            match a {
+                                Adt::Enum(e) => {
+                                    for v in e.variants(db) {
+                                        bodies.push(DefWithBody::from(v));
+                                        variants.push(Variant::EnumVariant(v));
+                                    }
                                 }
+                                Adt::Struct(it) => variants.push(Variant::Struct(it)),
+                                Adt::Union(it) => variants.push(Variant::Union(it)),
                             }
                             adts.push(a)
                         }
@@ -293,7 +299,7 @@ impl flags::AnalysisStats {
             }
         }
         eprintln!(
-            ", mods: {}, decls: {num_decls}, bodies: {}, adts: {}, consts: {}, signatures: {}",
+            ", mods: {}, decls: {num_decls}, bodies: {}, adts: {}, consts: {}, signatures: {}, variants: {}",
             visited_modules.len(),
             bodies.len(),
             adts.len(),
@@ -302,6 +308,7 @@ impl flags::AnalysisStats {
                 .filter(|it| matches!(it, DefWithBody::Const(_) | DefWithBody::Static(_)))
                 .count(),
             signatures.len(),
+            variants.len()
         );
 
         eprintln!("  Workspace:");
@@ -337,15 +344,15 @@ impl flags::AnalysisStats {
             }
 
             if !self.skip_lowering {
-                self.run_body_lowering(db, &vfs, &bodies, &signatures, verbosity);
+                self.run_body_lowering(db, &vfs, &bodies, &signatures, &variants, verbosity);
             }
 
             if !self.skip_inference {
-                self.run_inference(db, &vfs, &bodies, &signatures, verbosity);
+                self.run_inference(db, &vfs, &bodies, &signatures, &variants, verbosity);
             }
 
             if !self.skip_mir_stats {
-                self.run_mir_lowering(db, &bodies, &signatures, verbosity);
+                self.run_mir_lowering(db, &bodies, &signatures, &variants, verbosity);
             }
 
             if !self.skip_data_layout {
@@ -353,7 +360,7 @@ impl flags::AnalysisStats {
             }
 
             if !self.skip_const_eval {
-                self.run_const_eval(db, &bodies, &signatures, verbosity);
+                self.run_const_eval(db, &bodies, &signatures, &variants, verbosity);
             }
         });
 
@@ -431,6 +438,7 @@ impl flags::AnalysisStats {
         db: &RootDatabase,
         bodies: &[DefWithBody],
         _signatures: &[GenericDef],
+        _variants: &[Variant],
         verbosity: Verbosity,
     ) {
         let len = bodies
@@ -710,6 +718,7 @@ impl flags::AnalysisStats {
         db: &RootDatabase,
         bodies: &[DefWithBody],
         _signatures: &[GenericDef],
+        _variants: &[Variant],
         verbosity: Verbosity,
     ) {
         let mut bar = match verbosity {
@@ -725,7 +734,7 @@ impl flags::AnalysisStats {
                 format!("mir lowering: {}", full_name(db, || body.name(db), body.module(db)))
             });
             bar.inc(1);
-            if matches!(body, DefWithBody::Variant(_)) {
+            if matches!(body, DefWithBody::EnumVariant(_)) {
                 continue;
             }
             let module = body.module(db);
@@ -768,6 +777,7 @@ impl flags::AnalysisStats {
         vfs: &Vfs,
         bodies: &[DefWithBody],
         signatures: &[GenericDef],
+        variants: &[Variant],
         verbosity: Verbosity,
     ) {
         let mut bar = match verbosity {
@@ -796,6 +806,13 @@ impl flags::AnalysisStats {
                 .par_iter()
                 .map_with(db.clone(), |snap, &signatures| {
                     InferenceResult::of(snap, signatures);
+                })
+                .count();
+            let variants = variants.iter().copied().map(Into::into).collect::<Vec<VariantId>>();
+            variants
+                .par_iter()
+                .map_with(db.clone(), |snap, &variants| {
+                    InferenceResult::of(snap, variants);
                 })
                 .count();
             eprintln!("{:<20} {}", "Parallel Inference:", inference_sw.elapsed());
@@ -829,7 +846,9 @@ impl flags::AnalysisStats {
                         DefWithBody::Function(it) => it.source(db).map(|it| it.syntax().cloned()),
                         DefWithBody::Static(it) => it.source(db).map(|it| it.syntax().cloned()),
                         DefWithBody::Const(it) => it.source(db).map(|it| it.syntax().cloned()),
-                        DefWithBody::Variant(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        DefWithBody::EnumVariant(it) => {
+                            it.source(db).map(|it| it.syntax().cloned())
+                        }
                     };
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);
@@ -1127,12 +1146,13 @@ impl flags::AnalysisStats {
         vfs: &Vfs,
         bodies: &[DefWithBody],
         signatures: &[GenericDef],
+        variants: &[Variant],
         verbosity: Verbosity,
     ) {
         let mut bar = match verbosity {
             Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
             _ if self.output.is_some() => ProgressReport::hidden(),
-            _ => ProgressReport::new(bodies.len() + signatures.len()),
+            _ => ProgressReport::new(bodies.len() + signatures.len() + variants.len()),
         };
 
         let mut sw = self.stop_watch();
@@ -1181,6 +1201,44 @@ impl flags::AnalysisStats {
             bar.inc(1);
         }
 
+        for &variant in variants {
+            let variant_id = variant.into();
+            let module = variant.module(db);
+            if !self.should_process(db, || Some(variant.name(db)), module) {
+                continue;
+            }
+            let msg = move || {
+                if verbosity.is_verbose() {
+                    let source = match variant {
+                        Variant::EnumVariant(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        Variant::Struct(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        Variant::Union(it) => it.source(db).map(|it| it.syntax().cloned()),
+                    };
+                    if let Some(src) = source {
+                        let original_file = src.file_id.original_file(db);
+                        let path = vfs.file_path(original_file.file_id(db));
+                        let syntax_range = src.text_range();
+                        format!(
+                            "processing: {} ({} {:?})",
+                            full_name(db, || Some(variant.name(db)), module),
+                            path,
+                            syntax_range
+                        )
+                    } else {
+                        format!("processing: {}", full_name(db, || Some(variant.name(db)), module))
+                    }
+                } else {
+                    format!("processing: {}", full_name(db, || Some(variant.name(db)), module))
+                }
+            };
+            if verbosity.is_spammy() {
+                bar.println(msg());
+            }
+            bar.set_message(msg);
+            ExpressionStore::of(db, ExpressionStoreOwnerId::VariantFields(variant_id));
+            bar.inc(1);
+        }
+
         for &body_id in bodies {
             let Ok(body_def_id) = body_id.try_into() else { continue };
             let module = body_id.module(db);
@@ -1193,7 +1251,9 @@ impl flags::AnalysisStats {
                         DefWithBody::Function(it) => it.source(db).map(|it| it.syntax().cloned()),
                         DefWithBody::Static(it) => it.source(db).map(|it| it.syntax().cloned()),
                         DefWithBody::Const(it) => it.source(db).map(|it| it.syntax().cloned()),
-                        DefWithBody::Variant(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        DefWithBody::EnumVariant(it) => {
+                            it.source(db).map(|it| it.syntax().cloned())
+                        }
                     };
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);

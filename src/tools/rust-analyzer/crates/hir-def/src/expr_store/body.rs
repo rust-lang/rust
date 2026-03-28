@@ -29,8 +29,6 @@ pub struct Body {
     /// empty.
     pub params: Box<[PatId]>,
     pub self_param: Option<BindingId>,
-    /// The `ExprId` of the actual body expression.
-    pub body_expr: ExprId,
 }
 
 impl ops::Deref for Body {
@@ -115,6 +113,10 @@ impl Body {
 }
 
 impl Body {
+    pub fn root_expr(&self) -> ExprId {
+        self.store.expr_roots().next().unwrap()
+    }
+
     pub fn pretty_print(
         &self,
         db: &dyn DefDatabase,

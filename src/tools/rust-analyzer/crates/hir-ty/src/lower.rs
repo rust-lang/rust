@@ -2156,13 +2156,7 @@ pub(crate) fn trait_environment<'db>(
     db: &'db dyn HirDatabase,
     def: ExpressionStoreOwnerId,
 ) -> ParamEnv<'db> {
-    let def = match def {
-        ExpressionStoreOwnerId::Signature(def) => def,
-        ExpressionStoreOwnerId::Body(def) => match def.as_generic_def_id(db) {
-            Some(def) => def,
-            None => return ParamEnv::empty(),
-        },
-    };
+    let def = def.generic_def(db);
 
     return ParamEnv { clauses: trait_environment_query(db, def).as_ref() };
 

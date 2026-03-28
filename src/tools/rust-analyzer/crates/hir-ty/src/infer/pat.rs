@@ -6,6 +6,7 @@ use hir_def::{
     HasModule as _,
     expr_store::{ExpressionStore, path::Path},
     hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, Literal, Pat, PatId},
+    signatures::VariantFields,
 };
 use hir_expand::name::Name;
 use rustc_ast_ir::Mutability;
@@ -60,7 +61,7 @@ impl<'db> InferenceContext<'_, 'db> {
             Some(def) => {
                 let field_types = self.db.field_types(def);
                 let variant_data = def.fields(self.db);
-                let visibilities = self.db.field_visibilities(def);
+                let visibilities = VariantFields::field_visibilities(self.db, def);
 
                 let (pre, post) = match ellipsis {
                     Some(idx) => subs.split_at(idx as usize),
@@ -129,7 +130,7 @@ impl<'db> InferenceContext<'_, 'db> {
             Some(def) => {
                 let field_types = self.db.field_types(def);
                 let variant_data = def.fields(self.db);
-                let visibilities = self.db.field_visibilities(def);
+                let visibilities = VariantFields::field_visibilities(self.db, def);
 
                 let substs = ty.as_adt().map(TupleExt::tail);
 

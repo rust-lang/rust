@@ -1,7 +1,7 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use hir::{ExpandResult, InFile, Semantics, Type, TypeInfo, Variant};
+use hir::{EnumVariant, ExpandResult, InFile, Semantics, Type, TypeInfo};
 use ide_db::{
     RootDatabase, active_parameter::ActiveParameter, syntax_helpers::node_ext::find_loops,
 };
@@ -781,7 +781,7 @@ fn expected_type_and_name<'db>(
                 ast::TupleStructPat(it) => {
                     let fields = it.path().and_then(|path| match sema.resolve_path(&path)? {
                         hir::PathResolution::Def(hir::ModuleDef::Adt(adt)) => Some(adt.as_struct()?.fields(sema.db)),
-                        hir::PathResolution::Def(hir::ModuleDef::Variant(variant)) => Some(variant.fields(sema.db)),
+                        hir::PathResolution::Def(hir::ModuleDef::EnumVariant(variant)) => Some(variant.fields(sema.db)),
                         _ => None,
                     });
                     let nr = it.fields().take_while(|it| it.syntax().text_range().end() <= token.text_range().start()).count();
@@ -1149,7 +1149,7 @@ fn classify_name_ref<'db>(
                                     hir::ModuleDef::Adt(adt) => {
                                         sema.source(adt)?.value.generic_param_list()
                                     }
-                                    hir::ModuleDef::Variant(variant) => {
+                                    hir::ModuleDef::EnumVariant(variant) => {
                                         sema.source(variant.parent_enum(sema.db))?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Trait(trait_) => {
@@ -1825,7 +1825,7 @@ fn pattern_context_for(
                                         });
 
                                         (!variant_already_present).then_some(*variant)
-                                    }).collect::<Vec<Variant>>())
+                                    }).collect::<Vec<EnumVariant>>())
                         });
 
                         if let Some(missing_variants_) = missing_variants_opt {

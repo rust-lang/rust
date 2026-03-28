@@ -3,7 +3,7 @@
 use hir_def::{
     AdtId, AnonConstId, AttrDefId, BuiltinDeriveImplId, CallableDefId, ConstId, DefWithBodyId,
     EnumId, EnumVariantId, ExpressionStoreOwnerId, FunctionId, GeneralConstId, GenericDefId,
-    ImplId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    ImplId, StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
     signatures::{
         ConstSignature, EnumSignature, FunctionSignature, StaticSignature, StructSignature,
         TraitSignature, TypeAliasSignature, UnionSignature,
@@ -166,12 +166,24 @@ impl From<DefWithBodyId> for SolverDefId {
     }
 }
 
+impl From<VariantId> for SolverDefId {
+    #[inline]
+    fn from(value: VariantId) -> Self {
+        match value {
+            VariantId::EnumVariantId(id) => id.into(),
+            VariantId::StructId(id) => id.into(),
+            VariantId::UnionId(id) => id.into(),
+        }
+    }
+}
+
 impl From<ExpressionStoreOwnerId> for SolverDefId {
     #[inline]
     fn from(value: ExpressionStoreOwnerId) -> Self {
         match value {
             ExpressionStoreOwnerId::Body(body_id) => body_id.into(),
             ExpressionStoreOwnerId::Signature(sig_id) => sig_id.into(),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => variant_id.into(),
         }
     }
 }

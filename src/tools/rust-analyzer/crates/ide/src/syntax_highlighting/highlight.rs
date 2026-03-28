@@ -538,7 +538,7 @@ pub(super) fn highlight_def(
 
             (Highlight::new(h), Some(adt.attrs(sema.db)))
         }
-        Definition::Variant(variant) => {
+        Definition::EnumVariant(variant) => {
             (Highlight::new(HlTag::Symbol(SymbolKind::Variant)), Some(variant.attrs(sema.db)))
         }
         Definition::Const(konst) => {

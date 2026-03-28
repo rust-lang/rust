@@ -20,7 +20,7 @@ use hir_def::{
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat, PatId, generics::GenericParams},
     lang_item::LangItems,
     nameres::MacroSubNs,
-    resolver::{HasResolver, Resolver, TypeNs, ValueNs, resolver_for_scope},
+    resolver::{Resolver, TypeNs, ValueNs, resolver_for_scope},
     type_ref::{Mutability, TypeRef, TypeRefId},
 };
 use hir_expand::{
@@ -58,8 +58,8 @@ use syntax::{
 
 use crate::{
     Adt, AnyFunctionId, AssocItem, BindingMode, BuiltinAttr, BuiltinType, Callable, Const,
-    DeriveHelper, Field, Function, GenericSubstitution, Local, Macro, ModuleDef, Static, Struct,
-    ToolModule, Trait, TupleField, Type, TypeAlias, Variant,
+    DeriveHelper, EnumVariant, Field, Function, GenericSubstitution, Local, Macro, ModuleDef,
+    Static, Struct, ToolModule, Trait, TupleField, Type, TypeAlias,
     db::HirDatabase,
     semantics::{PathResolution, PathResolutionPerNs},
 };
@@ -81,11 +81,11 @@ pub(crate) enum BodyOrSig<'db> {
         source_map: &'db BodySourceMap,
         infer: Option<&'db InferenceResult>,
     },
-    // To be folded into body once it is considered one
     VariantFields {
         def: VariantId,
         store: &'db ExpressionStore,
         source_map: &'db ExpressionStoreSourceMap,
+        infer: Option<&'db InferenceResult>,
     },
     Sig {
         def: GenericDefId,
@@ -196,14 +196,34 @@ impl<'db> SourceAnalyzer<'db> {
     pub(crate) fn new_variant_body(
         db: &'db dyn HirDatabase,
         def: VariantId,
-        InFile { file_id, .. }: InFile<&SyntaxNode>,
-        _offset: Option<TextSize>,
+        node @ InFile { file_id, .. }: InFile<&SyntaxNode>,
+        offset: Option<TextSize>,
+        infer: bool,
     ) -> SourceAnalyzer<'db> {
         let (fields, source_map) = def.fields_with_source_map(db);
-        let resolver = def.resolver(db);
+        let scopes = ExprScopes::of(db, def);
+        let scope = match offset {
+            None => scope_for(db, scopes, source_map, node),
+            Some(offset) => {
+                debug_assert!(
+                    node.text_range().contains_inclusive(offset),
+                    "{:?} not in {:?}",
+                    offset,
+                    node.text_range()
+                );
+                scope_for_offset(db, scopes, source_map, node.file_id, offset)
+            }
+        };
+        let resolver = resolver_for_scope(db, def, scope);
+        let infer = if infer { Some(InferenceResult::of(db, def)) } else { None };
         SourceAnalyzer {
             resolver,
-            body_or_sig: Some(BodyOrSig::VariantFields { def, store: &fields.store, source_map }),
+            body_or_sig: Some(BodyOrSig::VariantFields {
+                def,
+                store: &fields.store,
+                source_map,
+                infer,
+            }),
             file_id,
         }
     }
@@ -215,31 +235,39 @@ impl<'db> SourceAnalyzer<'db> {
         SourceAnalyzer { resolver, body_or_sig: None, file_id: node.file_id }
     }
 
-    // FIXME: Remove this
-    fn body_(&self) -> Option<(DefWithBodyId, &Body, &BodySourceMap, Option<&InferenceResult>)> {
-        self.body_or_sig.as_ref().and_then(|it| match it {
-            BodyOrSig::Body { def, body, source_map, infer } => {
-                Some((*def, &**body, &**source_map, infer.as_deref()))
-            }
-            _ => None,
+    fn owner(&self) -> Option<ExpressionStoreOwnerId> {
+        self.body_or_sig.as_ref().map(|it| match *it {
+            BodyOrSig::VariantFields { def, .. } => def.into(),
+            BodyOrSig::Sig { def, .. } => def.into(),
+            BodyOrSig::Body { def, .. } => def.into(),
         })
     }
 
     fn infer(&self) -> Option<&InferenceResult> {
         self.body_or_sig.as_ref().and_then(|it| match it {
-            BodyOrSig::VariantFields { .. } => None,
-            BodyOrSig::Sig { infer, .. } | BodyOrSig::Body { infer, .. } => infer.as_deref(),
+            BodyOrSig::VariantFields { infer, .. }
+            | BodyOrSig::Sig { infer, .. }
+            | BodyOrSig::Body { infer, .. } => infer.as_deref(),
         })
     }
 
     pub(crate) fn def(
         &self,
-    ) -> Option<(ExpressionStoreOwnerId, &ExpressionStore, &ExpressionStoreSourceMap)> {
-        self.body_or_sig.as_ref().and_then(|it| match it {
-            BodyOrSig::VariantFields { .. } => None,
-            &BodyOrSig::Sig { def, store, source_map, .. } => Some((def.into(), store, source_map)),
-            BodyOrSig::Body { def, body, source_map, .. } => {
-                Some(((*def).into(), &body.store, source_map))
+    ) -> Option<(
+        ExpressionStoreOwnerId,
+        &ExpressionStore,
+        &ExpressionStoreSourceMap,
+        Option<&InferenceResult>,
+    )> {
+        self.body_or_sig.as_ref().map(|it| match *it {
+            BodyOrSig::VariantFields { def, store, source_map, infer, .. } => {
+                (def.into(), store, source_map, infer)
+            }
+            BodyOrSig::Sig { def, store, source_map, infer, .. } => {
+                (def.into(), store, source_map, infer)
+            }
+            BodyOrSig::Body { def, body, source_map, infer, .. } => {
+                (def.into(), &body.store, &source_map.store, infer)
             }
         })
     }
@@ -268,7 +296,7 @@ impl<'db> SourceAnalyzer<'db> {
         self.param_and(self.body_or_sig.as_ref().map_or_else(ParamEnv::empty, |body_or_sig| {
             match *body_or_sig {
                 BodyOrSig::Body { def, .. } => db.trait_environment(def.into()),
-                BodyOrSig::VariantFields { .. } => ParamEnv::empty(),
+                BodyOrSig::VariantFields { def, .. } => db.trait_environment(def.into()),
                 BodyOrSig::Sig { def, .. } => db.trait_environment(def.into()),
             }
         }))
@@ -510,7 +538,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         field: &ast::FieldExpr,
     ) -> Option<Either<Field, TupleField>> {
-        let (def, ..) = self.body_()?;
+        let def = self.owner()?;
         let expr_id = self.expr_id(field.clone().into())?.as_expr()?;
         self.infer()?.field_resolution(expr_id).map(|it| {
             it.map_either(Into::into, |f| TupleField { owner: def, tuple: f.tuple, index: f.index })
@@ -537,7 +565,7 @@ impl<'db> SourceAnalyzer<'db> {
         field: &ast::FieldExpr,
     ) -> Option<(Either<Either<Field, TupleField>, Function>, Option<GenericSubstitution<'db>>)>
     {
-        let (def, ..) = self.body_()?;
+        let def = self.owner()?;
         let expr_id = self.expr_id(field.clone().into())?.as_expr()?;
         let inference_result = self.infer()?;
         match inference_result.field_resolution(expr_id) {
@@ -889,7 +917,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         name_ref: &ast::NameRef,
-    ) -> Option<(Either<crate::Variant, crate::Field>, GenericSubstitution<'db>)> {
+    ) -> Option<(Either<crate::EnumVariant, crate::Field>, GenericSubstitution<'db>)> {
         let offset_of_expr = ast::OffsetOfExpr::cast(name_ref.syntax().parent()?)?;
         let container = offset_of_expr.ty()?;
         let container = self.type_of_type(db, &container)?;
@@ -940,7 +968,7 @@ impl<'db> SourceAnalyzer<'db> {
                                 let variants = id.enum_variants(db);
                                 let variant = variants.variant(&field_name.as_name())?;
                                 container = Either::Left((variant, subst));
-                                (Either::Left(Variant { id: variant }), id.into(), subst)
+                                (Either::Left(EnumVariant { id: variant }), id.into(), subst)
                             }
                         },
                         _ => return None,
@@ -1020,7 +1048,10 @@ impl<'db> SourceAnalyzer<'db> {
                 if let Some(VariantId::EnumVariantId(variant)) =
                     infer.variant_resolution_for_expr_or_pat(expr_id)
                 {
-                    return Some((PathResolution::Def(ModuleDef::Variant(variant.into())), None));
+                    return Some((
+                        PathResolution::Def(ModuleDef::EnumVariant(variant.into())),
+                        None,
+                    ));
                 }
                 prefer_value_ns = true;
             } else if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
@@ -1052,14 +1083,20 @@ impl<'db> SourceAnalyzer<'db> {
                 if let Some(VariantId::EnumVariantId(variant)) =
                     infer.variant_resolution_for_expr_or_pat(expr_or_pat_id)
                 {
-                    return Some((PathResolution::Def(ModuleDef::Variant(variant.into())), None));
+                    return Some((
+                        PathResolution::Def(ModuleDef::EnumVariant(variant.into())),
+                        None,
+                    ));
                 }
             } else if let Some(rec_lit) = parent().and_then(ast::RecordExpr::cast) {
                 let expr_id = self.expr_id(rec_lit.into())?;
                 if let Some(VariantId::EnumVariantId(variant)) =
                     infer.variant_resolution_for_expr_or_pat(expr_id)
                 {
-                    return Some((PathResolution::Def(ModuleDef::Variant(variant.into())), None));
+                    return Some((
+                        PathResolution::Def(ModuleDef::EnumVariant(variant.into())),
+                        None,
+                    ));
                 }
             } else {
                 let record_pat = parent().and_then(ast::RecordPat::cast).map(ast::Pat::from);
@@ -1070,7 +1107,7 @@ impl<'db> SourceAnalyzer<'db> {
                     let variant_res_for_pat = infer.variant_resolution_for_pat(pat_id.as_pat()?);
                     if let Some(VariantId::EnumVariantId(variant)) = variant_res_for_pat {
                         return Some((
-                            PathResolution::Def(ModuleDef::Variant(variant.into())),
+                            PathResolution::Def(ModuleDef::EnumVariant(variant.into())),
                             None,
                         ));
                     }
@@ -1404,7 +1441,7 @@ impl<'db> SourceAnalyzer<'db> {
         db: &'db dyn HirDatabase,
         macro_expr: InFile<&ast::MacroExpr>,
     ) -> bool {
-        if let Some((def, body, sm, Some(infer))) = self.body_()
+        if let Some((def, body, sm, Some(infer))) = self.def()
             && let Some(expanded_expr) = sm.macro_expansion_expr(macro_expr)
         {
             let mut is_unsafe = false;
@@ -1455,7 +1492,7 @@ impl<'db> SourceAnalyzer<'db> {
         line: usize,
         offset: TextSize,
     ) -> Option<(ExpressionStoreOwnerId, (ExprId, TextRange, usize))> {
-        let (def, _, sm) = self.def()?;
+        let (def, _, sm, _) = self.def()?;
         let (expr, args) = sm.asm_template_args(asm)?;
         Some(def).zip(
             args.get(line)?
@@ -1492,7 +1529,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         asm: InFile<&ast::AsmExpr>,
     ) -> Option<(ExpressionStoreOwnerId, (ExprId, &[Vec<(TextRange, usize)>]))> {
-        let (def, _, sm) = self.def()?;
+        let (def, _, sm, _) = self.def()?;
         Some(def).zip(sm.asm_template_args(asm))
     }
 
@@ -1722,7 +1759,7 @@ fn resolve_hir_path_(
             TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
                 PathResolution::Def(Adt::from(it).into())
             }
-            TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
+            TypeNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
@@ -1806,7 +1843,7 @@ fn resolve_hir_value_path(
             ValueNs::ConstId(it) => PathResolution::Def(Const::from(it).into()),
             ValueNs::StaticId(it) => PathResolution::Def(Static::from(it).into()),
             ValueNs::StructId(it) => PathResolution::Def(Struct::from(it).into()),
-            ValueNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
+            ValueNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
             ValueNs::ImplSelf(impl_id) => PathResolution::SelfType(impl_id.into()),
             ValueNs::GenericParam(id) => PathResolution::ConstParam(id.into()),
         };
@@ -1871,7 +1908,7 @@ fn resolve_hir_path_qualifier(
             TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
                 PathResolution::Def(Adt::from(it).into())
             }
-            TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
+            TypeNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),

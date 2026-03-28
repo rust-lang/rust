@@ -14,11 +14,11 @@ use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
     Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
-    Const, Crate, DefWithBody, DeriveHelper, DisplayTarget, DocLinkDef, ExpressionStoreOwner,
-    ExternAssocItem, ExternCrateDecl, Field, Function, GenericDef, GenericParam,
-    GenericSubstitution, HasContainer, HasVisibility, HirDisplay, Impl, InlineAsmOperand,
-    ItemContainer, Label, Local, Macro, Module, ModuleDef, Name, PathResolution, Semantics, Static,
-    StaticLifetime, Struct, ToolModule, Trait, TupleField, TypeAlias, Variant, VariantDef,
+    Const, Crate, DefWithBody, DeriveHelper, DisplayTarget, DocLinkDef, EnumVariant,
+    ExpressionStoreOwner, ExternAssocItem, ExternCrateDecl, Field, Function, GenericDef,
+    GenericParam, GenericSubstitution, HasContainer, HasVisibility, HirDisplay, Impl,
+    InlineAsmOperand, ItemContainer, Label, Local, Macro, Module, ModuleDef, Name, PathResolution,
+    Semantics, Static, StaticLifetime, Struct, ToolModule, Trait, TupleField, TypeAlias, Variant,
     Visibility,
 };
 use span::Edition;
@@ -39,7 +39,7 @@ pub enum Definition {
     Crate(Crate),
     Function(Function),
     Adt(Adt),
-    Variant(Variant),
+    EnumVariant(EnumVariant),
     Const(Const),
     Static(Static),
     Trait(Trait),
@@ -86,7 +86,7 @@ impl Definition {
             Definition::Static(it) => it.module(db),
             Definition::Trait(it) => it.module(db),
             Definition::TypeAlias(it) => it.module(db),
-            Definition::Variant(it) => it.module(db),
+            Definition::EnumVariant(it) => it.module(db),
             Definition::SelfType(it) => it.module(db),
             Definition::Local(it) => it.module(db),
             Definition::GenericParam(it) => it.module(db),
@@ -124,7 +124,7 @@ impl Definition {
             Definition::Static(it) => container_to_definition(it.container(db)),
             Definition::Trait(it) => container_to_definition(it.container(db)),
             Definition::TypeAlias(it) => container_to_definition(it.container(db)),
-            Definition::Variant(it) => Some(Adt::Enum(it.parent_enum(db)).into()),
+            Definition::EnumVariant(it) => Some(Adt::Enum(it.parent_enum(db)).into()),
             Definition::SelfType(it) => Some(it.module(db).into()),
             Definition::Local(it) => it.parent(db).try_into().ok(),
             Definition::GenericParam(it) => Some(it.parent().into()),
@@ -152,7 +152,7 @@ impl Definition {
             Definition::Static(it) => it.visibility(db),
             Definition::Trait(it) => it.visibility(db),
             Definition::TypeAlias(it) => it.visibility(db),
-            Definition::Variant(it) => it.visibility(db),
+            Definition::EnumVariant(it) => it.visibility(db),
             Definition::ExternCrateDecl(it) => it.visibility(db),
             Definition::Macro(it) => it.visibility(db),
             Definition::BuiltinType(_) | Definition::TupleField(_) => Visibility::Public,
@@ -180,7 +180,7 @@ impl Definition {
             }
             Definition::Function(it) => it.name(db),
             Definition::Adt(it) => it.name(db),
-            Definition::Variant(it) => it.name(db),
+            Definition::EnumVariant(it) => it.name(db),
             Definition::Const(it) => it.name(db)?,
             Definition::Static(it) => it.name(db),
             Definition::Trait(it) => it.name(db),
@@ -228,7 +228,7 @@ impl Definition {
             Definition::Crate(it) => it.docs_with_rangemap(db),
             Definition::Function(it) => it.docs_with_rangemap(db),
             Definition::Adt(it) => it.docs_with_rangemap(db),
-            Definition::Variant(it) => it.docs_with_rangemap(db),
+            Definition::EnumVariant(it) => it.docs_with_rangemap(db),
             Definition::Const(it) => it.docs_with_rangemap(db),
             Definition::Static(it) => it.docs_with_rangemap(db),
             Definition::Trait(it) => it.docs_with_rangemap(db),
@@ -316,7 +316,7 @@ impl Definition {
             Definition::Crate(it) => it.display(db, display_target).to_string(),
             Definition::Function(it) => it.display(db, display_target).to_string(),
             Definition::Adt(it) => it.display(db, display_target).to_string(),
-            Definition::Variant(it) => it.display(db, display_target).to_string(),
+            Definition::EnumVariant(it) => it.display(db, display_target).to_string(),
             Definition::Const(it) => it.display(db, display_target).to_string(),
             Definition::Static(it) => it.display(db, display_target).to_string(),
             Definition::Trait(it) => it.display(db, display_target).to_string(),
@@ -557,7 +557,7 @@ impl<'db> NameClass<'db> {
                 ast::Rename(it) => classify_rename(sema, it)?,
                 ast::SelfParam(it) => Definition::Local(sema.to_def(&it)?),
                 ast::RecordField(it) => Definition::Field(sema.to_def(&it)?),
-                ast::Variant(it) => Definition::Variant(sema.to_def(&it)?),
+                ast::Variant(it) => Definition::EnumVariant(sema.to_def(&it)?),
                 ast::TypeParam(it) => Definition::GenericParam(sema.to_def(&it)?.into()),
                 ast::ConstParam(it) => Definition::GenericParam(sema.to_def(&it)?.into()),
                 ast::AsmOperandNamed(it) => Definition::InlineAsmOperand(sema.to_def(&it)?),
@@ -849,7 +849,7 @@ impl<'db> NameRefClass<'db> {
                 ast::OffsetOfExpr(_) => {
                     let (def, subst) = sema.resolve_offset_of_field(name_ref)?;
                     let def = match def {
-                        Either::Left(variant) => Definition::Variant(variant),
+                        Either::Left(variant) => Definition::EnumVariant(variant),
                         Either::Right(field) => Definition::Field(field),
                     };
                     Some(NameRefClass::Definition(def, Some(subst)))
@@ -892,7 +892,7 @@ impl<'db> NameRefClass<'db> {
 }
 
 impl_from!(
-    Field, Module, Function, Adt, Variant, Const, Static, Trait, TypeAlias, BuiltinType, Local,
+    Field, Module, Function, Adt, EnumVariant, Const, Static, Trait, TypeAlias, BuiltinType, Local,
     GenericParam, Label, Macro, ExternCrateDecl
     for Definition
 );
@@ -968,7 +968,7 @@ impl From<ModuleDef> for Definition {
             ModuleDef::Module(it) => Definition::Module(it),
             ModuleDef::Function(it) => Definition::Function(it),
             ModuleDef::Adt(it) => Definition::Adt(it),
-            ModuleDef::Variant(it) => Definition::Variant(it),
+            ModuleDef::EnumVariant(it) => Definition::EnumVariant(it),
             ModuleDef::Const(it) => Definition::Const(it),
             ModuleDef::Static(it) => Definition::Static(it),
             ModuleDef::Trait(it) => Definition::Trait(it),
@@ -989,8 +989,8 @@ impl From<DocLinkDef> for Definition {
     }
 }
 
-impl From<VariantDef> for Definition {
-    fn from(def: VariantDef) -> Self {
+impl From<Variant> for Definition {
+    fn from(def: Variant) -> Self {
         ModuleDef::from(def).into()
     }
 }
@@ -1002,7 +1002,7 @@ impl TryFrom<DefWithBody> for Definition {
             DefWithBody::Function(it) => Ok(it.into()),
             DefWithBody::Static(it) => Ok(it.into()),
             DefWithBody::Const(it) => Ok(it.into()),
-            DefWithBody::Variant(it) => Ok(it.into()),
+            DefWithBody::EnumVariant(it) => Ok(it.into()),
         }
     }
 }
@@ -1027,6 +1027,7 @@ impl TryFrom<ExpressionStoreOwner> for Definition {
         match def {
             ExpressionStoreOwner::Body(def_with_body) => def_with_body.try_into(),
             ExpressionStoreOwner::Signature(generic_def) => Ok(generic_def.into()),
+            ExpressionStoreOwner::VariantFields(it) => Ok(it.into()),
         }
     }
 }

@@ -29,9 +29,9 @@ use rustc_type_ir::inherent::IntoKind;
 
 use crate::{
     Adt, AnyFunctionId, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,
-    ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam,
-    Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitRef, TupleField, Type,
-    TypeAlias, TypeNs, TypeOrConstParam, TypeParam, Union, Variant,
+    EnumVariant, ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl,
+    LifetimeParam, Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitRef,
+    TupleField, Type, TypeAlias, TypeNs, TypeOrConstParam, TypeParam, Union,
 };
 
 fn write_builtin_derive_impl_method<'db>(
@@ -443,7 +443,7 @@ fn write_fields<'db>(
 }
 
 fn write_variants<'db>(
-    variants: &[Variant],
+    variants: &[EnumVariant],
     has_where_clause: bool,
     limit: usize,
     f: &mut HirFormatter<'_, 'db>,
@@ -497,7 +497,7 @@ impl<'db> HirDisplay<'db> for TupleField {
     }
 }
 
-impl<'db> HirDisplay<'db> for Variant {
+impl<'db> HirDisplay<'db> for EnumVariant {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         write!(f, "{}", self.name(f.db).display(f.db, f.edition()))?;
         let data = self.id.fields(f.db);
