@@ -1596,6 +1596,7 @@ dep-bumps = [
 "/library/std" =                                         ["libs", "@ChrisDenton"]
 "/library/std/src/sys/pal/windows" =                     ["@ChrisDenton"]
 "/library/stdarch" =                                     ["libs"]
+"/library/std_detect" =                                  ["libs"]
 "/library/test" =                                        ["libs"]
 "/src/bootstrap" =                                       ["bootstrap"]
 "/src/ci" =                                              ["infra-ci"]
