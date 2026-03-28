@@ -38,19 +38,8 @@ pub enum LoadResult<T> {
 impl<T: Default> LoadResult<T> {
     /// Accesses the data returned in [`LoadResult::Ok`].
     pub fn open(self, sess: &Session) -> T {
-        // Check for errors when using `-Zassert-incremental-state`
-        match (sess.opts.assert_incr_state, &self) {
-            (Some(IncrementalStateAssertion::NotLoaded), LoadResult::Ok { .. }) => {
-                sess.dcx().emit_fatal(errors::AssertNotLoaded);
-            }
-            (
-                Some(IncrementalStateAssertion::Loaded),
-                LoadResult::LoadDepGraph(..) | LoadResult::DataOutOfDate,
-            ) => {
-                sess.dcx().emit_fatal(errors::AssertLoaded);
-            }
-            _ => {}
-        };
+        // Emit a fatal error if `-Zassert-incr-state` is present and unsatisfied.
+        maybe_assert_incr_state(sess, &self);
 
         match self {
             LoadResult::LoadDepGraph(path, err) => {
@@ -184,6 +173,32 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
         }
         Err(OpenFileError::NotFoundOrHeaderMismatch | OpenFileError::IoError { .. }) => {
             Some(OnDiskCache::new_empty())
+        }
+    }
+}
+
+/// Emits a fatal error if the assertion in `-Zassert-incr-state` doesn't match
+/// the outcome of trying to load previous-session state.
+fn maybe_assert_incr_state(sess: &Session, load_result: &LoadResult<impl Sized>) {
+    // Return immediately if there's nothing to assert.
+    let Some(assertion) = sess.opts.unstable_opts.assert_incr_state else { return };
+
+    // Match exhaustively to make sure we don't miss any cases.
+    let loaded = match load_result {
+        LoadResult::Ok { .. } => true,
+        LoadResult::DataOutOfDate | LoadResult::LoadDepGraph(..) => false,
+    };
+
+    match assertion {
+        IncrementalStateAssertion::Loaded => {
+            if !loaded {
+                sess.dcx().emit_fatal(errors::AssertLoaded);
+            }
+        }
+        IncrementalStateAssertion::NotLoaded => {
+            if loaded {
+                sess.dcx().emit_fatal(errors::AssertNotLoaded)
+            }
         }
     }
 }
