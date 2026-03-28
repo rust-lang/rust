@@ -215,13 +215,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(duration) = this.read_timespec(&timespec_place)? else { return interp_ok(None) };
 
         let flags_place = this.project_field(ut, FieldIdx::from_u32(1))?;
-        let flags = this.read_scalar(&flags_place)?.to_u32()?;
+        let mut flags = this.read_scalar(&flags_place)?.to_u32()?;
 
-        if flags & !abs_time != 0 {
+        let abs_time_flag = if flags & abs_time != 0 {
+            flags &= !abs_time;
+            true
+        } else {
+            false
+        };
+        if flags != 0 {
             throw_unsup_format!("unsupported `_umtx_time` flags: {:#x}", flags);
         }
-
-        let abs_time_flag = flags & abs_time != 0;
 
         let clock_id_place = this.project_field(ut, FieldIdx::from_u32(2))?;
         let clock_id = this.read_scalar(&clock_id_place)?;
