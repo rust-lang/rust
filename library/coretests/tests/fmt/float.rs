@@ -87,6 +87,26 @@ fn test_format_f64_rounds_ties_to_even() {
 }
 
 #[test]
+fn test_format_f64_round_leading_digit() {
+    // Only 0.5 is exactly representable in IEEE floating-point,
+    assert_eq!("0.1", format!("{:.1}", 5e-2f64));
+    assert_eq!("0.01", format!("{:.2}", 5e-3f64));
+    assert_eq!("0.001", format!("{:.3}", 5e-4f64));
+    assert_eq!("0.0001", format!("{:.4}", 5e-5f64));
+    assert_eq!("0.00001", format!("{:.5}", 5e-6f64));
+    assert_eq!("0.000000", format!("{:.6}", 5e-7f64));
+    assert_eq!("0.0000000", format!("{:.7}", 5e-8f64));
+    assert_eq!("0.00000001", format!("{:.8}", 5e-9f64));
+    assert_eq!("0.000000001", format!("{:.9}", 5e-10f64));
+    assert_eq!("0.0000000001", format!("{:.10}", 5e-11f64));
+    assert_eq!("0.00000000000", format!("{:.11}", 5e-12f64));
+    assert_eq!("0.000000000000", format!("{:.12}", 5e-13f64));
+    assert_eq!("0.0000000000001", format!("{:.13}", 5e-14f64));
+    assert_eq!("0.00000000000000", format!("{:.14}", 5e-15f64));
+    assert_eq!("0.000000000000001", format!("{:.15}", 5e-16f64));
+}
+
+#[test]
 fn test_format_f32() {
     assert_eq!("1", format!("{:.0}", 1.0f32));
     assert_eq!("9", format!("{:.0}", 9.4f32));
