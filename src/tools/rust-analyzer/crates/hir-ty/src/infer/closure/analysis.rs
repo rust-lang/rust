@@ -897,7 +897,7 @@ impl<'db> InferenceContext<'_, 'db> {
             if ty.is_raw_ptr() || ty.is_union() {
                 capture.kind = CaptureKind::ByRef(BorrowKind::Shared);
                 self.truncate_capture_spans(capture, 0);
-                capture.place.projections.truncate(0);
+                capture.place.projections.clear();
                 continue;
             }
             for (i, p) in capture.place.projections.iter().enumerate() {
