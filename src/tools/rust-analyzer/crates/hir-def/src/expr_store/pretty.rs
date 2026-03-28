@@ -105,7 +105,7 @@ pub fn print_body_hir(
         p.buf.push(')');
         p.buf.push(' ');
     }
-    p.print_expr(body.body_expr);
+    p.print_expr(body.root_expr());
     if matches!(owner, DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_)) {
         p.buf.push(';');
     }

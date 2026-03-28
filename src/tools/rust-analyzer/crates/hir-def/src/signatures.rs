@@ -848,7 +848,7 @@ pub struct VariantFields {
 #[salsa::tracked]
 impl VariantFields {
     #[salsa::tracked(returns(ref))]
-    pub(crate) fn with_source_map(
+    pub fn with_source_map(
         db: &dyn DefDatabase,
         id: VariantId,
     ) -> (Arc<Self>, ExpressionStoreSourceMap) {
@@ -906,7 +906,7 @@ impl VariantFields {
     }
 
     #[salsa::tracked(returns(deref))]
-    pub(crate) fn of(db: &dyn DefDatabase, id: VariantId) -> Arc<Self> {
+    pub fn of(db: &dyn DefDatabase, id: VariantId) -> Arc<Self> {
         Self::with_source_map(db, id).0.clone()
     }
 }
@@ -1101,7 +1101,7 @@ impl EnumVariants {
             if !matches!(variant.shape, FieldsShape::Unit) {
                 let body = Body::of(db, v.into());
                 // A variant with explicit discriminant
-                if !matches!(body[body.body_expr], crate::hir::Expr::Missing) {
+                if !matches!(body[body.root_expr()], crate::hir::Expr::Missing) {
                     return false;
                 }
             }

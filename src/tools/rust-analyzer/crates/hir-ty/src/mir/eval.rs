@@ -900,7 +900,7 @@ impl<'db> Evaluator<'db> {
             OperandKind::Constant { konst: _, ty } => ty.as_ref(),
             &OperandKind::Static(s) => {
                 let ty = InferenceResult::of(self.db, DefWithBodyId::from(s))
-                    .expr_ty(Body::of(self.db, s.into()).body_expr);
+                    .expr_ty(Body::of(self.db, s.into()).root_expr());
                 Ty::new_ref(
                     self.interner(),
                     Region::new_static(self.interner()),
@@ -2835,7 +2835,7 @@ impl<'db> Evaluator<'db> {
             self.allocate_const_in_heap(locals, konst)?
         } else {
             let ty = InferenceResult::of(self.db, DefWithBodyId::from(st))
-                .expr_ty(Body::of(self.db, st.into()).body_expr);
+                .expr_ty(Body::of(self.db, st.into()).root_expr());
             let Some((size, align)) = self.size_align_of(ty, locals)? else {
                 not_supported!("unsized extern static");
             };

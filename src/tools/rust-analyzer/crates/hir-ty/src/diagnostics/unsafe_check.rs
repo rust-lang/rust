@@ -5,8 +5,9 @@ use std::mem;
 
 use either::Either;
 use hir_def::{
-    AdtId, CallableDefId, DefWithBodyId, FieldId, FunctionId, VariantId,
-    expr_store::{Body, path::Path},
+    AdtId, CallableDefId, DefWithBodyId, ExpressionStoreOwnerId, FieldId, FunctionId, GenericDefId,
+    VariantId,
+    expr_store::{Body, ExpressionStore, path::Path},
     hir::{AsmOperand, Expr, ExprId, ExprOrPatId, InlineAsmKind, Pat, PatId, Statement, UnaryOp},
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
     signatures::{FunctionSignature, StaticFlags, StaticSignature},
@@ -55,8 +56,8 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafe
             }
         }
     };
-    let mut visitor = UnsafeVisitor::new(db, infer, body, def, &mut callback);
-    visitor.walk_expr(body.body_expr);
+    let mut visitor = UnsafeVisitor::new(db, infer, body, def.into(), &mut callback);
+    visitor.walk_expr(body.root_expr());
 
     if !is_unsafe {
         // Unsafety in function parameter patterns (that can only be union destructuring)
@@ -109,8 +110,8 @@ pub fn unsafe_operations_for_body(
             callback(node);
         }
     };
-    let mut visitor = UnsafeVisitor::new(db, infer, body, def, &mut visitor_callback);
-    visitor.walk_expr(body.body_expr);
+    let mut visitor = UnsafeVisitor::new(db, infer, body, def.into(), &mut visitor_callback);
+    visitor.walk_expr(body.root_expr());
     for &param in &body.params {
         visitor.walk_pat(param);
     }
@@ -119,8 +120,8 @@ pub fn unsafe_operations_for_body(
 pub fn unsafe_operations(
     db: &dyn HirDatabase,
     infer: &InferenceResult,
-    def: DefWithBodyId,
-    body: &Body,
+    def: ExpressionStoreOwnerId,
+    body: &ExpressionStore,
     current: ExprId,
     callback: &mut dyn FnMut(ExprOrPatId, InsideUnsafeBlock),
 ) {
@@ -137,9 +138,9 @@ pub fn unsafe_operations(
 struct UnsafeVisitor<'db> {
     db: &'db dyn HirDatabase,
     infer: &'db InferenceResult,
-    body: &'db Body,
+    body: &'db ExpressionStore,
     resolver: Resolver<'db>,
-    def: DefWithBodyId,
+    def: ExpressionStoreOwnerId,
     inside_unsafe_block: InsideUnsafeBlock,
     inside_assignment: bool,
     inside_union_destructure: bool,
@@ -156,13 +157,16 @@ impl<'db> UnsafeVisitor<'db> {
     fn new(
         db: &'db dyn HirDatabase,
         infer: &'db InferenceResult,
-        body: &'db Body,
-        def: DefWithBodyId,
+        body: &'db ExpressionStore,
+        def: ExpressionStoreOwnerId,
         unsafe_expr_cb: &'db mut dyn FnMut(UnsafeDiagnostic),
     ) -> Self {
         let resolver = def.resolver(db);
         let def_target_features = match def {
-            DefWithBodyId::FunctionId(func) => TargetFeatures::from_fn(db, func),
+            ExpressionStoreOwnerId::Body(DefWithBodyId::FunctionId(func))
+            | ExpressionStoreOwnerId::Signature(GenericDefId::FunctionId(func)) => {
+                TargetFeatures::from_fn(db, func)
+            }
             _ => TargetFeatures::default(),
         };
         let krate = resolver.krate();

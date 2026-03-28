@@ -3,13 +3,14 @@ use hir_expand::{MacroDefId, name::Name};
 use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 
 use crate::{
-    BlockId, DefWithBodyId, ExpressionStoreOwnerId, GenericDefId,
+    BlockId, DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
     db::DefDatabase,
     expr_store::{Body, ExpressionStore, HygieneId},
     hir::{
         Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement,
         generics::GenericParams,
     },
+    signatures::VariantFields,
 };
 
 pub type ScopeId = Idx<ScopeData>;
@@ -65,8 +66,17 @@ impl ExprScopes {
     #[salsa::tracked(returns(ref))]
     pub fn sig_expr_scopes(db: &dyn DefDatabase, def: GenericDefId) -> ExprScopes {
         let (_, store) = GenericParams::with_store(db, def);
-        let roots = store.signature_const_expr_roots();
+        let roots = store.expr_roots();
         let mut scopes = ExprScopes::new_store(store, roots);
+        scopes.shrink_to_fit();
+        scopes
+    }
+
+    #[salsa::tracked(returns(ref))]
+    pub fn variant_scopes(db: &dyn DefDatabase, def: VariantId) -> ExprScopes {
+        let fields = VariantFields::of(db, def);
+        let roots = fields.store.expr_roots();
+        let mut scopes = ExprScopes::new_store(&fields.store, roots);
         scopes.shrink_to_fit();
         scopes
     }
@@ -78,6 +88,9 @@ impl ExprScopes {
         match def.into() {
             ExpressionStoreOwnerId::Body(def) => Self::body_expr_scopes(db, def),
             ExpressionStoreOwnerId::Signature(def) => Self::sig_expr_scopes(db, def),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                Self::variant_scopes(db, variant_id)
+            }
         }
     }
 
@@ -138,7 +151,7 @@ impl ExprScopes {
             scopes.add_bindings(body, root, self_param, body.binding_hygiene(self_param));
         }
         scopes.add_params_bindings(body, root, &body.params);
-        compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root);
+        compute_expr_scopes(body.root_expr(), body, &mut scopes, &mut root);
         scopes
     }
 

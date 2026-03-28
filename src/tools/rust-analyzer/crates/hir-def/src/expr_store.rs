@@ -31,6 +31,7 @@ use crate::{
         PatId, RecordFieldPat, RecordSpread, Statement,
     },
     nameres::{DefMap, block_def_map},
+    signatures::VariantFields,
     type_ref::{LifetimeRef, LifetimeRefId, PathId, TypeRef, TypeRefId},
 };
 
@@ -95,7 +96,7 @@ pub type LifetimeSource = InFile<LifetimePtr>;
 /// Used by signature/body inference to determine the expected type for each
 /// const expression root.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ConstExprOrigin {
+pub enum RootExprOrigin {
     /// Array length expression: `[T; <expr>]` — expected type is `usize`.
     ArrayLength,
     /// Const parameter default value: `const N: usize = <expr>`.
@@ -103,6 +104,8 @@ pub enum ConstExprOrigin {
     /// Const generic argument in a path: `SomeType::<{ <expr> }>` or `some_fn::<{ <expr> }>()`.
     /// Determining the expected type requires path resolution, so it is deferred.
     GenericArgsPath,
+    /// The root expression of a body.
+    BodyRoot,
 }
 
 // We split the store into types-only and expressions, because most stores (e.g. generics)
@@ -125,11 +128,8 @@ struct ExpressionOnlyStore {
     /// to variables and have hygiene (some refer to items, we don't know at this stage).
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
 
-    /// Maps const expression roots to their origin.
-    ///
-    /// Populated during lowering. Used by signature inference to determine expected types,
-    /// and by `signature_const_expr_roots()` to enumerate roots for scope computation.
-    const_expr_origins: ThinVec<(ExprId, ConstExprOrigin)>,
+    /// Maps expression roots to their origin.
+    expr_roots: SmallVec<[(ExprId, RootExprOrigin); 1]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -243,7 +243,7 @@ pub struct ExpressionStoreBuilder {
     pub types: Arena<TypeRef>,
     block_scopes: Vec<BlockId>,
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
-    pub const_expr_origins: Option<ThinVec<(ExprId, ConstExprOrigin)>>,
+    pub inference_roots: Option<SmallVec<[(ExprId, RootExprOrigin); 1]>>,
 
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
@@ -315,7 +315,7 @@ impl ExpressionStoreBuilder {
             mut bindings,
             mut binding_owners,
             mut ident_hygiene,
-            mut const_expr_origins,
+            inference_roots: mut expr_roots,
             mut types,
             mut lifetimes,
 
@@ -375,7 +375,7 @@ impl ExpressionStoreBuilder {
 
         let store = {
             let expr_only = if has_exprs {
-                if let Some(const_expr_origins) = &mut const_expr_origins {
+                if let Some(const_expr_origins) = &mut expr_roots {
                     const_expr_origins.shrink_to_fit();
                 }
                 Some(Box::new(ExpressionOnlyStore {
@@ -386,7 +386,7 @@ impl ExpressionStoreBuilder {
                     binding_owners,
                     block_scopes: block_scopes.into_boxed_slice(),
                     ident_hygiene,
-                    const_expr_origins: const_expr_origins.unwrap_or_default(),
+                    expr_roots: expr_roots.unwrap_or_default(),
                 }))
             } else {
                 None
@@ -448,6 +448,9 @@ impl ExpressionStore {
                 }
             }
             ExpressionStoreOwnerId::Body(body) => &Body::of(db, body).store,
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                &VariantFields::of(db, variant_id).store
+            }
         }
     }
 
@@ -505,30 +508,27 @@ impl ExpressionStore {
                 let (store, sm) = Body::with_source_map(db, body);
                 (&store.store, &sm.store)
             }
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                let (store, sm) = VariantFields::with_source_map(db, variant_id);
+                (&store.store, sm)
+            }
         }
     }
 
-    /// Returns all const expression root `ExprId`s found in this store.
-    ///
-    /// Used to compute expression scopes for signature stores.
-    pub fn signature_const_expr_roots(&self) -> impl Iterator<Item = ExprId> {
+    /// Returns all expression root `ExprId`s found in this store.
+    pub fn expr_roots(&self) -> impl Iterator<Item = ExprId> {
         self.const_expr_origins().iter().map(|&(id, _)| id)
     }
 
     /// Like [`Self::signature_const_expr_roots`], but also returns the origin
-    /// of each const expression.
-    ///
-    /// This is used by signature inference to determine the expected type for
-    /// each root expression.
-    pub fn signature_const_expr_roots_with_origins(
-        &self,
-    ) -> impl Iterator<Item = (ExprId, ConstExprOrigin)> {
+    /// of each expression.
+    pub fn expr_roots_with_origins(&self) -> impl Iterator<Item = (ExprId, RootExprOrigin)> {
         self.const_expr_origins().iter().map(|&(id, origin)| (id, origin))
     }
 
     /// Returns the map of const expression roots to their origins.
-    pub fn const_expr_origins(&self) -> &[(ExprId, ConstExprOrigin)] {
-        self.expr_only.as_ref().map_or(&[], |it| &it.const_expr_origins)
+    pub fn const_expr_origins(&self) -> &[(ExprId, RootExprOrigin)] {
+        self.expr_only.as_ref().map_or(&[], |it| &it.expr_roots)
     }
 
     /// Returns an iterator over all block expressions in this store that define inner items.

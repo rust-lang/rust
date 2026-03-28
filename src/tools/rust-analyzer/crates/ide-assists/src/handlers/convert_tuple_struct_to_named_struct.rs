@@ -142,12 +142,12 @@ fn edit_struct_def(
 fn edit_struct_references(
     ctx: &AssistContext<'_>,
     edit: &mut SourceChangeBuilder,
-    strukt: Either<hir::Struct, hir::Variant>,
+    strukt: Either<hir::Struct, hir::EnumVariant>,
     names: &[ast::Name],
 ) {
     let strukt_def = match strukt {
         Either::Left(s) => Definition::Adt(hir::Adt::Struct(s)),
-        Either::Right(v) => Definition::Variant(v),
+        Either::Right(v) => Definition::EnumVariant(v),
     };
     let usages = strukt_def.usages(&ctx.sema).include_self_refs().all();
 
