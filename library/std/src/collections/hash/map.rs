@@ -301,8 +301,12 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::Global;
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, i32> = HashMap::new();
+    ///
+    /// let map: HashMap<&str, i32> = HashMap::new_in(Global);
     /// ```
     #[inline]
     #[must_use]
@@ -321,8 +325,12 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::Global;
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, i32> = HashMap::with_capacity(10);
+    ///
+    /// let map: HashMap<&str, i32> = HashMap::with_capacity_in(10, Global);
     /// ```
     #[inline]
     #[must_use]
@@ -410,6 +418,19 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
     /// the `HashMap` to be useful, see its documentation for details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::Global;
+    /// use std::collections::HashMap;
+    /// use std::hash::RandomState;
+    ///
+    /// let s = RandomState::new();
+    /// let map: HashMap<&str, i32> = HashMap::with_hasher_in(s, Global);
+    /// ```
     #[inline]
     #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
@@ -432,6 +453,18 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// The `hasher` passed should implement the [`BuildHasher`] trait for
     /// the `HashMap` to be useful, see its documentation for details.
     ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::Global;
+    /// use std::collections::HashMap;
+    /// use std::hash::RandomState;
+    ///
+    /// let s = RandomState::new();
+    /// let map: HashMap<&str, i32> = HashMap::with_capacity_and_hasher_in(10, s, Global);
+    /// ```
     #[inline]
     #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]

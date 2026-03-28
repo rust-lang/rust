@@ -876,6 +876,37 @@ impl<T, A: Allocator> Arc<T, A> {
     ///
     /// [`new_cyclic`]: Arc::new_cyclic
     /// [`upgrade`]: Weak::upgrade
+    ///
+    /// ```
+    /// # #![allow(dead_code)]
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::Global;
+    /// use std::sync::{Arc, Weak};
+    ///
+    /// struct Gadget {
+    ///     me: Weak<Gadget>,
+    /// }
+    ///
+    /// impl Gadget {
+    ///     /// Constructs a reference counted Gadget.
+    ///     fn new() -> Arc<Self> {
+    ///         // `me` is a `Weak<Gadget>` pointing at the new allocation of the
+    ///         // `Arc` we're constructing.
+    ///         Arc::new_cyclic_in(|me| {
+    ///                 // Create the actual struct here.
+    ///                 Gadget { me: me.clone() }
+    ///             },
+    ///             Global,
+    ///         )
+    ///     }
+    ///
+    ///     /// Returns a reference counted pointer to Self.
+    ///     fn me(&self) -> Arc<Self> {
+    ///         self.me.upgrade().unwrap()
+    ///     }
+    /// }
+    /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
@@ -941,6 +972,17 @@ impl<T, A: Allocator> Arc<T, A> {
 
     /// Constructs a new `Pin<Arc<T, A>>` in the provided allocator. If `T` does not implement `Unpin`,
     /// then `data` will be pinned in memory and unable to be moved.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::pin_in(1, System);
+    /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
@@ -953,6 +995,17 @@ impl<T, A: Allocator> Arc<T, A> {
 
     /// Constructs a new `Pin<Arc<T, A>>` in the provided allocator, return an error if allocation
     /// fails.
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::try_pin_in(1, System)?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn try_pin_in(data: T, alloc: A) -> Result<Pin<Arc<T, A>>, AllocError>
@@ -3174,6 +3227,9 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
     /// use std::sync::{Arc, Weak};
     ///
     /// let strong = Arc::new("hello".to_owned());
@@ -3183,13 +3239,13 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     ///
     /// assert_eq!(2, Arc::weak_count(&strong));
     ///
-    /// assert_eq!("hello", &*unsafe { Weak::from_raw(raw_1) }.upgrade().unwrap());
+    /// assert_eq!("hello", &*unsafe { Weak::from_raw_in(raw_1, System) }.upgrade().unwrap());
     /// assert_eq!(1, Arc::weak_count(&strong));
     ///
     /// drop(strong);
     ///
     /// // Decrement the last weak count.
-    /// assert!(unsafe { Weak::from_raw(raw_2) }.upgrade().is_none());
+    /// assert!(unsafe { Weak::from_raw_in(raw_2, System) }.upgrade().is_none());
     /// ```
     ///
     /// [`new`]: Weak::new
@@ -4731,6 +4787,17 @@ impl<T, A: Allocator> UniqueArc<T, A> {
     /// these weak references will fail before the `UniqueArc` has been converted into an [`Arc`].
     /// After converting the `UniqueArc` into an [`Arc`], any weak references created beforehand will
     /// point to the new [`Arc`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    ///
+    /// use std::alloc::System;
+    /// use std::sync::UniqueArc;
+    ///
+    /// let x = UniqueArc::new_in(1, System);
+    /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "unique_rc_arc", issue = "112566")]
     #[must_use]
