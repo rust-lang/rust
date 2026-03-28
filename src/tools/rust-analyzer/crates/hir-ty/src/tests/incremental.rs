@@ -34,7 +34,7 @@ fn foo() -> i32 {
                 "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_shim",
                 "real_span_map_shim",
                 "InferenceResult::for_body_",
@@ -77,7 +77,7 @@ fn foo() -> i32 {
         expect_test::expect![[r#"
             [
                 "parse_shim",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "AttrFlags::query_",
@@ -122,7 +122,7 @@ fn baz() -> i32 {
                 "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_shim",
                 "real_span_map_shim",
                 "InferenceResult::for_body_",
@@ -190,7 +190,7 @@ fn baz() -> i32 {
         expect_test::expect![[r#"
             [
                 "parse_shim",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "AttrFlags::query_",
@@ -242,7 +242,7 @@ $0",
                 "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_shim",
                 "real_span_map_shim",
                 "TraitImpls::for_crate_",
@@ -279,7 +279,7 @@ pub struct NewStruct {
         expect_test::expect![[r#"
             [
                 "parse_shim",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "crate_local_def_map",
@@ -317,7 +317,7 @@ $0",
                 "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_shim",
                 "real_span_map_shim",
                 "TraitImpls::for_crate_",
@@ -355,7 +355,7 @@ pub enum SomeEnum {
         expect_test::expect![[r#"
             [
                 "parse_shim",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "crate_local_def_map",
@@ -393,7 +393,7 @@ $0",
                 "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_shim",
                 "real_span_map_shim",
                 "TraitImpls::for_crate_",
@@ -428,7 +428,7 @@ fn bar() -> f32 {
         expect_test::expect![[r#"
             [
                 "parse_shim",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "crate_local_def_map",
@@ -470,7 +470,7 @@ $0",
                 "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_shim",
                 "real_span_map_shim",
                 "TraitImpls::for_crate_",
@@ -513,7 +513,7 @@ impl SomeStruct {
         expect_test::expect![[r#"
             [
                 "parse_shim",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "crate_local_def_map",
@@ -571,7 +571,7 @@ fn main() {
                 "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_shim",
                 "real_span_map_shim",
                 "TraitItems::query_with_diagnostics_",
@@ -665,7 +665,7 @@ fn main() {
         expect_test::expect![[r#"
             [
                 "parse_shim",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "crate_local_def_map",
@@ -716,6 +716,7 @@ fn execute_assert_events(
 ) {
     crate::attach_db(db, || {
         let (executed, events) = db.log_executed(f);
+        expect.assert_debug_eq(&executed);
         for (event, count) in required {
             let n = executed.iter().filter(|it| it.contains(event)).count();
             assert_eq!(
@@ -731,6 +732,5 @@ fn execute_assert_events(
                     .collect::<Vec<_>>(),
             );
         }
-        expect.assert_debug_eq(&executed);
     });
 }

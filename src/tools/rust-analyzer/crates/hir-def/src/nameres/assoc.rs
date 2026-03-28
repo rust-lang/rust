@@ -17,7 +17,6 @@ use syntax::{
     ast::{self, HasModuleItem, HasName},
 };
 use thin_vec::ThinVec;
-use triomphe::Arc;
 
 use crate::{
     AssocItemId, AstIdWithPath, ConstLoc, FunctionId, FunctionLoc, ImplId, ItemContainerId,
@@ -133,14 +132,14 @@ impl ImplItems {
     }
 }
 
-struct AssocItemCollector<'a> {
-    db: &'a dyn DefDatabase,
+struct AssocItemCollector<'db> {
+    db: &'db dyn DefDatabase,
     module_id: ModuleId,
-    def_map: &'a DefMap,
-    local_def_map: &'a LocalDefMap,
-    ast_id_map: Arc<AstIdMap>,
+    def_map: &'db DefMap,
+    local_def_map: &'db LocalDefMap,
+    ast_id_map: &'db AstIdMap,
     span_map: SpanMap,
-    cfg_options: &'a CfgOptions,
+    cfg_options: &'db CfgOptions,
     file_id: HirFileId,
     diagnostics: Vec<DefDiagnostic>,
     container: ItemContainerId,
@@ -150,9 +149,9 @@ struct AssocItemCollector<'a> {
     macro_calls: ThinVec<(AstId<ast::Item>, MacroCallId)>,
 }
 
-impl<'a> AssocItemCollector<'a> {
+impl<'db> AssocItemCollector<'db> {
     fn new(
-        db: &'a dyn DefDatabase,
+        db: &'db dyn DefDatabase,
         module_id: ModuleId,
         container: ItemContainerId,
         file_id: HirFileId,

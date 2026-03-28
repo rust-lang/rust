@@ -15,7 +15,6 @@ use crate::{
     ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId,
     TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
     attrs::AttrFlags,
-    import_map::ImportMap,
     item_tree::{ItemTree, file_item_tree_query},
     nameres::crate_def_map,
     visibility::{self, Visibility},
@@ -96,9 +95,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     /// Turns a MacroId into a MacroDefId, describing the macro's definition post name resolution.
     #[salsa::invoke(macro_def)]
     fn macro_def(&self, m: MacroId) -> MacroDefId;
-
-    #[salsa::invoke(ImportMap::import_map_query)]
-    fn import_map(&self, krate: Crate) -> Arc<ImportMap>;
 
     // region:visibilities
 

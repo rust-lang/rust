@@ -1020,7 +1020,7 @@ impl<'db> Scope<'db> {
                     })
                 });
             }
-            &Scope::GenericParams { ref params, def: parent } => {
+            &Scope::GenericParams { params, def: parent } => {
                 if let GenericDefId::ImplId(impl_) = parent {
                     acc.add(&Name::new_symbol_root(sym::Self_), ScopeDef::ImplSelfType(impl_));
                 } else if let GenericDefId::AdtId(adt) = parent {
