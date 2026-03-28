@@ -133,7 +133,7 @@ pub fn impl_trait<'db>(
             let args = GenericArgs::identity_for_item(interner, loc.adt.into());
             let self_ty = Ty::new_adt(interner, loc.adt, args);
             let Some((pointee_param_idx, _, new_param_ty)) =
-                coerce_pointee_params(interner, loc, &generic_params, trait_id)
+                coerce_pointee_params(interner, loc, generic_params, trait_id)
             else {
                 // Malformed derive.
                 return EarlyBinder::bind(TraitRef::new(
@@ -168,7 +168,7 @@ pub fn predicates<'db>(db: &'db dyn HirDatabase, impl_: BuiltinDeriveImplId) -> 
         | BuiltinDeriveImplTrait::PartialOrd
         | BuiltinDeriveImplTrait::Eq
         | BuiltinDeriveImplTrait::PartialEq => {
-            simple_trait_predicates(interner, loc, &generic_params, adt_predicates, trait_id)
+            simple_trait_predicates(interner, loc, generic_params, adt_predicates, trait_id)
         }
         BuiltinDeriveImplTrait::Default => {
             if matches!(loc.adt, AdtId::EnumId(_)) {
@@ -178,12 +178,12 @@ pub fn predicates<'db>(db: &'db dyn HirDatabase, impl_: BuiltinDeriveImplId) -> 
                         .store(),
                 ))
             } else {
-                simple_trait_predicates(interner, loc, &generic_params, adt_predicates, trait_id)
+                simple_trait_predicates(interner, loc, generic_params, adt_predicates, trait_id)
             }
         }
         BuiltinDeriveImplTrait::CoerceUnsized | BuiltinDeriveImplTrait::DispatchFromDyn => {
             let Some((pointee_param_idx, pointee_param_id, new_param_ty)) =
-                coerce_pointee_params(interner, loc, &generic_params, trait_id)
+                coerce_pointee_params(interner, loc, generic_params, trait_id)
             else {
                 // Malformed derive.
                 return GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(

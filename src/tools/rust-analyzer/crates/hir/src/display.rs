@@ -101,7 +101,7 @@ impl<'db> HirDisplay<'db> for Function {
                 if f.show_container_bounds() && !params.is_empty() {
                     write_trait_header(trait_.into(), f)?;
                     f.write_char('\n')?;
-                    has_disaplayable_predicates(f.db, &params, params_store)
+                    has_disaplayable_predicates(f.db, params, params_store)
                         .then_some((params, params_store))
                 } else {
                     None
@@ -112,7 +112,7 @@ impl<'db> HirDisplay<'db> for Function {
                 if f.show_container_bounds() && !params.is_empty() {
                     write_impl_header(impl_, f)?;
                     f.write_char('\n')?;
-                    has_disaplayable_predicates(f.db, &params, params_store)
+                    has_disaplayable_predicates(f.db, params, params_store)
                         .then_some((params, params_store))
                 } else {
                     None
@@ -134,7 +134,7 @@ impl<'db> HirDisplay<'db> for Function {
                 _ => unreachable!(),
             };
             write!(f, "\n    // Bounds from {container_name}:",)?;
-            write_where_predicates(&container_params, container_params_store, f)?;
+            write_where_predicates(container_params, container_params_store, f)?;
         }
         Ok(())
     }
@@ -719,12 +719,12 @@ fn write_generic_params_or_args<'db>(
 
 fn write_where_clause<'db>(def: GenericDefId, f: &mut HirFormatter<'_, 'db>) -> Result<bool> {
     let (params, store) = GenericParams::with_store(f.db, def);
-    if !has_disaplayable_predicates(f.db, &params, store) {
+    if !has_disaplayable_predicates(f.db, params, store) {
         return Ok(false);
     }
 
     f.write_str("\nwhere")?;
-    write_where_predicates(&params, store, f)?;
+    write_where_predicates(params, store, f)?;
 
     Ok(true)
 }

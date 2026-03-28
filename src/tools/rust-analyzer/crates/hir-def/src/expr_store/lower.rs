@@ -414,7 +414,7 @@ pub(crate) fn lower_function(
 pub struct ExprCollector<'db> {
     db: &'db dyn DefDatabase,
     cfg_options: &'db CfgOptions,
-    expander: Expander,
+    expander: Expander<'db>,
     def_map: &'db DefMap,
     local_def_map: &'db LocalDefMap,
     module: ModuleId,

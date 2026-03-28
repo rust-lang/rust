@@ -14,7 +14,6 @@ use hir_expand::{
 use span::{AstIdMap, SyntaxContext};
 use syntax::ast::HasAttrs;
 use syntax::{AstNode, Parse, ast};
-use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
@@ -23,21 +22,21 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(super) struct Expander {
+pub(super) struct Expander<'db> {
     span_map: SpanMap,
     current_file_id: HirFileId,
-    ast_id_map: Arc<AstIdMap>,
+    ast_id_map: &'db AstIdMap,
     /// `recursion_depth == usize::MAX` indicates that the recursion limit has been reached.
     recursion_depth: u32,
     recursion_limit: usize,
 }
 
-impl Expander {
+impl<'db> Expander<'db> {
     pub(super) fn new(
-        db: &dyn DefDatabase,
+        db: &'db dyn DefDatabase,
         current_file_id: HirFileId,
-        def_map: &DefMap,
-    ) -> Expander {
+        def_map: &'db DefMap,
+    ) -> Expander<'db> {
         let recursion_limit = def_map.recursion_limit() as usize;
         let recursion_limit = if cfg!(test) {
             // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
@@ -77,12 +76,12 @@ impl Expander {
 
     pub(super) fn enter_expand<T: ast::AstNode>(
         &mut self,
-        db: &dyn DefDatabase,
+        db: &'db dyn DefDatabase,
         macro_call: ast::MacroCall,
         krate: Crate,
         resolver: impl Fn(&ModPath) -> Option<MacroId>,
         eager_callback: EagerCallBackFn<'_>,
-    ) -> Result<ExpandResult<Option<(Mark, Option<Parse<T>>)>>, UnresolvedMacro> {
+    ) -> Result<ExpandResult<Option<(Mark<'db>, Option<Parse<T>>)>>, UnresolvedMacro> {
         // FIXME: within_limit should support this, instead of us having to extract the error
         let mut unresolved_macro_err = None;
 
@@ -130,13 +129,13 @@ impl Expander {
 
     pub(super) fn enter_expand_id<T: ast::AstNode>(
         &mut self,
-        db: &dyn DefDatabase,
+        db: &'db dyn DefDatabase,
         call_id: MacroCallId,
-    ) -> ExpandResult<Option<(Mark, Option<Parse<T>>)>> {
+    ) -> ExpandResult<Option<(Mark<'db>, Option<Parse<T>>)>> {
         self.within_limit(db, |_this| ExpandResult::ok(Some(call_id)))
     }
 
-    pub(super) fn exit(&mut self, Mark { file_id, span_map, ast_id_map, mut bomb }: Mark) {
+    pub(super) fn exit(&mut self, Mark { file_id, span_map, ast_id_map, mut bomb }: Mark<'db>) {
         self.span_map = span_map;
         self.current_file_id = file_id;
         self.ast_id_map = ast_id_map;
@@ -162,9 +161,9 @@ impl Expander {
 
     fn within_limit<F, T: ast::AstNode>(
         &mut self,
-        db: &dyn DefDatabase,
+        db: &'db dyn DefDatabase,
         op: F,
-    ) -> ExpandResult<Option<(Mark, Option<Parse<T>>)>>
+    ) -> ExpandResult<Option<(Mark<'db>, Option<Parse<T>>)>>
     where
         F: FnOnce(&mut Self) -> ExpandResult<Option<MacroCallId>>,
     {
@@ -219,7 +218,7 @@ impl Expander {
 
     #[inline]
     pub(super) fn ast_id_map(&self) -> &AstIdMap {
-        &self.ast_id_map
+        self.ast_id_map
     }
 
     #[inline]
@@ -229,9 +228,9 @@ impl Expander {
 }
 
 #[derive(Debug)]
-pub(super) struct Mark {
+pub(super) struct Mark<'db> {
     file_id: HirFileId,
     span_map: SpanMap,
-    ast_id_map: Arc<AstIdMap>,
+    ast_id_map: &'db AstIdMap,
     bomb: DropBomb,
 }
