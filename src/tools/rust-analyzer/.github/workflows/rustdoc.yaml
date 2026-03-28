@@ -10,6 +10,7 @@ env:
   RUSTFLAGS: "-D warnings -W unreachable-pub"
   RUSTDOCFLAGS: "-D warnings"
   RUSTUP_MAX_RETRIES: 10
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
   rustdoc:
