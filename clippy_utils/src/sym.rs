@@ -122,6 +122,7 @@ generate! {
     V6,
     VecDeque,
     Visitor,
+    Wake,
     Waker,
     Weak,
     Wrapping,
