@@ -45,7 +45,7 @@ impl<'db> Evaluator<'db> {
             return Ok(false);
         }
 
-        let function_data = self.db.function_signature(def);
+        let function_data = FunctionSignature::of(self.db, def);
         let attrs = AttrFlags::query(self.db, def.into());
         let is_intrinsic = FunctionSignature::is_intrinsic(self.db, def);
 
@@ -153,10 +153,7 @@ impl<'db> Evaluator<'db> {
                 };
                 let addr = Address::from_bytes(arg.get(self)?)?;
                 let InternedClosure(owner, _) = self.db.lookup_intern_closure(id.0);
-                let Some(closure_owner) = owner.as_def_with_body() else {
-                    not_supported!("closure in non-body context");
-                };
-                let infer = InferenceResult::for_body(self.db, closure_owner);
+                let infer = InferenceResult::of(self.db, owner);
                 let (captures, _) = infer.closure_info(id.0);
                 let layout = self.layout(self_ty)?;
                 let db = self.db;

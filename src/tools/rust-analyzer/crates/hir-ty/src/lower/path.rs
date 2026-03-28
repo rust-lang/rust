@@ -14,7 +14,7 @@ use hir_def::{
         GenericParamDataRef, TypeOrConstParamData, TypeParamData, TypeParamProvenance,
     },
     resolver::{ResolveValueResult, TypeNs, ValueNs},
-    signatures::TraitFlags,
+    signatures::{TraitFlags, TraitSignature},
     type_ref::{TypeRef, TypeRefId},
 };
 use rustc_type_ir::{
@@ -625,10 +625,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 GenericDefId::TraitId(trait_) => {
                     // RTN is prohibited anyways if we got here.
                     let is_rtn = args.parenthesized == GenericArgsParentheses::ReturnTypeNotation;
-                    let is_fn_trait = self
-                        .ctx
-                        .db
-                        .trait_signature(trait_)
+                    let is_fn_trait = TraitSignature::of(self.ctx.db, trait_)
                         .flags
                         .contains(TraitFlags::RUSTC_PAREN_SUGAR);
                     is_rtn || !is_fn_trait
@@ -1024,7 +1021,7 @@ pub(crate) trait GenericArgsLowerer<'db> {
 fn check_generic_args_len<'db>(
     args_and_bindings: Option<&HirGenericArgs>,
     def: GenericDefId,
-    def_generics: &Generics,
+    def_generics: &Generics<'db>,
     infer_args: bool,
     lifetime_elision: &LifetimeElisionKind<'db>,
     lowering_assoc_type_generics: bool,

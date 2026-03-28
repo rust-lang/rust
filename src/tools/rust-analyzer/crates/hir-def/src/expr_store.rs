@@ -9,10 +9,7 @@ pub mod scope;
 #[cfg(test)]
 mod tests;
 
-use std::{
-    ops::{Deref, Index},
-    sync::LazyLock,
-};
+use std::ops::{Deref, Index};
 
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
@@ -23,11 +20,10 @@ use smallvec::SmallVec;
 use span::{Edition, SyntaxContext};
 use syntax::{AstPtr, SyntaxNodePtr, ast};
 use thin_vec::ThinVec;
-use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
-    BlockId, SyntheticSyntax,
+    AdtId, BlockId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax,
     db::DefDatabase,
     expr_store::path::Path,
     hir::{
@@ -431,13 +427,85 @@ impl ExpressionStoreBuilder {
 }
 
 impl ExpressionStore {
-    pub fn empty_singleton() -> (Arc<ExpressionStore>, Arc<ExpressionStoreSourceMap>) {
-        static EMPTY: LazyLock<(Arc<ExpressionStore>, Arc<ExpressionStoreSourceMap>)> =
-            LazyLock::new(|| {
-                let (store, source_map) = ExpressionStoreBuilder::default().finish();
-                (Arc::new(store), Arc::new(source_map))
-            });
-        EMPTY.clone()
+    pub fn of(db: &dyn DefDatabase, def: ExpressionStoreOwnerId) -> &ExpressionStore {
+        match def {
+            ExpressionStoreOwnerId::Signature(def) => {
+                use crate::signatures::{
+                    ConstSignature, EnumSignature, FunctionSignature, ImplSignature,
+                    StaticSignature, StructSignature, TraitSignature, TypeAliasSignature,
+                    UnionSignature,
+                };
+                match def {
+                    GenericDefId::AdtId(AdtId::EnumId(id)) => &EnumSignature::of(db, id).store,
+                    GenericDefId::AdtId(AdtId::StructId(id)) => &StructSignature::of(db, id).store,
+                    GenericDefId::AdtId(AdtId::UnionId(id)) => &UnionSignature::of(db, id).store,
+                    GenericDefId::ConstId(id) => &ConstSignature::of(db, id).store,
+                    GenericDefId::FunctionId(id) => &FunctionSignature::of(db, id).store,
+                    GenericDefId::ImplId(id) => &ImplSignature::of(db, id).store,
+                    GenericDefId::StaticId(id) => &StaticSignature::of(db, id).store,
+                    GenericDefId::TraitId(id) => &TraitSignature::of(db, id).store,
+                    GenericDefId::TypeAliasId(id) => &TypeAliasSignature::of(db, id).store,
+                }
+            }
+            ExpressionStoreOwnerId::Body(body) => &Body::of(db, body).store,
+        }
+    }
+
+    pub fn with_source_map(
+        db: &dyn DefDatabase,
+        def: ExpressionStoreOwnerId,
+    ) -> (&ExpressionStore, &ExpressionStoreSourceMap) {
+        match def {
+            ExpressionStoreOwnerId::Signature(def) => {
+                use crate::signatures::{
+                    ConstSignature, EnumSignature, FunctionSignature, ImplSignature,
+                    StaticSignature, StructSignature, TraitSignature, TypeAliasSignature,
+                    UnionSignature,
+                };
+                match def {
+                    GenericDefId::AdtId(AdtId::EnumId(id)) => {
+                        let sig = EnumSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::AdtId(AdtId::StructId(id)) => {
+                        let sig = StructSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::AdtId(AdtId::UnionId(id)) => {
+                        let sig = UnionSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::ConstId(id) => {
+                        let sig = ConstSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::FunctionId(id) => {
+                        let sig = FunctionSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::ImplId(id) => {
+                        let sig = ImplSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::StaticId(id) => {
+                        let sig = StaticSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::TraitId(id) => {
+                        let sig = TraitSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::TypeAliasId(id) => {
+                        let sig = TypeAliasSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                }
+            }
+            ExpressionStoreOwnerId::Body(body) => {
+                let (store, sm) = Body::with_source_map(db, body);
+                (&store.store, &sm.store)
+            }
+        }
     }
 
     /// Returns all const expression root `ExprId`s found in this store.

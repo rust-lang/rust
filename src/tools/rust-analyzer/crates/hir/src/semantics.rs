@@ -13,7 +13,8 @@ use std::{
 use base_db::FxIndexSet;
 use either::Either;
 use hir_def::{
-    BuiltinDeriveImplId, DefWithBodyId, HasModule, MacroId, StructId, TraitId, VariantId,
+    BuiltinDeriveImplId, DefWithBodyId, ExpressionStoreOwnerId, HasModule, MacroId, StructId,
+    TraitId, VariantId,
     attrs::parse_extra_crate_attrs,
     expr_store::{Body, ExprOrPatSource, HygieneId, path::Path},
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
@@ -54,10 +55,10 @@ use syntax::{
 
 use crate::{
     Adjust, Adjustment, Adt, AnyFunctionId, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
-    ConstParam, Crate, DefWithBody, DeriveHelper, Enum, Field, Function, GenericSubstitution,
-    HasSource, Impl, InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro,
-    Module, ModuleDef, Name, OverloadedDeref, ScopeDef, Static, Struct, ToolModule, Trait,
-    TupleField, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    ConstParam, Crate, DefWithBody, DeriveHelper, Enum, ExpressionStoreOwner, Field, Function,
+    GenericSubstitution, HasSource, Impl, InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam,
+    Local, Macro, Module, ModuleDef, Name, OverloadedDeref, ScopeDef, Static, Struct, ToolModule,
+    Trait, TupleField, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{SourceAnalyzer, resolve_hir_path},
@@ -785,16 +786,20 @@ impl<'db> SemanticsImpl<'db> {
     /// Checks if renaming `renamed` to `new_name` may introduce conflicts with other locals,
     /// and returns the conflicting locals.
     pub fn rename_conflicts(&self, to_be_renamed: &Local, new_name: &Name) -> Vec<Local> {
-        let body = self.db.body(to_be_renamed.parent);
+        // FIXME: signatures
+        let Some(def) = to_be_renamed.parent.as_def_with_body() else {
+            return Vec::new();
+        };
+        let body = Body::of(self.db, def);
         let resolver = to_be_renamed.parent.resolver(self.db);
         let starting_expr = body.binding_owner(to_be_renamed.binding_id).unwrap_or(body.body_expr);
         let mut visitor = RenameConflictsVisitor {
-            body: &body,
+            body,
             conflicts: FxHashSet::default(),
             db: self.db,
             new_name: new_name.symbol().clone(),
             old_name: to_be_renamed.name(self.db).symbol().clone(),
-            owner: to_be_renamed.parent,
+            owner: def,
             to_be_renamed: to_be_renamed.binding_id,
             resolver,
         };
@@ -1917,10 +1922,10 @@ impl<'db> SemanticsImpl<'db> {
         let Ok(def) = DefWithBodyId::try_from(def) else {
             return FxHashSet::default();
         };
-        let (body, source_map) = self.db.body_with_source_map(def);
-        let infer = InferenceResult::for_body(self.db, def);
+        let (body, source_map) = Body::with_source_map(self.db, def);
+        let infer = InferenceResult::of(self.db, def);
         let mut res = FxHashSet::default();
-        unsafe_operations_for_body(self.db, infer, def, &body, &mut |node| {
+        unsafe_operations_for_body(self.db, infer, def, body, &mut |node| {
             if let Ok(node) = source_map.expr_or_pat_syntax(node) {
                 res.insert(node);
             }
@@ -1935,13 +1940,13 @@ impl<'db> SemanticsImpl<'db> {
         let Ok(def) = def.try_into() else {
             return Vec::new();
         };
-        let (body, source_map) = self.db.body_with_source_map(def);
-        let infer = InferenceResult::for_body(self.db, def);
+        let (body, source_map) = Body::with_source_map(self.db, def);
+        let infer = InferenceResult::of(self.db, def);
         let Some(ExprOrPatId::ExprId(block)) = source_map.node_expr(block.as_ref()) else {
             return Vec::new();
         };
         let mut res = Vec::default();
-        unsafe_operations(self.db, infer, def, &body, block, &mut |node, _| {
+        unsafe_operations(self.db, infer, def, body, block, &mut |node, _| {
             if let Ok(node) = source_map.expr_or_pat_syntax(node) {
                 res.push(node);
             }
@@ -2275,7 +2280,7 @@ impl<'db> SemanticsImpl<'db> {
         let Some(def) = def else { return false };
         let enclosing_node = enclosing_item.as_ref().either(|i| i.syntax(), |v| v.syntax());
 
-        let (body, source_map) = self.db.body_with_source_map(def);
+        let (body, source_map) = Body::with_source_map(self.db, def);
 
         let file_id = self.find_file(expr.syntax()).file_id;
 
@@ -2326,7 +2331,7 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze(element.either(|e| e.syntax(), |s| s.syntax()))?;
         let store = sa.store()?;
         let mut resolver = sa.resolver.clone();
-        let def = resolver.body_owner()?;
+        let def = resolver.expression_store_owner()?;
 
         let is_not_generated = |path: &Path| {
             !path.mod_path().and_then(|path| path.as_ident()).is_some_and(Name::is_generated)
@@ -2576,11 +2581,16 @@ impl<'db> SemanticsScope<'db> {
         Crate { id: self.resolver.krate() }
     }
 
+    // FIXME: This is a weird function, we shouldn't have this?
     pub fn containing_function(&self) -> Option<Function> {
-        self.resolver.body_owner().and_then(|owner| match owner {
-            DefWithBodyId::FunctionId(id) => Some(id.into()),
+        self.resolver.expression_store_owner().and_then(|owner| match owner {
+            ExpressionStoreOwnerId::Body(DefWithBodyId::FunctionId(id)) => Some(id.into()),
             _ => None,
         })
+    }
+
+    pub fn expression_store_owner(&self) -> Option<ExpressionStoreOwner> {
+        self.resolver.expression_store_owner().map(Into::into)
     }
 
     pub(crate) fn resolver(&self) -> &Resolver<'db> {
@@ -2604,14 +2614,18 @@ impl<'db> SemanticsScope<'db> {
                     resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
                     resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
                     resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(id.into()),
-                    resolver::ScopeDef::Local(binding_id) => match self.resolver.body_owner() {
-                        Some(parent) => ScopeDef::Local(Local { parent, binding_id }),
-                        None => continue,
-                    },
-                    resolver::ScopeDef::Label(label_id) => match self.resolver.body_owner() {
-                        Some(parent) => ScopeDef::Label(Label { parent, label_id }),
-                        None => continue,
-                    },
+                    resolver::ScopeDef::Local(binding_id) => {
+                        match self.resolver.expression_store_owner() {
+                            Some(parent) => ScopeDef::Local(Local { parent, binding_id }),
+                            None => continue,
+                        }
+                    }
+                    resolver::ScopeDef::Label(label_id) => {
+                        match self.resolver.expression_store_owner() {
+                            Some(parent) => ScopeDef::Label(Label { parent, label_id }),
+                            None => continue,
+                        }
+                    }
                 };
                 f(name.clone(), def)
             }

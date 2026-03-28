@@ -4,8 +4,8 @@
 //! are splitting the hir.
 
 use hir_def::{
-    AdtId, AssocItemId, BuiltinDeriveImplId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId,
-    GenericParamId, ModuleDefId, VariantId,
+    AdtId, AssocItemId, BuiltinDeriveImplId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId,
+    FieldId, GenericDefId, GenericParamId, ModuleDefId, VariantId,
     hir::{BindingId, LabelId},
 };
 use hir_ty::next_solver::AnyImplId;
@@ -255,14 +255,19 @@ impl TryFrom<AssocItem> for GenericDefId {
     }
 }
 
-impl From<(DefWithBodyId, BindingId)> for Local {
-    fn from((parent, binding_id): (DefWithBodyId, BindingId)) -> Self {
+impl From<(ExpressionStoreOwnerId, BindingId)> for Local {
+    fn from((parent, binding_id): (ExpressionStoreOwnerId, BindingId)) -> Self {
         Local { parent, binding_id }
     }
 }
+impl From<(DefWithBodyId, BindingId)> for Local {
+    fn from((parent, binding_id): (DefWithBodyId, BindingId)) -> Self {
+        Local { parent: parent.into(), binding_id }
+    }
+}
 
-impl From<(DefWithBodyId, LabelId)> for Label {
-    fn from((parent, label_id): (DefWithBodyId, LabelId)) -> Self {
+impl From<(ExpressionStoreOwnerId, LabelId)> for Label {
+    fn from((parent, label_id): (ExpressionStoreOwnerId, LabelId)) -> Self {
         Label { parent, label_id }
     }
 }

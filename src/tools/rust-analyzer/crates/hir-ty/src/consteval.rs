@@ -5,10 +5,11 @@ mod tests;
 
 use base_db::Crate;
 use hir_def::{
-    ConstId, EnumVariantId, GeneralConstId, HasModule, StaticId,
+    ConstId, EnumVariantId, ExpressionStoreOwnerId, GeneralConstId, GenericDefId, HasModule,
+    StaticId,
     attrs::AttrFlags,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
-    expr_store::ExpressionStore,
+    expr_store::{Body, ExpressionStore},
     hir::{Expr, ExprId, Literal},
 };
 use hir_expand::Lookup;
@@ -273,7 +274,7 @@ pub(crate) fn const_eval_discriminant_variant(
 ) -> Result<i128, ConstEvalError> {
     let interner = DbInterner::new_no_crate(db);
     let def = variant_id.into();
-    let body = db.body(def);
+    let body = Body::of(db, def);
     let loc = variant_id.lookup(db);
     if matches!(body[body.body_expr], Expr::Missing) {
         let prev_idx = loc.index.checked_sub(1);
@@ -294,7 +295,7 @@ pub(crate) fn const_eval_discriminant_variant(
     let mir_body = db.monomorphized_mir_body(
         def,
         GenericArgs::empty(interner).store(),
-        ParamEnvAndCrate { param_env: db.trait_environment_for_body(def), krate: def.krate(db) }
+        ParamEnvAndCrate { param_env: db.trait_environment(def.into()), krate: def.krate(db) }
             .store(),
     )?;
     let c = interpret_mir(db, mir_body, false, None)?.0?;
@@ -337,7 +338,7 @@ pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'_, 'd
     }
     if let Some(body_owner) = ctx.owner.as_def_with_body()
         && let Ok(mir_body) =
-            lower_body_to_mir(ctx.db, body_owner, &ctx.db.body(body_owner), &infer, expr)
+            lower_body_to_mir(ctx.db, body_owner, Body::of(ctx.db, body_owner), &infer, expr)
         && let Ok((Ok(result), _)) = interpret_mir(ctx.db, Arc::new(mir_body), true, None)
     {
         return result;
@@ -374,8 +375,12 @@ pub(crate) fn const_eval<'db>(
         let body = db.monomorphized_mir_body(
             def.into(),
             subst,
-            ParamEnvAndCrate { param_env: db.trait_environment(def.into()), krate: def.krate(db) }
-                .store(),
+            ParamEnvAndCrate {
+                param_env: db
+                    .trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(def))),
+                krate: def.krate(db),
+            }
+            .store(),
         )?;
         let c = interpret_mir(db, body, false, trait_env.as_ref().map(|env| env.as_ref()))?.0?;
         Ok(c.store())
@@ -411,7 +416,8 @@ pub(crate) fn const_eval_static<'db>(
             def.into(),
             GenericArgs::empty(interner).store(),
             ParamEnvAndCrate {
-                param_env: db.trait_environment_for_body(def.into()),
+                param_env: db
+                    .trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(def))),
                 krate: def.krate(db),
             }
             .store(),

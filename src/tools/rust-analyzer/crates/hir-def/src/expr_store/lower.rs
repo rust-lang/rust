@@ -53,6 +53,7 @@ use crate::{
     item_tree::FieldsShape,
     lang_item::{LangItemTarget, LangItems},
     nameres::{DefMap, LocalDefMap, MacroSubNs, block_def_map},
+    signatures::StructSignature,
     type_ref::{
         ArrayType, ConstRef, FnType, LifetimeRef, LifetimeRefId, Mutability, PathId, Rawness,
         RefType, TraitBoundModifier, TraitRef, TypeBound, TypeRef, TypeRefId, UseArgRef,
@@ -200,13 +201,13 @@ pub(crate) fn lower_generic_params(
     file_id: HirFileId,
     param_list: Option<ast::GenericParamList>,
     where_clause: Option<ast::WhereClause>,
-) -> (Arc<ExpressionStore>, Arc<GenericParams>, ExpressionStoreSourceMap) {
+) -> (ExpressionStore, Arc<GenericParams>, ExpressionStoreSourceMap) {
     let mut expr_collector = ExprCollector::signature(db, module, file_id);
     let mut collector = generics::GenericParamsCollector::new(def);
     collector.lower(&mut expr_collector, param_list, where_clause);
     let params = collector.finish();
     let (store, source_map) = expr_collector.store.finish();
-    (Arc::new(store), params, source_map)
+    (store, params, source_map)
 }
 
 pub(crate) fn lower_impl(
@@ -2363,7 +2364,7 @@ impl<'db> ExprCollector<'db> {
                         }
                         Some(ModuleDefId::AdtId(AdtId::StructId(s)))
                         // FIXME: This can cause a cycle if the user is writing invalid code
-                            if self.db.struct_signature(s).shape != FieldsShape::Record =>
+                            if StructSignature::of(self.db, s).shape != FieldsShape::Record =>
                         {
                             (None, Pat::Path(name.into()))
                         }

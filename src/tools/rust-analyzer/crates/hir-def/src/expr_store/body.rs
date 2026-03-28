@@ -68,11 +68,10 @@ impl ops::Deref for BodySourceMap {
     }
 }
 
+#[salsa::tracked]
 impl Body {
-    pub(crate) fn body_with_source_map_query(
-        db: &dyn DefDatabase,
-        def: DefWithBodyId,
-    ) -> (Arc<Body>, Arc<BodySourceMap>) {
+    #[salsa::tracked(lru = 512, returns(ref))]
+    pub fn with_source_map(db: &dyn DefDatabase, def: DefWithBodyId) -> (Arc<Body>, BodySourceMap) {
         let _p = tracing::info_span!("body_with_source_map_query").entered();
         let mut params = None;
 
@@ -106,13 +105,16 @@ impl Body {
         let module = def.module(db);
         let (body, source_map) = lower_body(db, def, file_id, module, params, body, is_async_fn);
 
-        (Arc::new(body), Arc::new(source_map))
+        (Arc::new(body), source_map)
     }
 
-    pub(crate) fn body_query(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<Body> {
-        db.body_with_source_map(def).0
+    #[salsa::tracked(returns(deref))]
+    pub fn of(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<Body> {
+        Self::with_source_map(db, def).0.clone()
     }
+}
 
+impl Body {
     pub fn pretty_print(
         &self,
         db: &dyn DefDatabase,

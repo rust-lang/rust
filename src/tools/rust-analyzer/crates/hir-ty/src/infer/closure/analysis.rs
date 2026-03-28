@@ -4,8 +4,8 @@ use std::{cmp, mem};
 
 use base_db::Crate;
 use hir_def::{
-    DefWithBodyId, FieldId, HasModule, VariantId,
-    expr_store::path::Path,
+    ExpressionStoreOwnerId, FieldId, HasModule, VariantId,
+    expr_store::{Body, ExpressionStore, path::Path},
     hir::{
         Array, AsmOperand, BinaryOp, BindingId, CaptureBy, Expr, ExprId, ExprOrPatId, Pat, PatId,
         RecordSpread, Statement, UnaryOp,
@@ -179,9 +179,22 @@ impl CapturedItem {
     }
 
     /// Converts the place to a name that can be inserted into source code.
-    pub fn place_to_name(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
-        let body = db.body(owner);
-        let mut result = body[self.place.local].name.as_str().to_owned();
+    pub fn place_to_name(&self, owner: ExpressionStoreOwnerId, db: &dyn HirDatabase) -> String {
+        let krate = owner.krate(db);
+        let edition = krate.data(db).edition;
+        let mut result = match owner {
+            ExpressionStoreOwnerId::Signature(generic_def_id) => {
+                ExpressionStore::of(db, generic_def_id.into())[self.place.local]
+                    .name
+                    .display(db, edition)
+                    .to_string()
+            }
+            ExpressionStoreOwnerId::Body(def_with_body_id) => Body::of(db, def_with_body_id)
+                [self.place.local]
+                .name
+                .display(db, edition)
+                .to_string(),
+        };
         for proj in &self.place.projections {
             match proj {
                 HirPlaceProjection::Deref => {}
@@ -213,11 +226,26 @@ impl CapturedItem {
         result
     }
 
-    pub fn display_place_source_code(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
-        let body = db.body(owner);
+    pub fn display_place_source_code(
+        &self,
+        owner: ExpressionStoreOwnerId,
+        db: &dyn HirDatabase,
+    ) -> String {
         let krate = owner.krate(db);
         let edition = krate.data(db).edition;
-        let mut result = body[self.place.local].name.display(db, edition).to_string();
+        let mut result = match owner {
+            ExpressionStoreOwnerId::Signature(generic_def_id) => {
+                ExpressionStore::of(db, generic_def_id.into())[self.place.local]
+                    .name
+                    .display(db, edition)
+                    .to_string()
+            }
+            ExpressionStoreOwnerId::Body(def_with_body_id) => Body::of(db, def_with_body_id)
+                [self.place.local]
+                .name
+                .display(db, edition)
+                .to_string(),
+        };
         for proj in &self.place.projections {
             match proj {
                 // In source code autoderef kicks in.
@@ -258,11 +286,22 @@ impl CapturedItem {
         result
     }
 
-    pub fn display_place(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
-        let body = db.body(owner);
+    pub fn display_place(&self, owner: ExpressionStoreOwnerId, db: &dyn HirDatabase) -> String {
         let krate = owner.krate(db);
         let edition = krate.data(db).edition;
-        let mut result = body[self.place.local].name.display(db, edition).to_string();
+        let mut result = match owner {
+            ExpressionStoreOwnerId::Signature(generic_def_id) => {
+                ExpressionStore::of(db, generic_def_id.into())[self.place.local]
+                    .name
+                    .display(db, edition)
+                    .to_string()
+            }
+            ExpressionStoreOwnerId::Body(def_with_body_id) => Body::of(db, def_with_body_id)
+                [self.place.local]
+                .name
+                .display(db, edition)
+                .to_string(),
+        };
         let mut field_need_paren = false;
         for proj in &self.place.projections {
             match proj {
