@@ -904,6 +904,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 return;
             }
 
+            tcx.force_delayed_owners_lowering();
             rustc_interface::passes::emit_delayed_lints(tcx);
 
             if render_opts.dep_info().is_some() {

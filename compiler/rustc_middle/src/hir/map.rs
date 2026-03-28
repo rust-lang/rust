@@ -7,7 +7,7 @@ use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, spawn, try_par_for_each_in};
+use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -835,18 +835,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    fn hir_opt_ident(self, id: HirId) -> Option<Ident> {
-        match self.hir_node(id) {
-            Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
-            // A `Ctor` doesn't have an identifier itself, but its parent
-            // struct/variant does. Compare with `hir::Map::span`.
-            Node::Ctor(..) => match self.parent_hir_node(id) {
-                Node::Item(item) => Some(item.kind.ident().unwrap()),
-                Node::Variant(variant) => Some(variant.ident),
-                _ => unreachable!(),
-            },
-            node => node.ident(),
-        }
+    pub fn hir_opt_ident(self, id: HirId) -> Option<Ident> {
+        self.hir_crate(()).opt_ident(self, id)
     }
 
     #[inline]
@@ -1115,6 +1105,10 @@ impl<'tcx> intravisit::HirTyCtxt<'tcx> for TyCtxt<'tcx> {
     fn hir_foreign_item(&self, id: ForeignItemId) -> &'tcx ForeignItem<'tcx> {
         (*self).hir_foreign_item(id)
     }
+
+    fn is_delayed(&self, id: LocalDefId) -> bool {
+        (*self).hir_crate(()).delayed_ids.contains(&id)
+    }
 }
 
 impl<'tcx> pprust_hir::PpAnn for TyCtxt<'tcx> {
@@ -1212,8 +1206,14 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
     upstream_crates
 }
 
+#[derive(Clone, Copy)]
+enum ItemCollectionKind {
+    Crate,
+    Mod(LocalModDefId),
+}
+
 pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> ModuleItems {
-    let mut collector = ItemCollector::new(tcx, false);
+    let mut collector = ItemCollector::new(tcx, ItemCollectionKind::Mod(module_id));
 
     let (hir_mod, span, hir_id) = tcx.hir_get_module(module_id);
     collector.visit_mod(hir_mod, span, hir_id);
@@ -1245,26 +1245,8 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
     }
 }
 
-fn force_delayed_owners_lowering(tcx: TyCtxt<'_>) {
-    let krate = tcx.hir_crate(());
-    for &id in &krate.delayed_ids {
-        tcx.ensure_done().lower_delayed_owner(id);
-    }
-
-    let (_, krate) = krate.delayed_resolver.steal();
-    let prof = tcx.sess.prof.clone();
-
-    // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
-    spawn(move || {
-        let _timer = prof.verbose_generic_activity("drop_ast");
-        drop(krate);
-    });
-}
-
 pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
-    force_delayed_owners_lowering(tcx);
-
-    let mut collector = ItemCollector::new(tcx, true);
+    let mut collector = ItemCollector::new(tcx, ItemCollectionKind::Crate);
 
     // A "crate collector" and "module collector" start at a
     // module item (the former starts at the crate root) but only
@@ -1327,9 +1309,9 @@ struct ItemCollector<'tcx> {
 }
 
 impl<'tcx> ItemCollector<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, crate_collector: bool) -> ItemCollector<'tcx> {
-        ItemCollector {
-            crate_collector,
+    fn new(tcx: TyCtxt<'tcx>, collection_kind: ItemCollectionKind) -> ItemCollector<'tcx> {
+        let mut collector = ItemCollector {
+            crate_collector: matches!(collection_kind, ItemCollectionKind::Crate),
             tcx,
             submodules: Vec::default(),
             items: Vec::default(),
@@ -1341,12 +1323,39 @@ impl<'tcx> ItemCollector<'tcx> {
             nested_bodies: Vec::default(),
             delayed_lint_items: Vec::default(),
             eiis: Vec::default(),
+        };
+
+        let krate = tcx.hir_crate(());
+        let delayed_kinds = krate
+            .delayed_ids
+            .iter()
+            .copied()
+            .map(|id| (id, krate.owners[id].expect_delayed().kind))
+            .filter(|(id, _)| match collection_kind {
+                ItemCollectionKind::Crate => true,
+                ItemCollectionKind::Mod(mod_id) => tcx.parent_module_from_def_id(*id) == mod_id,
+            });
+
+        // FIXME(fn_delegation): need to add delayed lints, eiis
+        for (def_id, kind) in delayed_kinds {
+            let owner_id = OwnerId { def_id };
+
+            match kind {
+                DelayedOwnerKind::Item => collector.items.push(ItemId { owner_id }),
+                DelayedOwnerKind::ImplItem => collector.impl_items.push(ImplItemId { owner_id }),
+                DelayedOwnerKind::TraitItem => collector.trait_items.push(TraitItemId { owner_id }),
+            };
+
+            collector.body_owners.push(def_id);
         }
+
+        collector
     }
 }
 
 impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     type NestedFilter = nested_filter::All;
+    const VISIT_DELAYED: bool = false;
 
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         self.tcx
