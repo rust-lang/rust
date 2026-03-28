@@ -50,9 +50,9 @@ use core::iter::from_fn;
 use core::num::Saturating;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Add;
-#[cfg(not(no_global_oom_handling))]
-use core::ops::AddAssign;
 use core::ops::{self, Range, RangeBounds};
+#[cfg(not(no_global_oom_handling))]
+use core::ops::{AddAssign, ControlFlow};
 use core::str::pattern::{Pattern, Utf8Pattern};
 use core::{fmt, hash, ptr, slice};
 
@@ -61,7 +61,7 @@ use crate::alloc::Allocator;
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
-use crate::collections::{TryReserveError};
+use crate::collections::TryReserveError;
 #[cfg(not(no_global_oom_handling))]
 use crate::collections::VecDeque;
 use crate::str::{self, CharIndices, Chars, Utf8Error, from_utf8_unchecked_mut};
@@ -3610,6 +3610,25 @@ impl From<char> for String {
 // In place case changes
 
 impl String {
+    #[cfg(not(no_global_oom_handling))]
+    fn case_change_while_ascii<const MAKE_UPPER: bool>(&mut self) -> ControlFlow<usize> {
+        // SAFETY the as_bytes_mut is unsafe but we will only do ascii case change in place with it
+        unsafe {
+            self.as_bytes_mut().into_iter().enumerate().try_for_each(|(i, b)| {
+                if b.is_ascii() {
+                    if MAKE_UPPER {
+                        b.make_ascii_uppercase();
+                    } else {
+                        b.make_ascii_lowercase();
+                    }
+                    ControlFlow::Continue(())
+                } else {
+                    ControlFlow::Break(i)
+                }
+            })
+        }
+    }
+
     /// Converts this string to its uppercase equivalent in-place.
     ///
     /// 'Uppercase' is defined according to the terms of the Unicode Derived Core Property
@@ -3656,7 +3675,10 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_make_uplowercase", issue = "135885")]
     pub fn make_uppercase(&mut self) {
-        let mut wc = WriteChars::new(self);
+        let ControlFlow::Break(non_utf8_offset) = self.case_change_while_ascii::<true>() else {
+            return;
+        };
+        let mut wc = WriteChars::new(self, non_utf8_offset);
         while let Some(l_c) = wc.pop() {
             l_c.to_uppercase().for_each(|u_c| wc.write(u_c));
         }
@@ -3710,11 +3732,19 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_make_uplowercase", issue = "135885")]
     pub fn make_lowercase(&mut self) {
+        fn update_word_final(word_final_so_far: bool, u_c: char) -> bool {
+            u_c.is_cased() || (word_final_so_far && u_c.is_case_ignorable())
+        }
+
+        let ControlFlow::Break(non_utf8_offset) = self.case_change_while_ascii::<false>() else {
+            return;
+        };
         // We will only update the streaming word_final detection if the str contains sigma
         // because it requires table lookups that we consider expensive.
-        let has_sigma = self.contains('Σ');
-        let mut word_final_so_far = false;
-        let mut wc = WriteChars::new(self);
+        let has_sigma = self[non_utf8_offset..].contains('Σ');
+        let mut word_final_so_far =
+            has_sigma && self[..non_utf8_offset].chars().fold(false, update_word_final);
+        let mut wc = WriteChars::new(self, non_utf8_offset);
         while let Some(u_c) = wc.pop() {
             if u_c == 'Σ' {
                 if word_final_so_far && !crate::str::case_ignorable_then_cased(wc.rest().chars()) {
@@ -3727,8 +3757,7 @@ impl String {
                 u_c.to_lowercase().for_each(|l_c| wc.write(l_c));
             }
             if has_sigma {
-                word_final_so_far =
-                    u_c.is_cased() || (word_final_so_far && u_c.is_case_ignorable());
+                word_final_so_far = update_word_final(word_final_so_far, u_c);
             }
         }
         // SAFETY: At this point, none of the methods of wc panicked
@@ -3759,9 +3788,9 @@ struct WriteChars<'a> {
 
 #[unstable(issue = "none", feature = "std_internals")]
 impl<'a> WriteChars<'a> {
-    fn new(s: &'a mut String) -> Self {
+    fn new(s: &'a mut String, offset: usize) -> Self {
         let v = core::mem::take(s).into_bytes();
-        WriteChars { s, v, write_offset: 0, read_offset: 0, buffer: VecDeque::new() }
+        WriteChars { s, v, write_offset: offset, read_offset: offset, buffer: VecDeque::new() }
     }
 
     fn rest(&self) -> &str {
