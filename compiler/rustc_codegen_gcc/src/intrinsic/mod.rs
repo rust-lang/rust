@@ -45,33 +45,15 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     name: Symbol,
 ) -> Option<Function<'gcc>> {
     let gcc_name = match name {
-        sym::sqrtf32 => "sqrtf",
-        sym::sqrtf64 => "sqrt",
         sym::powif32 => "__builtin_powif",
         sym::powif64 => "__builtin_powi",
-        sym::sinf32 => "sinf",
-        sym::sinf64 => "sin",
-        sym::cosf32 => "cosf",
-        sym::cosf64 => "cos",
         sym::powf32 => "powf",
         sym::powf64 => "pow",
-        sym::expf32 => "expf",
-        sym::expf64 => "exp",
-        sym::exp2f32 => "exp2f",
-        sym::exp2f64 => "exp2",
-        sym::logf32 => "logf",
-        sym::logf64 => "log",
-        sym::log10f32 => "log10f",
-        sym::log10f64 => "log10",
-        sym::log2f32 => "log2f",
-        sym::log2f64 => "log2",
         sym::fmaf32 => "fmaf",
         sym::fmaf64 => "fma",
         // FIXME: calling `fma` from libc without FMA target feature uses expensive software emulation
         sym::fmuladdf32 => "fmaf", // FIXME: use gcc intrinsic analogous to llvm.fmuladd.f32
         sym::fmuladdf64 => "fma",  // FIXME: use gcc intrinsic analogous to llvm.fmuladd.f64
-        sym::fabsf32 => "fabsf",
-        sym::fabsf64 => "fabs",
         sym::minimumf32 => "fminimumf",
         sym::minimumf64 => "fminimum",
         sym::minimumf128 => {
@@ -110,17 +92,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         }
         sym::copysignf32 => "copysignf",
         sym::copysignf64 => "copysign",
-        sym::floorf32 => "floorf",
-        sym::floorf64 => "floor",
-        sym::ceilf32 => "ceilf",
-        sym::ceilf64 => "ceil",
-        sym::truncf32 => "truncf",
-        sym::truncf64 => "trunc",
-        // We match the LLVM backend and lower this to `rint`.
-        sym::round_ties_even_f32 => "rintf",
-        sym::round_ties_even_f64 => "rint",
-        sym::roundf32 => "roundf",
-        sym::roundf64 => "round",
         sym::abort => "abort",
         _ => return None,
     };
@@ -193,61 +164,6 @@ fn get_simple_function<'gcc, 'tcx>(
     ))
 }
 
-fn get_simple_function_f128<'gcc, 'tcx>(
-    cx: &CodegenCx<'gcc, 'tcx>,
-    name: Symbol,
-) -> Option<Function<'gcc>> {
-    if !cx.supports_f128_type {
-        return None;
-    }
-
-    let f128_type = cx.type_f128();
-    let func_name = match name {
-        sym::ceilf128 => "ceilf128",
-        sym::fabsf128 => "fabsf128",
-        sym::floorf128 => "floorf128",
-        sym::truncf128 => "truncf128",
-        sym::roundf128 => "roundf128",
-        sym::round_ties_even_f128 => "roundevenf128",
-        sym::sqrtf128 => "sqrtf128",
-        _ => return None,
-    };
-    Some(cx.context.new_function(
-        None,
-        FunctionType::Extern,
-        f128_type,
-        &[cx.context.new_parameter(None, f128_type, "a")],
-        func_name,
-        false,
-    ))
-}
-
-fn get_simple_function_f128_2args<'gcc, 'tcx>(
-    cx: &CodegenCx<'gcc, 'tcx>,
-    name: Symbol,
-) -> Option<Function<'gcc>> {
-    if !cx.supports_f128_type {
-        return None;
-    }
-
-    let f128_type = cx.type_f128();
-    let func_name = match name {
-        sym::copysignf128 => "copysignf128",
-        _ => return None,
-    };
-    Some(cx.context.new_function(
-        None,
-        FunctionType::Extern,
-        f128_type,
-        &[
-            cx.context.new_parameter(None, f128_type, "a"),
-            cx.context.new_parameter(None, f128_type, "b"),
-        ],
-        func_name,
-        false,
-    ))
-}
-
 fn f16_builtin<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     name: Symbol,
@@ -255,10 +171,7 @@ fn f16_builtin<'gcc, 'tcx>(
 ) -> RValue<'gcc> {
     let f32_type = cx.type_f32();
     let builtin_name = match name {
-        sym::ceilf16 => "__builtin_ceilf",
         sym::copysignf16 => "__builtin_copysignf",
-        sym::fabsf16 => "fabsf",
-        sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
         sym::powf16 => "__builtin_powf",
         sym::powif16 => {
@@ -268,10 +181,6 @@ fn f16_builtin<'gcc, 'tcx>(
             let result = cx.context.new_call(None, func, &args);
             return cx.context.new_cast(None, result, cx.type_f16());
         }
-        sym::roundf16 => "__builtin_roundf",
-        sym::round_ties_even_f16 => "__builtin_rintf",
-        sym::sqrtf16 => "__builtin_sqrtf",
-        sym::truncf16 => "__builtin_truncf",
         _ => unreachable!(),
     };
 
@@ -297,11 +206,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let fn_args = instance.args;
 
         let simple = get_simple_intrinsic(self, name);
-        // FIXME(antoyo): Only call get_simple_function_f128 and get_simple_function_f128_2args when
-        // it is the symbols for the supported f128 builtins.
-        let simple_func = get_simple_function(self, name)
-            .or_else(|| get_simple_function_f128(self, name))
-            .or_else(|| get_simple_function_f128_2args(self, name));
+        let simple_func = get_simple_function(self, name);
 
         let value = match name {
             _ if simple.is_some() => {
@@ -320,17 +225,28 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::ceilf16
-            | sym::copysignf16
-            | sym::fabsf16
-            | sym::floorf16
-            | sym::fmaf16
-            | sym::powf16
-            | sym::powif16
-            | sym::roundf16
-            | sym::round_ties_even_f16
-            | sym::sqrtf16
-            | sym::truncf16 => f16_builtin(self, name, args),
+            sym::copysignf16 | sym::fmaf16 | sym::powf16 | sym::powif16 => {
+                f16_builtin(self, name, args)
+            }
+            sym::copysignf128 if self.cx.supports_f128_type => {
+                let f128_type = self.cx.type_f128();
+                let func = self.cx.context.new_function(
+                    None,
+                    FunctionType::Extern,
+                    f128_type,
+                    &[
+                        self.cx.context.new_parameter(None, f128_type, "a"),
+                        self.cx.context.new_parameter(None, f128_type, "b"),
+                    ],
+                    "copysignf128",
+                    false,
+                );
+                self.cx.context.new_call(
+                    self.location,
+                    func,
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
             sym::fmaf128 => {
                 let f128_type = self.cx.type_f128();
                 let func = self.cx.context.new_function(
@@ -485,6 +401,120 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                             ty: args[0].layout.ty,
                         });
                         return Ok(());
+                    }
+                }
+            }
+            // float unary intrinsics
+            sym::fabs
+            | sym::sqrt
+            | sym::sin
+            | sym::cos
+            | sym::exp
+            | sym::exp2
+            | sym::log
+            | sym::log2
+            | sym::log10
+            | sym::floor
+            | sym::ceil
+            | sym::trunc
+            | sym::round_ties_even
+            | sym::round => {
+                enum IntrinsicKind {
+                    Builtin(&'static str),
+                    Extern(&'static str),
+                    BuiltinF16Cast(&'static str),
+                    Fallback,
+                }
+                use IntrinsicKind::*;
+                let ty = args[0].layout.ty;
+                let ty::Float(float_ty) = *ty.kind() else {
+                    tcx.dcx().emit_err(InvalidMonomorphization::BasicFloatType { span, name, ty });
+                    return Ok(());
+                };
+
+                use ty::FloatTy::*;
+                let func = match (name, float_ty) {
+                    (_, F128) if !self.cx.supports_f128_type => Fallback,
+                    (sym::fabs, F16) => BuiltinF16Cast("fabsf"),
+                    (sym::fabs, F32) => Builtin("fabsf"),
+                    (sym::fabs, F64) => Builtin("fabs"),
+                    (sym::fabs, F128) => Extern("fabsf128"),
+                    (sym::sqrt, F16) => BuiltinF16Cast("__builtin_sqrtf"),
+                    (sym::sqrt, F32) => Builtin("sqrtf"),
+                    (sym::sqrt, F64) => Builtin("sqrt"),
+                    (sym::sqrt, F128) => Extern("sqrtf128"),
+                    (sym::sin, F32) => Builtin("sinf"),
+                    (sym::sin, F64) => Builtin("sin"),
+                    (sym::cos, F32) => Builtin("cosf"),
+                    (sym::cos, F64) => Builtin("cos"),
+                    (sym::exp, F32) => Builtin("expf"),
+                    (sym::exp, F64) => Builtin("exp"),
+                    (sym::exp2, F32) => Builtin("exp2f"),
+                    (sym::exp2, F64) => Builtin("exp2"),
+                    (sym::log, F32) => Builtin("logf"),
+                    (sym::log, F64) => Builtin("log"),
+                    (sym::log2, F32) => Builtin("log2f"),
+                    (sym::log2, F64) => Builtin("log2"),
+                    (sym::log10, F32) => Builtin("log10f"),
+                    (sym::log10, F64) => Builtin("log10"),
+                    (sym::floor, F16) => BuiltinF16Cast("__builtin_floorf"),
+                    (sym::floor, F32) => Builtin("floorf"),
+                    (sym::floor, F64) => Builtin("floor"),
+                    (sym::floor, F128) => Extern("floorf128"),
+                    (sym::ceil, F16) => BuiltinF16Cast("__builtin_ceilf"),
+                    (sym::ceil, F32) => Builtin("ceilf"),
+                    (sym::ceil, F64) => Builtin("ceil"),
+                    (sym::ceil, F128) => Extern("ceilf128"),
+                    (sym::trunc, F16) => BuiltinF16Cast("__builtin_truncf"),
+                    (sym::trunc, F32) => Builtin("truncf"),
+                    (sym::trunc, F64) => Builtin("trunc"),
+                    (sym::trunc, F128) => Extern("truncf128"),
+                    // We match the LLVM backend and lower this to `rint`.
+                    (sym::round_ties_even, F16) => BuiltinF16Cast("__builtin_rintf"),
+                    (sym::round_ties_even, F32) => Builtin("rintf"),
+                    (sym::round_ties_even, F64) => Builtin("rint"),
+                    (sym::round_ties_even, F128) => Extern("roundevenf128"),
+                    (sym::round, F16) => BuiltinF16Cast("__builtin_roundf"),
+                    (sym::round, F32) => Builtin("roundf"),
+                    (sym::round, F64) => Builtin("round"),
+                    (sym::round, F128) => Extern("roundf128"),
+                    _ => Fallback,
+                };
+                match func {
+                    Builtin(name) => self.cx.context.new_call(
+                        self.location,
+                        self.context.get_builtin_function(name),
+                        &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                    ),
+                    Extern(name) => {
+                        let ty = self.cx.type_float_from_ty(float_ty);
+                        let func = self.cx.context.new_function(
+                            None,
+                            FunctionType::Extern,
+                            ty,
+                            &[self.cx.context.new_parameter(None, ty, "a")],
+                            name,
+                            false,
+                        );
+                        self.cx.context.new_call(
+                            self.location,
+                            func,
+                            &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                        )
+                    }
+                    BuiltinF16Cast(name) => {
+                        let func = self.cx.context.get_builtin_function(name);
+                        let args: Vec<_> = args
+                            .iter()
+                            .map(|arg| {
+                                self.cx.context.new_cast(None, arg.immediate(), self.cx.type_f32())
+                            })
+                            .collect();
+                        let result = self.cx.context.new_call(None, func, &args);
+                        self.cx.context.new_cast(None, result, self.cx.type_f16())
+                    }
+                    Fallback => {
+                        return Err(Instance::new_raw(instance.def_id(), instance.args));
                     }
                 }
             }

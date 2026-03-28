@@ -314,18 +314,6 @@ fn codegen_float_intrinsic_call<'tcx>(
     ret: CPlace<'tcx>,
 ) -> bool {
     let (name, arg_count, ty, clif_ty) = match intrinsic {
-        sym::expf16 => ("expf16", 1, fx.tcx.types.f16, types::F16),
-        sym::expf32 => ("expf", 1, fx.tcx.types.f32, types::F32),
-        sym::expf64 => ("exp", 1, fx.tcx.types.f64, types::F64),
-        sym::expf128 => ("expf128", 1, fx.tcx.types.f128, types::F128),
-        sym::exp2f16 => ("exp2f16", 1, fx.tcx.types.f16, types::F16),
-        sym::exp2f32 => ("exp2f", 1, fx.tcx.types.f32, types::F32),
-        sym::exp2f64 => ("exp2", 1, fx.tcx.types.f64, types::F64),
-        sym::exp2f128 => ("exp2f128", 1, fx.tcx.types.f128, types::F128),
-        sym::sqrtf16 => ("sqrtf16", 1, fx.tcx.types.f16, types::F16),
-        sym::sqrtf32 => ("sqrtf", 1, fx.tcx.types.f32, types::F32),
-        sym::sqrtf64 => ("sqrt", 1, fx.tcx.types.f64, types::F64),
-        sym::sqrtf128 => ("sqrtf128", 1, fx.tcx.types.f128, types::F128),
         sym::powif16 => ("__powisf2", 2, fx.tcx.types.f16, types::F16), // compiler-builtins
         sym::powif32 => ("__powisf2", 2, fx.tcx.types.f32, types::F32), // compiler-builtins
         sym::powif64 => ("__powidf2", 2, fx.tcx.types.f64, types::F64), // compiler-builtins
@@ -334,22 +322,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::powf32 => ("powf", 2, fx.tcx.types.f32, types::F32),
         sym::powf64 => ("pow", 2, fx.tcx.types.f64, types::F64),
         sym::powf128 => ("powf128", 2, fx.tcx.types.f128, types::F128),
-        sym::logf16 => ("logf16", 1, fx.tcx.types.f16, types::F16),
-        sym::logf32 => ("logf", 1, fx.tcx.types.f32, types::F32),
-        sym::logf64 => ("log", 1, fx.tcx.types.f64, types::F64),
-        sym::logf128 => ("logf128", 1, fx.tcx.types.f128, types::F128),
-        sym::log2f16 => ("log2f16", 1, fx.tcx.types.f16, types::F16),
-        sym::log2f32 => ("log2f", 1, fx.tcx.types.f32, types::F32),
-        sym::log2f64 => ("log2", 1, fx.tcx.types.f64, types::F64),
-        sym::log2f128 => ("log2f128", 1, fx.tcx.types.f128, types::F128),
-        sym::log10f16 => ("log10f16", 1, fx.tcx.types.f16, types::F16),
-        sym::log10f32 => ("log10f", 1, fx.tcx.types.f32, types::F32),
-        sym::log10f64 => ("log10", 1, fx.tcx.types.f64, types::F64),
-        sym::log10f128 => ("log10f128", 1, fx.tcx.types.f128, types::F128),
-        sym::fabsf16 => ("fabsf16", 1, fx.tcx.types.f16, types::F16),
-        sym::fabsf32 => ("fabsf", 1, fx.tcx.types.f32, types::F32),
-        sym::fabsf64 => ("fabs", 1, fx.tcx.types.f64, types::F64),
-        sym::fabsf128 => ("fabsf128", 1, fx.tcx.types.f128, types::F128),
         sym::fmaf16 => ("fmaf16", 3, fx.tcx.types.f16, types::F16),
         sym::fmaf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32),
         sym::fmaf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
@@ -363,34 +335,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::copysignf32 => ("copysignf", 2, fx.tcx.types.f32, types::F32),
         sym::copysignf64 => ("copysign", 2, fx.tcx.types.f64, types::F64),
         sym::copysignf128 => ("copysignf128", 2, fx.tcx.types.f128, types::F128),
-        sym::floorf16 => ("floorf16", 1, fx.tcx.types.f16, types::F16),
-        sym::floorf32 => ("floorf", 1, fx.tcx.types.f32, types::F32),
-        sym::floorf64 => ("floor", 1, fx.tcx.types.f64, types::F64),
-        sym::floorf128 => ("floorf128", 1, fx.tcx.types.f128, types::F128),
-        sym::ceilf16 => ("ceilf16", 1, fx.tcx.types.f16, types::F16),
-        sym::ceilf32 => ("ceilf", 1, fx.tcx.types.f32, types::F32),
-        sym::ceilf64 => ("ceil", 1, fx.tcx.types.f64, types::F64),
-        sym::ceilf128 => ("ceilf128", 1, fx.tcx.types.f128, types::F128),
-        sym::truncf16 => ("truncf16", 1, fx.tcx.types.f16, types::F16),
-        sym::truncf32 => ("truncf", 1, fx.tcx.types.f32, types::F32),
-        sym::truncf64 => ("trunc", 1, fx.tcx.types.f64, types::F64),
-        sym::truncf128 => ("truncf128", 1, fx.tcx.types.f128, types::F128),
-        sym::round_ties_even_f16 => ("rintf16", 1, fx.tcx.types.f16, types::F16),
-        sym::round_ties_even_f32 => ("rintf", 1, fx.tcx.types.f32, types::F32),
-        sym::round_ties_even_f64 => ("rint", 1, fx.tcx.types.f64, types::F64),
-        sym::round_ties_even_f128 => ("rintf128", 1, fx.tcx.types.f128, types::F128),
-        sym::roundf16 => ("roundf16", 1, fx.tcx.types.f16, types::F16),
-        sym::roundf32 => ("roundf", 1, fx.tcx.types.f32, types::F32),
-        sym::roundf64 => ("round", 1, fx.tcx.types.f64, types::F64),
-        sym::roundf128 => ("roundf128", 1, fx.tcx.types.f128, types::F128),
-        sym::sinf16 => ("sinf16", 1, fx.tcx.types.f16, types::F16),
-        sym::sinf32 => ("sinf", 1, fx.tcx.types.f32, types::F32),
-        sym::sinf64 => ("sin", 1, fx.tcx.types.f64, types::F64),
-        sym::sinf128 => ("sinf128", 1, fx.tcx.types.f128, types::F128),
-        sym::cosf16 => ("cosf16", 1, fx.tcx.types.f16, types::F16),
-        sym::cosf32 => ("cosf", 1, fx.tcx.types.f32, types::F32),
-        sym::cosf64 => ("cos", 1, fx.tcx.types.f64, types::F64),
-        sym::cosf128 => ("cosf128", 1, fx.tcx.types.f128, types::F128),
         _ => return false,
     };
 
@@ -425,50 +369,14 @@ fn codegen_float_intrinsic_call<'tcx>(
     let layout = fx.layout_of(ty);
     // FIXME(bytecodealliance/wasmtime#8312): Use native Cranelift operations
     // for `f16` and `f128` once the lowerings have been implemented in Cranelift.
-    let res = match intrinsic {
-        sym::fmaf16 | sym::fmuladdf16 => {
-            CValue::by_val(codegen_f16_f128::fma_f16(fx, args[0], args[1], args[2]), layout)
-        }
+    let val = match intrinsic {
+        sym::fmaf16 | sym::fmuladdf16 => codegen_f16_f128::fma_f16(fx, args[0], args[1], args[2]),
         sym::fmaf32 | sym::fmaf64 | sym::fmuladdf32 | sym::fmuladdf64 => {
-            CValue::by_val(fx.bcx.ins().fma(args[0], args[1], args[2]), layout)
+            fx.bcx.ins().fma(args[0], args[1], args[2])
         }
-        sym::copysignf16 => {
-            CValue::by_val(codegen_f16_f128::copysign_f16(fx, args[0], args[1]), layout)
-        }
-        sym::copysignf128 => {
-            CValue::by_val(codegen_f16_f128::copysign_f128(fx, args[0], args[1]), layout)
-        }
-        sym::copysignf32 | sym::copysignf64 => {
-            CValue::by_val(fx.bcx.ins().fcopysign(args[0], args[1]), layout)
-        }
-        sym::fabsf16 => CValue::by_val(codegen_f16_f128::abs_f16(fx, args[0]), layout),
-        sym::fabsf128 => CValue::by_val(codegen_f16_f128::abs_f128(fx, args[0]), layout),
-        sym::fabsf32
-        | sym::fabsf64
-        | sym::floorf32
-        | sym::floorf64
-        | sym::ceilf32
-        | sym::ceilf64
-        | sym::truncf32
-        | sym::truncf64
-        | sym::round_ties_even_f32
-        | sym::round_ties_even_f64
-        | sym::sqrtf32
-        | sym::sqrtf64 => {
-            let val = match intrinsic {
-                sym::fabsf32 | sym::fabsf64 => fx.bcx.ins().fabs(args[0]),
-                sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(args[0]),
-                sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(args[0]),
-                sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(args[0]),
-                sym::round_ties_even_f32 | sym::round_ties_even_f64 => {
-                    fx.bcx.ins().nearest(args[0])
-                }
-                sym::sqrtf32 | sym::sqrtf64 => fx.bcx.ins().sqrt(args[0]),
-                _ => unreachable!(),
-            };
-
-            CValue::by_val(val, layout)
-        }
+        sym::copysignf16 => codegen_f16_f128::copysign_f16(fx, args[0], args[1]),
+        sym::copysignf128 => codegen_f16_f128::copysign_f128(fx, args[0], args[1]),
+        sym::copysignf32 | sym::copysignf64 => fx.bcx.ins().fcopysign(args[0], args[1]),
 
         // These intrinsics aren't supported natively by Cranelift.
         // Lower them to a libcall.
@@ -483,12 +391,11 @@ fn codegen_float_intrinsic_call<'tcx>(
             let input_tys: Vec<_> =
                 vec![AbiParam::new(clif_ty), lib_call_arg_param(fx.tcx, types::I32, true)];
             let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0];
-            let ret_val = if intrinsic == sym::powif16 {
+            if intrinsic == sym::powif16 {
                 codegen_f16_f128::f32_to_f16(fx, ret_val)
             } else {
                 ret_val
-            };
-            CValue::by_val(ret_val, fx.layout_of(ty))
+            }
         }
         sym::powf16 => {
             // FIXME(f16_f128): Rust `compiler-builtins` doesn't export `powf16` yet.
@@ -500,15 +407,15 @@ fn codegen_float_intrinsic_call<'tcx>(
                 vec![AbiParam::new(types::F32)],
                 &[x, y],
             )[0];
-            CValue::by_val(codegen_f16_f128::f32_to_f16(fx, ret_val), fx.layout_of(ty))
+            codegen_f16_f128::f32_to_f16(fx, ret_val)
         }
         _ => {
             let input_tys: Vec<_> = args.iter().map(|_| AbiParam::new(clif_ty)).collect();
-            let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0];
-            CValue::by_val(ret_val, fx.layout_of(ty))
+            fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0]
         }
     };
 
+    let res = CValue::by_val(val, layout);
     ret.write_cvalue(fx, res);
 
     true
@@ -1177,6 +1084,96 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
+        }
+
+        // Float unop intrinsics
+        sym::fabs
+        | sym::sqrt
+        | sym::sin
+        | sym::cos
+        | sym::exp
+        | sym::exp2
+        | sym::log
+        | sym::log2
+        | sym::log10
+        | sym::floor
+        | sym::ceil
+        | sym::trunc
+        | sym::round_ties_even
+        | sym::round => {
+            intrinsic_args!(fx, args => (arg); intrinsic);
+            let layout = arg.layout();
+            let ty::Float(float_ty) = layout.ty.kind() else {
+                bug!(
+                    "expected float type for float unop intrinsic {:?}: {:?}",
+                    intrinsic,
+                    layout.ty
+                );
+            };
+            let x = arg.load_scalar(fx);
+
+            use FloatTy::*;
+            let val = match (intrinsic, float_ty) {
+                (sym::fabs, F32 | F64) => Ok(fx.bcx.ins().fabs(x)),
+                // FIXME(bytecodealliance/wasmtime#8312): Use `fabsf16` once Cranelift
+                // backend lowerings are implemented.
+                (sym::fabs, F16) => Ok(codegen_f16_f128::abs_f16(fx, x)),
+                (sym::fabs, F128) => Ok(codegen_f16_f128::abs_f128(fx, x)),
+                (sym::sqrt, F32 | F64) => Ok(fx.bcx.ins().sqrt(x)),
+                (sym::sqrt, F16) => Err("sqrtf16"),
+                (sym::sqrt, F128) => Err("sqrtf128"),
+                (sym::sin, F16) => Err("sinf16"),
+                (sym::sin, F32) => Err("sinf"),
+                (sym::sin, F64) => Err("sin"),
+                (sym::sin, F128) => Err("sinf128"),
+                (sym::cos, F16) => Err("cosf16"),
+                (sym::cos, F32) => Err("cosf"),
+                (sym::cos, F64) => Err("cos"),
+                (sym::cos, F128) => Err("cosf128"),
+                (sym::exp, F16) => Err("expf16"),
+                (sym::exp, F32) => Err("expf"),
+                (sym::exp, F64) => Err("exp"),
+                (sym::exp, F128) => Err("expf128"),
+                (sym::exp2, F16) => Err("exp2f16"),
+                (sym::exp2, F32) => Err("exp2f"),
+                (sym::exp2, F64) => Err("exp2"),
+                (sym::exp2, F128) => Err("exp2f128"),
+                (sym::log, F16) => Err("logf16"),
+                (sym::log, F32) => Err("logf"),
+                (sym::log, F64) => Err("log"),
+                (sym::log, F128) => Err("logf128"),
+                (sym::log2, F16) => Err("log2f16"),
+                (sym::log2, F32) => Err("log2f"),
+                (sym::log2, F64) => Err("log2"),
+                (sym::log2, F128) => Err("log2f128"),
+                (sym::log10, F16) => Err("log10f16"),
+                (sym::log10, F32) => Err("log10f"),
+                (sym::log10, F64) => Err("log10"),
+                (sym::log10, F128) => Err("log10f128"),
+                (sym::floor, F32 | F64) => Ok(fx.bcx.ins().floor(x)),
+                (sym::floor, F16) => Err("floorf16"),
+                (sym::floor, F128) => Err("floorf128"),
+                (sym::ceil, F32 | F64) => Ok(fx.bcx.ins().ceil(x)),
+                (sym::ceil, F16) => Err("ceilf16"),
+                (sym::ceil, F128) => Err("ceilf128"),
+                (sym::trunc, F32 | F64) => Ok(fx.bcx.ins().trunc(x)),
+                (sym::trunc, F16) => Err("truncf16"),
+                (sym::trunc, F128) => Err("truncf128"),
+                (sym::round_ties_even, F32 | F64) => Ok(fx.bcx.ins().nearest(x)),
+                (sym::round_ties_even, F16) => Err("rintf16"),
+                (sym::round_ties_even, F128) => Err("rintf128"),
+                (sym::round, F16) => Err("roundf16"),
+                (sym::round, F32) => Err("roundf"),
+                (sym::round, F64) => Err("round"),
+                (sym::round, F128) => Err("roundf128"),
+                _ => unreachable!(),
+            };
+            let val = val.unwrap_or_else(|name| {
+                let ty = fx.clif_type(layout.ty).unwrap();
+                fx.lib_call(name, vec![AbiParam::new(ty)], vec![AbiParam::new(ty)], &[x])[0]
+            });
+            let val = CValue::by_val(val, layout);
+            ret.write_cvalue(fx, val);
         }
 
         sym::minimumf16 => {

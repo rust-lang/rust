@@ -575,107 +575,24 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::copysignf64 => self.float_copysign_intrinsic::<Double>(args, dest)?,
             sym::copysignf128 => self.float_copysign_intrinsic::<Quad>(args, dest)?,
 
-            sym::fabsf16 => self.float_abs_intrinsic::<Half>(args, dest)?,
-            sym::fabsf32 => self.float_abs_intrinsic::<Single>(args, dest)?,
-            sym::fabsf64 => self.float_abs_intrinsic::<Double>(args, dest)?,
-            sym::fabsf128 => self.float_abs_intrinsic::<Quad>(args, dest)?,
-
-            sym::floorf16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-            sym::floorf32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-            sym::floorf64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-            sym::floorf128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-
-            sym::ceilf16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-            sym::ceilf32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-            sym::ceilf64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-            sym::ceilf128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-
-            sym::truncf16 => {
-                self.float_round_intrinsic::<Half>(args, dest, rustc_apfloat::Round::TowardZero)?
-            }
-            sym::truncf32 => {
-                self.float_round_intrinsic::<Single>(args, dest, rustc_apfloat::Round::TowardZero)?
-            }
-            sym::truncf64 => {
-                self.float_round_intrinsic::<Double>(args, dest, rustc_apfloat::Round::TowardZero)?
-            }
-            sym::truncf128 => {
-                self.float_round_intrinsic::<Quad>(args, dest, rustc_apfloat::Round::TowardZero)?
+            sym::fabs | sym::floor | sym::ceil | sym::trunc | sym::round_ties_even | sym::round => {
+                let arg = self.read_immediate(&args[0])?;
+                let ty::Float(float_ty) = arg.layout.ty.kind() else {
+                    span_bug!(
+                        self.cur_span(),
+                        "non-float type for float intrinsic: {}",
+                        arg.layout.ty,
+                    );
+                };
+                let out_val = match float_ty {
+                    FloatTy::F16 => self.unop_float_intrinsic::<Half>(intrinsic_name, arg)?,
+                    FloatTy::F32 => self.unop_float_intrinsic::<Single>(intrinsic_name, arg)?,
+                    FloatTy::F64 => self.unop_float_intrinsic::<Double>(intrinsic_name, arg)?,
+                    FloatTy::F128 => self.unop_float_intrinsic::<Quad>(intrinsic_name, arg)?,
+                };
+                self.write_scalar(out_val, dest)?;
             }
 
-            sym::roundf16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-            sym::roundf32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-            sym::roundf64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-            sym::roundf128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-
-            sym::round_ties_even_f16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
-            sym::round_ties_even_f32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
-            sym::round_ties_even_f64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
-            sym::round_ties_even_f128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
             sym::fmaf16 => self.float_muladd_intrinsic::<Half>(args, dest, MulAddType::Fused)?,
             sym::fmaf32 => self.float_muladd_intrinsic::<Single>(args, dest, MulAddType::Fused)?,
             sym::fmaf64 => self.float_muladd_intrinsic::<Double>(args, dest, MulAddType::Fused)?,
@@ -1020,6 +937,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
     }
 
+    fn unop_float_intrinsic<F>(
+        &self,
+        name: Symbol,
+        arg: ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = arg.to_scalar().to_float()?;
+        match name {
+            // bitwise, no NaN adjustments
+            sym::fabs => interp_ok(x.abs().into()),
+            sym::floor => self.float_round(x, rustc_apfloat::Round::TowardNegative),
+            sym::ceil => self.float_round(x, rustc_apfloat::Round::TowardPositive),
+            sym::trunc => self.float_round(x, rustc_apfloat::Round::TowardZero),
+            sym::round_ties_even => self.float_round(x, rustc_apfloat::Round::NearestTiesToEven),
+            sym::round => self.float_round(x, rustc_apfloat::Round::NearestTiesToAway),
+            _ => bug!("not a unary float intrinsic: {}", name),
+        }
+    }
+
     fn float_minmax<F>(
         &self,
         a: Scalar<M::Provenance>,
@@ -1078,46 +1016,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
-    fn float_abs_intrinsic<F>(
-        &mut self,
-        args: &[OpTy<'tcx, M::Provenance>],
-        dest: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, ()>
-    where
-        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
-    {
-        let x: F = self.read_scalar(&args[0])?.to_float()?;
-        // bitwise, no NaN adjustments
-        self.write_scalar(x.abs(), dest)?;
-        interp_ok(())
-    }
-
     fn float_round<F>(
-        &mut self,
-        x: Scalar<M::Provenance>,
+        &self,
+        x: F,
         mode: rustc_apfloat::Round,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
-        let x: F = x.to_float()?;
         let res = x.round_to_integral(mode).value;
         let res = self.adjust_nan(res, &[x]);
         interp_ok(res.into())
-    }
-
-    fn float_round_intrinsic<F>(
-        &mut self,
-        args: &[OpTy<'tcx, M::Provenance>],
-        dest: &PlaceTy<'tcx, M::Provenance>,
-        mode: rustc_apfloat::Round,
-    ) -> InterpResult<'tcx, ()>
-    where
-        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
-    {
-        let res = self.float_round::<F>(self.read_scalar(&args[0])?, mode)?;
-        self.write_scalar(res, dest)?;
-        interp_ok(())
     }
 
     fn float_muladd<F>(
