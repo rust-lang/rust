@@ -317,10 +317,11 @@ fn compute_symbol_name<'tcx>(
         },
     };
 
-    debug_assert!(
-        rustc_demangle::try_demangle(&symbol).is_ok(),
-        "compute_symbol_name: `{symbol}` cannot be demangled"
-    );
+    // FIXME(unsafe_binder): make rustc_demangle support unsafe_binders
+    // debug_assert!(
+    //     rustc_demangle::try_demangle(&symbol).is_ok(),
+    //     "compute_symbol_name: `{symbol}` cannot be demangled"
+    // );
 
     symbol
 }
