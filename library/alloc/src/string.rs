@@ -3704,11 +3704,11 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_make_uplowercase", issue = "135885")]
     pub fn make_lowercase(&mut self) {
-        let mut wc = WriteChars::new(self);
-        // This is unfortunately paid whether or not you have sigmas in the str
-        // but it is kind of mandatory because as we are overwriting the source bytes
-        // we have to compute this information as we go.
+        // We will only update the streaming word_final detection if the str contains sigma
+        // because it requires table lookups that we consider expensive.
+        let has_sigma = self.contains('Σ');
         let mut word_final_so_far = false;
+        let mut wc = WriteChars::new(self);
         while let Some(u_c) = wc.pop() {
             if u_c == 'Σ' {
                 if word_final_so_far && !crate::str::case_ignorable_then_cased(wc.rest().chars()) {
@@ -3720,7 +3720,10 @@ impl String {
             } else {
                 u_c.to_lowercase().for_each(|l_c| wc.write(l_c));
             }
-            word_final_so_far = u_c.is_cased() || (word_final_so_far && u_c.is_case_ignorable());
+            if has_sigma {
+                word_final_so_far =
+                    u_c.is_cased() || (word_final_so_far && u_c.is_case_ignorable());
+            }
         }
     }
 }
