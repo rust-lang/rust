@@ -5,7 +5,7 @@ use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::Arch;
 
-use crate::shims::simd::math::compute_crc32;
+use crate::shims::math::compute_crc32;
 use crate::*;
 
 /// A bitmask constant for scrutinizing the immediate byte provided
@@ -446,9 +446,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // The 64-bit version will only consider the lower 32 bits,
                     // while the upper 32 bits get discarded.
                     #[expect(clippy::as_conversions)]
-                    {
-                        left.to_u64()? as u32
-                    }
+                    (left.to_u64()? as u32)
                 } else {
                     left.to_u32()?
                 };

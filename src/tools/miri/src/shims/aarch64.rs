@@ -4,6 +4,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
+use crate::shims::math::compute_crc32;
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -117,15 +118,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // b/h/w variants and u64 for the x variant, per the LLVM intrinsic
                 // definitions (all b/h/w take i32, only x takes i64).
                 // https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/IntrinsicsAArch64.td
-                // For b/h, the Rust std::arch wrappers accept u8/u16 and zero-extend
-                // to i32 before calling the LLVM intrinsic, so the upper bits of the
-                // i32 are always zero. compute_crc32 only uses the low `bit_size` bits.
+                // If the higher bits are non-zero, `compute_crc32` will panic. We should probably
+                // raise a proper error instead, but outside stdarch nobody can trigger this anyway.
                 let crc = left.to_u32()?;
                 let data =
                     if bit_size == 64 { right.to_u64()? } else { u64::from(right.to_u32()?) };
 
-                let result =
-                    crate::shims::simd::math::compute_crc32(crc, data, bit_size, polynomial);
+                let result = compute_crc32(crc, data, bit_size, polynomial);
                 this.write_scalar(Scalar::from_u32(result), dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
