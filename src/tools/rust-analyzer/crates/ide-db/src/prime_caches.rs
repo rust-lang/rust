@@ -4,7 +4,7 @@
 //! various caches, it's not really advanced at the moment.
 use std::panic::AssertUnwindSafe;
 
-use hir::{Symbol, db::DefDatabase};
+use hir::{Symbol, import_map::ImportMap};
 use rustc_hash::FxHashMap;
 use salsa::{Cancelled, Database};
 
@@ -123,7 +123,7 @@ pub fn parallel_prime_caches(
                 Ok::<_, crossbeam_channel::SendError<_>>(())
             };
             let handle_import_map = |crate_id| {
-                let cancelled = Cancelled::catch(|| _ = db.import_map(crate_id));
+                let cancelled = Cancelled::catch(|| _ = ImportMap::of(&db, crate_id));
 
                 match cancelled {
                     Ok(()) => {

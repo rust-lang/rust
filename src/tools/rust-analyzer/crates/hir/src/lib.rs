@@ -58,7 +58,7 @@ use hir_def::{
     expr_store::{ExpressionStore, ExpressionStoreDiagnostics, ExpressionStoreSourceMap},
     hir::{
         BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, LabelId, Pat,
-        generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
+        generics::{GenericParams, LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     },
     item_tree::ImportAlias,
     lang_item::LangItemTarget,
@@ -3275,7 +3275,7 @@ impl Trait {
         db: &dyn HirDatabase,
         count_required_only: bool,
     ) -> usize {
-        db.generic_params(self.id.into())
+        GenericParams::of(db,self.id.into())
             .iter_type_or_consts()
             .filter(|(_, ty)| !matches!(ty, TypeOrConstParamData::TypeParamData(ty) if ty.provenance != TypeParamProvenance::TypeParamList))
             .filter(|(_, ty)| !count_required_only || !ty.has_default())
@@ -4065,7 +4065,7 @@ impl GenericDef {
             // Let's pretend builtin derive impls don't have generic parameters.
             return Vec::new();
         };
-        let generics = db.generic_params(id);
+        let generics = GenericParams::of(db, id);
         let ty_params = generics.iter_type_or_consts().map(|(local_id, _)| {
             let toc = TypeOrConstParam { id: TypeOrConstParamId { parent: id, local_id } };
             match toc.split(db) {
@@ -4085,7 +4085,7 @@ impl GenericDef {
             // Let's pretend builtin derive impls don't have generic parameters.
             return Vec::new();
         };
-        let generics = db.generic_params(id);
+        let generics = GenericParams::of(db, id);
         generics
             .iter_lt()
             .map(|(local_id, _)| LifetimeParam { id: LifetimeParamId { parent: id, local_id } })
@@ -4097,7 +4097,7 @@ impl GenericDef {
             // Let's pretend builtin derive impls don't have generic parameters.
             return Vec::new();
         };
-        let generics = db.generic_params(id);
+        let generics = GenericParams::of(db, id);
         generics
             .iter_type_or_consts()
             .map(|(local_id, _)| TypeOrConstParam {
@@ -4127,7 +4127,7 @@ impl GenericDef {
     pub fn diagnostics<'db>(self, db: &'db dyn HirDatabase, acc: &mut Vec<AnyDiagnostic<'db>>) {
         let Some(def) = self.id() else { return };
 
-        let generics = db.generic_params(def);
+        let generics = GenericParams::of(db, def);
 
         if generics.is_empty() && generics.has_no_predicates() {
             return;
@@ -4223,7 +4223,7 @@ impl<'db> GenericSubstitution<'db> {
                 _ => None,
             })
             .map(|container| {
-                db.generic_params(container)
+                GenericParams::of(db, container)
                     .iter_type_or_consts()
                     .filter_map(|param| match param.1 {
                         TypeOrConstParamData::TypeParamData(param) => Some(param.name.clone()),
@@ -4231,7 +4231,7 @@ impl<'db> GenericSubstitution<'db> {
                     })
                     .collect::<Vec<_>>()
             });
-        let generics = db.generic_params(self.def);
+        let generics = GenericParams::of(db, self.def);
         let type_params = generics.iter_type_or_consts().filter_map(|param| match param.1 {
             TypeOrConstParamData::TypeParamData(param) => Some(param.name.clone()),
             TypeOrConstParamData::ConstParamData(_) => None,
@@ -4653,7 +4653,7 @@ impl TypeParam {
     /// Is this type parameter implicitly introduced (eg. `Self` in a trait or an `impl Trait`
     /// argument)?
     pub fn is_implicit(self, db: &dyn HirDatabase) -> bool {
-        let params = db.generic_params(self.id.parent());
+        let params = GenericParams::of(db, self.id.parent());
         let data = &params[self.id.local_id()];
         match data.type_param().unwrap().provenance {
             TypeParamProvenance::TypeParamList => false,
@@ -4708,7 +4708,7 @@ pub struct LifetimeParam {
 
 impl LifetimeParam {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        let params = db.generic_params(self.id.parent);
+        let params = GenericParams::of(db, self.id.parent);
         params[self.id.local_id].name.clone()
     }
 
@@ -4732,7 +4732,7 @@ impl ConstParam {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        let params = db.generic_params(self.id.parent());
+        let params = GenericParams::of(db, self.id.parent());
         match params[self.id.local_id()].name() {
             Some(it) => it.clone(),
             None => {
@@ -4779,7 +4779,7 @@ pub struct TypeOrConstParam {
 
 impl TypeOrConstParam {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        let params = db.generic_params(self.id.parent);
+        let params = GenericParams::of(db, self.id.parent);
         match params[self.id.local_id].name() {
             Some(n) => n.clone(),
             _ => Name::missing(),
@@ -4795,7 +4795,7 @@ impl TypeOrConstParam {
     }
 
     pub fn split(self, db: &dyn HirDatabase) -> Either<ConstParam, TypeParam> {
-        let params = db.generic_params(self.id.parent);
+        let params = GenericParams::of(db, self.id.parent);
         match &params[self.id.local_id] {
             TypeOrConstParamData::TypeParamData(_) => {
                 Either::Right(TypeParam { id: TypeParamId::from_unchecked(self.id) })
@@ -4814,7 +4814,7 @@ impl TypeOrConstParam {
     }
 
     pub fn as_type_param(self, db: &dyn HirDatabase) -> Option<TypeParam> {
-        let params = db.generic_params(self.id.parent);
+        let params = GenericParams::of(db, self.id.parent);
         match &params[self.id.local_id] {
             TypeOrConstParamData::TypeParamData(_) => {
                 Some(TypeParam { id: TypeParamId::from_unchecked(self.id) })
@@ -4824,7 +4824,7 @@ impl TypeOrConstParam {
     }
 
     pub fn as_const_param(self, db: &dyn HirDatabase) -> Option<ConstParam> {
-        let params = db.generic_params(self.id.parent);
+        let params = GenericParams::of(db, self.id.parent);
         match &params[self.id.local_id] {
             TypeOrConstParamData::TypeParamData(_) => None,
             TypeOrConstParamData::ConstParamData(_) => {
@@ -7229,7 +7229,7 @@ fn generic_args_from_tys<'db>(
 }
 
 fn has_non_default_type_params(db: &dyn HirDatabase, generic_def: GenericDefId) -> bool {
-    let params = db.generic_params(generic_def);
+    let params = GenericParams::of(db, generic_def);
     let defaults = db.generic_defaults(generic_def);
     params
         .iter_type_or_consts()

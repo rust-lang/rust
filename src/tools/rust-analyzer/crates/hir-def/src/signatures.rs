@@ -43,7 +43,7 @@ fn as_name_opt(name: Option<ast::Name>) -> Name {
 #[derive(Debug, PartialEq, Eq)]
 pub struct StructSignature {
     pub name: Name,
-    pub generic_params: Arc<GenericParams>,
+    pub generic_params: GenericParams,
     pub store: ExpressionStore,
     pub flags: StructFlags,
     pub shape: FieldsShape,
@@ -153,7 +153,7 @@ fn adt_shape(adt_kind: ast::StructKind) -> FieldsShape {
 #[derive(Debug, PartialEq, Eq)]
 pub struct UnionSignature {
     pub name: Name,
-    pub generic_params: Arc<GenericParams>,
+    pub generic_params: GenericParams,
     pub store: ExpressionStore,
     pub flags: StructFlags,
 }
@@ -217,7 +217,7 @@ bitflags! {
 #[derive(Debug, PartialEq, Eq)]
 pub struct EnumSignature {
     pub name: Name,
-    pub generic_params: Arc<GenericParams>,
+    pub generic_params: GenericParams,
     pub store: ExpressionStore,
     pub flags: EnumFlags,
 }
@@ -290,7 +290,7 @@ bitflags::bitflags! {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ConstSignature {
     pub name: Option<Name>,
-    // generic_params: Arc<GenericParams>,
+    // generic_params: GenericParams,
     pub store: ExpressionStore,
     pub type_ref: TypeRefId,
     pub flags: ConstFlags,
@@ -358,7 +358,7 @@ bitflags::bitflags! {
 pub struct StaticSignature {
     pub name: Name,
 
-    // generic_params: Arc<GenericParams>,
+    // generic_params: GenericParams,
     pub store: ExpressionStore,
     pub type_ref: TypeRefId,
     pub flags: StaticFlags,
@@ -429,7 +429,7 @@ bitflags::bitflags! {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ImplSignature {
-    pub generic_params: Arc<GenericParams>,
+    pub generic_params: GenericParams,
     pub store: ExpressionStore,
     pub self_ty: TypeRefId,
     pub target_trait: Option<TraitRef>,
@@ -502,7 +502,7 @@ bitflags::bitflags! {
 #[derive(Debug, PartialEq, Eq)]
 pub struct TraitSignature {
     pub name: Name,
-    pub generic_params: Arc<GenericParams>,
+    pub generic_params: GenericParams,
     pub store: ExpressionStore,
     pub flags: TraitFlags,
 }
@@ -586,7 +586,7 @@ bitflags! {
 #[derive(Debug, PartialEq, Eq)]
 pub struct FunctionSignature {
     pub name: Name,
-    pub generic_params: Arc<GenericParams>,
+    pub generic_params: GenericParams,
     pub store: ExpressionStore,
     pub params: Box<[TypeRefId]>,
     pub ret_type: Option<TypeRefId>,
@@ -762,7 +762,7 @@ bitflags! {
 #[derive(Debug, PartialEq, Eq)]
 pub struct TypeAliasSignature {
     pub name: Name,
-    pub generic_params: Arc<GenericParams>,
+    pub generic_params: GenericParams,
     pub store: ExpressionStore,
     pub bounds: Box<[TypeBound]>,
     pub ty: Option<TypeRefId>,

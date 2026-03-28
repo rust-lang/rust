@@ -20,18 +20,17 @@ use hir_def::{
     },
 };
 use itertools::chain;
-use triomphe::Arc;
 
 pub fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics<'_> {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
-    let (params, store) = GenericParams::of(db, def);
+    let (params, store) = GenericParams::with_store(db, def);
     let has_trait_self_param = params.trait_self_param().is_some();
     Generics { def, params, parent_generics, has_trait_self_param, store }
 }
 #[derive(Clone, Debug)]
 pub struct Generics<'db> {
     def: GenericDefId,
-    params: Arc<GenericParams>,
+    params: &'db GenericParams,
     store: &'db ExpressionStore,
     parent_generics: Option<Box<Generics<'db>>>,
     has_trait_self_param: bool,

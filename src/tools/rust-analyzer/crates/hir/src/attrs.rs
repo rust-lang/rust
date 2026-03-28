@@ -7,6 +7,7 @@ use hir_def::{
     TraitId, TypeOrConstParamId,
     attrs::{AttrFlags, Docs, IsInnerDoc},
     expr_store::path::Path,
+    hir::generics::GenericParams,
     item_scope::ItemInNs,
     per_ns::Namespace,
     resolver::{HasResolver, Resolver, TypeNs},
@@ -377,7 +378,7 @@ fn resolve_assoc_or_field(
     let ty = match base_def {
         TypeNs::SelfType(id) => Impl::from(id).self_ty(db),
         TypeNs::GenericParam(param) => {
-            let generic_params = db.generic_params(param.parent());
+            let generic_params = GenericParams::of(db, param.parent());
             if generic_params[param.local_id()].is_trait_self() {
                 // `Self::assoc` in traits should refer to the trait itself.
                 let parent_trait = |container| match container {

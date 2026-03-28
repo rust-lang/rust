@@ -1212,7 +1212,7 @@ impl Printer<'_> {
     }
 
     pub(crate) fn print_type_param(&mut self, param: TypeParamId) {
-        let generic_params = self.db.generic_params(param.parent());
+        let generic_params = GenericParams::of(self.db, param.parent());
 
         match generic_params[param.local_id()].name() {
             Some(name) => w!(self, "{}", name.display(self.db, self.edition)),
@@ -1221,7 +1221,7 @@ impl Printer<'_> {
     }
 
     pub(crate) fn print_lifetime_param(&mut self, param: LifetimeParamId) {
-        let generic_params = self.db.generic_params(param.parent);
+        let generic_params = GenericParams::of(self.db, param.parent);
         w!(self, "{}", generic_params[param.local_id].name.display(self.db, self.edition))
     }
 
