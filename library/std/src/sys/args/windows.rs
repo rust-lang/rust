@@ -106,7 +106,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
             // If not `in_quotes`, a space or tab ends the argument.
             SPACE | TAB if !in_quotes => {
                 ret_val.push(OsString::from_wide(&cur[..]));
-                cur.truncate(0);
+                cur.clear();
 
                 // Skip whitespace.
                 code_units.advance_while(|w| w == SPACE || w == TAB);

@@ -1,5 +1,5 @@
 warning: `try` blocks are unstable
-  --> $DIR/try-block-homogeneous-pre-expansion.rs:9:5
+  --> $DIR/soft-feature-gate-try_blocks.rs:10:5
    |
 LL |     try {}
    |     ^^^^^^

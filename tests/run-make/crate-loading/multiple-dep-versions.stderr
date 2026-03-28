@@ -46,11 +46,11 @@ LL | pub trait Trait {
    | --------------- this is the trait that was imported
    = help: you can use `cargo tree` to explore your dependency tree
 
-error[E0599]: no function or associated item named `bar` found for struct `dep_2_reexport::Type` in the current scope
+error[E0599]: no associated function or constant named `bar` found for struct `dep_2_reexport::Type` in the current scope
   --> replaced
    |
 LL |     Type::bar();
-   |           ^^^ function or associated item not found in `dep_2_reexport::Type`
+   |           ^^^ associated function or constant not found in `dep_2_reexport::Type`
    |
 note: there are multiple different versions of crate `dependency` in the dependency graph
   --> replaced
