@@ -335,7 +335,7 @@ pub mod triton {
      * limitations under the License.
      */
 
-    use std::ops::Add;
+    use core::ops::Add;
 
     use self::types::{self as ty};
 
@@ -395,7 +395,7 @@ pub mod triton {
          * limitations under the License.
          */
 
-        use std::ops::{Add, Mul};
+        use core::ops::{Add, Mul};
 
         // Dtype Type
         pub trait Dtype: Copy + Clone {}
@@ -608,7 +608,7 @@ pub mod triton {
                  * limitations under the License.
                  */
 
-                use std::ops::Add;
+                use core::ops::Add;
 
                 use crate::triton::llvm::triton::tensor::{I32Tensor, Tensor};
 
@@ -704,7 +704,7 @@ pub mod triton {
                  * limitations under the License.
                  */
 
-                use std::ops::Add;
+                use core::ops::Add;
 
                 use super::super::super::types::{self as ty};
 
