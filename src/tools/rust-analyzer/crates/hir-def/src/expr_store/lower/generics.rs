@@ -3,15 +3,12 @@
 //! generic parameters. See also the `Generics` type and the `generics_of` query
 //! in rustc.
 
-use std::sync::LazyLock;
-
 use either::Either;
 use hir_expand::name::{AsName, Name};
 use intern::sym;
 use la_arena::Arena;
 use syntax::ast::{self, HasName, HasTypeBounds};
 use thin_vec::ThinVec;
-use triomphe::Arc;
 
 use crate::{
     GenericDefId, TypeOrConstParamId, TypeParamId,
@@ -84,28 +81,16 @@ impl GenericParamsCollector {
         )
     }
 
-    pub(crate) fn finish(self) -> Arc<GenericParams> {
-        let Self { mut lifetimes, mut type_or_consts, mut where_predicates, parent: _ } = self;
-
-        if lifetimes.is_empty() && type_or_consts.is_empty() && where_predicates.is_empty() {
-            static EMPTY: LazyLock<Arc<GenericParams>> = LazyLock::new(|| {
-                Arc::new(GenericParams {
-                    lifetimes: Arena::new(),
-                    type_or_consts: Arena::new(),
-                    where_predicates: Box::default(),
-                })
-            });
-            return Arc::clone(&EMPTY);
-        }
+    pub(crate) fn finish(self) -> GenericParams {
+        let Self { mut lifetimes, mut type_or_consts, where_predicates, parent: _ } = self;
 
         lifetimes.shrink_to_fit();
         type_or_consts.shrink_to_fit();
-        where_predicates.shrink_to_fit();
-        Arc::new(GenericParams {
+        GenericParams {
             type_or_consts,
             lifetimes,
             where_predicates: where_predicates.into_boxed_slice(),
-        })
+        }
     }
 
     fn lower_param_list(&mut self, ec: &mut ExprCollector<'_>, params: ast::GenericParamList) {

@@ -64,7 +64,7 @@ impl ExprScopes {
 
     #[salsa::tracked(returns(ref))]
     pub fn sig_expr_scopes(db: &dyn DefDatabase, def: GenericDefId) -> ExprScopes {
-        let (_, store) = GenericParams::of(db, def);
+        let (_, store) = GenericParams::with_store(db, def);
         let roots = store.signature_const_expr_roots();
         let mut scopes = ExprScopes::new_store(store, roots);
         scopes.shrink_to_fit();

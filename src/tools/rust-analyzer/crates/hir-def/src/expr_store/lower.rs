@@ -28,7 +28,6 @@ use syntax::{
     },
 };
 use thin_vec::ThinVec;
-use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
@@ -201,7 +200,7 @@ pub(crate) fn lower_generic_params(
     file_id: HirFileId,
     param_list: Option<ast::GenericParamList>,
     where_clause: Option<ast::WhereClause>,
-) -> (ExpressionStore, Arc<GenericParams>, ExpressionStoreSourceMap) {
+) -> (ExpressionStore, GenericParams, ExpressionStoreSourceMap) {
     let mut expr_collector = ExprCollector::signature(db, module, file_id);
     let mut collector = generics::GenericParamsCollector::new(def);
     collector.lower(&mut expr_collector, param_list, where_clause);
@@ -215,7 +214,7 @@ pub(crate) fn lower_impl(
     module: ModuleId,
     impl_syntax: InFile<ast::Impl>,
     impl_id: ImplId,
-) -> (ExpressionStore, ExpressionStoreSourceMap, TypeRefId, Option<TraitRef>, Arc<GenericParams>) {
+) -> (ExpressionStore, ExpressionStoreSourceMap, TypeRefId, Option<TraitRef>, GenericParams) {
     let mut expr_collector = ExprCollector::signature(db, module, impl_syntax.file_id);
     let self_ty =
         expr_collector.lower_type_ref_opt_disallow_impl_trait(impl_syntax.value.self_ty());
@@ -243,7 +242,7 @@ pub(crate) fn lower_trait(
     module: ModuleId,
     trait_syntax: InFile<ast::Trait>,
     trait_id: TraitId,
-) -> (ExpressionStore, ExpressionStoreSourceMap, Arc<GenericParams>) {
+) -> (ExpressionStore, ExpressionStoreSourceMap, GenericParams) {
     let mut expr_collector = ExprCollector::signature(db, module, trait_syntax.file_id);
     let mut collector = generics::GenericParamsCollector::with_self_param(
         &mut expr_collector,
@@ -265,13 +264,8 @@ pub(crate) fn lower_type_alias(
     module: ModuleId,
     alias: InFile<ast::TypeAlias>,
     type_alias_id: TypeAliasId,
-) -> (
-    ExpressionStore,
-    ExpressionStoreSourceMap,
-    Arc<GenericParams>,
-    Box<[TypeBound]>,
-    Option<TypeRefId>,
-) {
+) -> (ExpressionStore, ExpressionStoreSourceMap, GenericParams, Box<[TypeBound]>, Option<TypeRefId>)
+{
     let mut expr_collector = ExprCollector::signature(db, module, alias.file_id);
     let bounds = alias
         .value
@@ -308,7 +302,7 @@ pub(crate) fn lower_function(
 ) -> (
     ExpressionStore,
     ExpressionStoreSourceMap,
-    Arc<GenericParams>,
+    GenericParams,
     Box<[TypeRefId]>,
     Option<TypeRefId>,
     bool,

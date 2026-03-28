@@ -5,7 +5,6 @@ use hir_expand::name::Name;
 use la_arena::{Arena, Idx, RawIdx};
 use stdx::impl_from;
 use thin_vec::ThinVec;
-use triomphe::Arc;
 
 use crate::{
     AdtId, ConstParamId, GenericDefId, LifetimeParamId, TypeOrConstParamId, TypeParamId,
@@ -146,7 +145,7 @@ pub enum GenericParamDataRef<'a> {
 }
 
 /// Data about the generic parameters of a function, struct, impl, etc.
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(PartialEq, Eq, Debug, Hash, Default)]
 pub struct GenericParams {
     pub(crate) type_or_consts: Arena<TypeOrConstParamData>,
     pub(crate) lifetimes: Arena<LifetimeParamData>,
@@ -178,12 +177,10 @@ pub enum WherePredicate {
     ForLifetime { lifetimes: ThinVec<Name>, target: TypeRefId, bound: TypeBound },
 }
 
-static EMPTY: LazyLock<Arc<GenericParams>> = LazyLock::new(|| {
-    Arc::new(GenericParams {
-        type_or_consts: Arena::default(),
-        lifetimes: Arena::default(),
-        where_predicates: Box::default(),
-    })
+static EMPTY: LazyLock<GenericParams> = LazyLock::new(|| GenericParams {
+    type_or_consts: Arena::default(),
+    lifetimes: Arena::default(),
+    where_predicates: Box::default(),
 });
 
 impl GenericParams {
@@ -191,47 +188,50 @@ impl GenericParams {
     pub const SELF_PARAM_ID_IN_SELF: la_arena::Idx<TypeOrConstParamData> =
         LocalTypeOrConstParamId::from_raw(RawIdx::from_u32(0));
 
-    pub fn new(db: &dyn DefDatabase, def: GenericDefId) -> Arc<GenericParams> {
-        Self::of(db, def).0
+    pub fn of(db: &dyn DefDatabase, def: GenericDefId) -> &GenericParams {
+        Self::with_store(db, def).0
     }
 
-    pub fn of(db: &dyn DefDatabase, def: GenericDefId) -> (Arc<GenericParams>, &ExpressionStore) {
+    pub fn with_store(
+        db: &dyn DefDatabase,
+        def: GenericDefId,
+    ) -> (&GenericParams, &ExpressionStore) {
         match def {
             GenericDefId::AdtId(AdtId::EnumId(id)) => {
                 let sig = EnumSignature::of(db, id);
-                (sig.generic_params.clone(), &sig.store)
+                (&sig.generic_params, &sig.store)
             }
             GenericDefId::AdtId(AdtId::StructId(id)) => {
                 let sig = StructSignature::of(db, id);
-                (sig.generic_params.clone(), &sig.store)
+                (&sig.generic_params, &sig.store)
             }
             GenericDefId::AdtId(AdtId::UnionId(id)) => {
                 let sig = UnionSignature::of(db, id);
-                (sig.generic_params.clone(), &sig.store)
-            }
-            GenericDefId::FunctionId(id) => {
-                let sig = FunctionSignature::of(db, id);
-                (sig.generic_params.clone(), &sig.store)
-            }
-            GenericDefId::ImplId(id) => {
-                let sig = ImplSignature::of(db, id);
-                (sig.generic_params.clone(), &sig.store)
-            }
-            GenericDefId::TraitId(id) => {
-                let sig = TraitSignature::of(db, id);
-                (sig.generic_params.clone(), &sig.store)
-            }
-            GenericDefId::TypeAliasId(id) => {
-                let sig = TypeAliasSignature::of(db, id);
-                (sig.generic_params.clone(), &sig.store)
+                (&sig.generic_params, &sig.store)
             }
             GenericDefId::ConstId(id) => {
                 let sig = ConstSignature::of(db, id);
-                (EMPTY.clone(), &sig.store)
+                (&EMPTY, &sig.store)
+            }
+            GenericDefId::FunctionId(id) => {
+                let sig = FunctionSignature::of(db, id);
+                (&sig.generic_params, &sig.store)
+            }
+            GenericDefId::ImplId(id) => {
+                let sig = ImplSignature::of(db, id);
+                (&sig.generic_params, &sig.store)
             }
             GenericDefId::StaticId(id) => {
                 let sig = StaticSignature::of(db, id);
-                (EMPTY.clone(), &sig.store)
+                (&EMPTY, &sig.store)
+            }
+            GenericDefId::TraitId(id) => {
+                let sig = TraitSignature::of(db, id);
+                (&sig.generic_params, &sig.store)
+            }
+            GenericDefId::TypeAliasId(id) => {
+                let sig = TypeAliasSignature::of(db, id);
+                (&sig.generic_params, &sig.store)
             }
         }
     }
@@ -239,43 +239,43 @@ impl GenericParams {
     pub fn with_source_map(
         db: &dyn DefDatabase,
         def: GenericDefId,
-    ) -> (Arc<GenericParams>, &ExpressionStore, &ExpressionStoreSourceMap) {
+    ) -> (&GenericParams, &ExpressionStore, &ExpressionStoreSourceMap) {
         match def {
             GenericDefId::AdtId(AdtId::EnumId(id)) => {
                 let (sig, sm) = EnumSignature::with_source_map(db, id);
-                (sig.generic_params.clone(), &sig.store, sm)
+                (&sig.generic_params, &sig.store, sm)
             }
             GenericDefId::AdtId(AdtId::StructId(id)) => {
                 let (sig, sm) = StructSignature::with_source_map(db, id);
-                (sig.generic_params.clone(), &sig.store, sm)
+                (&sig.generic_params, &sig.store, sm)
             }
             GenericDefId::AdtId(AdtId::UnionId(id)) => {
                 let (sig, sm) = UnionSignature::with_source_map(db, id);
-                (sig.generic_params.clone(), &sig.store, sm)
+                (&sig.generic_params, &sig.store, sm)
             }
             GenericDefId::ConstId(id) => {
                 let (sig, sm) = ConstSignature::with_source_map(db, id);
-                (EMPTY.clone(), &sig.store, sm)
+                (&EMPTY, &sig.store, sm)
             }
             GenericDefId::FunctionId(id) => {
                 let (sig, sm) = FunctionSignature::with_source_map(db, id);
-                (sig.generic_params.clone(), &sig.store, sm)
+                (&sig.generic_params, &sig.store, sm)
             }
             GenericDefId::ImplId(id) => {
                 let (sig, sm) = ImplSignature::with_source_map(db, id);
-                (sig.generic_params.clone(), &sig.store, sm)
+                (&sig.generic_params, &sig.store, sm)
             }
             GenericDefId::StaticId(id) => {
                 let (sig, sm) = StaticSignature::with_source_map(db, id);
-                (EMPTY.clone(), &sig.store, sm)
+                (&EMPTY, &sig.store, sm)
             }
             GenericDefId::TraitId(id) => {
                 let (sig, sm) = TraitSignature::with_source_map(db, id);
-                (sig.generic_params.clone(), &sig.store, sm)
+                (&sig.generic_params, &sig.store, sm)
             }
             GenericDefId::TypeAliasId(id) => {
                 let (sig, sm) = TypeAliasSignature::with_source_map(db, id);
-                (sig.generic_params.clone(), &sig.store, sm)
+                (&sig.generic_params, &sig.store, sm)
             }
         }
     }
