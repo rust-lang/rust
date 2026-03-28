@@ -61,7 +61,7 @@ use crate::alloc::Allocator;
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
-use crate::collections::TryReserveError;
+use crate::collections::{TryReserveError, VecDeque};
 use crate::str::{self, CharIndices, Chars, Utf8Error, from_utf8_unchecked_mut};
 #[cfg(not(no_global_oom_handling))]
 use crate::str::{FromStr, from_boxed_utf8_unchecked};
@@ -3602,5 +3602,205 @@ impl From<char> for String {
     #[inline]
     fn from(c: char) -> Self {
         c.to_string()
+    }
+}
+
+// In place case changes
+
+impl String {
+    /// Converts this string to its uppercase equivalent in-place.
+    ///
+    /// 'Uppercase' is defined according to the terms of the Unicode Derived Core Property
+    /// `Uppercase`.
+    ///
+    /// Since some characters can expand into multiple characters when changing
+    /// the case, this method may change the length of the string. If the string
+    /// shrinks, the excess capacity is not reclaimed.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(string_make_uplowercase)]
+    ///
+    /// let mut s = String::from("hello");
+    /// s.make_uppercase();
+    ///
+    /// assert_eq!("HELLO", s);
+    /// ```
+    ///
+    /// Scripts without case are not changed:
+    ///
+    /// ```
+    /// #![feature(string_make_uplowercase)]
+    ///
+    /// let mut new_year = String::from("农历新年");
+    /// new_year.make_uppercase();
+    ///
+    /// assert_eq!("农历新年", new_year);
+    /// ```
+    ///
+    /// One character can become multiple:
+    ///
+    /// ```
+    /// #![feature(string_make_uplowercase)]
+    ///
+    /// let mut s = String::from("tschüß");
+    /// s.make_uppercase();
+    ///
+    /// assert_eq!("TSCHÜSS", s);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_make_uplowercase", issue = "135885")]
+    pub fn make_uppercase(&mut self) {
+        let mut wc = WriteChars::new(self);
+        while let Some(l_c) = wc.pop() {
+            l_c.to_uppercase().for_each(|u_c| wc.write(u_c));
+        }
+    }
+
+    /// Converts this string to its lowercase equivalent in-place.
+    ///
+    /// 'Lowercase' is defined according to the terms of the Unicode Derived Core Property
+    /// `Lowercase`.
+    ///
+    /// Since some characters can expand into multiple characters when changing
+    /// the case, this method may change the length of the string. If the string
+    /// shrinks, the excess capacity is not reclaimed.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(string_make_uplowercase)]
+    ///
+    /// let mut s = String::from("HELLO");
+    /// s.make_lowercase();
+    ///
+    /// assert_eq!("hello", s);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(string_make_uplowercase)]
+    ///
+    /// let mut odysseus = String::from("ὈΔΥΣΣΕΎΣ");
+    /// odysseus.make_lowercase();
+    ///
+    /// assert_eq!("ὀδυσσεύς", odysseus);
+    /// ```
+    ///
+    /// Languages without case are not changed:
+    ///
+    /// ```
+    /// #![feature(string_make_uplowercase)]
+    ///
+    /// let mut new_year = String::from("农历新年");
+    /// new_year.make_lowercase();
+    ///
+    /// assert_eq!("农历新年", new_year);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_make_uplowercase", issue = "135885")]
+    pub fn make_lowercase(&mut self) {
+        let mut wc = WriteChars::new(self);
+        // This is unfortunately paid whether or not you have sigmas in the str
+        // but it is kind of mandatory because as we are overwriting the source bytes
+        // we have to compute this information as we go.
+        let mut word_final_so_far = false;
+        while let Some(u_c) = wc.pop() {
+            if u_c == 'Σ' {
+                if word_final_so_far && !crate::str::case_ignorable_then_cased(wc.rest().chars()) {
+                    // actually word final
+                    wc.write('ς');
+                } else {
+                    wc.write('σ');
+                }
+            } else {
+                u_c.to_lowercase().for_each(|l_c| wc.write(l_c));
+            }
+            word_final_so_far = u_c.is_cased() || (word_final_so_far && u_c.is_case_ignorable());
+        }
+    }
+}
+
+/// A helper for in place modification of strings, where we gradually "pop" characters,
+/// hereby making room to write back to the string buffer
+#[unstable(issue = "none", feature = "std_internals")]
+struct WriteChars<'a> {
+    // This is the internal buffer of the string temporarily changed to Vec<u8> because
+    // it will contain non utf8 bytes.
+    // invariant: self.v.len() == original string until drop is run
+    v: Vec<u8>,
+    // A reference kept to restore the string at the end
+    // (ie drop time)
+    s: &'a mut String,
+    // invariant: write_offset <= read_offset
+    write_offset: usize,
+    // invariant: self.read_offset <= self.v.len()
+    // before the Drop
+    read_offset: usize,
+    buffer: VecDeque<u8>,
+}
+
+impl<'a> Drop for WriteChars<'a> {
+    // Set the proper length of the string's storage
+    // or grow it to add what is still in the buffer.
+    fn drop(&mut self) {
+        if self.buffer.is_empty() {
+            // SAFETY: if the queue is empty, then
+            // there were less bytes than in the original so we can simply shrink
+            unsafe {
+                self.v.set_len(self.write_offset);
+            }
+        } else {
+            let (q1, q2) = self.buffer.as_slices();
+            self.v.extend_from_slice(q1);
+            self.v.extend_from_slice(q2);
+        };
+        // SAFETY: this is valid utf8
+        *self.s = unsafe { String::from_utf8_unchecked(core::mem::take(&mut self.v)) }
+    }
+}
+
+#[unstable(issue = "none", feature = "std_internals")]
+impl<'a> WriteChars<'a> {
+    fn new(s: &'a mut String) -> Self {
+        let v = core::mem::take(s).into_bytes();
+        WriteChars { s, v, write_offset: 0, read_offset: 0, buffer: VecDeque::new() }
+    }
+
+    fn rest(&self) -> &str {
+        // SAFETY: read_offset is always ok to read from
+        unsafe { str::from_utf8_unchecked(&self.v[self.read_offset..]) }
+    }
+
+    fn pop(&mut self) -> Option<char> {
+        // SAFETY: The bytes from read_offset are valid UTF8
+        let (code_point, width) = unsafe {
+            core::str::next_code_point_with_width(&mut self.v[self.read_offset..].iter())?
+        };
+        self.read_offset += width;
+        // Dump what is buffered in the newly freed space
+        while self.write_offset < self.read_offset
+            && let Some(b) = self.buffer.pop_front()
+        {
+            self.v[self.write_offset] = b;
+            self.write_offset += 1;
+        }
+        // SAFETY: The code point is valid
+        let c = unsafe { char::from_u32_unchecked(code_point) };
+        Some(c)
+    }
+
+    fn write(&mut self, c: char) {
+        let writable_slice = &mut self.v[self.write_offset..self.read_offset];
+        let mut buffer = [0u8; 4];
+        let len = c.encode_utf8(&mut buffer).len();
+        let direct_copy_length = core::cmp::min(len, writable_slice.len());
+        writable_slice[..direct_copy_length].copy_from_slice(&buffer[..direct_copy_length]);
+        self.write_offset += direct_copy_length;
+        self.buffer.extend(&buffer[direct_copy_length..len]);
     }
 }

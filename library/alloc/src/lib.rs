@@ -147,6 +147,7 @@
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
 #![feature(std_internals)]
+#![feature(str_internals)]
 #![feature(temporary_niche_types)]
 #![feature(titlecase)]
 #![feature(transmutability)]
