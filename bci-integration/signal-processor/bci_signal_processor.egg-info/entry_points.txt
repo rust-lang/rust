@@ -1,2 +1,0 @@
-[console_scripts]
-bci-signal-processor = src.__main__:main

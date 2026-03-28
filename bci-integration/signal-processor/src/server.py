@@ -14,6 +14,7 @@ from fastapi import FastAPI
 
 from . import config
 from .brainflow_reader import BCIReader
+from .models import BCIStateModel, HealthResponse, StateResponse
 from .state_manager import StateManager
 
 logger = logging.getLogger(__name__)
@@ -54,18 +55,18 @@ def create_app(synthetic: bool = True) -> FastAPI:
         lifespan=lifespan,
     )
 
-    @app.get("/state")
-    def get_state() -> dict[str, Any]:
+    @app.get("/state", response_model=StateResponse)
+    def get_state() -> StateResponse:
         """Return current BCI state (state_response schema)."""
         now_ms = int(time.time() * 1000)
         state = _state_manager.get_state()
 
         if state is None:
-            return {
-                "available": False,
-                "timestamp_unix_ms": now_ms,
-                "error": "No BCI data received yet",
-            }
+            return StateResponse(
+                available=False,
+                timestamp_unix_ms=now_ms,
+                error="No BCI data received yet",
+            )
 
         staleness = state.get("staleness_ms", 0)
 
@@ -82,14 +83,14 @@ def create_app(synthetic: bool = True) -> FastAPI:
                 f"({staleness}ms old), signal unreliable."
             )
 
-        return {
-            "available": True,
-            "timestamp_unix_ms": now_ms,
-            "bci_state": state,
-        }
+        return StateResponse(
+            available=True,
+            timestamp_unix_ms=now_ms,
+            bci_state=BCIStateModel(**state),
+        )
 
-    @app.get("/health")
-    def get_health() -> dict[str, Any]:
+    @app.get("/health", response_model=HealthResponse)
+    def get_health() -> HealthResponse:
         """Return server health (health_response schema)."""
         now = time.time()
         uptime = now - _start_time if _start_time > 0 else 0.0
@@ -109,12 +110,12 @@ def create_app(synthetic: bool = True) -> FastAPI:
             else:
                 status = "ok"
 
-        return {
-            "status": status,
-            "uptime_seconds": round(uptime, 1),
-            "device_connected": device_connected,
-            "session_id": _state_manager.session_id,
-            "last_update_unix_ms": last_update,
-        }
+        return HealthResponse(
+            status=status,
+            uptime_seconds=round(uptime, 1),
+            device_connected=device_connected,
+            session_id=_state_manager.session_id,
+            last_update_unix_ms=last_update,
+        )
 
     return app
