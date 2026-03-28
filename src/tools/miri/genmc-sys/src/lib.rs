@@ -212,6 +212,8 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct LoadResult {
+        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
+        invalid: bool,
         /// If not null, contains the error encountered during the handling of the load.
         error: UniquePtr<CxxString>,
         /// Indicates whether a value was read or not.
@@ -223,6 +225,8 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct StoreResult {
+        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
+        invalid: bool,
         /// If not null, contains the error encountered during the handling of the store.
         error: UniquePtr<CxxString>,
         /// `true` if the write should also be reflected in Miri's memory representation.
@@ -232,6 +236,8 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct ReadModifyWriteResult {
+        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
+        invalid: bool,
         /// If there was an error, it will be stored in `error`, otherwise it is `None`.
         error: UniquePtr<CxxString>,
         /// The value that was read by the RMW operation as the left operand.
@@ -245,6 +251,8 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct CompareExchangeResult {
+        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
+        invalid: bool,
         /// If there was an error, it will be stored in `error`, otherwise it is `None`.
         error: UniquePtr<CxxString>,
         /// The value that was read by the compare-exchange.
@@ -258,6 +266,8 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct MutexLockResult {
+        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
+        invalid: bool,
         /// If there was an error, it will be stored in `error`, otherwise it is `None`.
         error: UniquePtr<CxxString>,
         /// If true, GenMC determined that we should retry the mutex lock operation once the thread attempting to lock is scheduled again.

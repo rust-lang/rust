@@ -447,6 +447,9 @@ impl GenmcCtx {
             can_fail_spuriously,
         );
 
+        if cas_result.invalid {
+            throw_machine_stop!(TerminationInfo::GenmcSkip);
+        }
         if let Some(error) = cas_result.error.as_ref() {
             // FIXME(genmc): error handling
             throw_ub_format!("{}", error.to_string_lossy());
@@ -859,6 +862,9 @@ impl GenmcCtx {
             genmc_old_value,
         );
 
+        if rmw_result.invalid {
+            throw_machine_stop!(TerminationInfo::GenmcSkip);
+        }
         if let Some(error) = rmw_result.error.as_ref() {
             // FIXME(genmc): error handling
             throw_ub_format!("{}", error.to_string_lossy());
