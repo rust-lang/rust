@@ -1,9 +1,8 @@
 //! Code to load the dep-graph from files.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
 use rustc_middle::dep_graph::{DepGraph, SerializedDepGraph, WorkProductMap};
@@ -20,6 +19,7 @@ use super::fs::*;
 use super::save::build_dep_graph;
 use super::{file_format, work_product};
 use crate::errors;
+use crate::persist::file_format::{OpenFile, OpenFileError};
 
 #[derive(Debug)]
 /// Represents the result of an attempt to load incremental compilation data.
@@ -69,23 +69,6 @@ impl<T: Default> LoadResult<T> {
     }
 }
 
-fn load_data(path: &Path, sess: &Session) -> LoadResult<(Mmap, usize)> {
-    match file_format::read_file(
-        path,
-        sess.opts.unstable_opts.incremental_info,
-        sess.is_nightly_build(),
-        sess.cfg_version,
-    ) {
-        Ok(Some(data_and_pos)) => LoadResult::Ok { data: data_and_pos },
-        Ok(None) => {
-            // The file either didn't exist or was produced by an incompatible
-            // compiler version. Neither is an error.
-            LoadResult::DataOutOfDate
-        }
-        Err(err) => LoadResult::LoadDepGraph(path.to_path_buf(), err),
-    }
-}
-
 fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
     debug!("delete_dirty_work_product({:?})", swp);
     work_product::delete_workproduct_files(sess, &swp.work_product);
@@ -113,12 +96,12 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
     // when trying to load work products.
     if sess.incr_comp_session_dir_opt().is_some() {
         let work_products_path = work_products_path(sess);
-        let load_result = load_data(&work_products_path, sess);
 
-        if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
+        if let Ok(OpenFile { mmap, start_pos }) =
+            file_format::open_incremental_file(sess, &work_products_path)
+        {
             // Decode the list of work_products
-            let Ok(mut work_product_decoder) = MemDecoder::new(&work_products_data[..], start_pos)
-            else {
+            let Ok(mut work_product_decoder) = MemDecoder::new(&mmap[..], start_pos) else {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &work_products_path });
                 return LoadResult::DataOutOfDate;
             };
@@ -147,11 +130,11 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
 
     let _prof_timer = prof.generic_activity("incr_comp_load_dep_graph");
 
-    match load_data(&path, sess) {
-        LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
-        LoadResult::LoadDepGraph(path, err) => LoadResult::LoadDepGraph(path, err),
-        LoadResult::Ok { data: (bytes, start_pos) } => {
-            let Ok(mut decoder) = MemDecoder::new(&bytes, start_pos) else {
+    match file_format::open_incremental_file(sess, &path) {
+        Err(OpenFileError::NotFoundOrHeaderMismatch) => LoadResult::DataOutOfDate,
+        Err(OpenFileError::IoError { err }) => LoadResult::LoadDepGraph(path.to_owned(), err),
+        Ok(OpenFile { mmap, start_pos }) => {
+            let Ok(mut decoder) = MemDecoder::new(&mmap, start_pos) else {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
                 return LoadResult::DataOutOfDate;
             };
@@ -191,15 +174,17 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
 
     let path = query_cache_path(sess);
-    match load_data(&path, sess) {
-        LoadResult::Ok { data: (bytes, start_pos) } => {
-            let cache = OnDiskCache::new(sess, bytes, start_pos).unwrap_or_else(|()| {
+    match file_format::open_incremental_file(sess, &path) {
+        Ok(OpenFile { mmap, start_pos }) => {
+            let cache = OnDiskCache::new(sess, mmap, start_pos).unwrap_or_else(|()| {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
                 OnDiskCache::new_empty()
             });
             Some(cache)
         }
-        _ => Some(OnDiskCache::new_empty()),
+        Err(OpenFileError::NotFoundOrHeaderMismatch | OpenFileError::IoError { .. }) => {
+            Some(OnDiskCache::new_empty())
+        }
     }
 }
 
