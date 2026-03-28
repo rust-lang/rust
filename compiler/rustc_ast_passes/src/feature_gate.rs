@@ -644,6 +644,24 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all_legacy_dont_use!(try_blocks, "`try` blocks are unstable");
     gate_all_legacy_dont_use!(auto_traits, "`auto` traits are unstable");
     gate_all_legacy_dont_use!(negative_impls, "negative impls are experimental");
+    gate_all_legacy_dont_use!(specialization, "specialization is experimental");
+
+    if let Some(spans) = spans.get(&sym::min_specialization) {
+        for &span in spans {
+            if !visitor.features.specialization()
+                && !visitor.features.min_specialization()
+                && !span.allows_unstable(sym::specialization)
+                && !span.allows_unstable(sym::min_specialization)
+            {
+                feature_warn(
+                    visitor.sess,
+                    sym::specialization,
+                    span,
+                    "specialization is experimental",
+                );
+            }
+        }
+    }
 
     visit::walk_crate(&mut visitor, krate);
 }
