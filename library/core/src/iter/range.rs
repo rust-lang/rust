@@ -29,7 +29,8 @@ unsafe_impl_trusted_step![AsciiChar char i8 i16 i32 i64 i128 isize u8 u16 u32 u6
             unstable `Step` trait"
 )]
 #[unstable(feature = "step_trait", issue = "42168")]
-pub trait Step: Clone + PartialOrd + Sized {
+#[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+pub const trait Step: [const] Clone + [const] PartialOrd + Sized {
     /// Returns the bounds on the number of *successor* steps required to get from `start` to `end`
     /// like [`Iterator::size_hint()`][Iterator::size_hint()].
     ///
@@ -262,7 +263,8 @@ macro_rules! step_integer_impls {
         $(
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", issue = "42168")]
-            impl Step for $u_narrower {
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for $u_narrower {
                 step_identical_methods!();
                 step_unsigned_methods!();
 
@@ -296,7 +298,8 @@ macro_rules! step_integer_impls {
 
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", issue = "42168")]
-            impl Step for $i_narrower {
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for $i_narrower {
                 step_identical_methods!();
                 step_signed_methods!($u_narrower);
 
@@ -362,7 +365,8 @@ macro_rules! step_integer_impls {
         $(
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", issue = "42168")]
-            impl Step for $u_wider {
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for $u_wider {
                 step_identical_methods!();
                 step_unsigned_methods!();
 
@@ -392,7 +396,8 @@ macro_rules! step_integer_impls {
 
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", issue = "42168")]
-            impl Step for $i_wider {
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for $i_wider {
                 step_identical_methods!();
                 step_signed_methods!($u_wider);
 
@@ -449,7 +454,8 @@ step_integer_impls! {
 }
 
 #[unstable(feature = "step_trait", issue = "42168")]
-impl Step for char {
+#[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+impl const Step for char {
     #[inline]
     fn steps_between(&start: &char, &end: &char) -> (usize, Option<usize>) {
         let start = start as u32;
@@ -536,7 +542,8 @@ impl Step for char {
 }
 
 #[unstable(feature = "step_trait", issue = "42168")]
-impl Step for AsciiChar {
+#[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+impl const Step for AsciiChar {
     #[inline]
     fn steps_between(&start: &AsciiChar, &end: &AsciiChar) -> (usize, Option<usize>) {
         Step::steps_between(&start.to_u8(), &end.to_u8())
@@ -578,7 +585,8 @@ impl Step for AsciiChar {
 }
 
 #[unstable(feature = "step_trait", issue = "42168")]
-impl Step for Ipv4Addr {
+#[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+impl const Step for Ipv4Addr {
     #[inline]
     fn steps_between(&start: &Ipv4Addr, &end: &Ipv4Addr) -> (usize, Option<usize>) {
         u32::steps_between(&start.to_bits(), &end.to_bits())
@@ -610,7 +618,8 @@ impl Step for Ipv4Addr {
 }
 
 #[unstable(feature = "step_trait", issue = "42168")]
-impl Step for Ipv6Addr {
+#[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+impl const Step for Ipv6Addr {
     #[inline]
     fn steps_between(&start: &Ipv6Addr, &end: &Ipv6Addr) -> (usize, Option<usize>) {
         u128::steps_between(&start.to_bits(), &end.to_bits())
