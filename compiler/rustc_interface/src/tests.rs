@@ -12,12 +12,12 @@ use rustc_hir::attrs::{CollapseMacroDebuginfo, NativeLibKind};
 use rustc_session::config::{
     AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CoverageLevel, CoverageOptions,
     DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs,
-    FmtDebug, FunctionReturn, InliningThreshold, Input, InstrumentCoverage, InstrumentXRay,
-    LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig,
-    Offload, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes,
-    PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
-    SymbolManglingVersion, WasiExecModel, build_configuration, build_session_options,
-    rustc_optgroups,
+    FmtDebug, FunctionReturn, InliningThreshold, Input, InstrumentCoverage, InstrumentFunction,
+    InstrumentMcountOpts, InstrumentXRayOpts, LinkSelfContained, LinkerPluginLto, LocationDetail,
+    LtoCli, MirIncludeSpans, NextSolverConfig, Offload, Options, OutFileName, OutputType,
+    OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius,
+    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+    build_configuration, build_session_options, rustc_optgroups,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -810,8 +810,12 @@ fn test_unstable_options_tracking_hash() {
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_hint_threshold, Some(123));
     tracked!(inline_mir_threshold, Some(123));
-    tracked!(instrument_mcount, true);
-    tracked!(instrument_xray, Some(InstrumentXRay::default()));
+    tracked!(instrument_fentry_opts, InstrumentMcountOpts { no_call: true, record: true });
+    tracked!(instrument_function, InstrumentFunction::Fentry);
+    tracked!(
+        instrument_xray_opts,
+        InstrumentXRayOpts { always: true, ..InstrumentXRayOpts::default() }
+    );
     tracked!(link_directives, false);
     tracked!(link_only, true);
     tracked!(lint_llvm_ir, true);

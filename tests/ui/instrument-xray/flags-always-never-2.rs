@@ -1,9 +1,9 @@
-// Checks that `-Z instrument-xray` allows `always` and `never` sequentially.
-// (The last specified setting wins, like `-Z instrument-xray=no` as well.)
+// Checks that `-Z instrument-xray-opts` allows `always` and `never` sequentially.
+// (The last specified setting wins)
 //
 //@ needs-xray
-//@ compile-flags: -Z instrument-xray=always
-//@ compile-flags: -Z instrument-xray=never
+//@ compile-flags: -Z instrument-xray-opts=always
+//@ compile-flags: -Z instrument-xray-opts=never
 //@ check-pass
 
 fn main() {}

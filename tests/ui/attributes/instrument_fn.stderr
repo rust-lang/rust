@@ -1,0 +1,89 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/instrument_fn.rs:13:9
+   |
+LL |         #[instrument_fn = "off"]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `#[instrument_fn]` attribute cannot be used on structs
+  --> $DIR/instrument_fn.rs:3:1
+   |
+LL | #[instrument_fn = "on"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[instrument_fn]` can only be applied to functions
+
+error: `#[instrument_fn]` attribute cannot be used on modules
+  --> $DIR/instrument_fn.rs:6:1
+   |
+LL | #[instrument_fn = "on"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[instrument_fn]` can only be applied to functions
+
+error: `#[instrument_fn]` attribute cannot be used on inherent impl blocks
+  --> $DIR/instrument_fn.rs:9:1
+   |
+LL | #[instrument_fn = "on"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[instrument_fn]` can only be applied to functions
+
+error: `#[instrument_fn]` attribute cannot be used on expressions
+  --> $DIR/instrument_fn.rs:13:9
+   |
+LL |         #[instrument_fn = "off"]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[instrument_fn]` can only be applied to functions
+
+error: `#[instrument_fn]` attribute cannot be used on traits
+  --> $DIR/instrument_fn.rs:19:1
+   |
+LL | #[instrument_fn = "off"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[instrument_fn]` can only be applied to functions
+
+error: `#[instrument_fn]` attribute cannot be used on required trait methods
+  --> $DIR/instrument_fn.rs:21:5
+   |
+LL |     #[instrument_fn = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[instrument_fn]` can be applied to functions, inherent methods, provided trait methods, and trait methods in impl blocks
+
+error[E0805]: malformed `instrument_fn` attribute input
+  --> $DIR/instrument_fn.rs:36:1
+   |
+LL | #[instrument_fn(entry = "on")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected a single argument here
+   | help: must be of the form: `#[instrument_fn = "on|off"]`
+
+error[E0539]: malformed `instrument_fn` attribute input
+  --> $DIR/instrument_fn.rs:39:1
+   |
+LL | #[instrument_fn]
+   | ^^^^^^^^^^^^^^^^
+   | |
+   | valid arguments are `on` or `off`
+   | help: must be of the form: `#[instrument_fn = "on|off"]`
+
+error[E0539]: malformed `instrument_fn` attribute input
+  --> $DIR/instrument_fn.rs:42:1
+   |
+LL | #[instrument_fn = 1]
+   | ^^^^^^^^^^^^^^^^^^-^
+   | |                 |
+   | |                 valid arguments are `on` or `off`
+   | help: must be of the form: `#[instrument_fn = "on|off"]`
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0539, E0658, E0805.
+For more information about an error, try `rustc --explain E0539`.

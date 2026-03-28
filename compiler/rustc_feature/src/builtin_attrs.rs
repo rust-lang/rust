@@ -769,6 +769,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorPreceding, EncodeCrossCrate::No
     ),
     gated!(
+        instrument_fn, Normal, template!(List: &[r#"entry = "on|off""#]), ErrorPreceding,
+        EncodeCrossCrate::No, instrument_fn, experimental!(instrument_fn),
+    ),
+    gated!(
         unsafe force_target_feature, Normal, template!(List: &[r#"enable = "name""#]),
         DuplicatesOk, EncodeCrossCrate::No, effective_target_features, experimental!(force_target_feature)
     ),
