@@ -4,16 +4,15 @@ use hir_expand::{
     EditionedFileId, HirFileId, InFile, Lookup, MacroCallId, MacroDefId, MacroDefKind,
     db::ExpandDatabase,
 };
-use la_arena::ArenaMap;
 use triomphe::Arc;
 
 use crate::{
     AnonConstId, AnonConstLoc, AssocItemId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc,
     EnumId, EnumLoc, EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId,
-    ExternCrateLoc, FunctionId, FunctionLoc, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc,
-    MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId,
-    ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId,
-    TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
+    ExternCrateLoc, FunctionId, FunctionLoc, ImplId, ImplLoc, Macro2Id, Macro2Loc, MacroExpander,
+    MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId,
+    StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId,
+    UnionLoc, UseId, UseLoc,
     attrs::AttrFlags,
     item_tree::{ItemTree, file_item_tree_query},
     nameres::crate_def_map,
@@ -97,9 +96,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     fn macro_def(&self, m: MacroId) -> MacroDefId;
 
     // region:visibilities
-
-    #[salsa::invoke(visibility::field_visibilities_query)]
-    fn field_visibilities(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Visibility>>;
 
     #[salsa::invoke(visibility::assoc_visibility_query)]
     fn assoc_visibility(&self, def: AssocItemId) -> Visibility;

@@ -906,7 +906,7 @@ impl VariantFields {
     }
 
     #[salsa::tracked(returns(deref))]
-    pub(crate) fn firewall(db: &dyn DefDatabase, id: VariantId) -> Arc<Self> {
+    pub(crate) fn of(db: &dyn DefDatabase, id: VariantId) -> Arc<Self> {
         Self::with_source_map(db, id).0.clone()
     }
 }
