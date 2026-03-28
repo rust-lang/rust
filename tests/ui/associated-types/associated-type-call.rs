@@ -1,7 +1,10 @@
 // issue: <https://github.com/rust-lang/rust/issues/142473>
+// Also related to #71054 / #120871: `Self::Assoc()` now resolves when Assoc is an
+// associated type set to a unit struct.
 //
-//@ run-rustfix
+//@ check-pass
 #![allow(unused)]
+
 struct T();
 
 trait Trait {
@@ -15,7 +18,6 @@ impl Trait for () {
 
     fn f() {
         <Self>::Assoc();
-        //~^ ERROR no associated item named `Assoc` found for unit type `()` in the current scope
     }
 }
 

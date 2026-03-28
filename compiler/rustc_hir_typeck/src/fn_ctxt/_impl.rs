@@ -792,6 +792,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result = self
             .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
             .or_else(|error| {
+                // Fix for #71054: when `Self::Associated` (unit struct) fails value lookup,
+                // try resolving the path as the associated type's constructor.
+                if let method::MethodError::NoMatch(_) = error
+                    && let Some((kind, def_id)) =
+                        self.try_associated_type_constructor(item_name, ty.normalized)
+                {
+                    return Ok((kind, def_id));
+                }
+
                 let guar = self
                     .dcx()
                     .span_delayed_bug(span, "method resolution should've emitted an error");
@@ -820,6 +829,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(ty),
             slice::from_ref(&**item_segment),
         )
+    }
+
+    /// When path resolution fails for a value (e.g. `Self::Associated` or `Self::Err(42)`),
+    /// check if we're inside an impl and the name refers to an associated type that is a
+    /// struct (unit or tuple). If so, return its constructor so the path can be used as a
+    /// struct expression. (Fix for #71054 and #120871)
+    fn try_associated_type_constructor(
+        &self,
+        item_name: rustc_span::Ident,
+        self_ty: Ty<'tcx>,
+    ) -> Option<(DefKind, DefId)> {
+        let tcx = self.tcx;
+        let body_owner = tcx.local_def_id_to_hir_id(self.body_id);
+        let parent_node = tcx.hir_node(tcx.parent_hir_id(body_owner));
+        let Node::Item(hir::Item { kind: hir::ItemKind::Impl(..), owner_id, .. }) = parent_node
+        else {
+            return None;
+        };
+        let impl_def_id = owner_id.def_id;
+        let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
+        let self_types_match = impl_self_ty == self_ty
+            || matches!(
+                (impl_self_ty.ty_adt_def(), self_ty.ty_adt_def()),
+                (Some(a), Some(b)) if a.did() == b.did()
+            );
+        if !self_types_match {
+            return None;
+        }
+        let impl_did = impl_def_id.to_def_id();
+        let candidate = tcx.associated_items(impl_def_id).find_by_ident_and_kind(
+            tcx,
+            item_name,
+            ty::AssocTag::Type,
+            impl_did,
+        )?;
+        let adt_def = tcx.type_of(candidate.def_id).skip_binder().ty_adt_def()?;
+        if !adt_def.is_struct() {
+            return None;
+        }
+        let variant = adt_def.non_enum_variant();
+        let ctor_kind = variant.ctor_kind()?;
+        Some((DefKind::Ctor(CtorOf::Struct, ctor_kind), variant.ctor_def_id()?))
     }
 
     /// Given a `HirId`, return the `HirId` of the enclosing function and its `FnDecl`.
