@@ -158,154 +158,6 @@ impl TargetModifier {
     }
 }
 
-fn tmod_push_impl(
-    opt: OptionsTargetModifiers,
-    tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
-    tmods: &mut Vec<TargetModifier>,
-) {
-    if let Some(v) = tmod_vals.get(&opt) {
-        tmods.push(TargetModifier { opt, value_name: v.clone() })
-    }
-}
-
-macro_rules! tmod_push {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr) => {
-        if *$opt_expr != $init {
-            tmod_push_impl(
-                OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt_name),
-                $tmod_vals,
-                $mods,
-            );
-        }
-    };
-}
-
-macro_rules! gather_tmods {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [SUBSTRUCT], [TARGET_MODIFIER]) => {
-        compile_error!("SUBSTRUCT can't be target modifier");
-    };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [UNTRACKED], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
-    };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [TRACKED], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
-    };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [TRACKED_NO_CRATE_HASH], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
-    };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [SUBSTRUCT], []) => {
-        $opt_expr.gather_target_modifiers($mods, $tmod_vals);
-    };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [UNTRACKED], []) => {{}};
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [TRACKED], []) => {{}};
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [TRACKED_NO_CRATE_HASH], []) => {{}};
-}
-
-macro_rules! gather_tmods_top_level {
-    ($_opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr, [SUBSTRUCT $substruct_enum:ident]) => {
-        $opt_expr.gather_target_modifiers($mods, $tmod_vals);
-    };
-    ($opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr, [$non_substruct:ident TARGET_MODIFIER]) => {
-        compile_error!("Top level option can't be target modifier");
-    };
-    ($opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr, [$non_substruct:ident]) => {};
-}
-
-/// Macro for generating OptionsTargetsModifiers top-level enum with impl.
-/// Will generate something like:
-/// ```rust,ignore (illustrative)
-/// pub enum OptionsTargetModifiers {
-///     CodegenOptions(CodegenOptionsTargetModifiers),
-///     UnstableOptions(UnstableOptionsTargetModifiers),
-/// }
-/// impl OptionsTargetModifiers {
-///     pub fn reparse(&self, user_value: &str) -> ExtendedTargetModifierInfo {
-///         match self {
-///             Self::CodegenOptions(v) => v.reparse(user_value),
-///             Self::UnstableOptions(v) => v.reparse(user_value),
-///         }
-///     }
-///     pub fn is_target_modifier(flag_name: &str) -> bool {
-///         CodegenOptionsTargetModifiers::is_target_modifier(flag_name) ||
-///         UnstableOptionsTargetModifiers::is_target_modifier(flag_name)
-///     }
-/// }
-/// ```
-macro_rules! top_level_tmod_enum {
-    ($( {$($optinfo:tt)*} ),* $(,)*) => {
-        top_level_tmod_enum! { @parse {}, (user_value){}; $($($optinfo)*|)* }
-    };
-    // Termination
-    (
-        @parse
-        {$($variant:tt($substruct_enum:tt))*},
-        ($user_value:ident){$($pout:tt)*};
-    ) => {
-        #[allow(non_camel_case_types)]
-        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
-        pub enum OptionsTargetModifiers {
-            $($variant($substruct_enum)),*
-        }
-        impl OptionsTargetModifiers {
-            #[allow(unused_variables)]
-            pub fn reparse(&self, $user_value: &str) -> ExtendedTargetModifierInfo {
-                #[allow(unreachable_patterns)]
-                match self {
-                    $($pout)*
-                    _ => panic!("unknown target modifier option: {:?}", *self)
-                }
-            }
-            pub fn is_target_modifier(flag_name: &str) -> bool {
-                $($substruct_enum::is_target_modifier(flag_name))||*
-            }
-        }
-    };
-    // Adding SUBSTRUCT option group into $eout
-    (
-        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*};
-            [SUBSTRUCT $substruct_enum:ident $variant:ident] |
-        $($tail:tt)*
-    ) => {
-        top_level_tmod_enum! {
-            @parse
-            {
-                $($eout)*
-                $variant($substruct_enum)
-            },
-            ($puser_value){
-                $($pout)*
-                Self::$variant(v) => v.reparse($puser_value),
-            };
-            $($tail)*
-        }
-    };
-    // Skipping non-target-modifier and non-substruct
-    (
-        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*};
-            [$non_substruct:ident] |
-        $($tail:tt)*
-    ) => {
-        top_level_tmod_enum! {
-            @parse
-            {
-                $($eout)*
-            },
-            ($puser_value){
-                $($pout)*
-            };
-            $($tail)*
-        }
-    };
-}
-
 macro_rules! top_level_options {
     (
         $(#[$top_level_attr:meta])*
@@ -319,13 +171,40 @@ macro_rules! top_level_options {
             )*
         }
     ) => (
-        top_level_tmod_enum!(
-            {
+        #[allow(non_camel_case_types)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
+        pub enum OptionsTargetModifiers {
+            $(
                 $(
-                    [$dep_tracking_marker $($tmod $variant),*]
-                )|*
+                    $variant($tmod),
+                )?
+            )*
+        }
+
+        impl OptionsTargetModifiers {
+            pub fn reparse(&self, user_value: &str) -> ExtendedTargetModifierInfo {
+                match self {
+                    $(
+                        $(
+                            Self::$variant(v) => v.reparse(user_value),
+                        )?
+                    )*
+                    #[allow(unreachable_patterns)]
+                    _ => panic!("unknown target modifier option: {self:?}"),
+                }
             }
-        );
+
+            pub fn is_target_modifier(flag_name: &str) -> bool {
+                $(
+                    $(
+                        if $tmod::is_target_modifier(flag_name) {
+                            return true
+                        }
+                    )?
+                )*
+                false
+            }
+        }
 
         #[derive(Clone)]
         $(#[$top_level_attr])*
@@ -374,13 +253,10 @@ macro_rules! top_level_options {
             pub fn gather_target_modifiers(&self) -> Vec<TargetModifier> {
                 let mut mods = Vec::<TargetModifier>::new();
                 $(
-                    gather_tmods_top_level!(
-                        $opt,
-                        &self.$opt,
-                        &mut mods,
-                        &self.target_modifiers,
-                        [$dep_tracking_marker $($tmod),*]
-                    );
+                    $(
+                        ${ignore($tmod)}
+                        self.$opt.gather_target_modifiers(&mut mods, &self.target_modifiers);
+                    )?
                 )*
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
@@ -530,99 +406,6 @@ top_level_options!(
     }
 );
 
-macro_rules! tmod_enum_opt {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt:ident, $v:ident) => {
-        Some(OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt))
-    };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt:ident, ) => {
-        None
-    };
-}
-
-macro_rules! tmod_enum {
-    ($tmod_enum_name:ident, $prefix:expr, $( {$($optinfo:tt)*} ),* $(,)*) => {
-        tmod_enum! { $tmod_enum_name, $prefix, @parse {}, (user_value){}; $($($optinfo)*|)* }
-    };
-    // Termination
-    (
-        $tmod_enum_name:ident, $prefix:expr,
-        @parse
-        {$($eout:tt)*},
-        ($user_value:ident){$($pout:tt)*};
-    ) => {
-        #[allow(non_camel_case_types)]
-        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
-        pub enum $tmod_enum_name {
-            $($eout),*
-        }
-        impl $tmod_enum_name {
-            #[allow(unused_variables)]
-            pub fn reparse(&self, $user_value: &str) -> ExtendedTargetModifierInfo {
-                #[allow(unreachable_patterns)]
-                match self {
-                    $($pout)*
-                    _ => panic!("unknown target modifier option: {:?}", *self)
-                }
-            }
-            pub fn is_target_modifier(flag_name: &str) -> bool {
-                match flag_name.replace('-', "_").as_str() {
-                    $(stringify!($eout) => true,)*
-                    _ => false,
-                }
-            }
-        }
-    };
-    // Adding target-modifier option into $eout
-    (
-        $tmod_enum_name:ident, $prefix:expr,
-        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*};
-            $opt:ident, $parse:ident, $t:ty, [TARGET_MODIFIER] |
-        $($tail:tt)*
-    ) => {
-        tmod_enum! {
-            $tmod_enum_name, $prefix,
-            @parse
-            {
-                $($eout)*
-                $opt
-            },
-            ($puser_value){
-                $($pout)*
-                Self::$opt => {
-                    let mut parsed : $t = Default::default();
-                    let val = if $puser_value.is_empty() { None } else { Some($puser_value) };
-                    parse::$parse(&mut parsed, val);
-                    ExtendedTargetModifierInfo {
-                        prefix: $prefix.to_string(),
-                        name: stringify!($opt).to_string().replace('_', "-"),
-                        tech_value: format!("{:?}", parsed),
-                    }
-                },
-            };
-            $($tail)*
-        }
-    };
-    // Skipping non-target-modifier
-    (
-        $tmod_enum_name:ident, $prefix:expr,
-        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*};
-            $opt:ident, $parse:ident, $t:ty, [] |
-        $($tail:tt)*
-    ) => {
-        tmod_enum! {
-            $tmod_enum_name, $prefix,
-            @parse
-            {
-                $($eout)*
-            },
-            ($puser_value){
-                $($pout)*
-            };
-            $($tail)*
-        }
-    };
-}
-
 /// Defines all `CodegenOptions`/`DebuggingOptions` fields and parsers all at once. The goal of this
 /// macro is to define an interface that can be programmatically used by the option parser
 /// to initialize the struct without hardcoding field names all over the place.
@@ -645,7 +428,12 @@ macro_rules! options {
             $opt:ident : $t:ty = (
                 $init:expr,
                 $parse:ident,
-                [$dep_tracking_marker:ident $( $tmod:ident )?],
+                [
+                    $dep_tracking_marker:ident
+                    // HACK: If `TARGET_MODIFIER` is present, then `$tmod:vis`
+                    // will also be present, despite consuming no tokens.
+                    $( $tmod:vis TARGET_MODIFIER )?
+                ],
                 $desc:expr
                 $(, removed: $removed:ident )?
             ),
@@ -660,7 +448,53 @@ macro_rules! options {
             )*
         }
 
-        tmod_enum!( $tmod_enum_name, $prefix, {$($opt, $parse, $t, [$($tmod),*])|*} );
+        #[allow(non_camel_case_types)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
+        pub enum $tmod_enum_name {
+            $(
+                $(
+                    ${ignore($tmod)}
+                    $opt,
+                )?
+            )*
+        }
+
+        impl $tmod_enum_name {
+            fn reparse(&self, user_value: &str) -> ExtendedTargetModifierInfo {
+                let _user_val = if user_value.is_empty() { None } else { Some(user_value) };
+                match self {
+                    $(
+                        $(
+                            ${ignore($tmod)}
+                            Self::$opt => {
+                                let mut parsed: $t = Default::default();
+                                parse::$parse(&mut parsed, _user_val);
+
+                                ExtendedTargetModifierInfo {
+                                    prefix: $prefix.to_owned(),
+                                    name: stringify!($opt).replace('_', "-"),
+                                    tech_value: format!("{parsed:?}"),
+                                }
+                            }
+                        )?
+                    )*
+                    #[allow(unreachable_patterns)]
+                    _ => panic!("unknown target modifier option: {self:?}"),
+                }
+            }
+
+            fn is_target_modifier(flag_name: &str) -> bool {
+                match flag_name.replace('-', "_").as_str() {
+                    $(
+                        $(
+                            ${ignore($tmod)}
+                            stringify!($opt) => true,
+                        )?
+                    )*
+                    _ => false,
+                }
+            }
+        }
 
         impl Default for $struct_name {
             fn default() -> $struct_name {
@@ -705,17 +539,15 @@ macro_rules! options {
                 _tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
             ) {
                 $(
-                    gather_tmods!(
-                        $struct_name,
-                        $tmod_enum_name,
-                        $opt,
-                        &self.$opt,
-                        $init,
-                        _mods,
-                        _tmod_vals,
-                        [$dep_tracking_marker],
-                        [$($tmod),*]
-                    );
+                    $(
+                        ${ignore($tmod)}
+                        if self.$opt != $init
+                            && let opt = OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt)
+                            && let Some(v) = _tmod_vals.get(&opt)
+                        {
+                            _mods.push(TargetModifier { opt, value_name: String::clone(v) })
+                        }
+                    )?
                 )*
             }
         }
@@ -728,7 +560,15 @@ macro_rules! options {
                     type_desc: desc::$parse,
                     desc: $desc,
                     removed: None $( .or(Some(RemovedOption::$removed)) )?,
-                    tmod: tmod_enum_opt!($struct_name, $tmod_enum_name, $opt, $($tmod),*),
+                    tmod: const {
+                        None
+                        $(
+                            ${ignore($tmod)}
+                            .or(Some(
+                                OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt)
+                            ))
+                        )?
+                    },
                 }
             ),*
         ];
