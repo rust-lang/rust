@@ -1,5 +1,6 @@
 //! Things related to IR printing in the next-trait-solver.
 
+use hir_def::signatures::{TraitSignature, TypeAliasSignature};
 use rustc_type_ir::{self as ty, ir_print::IrPrint};
 
 use super::SolverDefId;
@@ -14,7 +15,7 @@ impl<'db> IrPrint<ty::AliasTy<Self>> for DbInterner<'db> {
         crate::with_attached_db(|db| match t.def_id {
             SolverDefId::TypeAliasId(id) => fmt.write_str(&format!(
                 "AliasTy({:?}[{:?}])",
-                db.type_alias_signature(id).name.as_str(),
+                TypeAliasSignature::of(db, id).name.as_str(),
                 t.args
             )),
             SolverDefId::InternedOpaqueTyId(id) => {
@@ -34,7 +35,7 @@ impl<'db> IrPrint<ty::AliasTerm<Self>> for DbInterner<'db> {
         crate::with_attached_db(|db| match t.def_id {
             SolverDefId::TypeAliasId(id) => fmt.write_str(&format!(
                 "AliasTerm({:?}[{:?}])",
-                db.type_alias_signature(id).name.as_str(),
+                TypeAliasSignature::of(db, id).name.as_str(),
                 t.args
             )),
             SolverDefId::InternedOpaqueTyId(id) => {
@@ -58,13 +59,13 @@ impl<'db> IrPrint<ty::TraitRef<Self>> for DbInterner<'db> {
                 fmt.write_str(&format!(
                     "{:?}: {}",
                     self_ty,
-                    db.trait_signature(trait_).name.as_str()
+                    TraitSignature::of(db, trait_).name.as_str()
                 ))
             } else {
                 fmt.write_str(&format!(
                     "{:?}: {}<{:?}>",
                     self_ty,
-                    db.trait_signature(trait_).name.as_str(),
+                    TraitSignature::of(db, trait_).name.as_str(),
                     trait_args
                 ))
             }
@@ -121,7 +122,7 @@ impl<'db> IrPrint<ty::ExistentialTraitRef<Self>> for DbInterner<'db> {
             let trait_ = t.def_id.0;
             fmt.write_str(&format!(
                 "ExistentialTraitRef({:?}[{:?}])",
-                db.trait_signature(trait_).name.as_str(),
+                TraitSignature::of(db, trait_).name.as_str(),
                 t.args
             ))
         })
@@ -146,7 +147,7 @@ impl<'db> IrPrint<ty::ExistentialProjection<Self>> for DbInterner<'db> {
             };
             fmt.write_str(&format!(
                 "ExistentialProjection(({:?}[{:?}]) -> {:?})",
-                db.type_alias_signature(id).name.as_str(),
+                TypeAliasSignature::of(db, id).name.as_str(),
                 t.args,
                 t.term
             ))
@@ -172,7 +173,7 @@ impl<'db> IrPrint<ty::ProjectionPredicate<Self>> for DbInterner<'db> {
             };
             fmt.write_str(&format!(
                 "ProjectionPredicate(({:?}[{:?}]) -> {:?})",
-                db.type_alias_signature(id).name.as_str(),
+                TypeAliasSignature::of(db, id).name.as_str(),
                 t.projection_term.args,
                 t.term
             ))

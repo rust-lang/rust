@@ -10,15 +10,18 @@ use std::{
 use base_db::{Crate, FxIndexMap};
 use either::Either;
 use hir_def::{
-    FindPathConfig, GenericDefId, GenericParamId, HasModule, LocalFieldId, Lookup, ModuleDefId,
-    ModuleId, TraitId,
+    ExpressionStoreOwnerId, FindPathConfig, GenericDefId, GenericParamId, HasModule, LocalFieldId,
+    Lookup, ModuleDefId, ModuleId, TraitId,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
     hir::generics::{TypeOrConstParamData, TypeParamProvenance, WherePredicate},
     item_scope::ItemInNs,
     item_tree::FieldsShape,
     lang_item::LangItems,
-    signatures::VariantFields,
+    signatures::{
+        EnumSignature, FunctionSignature, StructSignature, TraitSignature, TypeAliasSignature,
+        UnionSignature, VariantFields,
+    },
     type_ref::{
         ConstRef, LifetimeRef, LifetimeRefId, TraitBoundModifier, TypeBound, TypeRef, TypeRefId,
         UseArgRef,
@@ -671,7 +674,9 @@ fn write_projection<'db>(
     write!(
         f,
         ">::{}",
-        f.db.type_alias_signature(alias.def_id.expect_type_alias()).name.display(f.db, f.edition())
+        TypeAliasSignature::of(f.db, alias.def_id.expect_type_alias())
+            .name
+            .display(f.db, f.edition())
     )?;
     let proj_params = &alias.args.as_slice()[trait_ref.args.len()..];
     hir_fmt_generics(f, proj_params, None, None)
@@ -853,7 +858,7 @@ fn render_const_scalar_inner<'db>(
             }
             TyKind::Adt(adt, _) if b.len() == 2 * size_of::<usize>() => match adt.def_id().0 {
                 hir_def::AdtId::StructId(s) => {
-                    let data = f.db.struct_signature(s);
+                    let data = StructSignature::of(f.db, s);
                     write!(f, "&{}", data.name.display(f.db, f.edition()))?;
                     Ok(())
                 }
@@ -911,14 +916,16 @@ fn render_const_scalar_inner<'db>(
             };
             match def {
                 hir_def::AdtId::StructId(s) => {
-                    let data = f.db.struct_signature(s);
+                    let data = StructSignature::of(f.db, s);
                     write!(f, "{}", data.name.display(f.db, f.edition()))?;
                     let field_types = f.db.field_types(s.into());
                     render_variant_after_name(
                         s.fields(f.db),
                         f,
                         field_types,
-                        f.db.trait_environment(def.into()),
+                        f.db.trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(
+                            def,
+                        ))),
                         &layout,
                         args,
                         b,
@@ -926,7 +933,7 @@ fn render_const_scalar_inner<'db>(
                     )
                 }
                 hir_def::AdtId::UnionId(u) => {
-                    write!(f, "{}", f.db.union_signature(u).name.display(f.db, f.edition()))
+                    write!(f, "{}", UnionSignature::of(f.db, u).name.display(f.db, f.edition()))
                 }
                 hir_def::AdtId::EnumId(e) => {
                     let Ok(target_data_layout) = f.db.target_data_layout(f.krate()) else {
@@ -950,7 +957,9 @@ fn render_const_scalar_inner<'db>(
                         var_id.fields(f.db),
                         f,
                         field_types,
-                        f.db.trait_environment(def.into()),
+                        f.db.trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(
+                            def,
+                        ))),
                         var_layout,
                         args,
                         b,
@@ -1152,11 +1161,13 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 write!(f, "fn ")?;
                 f.start_location_link(def.into());
                 match def {
-                    CallableDefId::FunctionId(ff) => {
-                        write!(f, "{}", db.function_signature(ff).name.display(f.db, f.edition()))?
-                    }
+                    CallableDefId::FunctionId(ff) => write!(
+                        f,
+                        "{}",
+                        FunctionSignature::of(db, ff).name.display(f.db, f.edition())
+                    )?,
                     CallableDefId::StructId(s) => {
-                        write!(f, "{}", db.struct_signature(s).name.display(f.db, f.edition()))?
+                        write!(f, "{}", StructSignature::of(db, s).name.display(f.db, f.edition()))?
                     }
                     CallableDefId::EnumVariantId(e) => {
                         let loc = e.lookup(db);
@@ -1235,9 +1246,11 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 match f.display_kind {
                     DisplayKind::Diagnostics | DisplayKind::Test => {
                         let name = match def_id {
-                            hir_def::AdtId::StructId(it) => db.struct_signature(it).name.clone(),
-                            hir_def::AdtId::UnionId(it) => db.union_signature(it).name.clone(),
-                            hir_def::AdtId::EnumId(it) => db.enum_signature(it).name.clone(),
+                            hir_def::AdtId::StructId(it) => {
+                                StructSignature::of(db, it).name.clone()
+                            }
+                            hir_def::AdtId::UnionId(it) => UnionSignature::of(db, it).name.clone(),
+                            hir_def::AdtId::EnumId(it) => EnumSignature::of(db, it).name.clone(),
                         };
                         write!(f, "{}", name.display(f.db, f.edition()))?;
                     }
@@ -1272,7 +1285,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 write_projection(f, &alias_ty, trait_bounds_need_parens)?
             }
             TyKind::Foreign(alias) => {
-                let type_alias = db.type_alias_signature(alias.0);
+                let type_alias = TypeAliasSignature::of(db, alias.0);
                 f.start_location_link(alias.0.into());
                 write!(f, "{}", type_alias.name.display(f.db, f.edition()))?;
                 f.end_location_link();
@@ -1337,11 +1350,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 let sig = interner.signature_unclosure(substs.as_closure().sig(), Safety::Safe);
                 let sig = sig.skip_binder();
                 let InternedClosure(owner, _) = db.lookup_intern_closure(id);
-                let Some(def) = owner.as_def_with_body() else {
-                    write!(f, "{{closure}}")?;
-                    return Ok(());
-                };
-                let infer = InferenceResult::for_body(db, def);
+                let infer = InferenceResult::of(db, owner);
                 let (_, kind) = infer.closure_info(id);
                 match f.closure_style {
                     ClosureStyle::ImplFn => write!(f, "impl {kind:?}(")?,
@@ -1530,13 +1539,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 let InternedCoroutine(owner, expr_id) = coroutine_id.0.loc(db);
                 let CoroutineArgsParts { resume_ty, yield_ty, return_ty, .. } =
                     subst.split_coroutine_args();
-                let Some(body_owner) = owner.as_def_with_body() else {
-                    write!(f, "impl Future<Output = ")?;
-                    return_ty.hir_fmt(f)?;
-                    write!(f, ">")?;
-                    return Ok(());
-                };
-                let body = db.body(body_owner);
+                let body = ExpressionStore::of(db, owner);
                 let expr = &body[expr_id];
                 match expr {
                     hir_def::hir::Expr::Closure {
@@ -1877,7 +1880,7 @@ fn write_bounds_like_dyn_trait<'db>(
                 // existential) here, which is the only thing that's
                 // possible in actual Rust, and hence don't print it
                 f.start_location_link(trait_.into());
-                write!(f, "{}", f.db.trait_signature(trait_).name.display(f.db, f.edition()))?;
+                write!(f, "{}", TraitSignature::of(f.db, trait_).name.display(f.db, f.edition()))?;
                 f.end_location_link();
                 if is_fn_trait {
                     if let [_self, params @ ..] = trait_ref.trait_ref.args.as_slice()
@@ -1940,7 +1943,7 @@ fn write_bounds_like_dyn_trait<'db>(
                     angle_open = true;
                 }
                 let assoc_ty_id = projection.def_id().expect_type_alias();
-                let type_alias = f.db.type_alias_signature(assoc_ty_id);
+                let type_alias = TypeAliasSignature::of(f.db, assoc_ty_id);
                 f.start_location_link(assoc_ty_id.into());
                 write!(f, "{}", type_alias.name.display(f.db, f.edition()))?;
                 f.end_location_link();
@@ -2031,7 +2034,7 @@ impl<'db> HirDisplay<'db> for TraitRef<'db> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         let trait_ = self.def_id.0;
         f.start_location_link(trait_.into());
-        write!(f, "{}", f.db.trait_signature(trait_).name.display(f.db, f.edition()))?;
+        write!(f, "{}", TraitSignature::of(f.db, trait_).name.display(f.db, f.edition()))?;
         f.end_location_link();
         let substs = self.args.as_slice();
         hir_fmt_generic_args(f, &substs[1..], None, Some(self.self_ty()))

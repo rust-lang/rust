@@ -21,7 +21,7 @@ use syntax::{
     ast::{self, UnaryOp},
 };
 use tracing::debug;
-use triomphe::Arc;
+
 use typed_arena::Arena;
 
 use crate::{
@@ -76,9 +76,9 @@ impl BodyValidationDiagnostic {
         validate_lints: bool,
     ) -> Vec<BodyValidationDiagnostic> {
         let _p = tracing::info_span!("BodyValidationDiagnostic::collect").entered();
-        let infer = InferenceResult::for_body(db, owner);
-        let body = db.body(owner);
-        let env = db.trait_environment_for_body(owner);
+        let infer = InferenceResult::of(db, owner);
+        let body = Body::of(db, owner);
+        let env = db.trait_environment(owner.into());
         let interner = DbInterner::new_with(db, owner.krate(db));
         let infcx =
             interner.infer_ctxt().build(TypingMode::typeck_for_body(interner, owner.into()));
@@ -98,7 +98,7 @@ impl BodyValidationDiagnostic {
 
 struct ExprValidator<'db> {
     owner: DefWithBodyId,
-    body: Arc<Body>,
+    body: &'db Body,
     infer: &'db InferenceResult,
     env: ParamEnv<'db>,
     diagnostics: Vec<BodyValidationDiagnostic>,
@@ -116,10 +116,10 @@ impl<'db> ExprValidator<'db> {
         let db = self.db();
         let mut filter_map_next_checker = None;
         // we'll pass &mut self while iterating over body.exprs, so they need to be disjoint
-        let body = Arc::clone(&self.body);
+        let body = self.body;
 
         if matches!(self.owner, DefWithBodyId::FunctionId(_)) {
-            self.check_for_trailing_return(body.body_expr, &body);
+            self.check_for_trailing_return(body.body_expr, body);
         }
 
         for (id, expr) in body.exprs() {
@@ -141,7 +141,7 @@ impl<'db> ExprValidator<'db> {
                     self.validate_call(id, expr, &mut filter_map_next_checker);
                 }
                 Expr::Closure { body: body_expr, .. } => {
-                    self.check_for_trailing_return(*body_expr, &body);
+                    self.check_for_trailing_return(*body_expr, body);
                 }
                 Expr::If { .. } => {
                     self.check_for_unnecessary_else(id, expr);
@@ -240,7 +240,7 @@ impl<'db> ExprValidator<'db> {
                     .as_reference()
                     .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
                     .unwrap_or(false))
-                && types_of_subpatterns_do_match(arm.pat, &self.body, self.infer)
+                && types_of_subpatterns_do_match(arm.pat, self.body, self.infer)
             {
                 // If we had a NotUsefulMatchArm diagnostic, we could
                 // check the usefulness of each pattern as we added it
@@ -388,7 +388,7 @@ impl<'db> ExprValidator<'db> {
         pat: PatId,
         have_errors: &mut bool,
     ) -> DeconstructedPat<'a, 'db> {
-        let mut patcx = match_check::PatCtxt::new(self.db(), self.infer, &self.body);
+        let mut patcx = match_check::PatCtxt::new(self.db(), self.infer, self.body);
         let pattern = patcx.lower_pattern(pat);
         let pattern = cx.lower_pat(&pattern);
         if !patcx.errors.is_empty() {
@@ -451,7 +451,7 @@ impl<'db> ExprValidator<'db> {
                     && last_then_expr_ty.is_never()
                 {
                     // Only look at sources if the then branch diverges and we have an else branch.
-                    let source_map = self.db().body_with_source_map(self.owner).1;
+                    let source_map = &Body::with_source_map(self.db(), self.owner).1;
                     let Ok(source_ptr) = source_map.expr_syntax(id) else {
                         return;
                     };

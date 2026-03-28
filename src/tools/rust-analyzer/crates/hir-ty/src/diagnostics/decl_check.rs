@@ -17,8 +17,17 @@ use std::fmt;
 
 use hir_def::{
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
-    ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId, attrs::AttrFlags,
-    db::DefDatabase, hir::Pat, item_tree::FieldsShape, signatures::StaticFlags, src::HasSource,
+    ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    attrs::AttrFlags,
+    db::DefDatabase,
+    expr_store::Body,
+    hir::Pat,
+    item_tree::FieldsShape,
+    signatures::{
+        ConstSignature, EnumSignature, FunctionSignature, StaticFlags, StaticSignature,
+        StructSignature, TraitSignature, TypeAliasSignature, UnionSignature,
+    },
+    src::HasSource,
 };
 use hir_expand::{
     HirFileId,
@@ -178,7 +187,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_trait(&mut self, trait_id: TraitId) {
         // Check the trait name.
-        let data = self.db.trait_signature(trait_id);
+        let data = TraitSignature::of(self.db, trait_id);
         self.create_incorrect_case_diagnostic_for_item_name(
             trait_id,
             &data.name,
@@ -197,7 +206,7 @@ impl<'a> DeclValidator<'a> {
         // Check the function name.
         // Skipped if function is an associated item of a trait implementation.
         if !self.is_trait_impl_container(container) {
-            let data = self.db.function_signature(func);
+            let data = FunctionSignature::of(self.db, func);
 
             // Don't run the lint on extern "[not Rust]" fn items with the
             // #[no_mangle] attribute.
@@ -223,7 +232,7 @@ impl<'a> DeclValidator<'a> {
     /// Check incorrect names for patterns inside the function body.
     /// This includes function parameters except for trait implementation associated functions.
     fn validate_func_body(&mut self, func: FunctionId) {
-        let body = self.db.body(func.into());
+        let body = Body::of(self.db, func.into());
         let edition = self.edition(func);
         let mut pats_replacements = body
             .pats()
@@ -250,7 +259,7 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let source_map = self.db.body_with_source_map(func.into()).1;
+        let source_map = &Body::with_source_map(self.db, func.into()).1;
         for (id, replacement) in pats_replacements {
             let Ok(source_ptr) = source_map.pat_syntax(id) else {
                 continue;
@@ -292,7 +301,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_struct(&mut self, struct_id: StructId) {
         // Check the structure name.
-        let data = self.db.struct_signature(struct_id);
+        let data = StructSignature::of(self.db, struct_id);
 
         // rustc implementation excuses repr(C) since C structs predominantly don't
         // use camel case.
@@ -385,7 +394,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_union(&mut self, union_id: UnionId) {
         // Check the union name.
-        let data = self.db.union_signature(union_id);
+        let data = UnionSignature::of(self.db, union_id);
 
         // rustc implementation excuses repr(C) since C unions predominantly don't
         // use camel case.
@@ -473,7 +482,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_enum(&mut self, enum_id: EnumId) {
         // Check the enum name.
-        let data = self.db.enum_signature(enum_id);
+        let data = EnumSignature::of(self.db, enum_id);
 
         // rustc implementation excuses repr(C) since C structs predominantly don't
         // use camel case.
@@ -644,7 +653,7 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let data = self.db.const_signature(const_id);
+        let data = ConstSignature::of(self.db, const_id);
         let Some(name) = &data.name else {
             return;
         };
@@ -657,7 +666,7 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_static(&mut self, static_id: StaticId) {
-        let data = self.db.static_signature(static_id);
+        let data = StaticSignature::of(self.db, static_id);
         if data.flags.contains(StaticFlags::EXTERN) {
             cov_mark::hit!(extern_static_incorrect_case_ignored);
             return;
@@ -683,7 +692,7 @@ impl<'a> DeclValidator<'a> {
         }
 
         // Check the type alias name.
-        let data = self.db.type_alias_signature(type_alias_id);
+        let data = TypeAliasSignature::of(self.db, type_alias_id);
         self.create_incorrect_case_diagnostic_for_item_name(
             type_alias_id,
             &data.name,

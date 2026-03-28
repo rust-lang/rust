@@ -2,8 +2,12 @@
 
 use hir_def::{
     AdtId, AnonConstId, AttrDefId, BuiltinDeriveImplId, CallableDefId, ConstId, DefWithBodyId,
-    EnumId, EnumVariantId, ExpressionStoreOwner, FunctionId, GeneralConstId, GenericDefId, ImplId,
-    StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    EnumId, EnumVariantId, ExpressionStoreOwnerId, FunctionId, GeneralConstId, GenericDefId,
+    ImplId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    signatures::{
+        ConstSignature, EnumSignature, FunctionSignature, StaticSignature, StructSignature,
+        TraitSignature, TypeAliasSignature, UnionSignature,
+    },
 };
 use rustc_type_ir::inherent;
 use stdx::impl_from;
@@ -42,32 +46,33 @@ impl std::fmt::Debug for SolverDefId {
         let db = interner.db;
         match *self {
             SolverDefId::AdtId(AdtId::StructId(id)) => {
-                f.debug_tuple("AdtId").field(&db.struct_signature(id).name.as_str()).finish()
+                f.debug_tuple("AdtId").field(&StructSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::AdtId(AdtId::EnumId(id)) => {
-                f.debug_tuple("AdtId").field(&db.enum_signature(id).name.as_str()).finish()
+                f.debug_tuple("AdtId").field(&EnumSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::AdtId(AdtId::UnionId(id)) => {
-                f.debug_tuple("AdtId").field(&db.union_signature(id).name.as_str()).finish()
+                f.debug_tuple("AdtId").field(&UnionSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::ConstId(id) => f
                 .debug_tuple("ConstId")
-                .field(&db.const_signature(id).name.as_ref().map_or("_", |name| name.as_str()))
+                .field(&ConstSignature::of(db, id).name.as_ref().map_or("_", |name| name.as_str()))
                 .finish(),
-            SolverDefId::FunctionId(id) => {
-                f.debug_tuple("FunctionId").field(&db.function_signature(id).name.as_str()).finish()
-            }
+            SolverDefId::FunctionId(id) => f
+                .debug_tuple("FunctionId")
+                .field(&FunctionSignature::of(db, id).name.as_str())
+                .finish(),
             SolverDefId::ImplId(id) => f.debug_tuple("ImplId").field(&id).finish(),
             SolverDefId::BuiltinDeriveImplId(id) => f.debug_tuple("ImplId").field(&id).finish(),
             SolverDefId::StaticId(id) => {
-                f.debug_tuple("StaticId").field(&db.static_signature(id).name.as_str()).finish()
+                f.debug_tuple("StaticId").field(&StaticSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::TraitId(id) => {
-                f.debug_tuple("TraitId").field(&db.trait_signature(id).name.as_str()).finish()
+                f.debug_tuple("TraitId").field(&TraitSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::TypeAliasId(id) => f
                 .debug_tuple("TypeAliasId")
-                .field(&db.type_alias_signature(id).name.as_str())
+                .field(&TypeAliasSignature::of(db, id).name.as_str())
                 .finish(),
             SolverDefId::InternedClosureId(id) => {
                 f.debug_tuple("InternedClosureId").field(&id).finish()
@@ -83,21 +88,21 @@ impl std::fmt::Debug for SolverDefId {
                 f.debug_tuple("EnumVariantId")
                     .field(&format_args!(
                         "\"{}::{}\"",
-                        db.enum_signature(parent_enum).name.as_str(),
+                        EnumSignature::of(db, parent_enum).name.as_str(),
                         parent_enum.enum_variants(db).variant_name_by_id(id).unwrap().as_str()
                     ))
                     .finish()
             }
             SolverDefId::AnonConstId(id) => f.debug_tuple("AnonConstId").field(&id).finish(),
             SolverDefId::Ctor(Ctor::Struct(id)) => {
-                f.debug_tuple("Ctor").field(&db.struct_signature(id).name.as_str()).finish()
+                f.debug_tuple("Ctor").field(&StructSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::Ctor(Ctor::Enum(id)) => {
                 let parent_enum = id.loc(db).parent;
                 f.debug_tuple("Ctor")
                     .field(&format_args!(
                         "\"{}::{}\"",
-                        db.enum_signature(parent_enum).name.as_str(),
+                        EnumSignature::of(db, parent_enum).name.as_str(),
                         parent_enum.enum_variants(db).variant_name_by_id(id).unwrap().as_str()
                     ))
                     .finish()
@@ -138,15 +143,6 @@ impl From<GenericDefId> for SolverDefId {
     }
 }
 
-impl From<ExpressionStoreOwner> for SolverDefId {
-    fn from(value: ExpressionStoreOwner) -> Self {
-        match value {
-            ExpressionStoreOwner::Signature(generic_def_id) => generic_def_id.into(),
-            ExpressionStoreOwner::Body(def_with_body_id) => def_with_body_id.into(),
-        }
-    }
-}
-
 impl From<GeneralConstId> for SolverDefId {
     #[inline]
     fn from(value: GeneralConstId) -> Self {
@@ -166,6 +162,16 @@ impl From<DefWithBodyId> for SolverDefId {
             DefWithBodyId::StaticId(id) => id.into(),
             DefWithBodyId::ConstId(id) => id.into(),
             DefWithBodyId::VariantId(id) => id.into(),
+        }
+    }
+}
+
+impl From<ExpressionStoreOwnerId> for SolverDefId {
+    #[inline]
+    fn from(value: ExpressionStoreOwnerId) -> Self {
+        match value {
+            ExpressionStoreOwnerId::Body(body_id) => body_id.into(),
+            ExpressionStoreOwnerId::Signature(sig_id) => sig_id.into(),
         }
     }
 }
