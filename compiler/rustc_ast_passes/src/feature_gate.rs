@@ -224,7 +224,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
 
                 if let ast::Defaultness::Default(_) = of_trait.defaultness {
-                    gate!(self, specialization, i.span, "specialization is unstable");
+                    gate!(self, specialization, i.span, "specialization is experimental");
                 }
             }
 
@@ -450,7 +450,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 self.features.specialization() || (is_fn && self.features.min_specialization()),
                 sym::specialization,
                 i.span,
-                "specialization is unstable"
+                "specialization is experimental"
             );
         }
         visit::walk_assoc_item(self, i, ctxt)
@@ -615,9 +615,20 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     soft_gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
     soft_gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
     soft_gate_all_legacy_dont_use!(negative_impls, "negative impls are experimental");
+    soft_gate_all_legacy_dont_use!(specialization, "specialization is experimental");
     soft_gate_all_legacy_dont_use!(trait_alias, "trait aliases are experimental");
     soft_gate_all_legacy_dont_use!(try_blocks, "`try` blocks are unstable");
     // tidy-alphabetical-end
+
+    for &span in spans.get(&sym::min_specialization).into_iter().flatten() {
+        if !visitor.features.specialization()
+            && !visitor.features.min_specialization()
+            && !span.allows_unstable(sym::specialization)
+            && !span.allows_unstable(sym::min_specialization)
+        {
+            feature_warn(visitor.sess, sym::specialization, span, "specialization is experimental");
+        }
+    }
 
     // -----------------------------------------------------------------------------
 

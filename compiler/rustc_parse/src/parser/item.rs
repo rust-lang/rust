@@ -248,10 +248,18 @@ impl<'a> Parser<'a> {
             self.parse_use_item()?
         } else if self.check_fn_front_matter(check_pub, case) {
             // FUNCTION ITEM
+            let defaultness = def_();
+            if let Defaultness::Default(span) = defaultness {
+                // Default functions should only require feature `min_specialization`. We remove the
+                // `specialization` tag again as such spans *require* feature `specialization` to be
+                // enabled. In a later stage, we make `specialization` imply `min_specialization`.
+                self.psess.gated_spans.gate(sym::min_specialization, span);
+                self.psess.gated_spans.ungate_last(sym::specialization, span);
+            }
             let (ident, sig, generics, contract, body) =
                 self.parse_fn(attrs, fn_parse_mode, lo, vis, case)?;
             ItemKind::Fn(Box::new(Fn {
-                defaultness: def_(),
+                defaultness,
                 ident,
                 sig,
                 generics,
@@ -1016,6 +1024,7 @@ impl<'a> Parser<'a> {
         if self.check_keyword(exp!(Default))
             && self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
         {
+            self.psess.gated_spans.gate(sym::specialization, self.token.span);
             self.bump(); // `default`
             Defaultness::Default(self.prev_token_uninterpolated_span())
         } else if self.eat_keyword(exp!(Final)) {
