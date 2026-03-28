@@ -513,10 +513,10 @@ fn test_simd() {
         F32::from(unsafe { simd_div(f32x4::splat(0.0), f32x4::splat(0.0)) }[0])
     });
     check_all_outcomes([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)], || {
-        F32::from(unsafe { simd_fmin(f32x4::splat(nan), f32x4::splat(nan)) }[0])
+        F32::from(unsafe { simd_minimum_number_nsz(f32x4::splat(nan), f32x4::splat(nan)) }[0])
     });
     check_all_outcomes([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)], || {
-        F32::from(unsafe { simd_fmax(f32x4::splat(nan), f32x4::splat(nan)) }[0])
+        F32::from(unsafe { simd_maximum_number_nsz(f32x4::splat(nan), f32x4::splat(nan)) }[0])
     });
     check_all_outcomes([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)], || {
         F32::from(unsafe { simd_fma(f32x4::splat(nan), f32x4::splat(nan), f32x4::splat(nan)) }[0])
