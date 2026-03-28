@@ -7,8 +7,6 @@
 // Test that two crates with different overflow-checks have the same results,
 // even when the iterator is passed between them.
 
-#![feature(new_range_api)]
-
 extern crate rangefrom_overflow_2crates_ocno;
 extern crate rangefrom_overflow_2crates_ocyes;
 
