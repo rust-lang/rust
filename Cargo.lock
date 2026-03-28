@@ -6088,8 +6088,6 @@ name = "unstable-book-gen"
 version = "0.1.0"
 dependencies = [
  "num-traits",
- "proc-macro2",
- "syn 2.0.110",
  "tidy",
 ]
 
