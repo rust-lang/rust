@@ -1412,6 +1412,15 @@ cc = ["@m-ou-se"]
 [mentions."compiler/rustc_ast_lowering/src/format.rs"]
 cc = ["@m-ou-se"]
 
+[mentions."src/ci/github-actions/jobs.yml"]
+message = """
+> [!WARNING]
+>
+> If you are changing how CI LLVM is built or linked, make sure to bump
+> `src/bootstrap/download-ci-llvm-stamp`.
+"""
+cc = ["@jieyouxu"]
+
 # Content-based mentions
 
 [mentions."#[miri::intrinsic_fallback_is_spec]"]
