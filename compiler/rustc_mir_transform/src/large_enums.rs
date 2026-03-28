@@ -1,4 +1,5 @@
 use rustc_abi::{HasDataLayout, Size, TagEncoding, Variants};
+use rustc_const_eval::interpret::{Scalar, alloc_range};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::*;
@@ -23,7 +24,8 @@ use crate::patch::MirPatch;
 ///
 /// In summary, what this does is at runtime determine which enum variant is active,
 /// and instead of copying all the bytes of the largest possible variant,
-/// copy only the bytes for the currently active variant.
+/// copy only the bytes for the currently active variant. The number of bytes to copy is determined
+/// by a lookup table: a discriminant-indexed array indicating the size of each variant.
 pub(super) struct EnumSizeOpt {
     pub(crate) discrepancy: u64,
 }
@@ -202,45 +204,23 @@ impl EnumSizeOpt {
             return Some((*adt_def, num_discrs, *alloc_id));
         }
 
+        // Construct an in-memory array mapping discriminant idx to variant size.
         let data_layout = tcx.data_layout();
-        let ptr_sized_int = data_layout.ptr_sized_integer();
-        let target_bytes = ptr_sized_int.size().bytes() as usize;
-        let mut data = vec![0; target_bytes * num_discrs];
-
-        // We use a macro because `$bytes` can be u32 or u64.
-        macro_rules! encode_store {
-            ($curr_idx: expr, $endian: expr, $bytes: expr) => {
-                let bytes = match $endian {
-                    rustc_abi::Endian::Little => $bytes.to_le_bytes(),
-                    rustc_abi::Endian::Big => $bytes.to_be_bytes(),
-                };
-                for (i, b) in bytes.into_iter().enumerate() {
-                    data[$curr_idx + i] = b;
-                }
-            };
-        }
-
-        for (var_idx, layout) in variants.iter_enumerated() {
-            let curr_idx =
-                target_bytes * adt_def.discriminant_for_variant(tcx, var_idx).val as usize;
-            let sz = layout.size;
-            match ptr_sized_int {
-                rustc_abi::Integer::I32 => {
-                    encode_store!(curr_idx, data_layout.endian, sz.bytes() as u32);
-                }
-                rustc_abi::Integer::I64 => {
-                    encode_store!(curr_idx, data_layout.endian, sz.bytes());
-                }
-                _ => unreachable!(),
-            };
-        }
-        let alloc = interpret::Allocation::from_bytes(
-            data,
+        let ptr_size = data_layout.pointer_size();
+        let mut alloc = interpret::Allocation::from_bytes(
+            vec![0; ptr_size.bytes_usize() * num_discrs],
             tcx.data_layout.ptr_sized_integer().align(&tcx.data_layout).abi,
-            Mutability::Not,
+            Mutability::Mut,
             (),
         );
+        for (var_idx, layout) in variants.iter_enumerated() {
+            let curr_idx = ptr_size * adt_def.discriminant_for_variant(tcx, var_idx).val as u64;
+            let val = Scalar::from_target_usize(layout.size.bytes(), &tcx);
+            alloc.write_scalar(&tcx, alloc_range(curr_idx, val.size()), val).unwrap();
+        }
+        alloc.mutability = Mutability::Not;
         let alloc = tcx.reserve_and_set_memory_alloc(tcx.mk_const_alloc(alloc));
+
         Some((*adt_def, num_discrs, *alloc_cache.entry(ty).or_insert(alloc)))
     }
 }
