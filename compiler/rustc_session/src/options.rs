@@ -51,14 +51,14 @@ macro_rules! hash_substruct {
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [UNTRACKED]) => {{}};
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [TRACKED]) => {{}};
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [TRACKED_NO_CRATE_HASH]) => {{}};
-    ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [SUBSTRUCT]) => {
+    ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [SUBSTRUCT]) => {{
         use crate::config::dep_tracking::DepTrackingHash;
         $opt_expr.dep_tracking_hash($for_crate_hash, $error_format).hash(
             $hasher,
             $error_format,
             $for_crate_hash,
         );
-    };
+    }};
 }
 
 /// Extended target modifier info.
@@ -307,55 +307,81 @@ macro_rules! top_level_tmod_enum {
 }
 
 macro_rules! top_level_options {
-    ( $( #[$top_level_attr:meta] )* pub struct Options { $(
-        $( #[$attr:meta] )*
-        $opt:ident : $t:ty [$dep_tracking_marker:ident $( $tmod:ident $variant:ident )?],
-    )* } ) => (
-        top_level_tmod_enum!( {$([$dep_tracking_marker $($tmod $variant),*])|*} );
-
-        #[derive(Clone)]
-        $( #[$top_level_attr] )*
+    (
+        $(#[$top_level_attr:meta])*
         pub struct Options {
             $(
-                $( #[$attr] )*
-                pub $opt: $t
-            ),*,
+                $(#[$attr:meta])*
+                $opt:ident : $t:ty [
+                    $dep_tracking_marker:ident
+                    $( $tmod:ident $variant:ident )?
+                ],
+            )*
+        }
+    ) => (
+        top_level_tmod_enum!(
+            {
+                $(
+                    [$dep_tracking_marker $($tmod $variant),*]
+                )|*
+            }
+        );
+
+        #[derive(Clone)]
+        $(#[$top_level_attr])*
+        pub struct Options {
+            $(
+                $(#[$attr])*
+                pub $opt: $t,
+            )*
             pub target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
         }
 
         impl Options {
             pub fn dep_tracking_hash(&self, for_crate_hash: bool) -> Hash64 {
                 let mut sub_hashes = BTreeMap::new();
-                $({
-                    hash_opt!($opt,
-                                &self.$opt,
-                                &mut sub_hashes,
-                                for_crate_hash,
-                                [$dep_tracking_marker]);
-                })*
+                $(
+                    hash_opt!(
+                        $opt,
+                        &self.$opt,
+                        &mut sub_hashes,
+                        for_crate_hash,
+                        [$dep_tracking_marker]
+                    );
+                )*
+
                 let mut hasher = StableHasher::new();
-                dep_tracking::stable_hash(sub_hashes,
-                                          &mut hasher,
-                                          self.error_format,
-                                          for_crate_hash);
-                $({
-                    hash_substruct!($opt,
+                dep_tracking::stable_hash(
+                    sub_hashes,
+                    &mut hasher,
+                    self.error_format,
+                    for_crate_hash,
+                );
+
+                $(
+                    hash_substruct!(
+                        $opt,
                         &self.$opt,
                         self.error_format,
                         for_crate_hash,
                         &mut hasher,
-                        [$dep_tracking_marker]);
-                })*
+                        [$dep_tracking_marker]
+                    );
+                )*
                 hasher.finish()
             }
 
             pub fn gather_target_modifiers(&self) -> Vec<TargetModifier> {
                 let mut mods = Vec::<TargetModifier>::new();
-                $({
-                    gather_tmods_top_level!($opt,
-                        &self.$opt, &mut mods, &self.target_modifiers,
-                        [$dep_tracking_marker $($tmod),*]);
-                })*
+                $(
+                    gather_tmods_top_level!(
+                        $opt,
+                        &self.$opt,
+                        &mut mods,
+                        &self.target_modifiers,
+                        [$dep_tracking_marker $($tmod),*]
+                    );
+                )*
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
             }
@@ -606,80 +632,117 @@ macro_rules! tmod_enum {
 /// generated code to parse an option into its respective field in the struct. There are a few
 /// hand-written parsers for parsing specific types of values in this module.
 macro_rules! options {
-    ($struct_name:ident, $tmod_enum_name:ident, $stat:ident, $optmod:ident, $prefix:expr, $outputname:expr,
-     $($( #[$attr:meta] )* $opt:ident : $t:ty = (
-        $init:expr,
-        $parse:ident,
-        [$dep_tracking_marker:ident $( $tmod:ident )?],
-        $desc:expr
-        $(, removed: $removed:ident )?)
-     ),* ,) =>
-(
-    #[derive(Clone)]
-    #[rustc_lint_opt_ty]
-    pub struct $struct_name { $( $( #[$attr] )* pub $opt: $t),* }
+    (
+        $struct_name:ident,
+        $tmod_enum_name:ident,
+        $stat:ident,
+        $optmod:ident,
+        $prefix:expr,
+        $outputname:expr,
 
-    tmod_enum!( $tmod_enum_name, $prefix, {$($opt, $parse, $t, [$($tmod),*])|*} );
-
-    impl Default for $struct_name {
-        fn default() -> $struct_name {
-            $struct_name { $($opt: $init),* }
+        $(
+            $(#[$attr:meta])*
+            $opt:ident : $t:ty = (
+                $init:expr,
+                $parse:ident,
+                [$dep_tracking_marker:ident $( $tmod:ident )?],
+                $desc:expr
+                $(, removed: $removed:ident )?
+            ),
+        )*
+    ) => {
+        #[derive(Clone)]
+        #[rustc_lint_opt_ty]
+        pub struct $struct_name {
+            $(
+                $(#[$attr])*
+                pub $opt: $t,
+            )*
         }
+
+        tmod_enum!( $tmod_enum_name, $prefix, {$($opt, $parse, $t, [$($tmod),*])|*} );
+
+        impl Default for $struct_name {
+            fn default() -> $struct_name {
+                $struct_name {
+                    $( $opt: $init, )*
+                }
+            }
+        }
+
+        impl $struct_name {
+            pub fn build(
+                early_dcx: &EarlyDiagCtxt,
+                matches: &getopts::Matches,
+                target_modifiers: &mut BTreeMap<OptionsTargetModifiers, String>,
+            ) -> $struct_name {
+                build_options(early_dcx, matches, target_modifiers, $stat, $prefix, $outputname)
+            }
+
+            fn dep_tracking_hash(
+                &self,
+                for_crate_hash: bool,
+                error_format: ErrorOutputType,
+            ) -> Hash64 {
+                let mut sub_hashes = BTreeMap::new();
+                $(
+                    hash_opt!(
+                        $opt,
+                        &self.$opt,
+                        &mut sub_hashes,
+                        for_crate_hash,
+                        [$dep_tracking_marker]
+                    );
+                )*
+                let mut hasher = StableHasher::new();
+                dep_tracking::stable_hash(sub_hashes, &mut hasher, error_format, for_crate_hash);
+                hasher.finish()
+            }
+
+            pub fn gather_target_modifiers(
+                &self,
+                _mods: &mut Vec<TargetModifier>,
+                _tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
+            ) {
+                $(
+                    gather_tmods!(
+                        $struct_name,
+                        $tmod_enum_name,
+                        $opt,
+                        &self.$opt,
+                        $init,
+                        _mods,
+                        _tmod_vals,
+                        [$dep_tracking_marker],
+                        [$($tmod),*]
+                    );
+                )*
+            }
+        }
+
+        pub const $stat: OptionDescrs<$struct_name> = &[
+            $(
+                OptionDesc {
+                    name: stringify!($opt),
+                    setter: $optmod::$opt,
+                    type_desc: desc::$parse,
+                    desc: $desc,
+                    removed: None $( .or(Some(RemovedOption::$removed)) )?,
+                    tmod: tmod_enum_opt!($struct_name, $tmod_enum_name, $opt, $($tmod),*),
+                }
+            ),*
+        ];
+
+        mod $optmod {
+            $(
+                pub(super) fn $opt(cg: &mut super::$struct_name, v: Option<&str>) -> bool {
+                    super::parse::$parse(&mut redirect_field!(cg.$opt), v)
+                }
+            )*
+        }
+
     }
-
-    impl $struct_name {
-        pub fn build(
-            early_dcx: &EarlyDiagCtxt,
-            matches: &getopts::Matches,
-            target_modifiers: &mut BTreeMap<OptionsTargetModifiers, String>,
-        ) -> $struct_name {
-            build_options(early_dcx, matches, target_modifiers, $stat, $prefix, $outputname)
-        }
-
-        fn dep_tracking_hash(&self, for_crate_hash: bool, error_format: ErrorOutputType) -> Hash64 {
-            let mut sub_hashes = BTreeMap::new();
-            $({
-                hash_opt!($opt,
-                            &self.$opt,
-                            &mut sub_hashes,
-                            for_crate_hash,
-                            [$dep_tracking_marker]);
-            })*
-            let mut hasher = StableHasher::new();
-            dep_tracking::stable_hash(sub_hashes,
-                                        &mut hasher,
-                                        error_format,
-                                        for_crate_hash
-                                        );
-            hasher.finish()
-        }
-
-        pub fn gather_target_modifiers(
-            &self,
-            _mods: &mut Vec<TargetModifier>,
-            _tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
-        ) {
-            $({
-                gather_tmods!($struct_name, $tmod_enum_name, $opt, &self.$opt, $init, _mods, _tmod_vals,
-                    [$dep_tracking_marker], [$($tmod),*]);
-            })*
-        }
-    }
-
-    pub const $stat: OptionDescrs<$struct_name> =
-        &[ $( OptionDesc{ name: stringify!($opt), setter: $optmod::$opt,
-            type_desc: desc::$parse, desc: $desc, removed: None $( .or(Some(RemovedOption::$removed)) )?,
-            tmod: tmod_enum_opt!($struct_name, $tmod_enum_name, $opt, $($tmod),*) } ),* ];
-
-    mod $optmod {
-    $(
-        pub(super) fn $opt(cg: &mut super::$struct_name, v: Option<&str>) -> bool {
-            super::parse::$parse(&mut redirect_field!(cg.$opt), v)
-        }
-    )*
-    }
-
-) }
+}
 
 impl CodegenOptions {
     // JUSTIFICATION: defn of the suggested wrapper fn
