@@ -17,25 +17,36 @@ pub struct TestCase<Op: MathOp> {
     pub output: Option<Op::RustRet>,
 }
 
-impl<Op: MathOp> TestCase<Op> {
-    #[expect(dead_code)]
-    fn append_inputs(v: &mut Vec<Self>, l: &[Op::RustArgs]) {
-        v.extend(l.iter().copied().map(|input| Self {
-            input,
-            output: None,
-        }));
-    }
+macro_rules! cases {
+    (
+        $(
+            $(#[$($meta:tt)*])*
+            ($($tt:tt)*)
+        ),* $(,)?
+    ) => {{
+        Vec::from_iter([
+            $(
+               $(#[$($meta)*])*
+                cases!(@single $($tt)*),
+            )*
+        ])
+    }};
 
-    fn append_pairs(v: &mut Vec<Self>, l: &[(Op::RustArgs, Option<Op::RustRet>)])
-    where
-        Op::RustRet: Copy,
-    {
-        v.extend(
-            l.iter()
-                .copied()
-                .map(|(input, output)| Self { input, output }),
-        );
-    }
+    // Variant without a result, which will check against MPFR.
+    (@single ($($arg:expr),* $(,)?), None $(,)?) => {
+        TestCase{
+            input: ($($arg,)*),
+            output: None,
+        }
+    };
+
+    // Variant for when the result is specified.
+    (@single ($($arg:expr),* $(,)?), $res:expr $(,)?) => {
+        TestCase{
+            input: ($($arg,)*),
+            output: Some($res),
+        }
+    };
 }
 
 /********************************
@@ -44,622 +55,622 @@ impl<Op: MathOp> TestCase<Op> {
 
 #[cfg(f16_enabled)]
 fn addf16_cases() -> Vec<TestCase<op::addf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn addf32_cases() -> Vec<TestCase<op::addf32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn addf64_cases() -> Vec<TestCase<op::addf64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn addf128_cases() -> Vec<TestCase<op::addf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn subf16_cases() -> Vec<TestCase<op::subf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn subf32_cases() -> Vec<TestCase<op::subf32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn subf64_cases() -> Vec<TestCase<op::subf64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn subf128_cases() -> Vec<TestCase<op::subf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn mulf16_cases() -> Vec<TestCase<op::mulf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn mulf32_cases() -> Vec<TestCase<op::mulf32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn mulf64_cases() -> Vec<TestCase<op::mulf64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn mulf128_cases() -> Vec<TestCase<op::mulf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn divf32_cases() -> Vec<TestCase<op::divf32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn divf64_cases() -> Vec<TestCase<op::divf64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn divf128_cases() -> Vec<TestCase<op::divf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn powif32_cases() -> Vec<TestCase<op::powif32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn powif64_cases() -> Vec<TestCase<op::powif64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn powif128_cases() -> Vec<TestCase<op::powif128::Routine>> {
-    vec![]
+    cases![]
 }
 
 /* comparison */
 
 #[cfg(f16_enabled)]
 fn eqf16_cases() -> Vec<TestCase<op::eqf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn eqf32_cases() -> Vec<TestCase<op::eqf32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn eqf64_cases() -> Vec<TestCase<op::eqf64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn eqf128_cases() -> Vec<TestCase<op::eqf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn gtf16_cases() -> Vec<TestCase<op::gtf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn gtf32_cases() -> Vec<TestCase<op::gtf32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn gtf64_cases() -> Vec<TestCase<op::gtf64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn gtf128_cases() -> Vec<TestCase<op::gtf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn gef16_cases() -> Vec<TestCase<op::gef16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn gef32_cases() -> Vec<TestCase<op::gef32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn gef64_cases() -> Vec<TestCase<op::gef64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn gef128_cases() -> Vec<TestCase<op::gef128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn ltf16_cases() -> Vec<TestCase<op::ltf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ltf32_cases() -> Vec<TestCase<op::ltf32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ltf64_cases() -> Vec<TestCase<op::ltf64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn ltf128_cases() -> Vec<TestCase<op::ltf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn lef16_cases() -> Vec<TestCase<op::lef16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn lef32_cases() -> Vec<TestCase<op::lef32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn lef64_cases() -> Vec<TestCase<op::lef64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn lef128_cases() -> Vec<TestCase<op::lef128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn nef16_cases() -> Vec<TestCase<op::nef16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn nef32_cases() -> Vec<TestCase<op::nef32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn nef64_cases() -> Vec<TestCase<op::nef64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn nef128_cases() -> Vec<TestCase<op::nef128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn unordf16_cases() -> Vec<TestCase<op::unordf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn unordf32_cases() -> Vec<TestCase<op::unordf32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn unordf64_cases() -> Vec<TestCase<op::unordf64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn unordf128_cases() -> Vec<TestCase<op::unordf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 /* conversion */
 
 #[cfg(f16_enabled)]
 fn extend_f16_f32_cases() -> Vec<TestCase<op::extend_f16_f32::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn extend_f16_f64_cases() -> Vec<TestCase<op::extend_f16_f64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 #[cfg(f128_enabled)]
 fn extend_f16_f128_cases() -> Vec<TestCase<op::extend_f16_f128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn extend_f32_f64_cases() -> Vec<TestCase<op::extend_f32_f64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn extend_f32_f128_cases() -> Vec<TestCase<op::extend_f32_f128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn extend_f64_f128_cases() -> Vec<TestCase<op::extend_f64_f128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn narrow_f32_f16_cases() -> Vec<TestCase<op::narrow_f32_f16::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn narrow_f64_f16_cases() -> Vec<TestCase<op::narrow_f64_f16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn narrow_f64_f32_cases() -> Vec<TestCase<op::narrow_f64_f32::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 #[cfg(f128_enabled)]
 fn narrow_f128_f16_cases() -> Vec<TestCase<op::narrow_f128_f16::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn narrow_f128_f32_cases() -> Vec<TestCase<op::narrow_f128_f32::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn narrow_f128_f64_cases() -> Vec<TestCase<op::narrow_f128_f64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f32_i32_cases() -> Vec<TestCase<op::ftoi_f32_i32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f32_i64_cases() -> Vec<TestCase<op::ftoi_f32_i64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f32_i128_cases() -> Vec<TestCase<op::ftoi_f32_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f64_i32_cases() -> Vec<TestCase<op::ftoi_f64_i32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f64_i64_cases() -> Vec<TestCase<op::ftoi_f64_i64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f64_i128_cases() -> Vec<TestCase<op::ftoi_f64_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn ftoi_f128_i32_cases() -> Vec<TestCase<op::ftoi_f128_i32::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn ftoi_f128_i64_cases() -> Vec<TestCase<op::ftoi_f128_i64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn ftoi_f128_i128_cases() -> Vec<TestCase<op::ftoi_f128_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f32_u32_cases() -> Vec<TestCase<op::ftoi_f32_u32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f32_u64_cases() -> Vec<TestCase<op::ftoi_f32_u64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f32_u128_cases() -> Vec<TestCase<op::ftoi_f32_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f64_u32_cases() -> Vec<TestCase<op::ftoi_f64_u32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f64_u64_cases() -> Vec<TestCase<op::ftoi_f64_u64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ftoi_f64_u128_cases() -> Vec<TestCase<op::ftoi_f64_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn ftoi_f128_u32_cases() -> Vec<TestCase<op::ftoi_f128_u32::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn ftoi_f128_u64_cases() -> Vec<TestCase<op::ftoi_f128_u64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn ftoi_f128_u128_cases() -> Vec<TestCase<op::ftoi_f128_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_i32_f32_cases() -> Vec<TestCase<op::itof_i32_f32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_i64_f32_cases() -> Vec<TestCase<op::itof_i64_f32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_i128_f32_cases() -> Vec<TestCase<op::itof_i128_f32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_i32_f64_cases() -> Vec<TestCase<op::itof_i32_f64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_i64_f64_cases() -> Vec<TestCase<op::itof_i64_f64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_i128_f64_cases() -> Vec<TestCase<op::itof_i128_f64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn itof_i32_f128_cases() -> Vec<TestCase<op::itof_i32_f128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn itof_i64_f128_cases() -> Vec<TestCase<op::itof_i64_f128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn itof_i128_f128_cases() -> Vec<TestCase<op::itof_i128_f128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_u32_f32_cases() -> Vec<TestCase<op::itof_u32_f32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_u64_f32_cases() -> Vec<TestCase<op::itof_u64_f32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_u128_f32_cases() -> Vec<TestCase<op::itof_u128_f32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_u32_f64_cases() -> Vec<TestCase<op::itof_u32_f64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_u64_f64_cases() -> Vec<TestCase<op::itof_u64_f64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn itof_u128_f64_cases() -> Vec<TestCase<op::itof_u128_f64::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn itof_u32_f128_cases() -> Vec<TestCase<op::itof_u32_f128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn itof_u64_f128_cases() -> Vec<TestCase<op::itof_u64_f128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn itof_u128_f128_cases() -> Vec<TestCase<op::itof_u128_f128::Routine>> {
-    vec![]
+    cases![]
 }
 
 /* int arithmetic */
 
 fn iadd_i128_cases() -> Vec<TestCase<op::iadd_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn iadd_u128_cases() -> Vec<TestCase<op::iadd_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn iaddo_i128_cases() -> Vec<TestCase<op::iaddo_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn iaddo_u128_cases() -> Vec<TestCase<op::iaddo_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn isub_i128_cases() -> Vec<TestCase<op::isub_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn isub_u128_cases() -> Vec<TestCase<op::isub_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn isubo_i128_cases() -> Vec<TestCase<op::isubo_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn isubo_u128_cases() -> Vec<TestCase<op::isubo_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idiv_i128_cases() -> Vec<TestCase<op::idiv_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idiv_i32_cases() -> Vec<TestCase<op::idiv_i32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idiv_i64_cases() -> Vec<TestCase<op::idiv_i64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idiv_u128_cases() -> Vec<TestCase<op::idiv_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idiv_u32_cases() -> Vec<TestCase<op::idiv_u32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idiv_u64_cases() -> Vec<TestCase<op::idiv_u64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idivmod_i128_cases() -> Vec<TestCase<op::idivmod_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idivmod_i32_cases() -> Vec<TestCase<op::idivmod_i32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idivmod_i64_cases() -> Vec<TestCase<op::idivmod_i64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idivmod_u128_cases() -> Vec<TestCase<op::idivmod_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idivmod_u32_cases() -> Vec<TestCase<op::idivmod_u32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn idivmod_u64_cases() -> Vec<TestCase<op::idivmod_u64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imod_i128_cases() -> Vec<TestCase<op::imod_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imod_i32_cases() -> Vec<TestCase<op::imod_i32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imod_i64_cases() -> Vec<TestCase<op::imod_i64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imod_u128_cases() -> Vec<TestCase<op::imod_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imod_u32_cases() -> Vec<TestCase<op::imod_u32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imod_u64_cases() -> Vec<TestCase<op::imod_u64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imul_i128_cases() -> Vec<TestCase<op::imul_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imul_u64_cases() -> Vec<TestCase<op::imul_u64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imulo_i128_cases() -> Vec<TestCase<op::imulo_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imulo_i32_cases() -> Vec<TestCase<op::imulo_i32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imulo_i64_cases() -> Vec<TestCase<op::imulo_i64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn imulo_u128_cases() -> Vec<TestCase<op::imulo_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 /* int shifts */
 
 fn ashl_u32_cases() -> Vec<TestCase<op::ashl_u32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ashl_u64_cases() -> Vec<TestCase<op::ashl_u64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ashl_u128_cases() -> Vec<TestCase<op::ashl_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ashr_i32_cases() -> Vec<TestCase<op::ashr_i32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ashr_i64_cases() -> Vec<TestCase<op::ashr_i64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ashr_i128_cases() -> Vec<TestCase<op::ashr_i128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn lshr_u32_cases() -> Vec<TestCase<op::lshr_u32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn lshr_u64_cases() -> Vec<TestCase<op::lshr_u64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn lshr_u128_cases() -> Vec<TestCase<op::lshr_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 /* int bitwise ops */
 
 fn leading_zeros_u32_cases() -> Vec<TestCase<op::leading_zeros_u32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn leading_zeros_u64_cases() -> Vec<TestCase<op::leading_zeros_u64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn leading_zeros_u128_cases() -> Vec<TestCase<op::leading_zeros_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn trailing_zeros_u32_cases() -> Vec<TestCase<op::trailing_zeros_u32::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn trailing_zeros_u64_cases() -> Vec<TestCase<op::trailing_zeros_u64::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn trailing_zeros_u128_cases() -> Vec<TestCase<op::trailing_zeros_u128::Routine>> {
-    vec![]
+    cases![]
 }
 
 /*******************
@@ -667,813 +678,770 @@ fn trailing_zeros_u128_cases() -> Vec<TestCase<op::trailing_zeros_u128::Routine>
  *******************/
 
 fn acos_cases() -> Vec<TestCase<op::acos::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn acosf_cases() -> Vec<TestCase<op::acosf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn acosh_cases() -> Vec<TestCase<op::acosh::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn acoshf_cases() -> Vec<TestCase<op::acoshf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn asin_cases() -> Vec<TestCase<op::asin::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn asinf_cases() -> Vec<TestCase<op::asinf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn asinh_cases() -> Vec<TestCase<op::asinh::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn asinhf_cases() -> Vec<TestCase<op::asinhf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn atan_cases() -> Vec<TestCase<op::atan::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn atan2_cases() -> Vec<TestCase<op::atan2::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn atan2f_cases() -> Vec<TestCase<op::atan2f::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn atanf_cases() -> Vec<TestCase<op::atanf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn atanh_cases() -> Vec<TestCase<op::atanh::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn atanhf_cases() -> Vec<TestCase<op::atanhf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn cbrt_cases() -> Vec<TestCase<op::cbrt::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn cbrtf_cases() -> Vec<TestCase<op::cbrtf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ceil_cases() -> Vec<TestCase<op::ceil::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ceilf_cases() -> Vec<TestCase<op::ceilf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn ceilf128_cases() -> Vec<TestCase<op::ceilf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn ceilf16_cases() -> Vec<TestCase<op::ceilf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn copysign_cases() -> Vec<TestCase<op::copysign::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn copysignf_cases() -> Vec<TestCase<op::copysignf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn copysignf128_cases() -> Vec<TestCase<op::copysignf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn copysignf16_cases() -> Vec<TestCase<op::copysignf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn cos_cases() -> Vec<TestCase<op::cos::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn cosf_cases() -> Vec<TestCase<op::cosf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn cosh_cases() -> Vec<TestCase<op::cosh::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn coshf_cases() -> Vec<TestCase<op::coshf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn erf_cases() -> Vec<TestCase<op::erf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn erfc_cases() -> Vec<TestCase<op::erfc::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn erfcf_cases() -> Vec<TestCase<op::erfcf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn erff_cases() -> Vec<TestCase<op::erff::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn exp_cases() -> Vec<TestCase<op::exp::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn exp10_cases() -> Vec<TestCase<op::exp10::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn exp10f_cases() -> Vec<TestCase<op::exp10f::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn exp2_cases() -> Vec<TestCase<op::exp2::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn exp2f_cases() -> Vec<TestCase<op::exp2f::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn expf_cases() -> Vec<TestCase<op::expf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn expm1_cases() -> Vec<TestCase<op::expm1::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn expm1f_cases() -> Vec<TestCase<op::expm1f::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fabs_cases() -> Vec<TestCase<op::fabs::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fabsf_cases() -> Vec<TestCase<op::fabsf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn fabsf128_cases() -> Vec<TestCase<op::fabsf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn fabsf16_cases() -> Vec<TestCase<op::fabsf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fdim_cases() -> Vec<TestCase<op::fdim::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fdimf_cases() -> Vec<TestCase<op::fdimf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn fdimf128_cases() -> Vec<TestCase<op::fdimf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn fdimf16_cases() -> Vec<TestCase<op::fdimf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn floor_cases() -> Vec<TestCase<op::floor::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn floorf_cases() -> Vec<TestCase<op::floorf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn floorf128_cases() -> Vec<TestCase<op::floorf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn floorf16_cases() -> Vec<TestCase<op::floorf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fma_cases() -> Vec<TestCase<op::fma::Routine>> {
-    let mut v = vec![];
-    TestCase::append_pairs(
-        &mut v,
-        &[
-            // Previous failure with incorrect sign
-            ((5e-324, -5e-324, 0.0), Some(-0.0)),
-        ],
-    );
-    v
+    cases![
+        // Previous failure with incorrect sign
+        ((5e-324, -5e-324, 0.0), -0.0),
+    ]
 }
 
 fn fmaf_cases() -> Vec<TestCase<op::fmaf::Routine>> {
-    let mut v = vec![];
-    TestCase::append_pairs(
-        &mut v,
-        &[
-            // Known rounding error for some implementations (notably MinGW)
-            (
-                (-1.9369631e13f32, 2.1513551e-7, -1.7354427e-24),
-                Some(-4167095.8),
-            ),
-        ],
-    );
-    v
+    cases![
+        // Known rounding error for some implementations (notably MinGW)
+        ((-1.9369631e13f32, 2.1513551e-7, -1.7354427e-24), -4167095.8),
+    ]
 }
 
 #[cfg(f128_enabled)]
 fn fmaf128_cases() -> Vec<TestCase<op::fmaf128::Routine>> {
-    let mut v = vec![];
-    TestCase::append_pairs(
-        &mut v,
-        &[
+    cases![
+        (
+            // Tricky rounding case that previously failed in extensive tests
             (
-                // Tricky rounding case that previously failed in extensive tests
-                (
-                    hf128!("-0x1.1966cc01966cc01966cc01966f06p-25"),
-                    hf128!("-0x1.669933fe69933fe69933fe6997c9p-16358"),
-                    hf128!("-0x0.000000000000000000000000048ap-16382"),
-                ),
-                Some(hf128!("0x0.c5171470a3ff5e0f68d751491b18p-16382")),
+                hf128!("-0x1.1966cc01966cc01966cc01966f06p-25"),
+                hf128!("-0x1.669933fe69933fe69933fe6997c9p-16358"),
+                hf128!("-0x0.000000000000000000000000048ap-16382"),
             ),
+            hf128!("0x0.c5171470a3ff5e0f68d751491b18p-16382")
+        ),
+        (
+            // Subnormal edge case that caused a failure
             (
-                // Subnormal edge case that caused a failure
-                (
-                    hf128!("0x0.7ffffffffffffffffffffffffff7p-16382"),
-                    hf128!("0x1.ffffffffffffffffffffffffffffp-1"),
-                    hf128!("0x0.8000000000000000000000000009p-16382"),
-                ),
-                Some(hf128!("0x1.0000000000000000000000000000p-16382")),
+                hf128!("0x0.7ffffffffffffffffffffffffff7p-16382"),
+                hf128!("0x1.ffffffffffffffffffffffffffffp-1"),
+                hf128!("0x0.8000000000000000000000000009p-16382"),
             ),
-        ],
-    );
-    v
+            hf128!("0x1.0000000000000000000000000000p-16382")
+        ),
+    ]
 }
 
 #[cfg(f16_enabled)]
 fn fmaxf16_cases() -> Vec<TestCase<op::fmaxf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fmaxf_cases() -> Vec<TestCase<op::fmaxf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fmax_cases() -> Vec<TestCase<op::fmax::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn fmaxf128_cases() -> Vec<TestCase<op::fmaxf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn fmaximumf16_cases() -> Vec<TestCase<op::fmaximumf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fmaximumf_cases() -> Vec<TestCase<op::fmaximumf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fmaximum_cases() -> Vec<TestCase<op::fmaximum::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn fmaximumf128_cases() -> Vec<TestCase<op::fmaximumf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn fmaximum_numf16_cases() -> Vec<TestCase<op::fmaximum_numf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fmaximum_numf_cases() -> Vec<TestCase<op::fmaximum_numf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fmaximum_num_cases() -> Vec<TestCase<op::fmaximum_num::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn fmaximum_numf128_cases() -> Vec<TestCase<op::fmaximum_numf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn fminf16_cases() -> Vec<TestCase<op::fminf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fminf_cases() -> Vec<TestCase<op::fminf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fmin_cases() -> Vec<TestCase<op::fmin::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn fminf128_cases() -> Vec<TestCase<op::fminf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn fminimumf16_cases() -> Vec<TestCase<op::fminimumf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fminimumf_cases() -> Vec<TestCase<op::fminimumf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fminimum_cases() -> Vec<TestCase<op::fminimum::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn fminimumf128_cases() -> Vec<TestCase<op::fminimumf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn fminimum_numf16_cases() -> Vec<TestCase<op::fminimum_numf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fminimum_numf_cases() -> Vec<TestCase<op::fminimum_numf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fminimum_num_cases() -> Vec<TestCase<op::fminimum_num::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn fminimum_numf128_cases() -> Vec<TestCase<op::fminimum_numf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn fmod_cases() -> Vec<TestCase<op::fmod::Routine>> {
-    let mut v = vec![];
-    TestCase::append_pairs(
-        &mut v,
-        &[
-            // Previous failure with incorrect loop iteration
-            // <https://github.com/rust-lang/libm/pull/469#discussion_r2022337272>
-            ((2.1, 3.123e-320), Some(2.0696e-320)),
-            ((2.1, 2.253547e-318), Some(1.772535e-318)),
-        ],
-    );
-    v
+    cases![
+        // Previous failure with incorrect loop iteration
+        // <https://github.com/rust-lang/libm/pull/469#discussion_r2022337272>
+        ((2.1, 3.123e-320), 2.0696e-320),
+        ((2.1, 2.253547e-318), 1.772535e-318),
+    ]
 }
 
 fn fmodf_cases() -> Vec<TestCase<op::fmodf::Routine>> {
-    let mut v = vec![];
-    TestCase::append_pairs(
-        &mut v,
-        &[
-            // Previous failure with incorrect loop iteration
-            // <https://github.com/rust-lang/libm/pull/469#discussion_r2022337272>
-            ((2.1, 8.858e-42), Some(8.085e-42)),
-            ((2.1, 6.39164e-40), Some(6.1636e-40)),
-            ((5.5, 6.39164e-40), Some(4.77036e-40)),
-            ((-151.189, 6.39164e-40), Some(-5.64734e-40)),
-        ],
-    );
-    v
+    cases![
+        // Previous failure with incorrect loop iteration
+        // <https://github.com/rust-lang/libm/pull/469#discussion_r2022337272>
+        ((2.1, 8.858e-42), 8.085e-42),
+        ((2.1, 6.39164e-40), 6.1636e-40),
+        ((5.5, 6.39164e-40), 4.77036e-40),
+        ((-151.189, 6.39164e-40), -5.64734e-40),
+    ]
 }
 
 #[cfg(f128_enabled)]
 fn fmodf128_cases() -> Vec<TestCase<op::fmodf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn fmodf16_cases() -> Vec<TestCase<op::fmodf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn frexpf16_cases() -> Vec<TestCase<op::frexpf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn frexpf_cases() -> Vec<TestCase<op::frexpf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn frexp_cases() -> Vec<TestCase<op::frexp::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn frexpf128_cases() -> Vec<TestCase<op::frexpf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn hypot_cases() -> Vec<TestCase<op::hypot::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn hypotf_cases() -> Vec<TestCase<op::hypotf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn ilogbf16_cases() -> Vec<TestCase<op::ilogbf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ilogbf_cases() -> Vec<TestCase<op::ilogbf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ilogb_cases() -> Vec<TestCase<op::ilogb::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn ilogbf128_cases() -> Vec<TestCase<op::ilogbf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn j0_cases() -> Vec<TestCase<op::j0::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn j0f_cases() -> Vec<TestCase<op::j0f::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn j1_cases() -> Vec<TestCase<op::j1::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn j1f_cases() -> Vec<TestCase<op::j1f::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn jn_cases() -> Vec<TestCase<op::jn::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn jnf_cases() -> Vec<TestCase<op::jnf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ldexp_cases() -> Vec<TestCase<op::ldexp::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ldexpf_cases() -> Vec<TestCase<op::ldexpf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn ldexpf128_cases() -> Vec<TestCase<op::ldexpf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn ldexpf16_cases() -> Vec<TestCase<op::ldexpf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn lgamma_cases() -> Vec<TestCase<op::lgamma::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn lgamma_r_cases() -> Vec<TestCase<op::lgamma_r::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn lgammaf_cases() -> Vec<TestCase<op::lgammaf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn lgammaf_r_cases() -> Vec<TestCase<op::lgammaf_r::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn log_cases() -> Vec<TestCase<op::log::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn log10_cases() -> Vec<TestCase<op::log10::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn log10f_cases() -> Vec<TestCase<op::log10f::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn log1p_cases() -> Vec<TestCase<op::log1p::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn log1pf_cases() -> Vec<TestCase<op::log1pf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn log2_cases() -> Vec<TestCase<op::log2::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn log2f_cases() -> Vec<TestCase<op::log2f::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn logf_cases() -> Vec<TestCase<op::logf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn modf_cases() -> Vec<TestCase<op::modf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn modff_cases() -> Vec<TestCase<op::modff::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn nextafter_cases() -> Vec<TestCase<op::nextafter::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn nextafterf_cases() -> Vec<TestCase<op::nextafterf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn pow_cases() -> Vec<TestCase<op::pow::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn powf_cases() -> Vec<TestCase<op::powf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn remainder_cases() -> Vec<TestCase<op::remainder::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn remainderf_cases() -> Vec<TestCase<op::remainderf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn remquo_cases() -> Vec<TestCase<op::remquo::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn remquof_cases() -> Vec<TestCase<op::remquof::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn rint_cases() -> Vec<TestCase<op::rint::Routine>> {
-    let mut v = vec![];
-    TestCase::append_pairs(
-        &mut v,
-        &[
-            // Known failure on i586
-            #[cfg(not(x86_no_sse))]
-            (
-                (hf64!("-0x1.e3f13ff995ffcp+38"),),
-                Some(hf64!("-0x1.e3f13ff994000p+38")),
-            ),
-            #[cfg(x86_no_sse)]
-            (
-                (hf64!("-0x1.e3f13ff995ffcp+38"),),
-                Some(hf64!("-0x1.e3f13ff998000p+38")),
-            ),
-        ],
-    );
-    v
+    cases![(
+        (hf64!("-0x1.e3f13ff995ffcp+38"),),
+        if cfg!(x86_no_sse) {
+            // XFAIL on i586
+            hf64!("-0x1.e3f13ff998000p+38")
+        } else {
+            hf64!("-0x1.e3f13ff994000p+38")
+        }
+    ),]
 }
 
 fn rintf_cases() -> Vec<TestCase<op::rintf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn rintf128_cases() -> Vec<TestCase<op::rintf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn rintf16_cases() -> Vec<TestCase<op::rintf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn roundf16_cases() -> Vec<TestCase<op::roundf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn round_cases() -> Vec<TestCase<op::round::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn roundf_cases() -> Vec<TestCase<op::roundf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn roundf128_cases() -> Vec<TestCase<op::roundf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn roundevenf16_cases() -> Vec<TestCase<op::roundevenf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn roundeven_cases() -> Vec<TestCase<op::roundeven::Routine>> {
-    let mut v = vec![];
-    TestCase::append_pairs(
-        &mut v,
-        &[
-            // Known failure on i586
-            #[cfg(not(x86_no_sse))]
-            (
-                (hf64!("-0x1.e3f13ff995ffcp+38"),),
-                Some(hf64!("-0x1.e3f13ff994000p+38")),
-            ),
-            #[cfg(x86_no_sse)]
-            (
-                (hf64!("-0x1.e3f13ff995ffcp+38"),),
-                Some(hf64!("-0x1.e3f13ff998000p+38")),
-            ),
-        ],
-    );
-    v
+    cases![
+        #[cfg(not(x86_no_sse))]
+        (
+            (hf64!("-0x1.e3f13ff995ffcp+38"),),
+            if cfg!(x86_no_sse) {
+                // XFAIL on i586
+                hf64!("-0x1.e3f13ff998000p+38")
+            } else {
+                hf64!("-0x1.e3f13ff994000p+38")
+            }
+        ),
+    ]
 }
 
 fn roundevenf_cases() -> Vec<TestCase<op::roundevenf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn roundevenf128_cases() -> Vec<TestCase<op::roundevenf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn scalbn_cases() -> Vec<TestCase<op::scalbn::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn scalbnf_cases() -> Vec<TestCase<op::scalbnf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn scalbnf128_cases() -> Vec<TestCase<op::scalbnf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn scalbnf16_cases() -> Vec<TestCase<op::scalbnf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn sin_cases() -> Vec<TestCase<op::sin::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn sincos_cases() -> Vec<TestCase<op::sincos::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn sincosf_cases() -> Vec<TestCase<op::sincosf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn sinf_cases() -> Vec<TestCase<op::sinf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn sinh_cases() -> Vec<TestCase<op::sinh::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn sinhf_cases() -> Vec<TestCase<op::sinhf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn sqrt_cases() -> Vec<TestCase<op::sqrt::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn sqrtf_cases() -> Vec<TestCase<op::sqrtf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn sqrtf128_cases() -> Vec<TestCase<op::sqrtf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn sqrtf16_cases() -> Vec<TestCase<op::sqrtf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn tan_cases() -> Vec<TestCase<op::tan::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn tanf_cases() -> Vec<TestCase<op::tanf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn tanh_cases() -> Vec<TestCase<op::tanh::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn tanhf_cases() -> Vec<TestCase<op::tanhf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn tgamma_cases() -> Vec<TestCase<op::tgamma::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn tgammaf_cases() -> Vec<TestCase<op::tgammaf::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn trunc_cases() -> Vec<TestCase<op::trunc::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn truncf_cases() -> Vec<TestCase<op::truncf::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f128_enabled)]
 fn truncf128_cases() -> Vec<TestCase<op::truncf128::Routine>> {
-    vec![]
+    cases![]
 }
 
 #[cfg(f16_enabled)]
 fn truncf16_cases() -> Vec<TestCase<op::truncf16::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn y0_cases() -> Vec<TestCase<op::y0::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn y0f_cases() -> Vec<TestCase<op::y0f::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn y1_cases() -> Vec<TestCase<op::y1::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn y1f_cases() -> Vec<TestCase<op::y1f::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn yn_cases() -> Vec<TestCase<op::yn::Routine>> {
-    vec![]
+    cases![]
 }
 
 fn ynf_cases() -> Vec<TestCase<op::ynf::Routine>> {
-    vec![]
+    cases![]
 }
 
 pub trait CaseListInput: MathOp + Sized {
