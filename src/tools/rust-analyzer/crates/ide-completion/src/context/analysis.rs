@@ -827,6 +827,14 @@ fn expected_type_and_name<'db>(
                         .map(|c| (Some(c.return_type()), None))
                         .unwrap_or((None, None))
                 },
+                ast::Variant(it) => {
+                    let is_simple_variant = matches!(
+                        it.field_list(),
+                        Some(ast::FieldList::TupleFieldList(list))
+                        if list.syntax().children_with_tokens().all(|it| it.kind() != T![,])
+                    );
+                    (None, it.name().filter(|_| is_simple_variant).map(NameOrNameRef::Name))
+                },
                 ast::Stmt(_) => (None, None),
                 ast::Item(_) => (None, None),
                 _ => {
