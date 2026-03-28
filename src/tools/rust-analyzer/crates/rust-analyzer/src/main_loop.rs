@@ -92,7 +92,7 @@ impl fmt::Display for Event {
             Event::DeferredTask(_) => write!(f, "Event::DeferredTask"),
             Event::TestResult(_) => write!(f, "Event::TestResult"),
             Event::DiscoverProject(_) => write!(f, "Event::DiscoverProject"),
-            Event::FetchWorkspaces(_) => write!(f, "Event::SwitchWorkspaces"),
+            Event::FetchWorkspaces(_) => write!(f, "Event::FetchWorkspaces"),
         }
     }
 }
