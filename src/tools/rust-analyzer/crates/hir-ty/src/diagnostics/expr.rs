@@ -119,7 +119,7 @@ impl<'db> ExprValidator<'db> {
         let body = self.body;
 
         if matches!(self.owner, DefWithBodyId::FunctionId(_)) {
-            self.check_for_trailing_return(body.body_expr, body);
+            self.check_for_trailing_return(body.root_expr(), body);
         }
 
         for (id, expr) in body.exprs() {

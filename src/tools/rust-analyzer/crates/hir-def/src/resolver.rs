@@ -1419,6 +1419,7 @@ impl HasResolver for ExpressionStoreOwnerId {
         match self {
             ExpressionStoreOwnerId::Signature(def) => def.resolver(db),
             ExpressionStoreOwnerId::Body(def) => def.resolver(db),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => variant_id.resolver(db),
         }
     }
 }

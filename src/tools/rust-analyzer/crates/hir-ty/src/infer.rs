@@ -36,7 +36,7 @@ use hir_def::{
     AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, ExpressionStoreOwnerId, FieldId,
     FunctionId, GenericDefId, GenericParamId, ItemContainerId, LocalFieldId, Lookup, TraitId,
     TupleFieldId, TupleId, TypeAliasId, TypeOrConstParamId, VariantId,
-    expr_store::{Body, ConstExprOrigin, ExpressionStore, HygieneId, path::Path},
+    expr_store::{Body, ExpressionStore, HygieneId, RootExprOrigin, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
     lang_item::LangItems,
     layout::Integer,
@@ -143,9 +143,9 @@ pub fn infer_query_with_inspect<'db>(
         }
     }
 
-    ctx.infer_body(body.body_expr);
+    ctx.infer_body(body.root_expr());
 
-    ctx.infer_mut_body(body.body_expr);
+    ctx.infer_mut_body(body.root_expr());
 
     infer_finalize(ctx)
 }
@@ -166,7 +166,7 @@ fn infer_cycle_result(db: &dyn HirDatabase, _: salsa::Id, _: DefWithBodyId) -> I
 fn infer_signature_query(db: &dyn HirDatabase, def: GenericDefId) -> InferenceResult {
     let _p = tracing::info_span!("infer_signature_query").entered();
     let store = ExpressionStore::of(db, def.into());
-    let mut roots = store.signature_const_expr_roots_with_origins().peekable();
+    let mut roots = store.expr_roots_with_origins().peekable();
     let Some(_) = roots.peek() else {
         return InferenceResult::new(crate::next_solver::default_types(db).types.error);
     };
@@ -179,15 +179,47 @@ fn infer_signature_query(db: &dyn HirDatabase, def: GenericDefId) -> InferenceRe
     for (root_expr, origin) in roots {
         let expected = match origin {
             // Array lengths are always `usize`.
-            ConstExprOrigin::ArrayLength => Expectation::has_type(ctx.types.types.usize),
+            RootExprOrigin::ArrayLength => Expectation::has_type(ctx.types.types.usize),
             // Const parameter default: look up the param's declared type.
-            ConstExprOrigin::ConstParam(local_id) => Expectation::has_type(db.const_param_ty_ns(
+            RootExprOrigin::ConstParam(local_id) => Expectation::has_type(db.const_param_ty_ns(
                 ConstParamId::from_unchecked(TypeOrConstParamId { parent: def, local_id }),
             )),
             // Path const generic args: determining the expected type requires
             // path resolution.
             // FIXME
-            ConstExprOrigin::GenericArgsPath => Expectation::None,
+            RootExprOrigin::GenericArgsPath => Expectation::None,
+            RootExprOrigin::BodyRoot => Expectation::None,
+        };
+        ctx.infer_expr(root_expr, &expected, ExprIsRead::Yes);
+    }
+
+    infer_finalize(ctx)
+}
+
+fn infer_variant_fields_query(db: &dyn HirDatabase, def: VariantId) -> InferenceResult {
+    let _p = tracing::info_span!("infer_variant_fields_query").entered();
+    let store = ExpressionStore::of(db, def.into());
+    let mut roots = store.expr_roots_with_origins().peekable();
+    let Some(_) = roots.peek() else {
+        return InferenceResult::new(crate::next_solver::default_types(db).types.error);
+    };
+
+    let resolver = def.resolver(db);
+    let owner = ExpressionStoreOwnerId::VariantFields(def);
+
+    let mut ctx = InferenceContext::new(db, owner, store, resolver);
+
+    for (root_expr, origin) in roots {
+        let expected = match origin {
+            // Array lengths are always `usize`.
+            RootExprOrigin::ArrayLength => Expectation::has_type(ctx.types.types.usize),
+            // unreachable
+            RootExprOrigin::ConstParam(_) => Expectation::None,
+            // Path const generic args: determining the expected type requires
+            // path resolution.
+            // FIXME
+            RootExprOrigin::GenericArgsPath => Expectation::None,
+            RootExprOrigin::BodyRoot => Expectation::None,
         };
         ctx.infer_expr(root_expr, &expected, ExprIsRead::Yes);
     }
@@ -199,6 +231,17 @@ fn infer_signature_cycle_result(
     db: &dyn HirDatabase,
     _: salsa::Id,
     _: GenericDefId,
+) -> InferenceResult {
+    InferenceResult {
+        has_errors: true,
+        ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
+    }
+}
+
+fn infer_variant_fields_cycle_result(
+    db: &dyn HirDatabase,
+    _: salsa::Id,
+    _: VariantId,
 ) -> InferenceResult {
     InferenceResult {
         has_errors: true,
@@ -617,6 +660,11 @@ impl InferenceResult {
     fn for_signature(db: &dyn HirDatabase, def: GenericDefId) -> InferenceResult {
         infer_signature_query(db, def)
     }
+
+    #[salsa::tracked(returns(ref), cycle_result = infer_variant_fields_cycle_result)]
+    fn for_variant_fields(db: &dyn HirDatabase, def: VariantId) -> InferenceResult {
+        infer_variant_fields_query(db, def)
+    }
 }
 
 impl InferenceResult {
@@ -626,6 +674,9 @@ impl InferenceResult {
                 Self::for_signature(db, generic_def_id)
             }
             ExpressionStoreOwnerId::Body(def_with_body_id) => Self::for_body(db, def_with_body_id),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                Self::for_variant_fields(db, variant_id)
+            }
         }
     }
 
@@ -936,6 +987,9 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             }
             ExpressionStoreOwnerId::Body(def_with_body_id) => {
                 db.trait_environment(ExpressionStoreOwnerId::Body(def_with_body_id))
+            }
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                db.trait_environment(ExpressionStoreOwnerId::VariantFields(variant_id))
             }
         };
         let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), Some(owner));

@@ -356,8 +356,7 @@ pub enum ModuleDef {
     Function(Function),
     Adt(Adt),
     // Can't be directly declared, but can be imported.
-    // FIXME: Rename to `EnumVariant`
-    Variant(Variant),
+    EnumVariant(EnumVariant),
     Const(Const),
     Static(Static),
     Trait(Trait),
@@ -369,7 +368,7 @@ impl_from!(
     Module,
     Function,
     Adt(Struct, Enum, Union),
-    Variant,
+    EnumVariant,
     Const,
     Static,
     Trait,
@@ -379,12 +378,12 @@ impl_from!(
     for ModuleDef
 );
 
-impl From<VariantDef> for ModuleDef {
-    fn from(var: VariantDef) -> Self {
+impl From<Variant> for ModuleDef {
+    fn from(var: Variant) -> Self {
         match var {
-            VariantDef::Struct(t) => Adt::from(t).into(),
-            VariantDef::Union(t) => Adt::from(t).into(),
-            VariantDef::Variant(t) => t.into(),
+            Variant::Struct(t) => Adt::from(t).into(),
+            Variant::Union(t) => Adt::from(t).into(),
+            Variant::EnumVariant(t) => t.into(),
         }
     }
 }
@@ -395,7 +394,7 @@ impl ModuleDef {
             ModuleDef::Module(it) => it.parent(db),
             ModuleDef::Function(it) => Some(it.module(db)),
             ModuleDef::Adt(it) => Some(it.module(db)),
-            ModuleDef::Variant(it) => Some(it.module(db)),
+            ModuleDef::EnumVariant(it) => Some(it.module(db)),
             ModuleDef::Const(it) => Some(it.module(db)),
             ModuleDef::Static(it) => Some(it.module(db)),
             ModuleDef::Trait(it) => Some(it.module(db)),
@@ -428,7 +427,7 @@ impl ModuleDef {
             ModuleDef::Adt(it) => it.name(db),
             ModuleDef::Trait(it) => it.name(db),
             ModuleDef::Function(it) => it.name(db),
-            ModuleDef::Variant(it) => it.name(db),
+            ModuleDef::EnumVariant(it) => it.name(db),
             ModuleDef::TypeAlias(it) => it.name(db),
             ModuleDef::Static(it) => it.name(db),
             ModuleDef::Macro(it) => it.name(db),
@@ -457,7 +456,7 @@ impl ModuleDef {
             ModuleDef::Module(it) => it.id.into(),
             ModuleDef::Const(it) => it.id.into(),
             ModuleDef::Static(it) => it.id.into(),
-            ModuleDef::Variant(it) => it.id.into(),
+            ModuleDef::EnumVariant(it) => it.id.into(),
             ModuleDef::BuiltinType(_) | ModuleDef::Macro(_) => return Vec::new(),
         };
 
@@ -486,7 +485,7 @@ impl ModuleDef {
             ModuleDef::Function(it) => Some(it.into()),
             ModuleDef::Const(it) => Some(it.into()),
             ModuleDef::Static(it) => Some(it.into()),
-            ModuleDef::Variant(it) => Some(it.into()),
+            ModuleDef::EnumVariant(it) => Some(it.into()),
 
             ModuleDef::Module(_)
             | ModuleDef::Adt(_)
@@ -505,7 +504,7 @@ impl ModuleDef {
             ModuleDef::Trait(it) => Some(it.into()),
             ModuleDef::TypeAlias(it) => Some(it.into()),
             ModuleDef::Module(_)
-            | ModuleDef::Variant(_)
+            | ModuleDef::EnumVariant(_)
             | ModuleDef::Static(_)
             | ModuleDef::Const(_)
             | ModuleDef::BuiltinType(_)
@@ -521,7 +520,7 @@ impl ModuleDef {
             ModuleDef::TypeAlias(it) => Some(it.into()),
             ModuleDef::Static(it) => Some(it.into()),
             ModuleDef::Const(it) => Some(it.into()),
-            ModuleDef::Variant(_)
+            ModuleDef::EnumVariant(_)
             | ModuleDef::Module(_)
             | ModuleDef::BuiltinType(_)
             | ModuleDef::Macro(_) => None,
@@ -533,7 +532,7 @@ impl ModuleDef {
             ModuleDef::Module(it) => it.attrs(db),
             ModuleDef::Function(it) => HasAttrs::attrs(*it, db),
             ModuleDef::Adt(it) => it.attrs(db),
-            ModuleDef::Variant(it) => it.attrs(db),
+            ModuleDef::EnumVariant(it) => it.attrs(db),
             ModuleDef::Const(it) => it.attrs(db),
             ModuleDef::Static(it) => it.attrs(db),
             ModuleDef::Trait(it) => it.attrs(db),
@@ -563,7 +562,7 @@ impl HasVisibility for ModuleDef {
             ModuleDef::Static(it) => it.visibility(db),
             ModuleDef::Trait(it) => it.visibility(db),
             ModuleDef::TypeAlias(it) => it.visibility(db),
-            ModuleDef::Variant(it) => it.visibility(db),
+            ModuleDef::EnumVariant(it) => it.visibility(db),
             ModuleDef::Macro(it) => it.visibility(db),
             ModuleDef::BuiltinType(_) => Visibility::Public,
         }
@@ -1300,7 +1299,7 @@ impl HasVisibility for Module {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Field {
-    pub(crate) parent: VariantDef,
+    pub(crate) parent: Variant,
     pub(crate) id: LocalFieldId,
 }
 
@@ -1324,7 +1323,7 @@ impl<'db> InstantiatedField<'db> {
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub struct TupleField {
-    pub owner: DefWithBodyId,
+    pub owner: ExpressionStoreOwnerId,
     pub tuple: TupleId,
     pub index: u32,
 }
@@ -1406,9 +1405,9 @@ impl Field {
     ) -> Type<'db> {
         let var_id = self.parent.into();
         let def_id: AdtId = match self.parent {
-            VariantDef::Struct(it) => it.id.into(),
-            VariantDef::Union(it) => it.id.into(),
-            VariantDef::Variant(it) => it.parent_enum(db).id.into(),
+            Variant::Struct(it) => it.id.into(),
+            Variant::Union(it) => it.id.into(),
+            Variant::EnumVariant(it) => it.parent_enum(db).id.into(),
         };
         let interner = DbInterner::new_no_crate(db);
         let args = generic_args_from_tys(interner, def_id.into(), generics.map(|ty| ty.ty));
@@ -1434,7 +1433,7 @@ impl Field {
         .map(|layout| Layout(layout, db.target_data_layout(self.krate(db).into()).unwrap()))
     }
 
-    pub fn parent_def(&self, _db: &dyn HirDatabase) -> VariantDef {
+    pub fn parent_def(&self, _db: &dyn HirDatabase) -> Variant {
         self.parent
     }
 }
@@ -1615,8 +1614,8 @@ impl Enum {
         EnumSignature::of(db, self.id).name.clone()
     }
 
-    pub fn variants(self, db: &dyn HirDatabase) -> Vec<Variant> {
-        self.id.enum_variants(db).variants.iter().map(|&(id, _, _)| Variant { id }).collect()
+    pub fn variants(self, db: &dyn HirDatabase) -> Vec<EnumVariant> {
+        self.id.enum_variants(db).variants.iter().map(|&(id, _, _)| EnumVariant { id }).collect()
     }
 
     pub fn num_variants(self, db: &dyn HirDatabase) -> usize {
@@ -1708,19 +1707,18 @@ impl<'db> InstantiatedEnum<'db> {
     }
 }
 
-impl From<&Variant> for DefWithBodyId {
-    fn from(&v: &Variant) -> Self {
+impl From<&EnumVariant> for DefWithBodyId {
+    fn from(&v: &EnumVariant) -> Self {
         DefWithBodyId::VariantId(v.into())
     }
 }
 
-// FIXME: Rename to `EnumVariant`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Variant {
+pub struct EnumVariant {
     pub(crate) id: EnumVariantId,
 }
 
-impl Variant {
+impl EnumVariant {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         Module { id: self.id.module(db) }
     }
@@ -1794,7 +1792,7 @@ impl Variant {
 // FIXME: Rename to `EnumVariant`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InstantiatedVariant<'db> {
-    pub(crate) inner: Variant,
+    pub(crate) inner: EnumVariant,
     pub(crate) args: GenericArgs<'db>,
 }
 
@@ -1825,7 +1823,7 @@ pub enum StructKind {
 }
 
 /// Variants inherit visibility from the parent enum.
-impl HasVisibility for Variant {
+impl HasVisibility for EnumVariant {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         self.parent_enum(db).visibility(db)
     }
@@ -1934,35 +1932,35 @@ impl HasVisibility for Adt {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum VariantDef {
+pub enum Variant {
     Struct(Struct),
     Union(Union),
-    Variant(Variant),
+    EnumVariant(EnumVariant),
 }
-impl_from!(Struct, Union, Variant for VariantDef);
+impl_from!(Struct, Union, EnumVariant for Variant);
 
-impl VariantDef {
+impl Variant {
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
         match self {
-            VariantDef::Struct(it) => it.fields(db),
-            VariantDef::Union(it) => it.fields(db),
-            VariantDef::Variant(it) => it.fields(db),
+            Variant::Struct(it) => it.fields(db),
+            Variant::Union(it) => it.fields(db),
+            Variant::EnumVariant(it) => it.fields(db),
         }
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         match self {
-            VariantDef::Struct(it) => it.module(db),
-            VariantDef::Union(it) => it.module(db),
-            VariantDef::Variant(it) => it.module(db),
+            Variant::Struct(it) => it.module(db),
+            Variant::Union(it) => it.module(db),
+            Variant::EnumVariant(it) => it.module(db),
         }
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
         match self {
-            VariantDef::Struct(s) => (*s).name(db),
-            VariantDef::Union(u) => (*u).name(db),
-            VariantDef::Variant(e) => (*e).name(db),
+            Variant::Struct(s) => (*s).name(db),
+            Variant::Union(u) => (*u).name(db),
+            Variant::EnumVariant(e) => (*e).name(db),
         }
     }
 }
@@ -1971,6 +1969,7 @@ impl VariantDef {
 pub enum ExpressionStoreOwner {
     Body(DefWithBody),
     Signature(GenericDef),
+    VariantFields(Variant),
 }
 
 impl From<GenericDef> for ExpressionStoreOwner {
@@ -1992,6 +1991,9 @@ impl From<ExpressionStoreOwnerId> for ExpressionStoreOwner {
                 Self::Signature(generic_def_id.into())
             }
             ExpressionStoreOwnerId::Body(def_with_body_id) => Self::Body(def_with_body_id.into()),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                Self::VariantFields(variant_id.into())
+            }
         }
     }
 }
@@ -2001,6 +2003,7 @@ impl ExpressionStoreOwner {
         match self {
             Self::Body(body) => body.module(db),
             Self::Signature(generic_def) => generic_def.module(db),
+            Self::VariantFields(variant) => variant.module(db),
         }
     }
 }
@@ -2011,9 +2014,9 @@ pub enum DefWithBody {
     Function(Function),
     Static(Static),
     Const(Const),
-    Variant(Variant),
+    EnumVariant(EnumVariant),
 }
-impl_from!(Function, Const, Static, Variant for DefWithBody);
+impl_from!(Function, Const, Static, EnumVariant for DefWithBody);
 
 impl DefWithBody {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -2021,7 +2024,7 @@ impl DefWithBody {
             DefWithBody::Const(c) => c.module(db),
             DefWithBody::Function(f) => f.module(db),
             DefWithBody::Static(s) => s.module(db),
-            DefWithBody::Variant(v) => v.module(db),
+            DefWithBody::EnumVariant(v) => v.module(db),
         }
     }
 
@@ -2030,7 +2033,7 @@ impl DefWithBody {
             DefWithBody::Function(f) => Some(f.name(db)),
             DefWithBody::Static(s) => Some(s.name(db)),
             DefWithBody::Const(c) => c.name(db),
-            DefWithBody::Variant(v) => Some(v.name(db)),
+            DefWithBody::EnumVariant(v) => Some(v.name(db)),
         }
     }
 
@@ -2040,7 +2043,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.ret_type(db),
             DefWithBody::Static(it) => it.ty(db),
             DefWithBody::Const(it) => it.ty(db),
-            DefWithBody::Variant(it) => it.parent_enum(db).variant_body_ty(db),
+            DefWithBody::EnumVariant(it) => it.parent_enum(db).variant_body_ty(db),
         }
     }
 
@@ -2052,7 +2055,7 @@ impl DefWithBody {
             },
             DefWithBody::Static(it) => it.id.into(),
             DefWithBody::Const(it) => it.id.into(),
-            DefWithBody::Variant(it) => it.into(),
+            DefWithBody::EnumVariant(it) => it.into(),
         })
     }
 
@@ -2096,7 +2099,7 @@ impl DefWithBody {
             },
             DefWithBody::Static(id) => &StaticSignature::with_source_map(db, id.into()).1,
             DefWithBody::Const(id) => &ConstSignature::with_source_map(db, id.into()).1,
-            DefWithBody::Variant(variant) => {
+            DefWithBody::EnumVariant(variant) => {
                 let enum_id = variant.parent_enum(db).id;
                 &EnumSignature::with_source_map(db, enum_id).1
             }
@@ -3785,7 +3788,7 @@ impl AsAssocItem for DefWithBody {
         match self {
             DefWithBody::Function(it) => it.as_assoc_item(db),
             DefWithBody::Const(it) => it.as_assoc_item(db),
-            DefWithBody::Static(_) | DefWithBody::Variant(_) => None,
+            DefWithBody::Static(_) | DefWithBody::EnumVariant(_) => None,
         }
     }
 }
@@ -4369,11 +4372,9 @@ impl Local {
     /// All definitions for this local. Example: `let (a$0, _) | (_, a$0) = it;`
     pub fn sources(self, db: &dyn HirDatabase) -> Vec<LocalSource> {
         let b;
-        let s;
         let (_, source_map) = match self.parent {
             ExpressionStoreOwnerId::Signature(generic_def_id) => {
-                s = ExpressionStore::with_source_map(db, generic_def_id.into());
-                (s.0, s.1)
+                ExpressionStore::with_source_map(db, generic_def_id.into())
             }
             ExpressionStoreOwnerId::Body(def_with_body_id) => {
                 b = Body::with_source_map(db, def_with_body_id);
@@ -4387,6 +4388,9 @@ impl Local {
                     }];
                 }
                 (&b.0.store, &b.1.store)
+            }
+            ExpressionStoreOwnerId::VariantFields(def) => {
+                ExpressionStore::with_source_map(db, def.into())
             }
         };
         source_map
@@ -4409,11 +4413,9 @@ impl Local {
     /// The leftmost definition for this local. Example: `let (a$0, _) | (_, a) = it;`
     pub fn primary_source(self, db: &dyn HirDatabase) -> LocalSource {
         let b;
-        let s;
         let (_, source_map) = match self.parent {
             ExpressionStoreOwnerId::Signature(generic_def_id) => {
-                s = ExpressionStore::with_source_map(db, generic_def_id.into());
-                (s.0, s.1)
+                ExpressionStore::with_source_map(db, generic_def_id.into())
             }
             ExpressionStoreOwnerId::Body(def_with_body_id) => {
                 b = Body::with_source_map(db, def_with_body_id);
@@ -4427,6 +4429,9 @@ impl Local {
                     };
                 }
                 (&b.0.store, &b.1.store)
+            }
+            ExpressionStoreOwnerId::VariantFields(def) => {
+                ExpressionStore::with_source_map(db, def.into())
             }
         };
         source_map
@@ -6519,7 +6524,7 @@ enum Callee<'db> {
 pub enum CallableKind<'db> {
     Function(Function),
     TupleStruct(Struct),
-    TupleEnumVariant(Variant),
+    TupleEnumVariant(EnumVariant),
     Closure(Closure<'db>),
     FnPtr,
     FnImpl(FnTrait),
@@ -6869,7 +6874,7 @@ impl HasCrate for Field {
     }
 }
 
-impl HasCrate for Variant {
+impl HasCrate for EnumVariant {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
         self.module(db).krate(db)
     }
@@ -7038,9 +7043,9 @@ impl_has_name!(
     Struct,
     Union,
     Enum,
-    Variant,
+    EnumVariant,
     Adt,
-    VariantDef,
+    Variant,
     DefWithBody,
     Function,
     ExternCrateDecl,
@@ -7264,9 +7269,9 @@ fn param_env_from_has_crate<'db>(
 
 fn body_param_env_from_has_crate<'db>(
     db: &'db dyn HirDatabase,
-    id: impl hir_def::HasModule + Into<DefWithBodyId> + Copy,
+    id: impl hir_def::HasModule + Into<ExpressionStoreOwnerId> + Copy,
 ) -> ParamEnvAndCrate<'db> {
-    ParamEnvAndCrate { param_env: db.trait_environment(id.into().into()), krate: id.krate(db) }
+    ParamEnvAndCrate { param_env: db.trait_environment(id.into()), krate: id.krate(db) }
 }
 
 fn empty_param_env<'db>(krate: base_db::Crate) -> ParamEnvAndCrate<'db> {

@@ -259,7 +259,7 @@ impl_intern!(StructId, StructLoc, intern_struct, lookup_intern_struct);
 
 impl StructId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self.into())
+        VariantFields::of(db, self.into())
     }
 
     pub fn fields_with_source_map(
@@ -276,7 +276,7 @@ impl_intern!(UnionId, UnionLoc, intern_union, lookup_intern_union);
 
 impl UnionId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self.into())
+        VariantFields::of(db, self.into())
     }
 
     pub fn fields_with_source_map(
@@ -396,7 +396,7 @@ impl_loc!(EnumVariantLoc, id: Variant, parent: EnumId);
 
 impl EnumVariantId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self.into())
+        VariantFields::of(db, self.into())
     }
 
     pub fn fields_with_source_map(
@@ -756,19 +756,17 @@ impl GeneralConstId {
     }
 }
 
-/// The defs which have a body (have root expressions for type inference).
+/// The defs which have a body.
 #[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum DefWithBodyId {
+    /// A function body.
     FunctionId(FunctionId),
+    /// A static item initializer.
     StaticId(StaticId),
+    /// A const item initializer
     ConstId(ConstId),
+    /// An enum variant discrimiant
     VariantId(EnumVariantId),
-    // /// All fields of a variant are inference roots
-    // VariantId(VariantId),
-    // /// The signature can contain inference roots in a bunch of places
-    // /// like const parameters or const arguments in paths
-    // This should likely be kept on its own with a separate query
-    // GenericDefId(GenericDefId),
 }
 impl_from!(FunctionId, ConstId, StaticId for DefWithBodyId);
 
@@ -840,10 +838,15 @@ impl_from!(
 /// Owner of an expression store - either a body or a signature.
 /// This is used for queries that operate on expression stores generically,
 /// such as `expr_scopes`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+// NOTE: This type cannot be `salsa::Supertype` as its variants are overlapping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord /* !salsa::Supertype */)]
 pub enum ExpressionStoreOwnerId {
     Signature(GenericDefId),
+    /// A body, something with a root expression.
+    ///
+    /// An enum variant's body is considered its discriminant initializer.
     Body(DefWithBodyId),
+    VariantFields(VariantId),
 }
 
 impl ExpressionStoreOwnerId {
@@ -861,6 +864,11 @@ impl ExpressionStoreOwnerId {
                 DefWithBodyId::ConstId(id) => GenericDefId::ConstId(id),
                 DefWithBodyId::VariantId(it) => it.lookup(db).parent.into(),
             },
+            ExpressionStoreOwnerId::VariantFields(variant_id) => match variant_id {
+                VariantId::EnumVariantId(it) => it.lookup(db).parent.into(),
+                VariantId::StructId(it) => it.into(),
+                VariantId::UnionId(it) => it.into(),
+            },
         }
     }
 }
@@ -874,6 +882,12 @@ impl From<GenericDefId> for ExpressionStoreOwnerId {
 impl From<DefWithBodyId> for ExpressionStoreOwnerId {
     fn from(id: DefWithBodyId) -> Self {
         ExpressionStoreOwnerId::Body(id)
+    }
+}
+
+impl From<VariantId> for ExpressionStoreOwnerId {
+    fn from(id: VariantId) -> Self {
+        ExpressionStoreOwnerId::VariantFields(id)
     }
 }
 
@@ -1017,7 +1031,9 @@ impl From<VariantId> for AttrDefId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype, salsa::Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa_macros::Supertype, salsa::Update,
+)]
 pub enum VariantId {
     EnumVariantId(EnumVariantId),
     StructId(StructId),
@@ -1027,7 +1043,7 @@ impl_from!(EnumVariantId, StructId, UnionId for VariantId);
 
 impl VariantId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self)
+        VariantFields::of(db, self)
     }
 
     pub fn fields_with_source_map(
@@ -1241,6 +1257,7 @@ impl HasModule for ExpressionStoreOwnerId {
         match self {
             ExpressionStoreOwnerId::Signature(def) => def.module(db),
             ExpressionStoreOwnerId::Body(def) => def.module(db),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => variant_id.module(db),
         }
     }
 }

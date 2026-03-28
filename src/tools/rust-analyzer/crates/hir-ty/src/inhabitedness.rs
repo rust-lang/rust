@@ -1,7 +1,9 @@
 //! Type inhabitedness logic.
 use std::ops::ControlFlow::{self, Break, Continue};
 
-use hir_def::{AdtId, EnumVariantId, ModuleId, VariantId, visibility::Visibility};
+use hir_def::{
+    AdtId, EnumVariantId, ModuleId, VariantId, signatures::VariantFields, visibility::Visibility,
+};
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
@@ -151,7 +153,11 @@ impl<'a, 'db> UninhabitedFrom<'a, 'db> {
 
         let is_enum = matches!(variant, VariantId::EnumVariantId(..));
         let field_tys = self.db().field_types(variant);
-        let field_vis = if is_enum { None } else { Some(self.db().field_visibilities(variant)) };
+        let field_vis = if is_enum {
+            None
+        } else {
+            Some(VariantFields::field_visibilities(self.db(), variant))
+        };
 
         for (fid, _) in fields.iter() {
             self.visit_field(field_vis.as_ref().map(|it| it[fid]), &field_tys[fid].get(), subst)?;

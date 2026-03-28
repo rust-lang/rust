@@ -314,7 +314,7 @@ impl Definition {
                     DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
                     DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
                     DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
-                    DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::EnumVariant(v) => v.source(db).map(|src| src.syntax().cloned()),
                 },
                 ExpressionStoreOwner::Signature(def) => match def {
                     hir::GenericDef::Function(it) => it.source(db).map(|src| src.syntax().cloned()),
@@ -327,6 +327,9 @@ impl Definition {
                     hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
                     hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
                 },
+                ExpressionStoreOwner::VariantFields(it) => {
+                    it.source(db).map(|src| src.syntax().cloned())
+                }
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -342,7 +345,7 @@ impl Definition {
                     DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
                     DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
                     DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
-                    DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::EnumVariant(v) => v.source(db).map(|src| src.syntax().cloned()),
                 },
                 ExpressionStoreOwner::Signature(def) => match def {
                     hir::GenericDef::Function(it) => it.source(db).map(|src| src.syntax().cloned()),
@@ -355,6 +358,9 @@ impl Definition {
                     hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
                     hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
                 },
+                ExpressionStoreOwner::VariantFields(it) => {
+                    it.source(db).map(|src| src.syntax().cloned())
+                }
             };
             return match def {
                 Some(def) => SearchScope::file_range(

@@ -27,9 +27,9 @@ use intern::Symbol;
 use stdx::never;
 
 use crate::{
-    Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
-    Field, Function, GenericParam, HasCrate, Impl, LangItem, LifetimeParam, Macro, Module,
-    ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, EnumVariant,
+    ExternCrateDecl, Field, Function, GenericParam, HasCrate, Impl, LangItem, LifetimeParam, Macro,
+    Module, ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -200,7 +200,7 @@ macro_rules! impl_has_attrs {
 }
 
 impl_has_attrs![
-    (Variant, EnumVariantId),
+    (EnumVariant, EnumVariantId),
     (Static, StaticId),
     (Const, ConstId),
     (Trait, TraitId),
@@ -407,7 +407,7 @@ fn resolve_assoc_or_field(
         TypeNs::AdtId(id) | TypeNs::AdtSelfType(id) => Adt::from(id).ty(db),
         TypeNs::EnumVariantId(id) => {
             // Enum variants don't have path candidates.
-            let variant = Variant::from(id);
+            let variant = EnumVariant::from(id);
             return resolve_field(db, variant.into(), name, ns);
         }
         TypeNs::TypeAliasId(id) => {
@@ -444,7 +444,7 @@ fn resolve_assoc_or_field(
                 .id
                 .enum_variants(db)
                 .variant(&name)
-                .map(|variant| DocLinkDef::ModuleDef(ModuleDef::Variant(variant.into())));
+                .map(|variant| DocLinkDef::ModuleDef(ModuleDef::EnumVariant(variant.into())));
         }
     };
     resolve_field(db, variant_def, name, ns)
@@ -506,7 +506,7 @@ fn resolve_impl_trait_item<'db>(
 
 fn resolve_field(
     db: &dyn HirDatabase,
-    def: VariantDef,
+    def: Variant,
     name: Name,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
