@@ -92,12 +92,13 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
     let anchor = if self_param.is_some() { Anchor::Method } else { Anchor::Freestanding };
     let insert_after = node_to_insert_after(&body, anchor)?;
+    let trait_name = ast::Trait::cast(insert_after.clone()).and_then(|trait_| trait_.name());
     let semantics_scope = ctx.sema.scope(&insert_after)?;
     let module = semantics_scope.module();
     let edition = semantics_scope.krate().edition(ctx.db());
 
     let (container_info, contains_tail_expr) =
-        body.analyze_container(&ctx.sema, edition, &insert_after)?;
+        body.analyze_container(&ctx.sema, edition, trait_name)?;
 
     let ret_ty = body.return_ty(ctx)?;
     let control_flow = body.external_control_flow(ctx, &container_info)?;
@@ -841,7 +842,7 @@ impl FunctionBody {
         &self,
         sema: &Semantics<'db, RootDatabase>,
         edition: Edition,
-        insert_after: &SyntaxNode,
+        trait_name: Option<ast::Name>,
     ) -> Option<(ContainerInfo<'db>, bool)> {
         let mut ancestors = self.parent()?.ancestors();
         let infer_expr_opt = |expr| sema.type_of_expr(&expr?).map(TypeInfo::adjusted);
@@ -929,8 +930,7 @@ impl FunctionBody {
         };
 
         // FIXME: make trait arguments
-        let trait_name = ast::Trait::cast(insert_after.clone())
-            .and_then(|trait_| Some(make::ty_path(make::ext::ident_path(&trait_.name()?.text()))));
+        let trait_name = trait_name.map(|name| make::ty_path(make::ext::ident_path(&name.text())));
 
         let parent = self.parent()?;
         let parents = generic_parents(&parent);
