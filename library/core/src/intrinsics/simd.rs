@@ -252,19 +252,27 @@ pub const unsafe fn simd_fabs<T>(x: T) -> T;
 ///
 /// `T` must be a vector of floating-point primitive types.
 ///
-/// Follows IEEE-754 `minNum` semantics.
+/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular, for each vector lane:
+/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
+/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
+/// and `-0.0`), either input may be returned non-deterministically.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn simd_fmin<T>(x: T, y: T) -> T;
+pub const unsafe fn simd_minimum_number_nsz<T>(x: T, y: T) -> T;
 
 /// Returns the maximum of two vectors, elementwise.
 ///
 /// `T` must be a vector of floating-point primitive types.
 ///
-/// Follows IEEE-754 `maxNum` semantics.
+/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular, for each vector lane:
+/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
+/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
+/// and `-0.0`), either input may be returned non-deterministically.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn simd_fmax<T>(x: T, y: T) -> T;
+pub const unsafe fn simd_maximum_number_nsz<T>(x: T, y: T) -> T;
 
 /// Tests elementwise equality of two vectors.
 ///
