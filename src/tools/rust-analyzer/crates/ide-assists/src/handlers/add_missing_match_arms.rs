@@ -86,6 +86,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                     def_with_body.as_assoc_item(ctx.db())
                 }
                 hir::ExpressionStoreOwner::Signature(def) => def.as_assoc_item(ctx.db()),
+                hir::ExpressionStoreOwner::VariantFields(_) => None,
             }?
             .implementing_ty(ctx.db())
         })
@@ -477,7 +478,7 @@ enum ExtendedEnum {
 enum ExtendedVariant {
     True,
     False,
-    Variant { variant: hir::Variant, use_self: bool },
+    Variant { variant: hir::EnumVariant, use_self: bool },
 }
 
 impl ExtendedVariant {

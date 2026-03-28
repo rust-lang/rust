@@ -465,7 +465,7 @@ fn like_const_value(ctx: &AssistContext<'_>, path_resolution: hir::PathResolutio
     match path_resolution {
         hir::PathResolution::Def(def) => match def {
             hir::ModuleDef::Adt(adt) => adt_like_const_value(Some(adt)),
-            hir::ModuleDef::Variant(variant) => variant.kind(db) == hir::StructKind::Unit,
+            hir::ModuleDef::EnumVariant(variant) => variant.kind(db) == hir::StructKind::Unit,
             hir::ModuleDef::TypeAlias(ty) => adt_like_const_value(ty.ty(db).as_adt()),
             hir::ModuleDef::Const(_) | hir::ModuleDef::Static(_) => true,
             hir::ModuleDef::Trait(_)

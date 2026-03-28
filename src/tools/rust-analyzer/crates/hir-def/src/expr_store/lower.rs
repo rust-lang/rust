@@ -18,6 +18,7 @@ use hir_expand::{
 };
 use intern::{Symbol, sym};
 use rustc_hash::FxHashMap;
+use smallvec::smallvec;
 use stdx::never;
 use syntax::{
     AstNode, AstPtr, SyntaxNodePtr,
@@ -36,9 +37,9 @@ use crate::{
     attrs::AttrFlags,
     db::DefDatabase,
     expr_store::{
-        Body, BodySourceMap, ConstExprOrigin, ExprPtr, ExpressionStore, ExpressionStoreBuilder,
+        Body, BodySourceMap, ExprPtr, ExpressionStore, ExpressionStoreBuilder,
         ExpressionStoreDiagnostics, ExpressionStoreSourceMap, HygieneId, LabelPtr, LifetimePtr,
-        PatPtr, TypePtr,
+        PatPtr, RootExprOrigin, TypePtr,
         expander::Expander,
         lower::generics::ImplTraitLowerFn,
         path::{AssociatedTypeBinding, GenericArg, GenericArgs, GenericArgsParentheses, Path},
@@ -117,9 +118,10 @@ pub(super) fn lower_body(
             params = (0..count).map(|_| collector.missing_pat()).collect();
         };
         let body_expr = collector.missing_expr();
+        collector.store.inference_roots = Some(smallvec![(body_expr, RootExprOrigin::BodyRoot)]);
         let (store, source_map) = collector.store.finish();
         return (
-            Body { store, params: params.into_boxed_slice(), self_param, body_expr },
+            Body { store, params: params.into_boxed_slice(), self_param },
             BodySourceMap { self_param: source_map_self_param, store: source_map },
         );
     }
@@ -173,10 +175,11 @@ pub(super) fn lower_body(
             }
         },
     );
+    collector.store.inference_roots = Some(smallvec![(body_expr, RootExprOrigin::BodyRoot)]);
 
     let (store, source_map) = collector.store.finish();
     (
-        Body { store, params: params.into_boxed_slice(), self_param, body_expr },
+        Body { store, params: params.into_boxed_slice(), self_param },
         BodySourceMap { self_param: source_map_self_param, store: source_map },
     )
 }
@@ -535,7 +538,7 @@ impl<'db> ExprCollector<'db> {
         current_file_id: HirFileId,
     ) -> ExprCollector<'_> {
         let mut this = Self::body(db, module, current_file_id);
-        this.store.const_expr_origins = Some(Default::default());
+        this.store.inference_roots = Some(Default::default());
         this
     }
 
@@ -635,8 +638,8 @@ impl<'db> ExprCollector<'db> {
             }
             ast::Type::ArrayType(inner) => {
                 let len = self.lower_const_arg_opt(inner.const_arg());
-                if let Some(const_expr_origins) = &mut self.store.const_expr_origins {
-                    const_expr_origins.push((len.expr, ConstExprOrigin::ArrayLength));
+                if let Some(const_expr_origins) = &mut self.store.inference_roots {
+                    const_expr_origins.push((len.expr, RootExprOrigin::ArrayLength));
                 }
                 TypeRef::Array(ArrayType {
                     ty: self.lower_type_ref_opt(inner.ty(), impl_trait_lower_fn),
@@ -922,8 +925,8 @@ impl<'db> ExprCollector<'db> {
                 }
                 ast::GenericArg::ConstArg(arg) => {
                     let arg = self.lower_const_arg(arg);
-                    if let Some(const_expr_origins) = &mut self.store.const_expr_origins {
-                        const_expr_origins.push((arg.expr, ConstExprOrigin::GenericArgsPath));
+                    if let Some(const_expr_origins) = &mut self.store.inference_roots {
+                        const_expr_origins.push((arg.expr, RootExprOrigin::GenericArgsPath));
                     }
                     args.push(GenericArg::Const(arg))
                 }
@@ -1065,16 +1068,16 @@ impl<'db> ExprCollector<'db> {
     }
 
     fn lower_const_arg_opt(&mut self, arg: Option<ast::ConstArg>) -> ConstRef {
-        let const_expr_origins = self.store.const_expr_origins.take();
+        let const_expr_origins = self.store.inference_roots.take();
         let r = ConstRef { expr: self.collect_expr_opt(arg.and_then(|it| it.expr())) };
-        self.store.const_expr_origins = const_expr_origins;
+        self.store.inference_roots = const_expr_origins;
         r
     }
 
     pub fn lower_const_arg(&mut self, arg: ast::ConstArg) -> ConstRef {
-        let const_expr_origins = self.store.const_expr_origins.take();
+        let const_expr_origins = self.store.inference_roots.take();
         let r = ConstRef { expr: self.collect_expr_opt(arg.expr()) };
-        self.store.const_expr_origins = const_expr_origins;
+        self.store.inference_roots = const_expr_origins;
         r
     }
 

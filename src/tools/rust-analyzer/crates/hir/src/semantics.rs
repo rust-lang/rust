@@ -16,7 +16,7 @@ use hir_def::{
     BuiltinDeriveImplId, DefWithBodyId, ExpressionStoreOwnerId, HasModule, MacroId, StructId,
     TraitId, VariantId,
     attrs::parse_extra_crate_attrs,
-    expr_store::{Body, ExprOrPatSource, HygieneId, path::Path},
+    expr_store::{Body, ExprOrPatSource, ExpressionStore, HygieneId, path::Path},
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     nameres::{ModuleOrigin, crate_def_map},
     resolver::{self, HasResolver, Resolver, TypeNs, ValueNs},
@@ -32,7 +32,7 @@ use hir_expand::{
 };
 use hir_ty::{
     InferenceResult,
-    diagnostics::{unsafe_operations, unsafe_operations_for_body},
+    diagnostics::unsafe_operations,
     infer_query_with_inspect,
     next_solver::{
         AnyImplId, DbInterner, Span,
@@ -55,10 +55,10 @@ use syntax::{
 
 use crate::{
     Adjust, Adjustment, Adt, AnyFunctionId, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
-    ConstParam, Crate, DefWithBody, DeriveHelper, Enum, ExpressionStoreOwner, Field, Function,
+    ConstParam, Crate, DeriveHelper, Enum, EnumVariant, ExpressionStoreOwner, Field, Function,
     GenericSubstitution, HasSource, Impl, InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam,
     Local, Macro, Module, ModuleDef, Name, OverloadedDeref, ScopeDef, Static, Struct, ToolModule,
-    Trait, TupleField, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    Trait, TupleField, Type, TypeAlias, TypeParam, Union, Variant,
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{SourceAnalyzer, resolve_hir_path},
@@ -91,7 +91,7 @@ impl PathResolution {
             }
             PathResolution::Def(
                 ModuleDef::Const(_)
-                | ModuleDef::Variant(_)
+                | ModuleDef::EnumVariant(_)
                 | ModuleDef::Macro(_)
                 | ModuleDef::Function(_)
                 | ModuleDef::Module(_)
@@ -368,8 +368,8 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
         self.imp.resolve_try_expr(try_expr)
     }
 
-    pub fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantDef> {
-        self.imp.resolve_variant(record_lit).map(VariantDef::from)
+    pub fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<Variant> {
+        self.imp.resolve_variant(record_lit).map(Variant::from)
     }
 
     pub fn file_to_module_def(&self, file: impl Into<FileId>) -> Option<Module> {
@@ -410,7 +410,7 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
         self.imp.to_def(e)
     }
 
-    pub fn to_enum_variant_def(&self, v: &ast::Variant) -> Option<Variant> {
+    pub fn to_enum_variant_def(&self, v: &ast::Variant) -> Option<EnumVariant> {
         self.imp.to_def(v)
     }
 
@@ -792,7 +792,8 @@ impl<'db> SemanticsImpl<'db> {
         };
         let body = Body::of(self.db, def);
         let resolver = to_be_renamed.parent.resolver(self.db);
-        let starting_expr = body.binding_owner(to_be_renamed.binding_id).unwrap_or(body.body_expr);
+        let starting_expr =
+            body.binding_owner(to_be_renamed.binding_id).unwrap_or(body.root_expr());
         let mut visitor = RenameConflictsVisitor {
             body,
             conflicts: FxHashSet::default(),
@@ -1918,36 +1919,32 @@ impl<'db> SemanticsImpl<'db> {
         self.db.parse_macro_expansion(file_id).value.1.matched_arm
     }
 
-    pub fn get_unsafe_ops(&self, def: DefWithBody) -> FxHashSet<ExprOrPatSource> {
-        let Ok(def) = DefWithBodyId::try_from(def) else {
-            return FxHashSet::default();
-        };
-        let (body, source_map) = Body::with_source_map(self.db, def);
+    pub fn get_unsafe_ops(&self, def: ExpressionStoreOwner) -> FxHashSet<ExprOrPatSource> {
+        let Ok(def) = ExpressionStoreOwnerId::try_from(def) else { return Default::default() };
+        let (body, source_map) = ExpressionStore::with_source_map(self.db, def);
         let infer = InferenceResult::of(self.db, def);
         let mut res = FxHashSet::default();
-        unsafe_operations_for_body(self.db, infer, def, body, &mut |node| {
-            if let Ok(node) = source_map.expr_or_pat_syntax(node) {
-                res.insert(node);
-            }
-        });
+        for root in body.expr_roots() {
+            unsafe_operations(self.db, infer, def, body, root, &mut |node, _| {
+                if let Ok(node) = source_map.expr_or_pat_syntax(node) {
+                    res.insert(node);
+                }
+            });
+        }
         res
     }
 
     pub fn get_unsafe_ops_for_unsafe_block(&self, block: ast::BlockExpr) -> Vec<ExprOrPatSource> {
         always!(block.unsafe_token().is_some());
+        let Some(sa) = self.analyze(block.syntax()) else { return vec![] };
+        let Some((def, store, sm, Some(infer))) = sa.def() else { return vec![] };
         let block = self.wrap_node_infile(ast::Expr::from(block));
-        let Some(def) = self.body_for(block.syntax()) else { return Vec::new() };
-        let Ok(def) = def.try_into() else {
-            return Vec::new();
-        };
-        let (body, source_map) = Body::with_source_map(self.db, def);
-        let infer = InferenceResult::of(self.db, def);
-        let Some(ExprOrPatId::ExprId(block)) = source_map.node_expr(block.as_ref()) else {
+        let Some(ExprOrPatId::ExprId(block)) = sm.node_expr(block.as_ref()) else {
             return Vec::new();
         };
         let mut res = Vec::default();
-        unsafe_operations(self.db, infer, def, body, block, &mut |node, _| {
-            if let Ok(node) = source_map.expr_or_pat_syntax(node) {
+        unsafe_operations(self.db, infer, def, store, block, &mut |node, _| {
+            if let Ok(node) = sm.expr_or_pat_syntax(node) {
                 res.push(node);
             }
         });
@@ -1999,7 +1996,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn resolve_offset_of_field(
         &self,
         name_ref: &ast::NameRef,
-    ) -> Option<(Either<Variant, Field>, GenericSubstitution<'db>)> {
+    ) -> Option<(Either<EnumVariant, Field>, GenericSubstitution<'db>)> {
         self.analyze_no_infer(name_ref.syntax())?.resolve_offset_of_field(self.db, name_ref)
     }
 
@@ -2119,13 +2116,9 @@ impl<'db> SemanticsImpl<'db> {
         Some(res)
     }
 
-    pub fn body_for(&self, node: InFile<&SyntaxNode>) -> Option<DefWithBody> {
+    pub fn store_owner_for(&self, node: InFile<&SyntaxNode>) -> Option<ExpressionStoreOwner> {
         let container = self.with_ctx(|ctx| ctx.find_container(node))?;
-
-        match container {
-            ChildContainer::DefWithBodyId(def) => Some(def.into()),
-            _ => None,
-        }
+        container.as_expression_store_owner().map(|id| id.into())
     }
 
     /// Returns none if the file of the node is not part of a crate.
@@ -2169,7 +2162,7 @@ impl<'db> SemanticsImpl<'db> {
                 });
             }
             ChildContainer::VariantId(def) => {
-                return Some(SourceAnalyzer::new_variant_body(self.db, def, node, offset));
+                return Some(SourceAnalyzer::new_variant_body(self.db, def, node, offset, infer));
             }
             ChildContainer::TraitId(it) => {
                 return Some(if infer {
@@ -2522,7 +2515,7 @@ to_def_impls![
     (crate::Function, ast::Fn, fn_to_def),
     (crate::Field, ast::RecordField, record_field_to_def),
     (crate::Field, ast::TupleField, tuple_field_to_def),
-    (crate::Variant, ast::Variant, enum_variant_to_def),
+    (crate::EnumVariant, ast::Variant, enum_variant_to_def),
     (crate::TypeParam, ast::TypeParam, type_param_to_def),
     (crate::LifetimeParam, ast::LifetimeParam, lifetime_param_to_def),
     (crate::ConstParam, ast::ConstParam, const_param_to_def),

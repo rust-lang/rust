@@ -12,6 +12,7 @@ use hir_def::{
     },
     item_tree::FieldsShape,
     resolver::ValueNs,
+    signatures::VariantFields,
 };
 use rustc_ast_ir::Mutability;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -194,6 +195,10 @@ impl CapturedItem {
                 .name
                 .display(db, edition)
                 .to_string(),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                let fields = VariantFields::of(db, variant_id);
+                fields.store[self.place.local].name.display(db, edition).to_string()
+            }
         };
         for proj in &self.place.projections {
             match proj {
@@ -245,6 +250,10 @@ impl CapturedItem {
                 .name
                 .display(db, edition)
                 .to_string(),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                let fields = VariantFields::of(db, variant_id);
+                fields.store[self.place.local].name.display(db, edition).to_string()
+            }
         };
         for proj in &self.place.projections {
             match proj {
@@ -301,6 +310,10 @@ impl CapturedItem {
                 .name
                 .display(db, edition)
                 .to_string(),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                let fields = VariantFields::of(db, variant_id);
+                fields.store[self.place.local].name.display(db, edition).to_string()
+            }
         };
         let mut field_need_paren = false;
         for proj in &self.place.projections {

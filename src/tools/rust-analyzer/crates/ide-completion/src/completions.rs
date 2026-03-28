@@ -26,7 +26,7 @@ pub(crate) mod vis;
 
 use std::iter;
 
-use hir::{HasAttrs, Name, ScopeDef, Variant, sym};
+use hir::{EnumVariant, HasAttrs, Name, ScopeDef, sym};
 use ide_db::{RootDatabase, SymbolKind, imports::import_assets::LocatedImport};
 use syntax::{SmolStr, ToSmolStr, ast};
 
@@ -426,7 +426,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx<'_>,
-        variant: hir::Variant,
+        variant: hir::EnumVariant,
         path: hir::ModPath,
     ) {
         if !ctx.check_stability_and_hidden(variant) {
@@ -443,7 +443,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx<'_>,
-        variant: hir::Variant,
+        variant: hir::EnumVariant,
         local_name: Option<hir::Name>,
     ) {
         if !ctx.check_stability_and_hidden(variant) {
@@ -569,7 +569,7 @@ impl Completions {
         ctx: &CompletionContext<'_>,
         pattern_ctx: &PatternContext,
         path_ctx: Option<&PathCompletionCtx<'_>>,
-        variant: hir::Variant,
+        variant: hir::EnumVariant,
         local_name: Option<hir::Name>,
     ) {
         if !ctx.check_stability_and_hidden(variant) {
@@ -589,7 +589,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext<'_>,
         pattern_ctx: &PatternContext,
-        variant: hir::Variant,
+        variant: hir::EnumVariant,
         path: hir::ModPath,
     ) {
         if !ctx.check_stability_and_hidden(variant) {
@@ -644,9 +644,9 @@ fn enum_variants_with_paths(
     ctx: &CompletionContext<'_>,
     enum_: hir::Enum,
     impl_: Option<&ast::Impl>,
-    cb: impl Fn(&mut Completions, &CompletionContext<'_>, hir::Variant, hir::ModPath),
+    cb: impl Fn(&mut Completions, &CompletionContext<'_>, hir::EnumVariant, hir::ModPath),
 ) {
-    let mut process_variant = |variant: Variant| {
+    let mut process_variant = |variant: EnumVariant| {
         let self_path = hir::ModPath::from_segments(
             hir::PathKind::Plain,
             iter::once(Name::new_symbol_root(sym::Self_)).chain(iter::once(variant.name(ctx.db))),

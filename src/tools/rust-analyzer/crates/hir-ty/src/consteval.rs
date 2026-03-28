@@ -276,7 +276,7 @@ pub(crate) fn const_eval_discriminant_variant(
     let def = variant_id.into();
     let body = Body::of(db, def);
     let loc = variant_id.lookup(db);
-    if matches!(body[body.body_expr], Expr::Missing) {
+    if matches!(body[body.root_expr()], Expr::Missing) {
         let prev_idx = loc.index.checked_sub(1);
         let value = match prev_idx {
             Some(prev_idx) => {

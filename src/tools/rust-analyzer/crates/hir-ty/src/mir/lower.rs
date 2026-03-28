@@ -2251,7 +2251,7 @@ pub fn mir_body_query<'db>(
     let _p = tracing::info_span!("mir_body_query", ?detail).entered();
     let body = Body::of(db, def);
     let infer = InferenceResult::of(db, def);
-    let mut result = lower_body_to_mir(db, def, body, infer, body.body_expr)?;
+    let mut result = lower_body_to_mir(db, def, body, infer, body.root_expr())?;
     result.shrink_to_fit();
     Ok(Arc::new(result))
 }
@@ -2275,7 +2275,7 @@ pub fn lower_body_to_mir<'db>(
     // but this is currently also used for `X` in `[(); X]` which live in the same expression store
     root_expr: ExprId,
 ) -> Result<'db, MirBody> {
-    let is_root = root_expr == body.body_expr;
+    let is_root = root_expr == body.root_expr();
     // Extract params and self_param only when lowering the body's root expression for a function.
     if is_root && let DefWithBodyId::FunctionId(fid) = owner {
         let callable_sig =

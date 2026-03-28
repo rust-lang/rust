@@ -408,7 +408,7 @@ fn render_resolution_path(
             let ctx = ctx.import_to_add(import_to_add);
             return render_fn(ctx, path_ctx, Some(local_name), func);
         }
-        ScopeDef::ModuleDef(Variant(var)) => {
+        ScopeDef::ModuleDef(EnumVariant(var)) => {
             let ctx = ctx.clone().import_to_add(import_to_add.clone());
             if let Some(item) =
                 render_variant_lit(ctx, path_ctx, Some(local_name.clone()), var, None)
@@ -476,7 +476,7 @@ fn render_resolution_path(
         }
         // Filtered out above
         ScopeDef::ModuleDef(
-            ModuleDef::Function(_) | ModuleDef::Variant(_) | ModuleDef::Macro(_),
+            ModuleDef::Function(_) | ModuleDef::EnumVariant(_) | ModuleDef::Macro(_),
         ) => (),
         ScopeDef::ModuleDef(ModuleDef::Const(konst)) => set_item_relevance(konst.ty(db)),
         ScopeDef::ModuleDef(ModuleDef::Static(stat)) => set_item_relevance(stat.ty(db)),
@@ -528,7 +528,7 @@ fn res_to_kind(resolution: ScopeDef) -> CompletionItemKind {
     match resolution {
         ScopeDef::Unknown => CompletionItemKind::UnresolvedReference,
         ScopeDef::ModuleDef(Function(_)) => CompletionItemKind::SymbolKind(SymbolKind::Function),
-        ScopeDef::ModuleDef(Variant(_)) => CompletionItemKind::SymbolKind(SymbolKind::Variant),
+        ScopeDef::ModuleDef(EnumVariant(_)) => CompletionItemKind::SymbolKind(SymbolKind::Variant),
         ScopeDef::ModuleDef(Macro(_)) => CompletionItemKind::SymbolKind(SymbolKind::Macro),
         ScopeDef::ModuleDef(Module(..)) => CompletionItemKind::SymbolKind(SymbolKind::Module),
         ScopeDef::ModuleDef(Adt(adt)) => CompletionItemKind::SymbolKind(match adt {
@@ -559,7 +559,7 @@ fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<Documentati
     match resolution {
         ScopeDef::ModuleDef(Module(it)) => it.docs(db),
         ScopeDef::ModuleDef(Adt(it)) => it.docs(db),
-        ScopeDef::ModuleDef(Variant(it)) => it.docs(db),
+        ScopeDef::ModuleDef(EnumVariant(it)) => it.docs(db),
         ScopeDef::ModuleDef(Const(it)) => it.docs(db),
         ScopeDef::ModuleDef(Static(it)) => it.docs(db),
         ScopeDef::ModuleDef(Trait(it)) => it.docs(db),
