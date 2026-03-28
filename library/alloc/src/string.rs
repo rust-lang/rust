@@ -3609,8 +3609,8 @@ impl From<char> for String {
 
 // In place case changes
 
+#[cfg(not(no_global_oom_handling))]
 impl String {
-    #[cfg(not(no_global_oom_handling))]
     fn case_change_while_ascii<const MAKE_UPPER: bool>(&mut self) -> ControlFlow<usize> {
         // SAFETY the as_bytes_mut is unsafe but we will only do ascii case change in place with it
         unsafe {
@@ -3672,7 +3672,6 @@ impl String {
     ///
     /// assert_eq!("TSCHÜSS", s);
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_make_uplowercase", issue = "135885")]
     pub fn make_uppercase(&mut self) {
         let ControlFlow::Break(non_utf8_offset) = self.case_change_while_ascii::<true>() else {
@@ -3729,7 +3728,6 @@ impl String {
     ///
     /// assert_eq!("农历新年", new_year);
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_make_uplowercase", issue = "135885")]
     pub fn make_lowercase(&mut self) {
         fn update_word_final(word_final_so_far: bool, u_c: char) -> bool {
@@ -3769,6 +3767,7 @@ impl String {
 
 /// A helper for in place modification of strings, where we gradually "pop" characters,
 /// hereby making room to write back to the string buffer
+#[cfg(not(no_global_oom_handling))]
 #[unstable(issue = "none", feature = "std_internals")]
 struct WriteChars<'a> {
     // This is the internal buffer of the string temporarily changed to Vec<u8> because
@@ -3786,6 +3785,7 @@ struct WriteChars<'a> {
     buffer: VecDeque<u8>,
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[unstable(issue = "none", feature = "std_internals")]
 impl<'a> WriteChars<'a> {
     fn new(s: &'a mut String, offset: usize) -> Self {

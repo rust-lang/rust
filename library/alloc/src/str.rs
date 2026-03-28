@@ -476,6 +476,7 @@ impl str {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 pub(crate) fn case_ignorable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
     match iter.skip_while(|&c| c.is_case_ignorable()).next() {
         Some(c) => c.is_cased(),
