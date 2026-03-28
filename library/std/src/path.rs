@@ -1364,7 +1364,7 @@ impl PathBuf {
 
         // absolute `path` replaces `self`
         if need_clear {
-            self.inner.truncate(0);
+            self.inner.clear();
 
         // verbatim paths need . and .. removed
         } else if comps.prefix_verbatim() && !path.inner.is_empty() {
