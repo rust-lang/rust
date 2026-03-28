@@ -2,10 +2,10 @@ name: Fuzz
 on:
   schedule:
     # Once a week
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
   push:
     paths:
-    - '.github/workflows/fuzz.yml'
+      - ".github/workflows/fuzz.yml"
   # Allow manual trigger
   workflow_dispatch:
 
@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
