@@ -106,15 +106,13 @@ macro_rules! check_fixed_mix {
             check_resolution!($v, want_pow10 - i as i16 => &want_buf[..i], want_pow10);
         }
 
-        // check exact rounding for zero- and negative-width cases
-        let start;
-        if digits[0] > b'5' {
+        // Verify digit loss by resolution.
+        let skip_first = digits[0] > b'5';
+        if skip_first {
             check_resolution!($v, pow10 => b"1", pow10 + 1);
-            start = 1;
-        } else {
-            start = 0;
         }
-        for i in start..-10 {
+        for i in (skip_first as i16)..-10 {
+            // Digit loss must still maintain the exponent.
             check_resolution!($v, pow10 - i => b"", pow10);
         }
 

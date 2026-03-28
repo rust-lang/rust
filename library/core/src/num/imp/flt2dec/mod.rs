@@ -137,6 +137,9 @@ pub fn format_short<'a>(d: &Decoded, buf: &'a mut [MaybeUninit<u8>]) -> (&'a [u8
 /// integer multiple of `10^resolution`. For example, a resolution of `-3`
 /// causes rounding to three decimal places, i.e., values are multiples of
 /// `0.001`.
+///
+/// Note: If the resolution causes the value to round to zero, then the returned
+/// digit slice is empty. This preserves the invariant d₀ ≠ 0.
 pub fn format_fixed<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
@@ -647,11 +650,9 @@ where
             // because we are strictly limited by `maxlen`.
             let limit = if frac_digits < 0x8000 { -(frac_digits as i16) } else { i16::MIN };
             let (buf, exp) = format_exact(decoded, &mut buf[..maxlen], limit);
-            if exp <= limit {
-                // the restriction couldn't been met, so this should render like zero no matter
-                // `exp` was. this does not include the case that the restriction has been met
-                // only after the final rounding-up; it's a regular case with `exp = limit + 1`.
-                debug_assert_eq!(buf.len(), 0);
+            if buf.len() == 0 {
+                // The number rounds down to zero at the given resolution.
+                debug_assert!(exp <= limit);
                 if frac_digits > 0 {
                     // [0.][0000]
                     parts[0] = MaybeUninit::new(Part::Copy(b"0."));
