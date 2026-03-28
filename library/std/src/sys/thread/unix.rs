@@ -570,10 +570,10 @@ pub fn sleep(dur: Duration) {
     // nanosleep will fill in `ts` with the remaining time.
     unsafe {
         while secs > 0 || nsecs > 0 {
-            let mut ts = libc::timespec {
-                tv_sec: cmp::min(libc::time_t::MAX as u64, secs) as libc::time_t,
-                tv_nsec: nsecs,
-            };
+            let mut ts = libc::timespec::default();
+            ts.tv_sec = cmp::min(libc::time_t::MAX as u64, secs) as libc::time_t;
+            ts.tv_nsec = nsecs;
+
             secs -= ts.tv_sec as u64;
             let ts_ptr = &raw mut ts;
             let r = nanosleep(ts_ptr, ts_ptr);

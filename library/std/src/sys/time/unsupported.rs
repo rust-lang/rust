@@ -1,5 +1,3 @@
-use crate::time::Duration;
-
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(Duration);
 
