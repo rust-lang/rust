@@ -9,7 +9,7 @@ use hir_def::{
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm,
-        Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread,
+        Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread, generics::GenericParams,
     },
     item_tree::FieldsShape,
     lang_item::LangItems,
@@ -203,13 +203,13 @@ impl MirLowerError {
             MirLowerError::GenericArgNotProvided(id, subst) => {
                 let param_name = match *id {
                     GenericParamId::TypeParamId(id) => {
-                        db.generic_params(id.parent())[id.local_id()].name().cloned()
+                        GenericParams::of(db, id.parent())[id.local_id()].name().cloned()
                     }
                     GenericParamId::ConstParamId(id) => {
-                        db.generic_params(id.parent())[id.local_id()].name().cloned()
+                        GenericParams::of(db, id.parent())[id.local_id()].name().cloned()
                     }
                     GenericParamId::LifetimeParamId(id) => {
-                        Some(db.generic_params(id.parent)[id.local_id].name.clone())
+                        Some(GenericParams::of(db, id.parent)[id.local_id].name.clone())
                     }
                 };
                 writeln!(

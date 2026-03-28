@@ -18,7 +18,7 @@ use hir::{
 use hir_def::{
     DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax,
     expr_store::{Body, BodySourceMap, ExpressionStore},
-    hir::{ExprId, PatId},
+    hir::{ExprId, PatId, generics::GenericParams},
 };
 use hir_ty::InferenceResult;
 use ide::{
@@ -394,7 +394,7 @@ impl flags::AnalysisStats {
         let mut fail = 0;
         for &a in adts {
             let interner = DbInterner::new_no_crate(db);
-            let generic_params = db.generic_params(a.into());
+            let generic_params = GenericParams::of(db, a.into());
             if generic_params.iter_type_or_consts().next().is_some()
                 || generic_params.iter_lt().next().is_some()
             {

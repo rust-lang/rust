@@ -5,7 +5,7 @@ use std::ops::ControlFlow;
 use hir_def::{
     AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId, TypeAliasId,
     TypeOrConstParamId, TypeParamId,
-    hir::generics::LocalTypeOrConstParamId,
+    hir::generics::{GenericParams, LocalTypeOrConstParamId},
     nameres::crate_def_map,
     signatures::{FunctionSignature, TraitFlags, TraitSignature},
 };
@@ -300,7 +300,7 @@ where
             if def_map.is_unstable_feature_enabled(&intern::sym::generic_associated_type_extended) {
                 ControlFlow::Continue(())
             } else {
-                let generic_params = db.generic_params(item.into());
+                let generic_params = GenericParams::of(db, item.into());
                 if !generic_params.is_empty() {
                     cb(DynCompatibilityViolation::GAT(it))
                 } else {
@@ -351,7 +351,7 @@ where
         cb(mvc)?;
     }
 
-    let generic_params = db.generic_params(func.into());
+    let generic_params = GenericParams::of(db, func.into());
     if generic_params.len_type_or_consts() > 0 {
         cb(MethodViolationCode::Generic)?;
     }
