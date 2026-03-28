@@ -1340,7 +1340,7 @@ impl char {
     /// #![feature(titlecase)]
     /// let ani = 'ა'; // First letter of the Georgian alphabet, in mkhedruli form
     ///
-    /// // Titlecasing mkhedruli maps it so itself...
+    /// // Titlecasing mkhedruli maps it to itself...
     /// assert_eq!(ani.to_titlecase().to_string(), ani.to_string());
     ///
     /// // but uppercasing it maps it to mtavruli
