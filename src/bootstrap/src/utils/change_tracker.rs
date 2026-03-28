@@ -616,4 +616,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "`x.py test --no-doc` is renamed to `--all-targets`. Additionally `--tests` is added which only executes unit and integration tests.",
     },
+    ChangeInfo {
+        change_id: 154508,
+        severity: ChangeSeverity::Info,
+        summary: "`x.py` stopped accepting partial argument names. Use full names to avoid errors.",
+    },
 ];
