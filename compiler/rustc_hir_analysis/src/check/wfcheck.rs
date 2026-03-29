@@ -2116,7 +2116,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasErrorDeep<'tcx> {
                     }
                 }
             }
-            ty::Error(guar) => return ControlFlow::Break(guar),
+            ty::Error(guar) => return ControlFlow::Break(guar.0),
             _ => {}
         }
         ty.super_visit_with(self)

@@ -346,7 +346,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             panic!("bound types encountered in structurally_relate_tys")
         }
 
-        (ty::Error(guar), _) | (_, ty::Error(guar)) => Ok(Ty::new_error(cx, guar)),
+        (ty::Error(guar), _) | (_, ty::Error(guar)) => Ok(Ty::new_error(cx, guar.0)),
 
         (ty::Never, _)
         | (ty::Char, _)

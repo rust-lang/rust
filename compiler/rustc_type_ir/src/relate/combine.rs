@@ -59,8 +59,8 @@ where
 
     match (a.kind(), b.kind()) {
         (ty::Error(e), _) | (_, ty::Error(e)) => {
-            infcx.set_tainted_by_errors(e);
-            return Ok(Ty::new_error(infcx.cx(), e));
+            infcx.set_tainted_by_errors(e.0);
+            return Ok(Ty::new_error(infcx.cx(), e.0));
         }
 
         // Relate integral variables to other types

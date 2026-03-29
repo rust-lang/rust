@@ -522,7 +522,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         err.emit()
                     }
-                    ty::Error(guar) => guar,
+                    ty::Error(guar) => guar.0,
                     _ => bug!("unexpected bad final type in method autoderef"),
                 };
                 self.demand_eqtype(span, ty, Ty::new_error(self.tcx, guar));
