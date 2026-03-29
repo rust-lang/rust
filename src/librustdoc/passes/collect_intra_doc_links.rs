@@ -1067,17 +1067,27 @@ impl LinkCollector<'_, '_> {
     #[instrument(level = "debug", skip_all)]
     fn resolve_links(&mut self, item: &Item) {
         let tcx = self.cx.tcx;
-        if !self.cx.document_private()
-            && let Some(def_id) = item.item_id.as_def_id()
-            && let Some(def_id) = def_id.as_local()
-            && !tcx.effective_visibilities(()).is_exported(def_id)
-            && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
+        let document_private = self.cx.document_private();
+        let effective_visibilities = tcx.effective_visibilities(());
+        let should_skip_link_resolution = |item_id: DefId| {
+            !document_private
+                && item_id
+                    .as_local()
+                    .is_some_and(|local_def_id| !effective_visibilities.is_exported(local_def_id))
+                && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
+        };
+
+        if let Some(def_id) = item.item_id.as_def_id()
+            && should_skip_link_resolution(def_id)
         {
             // Skip link resolution for non-exported items.
             return;
         }
 
-        let mut insert_links = |item_id, doc: &str| {
+        let mut try_insert_links = |item_id, doc: &str| {
+            if should_skip_link_resolution(item_id) {
+                return;
+            }
             let module_id = match tcx.def_kind(item_id) {
                 DefKind::Mod if item.inner_docs(tcx) => item_id,
                 _ => find_nearest_parent_module(tcx, item_id).unwrap(),
@@ -1108,7 +1118,7 @@ impl LinkCollector<'_, '_> {
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
-            insert_links(item_id, &doc)
+            try_insert_links(item_id, &doc)
         }
 
         // Also resolve links in the note text of `#[deprecated]`.
@@ -1137,7 +1147,7 @@ impl LinkCollector<'_, '_> {
             } else {
                 item.item_id.expect_def_id()
             };
-            insert_links(item_id, note)
+            try_insert_links(item_id, note)
         }
     }
 

@@ -14,8 +14,8 @@ fn use_token(token: &Token) {
 }
 
 fn main() {
-    use_token(&Token::Homura); //~ ERROR no variant or associated item named `Homura`
-    Struct::method(); //~ ERROR no function or associated item named `method` found
-    Struct::method; //~ ERROR no function or associated item named `method` found
-    Struct::Assoc; //~ ERROR no associated item named `Assoc` found
+    use_token(&Token::Homura); //~ ERROR no variant, associated function, or constant named `Homura`
+    Struct::method(); //~ ERROR no associated function or constant named `method` found
+    Struct::method; //~ ERROR no associated function or constant named `method` found
+    Struct::Assoc; //~ ERROR no associated function or constant named `Assoc` found
 }

@@ -1,11 +1,11 @@
-error[E0599]: no function or associated item named `bar` found for struct `S` in the current scope
+error[E0599]: no associated function or constant named `bar` found for struct `S` in the current scope
   --> $DIR/rustc_confusables_assoc_fn.rs:14:8
    |
 LL | struct S;
-   | -------- function or associated item `bar` not found for this struct
+   | -------- associated function or constant `bar` not found for this struct
 ...
 LL |     S::bar();
-   |        ^^^ function or associated item not found in `S`
+   |        ^^^ associated function or constant not found in `S`
    |
 help: you might have meant to use `foo`
    |

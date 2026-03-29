@@ -107,7 +107,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             );
 
             return ty::GenericPredicates {
-                parent: Some(tcx.parent(def_id.to_def_id())),
+                parent: Some(tcx.local_parent(def_id).to_def_id()),
                 predicates: tcx.arena.alloc_from_iter(predicates),
             };
         }

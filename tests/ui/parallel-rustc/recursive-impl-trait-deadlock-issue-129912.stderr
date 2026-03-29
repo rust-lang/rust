@@ -1,0 +1,137 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found reserved keyword `virtual`
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:80:11
+   |
+LL |         x virtual ;
+   |           ^^^^^^^ expected one of 8 possible tokens
+
+error[E0557]: feature has been removed
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:3:12
+   |
+LL | #![feature(generators)]
+   |            ^^^^^^^^^^ feature has been removed
+   |
+   = note: removed in 1.75.0; see <https://github.com/rust-lang/rust/pull/116958> for more information
+   = note: renamed to `coroutines`
+
+error[E0423]: expected value, found trait `Sized`
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:8:62
+   |
+LL |     if generator_sig() < 0 { None } else { Sized((option(i - Sized), i)) }
+   |                                                              ^^^^^ not a value
+
+error[E0425]: cannot find value `i` in this scope
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:52:8
+   |
+LL |     || i
+   |        ^ not found in this scope
+
+error[E0404]: expected trait, found builtin type `i32`
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:56:32
+   |
+LL | fn generator_capture() -> impl i32 {
+   |                                ^^^ not a trait
+
+error[E0404]: expected trait, found function `generator_capture`
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:72:29
+   |
+LL | fn generator_hold() -> impl generator_capture {
+   |                             ^^^^^^^^^^^^^^^^^ not a trait
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:60:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:76:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0562]: `impl Trait` is not allowed in cast expression types
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:24:22
+   |
+LL |     &ptr() as *const impl Sized
+   |                      ^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:60:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:60:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+help: use `#[coroutine]` to make this closure a coroutine
+   |
+LL |     #[coroutine] move || {
+   |     ++++++++++++
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:76:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:76:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+help: use `#[coroutine]` to make this closure a coroutine
+   |
+LL |     #[coroutine] move || {
+   |     ++++++++++++
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:17:15
+   |
+LL | fn array() -> _ {
+   |               ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:22:13
+   |
+LL | fn ptr() -> _ {
+   |             ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:46:21
+   |
+LL | fn closure_sig() -> _ {
+   |                     ^ not allowed in type signatures
+
+error[E0423]: expected function, tuple struct or tuple variant, found trait `Sized`
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:8:44
+   |
+LL |     if generator_sig() < 0 { None } else { Sized((option(i - Sized), i)) }
+   |                                            ^^^^^ not a function, tuple struct or tuple variant
+
+error: aborting due to 17 previous errors
+
+Some errors have detailed explanations: E0121, E0404, E0423, E0425, E0557, E0562, E0658.
+For more information about an error, try `rustc --explain E0121`.

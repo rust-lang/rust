@@ -5,7 +5,7 @@ fn main(){
     foo(|| {
         match Foo::Bar(1) {
             Foo::Baz(..) => (),
-            //~^ ERROR no variant or associated item named `Baz` found
+            //~^ ERROR no variant, associated function, or constant named `Baz` found
             _ => (),
         }
     });

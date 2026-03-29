@@ -779,7 +779,6 @@ ASSERT_DIFLAG_VALUE(FlagThunk, 1 << 25);
 ASSERT_DIFLAG_VALUE(FlagNonTrivial, 1 << 26);
 ASSERT_DIFLAG_VALUE(FlagBigEndian, 1 << 27);
 ASSERT_DIFLAG_VALUE(FlagLittleEndian, 1 << 28);
-static_assert(DINode::DIFlags::FlagAllCallsDescribed == (1 << 29));
 ASSERT_DIFLAG_VALUE(FlagIndirectVirtualBase, (1 << 2) | (1 << 5));
 #undef ASSERT_DIFLAG_VALUE
 
@@ -792,7 +791,7 @@ ASSERT_DIFLAG_VALUE(FlagIndirectVirtualBase, (1 << 2) | (1 << 5));
 // to copying each bit/subvalue.
 static DINode::DIFlags fromRust(LLVMDIFlags Flags) {
   // Check that all set bits are covered by the static assertions above.
-  const unsigned UNKNOWN_BITS = (1 << 31) | (1 << 30) | (1 << 21);
+  const unsigned UNKNOWN_BITS = (1 << 31) | (1 << 30) | (1 << 29) | (1 << 21);
   if (Flags & UNKNOWN_BITS) {
     report_fatal_error("bad LLVMDIFlags");
   }

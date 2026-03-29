@@ -17,7 +17,7 @@ pub(in crate::sys) const TIMESPEC_MAX_CAPPED: libc::timespec = libc::timespec {
     tv_nsec: (u64::MAX % NSEC_PER_SEC) as i64,
 };
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub(crate) struct Timespec {
     pub tv_sec: i64,
     pub tv_nsec: Nanoseconds,
@@ -66,6 +66,7 @@ impl Timespec {
         }
     }
 
+    #[allow(dead_code)]
     pub fn now(clock: libc::clockid_t) -> Timespec {
         use crate::mem::MaybeUninit;
         use crate::sys::cvt;

@@ -37,8 +37,10 @@ impl RwLock {
 
     #[inline]
     pub fn write(&self) {
-        if self.mode.replace(-1) != 0 {
-            rtabort!("rwlock locked for reading")
+        if self.mode.get() == 0 {
+            self.mode.set(-1);
+        } else {
+            rtabort!("rwlock locked for reading");
         }
     }
 

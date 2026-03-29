@@ -49,11 +49,11 @@ LL -     x.baz();
 LL +     x.bar();
    |
 
-error[E0599]: no function or associated item named `from_str` found for type `u32` in the current scope
+error[E0599]: no associated function or constant named `from_str` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:30:18
    |
 LL |     let y = u32::from_str("33");
-   |                  ^^^^^^^^ function or associated item not found in `u32`
+   |                  ^^^^^^^^ associated function or constant not found in `u32`
    |
    = help: items from traits can only be used if the trait is in scope
 help: trait `FromStr` which provides `from_str` is implemented but not in scope; perhaps you want to import it

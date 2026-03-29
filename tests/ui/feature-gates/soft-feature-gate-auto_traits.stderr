@@ -1,5 +1,5 @@
 warning: `auto` traits are unstable
-  --> $DIR/pre-cfg.rs:4:1
+  --> $DIR/soft-feature-gate-auto_traits.rs:8:1
    |
 LL | auto trait Foo {}
    | ^^^^
