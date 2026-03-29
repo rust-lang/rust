@@ -6,7 +6,7 @@ use crate::time::Duration;
 
 fn clock_gettime(clock: hermit_abi::clockid_t) -> Timespec {
     let mut t = hermit_abi::timespec { tv_sec: 0, tv_nsec: 0 };
-    let _ = unsafe { hermit_abi::clock_gettime(clock, &raw mut t) };
+    unsafe { hermit_abi::clock_gettime(clock, &raw mut t) }.unwrap();
     Timespec::new(t.tv_sec, t.tv_nsec.into()).unwrap()
 }
 
