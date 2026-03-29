@@ -966,9 +966,9 @@ struct PatternExtraData<'tcx> {
 
     /// Whether this corresponds to a never pattern.
     is_never: bool,
-    
+
     /// [`ExprId`]s of subpattern conditions
-    guard_paterns: Vec<ExprId>
+    guard_patterns: Vec<ExprId>,
 }
 
 impl<'tcx> PatternExtraData<'tcx> {
@@ -1013,7 +1013,7 @@ impl<'tcx> FlatPat<'tcx> {
             bindings: Vec::new(),
             ascriptions: Vec::new(),
             is_never: pattern.is_never_pattern(),
-            guard_paterns: Vec::new()
+            guard_patterns: Vec::new(),
         };
         MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
 
@@ -1477,7 +1477,7 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
                 .cloned()
                 .chain(candidate.extra_data.ascriptions)
                 .collect(),
-            guard_patterns: candidate.extra_data.guard_paterns,
+            guard_patterns: candidate.extra_data.guard_patterns,
             is_never: candidate.extra_data.is_never,
         }
     }
@@ -2437,7 +2437,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             && (arm.guard.is_some() || !sub_branch.guard_patterns.is_empty())
         {
             let tcx = self.tcx;
-            
+
             let mut guards = sub_branch.guard_patterns;
             if let Some(guard) = arm.guard {
                 guards.push(guard);
