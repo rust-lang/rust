@@ -1517,8 +1517,9 @@ fn render_assoc_items_inner(
     }
 
     if !traits.is_empty() {
-        let deref_impl =
-            traits.iter().find(|t| t.trait_did() == cx.tcx().lang_items().deref_trait());
+        let deref_impl = traits.iter().find(|t| {
+            t.trait_did() == cx.tcx().lang_items().deref_trait() && !t.is_negative_trait_impl()
+        });
         if let Some(impl_) = deref_impl {
             let has_deref_mut =
                 traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
