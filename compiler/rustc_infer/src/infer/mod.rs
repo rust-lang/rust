@@ -1099,45 +1099,22 @@ impl<'tcx> InferCtxt<'tcx> {
                     //
                     // Note: if these two lines are combined into one we get
                     // dynamic borrow errors on `self.inner`.
-                    let (root_vid, value) =
-                        self.inner.borrow_mut().type_variables().probe_with_root_vid(v);
-                    value.known().map_or_else(
-                        || if root_vid == v { ty } else { Ty::new_var(self.tcx, root_vid) },
-                        |t| self.shallow_resolve(t),
-                    )
+                    let known = self.inner.borrow_mut().type_variables().probe(v).known();
+                    known.map_or(ty, |t| self.shallow_resolve(t))
                 }
 
                 ty::IntVar(v) => {
-                    let (root, value) =
-                        self.inner.borrow_mut().int_unification_table().inlined_probe_key_value(v);
-                    match value {
+                    match self.inner.borrow_mut().int_unification_table().probe_value(v) {
                         ty::IntVarValue::IntType(ty) => Ty::new_int(self.tcx, ty),
                         ty::IntVarValue::UintType(ty) => Ty::new_uint(self.tcx, ty),
-                        ty::IntVarValue::Unknown => {
-                            if root == v {
-                                ty
-                            } else {
-                                Ty::new_int_var(self.tcx, root)
-                            }
-                        }
+                        ty::IntVarValue::Unknown => ty,
                     }
                 }
 
                 ty::FloatVar(v) => {
-                    let (root, value) = self
-                        .inner
-                        .borrow_mut()
-                        .float_unification_table()
-                        .inlined_probe_key_value(v);
-                    match value {
+                    match self.inner.borrow_mut().float_unification_table().probe_value(v) {
                         ty::FloatVarValue::Known(ty) => Ty::new_float(self.tcx, ty),
-                        ty::FloatVarValue::Unknown => {
-                            if root == v {
-                                ty
-                            } else {
-                                Ty::new_float_var(self.tcx, root)
-                            }
-                        }
+                        ty::FloatVarValue::Unknown => ty,
                     }
                 }
 
@@ -1151,16 +1128,13 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn shallow_resolve_const(&self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Infer(infer_ct) => match infer_ct {
-                InferConst::Var(vid) => {
-                    let (root, value) = self
-                        .inner
-                        .borrow_mut()
-                        .const_unification_table()
-                        .inlined_probe_key_value(vid);
-                    value.known().unwrap_or_else(|| {
-                        if root.vid == vid { ct } else { ty::Const::new_var(self.tcx, root.vid) }
-                    })
-                }
+                InferConst::Var(vid) => self
+                    .inner
+                    .borrow_mut()
+                    .const_unification_table()
+                    .probe_value(vid)
+                    .known()
+                    .unwrap_or(ct),
                 InferConst::Fresh(_) => ct,
             },
             ty::ConstKind::Param(_)
@@ -1182,13 +1156,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
         self.inner.borrow_mut().type_variables().root_var(var)
-    }
-
-    /// If `ty` is an unresolved type variable, returns its root vid.
-    pub fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
-        let (root, value) =
-            self.inner.borrow_mut().type_variables().inlined_probe_with_vid(ty.ty_vid()?);
-        value.is_unknown().then_some(root)
     }
 
     pub fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
@@ -1247,36 +1214,6 @@ impl<'tcx> InferCtxt<'tcx> {
             return value;
         }
         let mut r = resolve::OpportunisticVarResolver::new(self);
-        value.fold_with(&mut r)
-    }
-
-    /// Normally, we shallow-resolve unresolved type variables to their root
-    /// variables. This is mainly done for performance reasons, and in most
-    /// cases resolving to the root variable (instead of the variable itself)
-    /// does not affect type inference.
-    ///
-    /// However, there is an exceptional case: *fudging*. Fudging is intended
-    /// to guide inference rather than impose hard requirements. But our current
-    /// handling here is somewhat janky.
-    ///
-    /// In particular, inference variables that are considered equal within the
-    /// fudging scope may not remain equal outside of it. This makes it observable
-    /// which inference variable we resolve to. For backwards compatibility, we
-    /// avoid resolving to the root variable by using this function inside the
-    /// fudge instead of [`InferCtxt::resolve_vars_if_possible`].
-    ///
-    /// See #153869 for more details.
-    pub fn resolve_vars_if_possible_for_fudging<T>(&self, value: T) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        if let Err(guar) = value.error_reported() {
-            self.set_tainted_by_errors(guar);
-        }
-        if !value.has_non_region_infer() {
-            return value;
-        }
-        let mut r = resolve::OpportunisticVarResolver::new_for_fudging(self);
         value.fold_with(&mut r)
     }
 
