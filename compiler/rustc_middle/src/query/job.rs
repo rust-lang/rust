@@ -4,9 +4,8 @@ use std::num::NonZero;
 use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
-use rustc_span::Span;
 
-use crate::query::Cycle;
+use crate::query::{Cycle, QueryCallContext};
 use crate::ty::TyCtxt;
 
 /// A value uniquely identifying an active query job.
@@ -18,8 +17,8 @@ pub struct QueryJobId(pub NonZero<u64>);
 pub struct QueryJob<'tcx> {
     pub id: QueryJobId,
 
-    /// The span corresponding to the reason for which this query was required.
-    pub span: Span,
+    /// The span and call site corresponding to why this query was required.
+    pub call_context: QueryCallContext,
 
     /// The parent query job which created this job and is implicitly waiting on it.
     pub parent: Option<QueryJobId>,
@@ -31,8 +30,8 @@ pub struct QueryJob<'tcx> {
 impl<'tcx> QueryJob<'tcx> {
     /// Creates a new query job.
     #[inline]
-    pub fn new(id: QueryJobId, span: Span, parent: Option<QueryJobId>) -> Self {
-        QueryJob { id, span, parent, latch: None }
+    pub fn new(id: QueryJobId, call_context: QueryCallContext, parent: Option<QueryJobId>) -> Self {
+        QueryJob { id, call_context, parent, latch: None }
     }
 
     pub fn latch(&mut self) -> QueryLatch<'tcx> {
@@ -58,7 +57,7 @@ impl<'tcx> QueryJob<'tcx> {
 pub struct QueryWaiter<'tcx> {
     pub parent: Option<QueryJobId>,
     pub condvar: Condvar,
-    pub span: Span,
+    pub call_context: QueryCallContext,
     pub cycle: Mutex<Option<Cycle<'tcx>>>,
 }
 
@@ -78,7 +77,7 @@ impl<'tcx> QueryLatch<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         query: Option<QueryJobId>,
-        span: Span,
+        call_context: QueryCallContext,
     ) -> Result<(), Cycle<'tcx>> {
         let mut waiters_guard = self.waiters.lock();
         let Some(waiters) = &mut *waiters_guard else {
@@ -87,7 +86,7 @@ impl<'tcx> QueryLatch<'tcx> {
 
         let waiter = Arc::new(QueryWaiter {
             parent: query,
-            span,
+            call_context,
             cycle: Mutex::new(None),
             condvar: Condvar::new(),
         });

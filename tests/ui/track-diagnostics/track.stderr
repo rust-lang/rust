@@ -41,7 +41,9 @@ note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics
 
 query stack during panic:
 #0 [typeck] type-checking `main`
+ - compiler/rustc_hir_analysis/src/lib.rs:LL:CC
 #1 [analysis] running analysis passes on crate `track`
+ - compiler/rustc_driver_impl/src/lib.rs:LL:CC
 end of query stack
 error: aborting due to 3 previous errors
 

@@ -1,12 +1,14 @@
 //! Helper functions that serve as the immediate implementation of
 //! `tcx.$query(..)` and its variations.
 
+use std::panic::Location;
+
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::dep_graph;
 use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
-use crate::query::{EnsureMode, QueryCache, QueryMode, QueryVTable};
+use crate::query::{EnsureMode, QueryCache, QueryCallContext, QueryMode, QueryVTable};
 use crate::ty::TyCtxt;
 
 /// Checks whether there is already a value for this key in the in-memory
@@ -31,6 +33,7 @@ where
 /// Shared implementation of `tcx.$query(..)` and `tcx.at(span).$query(..)`
 /// for all queries.
 #[inline(always)]
+#[track_caller]
 pub(crate) fn query_get_at<'tcx, C>(
     tcx: TyCtxt<'tcx>,
     span: Span,
@@ -40,15 +43,17 @@ pub(crate) fn query_get_at<'tcx, C>(
 where
     C: QueryCache,
 {
+    let call_context = QueryCallContext { span, location: Some(Location::caller()) };
     match try_get_cached(tcx, &query.cache, key) {
         Some(value) => value,
-        None => (query.execute_query_fn)(tcx, span, key, QueryMode::Get).unwrap(),
+        None => (query.execute_query_fn)(tcx, call_context, key, QueryMode::Get).unwrap(),
     }
 }
 
 /// Shared implementation of `tcx.ensure_ok().$query(..)` and
 /// `tcx.ensure_done().$query(..)` for all queries.
 #[inline]
+#[track_caller]
 pub(crate) fn query_ensure_ok_or_done<'tcx, C>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C>,
@@ -57,10 +62,11 @@ pub(crate) fn query_ensure_ok_or_done<'tcx, C>(
 ) where
     C: QueryCache,
 {
+    let call_context = QueryCallContext { span: DUMMY_SP, location: Some(Location::caller()) };
     match try_get_cached(tcx, &query.cache, key) {
         Some(_value) => {}
         None => {
-            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
+            (query.execute_query_fn)(tcx, call_context, key, QueryMode::Ensure { ensure_mode });
         }
     }
 }
@@ -68,6 +74,7 @@ pub(crate) fn query_ensure_ok_or_done<'tcx, C>(
 /// Implementation of `tcx.ensure_result().$query(..)` for queries that
 /// return `Result<_, ErrorGuaranteed>`.
 #[inline]
+#[track_caller]
 pub(crate) fn query_ensure_result<'tcx, C, T>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C>,
@@ -77,6 +84,7 @@ where
     C: QueryCache<Value = Erased<Result<T, ErrorGuaranteed>>>,
     Result<T, ErrorGuaranteed>: Erasable,
 {
+    let call_context = QueryCallContext { span: DUMMY_SP, location: Some(Location::caller()) };
     let convert = |value: Erased<Result<T, ErrorGuaranteed>>| -> Result<(), ErrorGuaranteed> {
         match erase::restore_val(value) {
             Ok(_) => Ok(()),
@@ -89,7 +97,7 @@ where
         None => {
             match (query.execute_query_fn)(
                 tcx,
-                DUMMY_SP,
+                call_context,
                 key,
                 QueryMode::Ensure { ensure_mode: EnsureMode::Ok },
             ) {

@@ -15,6 +15,7 @@ stack backtrace:
 
 query stack during panic:
 #0 [optimized_mir] optimizing MIR for `main`
+ - compiler/rustc_middle/src/ty/mod.rs:LL:CC
 end of query stack
 
 Miri caused an ICE during evaluation. Here's the interpreter backtrace at the time of the panic:

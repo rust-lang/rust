@@ -165,8 +165,9 @@ fn layout_of<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> &'tcx ty::layout::L
                     let Some(frame_coroutine_kind) = tcx.coroutine_kind(frame_def_id) else {
                         continue;
                     };
-                    let frame_span =
-                        frame.tagged_key.default_span(tcx, frames[(i + 1) % frames.len()].span);
+                    let frame_span = frame
+                        .tagged_key
+                        .default_span(tcx, frames[(i + 1) % frames.len()].call_context.span);
                     if frame_span.is_dummy() {
                         continue;
                     }
@@ -200,7 +201,7 @@ fn layout_of<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> &'tcx ty::layout::L
                 ControlFlow::Continue(())
             }
         },
-        || create_cycle_error(tcx, &cycle),
+        || create_cycle_error(tcx, &cycle, false),
     );
 
     let guar = diag.emit();

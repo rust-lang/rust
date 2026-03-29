@@ -1,6 +1,7 @@
 //@ compile-flags: -Ztreat-err-as-bug=1
 //@ failure-status: 101
 //@ rustc-env:RUST_BACKTRACE=1
+//@ normalize-stderr: "(compiler/[^ )]+\.rs):\d+:\d+" -> "$1:LL:CC"
 //@ normalize-stderr: "\nerror: .*unexpectedly panicked.*\n\n" -> ""
 //@ normalize-stderr: "note: we would appreciate a bug report.*\n\n" -> ""
 //@ normalize-stderr: "note: compiler flags.*\n\n" -> ""

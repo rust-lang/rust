@@ -1,13 +1,21 @@
+use std::panic::Location;
+
 use rustc_span::Span;
 
 use crate::queries::TaggedQueryKey;
+
+#[derive(Clone, Copy, Debug)]
+pub struct QueryCallContext {
+    pub span: Span,
+    pub location: Option<&'static Location<'static>>,
+}
 
 /// Description of a frame in the query stack.
 ///
 /// This is mostly used in case of cycles for error reporting.
 #[derive(Debug)]
 pub struct QueryStackFrame<'tcx> {
-    pub span: Span,
+    pub call_context: QueryCallContext,
 
     /// The query and key of the query method call that this stack frame
     /// corresponds to.

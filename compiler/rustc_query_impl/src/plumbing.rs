@@ -8,7 +8,9 @@ use rustc_middle::dep_graph::DepKindVTable;
 use rustc_middle::dep_graph::{DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::erase::{Erasable, Erased};
 use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder};
-use rustc_middle::query::{QueryCache, QueryJobId, QueryMode, QueryVTable, erase};
+use rustc_middle::query::{
+    QueryCache, QueryCallContext, QueryJobId, QueryMode, QueryVTable, erase,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_serialize::{Decodable, Encodable};
@@ -168,7 +170,12 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
         // FIXME(Zalathar): Is there a reasonable way to skip more of the
         // query bookkeeping when doing this?
         None => {
-            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Get);
+            (query.execute_query_fn)(
+                tcx,
+                QueryCallContext { span: DUMMY_SP, location: None },
+                key,
+                QueryMode::Get,
+            );
         }
     }
 }

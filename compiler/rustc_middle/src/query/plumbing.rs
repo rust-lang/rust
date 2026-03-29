@@ -13,7 +13,7 @@ use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNode
 use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{QueryCache, QueryJob, QueryStackFrame};
+use crate::query::{QueryCache, QueryCallContext, QueryJob, QueryStackFrame};
 use crate::ty::TyCtxt;
 
 /// For a particular query, keeps track of "active" keys, i.e. keys whose
@@ -130,7 +130,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// and putting the obtained value into the in-memory cache.
     ///
     /// [^1]: [`TyCtxt`], [`TyCtxtAt`], [`TyCtxtEnsureOk`], [`TyCtxtEnsureDone`]
-    pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
+    pub execute_query_fn: fn(TyCtxt<'tcx>, QueryCallContext, C::Key, QueryMode) -> Option<C::Value>,
 }
 
 impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
@@ -166,6 +166,8 @@ pub struct QuerySystem<'tcx> {
     pub extern_providers: ExternProviders,
 
     pub jobs: AtomicU64,
+
+    pub cycle_handler_nesting: Lock<u8>,
 }
 
 #[derive(Copy, Clone)]
@@ -204,6 +206,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns a transparent wrapper for `TyCtxt` which uses
     /// `span` as the location of queries performed through it.
     #[inline(always)]
+    #[track_caller]
     pub fn at(self, span: Span) -> TyCtxtAt<'tcx> {
         TyCtxtAt { tcx: self, span }
     }
@@ -231,6 +234,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Therefore, this call mode is not appropriate for callers that want to
     /// ensure that the query is _never_ executed in the future.
     #[inline(always)]
+    #[track_caller]
     pub fn ensure_ok(self) -> TyCtxtEnsureOk<'tcx> {
         TyCtxtEnsureOk { tcx: self }
     }
@@ -241,6 +245,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// but nothing else. As with `ensure_ok`, this can be more efficient than
     /// a normal query call.
     #[inline(always)]
+    #[track_caller]
     pub fn ensure_result(self) -> TyCtxtEnsureResult<'tcx> {
         TyCtxtEnsureResult { tcx: self }
     }
@@ -262,6 +267,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// [`Steal`]: rustc_data_structures::steal::Steal
     #[inline(always)]
+    #[track_caller]
     pub fn ensure_done(self) -> TyCtxtEnsureDone<'tcx> {
         TyCtxtEnsureDone { tcx: self }
     }
@@ -431,6 +437,11 @@ macro_rules! define_callbacks {
                 }
             }
 
+            /// Calls `self.description` or returns a fallback if there was a fatal error
+            pub fn catch_description(&self, tcx: TyCtxt<'tcx>) -> String {
+                catch_fatal_errors(|| self.description(tcx)).unwrap_or_else(|_| format!("<error describing {}>", self.query_name()))
+            }
+
             /// Returns the default span for this query if `span` is a dummy span.
             pub fn default_span(&self, tcx: TyCtxt<'tcx>, span: Span) -> Span {
                 if !span.is_dummy() {
@@ -449,28 +460,9 @@ macro_rules! define_callbacks {
                 }
             }
 
-            pub fn def_kind(&self, tcx: TyCtxt<'tcx>) -> Option<DefKind> {
-                // This is used to reduce code generation as it
-                // can be reused for queries with the same key type.
-                fn inner<'tcx>(key: &impl $crate::query::QueryKey, tcx: TyCtxt<'tcx>)
-                    -> Option<DefKind>
-                {
-                    key
-                        .key_as_def_id()
-                        .and_then(|def_id| def_id.as_local())
-                        .map(|def_id| tcx.def_kind(def_id))
-                }
-
-                if let TaggedQueryKey::def_kind(..) = self {
-                    // Try to avoid infinite recursion.
-                    return None
-                }
-
-                match self {
-                    $(
-                        TaggedQueryKey::$name(key) => inner(key, tcx),
-                    )*
-                }
+            /// Calls `self.default_span` or returns `DUMMY_SP` if there was a fatal error
+            pub fn catch_default_span(&self, tcx: TyCtxt<'tcx>, span: Span) -> Span {
+                catch_fatal_errors(|| self.default_span(tcx, span)).unwrap_or(DUMMY_SP)
             }
         }
 
@@ -554,6 +546,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
+                #[track_caller]
                 #[must_use]
                 pub fn $name(self, key: maybe_into_query_key!($($K)*)) -> $V {
                     self.at(DUMMY_SP).$name(key)
@@ -565,6 +558,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
+                #[track_caller]
                 pub fn $name(self, key: maybe_into_query_key!($($K)*)) -> $V {
                     use $crate::query::{erase, inner};
 
@@ -582,6 +576,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
+                #[track_caller]
                 pub fn $name(self, key: maybe_into_query_key!($($K)*)) {
                     $crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,
@@ -599,6 +594,7 @@ macro_rules! define_callbacks {
                 #[cfg($returns_error_guaranteed)]
                 $(#[$attr])*
                 #[inline(always)]
+                #[track_caller]
                 pub fn $name(
                     self,
                     key: maybe_into_query_key!($($K)*),
@@ -616,6 +612,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
+                #[track_caller]
                 pub fn $name(self, key: maybe_into_query_key!($($K)*)) {
                     $crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,

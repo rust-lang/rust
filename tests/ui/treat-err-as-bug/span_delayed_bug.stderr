@@ -1,5 +1,5 @@
 error: internal compiler error: delayed bug triggered by #[rustc_delayed_bug_from_inside_query]
-  --> $DIR/span_delayed_bug.rs:10:1
+  --> $DIR/span_delayed_bug.rs:11:1
    |
 LL | fn main() {}
    | ^^^^^^^^^
@@ -9,4 +9,5 @@ error: the compiler unexpectedly panicked. This is a bug
 
 query stack during panic:
 #0 [trigger_delayed_bug] triggering a delayed bug for testing incremental
+ - compiler/rustc_interface/src/passes.rs:LL:CC
 end of query stack

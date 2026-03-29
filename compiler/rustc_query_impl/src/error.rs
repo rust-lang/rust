@@ -30,6 +30,8 @@ pub(crate) struct CycleStack {
     #[primary_span]
     pub span: Span,
     pub desc: String,
+    #[subdiagnostic]
+    pub location: Option<QueryLocationNote>,
 }
 
 #[derive(Subdiagnostic)]
@@ -58,6 +60,14 @@ pub(crate) struct CycleUsage {
     #[primary_span]
     pub span: Span,
     pub usage: String,
+    #[subdiagnostic]
+    pub location: Option<QueryLocationNote>,
+}
+
+#[derive(Subdiagnostic)]
+#[note("at {$location}")]
+pub(crate) struct QueryLocationNote {
+    pub location: String,
 }
 
 #[derive(Diagnostic)]
@@ -71,7 +81,29 @@ pub(crate) struct Cycle {
     #[subdiagnostic]
     pub stack_count: StackCount,
     #[subdiagnostic]
+    pub stack_bottom_location: Option<QueryLocationNote>,
+    #[subdiagnostic]
     pub alias: Option<Alias>,
+    #[subdiagnostic]
+    pub cycle_usage: Option<CycleUsage>,
+    #[note(
+        "see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information"
+    )]
+    pub note_span: (),
+}
+
+#[derive(Diagnostic)]
+#[diag("cycle when printing cycle detected when {$stack_bottom}")]
+pub(crate) struct NestedCycle {
+    #[primary_span]
+    pub span: Span,
+    pub stack_bottom: String,
+    #[subdiagnostic]
+    pub cycle_stack: Vec<CycleStack>,
+    #[subdiagnostic]
+    pub stack_count: StackCount,
+    #[subdiagnostic]
+    pub stack_bottom_location: Option<QueryLocationNote>,
     #[subdiagnostic]
     pub cycle_usage: Option<CycleUsage>,
     #[note(
