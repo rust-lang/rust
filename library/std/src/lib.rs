@@ -342,6 +342,7 @@
 #![feature(hint_must_use)]
 #![feature(int_from_ascii)]
 #![feature(ip)]
+#![feature(ipv6_hop_limit)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(maybe_uninit_array_assume_init)]
