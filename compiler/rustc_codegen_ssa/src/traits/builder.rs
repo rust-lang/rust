@@ -103,6 +103,21 @@ pub trait BuilderMethods<'a, 'tcx>:
         self.cond_br(cond, then_llbb, else_llbb)
     }
 
+    // Conditional with weights.
+    //
+    // This function is opt-in for back ends.
+    //
+    // The default implementation ignores `then_cold` and calls `self.cond_br()`
+    fn cond_br_with_weight(
+        &mut self,
+        cond: Self::Value,
+        then_llbb: Self::BasicBlock,
+        else_llbb: Self::BasicBlock,
+        _then_cold: bool,
+    ) {
+        self.cond_br(cond, then_llbb, else_llbb)
+    }
+
     fn switch(
         &mut self,
         v: Self::Value,
