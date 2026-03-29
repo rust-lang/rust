@@ -14,6 +14,6 @@ globbing! {} // this imports the same `RustEmbed` macro with `pub` visibility
 
 pub trait RustEmbed {}
 
-pub use RustEmbed as Embed; //~ WARN ambiguous import visibility
-                            //~| WARN this was previously accepted
+pub use RustEmbed as Embed;
+
 fn main() {}

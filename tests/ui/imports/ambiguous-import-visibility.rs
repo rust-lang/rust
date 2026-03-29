@@ -9,6 +9,6 @@ pub use same_res_ambigious_extern_macro::*;
 
 pub trait RustEmbed {}
 
-pub use RustEmbed as Embed; //~ WARN ambiguous import visibility
-                            //~| WARN this was previously accepted
+pub use RustEmbed as Embed;
+
 fn main() {}

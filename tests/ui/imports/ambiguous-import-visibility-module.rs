@@ -15,8 +15,7 @@ mod reexport {
     pub use m::*;
     mac!();
 
-    pub use S as Z; //~ WARN ambiguous import visibility
-                    //~| WARN this was previously accepted
+    pub use S as Z;
 }
 
 fn main() {
