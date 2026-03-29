@@ -37,7 +37,14 @@ SUBCOMMAND:
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    let str_args = args.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+    let str_args = args
+        .iter()
+        .map(|s| {
+            // Allow pasting from comma-separated arguments
+            let s = s.as_str();
+            s.strip_suffix(",").unwrap_or(s)
+        })
+        .collect::<Vec<_>>();
 
     match &str_args.as_slice()[1..] {
         ["eval" | "x", basis, op, inputs @ ..] => do_eval(basis, op, inputs),
