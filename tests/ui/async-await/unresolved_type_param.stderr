@@ -4,6 +4,11 @@ error[E0282]: type annotations needed
 LL |     bar().await;
    |     ^^^ cannot infer type of the type parameter `T` declared on the function `bar`
    |
+note: type must be known for type parameter in this
+  --> $DIR/unresolved_type_param.rs:6:1
+   |
+LL | async fn bar<T>() -> () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 help: consider specifying the generic argument
    |
 LL |     bar::<T>().await;

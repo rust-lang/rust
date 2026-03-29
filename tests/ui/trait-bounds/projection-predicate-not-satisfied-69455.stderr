@@ -6,6 +6,11 @@ LL |     println!("{}", 23u64.test(xs.iter().sum()));
    |                          |
    |                          type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/projection-predicate-not-satisfied-69455.rs:5:1
+   |
+LL | pub trait Test<Rhs = Self> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: cannot satisfy `<u64 as Test<_>>::Output == _`
 help: consider specifying the generic argument
    |
@@ -20,6 +25,11 @@ LL |     println!("{}", 23u64.test(xs.iter().sum()));
    |                          |
    |                          required by a bound introduced by this call
    |
+note: type must be known for type parameter in this
+  --> $DIR/projection-predicate-not-satisfied-69455.rs:5:1
+   |
+LL | pub trait Test<Rhs = Self> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `u64: Test<_>` found
   --> $DIR/projection-predicate-not-satisfied-69455.rs:11:1
    |

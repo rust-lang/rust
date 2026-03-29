@@ -7,6 +7,11 @@ LL |     let x;
 LL |     x = unconstrained_map();
    |         ------------------- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/well-formed-in-relate.rs:21:1
+   |
+LL | fn unconstrained_map<T: Fn() -> U, U>() -> <Map<T, U> as Mirror>::Assoc { todo!() }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: multiple `impl`s satisfying `_: Fn()` found in the following crates: `alloc`, `core`:
            - impl<A, F> Fn<A> for &F
              where A: std::marker::Tuple, F: Fn<A>, F: ?Sized;

@@ -31,6 +31,11 @@ error[E0284]: type annotations needed
 LL |         reuse to_reuse::bar2;
    |                         ^^^^ cannot infer the value of the const parameter `X` declared on the function `bar2`
    |
+note: type must be known for type parameter in this
+  --> $DIR/trait-impl-wrong-args-count.rs:9:9
+   |
+LL |         pub fn bar2<A, B, C, D, E, F, const X: usize, const Y: bool>(x: &super::XX) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a const generic parameter in `bar2`
   --> $DIR/trait-impl-wrong-args-count.rs:9:39
    |
@@ -47,6 +52,11 @@ error[E0284]: type annotations needed
 LL |         reuse to_reuse::bar2;
    |                         ^^^^ cannot infer the value of the const parameter `Y` declared on the function `bar2`
    |
+note: type must be known for type parameter in this
+  --> $DIR/trait-impl-wrong-args-count.rs:9:9
+   |
+LL |         pub fn bar2<A, B, C, D, E, F, const X: usize, const Y: bool>(x: &super::XX) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a const generic parameter in `bar2`
   --> $DIR/trait-impl-wrong-args-count.rs:9:55
    |
@@ -134,6 +144,12 @@ error[E0282]: type annotations needed
    |
 LL |         reuse <X as Trait1::<(), ()>>::foo as bar2;
    |                                        ^^^ cannot infer type of the type parameter `X` declared on the associated function `foo`
+   |
+note: type must be known for type parameter in this
+  --> $DIR/trait-impl-wrong-args-count.rs:88:9
+   |
+LL |         fn foo<X, Y>() {}
+   |         ^^^^^^^^^^^^^^
 
 error[E0107]: associated function takes at most 2 generic arguments but 3 generic arguments were supplied
   --> $DIR/trait-impl-wrong-args-count.rs:105:40

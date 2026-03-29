@@ -4,6 +4,13 @@ error[E0283]: type annotations needed
 LL |     ().publish_typed();
    |        ^^^^^^^^^^^^^ cannot infer type of the type parameter `F` declared on the method `publish_typed`
    |
+note: type must be known for type parameter in this
+  --> $DIR/not-inferred-generic.rs:2:5
+   |
+LL | /     fn publish_typed<F>(&self) -> impl Sized
+LL | |     where
+LL | |         F: Clone;
+   | |_________________^
    = note: the type must implement `Clone`
    = note: opaque types cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
 note: required by a bound in `TypedClient::publish_typed::{anon_assoc#0}`

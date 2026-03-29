@@ -4,6 +4,8 @@ error[E0282]: type annotations needed
 LL |         Err(MyError);
    |         ^^^ cannot infer type of the type parameter `T` declared on the enum `Result`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/result.rs:LL:COL
 help: consider specifying the generic arguments
    |
 LL |         Err::<T, MyError>(MyError);
@@ -15,6 +17,8 @@ error[E0282]: type annotations needed
 LL |         Ok(());
    |         ^^ cannot infer type of the type parameter `E` declared on the enum `Result`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/result.rs:LL:COL
 help: consider specifying the generic arguments
    |
 LL |         Ok::<(), E>(());
@@ -68,6 +72,8 @@ error[E0282]: type annotations needed
 LL |     Err(MyError);
    |     ^^^ cannot infer type of the type parameter `T` declared on the enum `Result`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/result.rs:LL:COL
 help: consider specifying the generic arguments
    |
 LL |     Err::<T, MyError>(MyError);
@@ -79,6 +85,13 @@ error[E0282]: type annotations needed
 LL |     with_closure(|x: u32, y| {});
    |                           ^
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:49:1
+   |
+LL | / fn with_closure<F, A, B>(_: F) -> i32
+LL | | where
+LL | |     F: FnOnce(A, B),
+   | |____________________^
 help: consider giving this closure parameter an explicit type
    |
 LL |     with_closure(|x: u32, y: /* Type */| {});

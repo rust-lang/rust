@@ -6,6 +6,11 @@ LL |     SmallCString::try_from(p).map(|cstr| cstr);
    |     |
    |     type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/try-from-with-const-genericsrs-98299.rs:9:1
+   |
+LL | pub struct SmallCString<const N: usize> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a const generic parameter in `SmallCString`
   --> $DIR/try-from-with-const-genericsrs-98299.rs:9:25
    |

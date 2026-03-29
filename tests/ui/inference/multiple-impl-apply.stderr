@@ -4,6 +4,8 @@ error[E0283]: type annotations needed
 LL |     let y = x.into();
    |         ^     ---- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
 note: multiple `impl`s satisfying `_: From<Baz>` found
   --> $DIR/multiple-impl-apply.rs:14:1
    |

@@ -4,6 +4,11 @@ error[E0283]: type annotations needed
 LL |     let guard: Guard<Arc<usize>> = s.load();
    |                                      ^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-80816.rs:25:1
+   |
+LL | pub trait Access<T> {
+   | ^^^^^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `ArcSwapAny<Arc<usize>>: Access<_>` found
   --> $DIR/issue-80816.rs:36:1
    |

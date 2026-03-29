@@ -4,6 +4,11 @@ error[E0284]: type annotations needed
 LL |     use_dyn(&());
    |     ^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `use_dyn`
    |
+note: type must be known for type parameter in this
+  --> $DIR/dyn-compatibility-ok-infer-err.rs:14:1
+   |
+LL | fn use_dyn<const N: usize>(v: &dyn Foo<N>) where [u8; N + 1]: Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a const generic parameter in `use_dyn`
   --> $DIR/dyn-compatibility-ok-infer-err.rs:14:12
    |

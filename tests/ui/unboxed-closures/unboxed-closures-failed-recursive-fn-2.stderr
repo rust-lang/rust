@@ -7,6 +7,8 @@ LL |     let mut closure0 = None;
 LL |                         return c();
    |                                - type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 help: consider giving `closure0` an explicit type, where the type for type parameter `T` is specified
    |
 LL |     let mut closure0: Option<T> = None;

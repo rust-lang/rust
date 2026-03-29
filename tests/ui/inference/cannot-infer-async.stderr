@@ -4,6 +4,8 @@ error[E0282]: type annotations needed
 LL |         Ok(())
    |         ^^ cannot infer type of the type parameter `E` declared on the enum `Result`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/result.rs:LL:COL
 help: consider specifying the generic arguments
    |
 LL |         Ok::<(), E>(())

@@ -6,6 +6,11 @@ LL |     qux(Bar.into());
    |     |
    |     required by a bound introduced by this call
    |
+note: type must be known for type parameter in this
+  --> $DIR/argument-with-unnecessary-method-call.rs:6:1
+   |
+LL | fn qux(_: impl From<Bar>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the type must implement `From<Bar>`
 note: required by a bound in `qux`
   --> $DIR/argument-with-unnecessary-method-call.rs:6:16
