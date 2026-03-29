@@ -46,6 +46,8 @@ use std::str::FromStr;
 use bitflags::bitflags;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
+#[cfg(feature = "nightly")]
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, msg};
 use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
@@ -338,7 +340,7 @@ impl Default for TargetDataLayout {
     }
 }
 
-pub enum TargetDataLayoutErrors<'a> {
+pub enum TargetDataLayoutError<'a> {
     InvalidAddressSpace { addr_space: &'a str, cause: &'a str, err: ParseIntError },
     InvalidBits { kind: &'a str, bit: &'a str, cause: &'a str, err: ParseIntError },
     MissingAlignment { cause: &'a str },
@@ -347,6 +349,51 @@ pub enum TargetDataLayoutErrors<'a> {
     InconsistentTargetPointerWidth { pointer_size: u64, target: u16 },
     InvalidBitsSize { err: String },
     UnknownPointerSpecification { err: String },
+}
+
+#[cfg(feature = "nightly")]
+impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetDataLayoutError<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+        match self {
+            TargetDataLayoutError::InvalidAddressSpace { addr_space, err, cause } => {
+                Diag::new(dcx, level, msg!("invalid address space `{$addr_space}` for `{$cause}` in \"data-layout\": {$err}"))
+                    .with_arg("addr_space", addr_space)
+                    .with_arg("cause", cause)
+                    .with_arg("err", err)
+            }
+            TargetDataLayoutError::InvalidBits { kind, bit, cause, err } => {
+                Diag::new(dcx, level, msg!("invalid {$kind} `{$bit}` for `{$cause}` in \"data-layout\": {$err}"))
+                    .with_arg("kind", kind)
+                    .with_arg("bit", bit)
+                    .with_arg("cause", cause)
+                    .with_arg("err", err)
+            }
+            TargetDataLayoutError::MissingAlignment { cause } => {
+                Diag::new(dcx, level, msg!("missing alignment for `{$cause}` in \"data-layout\""))
+                    .with_arg("cause", cause)
+            }
+            TargetDataLayoutError::InvalidAlignment { cause, err } => {
+                Diag::new(dcx, level, msg!("invalid alignment for `{$cause}` in \"data-layout\": {$err}"))
+                    .with_arg("cause", cause)
+                    .with_arg("err", err.to_string())
+            }
+            TargetDataLayoutError::InconsistentTargetArchitecture { dl, target } => {
+                Diag::new(dcx, level, msg!("inconsistent target specification: \"data-layout\" claims architecture is {$dl}-endian, while \"target-endian\" is `{$target}`"))
+                    .with_arg("dl", dl).with_arg("target", target)
+            }
+            TargetDataLayoutError::InconsistentTargetPointerWidth { pointer_size, target } => {
+                Diag::new(dcx, level, msg!("inconsistent target specification: \"data-layout\" claims pointers are {$pointer_size}-bit, while \"target-pointer-width\" is `{$target}`"))
+                    .with_arg("pointer_size", pointer_size).with_arg("target", target)
+            }
+            TargetDataLayoutError::InvalidBitsSize { err } => {
+                Diag::new(dcx, level, msg!("{$err}")).with_arg("err", err)
+            }
+            TargetDataLayoutError::UnknownPointerSpecification { err } => {
+                Diag::new(dcx, level, msg!("unknown pointer specification `{$err}` in datalayout string"))
+                    .with_arg("err", err)
+            }
+        }
+    }
 }
 
 impl TargetDataLayout {
@@ -358,17 +405,17 @@ impl TargetDataLayout {
     pub fn parse_from_llvm_datalayout_string<'a>(
         input: &'a str,
         default_address_space: AddressSpace,
-    ) -> Result<TargetDataLayout, TargetDataLayoutErrors<'a>> {
+    ) -> Result<TargetDataLayout, TargetDataLayoutError<'a>> {
         // Parse an address space index from a string.
         let parse_address_space = |s: &'a str, cause: &'a str| {
             s.parse::<u32>().map(AddressSpace).map_err(|err| {
-                TargetDataLayoutErrors::InvalidAddressSpace { addr_space: s, cause, err }
+                TargetDataLayoutError::InvalidAddressSpace { addr_space: s, cause, err }
             })
         };
 
         // Parse a bit count from a string.
         let parse_bits = |s: &'a str, kind: &'a str, cause: &'a str| {
-            s.parse::<u64>().map_err(|err| TargetDataLayoutErrors::InvalidBits {
+            s.parse::<u64>().map_err(|err| TargetDataLayoutError::InvalidBits {
                 kind,
                 bit: s,
                 cause,
@@ -384,7 +431,7 @@ impl TargetDataLayout {
         let parse_align_str = |s: &'a str, cause: &'a str| {
             let align_from_bits = |bits| {
                 Align::from_bits(bits)
-                    .map_err(|err| TargetDataLayoutErrors::InvalidAlignment { cause, err })
+                    .map_err(|err| TargetDataLayoutError::InvalidAlignment { cause, err })
             };
             let abi = parse_bits(s, "alignment", cause)?;
             Ok(align_from_bits(abi)?)
@@ -394,7 +441,7 @@ impl TargetDataLayout {
         // ignoring the secondary alignment specifications.
         let parse_align_seq = |s: &[&'a str], cause: &'a str| {
             if s.is_empty() {
-                return Err(TargetDataLayoutErrors::MissingAlignment { cause });
+                return Err(TargetDataLayoutError::MissingAlignment { cause });
             }
             parse_align_str(s[0], cause)
         };
@@ -432,7 +479,7 @@ impl TargetDataLayout {
                     // However, we currently don't take into account further specifications:
                     // an error is emitted instead.
                     if p.starts_with(char::is_alphabetic) {
-                        return Err(TargetDataLayoutErrors::UnknownPointerSpecification {
+                        return Err(TargetDataLayoutError::UnknownPointerSpecification {
                             err: p.to_string(),
                         });
                     }
@@ -477,7 +524,7 @@ impl TargetDataLayout {
                     // However, we currently don't take into account further specifications:
                     // an error is emitted instead.
                     if p.starts_with(char::is_alphabetic) {
-                        return Err(TargetDataLayoutErrors::UnknownPointerSpecification {
+                        return Err(TargetDataLayoutError::UnknownPointerSpecification {
                             err: p.to_string(),
                         });
                     }
