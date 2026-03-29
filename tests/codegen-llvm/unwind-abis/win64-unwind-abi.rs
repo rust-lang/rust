@@ -6,11 +6,11 @@
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
+#[lang = "size_of_val"]
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-pub trait Sized: MetaSized {}
+pub trait Sized: SizeOfVal {}
 
 // Test that `nounwind` attributes are correctly applied to exported `win64` and
 // `win64-unwind` extern functions. `win64-unwind` functions MUST NOT have this attribute. We

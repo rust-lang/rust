@@ -1,7 +1,7 @@
 //@ check-fail
 #![feature(extern_types, sized_hierarchy)]
 
-use std::marker::{MetaSized, PointeeSized};
+use std::marker::{SizeOfVal, PointeeSized};
 
 fn bare<T>() {}
 
@@ -11,9 +11,9 @@ fn sized<T: Sized>() {}
 fn neg_sized<T: ?Sized>() {}
 
 
-fn metasized<T: MetaSized>() {}
+fn sizeofval<T: SizeOfVal>() {}
 
-fn neg_metasized<T: ?MetaSized>() {}
+fn neg_sizeofval<T: ?SizeOfVal>() {}
 //~^ ERROR bound modifier `?` can only be applied to `Sized`
 
 
@@ -30,11 +30,11 @@ fn main() {
     //~^ ERROR the size for values of type `[u8]` cannot be known at compilation time
     sized::<[u8]>();
     //~^ ERROR the size for values of type `[u8]` cannot be known at compilation time
-    metasized::<[u8]>();
+    sizeofval::<[u8]>();
     pointeesized::<[u8]>();
 
-    // Functions which should have a `T: MetaSized` bound - check for an error given a
-    // non-MetaSized type:
+    // Functions which should have a `T: SizeOfVal` bound - check for an error given a
+    // non-SizeOfVal type:
     unsafe extern "C" {
         type Foo;
     }
@@ -43,7 +43,7 @@ fn main() {
     //~^ ERROR the size for values of type `main::Foo` cannot be known
     sized::<Foo>();
     //~^ ERROR the size for values of type `main::Foo` cannot be known
-    metasized::<Foo>();
+    sizeofval::<Foo>();
     //~^ ERROR the size for values of type `main::Foo` cannot be known
     pointeesized::<Foo>();
 }

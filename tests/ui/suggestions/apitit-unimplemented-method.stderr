@@ -5,7 +5,7 @@ LL | impl Trait for Local {}
    | ^^^^^^^^^^^^^^^^^^^^ missing `foo`, `bar`, `baz`, `quux` in implementation
    |
    = help: implement the missing item: `fn foo(_: impl Sized) { todo!() }`
-   = help: implement the missing item: `fn bar<T>(_: impl Sized) where Foo<T>: MetaSized { todo!() }`
+   = help: implement the missing item: `fn bar<T>(_: impl Sized) where Foo<T>: SizeOfVal { todo!() }`
    = help: implement the missing item: `fn baz<const N: usize>() { todo!() }`
    = help: implement the missing item: `fn quux<'a: 'b, 'b, T>() where T: ?Sized { todo!() }`
 

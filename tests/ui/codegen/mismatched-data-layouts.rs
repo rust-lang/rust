@@ -14,10 +14,10 @@
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
+#[lang = "size_of_val"]
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-pub trait Sized: MetaSized {}
+pub trait Sized: SizeOfVal {}
 
 //~? ERROR differs from LLVM target's

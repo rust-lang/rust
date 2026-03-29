@@ -7,11 +7,11 @@
 #[lang = "pointee_sized"]
 trait PointeeSized {}
 
-#[lang = "meta_sized"]
-trait MetaSized: PointeeSized {}
+#[lang = "size_of_val"]
+trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-trait Sized: MetaSized {}
+trait Sized: SizeOfVal {}
 
 #[no_mangle]
 extern "gpu-kernel" fn kernel() {}

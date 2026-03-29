@@ -16,8 +16,8 @@ LL | #[lang = "pointee_sized"]
 error[E0658]: lang items are subject to change
   --> $DIR/issue-83471.rs:12:1
    |
-LL | #[lang = "meta_sized"]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+LL | #[lang = "size_of_val"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(lang_items)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

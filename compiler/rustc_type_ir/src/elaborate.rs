@@ -135,8 +135,8 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
         // PERF(sized-hierarchy): To avoid iterating over sizedness supertraits in
         // parameter environments, as an optimisation, sizedness supertraits aren't
         // elaborated, so check if a `Sized` obligation is being elaborated to a
-        // `MetaSized` obligation and emit it. Candidate assembly and confirmation
-        // are modified to check for the `Sized` subtrait when a `MetaSized` obligation
+        // `SizeOfVal` obligation and emit it. Candidate assembly and confirmation
+        // are modified to check for the `Sized` subtrait when a `SizeOfVal` obligation
         // is present.
         if self.elaborate_sized == ElaborateSized::No
             && let Some(did) = clause.as_trait_clause().map(|c| c.def_id())

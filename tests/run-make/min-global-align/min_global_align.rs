@@ -12,11 +12,11 @@ pub static CONST_BOOL_REF: &'static bool = &CONST_BOOL;
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
+#[lang = "size_of_val"]
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-pub trait Sized: MetaSized {}
+pub trait Sized: SizeOfVal {}
 
 #[lang = "copy"]
 trait Copy {}

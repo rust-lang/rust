@@ -92,14 +92,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // FIXME(sized-hierarchy): https://github.com/rust-lang/rust/pull/142712#issuecomment-3013231794
         debug!(?user_written_bounds, ?elaborated_trait_bounds);
-        let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, span);
-        // Don't strip out `MetaSized` when the user wrote it explicitly, only when it was
+        let size_of_val_did = tcx.require_lang_item(LangItem::SizeOfVal, span);
+        // Don't strip out `SizeOfVal` when the user wrote it explicitly, only when it was
         // elaborated
-        if user_written_bounds
-            .iter()
-            .all(|(clause, _)| clause.as_trait_clause().map(|p| p.def_id()) != Some(meta_sized_did))
-        {
-            elaborated_trait_bounds.retain(|(pred, _)| pred.def_id() != meta_sized_did);
+        if user_written_bounds.iter().all(|(clause, _)| {
+            clause.as_trait_clause().map(|p| p.def_id()) != Some(size_of_val_did)
+        }) {
+            elaborated_trait_bounds.retain(|(pred, _)| pred.def_id() != size_of_val_did);
         }
         debug!(?user_written_bounds, ?elaborated_trait_bounds);
 

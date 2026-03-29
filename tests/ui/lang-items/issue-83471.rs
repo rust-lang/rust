@@ -9,13 +9,13 @@
 //~^ ERROR: lang items are subject to change [E0658]
 pub trait PointeeSized {}
 
-#[lang = "meta_sized"]
+#[lang = "size_of_val"]
 //~^ ERROR: lang items are subject to change [E0658]
-pub trait MetaSized: PointeeSized {}
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
 //~^ ERROR: lang items are subject to change [E0658]
-trait Sized: MetaSized {}
+trait Sized: SizeOfVal {}
 
 #[lang = "fn"]
 //~^ ERROR: lang items are subject to change [E0658]

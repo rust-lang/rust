@@ -155,13 +155,13 @@ unsafe impl<T: Sync + PointeeSized> Send for &T {}
 // and we know that the supertraits are always implemented if the subtrait is just by looking at
 // the builtin impls.
 #[rustc_coinductive]
-pub trait Sized: MetaSized {
+pub trait Sized: SizeOfVal {
     // Empty.
 }
 
 /// Types with a size that can be determined from pointer metadata.
 #[unstable(feature = "sized_hierarchy", issue = "144404")]
-#[lang = "meta_sized"]
+#[lang = "size_of_val"]
 #[diagnostic::on_unimplemented(
     message = "the size for values of type `{Self}` cannot be known",
     label = "doesn't have a known size"
@@ -169,10 +169,10 @@ pub trait Sized: MetaSized {
 #[fundamental]
 #[rustc_specialization_trait]
 #[rustc_deny_explicit_impl]
-// `MetaSized` being coinductive, despite having supertraits, is okay for the same reasons as
+// `SizeOfVal` being coinductive, despite having supertraits, is okay for the same reasons as
 // `Sized` above.
 #[rustc_coinductive]
-pub trait MetaSized: PointeeSized {
+pub trait SizeOfVal: PointeeSized {
     // Empty
 }
 

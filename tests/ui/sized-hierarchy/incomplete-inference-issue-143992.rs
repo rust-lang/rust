@@ -5,7 +5,7 @@
 //@[next] compile-flags: -Znext-solver
 
 // Test that we avoid incomplete inference when normalizing. Without this,
-// `Trait`'s implicit `MetaSized` supertrait requires proving `T::Assoc<_>: MetaSized`
+// `Trait`'s implicit `SizeOfVal` supertrait requires proving `T::Assoc<_>: SizeOfVal`
 // before checking the `new` arguments, resulting in eagerly constraining the inference
 // var to `u32`. This is undesirable and would breaking code.
 

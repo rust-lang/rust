@@ -16,11 +16,11 @@
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
+#[lang = "size_of_val"]
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-pub trait Sized: MetaSized {}
+pub trait Sized: SizeOfVal {}
 
 //[BADFLAGS]~? ERROR incorrect value `leaf` for unstable option `branch-protection`
 //[BADFLAGSPC]~? ERROR incorrect value `pc` for unstable option `branch-protection`

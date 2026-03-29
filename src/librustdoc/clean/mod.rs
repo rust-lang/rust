@@ -901,8 +901,8 @@ fn clean_ty_generics_inner<'tcx>(
             if b.is_sized_bound(cx) {
                 has_sized = true;
                 false
-            } else if b.is_meta_sized_bound(cx) {
-                // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
+            } else if b.is_size_of_val_bound(cx) {
+                // FIXME(sized-hierarchy): Always skip `` bounds so that only `?Sized`
                 // is shown and none of the new sizedness traits leak into documentation.
                 false
             } else {
@@ -1457,9 +1457,9 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 });
 
                 bounds.retain(|b| {
-                    // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
+                    // FIXME(sized-hierarchy): Always skip `` bounds so that only `?Sized`
                     // is shown and none of the new sizedness traits leak into documentation.
-                    !b.is_meta_sized_bound(cx)
+                    !b.is_size_of_val_bound(cx)
                 });
 
                 // Our Sized/?Sized bound didn't get handled when creating the generics
@@ -2306,9 +2306,9 @@ fn clean_middle_opaque_bounds<'tcx>(
                 _ => return None,
             };
 
-            // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
+            // FIXME(sized-hierarchy): Always skip `` bounds so that only `?Sized`
             // is shown and none of the new sizedness traits leak into documentation.
-            if cx.tcx.is_lang_item(trait_ref.def_id(), LangItem::MetaSized) {
+            if cx.tcx.is_lang_item(trait_ref.def_id(), LangItem::SizeOfVal) {
                 return None;
             }
 

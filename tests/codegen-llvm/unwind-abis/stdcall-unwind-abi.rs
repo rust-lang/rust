@@ -6,11 +6,11 @@
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
+#[lang = "size_of_val"]
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-pub trait Sized: MetaSized {}
+pub trait Sized: SizeOfVal {}
 
 // Test that `nounwind` attributes are correctly applied to exported `stdcall` and `stdcall-unwind`
 // extern functions. `stdcall-unwind` functions MUST NOT have this attribute. We disable

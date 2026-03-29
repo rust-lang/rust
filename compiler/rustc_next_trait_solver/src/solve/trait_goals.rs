@@ -140,12 +140,12 @@ where
         ) -> bool {
             clause_def_id == goal_def_id
             // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
-            // check for a `MetaSized` supertrait being matched against a `Sized` assumption.
+            // check for a `SizeOfVal` supertrait being matched against a `Sized` assumption.
             //
             // `PointeeSized` bounds are syntactic sugar for a lack of bounds so don't need this.
                 || (polarity == PredicatePolarity::Positive
                     && cx.is_trait_lang_item(clause_def_id, SolverTraitLangItem::Sized)
-                    && cx.is_trait_lang_item(goal_def_id, SolverTraitLangItem::MetaSized))
+                    && cx.is_trait_lang_item(goal_def_id, SolverTraitLangItem::SizeOfVal))
         }
 
         if let Some(trait_clause) = assumption.as_trait_clause()
@@ -176,16 +176,16 @@ where
         let trait_clause = assumption.as_trait_clause().unwrap();
 
         // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
-        // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
+        // check for a `Sized` subtrait when looking for `SizeOfVal`. `PointeeSized` bounds
         // are syntactic sugar for a lack of bounds so don't need this.
         // We don't need to check polarity, `fast_reject_assumption` already rejected non-`Positive`
-        // polarity `Sized` assumptions as matching non-`Positive` `MetaSized` goals.
-        if ecx.cx().is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::MetaSized)
+        // polarity `Sized` assumptions as matching non-`Positive` `SizeOfVal` goals.
+        if ecx.cx().is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::SizeOfVal)
             && ecx.cx().is_trait_lang_item(trait_clause.def_id(), SolverTraitLangItem::Sized)
         {
-            let meta_sized_clause =
+            let size_of_val_clause =
                 trait_predicate_with_def_id(ecx.cx(), trait_clause, goal.predicate.def_id());
-            return Self::match_assumption(ecx, goal, meta_sized_clause, then);
+            return Self::match_assumption(ecx, goal, size_of_val_clause, then);
         }
 
         let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
@@ -897,7 +897,7 @@ where
 /// Small helper function to change the `def_id` of a trait predicate - this is not normally
 /// something that you want to do, as different traits will require different args and so making
 /// it easy to change the trait is something of a footgun, but it is useful in the narrow
-/// circumstance of changing from `MetaSized` to `Sized`, which happens as part of the lazy
+/// circumstance of changing from `SizeOfVal` to `Sized`, which happens as part of the lazy
 /// elaboration of sizedness candidates.
 #[inline(always)]
 fn trait_predicate_with_def_id<I: Interner>(

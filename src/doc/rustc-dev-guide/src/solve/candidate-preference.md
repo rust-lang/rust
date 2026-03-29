@@ -17,7 +17,7 @@ This document provides additional details and references to explain *why* we've 
 
 Trivial builtin impls are builtin impls which are known to be always applicable for well-formed types.
 This means that if one exists, using another candidate should never have fewer constraints.
-We currently only consider `Sized` - and `MetaSized` - impls to be trivial.
+We currently only consider `Sized` - and `SizeOfVal` - impls to be trivial.
 
 This is necessary to prevent a lifetime error for the following pattern
 
