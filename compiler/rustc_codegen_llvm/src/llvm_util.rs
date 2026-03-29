@@ -510,6 +510,9 @@ fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String)
     };
     let mut cpus = cpu_names
         .lines()
+        .filter(|cpu_name| {
+            !sess.target.unsupported_cpus.contains(&std::borrow::Cow::Borrowed(*cpu_name))
+        })
         .map(|cpu_name| Cpu { cpu_name, remark: make_remark(cpu_name) })
         .collect::<VecDeque<_>>();
 
