@@ -144,7 +144,7 @@ pub trait Printer<'tcx>: Sized {
         let key = self.tcx().def_key(def_id);
         debug!(?key);
 
-        match key.disambiguated_data.data {
+        match key.disambiguated_data.data.unwrap() {
             DefPathData::CrateRoot => {
                 assert!(key.parent.is_none());
                 self.print_crate_name(def_id.krate)
@@ -161,7 +161,7 @@ pub trait Printer<'tcx>: Sized {
                     let generics = self.tcx().generics_of(def_id);
                     parent_args = &args[..generics.parent_count.min(args.len())];
 
-                    match key.disambiguated_data.data {
+                    match key.disambiguated_data.data.unwrap() {
                         DefPathData::Closure => {
                             // We need to additionally print the `kind` field of a coroutine if
                             // it is desugared from a coroutine-closure.

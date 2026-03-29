@@ -869,6 +869,7 @@ impl MetadataBlob {
                             def_key
                                 .disambiguated_data
                                 .data
+                                .unwrap()
                                 .get_opt_name()
                                 .unwrap_or_else(|| Symbol::intern("???"))
                         };
@@ -983,10 +984,10 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn opt_item_name(self, item_index: DefIndex) -> Option<Symbol> {
         let def_key = self.def_key(item_index);
-        def_key.disambiguated_data.data.get_opt_name().or_else(|| {
-            if def_key.disambiguated_data.data == DefPathData::Ctor {
+        def_key.disambiguated_data.data.unwrap().get_opt_name().or_else(|| {
+            if def_key.disambiguated_data.data.unwrap() == DefPathData::Ctor {
                 let parent_index = def_key.parent.expect("no parent for a constructor");
-                self.def_key(parent_index).disambiguated_data.data.get_opt_name()
+                self.def_key(parent_index).disambiguated_data.data.unwrap().get_opt_name()
             } else {
                 None
             }
@@ -1380,7 +1381,7 @@ impl<'a> CrateMetadataRef<'a> {
                 // but we assume that someone passing a constructor ID actually wants to look at
                 // the attributes on the corresponding struct or variant.
                 let def_key = self.def_key(id);
-                assert_eq!(def_key.disambiguated_data.data, DefPathData::Ctor);
+                assert_eq!(def_key.disambiguated_data.data.unwrap(), DefPathData::Ctor);
                 let parent_id = def_key.parent.expect("no parent for a constructor");
                 self.root
                     .tables

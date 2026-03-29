@@ -21,7 +21,7 @@ fn true_significant_drop_ty<'tcx>(
         loop {
             let key = tcx.def_key(did);
 
-            match key.disambiguated_data.data {
+            match key.disambiguated_data.data.unwrap() {
                 rustc_hir::definitions::DefPathData::CrateRoot => {
                     name_rev.push(tcx.crate_name(did.krate));
                 }

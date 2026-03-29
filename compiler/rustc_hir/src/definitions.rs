@@ -99,7 +99,7 @@ impl DefPathTable {
 
 #[derive(Debug)]
 pub struct DisambiguatorState {
-    next: UnordMap<(LocalDefId, DefPathData), u32>,
+    next: UnordMap<(LocalDefId, DefPathData2), u32>,
 }
 
 impl DisambiguatorState {
@@ -109,7 +109,7 @@ impl DisambiguatorState {
 
     /// Creates a `DisambiguatorState` where the next allocated `(LocalDefId, DefPathData)` pair
     /// will have `index` as the disambiguator.
-    pub fn with(def_id: LocalDefId, data: DefPathData, index: u32) -> Self {
+    pub fn with(def_id: LocalDefId, data: DefPathData2, index: u32) -> Self {
         let mut this = Self::new();
         this.next.insert((def_id, data), index);
         this
@@ -146,8 +146,8 @@ impl DefKey {
 
         let DisambiguatedDefPathData { ref data, disambiguator } = self.disambiguated_data;
 
-        std::mem::discriminant(data).hash(&mut hasher);
-        if let Some(name) = data.hashed_symbol() {
+        data.hash(&mut hasher);
+        if let Some(name) = data.unwrap().hashed_symbol() {
             // Get a stable hash by considering the symbol chars rather than
             // the symbol index.
             name.as_str().hash(&mut hasher);
@@ -166,7 +166,7 @@ impl DefKey {
 
     #[inline]
     pub fn get_opt_name(&self) -> Option<Symbol> {
-        self.disambiguated_data.data.get_opt_name()
+        self.disambiguated_data.data.unwrap().get_opt_name()
     }
 }
 
@@ -178,13 +178,13 @@ impl DefKey {
 /// the same module, they do get distinct `DefId`s.
 #[derive(Copy, Clone, PartialEq, Debug, Encodable, BlobDecodable)]
 pub struct DisambiguatedDefPathData {
-    pub data: DefPathData,
+    pub data: DefPathData2,
     pub disambiguator: u32,
 }
 
 impl DisambiguatedDefPathData {
     pub fn as_sym(&self, verbose: bool) -> Symbol {
-        match self.data.name() {
+        match self.data.unwrap().name() {
             DefPathDataName::Named(name) => {
                 if verbose && self.disambiguator != 0 {
                     Symbol::intern(&format!("{}#{}", name, self.disambiguator))
@@ -193,7 +193,7 @@ impl DisambiguatedDefPathData {
                 }
             }
             DefPathDataName::Anon { namespace } => {
-                if let DefPathData::AnonAssocTy(method) = self.data {
+                if let DefPathData::AnonAssocTy(method) = self.data.unwrap() {
                     Symbol::intern(&format!("{}::{{{}#{}}}", method, namespace, self.disambiguator))
                 } else {
                     Symbol::intern(&format!("{{{}#{}}}", namespace, self.disambiguator))
@@ -224,7 +224,7 @@ impl DefPath {
             let p = index.unwrap();
             let key = get_key(p);
             debug!("DefPath::make: key={:?}", key);
-            match key.disambiguated_data.data {
+            match key.disambiguated_data.data.unwrap() {
                 DefPathData::CrateRoot => {
                     assert!(key.parent.is_none());
                     break;
@@ -266,6 +266,38 @@ impl DefPath {
         }
 
         s
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, BlobDecodable)]
+pub enum DelegationDefPathKind {
+    Lifetime,
+    ConstParam,
+    TyParam,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, BlobDecodable)]
+pub enum DefPathData2 {
+    Default(DefPathData),
+    Delegation { name: Symbol, kind: DelegationDefPathKind },
+}
+
+impl Into<DefPathData2> for DefPathData {
+    fn into(self) -> DefPathData2 {
+        DefPathData2::Default(self)
+    }
+}
+
+impl DefPathData2 {
+    pub fn unwrap(&self) -> DefPathData {
+        match *self {
+            DefPathData2::Default(def_path_data) => def_path_data,
+            DefPathData2::Delegation { name, kind } => match kind {
+                DelegationDefPathKind::Lifetime => DefPathData::LifetimeNs(name),
+                DelegationDefPathKind::ConstParam => DefPathData::ValueNs(name),
+                DelegationDefPathKind::TyParam => DefPathData::TypeNs(name),
+            },
+        }
     }
 }
 
@@ -356,7 +388,7 @@ impl Definitions {
         let key = DefKey {
             parent: None,
             disambiguated_data: DisambiguatedDefPathData {
-                data: DefPathData::CrateRoot,
+                data: DefPathData2::Default(DefPathData::CrateRoot),
                 disambiguator: 0,
             },
         };
@@ -388,7 +420,7 @@ impl Definitions {
     pub fn create_def(
         &mut self,
         parent: LocalDefId,
-        data: DefPathData,
+        data: DefPathData2,
         disambiguator: &mut DisambiguatorState,
     ) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
@@ -399,7 +431,7 @@ impl Definitions {
         );
 
         // The root node must be created in `new()`.
-        assert!(data != DefPathData::CrateRoot);
+        assert!(data.unwrap() != DefPathData::CrateRoot);
 
         // Find the next free disambiguator for this key.
         let disambiguator = {

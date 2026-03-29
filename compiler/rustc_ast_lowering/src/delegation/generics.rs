@@ -3,6 +3,7 @@ use hir::def::{DefKind, Res};
 use rustc_ast::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::definitions::{DefPathData2, DelegationDefPathKind};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::{bug, ty};
 use rustc_span::symbol::kw;
@@ -295,7 +296,13 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
             let param_ident = Ident::new(p.name, span);
             let def_name = Some(param_ident.name);
-            let path_data = def_kind.def_path_data(def_name);
+            let kind = match p.kind {
+                GenericParamDefKind::Lifetime => DelegationDefPathKind::Lifetime,
+                GenericParamDefKind::Type { .. } => DelegationDefPathKind::TyParam,
+                GenericParamDefKind::Const { .. } => DelegationDefPathKind::ConstParam,
+            };
+
+            let path_data = DefPathData2::Delegation { name: param_ident.name, kind };
             let node_id = self.next_node_id();
 
             let def_id = self.create_def(node_id, def_name, def_kind, path_data, span);

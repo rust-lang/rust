@@ -295,7 +295,7 @@ fn associated_type_for_impl_trait_in_impl(
 
     // Use the same disambiguator and method name as the anon associated type in the trait.
     let disambiguated_data = tcx.def_key(trait_assoc_def_id).disambiguated_data;
-    let DefPathData::AnonAssocTy(name) = disambiguated_data.data else {
+    let DefPathData::AnonAssocTy(name) = disambiguated_data.data.unwrap() else {
         bug!("expected anon associated type")
     };
     let data = DefPathData::AnonAssocTy(name);

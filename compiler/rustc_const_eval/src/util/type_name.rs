@@ -115,7 +115,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
     ) -> Result<(), PrintError> {
         print_prefix(self)?;
 
-        write!(self.path, "::{}", disambiguated_data.data).unwrap();
+        write!(self.path, "::{}", disambiguated_data.data.unwrap()).unwrap();
 
         Ok(())
     }

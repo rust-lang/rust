@@ -1431,12 +1431,12 @@ pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) 
                     let path = cx.tcx().def_path(vis_did);
                     debug!("path={path:?}");
                     // modified from `resolved_path()` to work with `DefPathData`
-                    let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
+                    let last_name = path.data.last().unwrap().data.unwrap().get_opt_name().unwrap();
                     let anchor = print_anchor(vis_did, last_name, cx);
 
                     f.write_str("pub(in ")?;
                     for seg in &path.data[..path.data.len() - 1] {
-                        write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
+                        write!(f, "{}::", seg.data.unwrap().get_opt_name().unwrap())?;
                     }
                     write!(f, "{anchor}) ")?;
                 }

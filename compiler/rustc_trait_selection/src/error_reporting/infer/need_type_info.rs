@@ -123,7 +123,7 @@ impl InferenceDiagnosticsParentData {
         parent_def_id: DefId,
     ) -> Option<InferenceDiagnosticsParentData> {
         let parent_name =
-            tcx.def_key(parent_def_id).disambiguated_data.data.get_opt_name()?.to_string();
+            tcx.def_key(parent_def_id).disambiguated_data.data.unwrap().get_opt_name()?.to_string();
 
         Some(InferenceDiagnosticsParentData {
             prefix: tcx.def_descr(parent_def_id),

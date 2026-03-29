@@ -99,7 +99,8 @@ impl Module<'_> {
 // FIXME: Should this be replaced with tcx.def_path_str?
 fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
     let crate_name = tcx.crate_name(did.krate);
-    let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| elem.data.get_opt_name());
+    let relative =
+        tcx.def_path(did).data.into_iter().filter_map(|elem| elem.data.unwrap().get_opt_name());
     std::iter::once(crate_name).chain(relative).collect()
 }
 

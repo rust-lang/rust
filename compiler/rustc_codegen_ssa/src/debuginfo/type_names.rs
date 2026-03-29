@@ -612,7 +612,7 @@ fn push_unqualified_item_name(
     disambiguated_data: DisambiguatedDefPathData,
     output: &mut String,
 ) {
-    match disambiguated_data.data {
+    match disambiguated_data.data.unwrap() {
         DefPathData::CrateRoot => {
             output.push_str(tcx.crate_name(def_id.krate).as_str());
         }
@@ -626,7 +626,7 @@ fn push_unqualified_item_name(
                 output,
             );
         }
-        _ => match disambiguated_data.data.name() {
+        _ => match disambiguated_data.data.unwrap().name() {
             DefPathDataName::Named(name) => {
                 output.push_str(name.as_str());
             }

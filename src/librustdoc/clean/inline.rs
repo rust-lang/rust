@@ -225,7 +225,11 @@ pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [hir:
 }
 
 pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> {
-    tcx.def_path(def_id).data.into_iter().filter_map(|elem| elem.data.get_opt_name()).collect()
+    tcx.def_path(def_id)
+        .data
+        .into_iter()
+        .filter_map(|elem| elem.data.unwrap().get_opt_name())
+        .collect()
 }
 
 /// Get the public Rust path to an item. This is used to generate the URL to the item's page.
