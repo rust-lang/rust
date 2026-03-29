@@ -440,13 +440,29 @@ where
 
     /// Turn a mplace into a (thin or wide) mutable raw pointer, pointing to the same space.
     /// `align` information is lost!
-    /// This is the inverse of `ref_to_mplace`.
-    pub fn mplace_to_ref(
+    /// This is the inverse of `ptr_to_mplace`.
+    pub fn mplace_to_ptr(
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         let imm = mplace.mplace.to_ref(self);
         let layout = self.layout_of(Ty::new_mut_ptr(self.tcx.tcx, mplace.layout.ty))?;
+        interp_ok(ImmTy::from_immediate(imm, layout))
+    }
+
+    /// Turn a mplace into a (thin or wide) mutable reference, pointing to the same space.
+    /// `align` information is lost!
+    /// This is the inverse of `ref_to_mplace`.
+    pub fn mplace_to_mut_ref(
+        &self,
+        mplace: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
+        let imm = mplace.mplace.to_ref(self);
+        let layout = self.layout_of(Ty::new_mut_ref(
+            self.tcx.tcx,
+            self.tcx.tcx.lifetimes.re_erased,
+            mplace.layout.ty,
+        ))?;
         interp_ok(ImmTy::from_immediate(imm, layout))
     }
 

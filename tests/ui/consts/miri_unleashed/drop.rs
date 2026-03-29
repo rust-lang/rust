@@ -14,7 +14,8 @@ static TEST_OK: () = {
 static TEST_BAD: () = {
     let _v: Vec<i32> = Vec::new();
 }; //~ NOTE failed inside this call
-   //~| ERROR calling non-const function `<Vec<i32> as Drop>::drop`
-   //~| NOTE inside `drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
+
+//~| ERROR calling non-const function `<Vec<i32> as Drop>::drop`
+//~| NOTE inside `drop_in_place::drop_in_place_glue::<Vec<i32>> - shim(Some(Vec<i32>))`
 
 //~? WARN skipping const checks

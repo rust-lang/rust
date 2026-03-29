@@ -877,7 +877,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // then dispatches that to the normal call machinery. However, our call machinery currently
         // only supports calling `VtblEntry::Method`; it would choke on a `MetadataDropInPlace`. So
         // instead we do the virtual call stuff ourselves. It's easier here than in `eval_fn_call`
-        // since we can just get a place of the underlying type and use `mplace_to_ref`.
+        // since we can just get a place of the underlying type and use `mplace_to_ptr`.
         let place = match place.layout.ty.kind() {
             ty::Dynamic(data, _) => {
                 // Dropping a trait object. Need to find actual drop fn.
@@ -898,7 +898,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         let fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, ty::List::empty())?;
 
-        let arg = self.mplace_to_ref(&place)?;
+        let arg = self.mplace_to_mut_ref(&place)?;
+
         let ret = MPlaceTy::fake_alloc_zst(self.layout_of(self.tcx.types.unit)?);
 
         self.init_fn_call(

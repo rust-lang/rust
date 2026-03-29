@@ -555,6 +555,7 @@ unsafe extern "C" {
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
+    // FIXME
     unsafe {
         drop_in_place(to_drop);
     }

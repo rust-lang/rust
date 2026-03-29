@@ -4,9 +4,9 @@ error[E0080]: calling non-const function `<Vec<u32> as Drop>::drop`
 LL |     const F: u32 = (U::X, 42).1;
    |                               ^ evaluation of `<std::string::String as Bar<std::vec::Vec<u32>, std::string::String>>::F` failed inside this call
    |
-note: inside `drop_in_place::<(Vec<u32>, u32)> - shim(Some((Vec<u32>, u32)))`
+note: inside `drop_in_place::drop_in_place_glue::<(Vec<u32>, u32)> - shim(Some((Vec<u32>, u32)))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `drop_in_place::<Vec<u32>> - shim(Some(Vec<u32>))`
+note: inside `drop_in_place::drop_in_place_glue::<Vec<u32>> - shim(Some(Vec<u32>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
 note: erroneous constant encountered

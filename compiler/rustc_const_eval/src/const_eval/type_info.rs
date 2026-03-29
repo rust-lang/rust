@@ -261,7 +261,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         None => Cow::Owned(idx.to_string()), // For tuples
                     };
                     let name_place = self.allocate_str_dedup(&name)?;
-                    let ptr = self.mplace_to_ref(&name_place)?;
+                    let ptr = self.mplace_to_ptr(&name_place)?;
                     self.write_immediate(*ptr, &field_place)?
                 }
                 sym::ty => {
@@ -444,7 +444,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     other_abi => {
                         let (variant, variant_place) = self.downcast(&field_place, sym::Named)?;
                         let str_place = self.allocate_str_dedup(other_abi.as_str())?;
-                        let str_ref = self.mplace_to_ref(&str_place)?;
+                        let str_ref = self.mplace_to_ptr(&str_place)?;
                         let payload = self.project_field(&variant_place, FieldIdx::ZERO)?;
                         self.write_immediate(*str_ref, &payload)?;
                         self.write_discriminant(variant, &field_place)?;
