@@ -1,8 +1,8 @@
 error: irrefutable `if let` pattern
-  --> $DIR/deny-irrefutable-let-patterns.rs:4:8
+  --> $DIR/deny-irrefutable-let-patterns.rs:4:12
    |
 LL |     if let _ = 5 {}
-   |        ^^^^^^^^^
+   |            ^
    |
    = note: this pattern will always match, so the `if let` is useless
    = help: consider replacing the `if let` with a `let`
@@ -13,19 +13,19 @@ LL | #![deny(irrefutable_let_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: irrefutable `while let` pattern
-  --> $DIR/deny-irrefutable-let-patterns.rs:6:11
+  --> $DIR/deny-irrefutable-let-patterns.rs:6:15
    |
 LL |     while let _ = 5 {
-   |           ^^^^^^^^^
+   |               ^
    |
    = note: this pattern will always match, so the loop will never exit
    = help: consider instead using a `loop { ... }` with a `let` inside it
 
 error: irrefutable `if let` guard pattern
-  --> $DIR/deny-irrefutable-let-patterns.rs:11:14
+  --> $DIR/deny-irrefutable-let-patterns.rs:11:18
    |
 LL |         _ if let _ = 2 => {}
-   |              ^^^^^^^^^
+   |                  ^
    |
    = note: this pattern will always match, so the guard is useless
    = help: consider removing the guard and adding a `let` inside the match arm
