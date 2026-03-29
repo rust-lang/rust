@@ -205,6 +205,11 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 kind.stable(tables, cx),
                 place.stable(tables, cx),
             ),
+            Reborrow(target, kind, place) => crate::mir::Rvalue::Reborrow(
+                target.stable(tables, cx),
+                kind.stable(tables, cx),
+                place.stable(tables, cx),
+            ),
             ThreadLocalRef(def_id) => {
                 crate::mir::Rvalue::ThreadLocalRef(tables.crate_item(*def_id))
             }

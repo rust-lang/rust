@@ -43,7 +43,8 @@ impl Category {
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. }
             | ExprKind::PlaceUnwrapUnsafeBinder { .. }
-            | ExprKind::ValueUnwrapUnsafeBinder { .. } => Some(Category::Place),
+            | ExprKind::ValueUnwrapUnsafeBinder { .. }
+            | ExprKind::Reborrow { .. } => Some(Category::Place),
 
             ExprKind::LogicalOp { .. }
             | ExprKind::Match { .. }

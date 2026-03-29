@@ -341,6 +341,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // FIXME(const_trait_impl): We could enforce these; they correspond to
                     // `&mut T: DerefMut` tho, so it's kinda moot.
                 }
+                Adjust::GenericReborrow(_) => {
+                    // FIXME(reborrow): figure out if we have effects to enforce here.
+                }
                 Adjust::Borrow(_) => {
                     // No effects to enforce here.
                 }

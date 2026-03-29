@@ -761,6 +761,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     };
                     self.delegate.borrow_mut().borrow(&place_with_id, place_with_id.hir_id, bk);
                 }
+
+                adjustment::Adjust::GenericReborrow(_reborrow) => {
+                    // To build an expression as a place expression, it needs to be a field
+                    // projection or deref at the outmost layer. So it is field projection or deref
+                    // on an adjusted value. But this means that adjustment is applied on a
+                    // subexpression that is not the final operand/rvalue for function call or
+                    // assignment. This is a contradiction.
+                    unreachable!("Reborrow trait usage during adjustment walk");
+                }
             }
             place_with_id = self.cat_expr_adjusted(expr, place_with_id, adjustment)?;
         }
@@ -1293,7 +1302,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             adjustment::Adjust::NeverToAny
             | adjustment::Adjust::Pointer(_)
             | adjustment::Adjust::Borrow(_)
-            | adjustment::Adjust::ReborrowPin(..) => {
+            | adjustment::Adjust::ReborrowPin(..)
+            | adjustment::Adjust::GenericReborrow(..) => {
                 // Result is an rvalue.
                 Ok(self.cat_rvalue(expr.hir_id, target))
             }
