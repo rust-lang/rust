@@ -301,8 +301,15 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(allocator_api)]
+    ///
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, i32> = HashMap::new();
+    /// use std::alloc::Global;
+    ///
+    /// let mut map = HashMap::new_in(Global);
+    ///
+    /// // entries can now be inserted into the empty map
+    /// map.insert(1, "a");
     /// ```
     #[inline]
     #[must_use]
@@ -321,8 +328,13 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(allocator_api)]
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, i32> = HashMap::with_capacity(10);
+    /// use std::alloc::Global;
+    /// let mut map = HashMap::with_capacity_in(10, Global);
+    ///
+    /// // entries can now be inserted into the empty map
+    /// map.insert(1, "a");
     /// ```
     #[inline]
     #[must_use]
