@@ -31,9 +31,9 @@ use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
 use crate::html::format::{
-    Ending, PrintWithSpace, full_print_fn_decl, print_abi_with_space, print_constness_with_space,
-    print_generic_bound, print_generics, print_impl, print_import, print_type, print_where_clause,
-    visibility_print_with_space,
+    Ending, PrintWithSpace, full_print_fn_decl, join_path_syms_lazy, print_abi_with_space,
+    print_constness_with_space, print_generic_bound, print_generics, print_impl, print_import,
+    print_type, print_where_clause, visibility_print_with_space,
 };
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::sidebar::filters;
@@ -1413,7 +1413,7 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
                 iter::repeat_n("..", cx.current.len()).chain(iter::once("type.impl")).collect();
             js_src_path.extend(target_fqp[..target_fqp.len() - 1].iter().copied());
             js_src_path.push_fmt(format_args!("{target_type}.{}.js", target_fqp.last().unwrap()));
-            let self_path = join_path_syms(self_fqp);
+            let self_path = join_path_syms_lazy(self_fqp);
             write!(
                 w,
                 "<script src=\"{src}\" data-self-path=\"{self_path}\" async></script>",
