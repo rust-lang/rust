@@ -88,10 +88,24 @@ where
             let ty::Dynamic(bounds, _) = goal.predicate.self_ty().kind() else {
                 panic!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
+
+            let goal_trait = goal.predicate.trait_def_id(cx);
+            let trait_ref = if cx.trait_is_auto(goal_trait) {
+                ty::Binder::dummy(goal.predicate.trait_ref(cx))
+            } else {
+                let Some(principal) = bounds.principal() else {
+                    panic!("expected principal for object type");
+                };
+                let principal = principal.with_self_ty(cx, goal.predicate.self_ty());
+                elaborate::supertraits(cx, principal)
+                    .find(|trait_ref| trait_ref.def_id() == goal.predicate.trait_def_id(cx))
+                    .unwrap()
+            };
+
             match structural_traits::predicates_for_object_candidate(
                 ecx,
                 goal.param_env,
-                goal.predicate.trait_ref(cx),
+                trait_ref,
                 bounds,
             ) {
                 Ok(requirements) => {
