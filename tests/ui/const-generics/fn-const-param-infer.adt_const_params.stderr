@@ -19,10 +19,10 @@ error[E0282]: type annotations needed
 LL |     let _ = Checked::<generic>;
    |                       ^^^^^^^ cannot infer type of the type parameter `T` declared on the function `generic`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the generic type `T`
    |
-LL |     let _ = Checked::<generic::<T>>;
-   |                              +++++
+LL |     let _ = Checked::<generic::<SomeConcreteType>>;
+   |                              ++++++++++++++++++++
 
 error: aborting due to 3 previous errors
 

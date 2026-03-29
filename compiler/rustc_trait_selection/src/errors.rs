@@ -340,6 +340,28 @@ pub enum SourceKindSubdiag<'a> {
         arg_count: usize,
         args: String,
     },
+    #[suggestion(
+        "consider specifying a concrete type for the generic type `{$arg}`",
+        style = "verbose",
+        code = "::<SomeConcreteType>",
+        applicability = "has-placeholders"
+    )]
+    GenericTypeSuggestion {
+        #[primary_span]
+        span: Span,
+        arg: String,
+    },
+    #[suggestion(
+        "consider specifying a const for the const generic `{$arg}`",
+        style = "verbose",
+        code = "::<SOME_CONST>",
+        applicability = "has-placeholders"
+    )]
+    ConstGenericSuggestion {
+        #[primary_span]
+        span: Span,
+        arg: String,
+    },
 }
 
 #[derive(Subdiagnostic)]
