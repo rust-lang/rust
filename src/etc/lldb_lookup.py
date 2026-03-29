@@ -106,6 +106,8 @@ def synthetic_lookup(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
             )
 
         return ClangEncodedEnumProvider(valobj, _dict)
+    if rust_type == RustType.REGULAR_UNION:
+        return UnionSyntheticProvider(valobj, _dict)
     if rust_type == RustType.STD_VEC:
         return StdVecSyntheticProvider(valobj, _dict)
     if rust_type == RustType.STD_VEC_DEQUE:
