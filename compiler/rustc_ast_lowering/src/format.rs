@@ -1,13 +1,104 @@
 use std::borrow::Cow;
 
 use rustc_ast::*;
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir as hir;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::{self as hir};
 use rustc_session::config::FmtDebug;
+use rustc_session::lint;
 use rustc_span::{ByteSymbol, DesugaringKind, Ident, Span, Symbol, sym};
 
 use super::LoweringContext;
 use crate::ResolverAstLoweringExt;
+
+/// Collect statistics about a `FormatArgs` for crater analysis.
+fn collect_format_args_stats(fmt: &FormatArgs) -> FormatArgsStats {
+    let mut pieces = 0usize;
+    let mut placeholders = 0usize;
+    let mut width_args = 0usize;
+    let mut precision_args = 0usize;
+
+    for piece in &fmt.template {
+        match piece {
+            FormatArgsPiece::Literal(_) => pieces += 1,
+            FormatArgsPiece::Placeholder(ph) => {
+                placeholders += 1;
+                if let Some(FormatCount::Argument(_)) = &ph.format_options.width {
+                    width_args += 1;
+                }
+                if let Some(FormatCount::Argument(_)) = &ph.format_options.precision {
+                    precision_args += 1;
+                }
+            }
+        }
+    }
+
+    let mut positional = 0usize;
+    let mut named = 0usize;
+    let mut captured = 0usize;
+    let mut captured_names: FxHashMap<Symbol, usize> = FxHashMap::default();
+
+    for arg in fmt.arguments.all_args() {
+        match &arg.kind {
+            FormatArgumentKind::Normal => positional += 1,
+            FormatArgumentKind::Named(_) => named += 1,
+            FormatArgumentKind::Captured(ident) => {
+                captured += 1;
+                *captured_names.entry(ident.name).or_default() += 1;
+            }
+        }
+    }
+
+    let unique_captures = captured_names.len();
+    let duplicate_captures = captured - unique_captures;
+
+    // Count how many captures are duplicated 2x, 3x, 4x+.
+    let mut dup_2x = 0usize;
+    let mut dup_3x = 0usize;
+    let mut dup_4plus = 0usize;
+    #[allow(rustc::potential_query_instability)]
+    for (_name, count) in &captured_names {
+        match *count {
+            0 | 1 => {}
+            2 => dup_2x += 1,
+            3 => dup_3x += 1,
+            _ => dup_4plus += 1,
+        }
+    }
+
+    FormatArgsStats {
+        pieces,
+        placeholders,
+        width_args,
+        precision_args,
+        total_args: positional + named + captured,
+        positional,
+        named,
+        captured,
+        unique_captures,
+        duplicate_captures,
+        dup_2x,
+        dup_3x,
+        dup_4plus,
+    }
+}
+
+struct FormatArgsStats {
+    pieces: usize,
+    placeholders: usize,
+    width_args: usize,
+    precision_args: usize,
+    total_args: usize,
+    positional: usize,
+    named: usize,
+    captured: usize,
+    unique_captures: usize,
+    duplicate_captures: usize,
+    dup_2x: usize,
+    dup_3x: usize,
+    dup_4plus: usize,
+}
 
 impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
@@ -26,7 +117,166 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             fmt = flatten_format_args(fmt);
             fmt = self.inline_literals(fmt);
         }
+
+        // --- Crater instrumentation ---
+        // Only emit for the root crate.  Cargo passes
+        // `--cap-lints allow` when compiling dependencies,
+        // so we use that signal to skip them -- just as
+        // cargo suppresses dependency warnings.
+        let before = (self.tcx.sess.opts.lint_cap
+            != Some(lint::Allow))
+        .then(|| collect_format_args_stats(&fmt));
+
+        fmt = self.dedup_captured_places(fmt);
+
+        if let Some(before) = before {
+            let args_after_dedup =
+                fmt.arguments.all_args().len();
+            let deduped_by_opt = before
+                .total_args
+                .saturating_sub(args_after_dedup);
+            let not_deduped =
+                before
+                    .duplicate_captures
+                    .saturating_sub(deduped_by_opt);
+
+            // Classify remaining duplicated captures by
+            // name resolution.
+            let (const_dups, constparam_dups, other_dups) =
+                self.classify_dup_captures(&fmt);
+
+            let krate =
+                self.tcx.crate_name(LOCAL_CRATE);
+
+            // The "old world" (current stable) arg count:
+            // all captures with the same name were
+            // deduplicated, so we count unique captures
+            // only.
+            let args_old_world = before.positional
+                + before.named
+                + before.unique_captures;
+            // Size estimates (bytes, assuming 64-bit:
+            // rt::Argument = 16 bytes).
+            let size_no_dedup = before.total_args * 16;
+            let size_old_world = args_old_world * 16;
+            let size_with_opt = args_after_dedup * 16;
+
+            // Source location for cross-target dedup.
+            let loc = {
+                let sm = self.tcx.sess.source_map();
+                let pos =
+                    sm.lookup_char_pos(fmt.span.lo());
+                format!(
+                    "{}:{}:{}",
+                    pos.file
+                        .name
+                        .prefer_local_unconditionally(),
+                    pos.line,
+                    pos.col.0,
+                )
+            };
+            // Escape for JSON embedding.  File paths on
+            // Linux rarely contain `\` or `"`, but a
+            // malformed loc would silently break JSON
+            // parsing for that record.
+            let loc =
+                loc.replace('\\', "\\\\")
+                    .replace('"', "\\\"");
+
+            eprintln!(
+                "[FMTARGS] {{\
+                \"crate\":\"{krate}\",\
+                \"loc\":\"{loc}\",\
+                \"p\":{},\"ph\":{},\"wa\":{},\"pa\":{},\
+                \"a\":{},\"pos\":{},\"named\":{},\
+                \"cap\":{},\
+                \"ucap\":{},\"dup\":{},\
+                \"const\":{},\"constparam\":{},\
+                \"other_dup\":{},\
+                \"d2\":{},\"d3\":{},\"d4p\":{},\
+                \"deduped\":{},\"remaining\":{},\
+                \"a_old\":{},\"a_opt\":{},\
+                \"sz_no_dedup\":{},\"sz_old\":{},\
+                \"sz_opt\":{}\
+                }}",
+                before.pieces,
+                before.placeholders,
+                before.width_args,
+                before.precision_args,
+                before.total_args,
+                before.positional,
+                before.named,
+                before.captured,
+                before.unique_captures,
+                before.duplicate_captures,
+                const_dups,
+                constparam_dups,
+                other_dups,
+                before.dup_2x,
+                before.dup_3x,
+                before.dup_4plus,
+                deduped_by_opt,
+                not_deduped,
+                args_old_world,
+                args_after_dedup,
+                size_no_dedup,
+                size_old_world,
+                size_with_opt,
+            );
+        }
+
         expand_format_args(self, sp, &fmt, allow_const)
+    }
+
+    /// Classify duplicated captured arguments by their name
+    /// resolution.  Returns (const_count, constparam_count,
+    /// other_count) counting the number of *extra* captures
+    /// (beyond the first) in each category.
+    fn classify_dup_captures(&self, fmt: &FormatArgs) -> (usize, usize, usize) {
+        let mut seen: FxHashMap<Symbol, usize> = FxHashMap::default();
+        let mut const_dups = 0usize;
+        let mut constparam_dups = 0usize;
+        let mut other_dups = 0usize;
+
+        for arg in fmt.arguments.all_args() {
+            if let FormatArgumentKind::Captured(ident) = &arg.kind {
+                let count = seen.entry(ident.name).or_default();
+                *count += 1;
+                if *count == 2 {
+                    // First duplicate -- classify by resolution.
+                    // (Subsequent duplicates of the same name
+                    // are already counted by the dup_2x/3x/4p
+                    // fields.)
+                    if let Some(partial_res) =
+                        self.resolver.get_partial_res(arg.expr.id)
+                        && let Some(res) = partial_res.full_res()
+                    {
+                        match res {
+                            Res::Local(_)
+                            | Res::Def(
+                                DefKind::Static { .. },
+                                _,
+                            ) => {
+                                // Places -- handled by
+                                // dedup_captured_places.
+                            }
+                            Res::Def(
+                                DefKind::Const { .. }
+                                | DefKind::AssocConst { .. },
+                                _,
+                            ) => const_dups += 1,
+                            Res::Def(
+                                DefKind::ConstParam, _
+                            ) => constparam_dups += 1,
+                            _ => other_dups += 1,
+                        }
+                    } else {
+                        other_dups += 1;
+                    }
+                }
+            }
+        }
+        (const_dups, constparam_dups, other_dups)
     }
 
     /// Try to convert a literal into an interned string
@@ -117,6 +367,80 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
             // Don't remove anything that's still used.
             for_all_argument_indexes(&mut fmt.template, |index| remove[*index] = false);
+
+            // Drop all the arguments that are marked for removal.
+            let mut remove_it = remove.iter();
+            fmt.arguments.all_args_mut().retain(|_| remove_it.next() != Some(&true));
+
+            // Calculate the mapping of old to new indexes for the remaining arguments.
+            let index_map: Vec<usize> = remove
+                .into_iter()
+                .scan(0, |i, remove| {
+                    let mapped = *i;
+                    *i += !remove as usize;
+                    Some(mapped)
+                })
+                .collect();
+
+            // Correct the indexes that refer to arguments that have shifted position.
+            for_all_argument_indexes(&mut fmt.template, |index| *index = index_map[*index]);
+        }
+
+        fmt
+    }
+
+    /// De-duplicate implicit captures of identifiers that refer to places.
+    ///
+    /// Turns
+    ///
+    /// `format_args!("Hello, {hello}, {hello}!")`
+    ///
+    /// into
+    ///
+    /// `format_args!("Hello, {hello}, {hello}!", hello=hello)`.
+    fn dedup_captured_places<'fmt>(&self, mut fmt: Cow<'fmt, FormatArgs>) -> Cow<'fmt, FormatArgs> {
+        use std::collections::hash_map::Entry;
+
+        let mut deduped_arg_indices: FxHashMap<Symbol, usize> = FxHashMap::default();
+        let mut remove = vec![false; fmt.arguments.all_args().len()];
+        let mut deduped_anything = false;
+
+        // Re-use arguments for placeholders capturing the same local/static identifier.
+        for i in 0..fmt.template.len() {
+            if let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i]
+                && let Ok(arg_index) = placeholder.argument.index
+                && let arg = &fmt.arguments.all_args()[arg_index]
+                && let FormatArgumentKind::Captured(ident) = arg.kind
+            {
+                match deduped_arg_indices.entry(ident.name) {
+                    Entry::Occupied(occupied_entry) => {
+                        // We've seen this identifier before, and it's dedupable. Point the
+                        // placeholder at the recorded arg index, cloning `fmt` if necessary.
+                        let piece = &mut fmt.to_mut().template[i];
+                        let FormatArgsPiece::Placeholder(placeholder) = piece else {
+                            unreachable!();
+                        };
+                        placeholder.argument.index = Ok(*occupied_entry.get());
+                        remove[arg_index] = true;
+                        deduped_anything = true;
+                    }
+                    Entry::Vacant(vacant_entry) => {
+                        // This is the first time we've seen a captured identifier. If it's a local
+                        // or static, note the argument index so other occurrences can be deduped.
+                        if let Some(partial_res) = self.resolver.get_partial_res(arg.expr.id)
+                            && let Some(res) = partial_res.full_res()
+                            && matches!(res, Res::Local(_) | Res::Def(DefKind::Static { .. }, _))
+                        {
+                            vacant_entry.insert(arg_index);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Remove the arguments that were de-duplicated.
+        if deduped_anything {
+            let fmt = fmt.to_mut();
 
             // Drop all the arguments that are marked for removal.
             let mut remove_it = remove.iter();
