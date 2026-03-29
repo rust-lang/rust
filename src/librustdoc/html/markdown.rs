@@ -362,6 +362,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 struct LinkReplacerInner<'a> {
     links: &'a [RenderedLink],
     shortcut_link: Option<&'a RenderedLink>,
+    /// If `true`, the next [`TagEnd::Link`] will be removed
+    remove_closing_link_tag: bool,
 }
 
 struct LinkReplacer<'a, I: Iterator<Item = Event<'a>>> {
@@ -371,7 +373,12 @@ struct LinkReplacer<'a, I: Iterator<Item = Event<'a>>> {
 
 impl<'a, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, I> {
     fn new(iter: I, links: &'a [RenderedLink]) -> Self {
-        LinkReplacer { iter, inner: { LinkReplacerInner { links, shortcut_link: None } } }
+        LinkReplacer {
+            iter,
+            inner: {
+                LinkReplacerInner { links, shortcut_link: None, remove_closing_link_tag: false }
+            },
+        }
     }
 }
 
@@ -384,7 +391,12 @@ struct SpannedLinkReplacer<'a, I: Iterator<Item = SpannedEvent<'a>>> {
 
 impl<'a, I: Iterator<Item = SpannedEvent<'a>>> SpannedLinkReplacer<'a, I> {
     fn new(iter: I, links: &'a [RenderedLink]) -> Self {
-        SpannedLinkReplacer { iter, inner: { LinkReplacerInner { links, shortcut_link: None } } }
+        SpannedLinkReplacer {
+            iter,
+            inner: {
+                LinkReplacerInner { links, shortcut_link: None, remove_closing_link_tag: false }
+            },
+        }
     }
 }
 
@@ -401,10 +413,22 @@ impl<'a> LinkReplacerInner<'a> {
                 title,
                 ..
             }) => {
+                // an empty destination URL ("") will be generated when
+                // rustdoc encounters argument disambiguation syntax: [`arg@foo`], which
+                // currently won't generate a link - so, the link syntax is simply stripped
+                if dest_url.is_empty() {
+                    *event = Event::Text("".into());
+                    self.remove_closing_link_tag = true;
+                    return;
+                }
+
                 debug!("saw start of shortcut link to {dest_url} with title {title}");
                 // If this is a shortcut link, it was resolved by the broken_link_callback.
                 // So the URL will already be updated properly.
-                let link = self.links.iter().find(|&link| *link.href == **dest_url);
+                let link = self
+                    .links
+                    .iter()
+                    .find(|&link| link.href.as_ref().is_none_or(|href| *href == **dest_url));
                 // Since this is an external iterator, we can't replace the inner text just yet.
                 // Store that we saw a link so we know to replace it later.
                 if let Some(link) = link {
@@ -416,10 +440,48 @@ impl<'a> LinkReplacerInner<'a> {
                     }
                 }
             }
+            // Remove the end of link
+            Event::End(TagEnd::Link) if self.remove_closing_link_tag => {
+                *event = Event::Text("".into());
+                self.remove_closing_link_tag = false;
+            }
             // Now that we're done with the shortcut link, don't replace any more text.
             Event::End(TagEnd::Link) if self.shortcut_link.is_some() => {
                 debug!("saw end of shortcut link");
                 self.shortcut_link = None;
+            }
+            // We are currently inside of the link:
+            //
+            // [`arg@f`]
+            //
+            // And converting that into just:
+            //
+            // `f`
+            Event::Code(text) if self.remove_closing_link_tag => {
+                if let Some(link) = self.links.iter().find(|link| {
+                    let original_text: &str = &*link.original_text;
+                    let text: &str = text;
+
+                    // compare contents of inline code block with contents of link. because
+                    // the original link had an inline code block inside, we remove that from the comparison
+                    //
+                    // original link:
+                    // [`fn@f`]
+                    //  ^^^^^^ original_text
+                    //
+                    // the Event::Code(text) we received:
+                    // `fn@f`
+                    //  ^^^^ text
+                    //
+                    // to compare the 2 for equality, backticks have to be stripped.
+                    let Some(original_text) = original_text.strip_circumfix("`", "`") else {
+                        return false;
+                    };
+
+                    original_text == text
+                }) {
+                    *text = CowStr::Borrowed(&link.new_text);
+                }
             }
             // Handle backticks in inline code blocks, but only if we're in the middle of a shortcut link.
             // [`fn@f`]
@@ -442,6 +504,23 @@ impl<'a> LinkReplacerInner<'a> {
                         debug!("replacing {text} with {new_text}", new_text = link.new_text);
                         *text = CowStr::Borrowed(&link.new_text);
                     }
+                };
+            }
+            // We are currently inside of the link:
+            //
+            // [arg@f]
+            //
+            // And converting that into just:
+            //
+            // f
+            Event::Text(text) if self.remove_closing_link_tag => {
+                if let Some(link) = self.links.iter().find(|link| {
+                    let original_text: &str = &*link.original_text;
+                    let text: &str = text;
+
+                    original_text == text
+                }) {
+                    *text = CowStr::Borrowed(&link.new_text);
                 }
             }
             // Replace plain text in links, but only in the middle of a shortcut link.
@@ -466,7 +545,13 @@ impl<'a> LinkReplacerInner<'a> {
                 if let Some(link) =
                     self.links.iter().find(|&link| *link.original_text == **dest_url)
                 {
-                    *dest_url = CowStr::Borrowed(link.href.as_ref());
+                    let Some(href) = link.href.as_ref() else {
+                        // Remove link.
+                        *event = Event::Text("".into());
+                        self.remove_closing_link_tag = true;
+                        return;
+                    };
+                    *dest_url = CowStr::Borrowed(href);
                     if title.is_empty() && !link.tooltip.is_empty() {
                         *title = CowStr::Borrowed(link.tooltip.as_ref());
                     }
@@ -1350,10 +1435,9 @@ impl<'a> Markdown<'a> {
         } = self;
 
         let replacer = move |broken_link: BrokenLink<'_>| {
-            links
-                .iter()
-                .find(|link| *link.original_text == *broken_link.reference)
-                .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
+            links.iter().find(|link| *link.original_text == *broken_link.reference).map(|link| {
+                (link.href.as_deref().unwrap_or("").into(), link.tooltip.as_str().into())
+            })
         };
 
         let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(replacer));
@@ -1428,10 +1512,9 @@ impl MarkdownWithToc<'_> {
             return (Toc { entries: Vec::new() }, String::new());
         }
         let mut replacer = |broken_link: BrokenLink<'_>| {
-            links
-                .iter()
-                .find(|link| *link.original_text == *broken_link.reference)
-                .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
+            links.iter().find(|link| *link.original_text == *broken_link.reference).map(|link| {
+                (link.href.as_deref().unwrap_or("").into(), link.tooltip.as_str().into())
+            })
         };
 
         let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut replacer));
@@ -1472,10 +1555,9 @@ impl<'a> MarkdownItemInfo<'a> {
         }
 
         let replacer = move |broken_link: BrokenLink<'_>| {
-            links
-                .iter()
-                .find(|link| *link.original_text == *broken_link.reference)
-                .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
+            links.iter().find(|link| *link.original_text == *broken_link.reference).map(|link| {
+                (link.href.as_deref().unwrap_or("").into(), link.tooltip.as_str().into())
+            })
         };
 
         let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(replacer));
@@ -1509,10 +1591,9 @@ impl MarkdownSummaryLine<'_> {
         }
 
         let mut replacer = |broken_link: BrokenLink<'_>| {
-            links
-                .iter()
-                .find(|link| *link.original_text == *broken_link.reference)
-                .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
+            links.iter().find(|link| *link.original_text == *broken_link.reference).map(|link| {
+                (link.href.as_deref().unwrap_or("").into(), link.tooltip.as_str().into())
+            })
         };
 
         let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer))
@@ -1559,7 +1640,7 @@ fn markdown_summary_with_limit(
         link_names
             .iter()
             .find(|link| *link.original_text == *broken_link.reference)
-            .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
+            .map(|link| (link.href.as_deref().unwrap_or("").into(), link.tooltip.as_str().into()))
     };
 
     let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
@@ -1640,7 +1721,7 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
         link_names
             .iter()
             .find(|link| *link.original_text == *broken_link.reference)
-            .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
+            .map(|link| (link.href.as_deref().unwrap_or("").into(), link.tooltip.as_str().into()))
     };
 
     let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
