@@ -2,7 +2,7 @@
 
 <!-- date-check: Oct 2025 -->
 
-[`tests/auxiliary/minicore.rs`][`minicore`] is a test auxiliary for ui/codegen/assembly test suites.
+[`tests/auxiliary/minicore.rs`][`minicore`] is a test auxiliary for ui/codegen/assembly/mir-opt test suites.
 It provides `core` stubs for tests that need to
 build for cross-compiled targets but do not need/want to run.
 
