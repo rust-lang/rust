@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, StashKey, Suggestions};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg, HirId};
-use rustc_middle::ty::print::with_forced_trimmed_paths;
+use rustc_middle::ty::print::{with_forced_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefiningScopeKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
@@ -451,7 +451,7 @@ fn infer_placeholder_type<'tcx>(
                     err.span_suggestion(
                         ty_span,
                         format!("provide a type for the {kind}"),
-                        format!("{colon} {ty}"),
+                        with_types_for_suggestion!(format!("{colon} {ty}")),
                         Applicability::MachineApplicable,
                     );
                 } else {

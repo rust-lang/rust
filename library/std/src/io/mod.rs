@@ -3348,6 +3348,7 @@ impl SizeHint for &[u8] {
 /// [`split`]: BufRead::split
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "IoSplit")]
 pub struct Split<B> {
     buf: B,
     delim: u8,

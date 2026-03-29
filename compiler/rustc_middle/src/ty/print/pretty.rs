@@ -2224,6 +2224,19 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         self.tcx
     }
 
+    fn reset_path(&mut self) -> Result<(), PrintError> {
+        self.empty_path = true;
+        Ok(())
+    }
+
+    fn should_omit_parent_def_path(&self, parent_def_id: DefId) -> bool {
+        RTN_MODE.with(|mode| mode.get()) == RtnMode::ForSuggestion
+            && matches!(
+                self.tcx().def_key(parent_def_id).disambiguated_data.data,
+                DefPathData::ValueNs(..) | DefPathData::Closure | DefPathData::AnonConst
+            )
+    }
+
     fn print_def_path(
         &mut self,
         def_id: DefId,
