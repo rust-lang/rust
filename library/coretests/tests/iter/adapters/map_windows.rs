@@ -284,3 +284,29 @@ fn test_size_hint() {
     check_size_hint::<5>((5, Some(5)), (1, Some(1)));
     check_size_hint::<5>((5, Some(10)), (1, Some(6)));
 }
+
+#[test]
+fn test_unfused() {
+    #[derive(Default)]
+    struct UnfusedIter(usize);
+    impl Iterator for UnfusedIter {
+        type Item = usize;
+
+        fn next(&mut self) -> Option<usize> {
+            let curr = self.0;
+            self.0 += 1;
+            if curr % 7 == 0 { None } else { Some(curr) }
+        }
+    }
+
+    let mut iter = UnfusedIter(1).map_windows(|a: &[_; 3]| *a);
+    assert_eq!(iter.by_ref().collect::<Vec<_>>(), vec![[1, 2, 3], [2, 3, 4], [3, 4, 5], [4, 5, 6]]);
+    assert_eq!(
+        iter.by_ref().collect::<Vec<_>>(),
+        vec![[8, 9, 10], [9, 10, 11], [10, 11, 12], [11, 12, 13]]
+    );
+    assert_eq!(
+        iter.by_ref().collect::<Vec<_>>(),
+        vec![[15, 16, 17], [16, 17, 18], [17, 18, 19], [18, 19, 20]]
+    );
+}
