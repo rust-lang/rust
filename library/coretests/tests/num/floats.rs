@@ -1699,6 +1699,8 @@ float_test! {
         assert!(nan.asinh().is_nan());
         assert!(flt(-0.0).asinh().is_sign_negative());
 
+        assert_ne!(Float::MAX.asinh(), inf);
+
         // issue 63271
         assert_approx_eq!(flt(2.0).asinh(), 1.443635475178810342493276740273105, Float::ASINH_APPROX);
         assert_approx_eq!(flt(-2.0).asinh(), -1.443635475178810342493276740273105, Float::ASINH_APPROX);
@@ -1732,6 +1734,7 @@ float_test! {
         assert!(nan.acosh().is_nan());
         assert_approx_eq!(flt(2.0).acosh(), 1.31695789692481670862504634730796844, Float::ACOSH_APPROX);
         assert_approx_eq!(flt(3.0).acosh(), 1.76274717403908605046521864995958461, Float::ACOSH_APPROX);
+        assert_ne!(Float::MAX.acosh(), inf);
 
         #[allow(overflowing_literals)]
         if Float::MAX > flt(66000.0) {

@@ -868,6 +868,10 @@ impl f128 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn asinh(self) -> f128 {
         let ax = self.abs();
+        if ax >= (1u128 << f128::MANTISSA_DIGITS / 2) as f128 {
+            return (ax.ln() + consts::LN_2).copysign(self);
+        }
+
         let ix = 1.0 / ax;
         (ax + (ax / (Self::hypot(1.0, ix) + ix))).ln_1p().copysign(self)
     }
@@ -902,6 +906,8 @@ impl f128 {
     pub fn acosh(self) -> f128 {
         if self < 1.0 {
             Self::NAN
+        } else if self >= (1u128 << f128::MANTISSA_DIGITS / 2) as f128 {
+            self.ln() + consts::LN_2
         } else {
             (self + ((self - 1.0).sqrt() * (self + 1.0).sqrt())).ln()
         }
