@@ -2835,17 +2835,27 @@ impl<'test> TestCx<'test> {
     ) {
         writeln!(self.stderr, "diff of {stream}:\n");
         if let Some(diff_command) = self.config.diff_command.as_deref() {
-            let mut args = diff_command.split_whitespace();
-            let name = args.next().unwrap();
-            match Command::new(name).args(args).args([expected_path, actual_path]).output() {
-                Err(err) => {
-                    self.fatal(&format!(
-                        "failed to call custom diff command `{diff_command}`: {err}"
-                    ));
+            match shlex::split(diff_command) {
+                Some(mut args) if !args.is_empty() => {
+                    let name = args.remove(0);
+                    match Command::new(name).args(args).args([expected_path, actual_path]).output()
+                    {
+                        Err(err) => {
+                            self.fatal(&format!(
+                                "failed to call custom diff command `{diff_command}`: {err}"
+                            ));
+                        }
+                        Ok(output) => {
+                            let output = String::from_utf8_lossy(&output.stdout);
+                            write!(self.stderr, "{output}");
+                        }
+                    }
                 }
-                Ok(output) => {
-                    let output = String::from_utf8_lossy(&output.stdout);
-                    write!(self.stderr, "{output}");
+                Some(_) => {
+                    self.fatal(&format!("custom diff command is empty: `{diff_command}`"));
+                }
+                None => {
+                    self.fatal(&format!("failed to parse custom diff command: `{diff_command}`"));
                 }
             }
         } else {
