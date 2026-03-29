@@ -1952,24 +1952,6 @@ impl Arch {
         }
     }
 
-    pub fn supports_c_variadic_definitions(&self) -> bool {
-        use Arch::*;
-
-        match self {
-            // These targets just do not support c-variadic definitions.
-            Bpf | SpirV => false,
-
-            // We don't know if the target supports c-variadic definitions, but we don't want
-            // to needlessly restrict custom target.json configurations.
-            Other(_) => true,
-
-            AArch64 | AmdGpu | Arm | Arm64EC | Avr | CSky | Hexagon | LoongArch32 | LoongArch64
-            | M68k | Mips | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC
-            | PowerPC64 | RiscV32 | RiscV64 | S390x | Sparc | Sparc64 | Wasm32 | Wasm64 | X86
-            | X86_64 | Xtensa => true,
-        }
-    }
-
     /// Whether `#[rustc_scalable_vector]` is supported for a target architecture
     pub fn supports_scalable_vectors(&self) -> bool {
         use Arch::*;
@@ -2213,6 +2195,33 @@ impl Target {
         .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?;
 
         Ok(dl)
+    }
+
+    pub fn supports_c_variadic_definitions(&self) -> bool {
+        use Arch::*;
+
+        match self.arch {
+            // The c-variadic ABI for this target may change in the future, per this comment in
+            // clang:
+            //
+            // > To be compatible with GCC's behaviors, we force arguments with
+            // > 2×XLEN-bit alignment and size at most 2×XLEN bits like `long long`,
+            // > `unsigned long long` and `double` to have 4-byte alignment. This
+            // > behavior may be changed when RV32E/ILP32E is ratified.
+            RiscV32 if self.llvm_abiname == "ilp32e" => false,
+
+            // These targets just do not support c-variadic definitions.
+            Bpf | SpirV => false,
+
+            // We don't know how c-variadics work for this target. Using the default LLVM
+            // fallback implementation may work, but just to be safe we disallow this.
+            Other(_) => false,
+
+            AArch64 | AmdGpu | Arm | Arm64EC | Avr | CSky | Hexagon | LoongArch32 | LoongArch64
+            | M68k | Mips | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC
+            | PowerPC64 | RiscV32 | RiscV64 | S390x | Sparc | Sparc64 | Wasm32 | Wasm64 | X86
+            | X86_64 | Xtensa => true,
+        }
     }
 }
 
