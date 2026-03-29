@@ -892,6 +892,23 @@ pub struct BorrowMutError {
     location: &'static crate::panic::Location<'static>,
 }
 
+/// An error returned by [`Ref::try_map`] and [`RefMut::try_map`].
+#[unstable(feature = "refcell_try_map", issue = "143801")]
+#[derive(Debug, Clone)]
+pub struct TryMapError<T, E> {
+    /// The original container.
+    pub original: T,
+    /// Error returned by the provided function.
+    pub error: E,
+}
+
+#[unstable(feature = "refcell_try_map", issue = "143801")]
+impl<T, E: crate::error::Error> From<TryMapError<T, E>> for E {
+    fn from(TryMapError { original: _, error }: TryMapError<T, E>) -> Self {
+        error
+    }
+}
+
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Display for BorrowMutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1724,7 +1741,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     ///
     /// ```
     /// #![feature(refcell_try_map)]
-    /// use std::cell::{RefCell, Ref};
+    /// use std::cell::{RefCell, Ref, TryMapError};
     /// use std::str::{from_utf8, Utf8Error};
     ///
     /// let c = RefCell::new(vec![0xF0, 0x9F, 0xA6 ,0x80]);
@@ -1734,20 +1751,20 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     ///
     /// let c = RefCell::new(vec![0xF0, 0x9F, 0xA6]);
     /// let b1: Ref<'_, Vec<u8>> = c.borrow();
-    /// let b2: Result<_, (Ref<'_, Vec<u8>>, Utf8Error)> = Ref::try_map(b1, |v| from_utf8(v));
-    /// let (b3, e) = b2.unwrap_err();
-    /// assert_eq!(*b3, vec![0xF0, 0x9F, 0xA6]);
-    /// assert_eq!(e.valid_up_to(), 0);
+    /// let b2: Result<_, TryMapError<Ref<'_, Vec<u8>>, Utf8Error>> = Ref::try_map(b1, |v| from_utf8(v));
+    /// let TryMapError { original, error } = b2.unwrap_err();
+    /// assert_eq!(*original, vec![0xF0, 0x9F, 0xA6]);
+    /// assert_eq!(error.valid_up_to(), 0);
     /// ```
     #[unstable(feature = "refcell_try_map", issue = "143801")]
     #[inline]
     pub fn try_map<U: ?Sized, E>(
-        orig: Ref<'b, T>,
+        original: Ref<'b, T>,
         f: impl FnOnce(&T) -> Result<&U, E>,
-    ) -> Result<Ref<'b, U>, (Self, E)> {
-        match f(&*orig) {
-            Ok(value) => Ok(Ref { value: NonNull::from(value), borrow: orig.borrow }),
-            Err(e) => Err((orig, e)),
+    ) -> Result<Ref<'b, U>, TryMapError<Self, E>> {
+        match f(&*original) {
+            Ok(value) => Ok(Ref { value: NonNull::from(value), borrow: original.borrow }),
+            Err(error) => Err(TryMapError { original, error }),
         }
     }
 
@@ -1926,7 +1943,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     ///
     /// ```
     /// #![feature(refcell_try_map)]
-    /// use std::cell::{RefCell, RefMut};
+    /// use std::cell::{RefCell, RefMut, TryMapError};
     /// use std::str::{from_utf8_mut, Utf8Error};
     ///
     /// let c = RefCell::new(vec![0x68, 0x65, 0x6C, 0x6C, 0x6F]);
@@ -1941,26 +1958,28 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     ///
     /// let c = RefCell::new(vec![0xFF]);
     /// let b1: RefMut<'_, Vec<u8>> = c.borrow_mut();
-    /// let b2: Result<_, (RefMut<'_, Vec<u8>>, Utf8Error)> = RefMut::try_map(b1, |v| from_utf8_mut(v));
-    /// let (b3, e) = b2.unwrap_err();
-    /// assert_eq!(*b3, vec![0xFF]);
-    /// assert_eq!(e.valid_up_to(), 0);
+    /// let b2: Result<_, TryMapError<RefMut<'_, Vec<u8>>, Utf8Error>> = RefMut::try_map(b1, |v| from_utf8_mut(v));
+    /// let TryMapError { original, error } = b2.unwrap_err();
+    /// assert_eq!(*original, vec![0xFF]);
+    /// assert_eq!(error.valid_up_to(), 0);
     /// ```
     #[unstable(feature = "refcell_try_map", issue = "143801")]
     #[inline]
     pub fn try_map<U: ?Sized, E>(
-        mut orig: RefMut<'b, T>,
+        mut original: RefMut<'b, T>,
         f: impl FnOnce(&mut T) -> Result<&mut U, E>,
-    ) -> Result<RefMut<'b, U>, (Self, E)> {
+    ) -> Result<RefMut<'b, U>, TryMapError<Self, E>> {
         // SAFETY: function holds onto an exclusive reference for the duration
         // of its call through `orig`, and the pointer is only de-referenced
         // inside of the function call never allowing the exclusive reference to
         // escape.
-        match f(&mut *orig) {
-            Ok(value) => {
-                Ok(RefMut { value: NonNull::from(value), borrow: orig.borrow, marker: PhantomData })
-            }
-            Err(e) => Err((orig, e)),
+        match f(&mut *original) {
+            Ok(value) => Ok(RefMut {
+                value: NonNull::from(value),
+                borrow: original.borrow,
+                marker: PhantomData,
+            }),
+            Err(error) => Err(TryMapError { original, error }),
         }
     }
 
