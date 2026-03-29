@@ -1332,6 +1332,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_panics_when_n_is_zero]
     #[inline]
     #[must_use]
     #[track_caller]
@@ -1390,6 +1391,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_panics_when_n_is_zero]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1437,6 +1439,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_panics_when_n_is_zero]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1492,6 +1495,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_panics_when_n_is_zero]
     #[inline]
     #[must_use]
     #[track_caller]
@@ -1546,6 +1550,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_panics_when_n_is_zero]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1599,6 +1604,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_panics_when_n_is_zero]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1641,6 +1647,7 @@ impl<T> [T] {
     /// [`windows`]: slice::windows
     #[stable(feature = "array_windows", since = "1.94.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[rustc_panics_when_n_is_zero]
     #[inline]
     #[track_caller]
     pub const fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {

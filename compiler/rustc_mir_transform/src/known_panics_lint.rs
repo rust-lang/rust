@@ -10,19 +10,19 @@ use rustc_const_eval::interpret::{
     ImmTy, InterpCx, InterpResult, Projectable, Scalar, format_interp_error, interp_ok,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
+use rustc_hir::{HirId, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, ConstInt, GenericArgKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{AssertLint, AssertLintKind};
+use crate::errors::{AssertLint, AssertLintKind, AssertLintMessage};
 
 pub(super) struct KnownPanicsLint;
 
@@ -288,6 +288,25 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
+    fn report_assert_message(
+        &self,
+        location: Location,
+        lint_kind: AssertLintKind,
+        msg: &'static str,
+    ) {
+        let source_info = self.body.source_info(location);
+        if let Some(lint_root) = self.lint_root(*source_info) {
+            let span = source_info.span;
+            let message = AssertLintMessage::<()>::Message(msg);
+            self.tcx.emit_node_span_lint(
+                lint_kind.lint(),
+                lint_root,
+                span,
+                AssertLint { span, message, lint_kind },
+            );
+        }
+    }
+
     fn report_assert_as_lint(
         &self,
         location: Location,
@@ -297,11 +316,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let source_info = self.body.source_info(location);
         if let Some(lint_root) = self.lint_root(*source_info) {
             let span = source_info.span;
+            let message = AssertLintMessage::AssertKind(assert_kind);
             self.tcx.emit_node_span_lint(
                 lint_kind.lint(),
                 lint_root,
                 span,
-                AssertLint { span, assert_kind, lint_kind },
+                AssertLint { span, message, lint_kind },
             );
         }
     }
@@ -765,6 +785,22 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 }
                 // We failed to evaluate the discriminant, fallback to visiting all successors.
             }
+            TerminatorKind::Call { func, args: _, .. } => {
+                if let Some((def_id, generic_args)) = func.const_fn_def() {
+                    for arg in generic_args {
+                        if let GenericArgKind::Const(ct) = arg.kind()
+                            && find_attr!(self.tcx, def_id, RustcPanicsWhenNIsZero)
+                            && let Some(0) = ct.try_to_target_usize(self.tcx)
+                        {
+                            self.report_assert_message(
+                                location,
+                                AssertLintKind::UnconditionalPanic,
+                                "const parameter `N` is zero",
+                            );
+                        }
+                    }
+                }
+            }
             // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
@@ -777,7 +813,6 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. } => {}
         }
 

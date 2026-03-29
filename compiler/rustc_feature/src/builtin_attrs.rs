@@ -1275,6 +1275,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_never_returns_null_ptr]` is used to mark functions returning non-null pointers"
     ),
     rustc_attr!(
+        rustc_panics_when_n_is_zero, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
+        "`#[rustc_panics_when_n_is_zero]` is used to mark functions with a const generic argument who makes the function panics when it is zero"
+    ),
+    rustc_attr!(
         rustc_no_implicit_autorefs, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
         "`#[rustc_no_implicit_autorefs]` is used to mark functions for which an autoref to the dereference of a raw pointer should not be used as an argument"
     ),
