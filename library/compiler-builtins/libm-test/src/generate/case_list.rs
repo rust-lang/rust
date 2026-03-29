@@ -1245,20 +1245,20 @@ fn remquof_cases() -> Vec<TestCase<op::remquof::Routine>> {
     cases![]
 }
 
-fn rint_cases() -> Vec<TestCase<op::rint::Routine>> {
-    cases![(
-        (hf64!("-0x1.e3f13ff995ffcp+38"),),
-        if cfg!(x86_no_sse) {
-            // XFAIL on i586
-            hf64!("-0x1.e3f13ff998000p+38")
-        } else {
-            hf64!("-0x1.e3f13ff994000p+38")
-        }
-    ),]
+#[cfg(f16_enabled)]
+fn rintf16_cases() -> Vec<TestCase<op::rintf16::Routine>> {
+    cases![]
 }
 
 fn rintf_cases() -> Vec<TestCase<op::rintf::Routine>> {
     cases![]
+}
+
+fn rint_cases() -> Vec<TestCase<op::rint::Routine>> {
+    cases![
+        // Failure on i586
+        ((-519629176421.49976,), -519629176421.0),
+    ]
 }
 
 #[cfg(f128_enabled)]
@@ -1267,10 +1267,6 @@ fn rintf128_cases() -> Vec<TestCase<op::rintf128::Routine>> {
 }
 
 #[cfg(f16_enabled)]
-fn rintf16_cases() -> Vec<TestCase<op::rintf16::Routine>> {
-    cases![]
-}
-
 #[cfg(f16_enabled)]
 fn roundf16_cases() -> Vec<TestCase<op::roundf16::Routine>> {
     cases![]
@@ -1296,16 +1292,8 @@ fn roundevenf16_cases() -> Vec<TestCase<op::roundevenf16::Routine>> {
 
 fn roundeven_cases() -> Vec<TestCase<op::roundeven::Routine>> {
     cases![
-        #[cfg(not(x86_no_sse))]
-        (
-            (hf64!("-0x1.e3f13ff995ffcp+38"),),
-            if cfg!(x86_no_sse) {
-                // XFAIL on i586
-                hf64!("-0x1.e3f13ff998000p+38")
-            } else {
-                hf64!("-0x1.e3f13ff994000p+38")
-            }
-        ),
+        // Failure on i586
+        ((-519629176421.49976,), -519629176421.0),
     ]
 }
 

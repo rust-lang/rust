@@ -290,8 +290,6 @@ where
             .expect("functions returning floats should have a default ulp set");
 
         match SpecialCase::check_float(input, actual, expected, ctx) {
-            // Forbid overrides if the items came from an explicit list
-            _ if ctx.gen_kind == GeneratorKind::List => (),
             CheckAction::AssertSuccess => (),
             CheckAction::AssertFailure(msg) => assert_failure_msg = Some(msg),
             CheckAction::Custom(res) => return res,
