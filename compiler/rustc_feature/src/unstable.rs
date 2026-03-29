@@ -579,6 +579,9 @@ declare_features! (
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Enable mgca `type const` syntax before expansion.
     (incomplete, mgca_type_const_syntax, "1.95.0", Some(132980)),
+    /// Allows additional const parameter types, such as [u8; 10] or user defined types.
+    /// User defined types must not have fields more private than the type itself.
+    (unstable, min_adt_const_params, "CURRENT_RUSTC_VERSION", Some(154042)),
     /// Enables the generic const args MVP (only bare paths, not arbitrary computation).
     (incomplete, min_generic_const_args, "1.84.0", Some(132980)),
     /// A minimal, sound subset of specialization intended to be used by the
