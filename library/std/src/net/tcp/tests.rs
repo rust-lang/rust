@@ -317,7 +317,7 @@ fn read_buf() {
         t!(s.read_buf(buf.unfilled()));
         assert_eq!(buf.filled(), &[1, 2, 3, 4]);
         // TcpStream::read_buf should omit buffer initialization.
-        assert_eq!(buf.init_len(), 4);
+        assert!(!buf.is_init());
 
         t.join().ok().expect("thread panicked");
     })
