@@ -80,10 +80,6 @@ pub enum MirPhase {
     ///   StateTransform pass will expand those async drops or reset to sync.
     /// - Unwinding: in analysis MIR, unwinding from a function which may not unwind aborts. In
     ///   runtime MIR, this is UB.
-    /// - Retags: If `-Zmir-emit-retag` is enabled, analysis MIR has "implicit" retags in the same
-    ///   way that Rust itself has them. Where exactly these are is generally subject to change,
-    ///   and so we don't document this here. Runtime MIR has most retags explicit (though implicit
-    ///   retags can still occur at `Rvalue::{Ref,AddrOf}`).
     /// - Coroutine bodies: In analysis MIR, locals may actually be behind a pointer that user code
     ///   has access to. This occurs in coroutine bodies. Such locals do not behave like other
     ///   locals, because they e.g. may be aliased in surprising ways. Runtime MIR has no such
@@ -134,7 +130,6 @@ pub enum RuntimePhase {
     /// * [`LocalInfo::DerefTemp`](super::LocalInfo::DerefTemp)
     ///
     /// And the following variants are allowed:
-    /// * [`StatementKind::Retag`]
     /// * [`StatementKind::SetDiscriminant`]
     /// * [`PlaceElem::ConstantIndex`] / [`PlaceElem::Subslice`] after [`PlaceElem::Subslice`]
     ///
@@ -313,7 +308,10 @@ pub enum StatementKind<'tcx> {
     /// all). The *exact* way this works is undecided. It probably does something like evaluating
     /// the LHS to a place and the RHS to a value, and then storing the value to the place. Various
     /// parts of this may do type specific things that are more complicated than simply copying
-    /// bytes.
+    /// bytes. In particular, the assignment will typically erase the contents of padding,
+    /// erase provenance from non-pointer types, and implicitly "retag" all references and boxes
+    /// that it copies, meaning that the resulting value is not an exact duplicate for all intents
+    /// and purposes of the original value.
     ///
     /// **Needs clarification**: The implication of the above idea would be that assignment implies
     /// that the resulting value is initialized. I believe we could commit to this separately from
@@ -385,19 +383,6 @@ pub enum StatementKind<'tcx> {
 
     /// See `StorageLive` above.
     StorageDead(Local),
-
-    /// Retag references in the given place, ensuring they got fresh tags.
-    ///
-    /// This is part of the Stacked Borrows model. These statements are currently only interpreted
-    /// by miri and only generated when `-Z mir-emit-retag` is passed. See
-    /// <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/> for
-    /// more details.
-    ///
-    /// For code that is not specific to stacked borrows, you should consider retags to read and
-    /// modify the place in an opaque way.
-    ///
-    /// Only `RetagKind::Default` and `RetagKind::FnEntry` are permitted.
-    Retag(RetagKind, Box<Place<'tcx>>),
 
     /// This statement exists to preserve a trace of a scrutinee matched against a wildcard binding.
     /// This is especially useful for `let _ = PLACE;` bindings that desugar to a single
@@ -506,18 +491,23 @@ pub enum NonDivergingIntrinsic<'tcx> {
     CopyNonOverlapping(CopyNonOverlapping<'tcx>),
 }
 
-/// Describes what kind of retag is to be performed.
+/// Describes whether this operand use performs a retag.
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
-pub enum RetagKind {
-    /// The initial retag of arguments when entering a function.
-    FnEntry,
-    /// Retag preparing for a two-phase borrow.
-    TwoPhase,
-    /// Retagging raw pointers.
-    Raw,
-    /// A "normal" retag.
-    Default,
+pub enum WithRetag {
+    Yes,
+    No,
+}
+
+impl WithRetag {
+    #[inline]
+    pub fn yes(self) -> bool {
+        matches!(self, Self::Yes)
+    }
+    #[inline]
+    pub fn no(self) -> bool {
+        matches!(self, Self::No)
+    }
 }
 
 /// The `FakeReadCause` describes the type of pattern why a FakeRead statement exists.
@@ -1366,8 +1356,8 @@ pub struct ConstOperand<'tcx> {
 /// value that an [`Operand`] produces.
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum Rvalue<'tcx> {
-    /// Yields the operand unchanged
-    Use(Operand<'tcx>),
+    /// Yields the operand unchanged, except for a potential retag.
+    Use(Operand<'tcx>, WithRetag),
 
     /// Creates an array where each element is the value of the operand.
     ///

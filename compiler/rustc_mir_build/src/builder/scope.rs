@@ -957,7 +957,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 (state_ty.discriminant_ty(self.tcx), Rvalue::Discriminant(scope.state_place))
             }
             ty::Uint(_) | ty::Int(_) | ty::Float(_) | ty::Bool | ty::Char => {
-                (state_ty, Rvalue::Use(Operand::Copy(scope.state_place)))
+                (state_ty, Rvalue::Use(Operand::Copy(scope.state_place), WithRetag::Yes))
             }
             _ => span_bug!(state_decl.source_info.span, "unsupported #[loop_match] state"),
         };

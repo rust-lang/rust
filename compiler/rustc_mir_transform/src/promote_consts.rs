@@ -310,7 +310,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 if let Some(local) = place_base.as_local()
                     && let TempState::Defined { location, .. } = self.temps[local]
                     && let Left(def_stmt) = self.body.stmt_at(location)
-                    && let Some((_, Rvalue::Use(Operand::Constant(c)))) = def_stmt.kind.as_assign()
+                    && let Some((_, Rvalue::Use(Operand::Constant(c), _))) = def_stmt.kind.as_assign()
                     && let Some(did) = c.check_static_ptr(self.tcx)
                     // Evaluating a promoted may not read statics except if it got
                     // promoted from a static (this is a CTFE check). So we
@@ -327,7 +327,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // Only accept if we can predict the index and are indexing an array.
                 if let TempState::Defined { location: loc, .. } = self.temps[local]
                     && let Left(statement) =  self.body.stmt_at(loc)
-                    && let Some((_, Rvalue::Use(Operand::Constant(c)))) = statement.kind.as_assign()
+                    && let Some((_, Rvalue::Use(Operand::Constant(c), _))) = statement.kind.as_assign()
                     && self.should_evaluate_for_promotion_checks(c.const_)
                     && let Some(idx) = c.const_.try_eval_target_usize(self.tcx, self.typing_env)
                     // Determine the type of the thing we are indexing.
@@ -424,7 +424,12 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     fn validate_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match rvalue {
-            Rvalue::Use(operand)
+            Rvalue::Use(_operand, WithRetag::No) => {
+                // This shouldn't actually happen, but just to be safe: we'll later add the promoted
+                // with retagging, so don't promote anything that didn't already have retagging.
+                return Err(Unpromotable);
+            }
+            Rvalue::Use(operand, _)
             | Rvalue::Repeat(operand, _)
             | Rvalue::WrapUnsafeBinder(operand, _) => {
                 self.validate_operand(operand)?;
@@ -793,11 +798,14 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     if self.keep_original {
                         rhs.clone()
                     } else {
-                        let unit = Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
-                            span: statement.source_info.span,
-                            user_ty: None,
-                            const_: Const::zero_sized(self.tcx.types.unit),
-                        })));
+                        let unit = Rvalue::Use(
+                            Operand::Constant(Box::new(ConstOperand {
+                                span: statement.source_info.span,
+                                user_ty: None,
+                                const_: Const::zero_sized(self.tcx.types.unit),
+                            })),
+                            WithRetag::Yes,
+                        );
                         mem::replace(rhs, unit)
                     },
                     statement.source_info,
@@ -918,7 +926,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 statement.source_info,
                 StatementKind::Assign(Box::new((
                     Place::from(promoted_ref),
-                    Rvalue::Use(Operand::Constant(Box::new(promoted_operand))),
+                    // We can retag here because we wouldn't promote non-retagged values (they get
+                    // rejected in validate_rvalue).
+                    Rvalue::Use(Operand::Constant(Box::new(promoted_operand)), WithRetag::Yes),
                 ))),
             );
             self.extra_statements.push((loc, promoted_ref_statement));

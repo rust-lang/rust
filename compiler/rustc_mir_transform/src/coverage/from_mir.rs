@@ -91,7 +91,6 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         )
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
-        | StatementKind::Retag(_, _)
         | StatementKind::PlaceMention(..)
         | StatementKind::AscribeUserType(_, _) => Some(statement.source_info.span),
 

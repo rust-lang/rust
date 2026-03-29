@@ -441,7 +441,7 @@ impl<'tcx> Map<'tcx> {
             for stmt in bbdata.statements.iter() {
                 let Some((lhs, rhs)) = stmt.kind.as_assign() else { continue };
                 match rhs {
-                    Rvalue::Use(Operand::Move(rhs) | Operand::Copy(rhs))
+                    Rvalue::Use(Operand::Move(rhs) | Operand::Copy(rhs), _)
                     | Rvalue::CopyForDeref(rhs) => {
                         let Some(lhs) = self.register_place_and_discr(tcx, body, *lhs) else {
                             continue;

@@ -229,7 +229,7 @@
 //!
 //! #### Statements
 //!  - Assign statements work via normal Rust assignment.
-//!  - [`Retag`], [`StorageLive`], [`StorageDead`] statements have an associated function.
+//!  - [`StorageLive`], [`StorageDead`] statements have an associated function.
 //!
 //! #### Rvalues
 //!
@@ -407,7 +407,6 @@ define!(
     "mir_ptr_metadata",
     fn PtrMetadata<P: ?Sized>(place: *const P) -> <P as ::core::ptr::Pointee>::Metadata
 );
-define!("mir_retag", fn Retag<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
 define!("mir_static", fn Static<T>(s: T) -> &'static T);
 define!("mir_static_mut", fn StaticMut<T>(s: T) -> *mut T);

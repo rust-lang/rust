@@ -391,7 +391,7 @@ fn find_self_assignments<'tcx>(
                     let Some(assign) = body.basic_blocks[*target].statements.first() else {
                         continue;
                     };
-                    let StatementKind::Assign(box (dest, Rvalue::Use(Operand::Move(temp)))) =
+                    let StatementKind::Assign(box (dest, Rvalue::Use(Operand::Move(temp), _))) =
                         assign.kind
                     else {
                         continue;
@@ -709,8 +709,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     | StatementKind::SetDiscriminant { box place, .. } => {
                         check_place(*place, AccessKind::Assign, statement.source_info, live);
                     }
-                    StatementKind::Retag(_, _)
-                    | StatementKind::StorageLive(_)
+                    StatementKind::StorageLive(_)
                     | StatementKind::StorageDead(_)
                     | StatementKind::Coverage(_)
                     | StatementKind::Intrinsic(_)

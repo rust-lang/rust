@@ -58,7 +58,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for DerefChecker<'a, 'tcx> {
                         if self.add_deref_metadata {
                             Rvalue::CopyForDeref(deref_place)
                         } else {
-                            Rvalue::Use(Operand::Copy(deref_place))
+                            // FIXME: Unfortunately, `add_deref_metadata` is not documented. So who
+                            // knows what is supposed to happen here -- retag or not? `CopyForDeref`
+                            // later turns into a no-retag assignment so probably maybe that's also
+                            // what we need here.
+                            Rvalue::Use(Operand::Copy(deref_place), WithRetag::No)
                         },
                     );
                     place_local = temp;

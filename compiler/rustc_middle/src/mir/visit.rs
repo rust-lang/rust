@@ -170,15 +170,6 @@ macro_rules! make_mir_visitor {
                 self.super_coverage(kind, location);
             }
 
-            fn visit_retag(
-                &mut self,
-                kind: $(& $mutability)? RetagKind,
-                place: & $($mutability)? Place<'tcx>,
-                location: Location,
-            ) {
-                self.super_retag(kind, place, location);
-            }
-
             fn visit_place(
                 &mut self,
                 place: & $($mutability)? Place<'tcx>,
@@ -459,9 +450,6 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::Retag(kind, place) => {
-                        self.visit_retag($(& $mutability)? *kind, place, location);
-                    }
                     StatementKind::PlaceMention(place) => {
                         self.visit_place(
                             place,
@@ -704,7 +692,7 @@ macro_rules! make_mir_visitor {
                 location: Location
             ) {
                 match rvalue {
-                    Rvalue::Use(operand) => {
+                    Rvalue::Use(operand, _with_retag) => {
                         self.visit_operand(operand, location);
                     }
 
@@ -866,19 +854,6 @@ macro_rules! make_mir_visitor {
                 _kind: & $($mutability)? coverage::CoverageKind,
                 _location: Location
             ) {
-            }
-
-            fn super_retag(
-                &mut self,
-                _kind: $(& $mutability)? RetagKind,
-                place: & $($mutability)? Place<'tcx>,
-                location: Location
-            ) {
-                self.visit_place(
-                    place,
-                    PlaceContext::MutatingUse(MutatingUseContext::Retag),
-                    location,
-                );
             }
 
             fn super_local_decl(

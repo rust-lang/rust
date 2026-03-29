@@ -7,7 +7,7 @@ use std::borrow::Cow;
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_hir::def_id::DefId;
-use rustc_hir::find_attr;
+use rustc_hir::{LangItem, find_attr};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
@@ -16,12 +16,11 @@ use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
-    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
-    Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, interp_ok, throw_ub,
-    throw_ub_format,
+    CtfeProvenance, EnteredTraceSpan, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine,
+    OpTy, PlaceTy, Projectable, Provenance, RetagMode, ReturnAction, ReturnContinuation, Scalar,
+    interp_ok, throw_ub, throw_ub_format,
 };
 use crate::enter_trace_span;
-use crate::interpret::EnteredTraceSpan;
 
 /// An argument passed to a function.
 #[derive(Clone, Debug)]
@@ -277,6 +276,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         callee_arg: &mir::Place<'tcx>,
         callee_ty: Ty<'tcx>,
         already_live: bool,
+        is_drop_in_place: bool,
     ) -> InterpResult<'tcx>
     where
         'tcx: 'x,
@@ -321,7 +321,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.storage_live_dyn(local, meta)?;
         }
         // Now we can finally actually evaluate the callee place.
-        let callee_arg = self.eval_place(*callee_arg)?;
+        let mut callee_arg = self.eval_place(*callee_arg)?;
+        // drop_in_place has a signature which says that the first argument is `*mut T`
+        // but really it's `&mut T`. This is where we handle that terrible hack in
+        // the MIR semantics.
+        // FIXME(#154274): remove this hack.
+        if is_drop_in_place && callee_arg_idx == 0 {
+            let pointee_ty = callee_arg.layout.ty.builtin_deref(true).unwrap();
+            let mutref_ty = Ty::new_mut_ref(*self.tcx, self.tcx.lifetimes.re_erased, pointee_ty);
+            callee_arg = callee_arg.transmute(self.layout_of(mutref_ty)?, self)?;
+        }
         // We allow some transmutes here.
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
@@ -453,77 +462,93 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Determine whether there is a special VaList argument. This is always the
         // last argument, and since arguments start at index 1 that's `arg_count`.
         let va_list_arg = callee_fn_abi.c_variadic.then(|| mir::Local::from_usize(body.arg_count));
-        for local in body.args_iter() {
-            // Update the span that we show in case of an error to point to this argument.
-            self.frame_mut().loc = Right(body.local_decls[local].source_info.span);
-            // Construct the destination place for this argument. At this point all
-            // locals are still dead, so we cannot construct a `PlaceTy`.
-            let dest = mir::Place::from(local);
-            // `layout_of_local` does more than just the instantiation we need to get the
-            // type, but the result gets cached so this avoids calling the instantiation
-            // query *again* the next time this local is accessed.
-            let ty = self.layout_of_local(self.frame(), local, None)?.ty;
-            if Some(local) == va_list_arg {
-                // This is the last callee-side argument of a variadic function.
-                // This argument is a VaList holding the remaining caller-side arguments.
-                self.storage_live(local)?;
+        // Part of the hack for #154274, see `pass_argument`.
+        let is_drop_in_place = {
+            let def_id = body.source.def_id();
+            self.tcx.is_lang_item(def_id, LangItem::DropInPlace)
+                || self.tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace)
+        };
 
-                let place = self.eval_place(dest)?;
-                let mplace = self.force_allocation(&place)?;
+        // During argument passing, we want retagging with protectors.
+        M::with_retag_mode(self, RetagMode::FnEntry, |ecx| {
+            for local in body.args_iter() {
+                // Update the span that we show in case of an error to point to this argument.
+                ecx.frame_mut().loc = Right(body.local_decls[local].source_info.span);
+                // Construct the destination place for this argument. At this point all
+                // locals are still dead, so we cannot construct a `PlaceTy`.
+                let dest = mir::Place::from(local);
+                // `layout_of_local` does more than just the instantiation we need to get the
+                // type, but the result gets cached so this avoids calling the instantiation
+                // query *again* the next time this local is accessed.
+                let ty = ecx.layout_of_local(ecx.frame(), local, None)?.ty;
+                if Some(local) == va_list_arg {
+                    // This is the last callee-side argument of a variadic function.
+                    // This argument is a VaList holding the remaining caller-side arguments.
+                    ecx.storage_live(local)?;
 
-                // Consume the remaining arguments by putting them into the variable argument
-                // list.
-                let varargs = self.allocate_varargs(
-                    &mut caller_args,
-                    // "Ignored" arguments aren't actually passed, so the callee should also
-                    // ignore them. (`pass_argument` does this for regular arguments.)
-                    (&mut callee_args_abis).filter(|(_, abi)| !abi.is_ignore()),
-                )?;
-                // When the frame is dropped, these variable arguments are deallocated.
-                self.frame_mut().va_list = varargs.clone();
-                let key = self.va_list_ptr(varargs.into());
+                    let place = ecx.eval_place(dest)?;
+                    let mplace = ecx.force_allocation(&place)?;
 
-                // Zero the VaList, so it is fully initialized.
-                self.write_bytes_ptr(mplace.ptr(), (0..mplace.layout.size.bytes()).map(|_| 0u8))?;
+                    // Consume the remaining arguments by putting them into the variable argument
+                    // list.
+                    let varargs = ecx.allocate_varargs(
+                        &mut caller_args,
+                        // "Ignored" arguments aren't actually passed, so the callee should also
+                        // ignore them. (`pass_argument` does this for regular arguments.)
+                        (&mut callee_args_abis).filter(|(_, abi)| !abi.is_ignore()),
+                    )?;
+                    // When the frame is dropped, these variable arguments are deallocated.
+                    ecx.frame_mut().va_list = varargs.clone();
+                    let key = ecx.va_list_ptr(varargs.into());
 
-                // Store the "key" pointer in the right field.
-                let key_mplace = self.va_list_key_field(&mplace)?;
-                self.write_pointer(key, &key_mplace)?;
-            } else if Some(local) == body.spread_arg {
-                // Make the local live once, then fill in the value field by field.
-                self.storage_live(local)?;
-                // Must be a tuple
-                let ty::Tuple(fields) = ty.kind() else {
-                    span_bug!(self.cur_span(), "non-tuple type for `spread_arg`: {ty}")
-                };
-                for (i, field_ty) in fields.iter().enumerate() {
-                    let dest = dest.project_deeper(
-                        &[mir::ProjectionElem::Field(FieldIdx::from_usize(i), field_ty)],
-                        *self.tcx,
-                    );
+                    // Zero the VaList, so it is fully initialized.
+                    ecx.write_bytes_ptr(
+                        mplace.ptr(),
+                        (0..mplace.layout.size.bytes()).map(|_| 0u8),
+                    )?;
+
+                    // Store the "key" pointer in the right field.
+                    let key_mplace = ecx.va_list_key_field(&mplace)?;
+                    ecx.write_pointer(key, &key_mplace)?;
+                } else if Some(local) == body.spread_arg {
+                    // Make the local live once, then fill in the value field by field.
+                    ecx.storage_live(local)?;
+                    // Must be a tuple
+                    let ty::Tuple(fields) = ty.kind() else {
+                        span_bug!(ecx.cur_span(), "non-tuple type for `spread_arg`: {ty}")
+                    };
+                    for (i, field_ty) in fields.iter().enumerate() {
+                        let dest = dest.project_deeper(
+                            &[mir::ProjectionElem::Field(FieldIdx::from_usize(i), field_ty)],
+                            *ecx.tcx,
+                        );
+                        let (idx, callee_abi) = callee_args_abis.next().unwrap();
+                        ecx.pass_argument(
+                            &mut caller_args,
+                            callee_abi,
+                            idx,
+                            &dest,
+                            field_ty,
+                            /* already_live */ true,
+                            is_drop_in_place,
+                        )?;
+                    }
+                } else {
+                    // Normal argument. Cannot mark it as live yet, it might be unsized!
                     let (idx, callee_abi) = callee_args_abis.next().unwrap();
-                    self.pass_argument(
+                    ecx.pass_argument(
                         &mut caller_args,
                         callee_abi,
                         idx,
                         &dest,
-                        field_ty,
-                        /* already_live */ true,
+                        ty,
+                        /* already_live */ false,
+                        is_drop_in_place,
                     )?;
                 }
-            } else {
-                // Normal argument. Cannot mark it as live yet, it might be unsized!
-                let (idx, callee_abi) = callee_args_abis.next().unwrap();
-                self.pass_argument(
-                    &mut caller_args,
-                    callee_abi,
-                    idx,
-                    &dest,
-                    ty,
-                    /* already_live */ false,
-                )?;
             }
-        }
+            interp_ok(())
+        })?;
 
         // Don't forget to check the return type!
         self.frame_mut().loc = Right(body.local_decls[mir::RETURN_PLACE].source_info.span);
