@@ -603,6 +603,7 @@ impl<'a> Parser<'a> {
     fn parse_polarity(&mut self) -> ast::ImplPolarity {
         // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
         if self.check(exp!(Bang)) && self.look_ahead(1, |t| t.can_begin_type()) {
+            self.psess.gated_spans.gate(sym::negative_impls, self.token.span);
             self.bump(); // `!`
             ast::ImplPolarity::Negative(self.prev_token.span)
         } else {

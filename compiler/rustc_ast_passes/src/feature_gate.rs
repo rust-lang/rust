@@ -227,8 +227,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         &self,
                         negative_impls,
                         span.to(of_trait.trait_ref.path.span),
-                        "negative trait bounds are not fully implemented; \
-                         use marker types for now"
+                        "negative impls are experimental"
                     );
                 }
 
@@ -644,6 +643,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
     gate_all_legacy_dont_use!(try_blocks, "`try` blocks are unstable");
     gate_all_legacy_dont_use!(auto_traits, "`auto` traits are unstable");
+    gate_all_legacy_dont_use!(negative_impls, "negative impls are experimental");
 
     visit::walk_crate(&mut visitor, krate);
 }
