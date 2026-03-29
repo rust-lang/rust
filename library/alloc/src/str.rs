@@ -342,6 +342,11 @@ impl str {
     /// the case, this function returns a [`String`] instead of modifying the
     /// parameter in-place.
     ///
+    /// Unlike [`char::to_lowercase()`], this method fully handles the context-dependent
+    /// casing of Greek sigma. However, like that method, it does not handle locale-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
+    /// for more information.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -432,6 +437,10 @@ impl str {
     /// Since some characters can expand into multiple characters when changing
     /// the case, this function returns a [`String`] instead of modifying the
     /// parameter in-place.
+    ///
+    /// Like [`char::to_uppercase()`] this method does not handle language-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
+    /// for more information.
     ///
     /// # Examples
     ///
