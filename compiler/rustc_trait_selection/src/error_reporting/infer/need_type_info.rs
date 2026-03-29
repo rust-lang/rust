@@ -15,8 +15,9 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{
-    self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Term, TermKind,
-    Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, TypeckResults,
+    self, GenericArg, GenericArgKind, GenericArgsRef, GenericParamDefKind, InferConst,
+    IsSuggestable, Term, TermKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, TypeckResults,
 };
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, sym};
 use tracing::{debug, instrument, warn};
@@ -592,15 +593,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             (true, parent.prefix.to_string(), parent.name)
                         });
 
+                let param = &generics.own_params[argument_index];
+                let param_name = param.name.to_string();
+
                 infer_subdiags.push(SourceKindSubdiag::GenericLabel {
                     span,
                     is_type,
-                    param_name: generics.own_params[argument_index].name.to_string(),
+                    param_name: param_name.clone(),
                     parent_exists,
                     parent_prefix,
                     parent_name,
                 });
 
+                let mut used_fallback = false;
                 let args = if self.tcx.get_diagnostic_item(sym::iterator_collect_fn)
                     == Some(generics_def_id)
                 {
@@ -634,9 +639,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let mut p = fmt_printer(self, Namespace::TypeNS);
                     p.comma_sep(generic_args.iter().copied().map(|arg| {
                         if arg.is_suggestable(self.tcx, true) {
+                            used_fallback = true;
                             return arg;
                         }
-
                         match arg.kind() {
                             GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
                             GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
@@ -648,11 +653,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 };
 
                 if !have_turbofish {
-                    infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {
-                        span: insert_span,
-                        arg_count: generic_args.len(),
-                        args,
-                    });
+                    if generic_args.len() == 1 && used_fallback {
+                        match param.kind {
+                            GenericParamDefKind::Type { .. } => {
+                                infer_subdiags.push(SourceKindSubdiag::GenericTypeSuggestion {
+                                    span: insert_span,
+                                    param: param_name,
+                                });
+                            }
+                            GenericParamDefKind::Const { .. } => {
+                                infer_subdiags.push(SourceKindSubdiag::ConstGenericSuggestion {
+                                    span: insert_span,
+                                    param: param_name,
+                                });
+                            }
+                            GenericParamDefKind::Lifetime => {
+                                bug!("unexpected lifetime")
+                            }
+                        }
+                    } else {
+                        infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {
+                            span: insert_span,
+                            arg_count: generic_args.len(),
+                            args,
+                        });
+                    }
                 }
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {

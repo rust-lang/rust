@@ -331,6 +331,28 @@ pub(crate) enum SourceKindSubdiag<'a> {
         arg_count: usize,
         args: String,
     },
+    #[suggestion(
+        "consider specifying a concrete type for the type parameter `{$param}`",
+        style = "verbose",
+        code = "::</* Type */>",
+        applicability = "has-placeholders"
+    )]
+    GenericTypeSuggestion {
+        #[primary_span]
+        span: Span,
+        param: String,
+    },
+    #[suggestion(
+        "consider specifying a const for the const parameter `{$param}`",
+        style = "verbose",
+        code = "::</* CONST */>",
+        applicability = "has-placeholders"
+    )]
+    ConstGenericSuggestion {
+        #[primary_span]
+        span: Span,
+        param: String,
+    },
 }
 
 #[derive(Subdiagnostic)]
