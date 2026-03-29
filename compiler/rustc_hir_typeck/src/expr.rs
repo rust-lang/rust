@@ -25,6 +25,7 @@ use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::errors::NoFieldOnType;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
+use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -1242,7 +1243,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.diverges.set(cond_diverges);
         }
 
-        let result_ty = coerce.complete(self);
+        let coerce_never = true;
+        tracing::debug!("calling complete in check_expr_if");
+        let expected = expected.coercion_target_type(self, sp);
+        let result_ty = coerce.complete(self, &self.misc(sp), expected, coerce_never);
         if let Err(guar) = cond_ty.error_reported() {
             Ty::new_error(self.tcx, guar)
         } else {
@@ -1463,7 +1467,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if ctxt.coerce.is_none() && !ctxt.may_break {
             self.dcx().span_bug(body.span, "no coercion, but loop may not break");
         }
-        ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.types.unit)
+        let cause = ObligationCause::dummy();
+        //let coerce_never = self.tcx.expr_guaranteed_to_constitute_read_for_never(expr);
+        let coerce_never = true;
+        tracing::debug!("calling complete in check_expr_loop");
+        ctxt.coerce
+            .map(|c| {
+                c.complete(
+                    self,
+                    &cause,
+                    expected.coercion_target_type(self, body.span),
+                    coerce_never,
+                )
+            })
+            .unwrap_or_else(|| self.tcx.types.unit)
     }
 
     /// Checks a method call.
@@ -1653,6 +1670,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    #[tracing::instrument(skip(self, args, expr), ret)]
     fn check_expr_array(
         &self,
         args: &'tcx [hir::Expr<'tcx>],
@@ -1678,11 +1696,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // While that fixes nested coercion, it will break [some
                 // code like this](https://github.com/rust-lang/rust/pull/140283#issuecomment-2958776528).
                 // If we find a way to support recursive tuple coercion, this break can be avoided.
+                //
+                // HACK: *Ideally* we can just use `coerce.merged_ty()`, but the
+                // following fails:
+                // ```rust
+                // let mounts: &[fn(&()) -> &()] = &[
+                //   |p| p,
+                //   |p| p,
+                // ];
+                // ```
+                // This *essentially* comes down to `coerce.merged_ty()` being
+                // `for<'a> fn(&'a ()) -> &'a ()` on the first arm, but a closure
+                // with that sig on the second. Then, `check_expr_closure` gets
+                // that and `deduce_closure_signature` doesn't handle a closure's
+                // signature, leading to a non-higher ranked fn ptr.
+                // Oh, and fixing that is just...bad.
                 let e_ty = self.check_expr_with_hint(e, coerce_to);
                 let cause = self.misc(e.span);
                 coerce.coerce(self, &cause, e, e_ty);
             }
-            coerce.complete(self)
+            tracing::debug!("calling complete in check_expr_array");
+            coerce.complete(self, &ObligationCause::dummy(), coerce_to, true)
         } else {
             self.next_ty_var(expr.span)
         };

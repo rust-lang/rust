@@ -242,7 +242,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Attempts to generalize `source_term` for the type variable `target_vid`.
     /// This checks for cycles -- that is, whether `source_term` references `target_vid`.
-    fn generalize<T: Into<Term<'tcx>> + Relate<TyCtxt<'tcx>>>(
+    pub fn generalize<T: Into<Term<'tcx>> + Relate<TyCtxt<'tcx>>>(
         &self,
         span: Span,
         structurally_relate_aliases: StructurallyRelateAliases,
@@ -739,7 +739,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
 /// not only the generalized type, but also a bool flag
 /// indicating whether further WF checks are needed.
 #[derive(Debug)]
-struct Generalization<T> {
+pub struct Generalization<T> {
     /// When generalizing `<?0 as Trait>::Assoc` or
     /// `<T as Bar<<?0 as Foo>::Assoc>>::Assoc`
     /// for `?0` generalization returns an inference
