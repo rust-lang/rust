@@ -41,7 +41,7 @@ LL |     core::intrinsics::contract_check_ensures(Some(|_: &&u32| true), &1);
 error[E0658]: use of unstable library feature `contracts_internals`
   --> $DIR/internal-feature-gating.rs:10:5
    |
-LL |     core::contracts::build_check_ensures(|_: &()| true);
+LL |     core::contracts::build_check_ensures(|| |_: &()| true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
