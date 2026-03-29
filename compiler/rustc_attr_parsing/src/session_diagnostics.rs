@@ -687,13 +687,15 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             AttributeParseErrorReason::ExpectedStringLiteral { byte_string } => {
                 if let Some(start_point_span) = byte_string {
                     diag.span_suggestion(
-                        start_point_span,
+                        *start_point_span,
                         "consider removing the prefix",
                         "",
                         Applicability::MaybeIncorrect,
                     );
                     diag.note("expected a normal string literal, not a byte string literal");
 
+                    // Avoid emitting an "attribute must be of the form" suggestion, as the
+                    // attribute is likely to be well-formed already.
                     return diag;
                 } else {
                     diag.span_label(self.span, "expected a string literal here");
