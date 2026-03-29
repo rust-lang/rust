@@ -1,5 +1,5 @@
 //@ has field/index.html '//a[@href="{{channel}}/core/ops/range/struct.Range.html#structfield.start"]' 'start'
-//@ has field/index.html '//a[@href="{{channel}}/std/io/error/enum.ErrorKind.html#variant.NotFound"]' 'not_found'
+//@ has field/index.html '//a[@href="{{channel}}/alloc/io/error/enum.ErrorKind.html#variant.NotFound"]' 'not_found'
 //@ has field/index.html '//a[@href="struct.FieldAndMethod.html#structfield.x"]' 'x'
 //@ has field/index.html '//a[@href="enum.VariantAndMethod.html#variant.X"]' 'X'
 //! [start][std::ops::Range::start]
