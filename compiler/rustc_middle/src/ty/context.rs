@@ -662,6 +662,13 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_delayed_owner(self, key: LocalDefId, owner: MaybeOwner<'tcx>) {
         TyCtxtFeed { tcx: self, key }.delayed_owner(owner);
     }
+
+    pub fn feed_is_dyn_incompatible_final_assoc_fn(self, key: DefId, value: bool) {
+        debug_assert_eq!(self.def_kind(key), DefKind::AssocFn);
+        debug_assert!(self.defaultness(key).is_final());
+
+        TyCtxtFeed { tcx: self, key }.is_dyn_incompatible_final_assoc_fn_query(value)
+    }
 }
 
 impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
