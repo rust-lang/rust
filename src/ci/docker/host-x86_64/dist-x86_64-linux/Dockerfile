@@ -97,6 +97,7 @@ ENV RUST_CONFIGURE_ARGS="--enable-full-tools \
 
 COPY host-x86_64/dist-x86_64-linux/dist.sh /scripts/
 COPY host-x86_64/dist-x86_64-linux/dist-alt.sh /scripts/
+COPY host-x86_64/dist-x86_64-linux/crater-targets.sh /scripts/
 
 ENV SCRIPT="Must specify DOCKER_SCRIPT for this image"
 

@@ -327,6 +327,10 @@ if [ -n "${DOCKER_SCRIPT}" ]; then
   extra_env="$extra_env --env SCRIPT=\"/scripts/${DOCKER_SCRIPT}\""
 fi
 
+if [ -n "${DIST_TARGETS}" ]; then
+  extra_env="$extra_env --env DIST_TARGETS=${DIST_TARGETS}"
+fi
+
 docker \
   run \
   --workdir /checkout/obj \
