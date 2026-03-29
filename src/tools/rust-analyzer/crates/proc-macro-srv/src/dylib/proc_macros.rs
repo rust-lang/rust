@@ -32,29 +32,29 @@ impl ProcMacros {
                     let res = client.run(
                         &bridge::server::SAME_THREAD,
                         S::make_server(call_site, def_site, mixed_site, callback),
-                        macro_body,
+                        macro_body.into_bridge(),
                         cfg!(debug_assertions),
                     );
-                    return res.map_err(crate::PanicMessage::from);
+                    return res.map(TokenStream::from_bridge).map_err(crate::PanicMessage::from);
                 }
                 bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SAME_THREAD,
                         S::make_server(call_site, def_site, mixed_site, callback),
-                        macro_body,
+                        macro_body.into_bridge(),
                         cfg!(debug_assertions),
                     );
-                    return res.map_err(crate::PanicMessage::from);
+                    return res.map(TokenStream::from_bridge).map_err(crate::PanicMessage::from);
                 }
                 bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SAME_THREAD,
                         S::make_server(call_site, def_site, mixed_site, callback),
-                        parsed_attributes,
-                        macro_body,
+                        parsed_attributes.into_bridge(),
+                        macro_body.into_bridge(),
                         cfg!(debug_assertions),
                     );
-                    return res.map_err(crate::PanicMessage::from);
+                    return res.map(TokenStream::from_bridge).map_err(crate::PanicMessage::from);
                 }
                 _ => continue,
             }
