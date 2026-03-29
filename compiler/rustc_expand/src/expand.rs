@@ -1401,7 +1401,6 @@ impl InvocationCollectorNode for Box<ast::Item> {
                         ecx.ecfg.features,
                         ecx.resolver.registered_tools(),
                         ecx.current_expansion.lint_node_id,
-                        &attrs,
                         &items,
                         ident.name,
                     );
@@ -2173,6 +2172,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 self.cx.current_expansion.lint_node_id,
                 Some(self.cx.ecfg.features),
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+                Some(self.cx.resolver.registered_tools()),
             );
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
