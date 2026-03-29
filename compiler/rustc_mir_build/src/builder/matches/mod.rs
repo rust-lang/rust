@@ -2436,9 +2436,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Lower an instance of the arm guard (if present) for this candidate,
         // and then perform bindings for the arm body.
         if let Some((arm, match_scope)) = arm_match_scope
-            && let Some(guard) = arm.guard
+            && (arm.guard.is_some() || !sub_branch.guard_patterns.is_empty())
         {
             let tcx = self.tcx;
+            
+            let mut guards = sub_branch.guard_patterns;
+            if let Some(guard) = arm.guard {
+                guards.push(guard);
+            };
 
             // Bindings for guards require some extra handling to automatically
             // insert implicit references/dereferences.
@@ -2465,14 +2470,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let (post_guard_block, otherwise_post_guard_block) =
                 self.in_if_then_scope(match_scope, guard_span, |this| {
-                    guard_span = this.thir[guard].span;
-                    this.then_else_break(
-                        block,
-                        guard,
-                        None, // Use `self.local_scope()` as the temp scope
-                        this.source_info(arm.span),
-                        DeclareLetBindings::No, // For guards, `let` bindings are declared separately
-                    )
+                    guards.into_iter().fold(BlockAnd(block, ()), |block, guard| {
+                        guard_span = this.thir[guard].span;
+                        this.then_else_break(
+                            block.0,
+                            guard,
+                            None, // Use `self.local_scope()` as the temp scope
+                            this.source_info(arm.span),
+                            DeclareLetBindings::No, // For guards, `let` bindings are declared separately
+                        )
+                    })
                 });
 
             // If this isn't the final sub-branch being lowered, we need to unschedule drops of
