@@ -1,4 +1,4 @@
-error[E0658]: specialization is unstable
+error[E0658]: specialization is experimental
   --> $DIR/specialization-feature-gate-default.rs:7:1
    |
 LL | / default impl<T> Foo for T {
