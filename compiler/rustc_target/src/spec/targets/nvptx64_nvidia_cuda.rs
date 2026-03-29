@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, LinkSelfContainedDefault, LinkerFlavor, MergeFunctions, Os, PanicStrategy, Target,
-    TargetMetadata, TargetOptions,
+    Arch, LinkSelfContainedDefault, LinkerFlavor, Os, PanicStrategy, Target, TargetMetadata,
+    TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -47,11 +47,6 @@ pub(crate) fn target() -> Target {
             dll_prefix: "".into(),
             dll_suffix: ".ptx".into(),
             exe_suffix: ".ptx".into(),
-
-            // Disable MergeFunctions LLVM optimisation pass because it can
-            // produce kernel functions that call other kernel functions.
-            // This behavior is not supported by PTX ISA.
-            merge_functions: MergeFunctions::Disabled,
 
             // The LLVM backend does not support stack canaries for this target
             supports_stack_protector: false,
