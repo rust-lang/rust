@@ -1,4 +1,5 @@
 //@ dont-require-annotations: NOTE
+// https://github.com/rust-lang/rust/issues/5100
 
 #![feature(box_patterns)]
 
