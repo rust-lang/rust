@@ -229,6 +229,80 @@ fn connected_to_root<'tcx>(
     false
 }
 
+/// Processes a found query cycle into a `Cycle`
+fn process_cycle<'tcx>(job_map: &QueryJobMap<'tcx>, stack: Vec<(Span, QueryJobId)>) -> Cycle<'tcx> {
+    // The stack is a vector of pairs of spans and queries; reverse it so that
+    // the earlier entries require later entries
+    let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
+
+    // Shift the spans so that queries are matched with the span for their waitee
+    spans.rotate_right(1);
+
+    // Zip them back together
+    let mut stack: Vec<_> = iter::zip(spans, queries).collect();
+
+    struct EntryPoint {
+        query_in_cycle: QueryJobId,
+        query_waiting_on_cycle: Option<(Span, QueryJobId)>,
+    }
+
+    // Find the queries in the cycle which are
+    // connected to queries outside the cycle
+    let entry_points = stack
+        .iter()
+        .filter_map(|&(_, query_in_cycle)| {
+            let mut entrypoint = false;
+            let mut query_waiting_on_cycle = None;
+
+            // Find a direct waiter who leads to the root
+            for abstracted_waiter in abstracted_waiters_of(job_map, query_in_cycle) {
+                let Some(parent) = abstracted_waiter.parent else {
+                    // The query in the cycle is directly connected to root.
+                    entrypoint = true;
+                    continue;
+                };
+
+                // Mark all the other queries in the cycle as already visited,
+                // so paths to the root through the cycle itself won't count.
+                let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1));
+
+                if connected_to_root(job_map, parent, &mut visited) {
+                    query_waiting_on_cycle = Some((abstracted_waiter.span, parent));
+                    entrypoint = true;
+                    break;
+                }
+            }
+
+            entrypoint.then_some(EntryPoint { query_in_cycle, query_waiting_on_cycle })
+        })
+        .collect::<Vec<EntryPoint>>();
+
+    // Pick an entry point, preferring ones with waiters
+    let entry_point = entry_points
+        .iter()
+        .find(|entry_point| entry_point.query_waiting_on_cycle.is_some())
+        .unwrap_or(&entry_points[0]);
+
+    // Shift the stack so that our entry point is first
+    let entry_point_pos = stack.iter().position(|(_, query)| *query == entry_point.query_in_cycle);
+    if let Some(pos) = entry_point_pos {
+        stack.rotate_left(pos);
+    }
+
+    let usage = entry_point
+        .query_waiting_on_cycle
+        .map(|(span, job)| QueryStackFrame { span, tagged_key: job_map.tagged_key_of(job) });
+
+    // Create the cycle error
+    Cycle {
+        usage,
+        frames: stack
+            .iter()
+            .map(|&(span, job)| QueryStackFrame { span, tagged_key: job_map.tagged_key_of(job) })
+            .collect(),
+    }
+}
+
 /// Looks for a query cycle using the last query in `jobs`.
 /// If a cycle is found, all queries in the cycle is removed from `jobs` and
 /// the function return true.
@@ -245,16 +319,6 @@ fn remove_cycle<'tcx>(
     if let ControlFlow::Break(resumable) =
         find_cycle(job_map, jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited)
     {
-        // The stack is a vector of pairs of spans and queries; reverse it so that
-        // the earlier entries require later entries
-        let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
-
-        // Shift the spans so that queries are matched with the span for their waitee
-        spans.rotate_right(1);
-
-        // Zip them back together
-        let mut stack: Vec<_> = iter::zip(spans, queries).collect();
-
         // Remove the queries in our cycle from the list of jobs to look at
         for r in &stack {
             if let Some(pos) = jobs.iter().position(|j| j == &r.1) {
@@ -262,70 +326,8 @@ fn remove_cycle<'tcx>(
             }
         }
 
-        struct EntryPoint {
-            query_in_cycle: QueryJobId,
-            query_waiting_on_cycle: Option<(Span, QueryJobId)>,
-        }
-
-        // Find the queries in the cycle which are
-        // connected to queries outside the cycle
-        let entry_points = stack
-            .iter()
-            .filter_map(|&(_, query_in_cycle)| {
-                let mut entrypoint = false;
-                let mut query_waiting_on_cycle = None;
-
-                // Find a direct waiter who leads to the root
-                for abstracted_waiter in abstracted_waiters_of(job_map, query_in_cycle) {
-                    let Some(parent) = abstracted_waiter.parent else {
-                        // The query in the cycle is directly connected to root.
-                        entrypoint = true;
-                        continue;
-                    };
-
-                    // Mark all the other queries in the cycle as already visited,
-                    // so paths to the root through the cycle itself won't count.
-                    let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1));
-
-                    if connected_to_root(job_map, parent, &mut visited) {
-                        query_waiting_on_cycle = Some((abstracted_waiter.span, parent));
-                        entrypoint = true;
-                        break;
-                    }
-                }
-
-                entrypoint.then_some(EntryPoint { query_in_cycle, query_waiting_on_cycle })
-            })
-            .collect::<Vec<EntryPoint>>();
-
-        // Pick an entry point, preferring ones with waiters
-        let entry_point = entry_points
-            .iter()
-            .find(|entry_point| entry_point.query_waiting_on_cycle.is_some())
-            .unwrap_or(&entry_points[0]);
-
-        // Shift the stack so that our entry point is first
-        let entry_point_pos =
-            stack.iter().position(|(_, query)| *query == entry_point.query_in_cycle);
-        if let Some(pos) = entry_point_pos {
-            stack.rotate_left(pos);
-        }
-
-        let usage = entry_point
-            .query_waiting_on_cycle
-            .map(|(span, job)| QueryStackFrame { span, tagged_key: job_map.tagged_key_of(job) });
-
         // Create the cycle error
-        let error = Cycle {
-            usage,
-            frames: stack
-                .iter()
-                .map(|&(span, job)| QueryStackFrame {
-                    span,
-                    tagged_key: job_map.tagged_key_of(job),
-                })
-                .collect(),
-        };
+        let error = process_cycle(job_map, stack);
 
         // We unwrap `resumable` here since there must always be one
         // edge which is resumable / waited using a query latch
