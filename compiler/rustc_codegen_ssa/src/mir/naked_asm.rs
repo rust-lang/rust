@@ -295,7 +295,8 @@ fn prefix_and_suffix<'tcx>(
             if let Some(section) = &link_section {
                 writeln!(begin, ".section {section},\"xr\"").unwrap()
             } else if !function_sections {
-                // Function sections are enabled by default on MSVC, but disabled by default on GNU.
+                // Function sections are enabled by default on MSVC and windows-gnullvm,
+                // but disabled by default on GNU.
                 writeln!(begin, ".text").unwrap();
             } else {
                 // LLVM uses an extension to the section directive to support defining multiple
