@@ -162,6 +162,13 @@ optional:
       IMAGE: pr-check-1
     <<: *job-linux-4c
 
+  - name: crater-windows
+    env:
+      IMAGE: dist-x86_64-linux
+      DOCKER_SCRIPT: crater-targets.sh
+      DIST_TARGETS: x86_64-pc-windows-msvc
+    <<: *job-dist-x86_64-linux
+
 # Main CI jobs that have to be green to merge a commit into the default branch.
 #
 # These jobs automatically inherit envs.auto, to avoid repeating it in each job
