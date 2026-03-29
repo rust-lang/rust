@@ -1547,7 +1547,9 @@ impl<'a, T, A: Allocator + Clone> IntoIterator for &'a BTreeSet<T, A> {
     }
 }
 
-/// An iterator produced by calling `extract_if` on BTreeSet.
+/// This `struct` is created by the [`extract_if`] method on [`BTreeSet`].
+///
+/// [`extract_if`]: BTreeSet::extract_if
 #[stable(feature = "btree_extract_if", since = "1.91.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed; \
     use `retain` or `extract_if().for_each(drop)` to remove and discard elements"]
