@@ -966,6 +966,9 @@ struct PatternExtraData<'tcx> {
 
     /// Whether this corresponds to a never pattern.
     is_never: bool,
+    
+    /// [`ExprId`]s of subpattern conditions
+    guard_paterns: Vec<ExprId>
 }
 
 impl<'tcx> PatternExtraData<'tcx> {
@@ -1010,6 +1013,7 @@ impl<'tcx> FlatPat<'tcx> {
             bindings: Vec::new(),
             ascriptions: Vec::new(),
             is_never: pattern.is_never_pattern(),
+            guard_paterns: Vec::new()
         };
         MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
 
@@ -1420,6 +1424,8 @@ struct MatchTreeSubBranch<'tcx> {
     bindings: Vec<Binding<'tcx>>,
     /// The ascriptions to set up in this sub-branch.
     ascriptions: Vec<Ascription<'tcx>>,
+    /// The guard patterns present in this sub-branch
+    guard_patterns: Vec<ExprId>,
     /// Whether the sub-branch corresponds to a never pattern.
     is_never: bool,
 }
@@ -1471,6 +1477,7 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
                 .cloned()
                 .chain(candidate.extra_data.ascriptions)
                 .collect(),
+            guard_patterns: candidate.extra_data.guard_paterns,
             is_never: candidate.extra_data.is_never,
         }
     }
