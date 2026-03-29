@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: items.union.drop
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
