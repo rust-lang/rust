@@ -15,10 +15,10 @@ where
 {
     pub(super) fn normalize_opaque_type(
         &mut self,
-        goal: Goal<I, ty::NormalizesTo<I>>,
+        goal: Goal<I, ty::ProjectionPredicate<I>>,
     ) -> QueryResult<I> {
         let cx = self.cx();
-        let opaque_ty = goal.predicate.alias;
+        let opaque_ty = goal.predicate.projection_term;
         let expected = goal.predicate.term.as_type().expect("no such thing as an opaque const");
 
         match self.typing_mode() {
@@ -48,7 +48,10 @@ where
                     .filter(|&def_id| defining_opaque_types.contains(&def_id))
                 else {
                     // If we're not in the defining scope, treat the alias as rigid.
-                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    self.structurally_instantiate_projection_term(
+                        goal,
+                        goal.predicate.projection_term,
+                    )?;
                     return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 };
 
@@ -111,7 +114,10 @@ where
                     .as_local()
                     .filter(|&def_id| defined_opaque_types.contains(&def_id))
                 else {
-                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    self.structurally_instantiate_projection_term(
+                        goal,
+                        goal.predicate.projection_term,
+                    )?;
                     return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 };
 

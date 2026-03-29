@@ -120,11 +120,10 @@ where
             tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::PredicateKind::AliasRelate(
-                alias_term.into(),
-                infer_term.into(),
-                ty::AliasRelationDirection::Equate,
-            ),
+            ty::ClauseKind::Projection(ty::ProjectionPredicate {
+                projection_term: alias_term.to_alias_term().unwrap(),
+                term: infer_term,
+            }),
         );
 
         self.fulfill_cx.register_predicate_obligation(infcx, obligation);
