@@ -1,4 +1,6 @@
-use rustc_hir::attrs::{CoverageAttrKind, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy};
+use rustc_hir::attrs::{
+    CoverageAttrKind, ExportVisibilityAttrValue, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy,
+};
 use rustc_session::parse::feature_err;
 
 use super::prelude::*;
@@ -147,6 +149,43 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
             return None;
         }
         Some(AttributeKind::ExportName { name, span: cx.attr_span })
+    }
+}
+
+pub(crate) struct ExportVisibilityParser;
+
+impl<S: Stage> SingleAttributeParser<S> for ExportVisibilityParser {
+    const PATH: &[rustc_span::Symbol] = &[sym::export_visibility];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::Static)]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "visibility");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(nv) = args.name_value() else {
+            cx.expected_name_value(cx.attr_span, None);
+            return None;
+        };
+        let Some(sv) = nv.value_as_str() else {
+            cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            return None;
+        };
+
+        let str_to_visibility = [("target_default", ExportVisibilityAttrValue::TargetDefault)];
+        for &(s, visibility) in str_to_visibility.iter() {
+            if s == sv.as_str() {
+                return Some(AttributeKind::ExportVisibility { visibility, span: cx.attr_span });
+            }
+        }
+
+        let allowed_str_values = str_to_visibility
+            .into_iter()
+            .map(|(s, _visibility)| s)
+            .map(Symbol::intern)
+            .collect::<Vec<_>>();
+        cx.expected_specific_argument_strings(nv.value_span, &allowed_str_values);
+        None
     }
 }
 
