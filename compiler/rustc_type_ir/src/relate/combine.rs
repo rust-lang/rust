@@ -39,15 +39,15 @@ where
     );
 
     /// Register `AliasRelate` obligation(s) that both types must be related to each other.
-    fn register_alias_relate_predicate(&mut self, a: I::Ty, b: I::Ty);
+    fn register_alias_relate_predicate(&mut self, a: ty::Ty<I>, b: ty::Ty<I>);
 }
 
 pub fn super_combine_tys<Infcx, I, R>(
     infcx: &Infcx,
     relation: &mut R,
-    a: I::Ty,
-    b: I::Ty,
-) -> RelateResult<I, I::Ty>
+    a: ty::Ty<I>,
+    b: ty::Ty<I>,
+) -> RelateResult<I, ty::Ty<I>>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -226,13 +226,13 @@ where
 pub fn combine_ty_args<Infcx, I, R>(
     infcx: &Infcx,
     relation: &mut R,
-    a_ty: I::Ty,
-    b_ty: I::Ty,
+    a_ty: ty::Ty<I>,
+    b_ty: ty::Ty<I>,
     variances: I::VariancesOf,
     a_args: I::GenericArgs,
     b_args: I::GenericArgs,
-    mk: impl FnOnce(I::GenericArgs) -> I::Ty,
-) -> RelateResult<I, I::Ty>
+    mk: impl FnOnce(I::GenericArgs) -> ty::Ty<I>,
+) -> RelateResult<I, ty::Ty<I>>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
