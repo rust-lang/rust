@@ -12,7 +12,8 @@ use ide::{
     CompletionFieldsToResolve, DiagnosticsConfig, GenericParameterHints, GotoDefinitionConfig,
     GotoImplementationConfig, HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat,
     InlayFieldsToResolve, InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig,
-    MemoryLayoutHoverRenderKind, RenameConfig, Snippet, SnippetScope, SourceRootId,
+    MemoryLayoutHoverRenderKind, RaFixtureConfig, RenameConfig, Snippet, SnippetScope,
+    SourceRootId,
 };
 use ide_db::{
     MiniCore, SnippetCap,
@@ -726,6 +727,11 @@ config_data! {
         /// The warnings will be indicated by a blue squiggly underline in code and a blue icon in
         /// the `Problems Panel`.
         diagnostics_warningsAsInfo: Vec<String> = vec![],
+
+        /// Disable support for `#[rust_analyzer::rust_fixture]` snippets.
+        ///
+        /// If you are not working on rust-analyzer itself, you should ignore this config.
+        disableFixtureSupport: bool = false,
 
         /// Enforce the import granularity setting for all files. If set to false rust-analyzer will
         /// try to keep import styles consistent per file.
@@ -1504,6 +1510,8 @@ pub struct LensConfig {
     // annotations
     pub location: AnnotationLocation,
     pub filter_adjacent_derive_implementations: bool,
+
+    disable_ra_fixture: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1559,7 +1567,7 @@ impl LensConfig {
             annotate_method_references: self.method_refs,
             annotate_enum_variant_references: self.enum_variant_refs,
             location: self.location.into(),
-            minicore,
+            ra_fixture: RaFixtureConfig { minicore, disable_ra_fixture: self.disable_ra_fixture },
             filter_adjacent_derive_implementations: self.filter_adjacent_derive_implementations,
         }
     }
@@ -1816,8 +1824,15 @@ impl Config {
         }
     }
 
+    pub fn ra_fixture<'a>(&self, minicore: MiniCore<'a>) -> RaFixtureConfig<'a> {
+        RaFixtureConfig { minicore, disable_ra_fixture: *self.disableFixtureSupport(None) }
+    }
+
     pub fn call_hierarchy<'a>(&self, minicore: MiniCore<'a>) -> CallHierarchyConfig<'a> {
-        CallHierarchyConfig { exclude_tests: self.references_excludeTests().to_owned(), minicore }
+        CallHierarchyConfig {
+            exclude_tests: self.references_excludeTests().to_owned(),
+            ra_fixture: self.ra_fixture(minicore),
+        }
     }
 
     pub fn completion<'a>(
@@ -1878,7 +1893,7 @@ impl Config {
                 })
                 .collect(),
             exclude_traits: self.completion_excludeTraits(source_root),
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
@@ -1987,12 +2002,12 @@ impl Config {
                 None => ide::SubstTyLen::Unlimited,
             },
             show_drop_glue: *self.hover_dropGlue_enable(),
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
     pub fn goto_definition<'a>(&self, minicore: MiniCore<'a>) -> GotoDefinitionConfig<'a> {
-        GotoDefinitionConfig { minicore }
+        GotoDefinitionConfig { ra_fixture: self.ra_fixture(minicore) }
     }
 
     pub fn inlay_hints<'a>(&self, minicore: MiniCore<'a>) -> InlayHintsConfig<'a> {
@@ -2082,7 +2097,7 @@ impl Config {
             implicit_drop_hints: self.inlayHints_implicitDrops_enable().to_owned(),
             implied_dyn_trait_hints: self.inlayHints_impliedDynTraitHints_enable().to_owned(),
             range_exclusive_hints: self.inlayHints_rangeExclusiveHints_enable().to_owned(),
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
@@ -2135,7 +2150,7 @@ impl Config {
                 .to_owned(),
             inject_doc_comment: self.semanticHighlighting_doc_comment_inject_enable().to_owned(),
             syntactic_name_ref_highlighting: false,
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
@@ -2621,6 +2636,7 @@ impl Config {
             location: *self.lens_location(),
             filter_adjacent_derive_implementations: *self
                 .gotoImplementations_filterAdjacentDerives(),
+            disable_ra_fixture: *self.disableFixtureSupport(None),
         }
     }
 

@@ -1592,6 +1592,16 @@
                 }
             },
             {
+                "title": "rust-analyzer",
+                "properties": {
+                    "rust-analyzer.disableFixtureSupport": {
+                        "markdownDescription": "Disable support for `#[rust_analyzer::rust_fixture]` snippets.\n\nIf you are not working on rust-analyzer itself, you should ignore this config.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
                 "title": "Document",
                 "properties": {
                     "rust-analyzer.document.symbol.search.excludeLocals": {
