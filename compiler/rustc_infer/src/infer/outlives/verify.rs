@@ -49,11 +49,16 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             let bound_region = declared_bound.map_bound(|outlives| outlives.1);
             if let Some(region) = bound_region.no_bound_vars() {
                 // This is `T: 'a` for some free region `'a`.
+                if region.is_static() {
+                    // Since these are going into an Any bound, this bound will always hold
+                    // and there is no point in generating a more complex bound.
+                    return VerifyBound::always_holds();
+                }
                 param_bounds.push(VerifyBound::OutlivedBy(region));
             } else {
                 // This is `for<'a> T: 'a`. This means that `T` outlives everything! All done here.
                 debug!("found that {ty:?} outlives any lifetime, returning empty vector");
-                return VerifyBound::AllBounds(vec![]);
+                return VerifyBound::always_holds();
             }
         }
 
@@ -139,7 +144,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             .iter()
             .map(|component| self.bound_from_single_component(component))
             // Remove bounds that must hold, since they are not interesting.
-            .filter(|bound| !bound.must_hold());
+            .filter(|bound| !bound.holds_trivially());
 
         match (bounds.next(), bounds.next()) {
             (Some(first), None) => first,
@@ -168,8 +173,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 self.tcx
                     .dcx()
                     .delayed_bug(format!("unresolved inference variable in outlives: {v:?}"));
-                // Add a bound that never holds.
-                VerifyBound::AnyBound(vec![])
+                VerifyBound::never_holds()
             }
         }
     }
