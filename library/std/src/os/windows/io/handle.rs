@@ -561,6 +561,13 @@ impl<'a> AsHandle for io::StdinLock<'a> {
     }
 }
 
+impl AsHandle for crate::io::StdinRaw {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
+    }
+}
+
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for io::Stdout {
     #[inline]
@@ -577,6 +584,13 @@ impl<'a> AsHandle for io::StdoutLock<'a> {
     }
 }
 
+impl AsHandle for crate::io::StdoutRaw {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
+    }
+}
+
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for io::Stderr {
     #[inline]
@@ -587,6 +601,13 @@ impl AsHandle for io::Stderr {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl<'a> AsHandle for io::StderrLock<'a> {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
+    }
+}
+
+impl AsHandle for crate::io::StderrRaw {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
