@@ -861,6 +861,10 @@ fn try_write_constant<'tcx>(
     if layout.backend_repr.is_scalar()
         && let Some(value) = propagatable_scalar(place, state, map)
     {
+        if value.size() != layout.backend_repr.scalar_size(ecx).unwrap() {
+            throw_machine_stop_str!("mismatched sizes");
+        }
+
         return ecx.write_immediate(Immediate::Scalar(value), dest);
     }
 
