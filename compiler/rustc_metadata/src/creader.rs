@@ -1282,11 +1282,7 @@ impl CStore {
                     }
                     None => ident.name,
                 };
-                let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
-                    CrateDepKind::MacrosOnly
-                } else {
-                    CrateDepKind::Unconditional
-                };
+                let dep_kind = CrateDepKind::Unconditional;
 
                 let cnum =
                     self.resolve_crate(tcx, name, item.span, dep_kind, CrateOrigin::Extern)?;

@@ -207,8 +207,6 @@ enum Slenum {
 //~^ ERROR malformed
 static mut TLS: u8 = 42;
 
-#[no_link()]
-//~^ ERROR malformed
 #[macro_use = 1]
 //~^ ERROR malformed
 extern crate wloop;

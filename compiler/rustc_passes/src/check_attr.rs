@@ -266,7 +266,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::NoBuiltins
                     | AttributeKind::NoCore { .. }
                     | AttributeKind::NoImplicitPrelude(..)
-                    | AttributeKind::NoLink
                     | AttributeKind::NoMain
                     | AttributeKind::NoMangle(..)
                     | AttributeKind::NoStd { .. }
