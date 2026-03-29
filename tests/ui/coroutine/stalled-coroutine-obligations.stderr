@@ -14,7 +14,7 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/stalled-coroutine-obligations.rs:13:18
    |
 LL |         let non_send = null::<()>();
-   |             -------- has type `*const ()` which is not `Send`
+   |             -------- has type `UnsafePinned<*const ()>` which is not `Send`
 LL |         &non_send;
 LL |         async {}.await
    |                  ^^^^^ await occurs here, with `non_send` maybe used later
