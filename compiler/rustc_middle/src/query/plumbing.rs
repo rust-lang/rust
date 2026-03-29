@@ -166,6 +166,8 @@ pub struct QuerySystem<'tcx> {
     pub extern_providers: ExternProviders,
 
     pub jobs: AtomicU64,
+
+    pub cycle_handler_nesting: Lock<u8>,
 }
 
 #[derive(Copy, Clone)]
@@ -431,6 +433,11 @@ macro_rules! define_callbacks {
                 }
             }
 
+            /// Calls `self.description` or returns a fallback if there was a fatal error
+            pub fn catch_description(&self, tcx: TyCtxt<'tcx>) -> String {
+                catch_fatal_errors(|| self.description(tcx)).unwrap_or_else(|_| format!("<error describing {}>", self.query_name()))
+            }
+
             /// Returns the default span for this query if `span` is a dummy span.
             pub fn default_span(&self, tcx: TyCtxt<'tcx>, span: Span) -> Span {
                 if !span.is_dummy() {
@@ -449,28 +456,9 @@ macro_rules! define_callbacks {
                 }
             }
 
-            pub fn def_kind(&self, tcx: TyCtxt<'tcx>) -> Option<DefKind> {
-                // This is used to reduce code generation as it
-                // can be reused for queries with the same key type.
-                fn inner<'tcx>(key: &impl $crate::query::QueryKey, tcx: TyCtxt<'tcx>)
-                    -> Option<DefKind>
-                {
-                    key
-                        .key_as_def_id()
-                        .and_then(|def_id| def_id.as_local())
-                        .map(|def_id| tcx.def_kind(def_id))
-                }
-
-                if let TaggedQueryKey::def_kind(..) = self {
-                    // Try to avoid infinite recursion.
-                    return None
-                }
-
-                match self {
-                    $(
-                        TaggedQueryKey::$name(key) => inner(key, tcx),
-                    )*
-                }
+            /// Calls `self.default_span` or returns `DUMMY_SP` if there was a fatal error
+            pub fn catch_default_span(&self, tcx: TyCtxt<'tcx>, span: Span) -> Span {
+                catch_fatal_errors(|| self.default_span(tcx, span)).unwrap_or(DUMMY_SP)
             }
         }
 

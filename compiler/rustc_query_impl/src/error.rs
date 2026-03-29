@@ -79,3 +79,21 @@ pub(crate) struct Cycle {
     )]
     pub note_span: (),
 }
+
+#[derive(Diagnostic)]
+#[diag("cycle when printing cycle detected when {$stack_bottom}")]
+pub(crate) struct NestedCycle {
+    #[primary_span]
+    pub span: Span,
+    pub stack_bottom: String,
+    #[subdiagnostic]
+    pub cycle_stack: Vec<CycleStack>,
+    #[subdiagnostic]
+    pub stack_count: StackCount,
+    #[subdiagnostic]
+    pub cycle_usage: Option<CycleUsage>,
+    #[note(
+        "see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information"
+    )]
+    pub note_span: (),
+}
