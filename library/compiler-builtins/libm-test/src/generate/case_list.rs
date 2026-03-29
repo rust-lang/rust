@@ -6,15 +6,29 @@
 //!
 //! This is useful for adding regression tests or expected failures.
 
-use libm::hf64;
 #[cfg(f128_enabled)]
 use libm::hf128;
+use libm::{hf32, hf64};
 
 use crate::{CheckBasis, CheckCtx, GeneratorKind, MathOp, op};
 
 pub struct TestCase<Op: MathOp> {
     pub input: Op::RustArgs,
     pub output: Option<Op::RustRet>,
+}
+
+impl<Op: MathOp> TestCase<Op> {
+    /// Turn into a different operation with the same types.
+    fn cast<Op2: MathOp>(self) -> TestCase<Op2>
+    where
+        Op2::RustArgs: From<Op::RustArgs>,
+        Op2::RustRet: From<Op::RustRet>,
+    {
+        TestCase {
+            input: self.input.into(),
+            output: self.output.map(Into::into),
+        }
+    }
 }
 
 macro_rules! cases {
@@ -125,7 +139,10 @@ fn powif32_cases() -> Vec<TestCase<op::powif32::Routine>> {
 }
 
 fn powif64_cases() -> Vec<TestCase<op::powif64::Routine>> {
-    cases![]
+    cases![
+        // High error
+        ((0.9999497584118668, -5858518), 6.823250355352412e127),
+    ]
 }
 
 #[cfg(f128_enabled)]
@@ -701,11 +718,15 @@ fn asinf_cases() -> Vec<TestCase<op::asinf::Routine>> {
     cases![]
 }
 
-fn asinh_cases() -> Vec<TestCase<op::asinh::Routine>> {
-    cases![]
+fn asinhf_cases() -> Vec<TestCase<op::asinhf::Routine>> {
+    cases![
+        // Failure on i586
+        ((-0.37330312), -0.3651353),
+        ((-0.421092), -0.40954682),
+    ]
 }
 
-fn asinhf_cases() -> Vec<TestCase<op::asinhf::Routine>> {
+fn asinh_cases() -> Vec<TestCase<op::asinh::Routine>> {
     cases![]
 }
 
@@ -830,7 +851,11 @@ fn exp2f_cases() -> Vec<TestCase<op::exp2f::Routine>> {
 }
 
 fn expf_cases() -> Vec<TestCase<op::expf::Routine>> {
-    cases![]
+    cases![
+        ((hf32!("-0x1.2d245ap-8")), hf32!("0x1.fda718p-1")),
+        ((hf32!("0x1.db1b7ap-7")), hf32!("0x1.03bd22p+0")),
+        ((hf32!("-0x1.dc15fcp+5")), hf32!("0x1.1ae6e6p-86")),
+    ]
 }
 
 fn expm1_cases() -> Vec<TestCase<op::expm1::Routine>> {
@@ -860,7 +885,30 @@ fn fabsf16_cases() -> Vec<TestCase<op::fabsf16::Routine>> {
 }
 
 fn fdim_cases() -> Vec<TestCase<op::fdim::Routine>> {
-    cases![]
+    cases![
+        // Failures on i586
+        (
+            (
+                hf64!("0x1.10d2f8a8dffd1p+355"),
+                hf64!("-0x1.5203b17e54a8cp+373")
+            ),
+            hf64!("0x1.5203f5b312d2fp+373")
+        ),
+        (
+            (
+                hf64!("0x1.9ffdf64f0d2f8p+294"),
+                hf64!("-0x1.71addd21280b5p+344")
+            ),
+            hf64!("0x1.71addd21280bbp+344")
+        ),
+        (
+            (
+                hf64!("0x1.f3600eb4ad0e0p-953"),
+                hf64!("-0x1.0c29b2b40023dp-976")
+            ),
+            hf64!("0x1.f36010cd00737p-953")
+        ),
+    ]
 }
 
 fn fdimf_cases() -> Vec<TestCase<op::fdimf::Routine>> {
@@ -895,17 +943,40 @@ fn floorf16_cases() -> Vec<TestCase<op::floorf16::Routine>> {
     cases![]
 }
 
-fn fma_cases() -> Vec<TestCase<op::fma::Routine>> {
-    cases![
-        // Previous failure with incorrect sign
-        ((5e-324, -5e-324, 0.0), -0.0),
-    ]
-}
-
 fn fmaf_cases() -> Vec<TestCase<op::fmaf::Routine>> {
     cases![
         // Known rounding error for some implementations (notably MinGW)
         ((-1.9369631e13f32, 2.1513551e-7, -1.7354427e-24), -4167095.8),
+        // Failure on i586
+        (
+            (
+                hf32!("-0x1.c92494p+109"),
+                hf32!("-0x0.000018p-126"),
+                hf32!("-0x1.6db6f0p-91"),
+            ),
+            hf32!("0x1.56db6ep-36")
+        ),
+    ]
+}
+
+fn fma_cases() -> Vec<TestCase<op::fma::Routine>> {
+    cases![
+        // Previous failure with incorrect sign
+        ((5e-324, -5e-324, 0.0), -0.0),
+        // Failure on i586
+        (
+            (0.999999999999999, 1.0000000000000013, 0.0),
+            1.0000000000000002
+        ),
+        // Failure on musl i686/i586
+        (
+            (
+                hf64!("0x0.0000000100001p-1022"),
+                hf64!("0x1.ffffffffffffbp+1023"),
+                hf64!("0x0p+0")
+            ),
+            hf64!("0x1.00000fffffffdp-30")
+        )
     ]
 }
 
@@ -1131,12 +1202,16 @@ fn j1f_cases() -> Vec<TestCase<op::j1f::Routine>> {
     cases![]
 }
 
-fn jn_cases() -> Vec<TestCase<op::jn::Routine>> {
+fn jnf_cases() -> Vec<TestCase<op::jnf::Routine>> {
     cases![]
 }
 
-fn jnf_cases() -> Vec<TestCase<op::jnf::Routine>> {
-    cases![]
+fn jn_cases() -> Vec<TestCase<op::jn::Routine>> {
+    cases![
+        // Inputs that produce high errors
+        ((190, 1005.366268038242), 7.328620335959289e-10),
+        ((238, -311.0349), 7.270196433535006e-8),
+    ]
 }
 
 fn ldexp_cases() -> Vec<TestCase<op::ldexp::Routine>> {
@@ -1161,11 +1236,14 @@ fn lgamma_cases() -> Vec<TestCase<op::lgamma::Routine>> {
     cases![]
 }
 
-fn lgamma_r_cases() -> Vec<TestCase<op::lgamma_r::Routine>> {
-    cases![]
+fn lgammaf_cases() -> Vec<TestCase<op::lgammaf::Routine>> {
+    cases![
+        // High error
+        ((-4.933393,), -1.9580022),
+    ]
 }
 
-fn lgammaf_cases() -> Vec<TestCase<op::lgammaf::Routine>> {
+fn lgamma_r_cases() -> Vec<TestCase<op::lgamma_r::Routine>> {
     cases![]
 }
 
@@ -1185,12 +1263,23 @@ fn log10f_cases() -> Vec<TestCase<op::log10f::Routine>> {
     cases![]
 }
 
-fn log1p_cases() -> Vec<TestCase<op::log1p::Routine>> {
-    cases![]
+fn log1pf_cases() -> Vec<TestCase<op::log1pf::Routine>> {
+    cases![
+        // Musl failures on i586
+        ((hf32!("-0x1.8292f6p-2")), hf32!("-0x1.e56918p-2")),
+        ((hf32!("0x1.12d15ep-1")), hf32!("0x1.b7fbf8p-2")),
+        ((hf32!("-0x1.904ebep-2")), hf32!("-0x1.fbb6cap-2")),
+    ]
 }
 
-fn log1pf_cases() -> Vec<TestCase<op::log1pf::Routine>> {
-    cases![]
+fn log1p_cases() -> Vec<TestCase<op::log1p::Routine>> {
+    cases![
+        // Musl failure on i586
+        (
+            (hf64!("-0x1.9094dbf7f2e85p-2"),),
+            hf64!("-0x1.fc29f046c88a1p-2")
+        ),
+    ]
 }
 
 fn log2_cases() -> Vec<TestCase<op::log2::Routine>> {
@@ -1247,33 +1336,45 @@ fn remquof_cases() -> Vec<TestCase<op::remquof::Routine>> {
 
 #[cfg(f16_enabled)]
 fn rintf16_cases() -> Vec<TestCase<op::rintf16::Routine>> {
-    cases![]
+    // Out rint doesn't respect rounding modes so it is the same as roundeven
+    roundevenf16_cases()
+        .into_iter()
+        .map(TestCase::cast)
+        .collect()
 }
 
 fn rintf_cases() -> Vec<TestCase<op::rintf::Routine>> {
-    cases![]
+    // Out rint doesn't respect rounding modes so it is the same as roundeven
+    roundevenf_cases().into_iter().map(TestCase::cast).collect()
 }
 
 fn rint_cases() -> Vec<TestCase<op::rint::Routine>> {
-    cases![
-        // Failure on i586
-        ((-519629176421.49976,), -519629176421.0),
-    ]
+    // Out rint doesn't respect rounding modes so it is the same as roundeven
+    roundeven_cases().into_iter().map(TestCase::cast).collect()
 }
 
 #[cfg(f128_enabled)]
 fn rintf128_cases() -> Vec<TestCase<op::rintf128::Routine>> {
-    cases![]
+    // Out rint doesn't respect rounding modes so it is the same as roundeven
+    roundevenf128_cases()
+        .into_iter()
+        .map(TestCase::cast)
+        .collect()
 }
 
-#[cfg(f16_enabled)]
 #[cfg(f16_enabled)]
 fn roundf16_cases() -> Vec<TestCase<op::roundf16::Routine>> {
     cases![]
 }
 
 fn round_cases() -> Vec<TestCase<op::round::Routine>> {
-    cases![]
+    cases![
+        // Failure on i586
+        (
+            (hf64!("0x1.9efc6a203d4a9p+52"),),
+            hf64!("0x1.9efc6a203d4a9p+52")
+        )
+    ]
 }
 
 fn roundf_cases() -> Vec<TestCase<op::roundf::Routine>> {
@@ -1290,15 +1391,19 @@ fn roundevenf16_cases() -> Vec<TestCase<op::roundevenf16::Routine>> {
     cases![]
 }
 
+fn roundevenf_cases() -> Vec<TestCase<op::roundevenf::Routine>> {
+    cases![]
+}
+
 fn roundeven_cases() -> Vec<TestCase<op::roundeven::Routine>> {
     cases![
         // Failure on i586
         ((-519629176421.49976,), -519629176421.0),
+        // Failures with a previous algorithm
+        ((-849751480.5001163,), -849751481.0),
+        ((-12493089.499809155,), -12493089.0),
+        ((-1308.5000830345912,), -1309.0),
     ]
-}
-
-fn roundevenf_cases() -> Vec<TestCase<op::roundevenf::Routine>> {
-    cases![]
 }
 
 #[cfg(f128_enabled)]
@@ -1366,16 +1471,33 @@ fn sqrtf16_cases() -> Vec<TestCase<op::sqrtf16::Routine>> {
     cases![]
 }
 
-fn tan_cases() -> Vec<TestCase<op::tan::Routine>> {
-    cases![]
-}
-
 fn tanf_cases() -> Vec<TestCase<op::tanf::Routine>> {
     cases![]
 }
 
+fn tan_cases() -> Vec<TestCase<op::tan::Routine>> {
+    cases![
+        // Musl failures on i586
+        (
+            (hf64!("0x1.fffffffffffafp+1023"),),
+            hf64!("0x1.c573c6dd8c00ap+0")
+        ),
+        (
+            (hf64!("0x1.fffffffffffafp+1023"),),
+            hf64!("0x1.c573c6dd8c00ap+0")
+        ),
+        (
+            (hf64!("-0x1.0b10f6eaf2ca0p+883"),),
+            hf64!("0x1.cefbd167e2402p+0")
+        ),
+    ]
+}
+
 fn tanh_cases() -> Vec<TestCase<op::tanh::Routine>> {
-    cases![]
+    cases![(
+        (hf64!("0x1.fbfdb8b31b9b4p-3"),),
+        hf64!("0x1.f1d2bcb4e1b45p-3")
+    )]
 }
 
 fn tanhf_cases() -> Vec<TestCase<op::tanhf::Routine>> {
@@ -1424,12 +1546,17 @@ fn y1f_cases() -> Vec<TestCase<op::y1f::Routine>> {
     cases![]
 }
 
-fn yn_cases() -> Vec<TestCase<op::yn::Routine>> {
+fn ynf_cases() -> Vec<TestCase<op::ynf::Routine>> {
     cases![]
 }
 
-fn ynf_cases() -> Vec<TestCase<op::ynf::Routine>> {
-    cases![]
+fn yn_cases() -> Vec<TestCase<op::yn::Routine>> {
+    cases![
+        // Inputs that should be finite but tend to round to infinity
+        ((228, 120.75621), -3.3293829e38),
+        ((148, 61.379253), -3.2585946e38),
+        ((184, 87.26689), -3.2943882e38),
+    ]
 }
 
 pub trait CaseListInput: MathOp + Sized {
