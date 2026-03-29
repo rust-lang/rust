@@ -1191,6 +1191,15 @@ impl<T> Receiver<T> {
     pub fn try_iter(&self) -> TryIter<'_, T> {
         TryIter { rx: self }
     }
+
+    /// Checks if all senders have disconnected.
+    pub(crate) fn is_disconnected(&self) -> bool {
+        match &self.flavor {
+            ReceiverFlavor::Array(chan) => chan.is_disconnected(),
+            ReceiverFlavor::List(chan) => chan.is_disconnected(),
+            ReceiverFlavor::Zero(chan) => chan.is_disconnected(),
+        }
+    }
 }
 
 impl<T> Receiver<T> {
