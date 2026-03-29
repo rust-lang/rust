@@ -254,7 +254,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         maybe_reinitialized_locations_is_empty: maybe_reinitialized_locations
                             .is_empty(),
                     };
-                    self.explain_captures(
+                    // The return value indicates whether a clone suggestion was emitted;
+                    // redundancy is already handled via the `FnSelfUse` check below.
+                    let _ = self.explain_captures(
                         &mut err,
                         span,
                         move_span,
