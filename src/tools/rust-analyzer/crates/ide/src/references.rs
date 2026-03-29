@@ -492,7 +492,7 @@ mod tests {
 
     #[test]
     fn exclude_tests() {
-        check(
+        check_with_filters(
             r#"
 fn test_func() {}
 
@@ -505,6 +505,9 @@ fn test() {
     test_func();
 }
 "#,
+            false,
+            false,
+            false,
             expect![[r#"
                 test_func Function FileId(0) 0..17 3..12
 
@@ -513,7 +516,7 @@ fn test() {
             "#]],
         );
 
-        check(
+        check_with_filters(
             r#"
 fn test_func() {}
 
@@ -526,11 +529,111 @@ fn test() {
     test_func();
 }
 "#,
+            false,
+            false,
+            false,
             expect![[r#"
                 test_func Function FileId(0) 0..17 3..12
 
                 FileId(0) 35..44
                 FileId(0) 96..105 test
+            "#]],
+        );
+
+        check_with_filters(
+            r#"
+fn test_func() {}
+
+fn func() {
+    test_func$0();
+}
+
+#[test]
+fn test() {
+    test_func();
+}
+"#,
+            false,
+            true,
+            false,
+            expect![[r#"
+                test_func Function FileId(0) 0..17 3..12
+
+                FileId(0) 35..44
+            "#]],
+        );
+    }
+
+    #[test]
+    fn exclude_library_refs_filtering() {
+        // exclude refs in 3rd party lib
+        check_with_filters(
+            r#"
+//- /main.rs crate:main deps:dep
+use dep::foo;
+
+fn main() {
+    foo$0();
+}
+
+//- /dep/lib.rs crate:dep new_source_root:library
+pub fn foo() {}
+
+pub fn also_calls_foo() {
+    foo();
+}
+"#,
+            false,
+            false,
+            true,
+            expect![[r#"
+                FileId(0) 9..12 import
+                FileId(0) 31..34
+            "#]],
+        );
+
+        // exclude refs in stdlib
+        check_with_filters(
+            r#"
+//- minicore: option
+fn main() {
+    let _ = core::option::Option::Some$0(0);
+}
+"#,
+            false,
+            false,
+            true,
+            expect![[r#"
+                FileId(0) 46..50
+            "#]],
+        );
+
+        // keep refs in local lib
+        check_with_filters(
+            r#"
+//- /main.rs crate:main deps:dep
+use dep::foo;
+
+fn main() {
+    foo$0();
+}
+
+//- /dep/lib.rs crate:dep
+pub fn foo() {}
+
+pub fn also_calls_foo() {
+    foo();
+}
+"#,
+            false,
+            false,
+            true,
+            expect![[r#"
+                foo Function FileId(1) 0..15 7..10
+
+                FileId(0) 9..12 import
+                FileId(0) 31..34
+                FileId(1) 47..50
             "#]],
         );
     }
@@ -1579,7 +1682,24 @@ fn main() {
     }
 
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
-        check_with_scope(ra_fixture, None, expect)
+        check_with_filters(ra_fixture, false, false, false, expect)
+    }
+
+    fn check_with_filters(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        exclude_imports: bool,
+        exclude_tests: bool,
+        exclude_library_refs: bool,
+        expect: Expect,
+    ) {
+        check_with_scope_and_filters(
+            ra_fixture,
+            None,
+            exclude_imports,
+            exclude_tests,
+            exclude_library_refs,
+            expect,
+        )
     }
 
     fn check_with_scope(
@@ -1587,10 +1707,24 @@ fn main() {
         search_scope: Option<&mut dyn FnMut(&RootDatabase) -> SearchScope>,
         expect: Expect,
     ) {
+        check_with_scope_and_filters(ra_fixture, search_scope, false, false, false, expect)
+    }
+
+    fn check_with_scope_and_filters(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        search_scope: Option<&mut dyn FnMut(&RootDatabase) -> SearchScope>,
+        exclude_imports: bool,
+        exclude_tests: bool,
+        exclude_library_refs: bool,
+        expect: Expect,
+    ) {
         let (analysis, pos) = fixture::position(ra_fixture);
         let config = FindAllRefsConfig {
             search_scope: search_scope.map(|it| it(&analysis.db)),
             ra_fixture: RaFixtureConfig::default(),
+            exclude_imports,
+            exclude_tests,
+            exclude_library_refs,
             exclude_imports: false,
             exclude_tests: false,
             exclude_library_refs: false,
