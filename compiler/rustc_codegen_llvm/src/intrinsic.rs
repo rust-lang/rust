@@ -1439,9 +1439,20 @@ fn codegen_offload<'ll, 'tcx>(
     let sig = tcx.instantiate_bound_regions_with_erased(sig);
     let inputs = sig.inputs();
 
-    let metadata = inputs.iter().map(|ty| OffloadMetadata::from_ty(tcx, *ty)).collect::<Vec<_>>();
+    let fn_abi = cx.fn_abi_of_instance(fn_target, ty::List::empty());
 
-    let types = inputs.iter().map(|ty| cx.layout_of(*ty).llvm_type(cx)).collect::<Vec<_>>();
+    let mut metadata = Vec::new();
+    let mut types = Vec::new();
+
+    for (i, arg_abi) in fn_abi.args.iter().enumerate() {
+        let ty = inputs[i];
+        let decomposed = OffloadMetadata::handle_abi(cx, tcx, ty, arg_abi);
+
+        for (meta, entry_ty) in decomposed {
+            metadata.push(meta);
+            types.push(bx.cx.layout_of(entry_ty).llvm_type(bx.cx));
+        }
+    }
 
     let offload_globals_ref = cx.offload_globals.borrow();
     let offload_globals = match offload_globals_ref.as_ref() {
