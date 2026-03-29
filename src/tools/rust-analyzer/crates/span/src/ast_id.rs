@@ -678,9 +678,10 @@ impl AstIdMap {
                             }
                         }
                         syntax::WalkEvent::Leave(node) => {
-                            if cfg!(debug_assertions) && ast::BlockExpr::can_cast(node.kind()) {
-                                assert_eq!(
-                                    blocks.pop().map(|it| it.0),
+                            if ast::BlockExpr::can_cast(node.kind()) {
+                                let block = blocks.pop();
+                                debug_assert_eq!(
+                                    block.map(|it| it.0),
                                     Some(node),
                                     "left a BlockExpr we never entered"
                                 );
