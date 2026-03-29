@@ -12,6 +12,7 @@ fn field_access() {
     }
 
     { let x.0e0; } //~ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
+    //~^ error: invalid tuple index
     { let x.-0.0; } //~ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
     { let x.-0; } //~ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
 
