@@ -181,6 +181,9 @@ pub(crate) fn find_all_refs(
                     is_mut: matches!(def, Definition::Local(l) if l.is_mut(sema.db)),
                     nav,
                 }
+            })
+            .filter(|decl| {
+                !(config.exclude_library_refs && is_library_file(sema.db, decl.nav.file_id))
             });
             ReferenceSearchResult { declaration, references }
         }
@@ -220,6 +223,11 @@ pub(crate) fn find_all_refs(
             Some(find_defs(sema, &syntax, position.offset)?.into_iter().map(search).collect())
         }
     }
+}
+
+fn is_library_file(db: &RootDatabase, file_id: FileId) -> bool {
+    let source_root = db.file_source_root(file_id).source_root_id(db);
+    db.source_root(source_root).source_root(db).is_library
 }
 
 pub(crate) fn find_defs(
