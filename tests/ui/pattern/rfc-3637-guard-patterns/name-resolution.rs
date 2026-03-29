@@ -6,7 +6,6 @@
 #![expect(incomplete_features)]
 
 fn good_fn_item(((x if x) | x): bool) -> bool { x }
-//~^ ERROR: used binding `x` is possibly-uninitialized [E0381]
 
 fn bad_fn_item_1(x: bool, ((y if x) | y): bool) {}
 //~^ ERROR cannot find value `x` in this scope

@@ -360,9 +360,10 @@ impl<'tcx> MatchPairTree<'tcx> {
                 Some(TestableCase::Deref { temp, mutability })
             }
 
-            PatKind::Guard { .. } => {
-                // FIXME(guard_patterns)
-                None
+            PatKind::Guard { ref subpattern, condition } => {
+                extra_data.guard_patterns.push(condition);
+                MatchPairTree::for_pattern(place_builder, subpattern, cx, match_pairs, extra_data);
+                return;
             }
 
             PatKind::Never => Some(TestableCase::Never),
