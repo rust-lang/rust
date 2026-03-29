@@ -2,6 +2,8 @@ use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
+#[cfg(not(bootstrap))]
+use std::ops::Receiver;
 use std::ptr;
 
 use crate::stable_hasher::{HashStable, StableHasher};
@@ -52,6 +54,11 @@ impl<'a, T> Deref for Interned<'a, T> {
     fn deref(&self) -> &T {
         self.0
     }
+}
+
+#[cfg(not(bootstrap))]
+impl<'a, T> Receiver for Interned<'a, T> {
+    type Target = T;
 }
 
 impl<'a, T> PartialEq for Interned<'a, T> {

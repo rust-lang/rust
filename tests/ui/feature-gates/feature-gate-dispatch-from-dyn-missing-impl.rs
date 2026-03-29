@@ -2,10 +2,8 @@
 
 #![feature(arbitrary_self_types, unsize, coerce_unsized)]
 
-use std::{
-    marker::Unsize,
-    ops::{CoerceUnsized, Deref},
-};
+use std::marker::Unsize;
+use std::ops::{CoerceUnsized, Deref, Receiver};
 
 struct Ptr<T: ?Sized>(Box<T>);
 
@@ -15,6 +13,9 @@ impl<T: ?Sized> Deref for Ptr<T> {
     fn deref(&self) -> &T {
         &*self.0
     }
+}
+impl<T: ?Sized> Receiver for Ptr<T> {
+    type Target = T;
 }
 
 impl<T: Unsize<U> + ?Sized, U: ?Sized> CoerceUnsized<Ptr<U>> for Ptr<T> {}

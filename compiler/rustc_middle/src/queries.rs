@@ -1127,7 +1127,7 @@ rustc_queries! {
     }
 
     query incoherent_impls(key: SimplifiedType) -> &'tcx [DefId] {
-        desc { "collecting all inherent impls for `{:?}`", key }
+        desc { "collecting all incoherent impls for `{:?}`", key }
     }
 
     /// Unsafety-check this `LocalDefId`.
