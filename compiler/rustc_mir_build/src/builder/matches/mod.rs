@@ -966,6 +966,9 @@ struct PatternExtraData<'tcx> {
 
     /// Whether this corresponds to a never pattern.
     is_never: bool,
+    
+    /// [`ExprId`]s of subpattern conditions
+    guard_paterns: Vec<ExprId>
 }
 
 impl<'tcx> PatternExtraData<'tcx> {
@@ -997,6 +1000,25 @@ struct FlatPat<'tcx> {
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
     extra_data: PatternExtraData<'tcx>,
+}
+
+impl<'tcx> FlatPat<'tcx> {
+    /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
+    /// for the given pattern.
+    fn new(place: PlaceBuilder<'tcx>, pattern: &Pat<'tcx>, cx: &mut Builder<'_, 'tcx>) -> Self {
+        // Recursively build a tree of match pairs for the given pattern.
+        let mut match_pairs = vec![];
+        let mut extra_data = PatternExtraData {
+            span: pattern.span,
+            bindings: Vec::new(),
+            ascriptions: Vec::new(),
+            is_never: pattern.is_never_pattern(),
+            guard_paterns: Vec::new()
+        };
+        MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
+
+        Self { match_pairs, extra_data }
+    }
 }
 
 /// Candidates are a generalization of (a) top-level match arms, and
@@ -1402,6 +1424,8 @@ struct MatchTreeSubBranch<'tcx> {
     bindings: Vec<Binding<'tcx>>,
     /// The ascriptions to set up in this sub-branch.
     ascriptions: Vec<Ascription<'tcx>>,
+    /// The guard patterns present in this sub-branch
+    guard_patterns: Vec<ExprId>,
     /// Whether the sub-branch corresponds to a never pattern.
     is_never: bool,
 }
@@ -1453,6 +1477,7 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
                 .cloned()
                 .chain(candidate.extra_data.ascriptions)
                 .collect(),
+            guard_patterns: candidate.extra_data.guard_paterns,
             is_never: candidate.extra_data.is_never,
         }
     }
