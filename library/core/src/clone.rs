@@ -388,17 +388,14 @@ pub struct AssertParamIsCopy<T: Copy + PointeeSized> {
 ///
 /// # Examples
 ///
-// FIXME(#126799): when `Box::clone` allows use of `CloneToUninit`, rewrite these examples with it
-// since `Rc` is a distraction.
 ///
 /// If you are defining a trait, you can add `CloneToUninit` as a supertrait to enable cloning of
 /// `dyn` values of your trait:
 ///
 /// ```
 /// #![feature(clone_to_uninit)]
-/// use std::rc::Rc;
 ///
-/// trait Foo: std::fmt::Debug + std::clone::CloneToUninit {
+/// trait Foo: std::clone::CloneToUninit {
 ///     fn modify(&mut self);
 ///     fn value(&self) -> i32;
 /// }
@@ -412,10 +409,10 @@ pub struct AssertParamIsCopy<T: Copy + PointeeSized> {
 ///     }
 /// }
 ///
-/// let first: Rc<dyn Foo> = Rc::new(1234);
+/// let first: Box<dyn Foo> = Box::new(1234);
 ///
-/// let mut second = first.clone();
-/// Rc::make_mut(&mut second).modify(); // make_mut() will call clone_to_uninit()
+/// let mut second = first.clone(); // clone() will call clone_to_uninit()
+/// second.modify();
 ///
 /// assert_eq!(first.value(), 1234);
 /// assert_eq!(second.value(), 12340);
@@ -429,7 +426,6 @@ pub struct AssertParamIsCopy<T: Copy + PointeeSized> {
 /// #![feature(clone_to_uninit)]
 /// use std::clone::CloneToUninit;
 /// use std::mem::offset_of;
-/// use std::rc::Rc;
 ///
 /// #[derive(PartialEq)]
 /// struct MyDst<T: ?Sized> {
@@ -471,18 +467,27 @@ pub struct AssertParamIsCopy<T: Copy + PointeeSized> {
 ///         // All fields of the struct have been initialized; therefore, the struct is initialized,
 ///         // and we have satisfied our `unsafe impl CloneToUninit` obligations.
 ///     }
+///
+///     unsafe fn clone_to_init(&self, dest: *mut u8) {
+///         // SAFETY: The caller must provide a `dest` such that these field offsets are valid
+///         // to write to.
+///         unsafe {
+///             let offset_of_contents = (&raw const self.contents).byte_offset_from_unsigned(self);
+///             self.contents.clone_to_init(dest.add(offset_of_contents));
+///             self.label.clone_to_init(dest.add(offset_of!(Self, label)));
+///         }
+///     }
 /// }
 ///
 /// fn main() {
 ///     // Construct MyDst<[u8; 4]>, then coerce to MyDst<[u8]>.
-///     let first: Rc<MyDst<[u8]>> = Rc::new(MyDst {
+///     let first: Box<MyDst<[u8]>> = Box::new(MyDst {
 ///         label: String::from("hello"),
 ///         contents: [1, 2, 3, 4],
 ///     });
 ///
-///     let mut second = first.clone();
-///     // make_mut() will call clone_to_uninit().
-///     for elem in Rc::make_mut(&mut second).contents.iter_mut() {
+///     let mut second = first.clone(); // clone() will call clone_to_uninit().
+///     for elem in second.contents.iter_mut() {
 ///         *elem *= 10;
 ///     }
 ///
@@ -541,6 +546,15 @@ pub unsafe trait CloneToUninit {
     /// cloned, and the second of the three calls to `Foo::clone()` unwinds, then the first `Foo`
     /// cloned should be dropped.)
     unsafe fn clone_to_uninit(&self, dest: *mut u8);
+
+    /// Clones `self` to `dest`
+    ///
+    /// This is similar to `Clone::clone_from`, but unsafe and dyn-compatible.
+    ///
+    /// # Safety
+    ///
+    /// `dest` must be a valid pointer to a valid value of the same concrete type than `self`.
+    unsafe fn clone_to_init(&self, dest: *mut u8);
 }
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
@@ -549,6 +563,13 @@ unsafe impl<T: Clone> CloneToUninit for T {
     unsafe fn clone_to_uninit(&self, dest: *mut u8) {
         // SAFETY: we're calling a specialization with the same contract
         unsafe { <T as self::uninit::CopySpec>::clone_one(self, dest.cast::<T>()) }
+    }
+
+    #[inline]
+    unsafe fn clone_to_init(&self, dest: *mut u8) {
+        // SAFETY: by contract, `dest` is a valid pointer to `T`
+        let dest = unsafe { dest.cast::<T>().as_mut_unchecked() };
+        dest.clone_from(self);
     }
 }
 
@@ -561,6 +582,15 @@ unsafe impl<T: Clone> CloneToUninit for [T] {
         // SAFETY: we're calling a specialization with the same contract
         unsafe { <T as self::uninit::CopySpec>::clone_slice(self, dest) }
     }
+
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_init(&self, dest: *mut u8) {
+        // SAFETY: by contract, `dest` is a valid pointer to a `[T]` with the
+        // same length as `self`
+        let dest = unsafe { dest.with_metadata_of(self).as_mut_unchecked() };
+        dest.clone_from_slice(self);
+    }
 }
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
@@ -571,17 +601,32 @@ unsafe impl CloneToUninit for str {
         // SAFETY: str is just a [u8] with UTF-8 invariant
         unsafe { self.as_bytes().clone_to_uninit(dest) }
     }
+
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_init(&self, dest: *mut u8) {
+        // SAFETY: str is just a [u8] with UTF-8 invariant
+        unsafe { self.as_bytes().clone_to_init(dest) }
+    }
 }
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
 unsafe impl CloneToUninit for crate::ffi::CStr {
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dest: *mut u8) {
-        // SAFETY: For now, CStr is just a #[repr(trasnsparent)] [c_char] with some invariants.
+        // SAFETY: For now, CStr is just a #[repr(transparent)] [c_char] with some invariants.
         // And we can cast [c_char] to [u8] on all supported platforms (see: to_bytes_with_nul).
         // The pointer metadata properly preserves the length (so NUL is also copied).
         // See: `cstr_metadata_is_length_with_nul` in tests.
         unsafe { self.to_bytes_with_nul().clone_to_uninit(dest) }
+    }
+
+    unsafe fn clone_to_init(&self, dest: *mut u8) {
+        // SAFETY: For now, CStr is just a #[repr(transparent)] [c_char] with some invariants.
+        // And we can cast [c_char] to [u8] on all supported platforms (see: to_bytes_with_nul).
+        // The pointer metadata properly preserves the length (so NUL is also copied).
+        // See: `cstr_metadata_is_length_with_nul` in tests.
+        unsafe { self.to_bytes_with_nul().clone_to_init(dest) }
     }
 }
 
@@ -590,6 +635,12 @@ unsafe impl CloneToUninit for crate::bstr::ByteStr {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut u8) {
+        // SAFETY: ByteStr is a `#[repr(transparent)]` wrapper around `[u8]`
+        unsafe { self.as_bytes().clone_to_uninit(dst) }
+    }
+
+    #[inline]
+    unsafe fn clone_to_init(&self, dst: *mut u8) {
         // SAFETY: ByteStr is a `#[repr(transparent)]` wrapper around `[u8]`
         unsafe { self.as_bytes().clone_to_uninit(dst) }
     }
