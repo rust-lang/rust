@@ -1,5 +1,7 @@
+use std::any::Any;
 use std::borrow::Cow;
 
+use rustc_data_structures::sync::DynSend;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, Level,
     elided_lifetime_in_path_suggestion,
@@ -8,11 +10,23 @@ use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
-use tracing::debug;
 
 use crate::lints;
 
 mod check_cfg;
+
+pub struct DiagAndSess<'sess> {
+    pub callback: Box<
+        dyn for<'b> FnOnce(DiagCtxtHandle<'b>, Level, &dyn Any) -> Diag<'b, ()> + DynSend + 'static,
+    >,
+    pub sess: &'sess Session,
+}
+
+impl<'a> Diagnostic<'a, ()> for DiagAndSess<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        (self.callback)(dcx, level, self.sess)
+    }
+}
 
 /// This is a diagnostic struct that will decorate a `BuiltinLintDiag`
 /// Directly creating the lint structs is expensive, using this will only decorate the lint structs when needed.
@@ -25,28 +39,6 @@ pub struct DecorateBuiltinLint<'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            BuiltinLintDiag::AbsPathWithModule(mod_span) => {
-                let (replacement, applicability) =
-                    match self.sess.source_map().span_to_snippet(mod_span) {
-                        Ok(ref s) => {
-                            // FIXME(Manishearth) ideally the emitting code
-                            // can tell us whether or not this is global
-                            let opt_colon =
-                                if s.trim_start().starts_with("::") { "" } else { "::" };
-
-                            (format!("crate{opt_colon}{s}"), Applicability::MachineApplicable)
-                        }
-                        Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
-                    };
-                lints::AbsPathWithModule {
-                    sugg: lints::AbsPathWithModuleSugg {
-                        span: mod_span,
-                        applicability,
-                        replacement,
-                    },
-                }
-                .into_diag(dcx, level)
-            }
             BuiltinLintDiag::ElidedLifetimesInPaths(
                 n,
                 path_span,
@@ -86,36 +78,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
                     ),
                 }
                 .into_diag(dcx, level)
-            }
-            BuiltinLintDiag::SingleUseLifetime {
-                param_span,
-                use_span,
-                elidable,
-                deletion_span,
-                ident,
-            } => {
-                debug!(?param_span, ?use_span, ?deletion_span);
-                let suggestion = if let Some(deletion_span) = deletion_span {
-                    let (use_span, replace_lt) = if elidable {
-                        let use_span =
-                            self.sess.source_map().span_extend_while_whitespace(use_span);
-                        (use_span, String::new())
-                    } else {
-                        (use_span, "'_".to_owned())
-                    };
-                    debug!(?deletion_span, ?use_span);
-
-                    // issue 107998 for the case such as a wrong function pointer type
-                    // `deletion_span` is empty and there is no need to report lifetime uses here
-                    let deletion_span =
-                        if deletion_span.is_empty() { None } else { Some(deletion_span) };
-                    Some(lints::SingleUseLifetimeSugg { deletion_span, use_span, replace_lt })
-                } else {
-                    None
-                };
-
-                lints::SingleUseLifetime { suggestion, param_span, use_span, ident }
-                    .into_diag(dcx, level)
             }
             BuiltinLintDiag::NamedArgumentUsedPositionally {
                 position_sp_to_replace,
