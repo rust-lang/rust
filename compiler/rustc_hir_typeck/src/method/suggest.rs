@@ -97,6 +97,92 @@ impl TraitBoundDuplicateTracker {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    /// Returns the byte offset of the last `.` in `s` that lies outside any
+    /// comment: line comments (`//`) or block comments (`/* ... */`, including nested).
+    fn find_last_real_dot(s: &str) -> Option<usize> {
+        enum State {
+            Code,
+            LineComment,
+            BlockComment { depth: u32 },
+        }
+
+        let mut state = State::Code;
+        let mut last_dot = None;
+        let mut chars = s.char_indices().peekable();
+
+        while let Some((i, c)) = chars.next() {
+            let peeked = chars.peek().map(|&(_, c)| c);
+
+            state = match state {
+                State::Code => match (c, peeked) {
+                    ('/', Some('/')) => {
+                        chars.next();
+                        State::LineComment
+                    }
+                    ('/', Some('*')) => {
+                        chars.next();
+                        State::BlockComment { depth: 1 }
+                    }
+                    ('.', _) => {
+                        last_dot = Some(i);
+                        State::Code
+                    }
+                    _ => State::Code,
+                },
+                State::LineComment => match c {
+                    '\n' => State::Code,
+                    _ => State::LineComment,
+                },
+                State::BlockComment { depth } => match (c, peeked) {
+                    ('/', Some('*')) => {
+                        chars.next();
+                        State::BlockComment { depth: depth + 1 }
+                    }
+                    ('*', Some('/')) => {
+                        chars.next();
+                        if depth == 1 {
+                            State::Code
+                        } else {
+                            State::BlockComment { depth: depth - 1 }
+                        }
+                    }
+                    _ => State::BlockComment { depth },
+                },
+            };
+        }
+
+        last_dot
+    }
+
+    /// Computes the exact span to delete and its applicability for removing a
+    /// redundant `.iter()` call.
+    /// Returns `None` if the suggestion cannot be safely derived from the source map.
+    fn compute_iter_removal_suggestion(
+        &self,
+        rcvr_expr: &hir::Expr<'_>,
+        span: Span,
+        sugg_span: Span,
+    ) -> Option<(Span, Applicability)> {
+        // Between receiver and method name (the part containing the dot)
+        let dot_part_span = rcvr_expr.span.between(span);
+        let dot_snippet = self.tcx.sess.source_map().span_to_snippet(dot_part_span).ok()?;
+        let dot_offset = Self::find_last_real_dot(&dot_snippet)?;
+
+        let replacement_span = sugg_span
+            .with_lo(dot_part_span.lo() + rustc_span::BytePos(u32::try_from(dot_offset).ok()?));
+
+        // A comment in the section being removed risks deleting user documentation,
+        // so we downgrade applicability to signal that human review is warranted.
+        let deleted_snippet = self.tcx.sess.source_map().span_to_snippet(replacement_span).ok()?;
+        let applicability = if deleted_snippet.contains("//") || deleted_snippet.contains("/*") {
+            Applicability::MaybeIncorrect
+        } else {
+            Applicability::MachineApplicable
+        };
+
+        Some((replacement_span, applicability))
+    }
+
     fn is_slice_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
         self.autoderef(span, ty)
             .silence_errors()
@@ -758,6 +844,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Suggests removing a redundant `.iter()` or `.iter_mut()` call if the
+    /// receiver already implements the `Iterator` trait.
+    /// Returns `true` if a suggestion or note was emitted, signaling that
+    /// further diagnostic fallback should be suppressed.
+    fn suggest_removing_iter_call(
+        &self,
+        err: &mut Diag<'_>,
+        rcvr_expr: &hir::Expr<'_>,
+        rcvr_ty: Ty<'tcx>,
+        item_name: Symbol,
+        span: Span,
+        sugg_span: Span,
+    ) -> bool {
+        // Ensure the receiver and the suggestion are in the same macro context.
+        if !rcvr_expr.span.eq_ctxt(sugg_span) || !rcvr_expr.span.eq_ctxt(span) {
+            return false;
+        }
+
+        // Guard against constructing an invalid span across macro edges.
+        if rcvr_expr.span.hi() > sugg_span.hi() {
+            return false;
+        }
+
+        match self.compute_iter_removal_suggestion(rcvr_expr, span, sugg_span) {
+            Some((replacement_span, applicability)) => {
+                let ty_str = self.tcx.short_string(rcvr_ty, err.long_ty_path());
+                err.note(format!("`{ty_str}` already implements `Iterator`"));
+                err.span_suggestion_verbose(
+                    replacement_span,
+                    format!("consider removing the `.{item_name}()` call"),
+                    "",
+                    applicability,
+                );
+                true
+            }
+            None => false,
+        }
+    }
+
     fn suggest_static_method_candidates(
         &self,
         err: &mut Diag<'_>,
@@ -828,6 +953,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         source: SelfSource<'tcx>,
         unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
         static_candidates: &[CandidateSource],
+        sugg_span: Span,
     ) -> Result<(bool, bool, bool, bool, SortedMap<Span, Vec<String>>), ()> {
         let mut restrict_type_params = false;
         let mut suggested_derive = false;
@@ -835,6 +961,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut custom_span_label = !static_candidates.is_empty();
         let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
         let tcx = self.tcx;
+
+        if (item_ident.name == sym::iter || item_ident.name == sym::iter_mut)
+            && let SelfSource::MethodCall(rcvr_expr) = source
+            && let Some(iterator_trait) = self.tcx.get_diagnostic_item(sym::Iterator)
+            && self.predicate_must_hold_modulo_regions(&Obligation::new(
+                self.tcx,
+                self.misc(span),
+                self.param_env,
+                ty::TraitRef::new(self.tcx, iterator_trait, [rcvr_ty]),
+            ))
+        {
+            if self.suggest_removing_iter_call(
+                err,
+                rcvr_expr,
+                rcvr_ty,
+                item_ident.name,
+                span,
+                sugg_span,
+            ) {
+                return Err(());
+            }
+        }
 
         if item_ident.name == sym::count && self.is_slice_ty(rcvr_ty, span) {
             let msg = "consider using `len` instead";
@@ -1263,6 +1411,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             source,
             unsatisfied_predicates,
             &static_candidates,
+            sugg_span,
         )
         else {
             return err.emit();
