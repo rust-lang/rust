@@ -410,13 +410,10 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
     let mut resulting_element = initial_element.clone();
     let mut prefix = String::new();
 
-    let mut found_ref_or_deref = false;
-
     while let Some(parent_deref_element) =
         resulting_element.syntax().parent().and_then(ast::PrefixExpr::cast)
         && parent_deref_element.op_kind() == Some(ast::UnaryOp::Deref)
     {
-        found_ref_or_deref = true;
         resulting_element = ast::Expr::from(parent_deref_element);
 
         prefix.insert(0, '*');
@@ -425,7 +422,6 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
     while let Some(parent_ref_element) =
         resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
     {
-        found_ref_or_deref = true;
         let last_child_or_token = parent_ref_element.syntax().last_child_or_token();
         prefix.insert_str(
             0,
@@ -438,13 +434,6 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
                 .as_str(),
         );
         resulting_element = ast::Expr::from(parent_ref_element);
-    }
-
-    if !found_ref_or_deref {
-        // If we do not find any ref/deref expressions, restore
-        // all the progress of tree climbing
-        prefix.clear();
-        resulting_element = initial_element.clone();
     }
 
     (resulting_element, prefix)
