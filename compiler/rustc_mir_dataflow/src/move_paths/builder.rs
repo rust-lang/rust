@@ -12,11 +12,13 @@ use super::{
     MoveOutIndex, MovePath, MovePathIndex, MovePathLookup, MoveSubPath, MoveSubPathResult,
 };
 
+#[allow(unused)]
 struct MoveDataBuilder<'a, 'tcx, F> {
     body: &'a Body<'tcx>,
     loc: Location,
     tcx: TyCtxt<'tcx>,
     data: MoveData<'tcx>,
+    partial_init_locals: bool,
     filter: F,
 }
 
@@ -51,6 +53,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             body,
             loc: Location::START,
             tcx,
+            partial_init_locals: tcx.features().partial_init_locals(),
             data: MoveData {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(body),
@@ -574,7 +577,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             }
         }
 
-        if let LookupResult::Exact(path) = self.data.rev_lookup.find(place) {
+        if let LookupResult::Exact(mut path) = self.data.rev_lookup.find(place) {
             let init = self.data.inits.push(Init {
                 location: InitLocation::Statement(self.loc),
                 path,
@@ -588,6 +591,34 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
 
             self.data.init_path_map[path].push(init);
             self.data.init_loc_map[self.loc].push(init);
+
+            // NOTE(partial_init_locals):
+            // Note that we can walk the partial init'ed paths and attach the init indices,
+            // so that they could be considered, albeit partially, ever-initialised.
+            if self.partial_init_locals {
+                while let Some(parent) = self.data.move_paths[path].parent {
+                    let parent_place = self.data.move_paths[parent].place;
+                    let ty = parent_place.ty(self.body, self.tcx).ty;
+                    if !self.tcx.ty_can_partial_init_locals(ty) {
+                        break;
+                    }
+                    self.data.init_path_map[parent].push(init);
+                    let nr_fields = match ty.kind() {
+                        ty::Adt(def, _args) if def.is_struct() => def.all_fields().count(),
+                        ty::Tuple(tys) => tys.len(),
+                        _ => unreachable!(),
+                    };
+                    for field in 0..nr_fields {
+                        let sibling = parent_place.project_to_field(
+                            rustc_abi::FieldIdx::from_usize(field),
+                            self.body,
+                            self.tcx,
+                        );
+                        self.create_move_path(sibling);
+                    }
+                    path = parent;
+                }
+            }
         }
     }
 }

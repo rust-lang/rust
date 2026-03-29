@@ -1,3 +1,39 @@
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/borrowck-uninit-ref-chain.rs:18:5
+   |
+LL |     a.x = 0;
+   |     ^^^^^^^
+   |
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/borrowck-uninit-ref-chain.rs:23:5
+   |
+LL |     a.x = &&0;
+   |     ^^^^^^^^^
+   |
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/borrowck-uninit-ref-chain.rs:29:5
+   |
+LL |     a.x = 0;
+   |     ^^^^^^^
+   |
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/borrowck-uninit-ref-chain.rs:34:5
+   |
+LL |     a.x = &&0;
+   |     ^^^^^^^^^
+   |
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-ref-chain.rs:8:14
    |
@@ -48,7 +84,7 @@ LL |     a.x = 0;
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: partially assigned binding `a` isn't fully initialized
-  --> $DIR/borrowck-uninit-ref-chain.rs:22:5
+  --> $DIR/borrowck-uninit-ref-chain.rs:23:5
    |
 LL |     let mut a: S<&&i32, &&i32>;
    |         ----- binding declared here but left uninitialized
@@ -58,7 +94,7 @@ LL |     a.x = &&0;
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: partially assigned binding `a` isn't fully initialized
-  --> $DIR/borrowck-uninit-ref-chain.rs:27:5
+  --> $DIR/borrowck-uninit-ref-chain.rs:29:5
    |
 LL |     let mut a: S<i32, i32>;
    |         ----- binding declared here but left uninitialized
@@ -68,7 +104,7 @@ LL |     a.x = 0;
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: partially assigned binding `a` isn't fully initialized
-  --> $DIR/borrowck-uninit-ref-chain.rs:31:5
+  --> $DIR/borrowck-uninit-ref-chain.rs:34:5
    |
 LL |     let mut a: S<&&i32, &&i32>;
    |         ----- binding declared here but left uninitialized
@@ -77,6 +113,7 @@ LL |     a.x = &&0;
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error: aborting due to 7 previous errors
+error: aborting due to 11 previous errors
 
-For more information about this error, try `rustc --explain E0381`.
+Some errors have detailed explanations: E0381, E0658.
+For more information about an error, try `rustc --explain E0381`.
