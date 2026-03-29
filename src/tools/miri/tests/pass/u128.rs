@@ -57,8 +57,8 @@ fn main() {
     // common traits
     assert_eq!(x, b(x.clone()));
     // overflow checks
-    assert_eq!((z).checked_mul(z), Some(0x734C_C2F2_A521));
-    assert_eq!((k).checked_mul(k), None);
+    assert_eq!(z.checked_mul(z), Some(0x734C_C2F2_A521));
+    assert_eq!(k.checked_mul(k), None);
     let l: u128 = b(u128::MAX - 10);
     let o: u128 = b(17);
     assert_eq!(l.checked_add(b(11)), None);

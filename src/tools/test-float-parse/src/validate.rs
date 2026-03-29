@@ -71,7 +71,7 @@ impl Constants {
         let neg_inf_cutoff = -&inf_cutoff;
 
         let powers_of_two: BTreeMap<i32, _> =
-            (POWERS_OF_TWO_RANGE).map(|n| (n, two.pow(n))).collect();
+            POWERS_OF_TWO_RANGE.map(|n| (n, two.pow(n))).collect();
         let mut half_ulp = powers_of_two.clone();
         half_ulp.iter_mut().for_each(|(_k, v)| *v = &*v / two_int);
 
