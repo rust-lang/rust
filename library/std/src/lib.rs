@@ -337,6 +337,8 @@
 #![feature(formatting_options)]
 #![feature(funnel_shifts)]
 #![feature(generic_atomic)]
+#![feature(hash_map_internals)]
+#![feature(hash_map_macro)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(hint_must_use)]
