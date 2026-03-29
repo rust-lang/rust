@@ -13,7 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{Expr, ExprKind, FnRetTy, HirId, LangItem, Node, QPath, is_range_literal};
 use rustc_hir_analysis::check::potentially_plural_count;
-use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, PermitVariants};
+use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, ResolvedStructPath};
 use rustc_index::IndexVec;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
@@ -1260,38 +1260,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         path_span: Span,
         hir_id: HirId,
     ) -> (Res, LoweredTy<'tcx>) {
+        let ResolvedStructPath { res: result, ty } =
+            self.lowerer().lower_path_for_struct_expr(*qpath, path_span, hir_id);
         match *qpath {
-            QPath::Resolved(ref maybe_qself, path) => {
-                let self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself).raw);
-                let ty = self.lowerer().lower_resolved_ty_path(
-                    self_ty,
-                    path,
-                    hir_id,
-                    PermitVariants::Yes,
-                );
-                (path.res, LoweredTy::from_raw(self, path_span, ty))
-            }
-            QPath::TypeRelative(hir_self_ty, segment) => {
-                let self_ty = self.lower_ty(hir_self_ty);
-
-                let result = self.lowerer().lower_type_relative_ty_path(
-                    self_ty.raw,
-                    hir_self_ty,
-                    segment,
-                    hir_id,
-                    path_span,
-                    PermitVariants::Yes,
-                );
-                let ty = result
-                    .map(|(ty, _, _)| ty)
-                    .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));
+            QPath::Resolved(_, path) => (path.res, LoweredTy::from_raw(self, path_span, ty)),
+            QPath::TypeRelative(_, _) => {
                 let ty = LoweredTy::from_raw(self, path_span, ty);
-                let result = result.map(|(_, kind, def_id)| (kind, def_id));
+                let resolution =
+                    result.map(|res: Res| (self.tcx().def_kind(res.def_id()), res.def_id()));
 
                 // Write back the new resolution.
-                self.write_resolution(hir_id, result);
+                self.write_resolution(hir_id, resolution);
 
-                (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
+                (result.unwrap_or(Res::Err), ty)
             }
         }
     }
