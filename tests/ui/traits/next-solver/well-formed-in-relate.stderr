@@ -12,7 +12,7 @@ LL |     x = unconstrained_map();
              where A: std::marker::Tuple, F: Fn<A>, F: ?Sized;
            - impl<Args, F, A> Fn<Args> for Box<F, A>
              where Args: std::marker::Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
-           - impl<F, Args> Fn<Args> for Exclusive<F>
+           - impl<F, Args> Fn<Args> for SyncView<F>
              where F: Sync, F: Fn<Args>, Args: std::marker::Tuple;
 note: required by a bound in `unconstrained_map`
   --> $DIR/well-formed-in-relate.rs:21:25
