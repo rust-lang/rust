@@ -943,6 +943,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::AssocConst { .. }
         | DefKind::Macro(_)
         | DefKind::Field
+        | DefKind::ConstParam
         | DefKind::Impl { .. } => true,
         // Encoding attrs for `Use` items allows `#[doc(hidden)]` on re-exports
         // to be read cross-crate, which is needed for diagnostic path selection
@@ -955,7 +956,6 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         DefKind::Closure => true,
         DefKind::SyntheticCoroutineBody => false,
         DefKind::TyParam
-        | DefKind::ConstParam
         | DefKind::Ctor(..)
         | DefKind::ExternCrate
         | DefKind::ForeignMod
