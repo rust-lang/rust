@@ -286,16 +286,13 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     BackendRepr::Scalar(scalar) => {
                         match scalar.primitive() {
                             Primitive::Int(..) => {
-                                if self.cx().size_of(result.layout.ty).bytes() < 4 {
-                                    // `va_arg` should not be called on an integer type
-                                    // less than 4 bytes in length. If it is, promote
-                                    // the integer to an `i32` and truncate the result
-                                    // back to the smaller type.
-                                    let promoted_result = emit_va_arg(self, args[0], tcx.types.i32);
-                                    self.trunc(promoted_result, result.layout.llvm_type(self))
-                                } else {
-                                    emit_va_arg(self, args[0], result.layout.ty)
-                                }
+                                // `va_arg` should not be called on an integer type
+                                // less than c_int (typically i32, but i16 on avr).
+                                assert!(
+                                    self.cx().size_of(result.layout.ty).bits()
+                                        >= u64::from(self.cx().sess().target.options.c_int_width)
+                                );
+                                emit_va_arg(self, args[0], result.layout.ty)
                             }
                             Primitive::Float(Float::F16) => {
                                 bug!("the va_arg intrinsic does not work with `f16`")
@@ -305,7 +302,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             }
                             // `va_arg` should never be used with the return type f32.
                             Primitive::Float(Float::F32) => {
-                                bug!("the va_arg intrinsic does not work with `f32`")
+                                if self.cx().sess().target.options.c_int_width == 16 {
+                                    // c_double is actually f32 on avr.
+                                    emit_va_arg(self, args[0], result.layout.ty)
+                                } else {
+                                    bug!("the va_arg intrinsic does not work with `f32`")
+                                }
                             }
                             Primitive::Float(Float::F128) => {
                                 bug!("the va_arg intrinsic does not work with `f128`")
