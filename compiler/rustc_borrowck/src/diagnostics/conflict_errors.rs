@@ -164,9 +164,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     generic_args,
                 };
                 (
-                    directive.message.as_ref().map(|e| e.1.format(&args)),
-                    directive.label.as_ref().map(|e| e.1.format(&args)),
-                    directive.notes.iter().map(|e| e.format(&args)).collect(),
+                    directive.message.as_ref().map(|e| e.1.format(Some(&args))),
+                    directive.label.as_ref().map(|e| e.1.format(Some(&args))),
+                    directive.notes.iter().map(|e| e.format(Some(&args))).collect(),
                 )
             } else {
                 (None, None, ThinVec::new())

@@ -2,16 +2,20 @@
 
 use std::mem;
 
-use rustc_ast::NodeId;
+use rustc_ast::{Item, NodeId};
+use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diagnostic, MultiSpan, pluralize, struct_span_code_err};
+use rustc_hir::Attribute;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::{DefId, LocalDefIdMap};
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::span_bug;
-use rustc_middle::ty::Visibility;
+use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
     PUB_USE_OF_PRIVATE_EXTERN_CRATE, REDUNDANT_IMPORTS, UNUSED_IMPORTS,
@@ -140,6 +144,30 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub(crate) struct OnUnknownItemData {
+    directive: Directive,
+}
+
+impl OnUnknownItemData {
+    pub(crate) fn from_attrs<'tcx>(tcx: TyCtxt<'tcx>, item: &Item) -> Option<OnUnknownItemData> {
+        if let Some(Attribute::Parsed(AttributeKind::OnUnknownItem { directive, .. })) =
+            AttributeParser::parse_limited(
+                tcx.sess,
+                &item.attrs,
+                &[sym::diagnostic, sym::on_unknown_item],
+                item.span,
+                item.id,
+                Some(tcx.features()),
+            )
+        {
+            Some(Self { directive: *directive? })
+        } else {
+            None
+        }
+    }
+}
+
 /// One import.
 #[derive(Debug, Clone)]
 pub(crate) struct ImportData<'ra> {
@@ -186,6 +214,11 @@ pub(crate) struct ImportData<'ra> {
 
     /// Span of the visibility.
     pub vis_span: Span,
+
+    /// A `#[diagnostic::on_unknown_item]` attribute applied
+    /// to the given import. This allows crates to specify
+    /// custom error messages for a specific import
+    pub on_unknown_item_attr: Option<OnUnknownItemData>,
 }
 
 /// All imports are unique and allocated on a same arena,
@@ -284,6 +317,7 @@ struct UnresolvedImportError {
     segment: Option<Symbol>,
     /// comes from `PathRes::Failed { module }`
     module: Option<DefId>,
+    on_unknown_item_attr: Option<OnUnknownItemData>,
 }
 
 // Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
@@ -696,6 +730,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     candidates: None,
                     segment: None,
                     module: None,
+                    on_unknown_item_attr: import.on_unknown_item_attr.clone(),
                 };
                 errors.push((*import, err))
             }
@@ -818,19 +853,42 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 format!("`{path}`")
             })
             .collect::<Vec<_>>();
-        let msg = format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
+        let default_message =
+            format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
+        let mut diag = if let Some((_, message)) =
+            errors[0].1.on_unknown_item_attr.as_mut().and_then(|a| a.directive.message.take())
+        {
+            let message = message.format(None);
+            let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{message}");
+            diag.note(default_message);
+            diag
+        } else {
+            struct_span_code_err!(self.dcx(), span, E0432, "{default_message}")
+        };
 
-        let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{msg}");
-
-        if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
+        if let Some(notes) = errors[0].1.on_unknown_item_attr.as_ref().map(|a| &a.directive.notes) {
+            for note in notes {
+                diag.note(note.format(None));
+            }
+        } else if let Some((_, UnresolvedImportError { note: Some(note), .. })) =
+            errors.iter().last()
+        {
             diag.note(note.clone());
         }
 
         /// Upper limit on the number of `span_label` messages.
         const MAX_LABEL_COUNT: usize = 10;
 
-        for (import, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
-            if let Some(label) = err.label {
+        for (import, mut err) in errors.into_iter().take(MAX_LABEL_COUNT) {
+            if let Some(label) = err
+                .on_unknown_item_attr
+                .as_mut()
+                .and_then(|a| a.directive.label.take())
+                .map(|label| label.1.format(None))
+                .or(err.label.clone())
+            {
+                diag.span_label(err.span, label);
+            } else if let Some(label) = err.label {
                 diag.span_label(err.span, label);
             }
 
@@ -1097,6 +1155,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             candidates: None,
                             segment: Some(segment_name),
                             module,
+                            on_unknown_item_attr: import.on_unknown_item_attr.clone(),
                         },
                         None => UnresolvedImportError {
                             span,
@@ -1106,6 +1165,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             candidates: None,
                             segment: Some(segment_name),
                             module,
+                            on_unknown_item_attr: import.on_unknown_item_attr.clone(),
                         },
                     };
                     return Some(err);
@@ -1148,6 +1208,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         candidates: None,
                         segment: None,
                         module: None,
+                        on_unknown_item_attr: None,
                     });
                 }
                 if let Some(max_vis) = max_vis.get()
@@ -1370,6 +1431,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                     }),
                     segment: Some(ident.name),
+                    on_unknown_item_attr: import.on_unknown_item_attr.clone(),
                 })
             } else {
                 // `resolve_ident_in_module` reported a privacy error.

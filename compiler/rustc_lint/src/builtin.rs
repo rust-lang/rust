@@ -312,7 +312,7 @@ impl EarlyLintPass for UnsafeCode {
                     AttributeParser::parse_limited(
                         cx.builder.sess(),
                         &it.attrs,
-                        sym::allow_internal_unsafe,
+                        &[sym::allow_internal_unsafe],
                         it.span,
                         DUMMY_NODE_ID,
                         Some(cx.builder.features()),

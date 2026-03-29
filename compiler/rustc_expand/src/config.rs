@@ -54,7 +54,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
         AttributeParser::parse_limited(
             sess,
             krate_attrs,
-            sym::feature,
+            &[sym::feature],
             DUMMY_SP,
             DUMMY_NODE_ID,
             Some(&features),
