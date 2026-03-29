@@ -4,8 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::{fmt, iter, mem, ptr, slice};
 
-use rustc_data_structures::aligned::{Aligned, align_of};
-use rustc_data_structures::sync::DynSync;
+use rustc_data_structures::aligned::align_of;
 use rustc_serialize::{Encodable, Encoder};
 use rustc_type_ir::FlagComputation;
 
@@ -36,14 +35,6 @@ pub type List<T> = RawList<(), T>;
 /// [`Hash`] and [`Encodable`].
 #[repr(C)]
 pub struct RawList<H, T> {
-    skel: ListSkeleton<H, T>,
-    opaque: OpaqueListContents,
-}
-
-/// A [`RawList`] without the unsized tail. This type is used for layout computation
-/// and constructing empty lists.
-#[repr(C)]
-struct ListSkeleton<H, T> {
     header: H,
     len: usize,
     /// Although this claims to be a zero-length array, in practice `len`
@@ -57,16 +48,10 @@ impl<T> Default for &List<T> {
     }
 }
 
-unsafe extern "C" {
-    /// A dummy type used to force `List` to be unsized while not requiring
-    /// references to it be wide pointers.
-    type OpaqueListContents;
-}
-
 impl<H, T> RawList<H, T> {
     #[inline(always)]
     pub fn len(&self) -> usize {
-        self.skel.len
+        self.len
     }
 
     #[inline(always)]
@@ -97,18 +82,18 @@ impl<H, T> RawList<H, T> {
         assert!(!slice.is_empty());
 
         let (layout, _offset) =
-            Layout::new::<ListSkeleton<H, T>>().extend(Layout::for_value::<[T]>(slice)).unwrap();
+            Layout::new::<RawList<H, T>>().extend(Layout::for_value::<[T]>(slice)).unwrap();
 
         let mem = arena.dropless.alloc_raw(layout) as *mut RawList<H, T>;
         unsafe {
             // Write the header
-            (&raw mut (*mem).skel.header).write(header);
+            (&raw mut (*mem).header).write(header);
 
             // Write the length
-            (&raw mut (*mem).skel.len).write(slice.len());
+            (&raw mut (*mem).len).write(slice.len());
 
             // Write the elements
-            (&raw mut (*mem).skel.data)
+            (&raw mut (*mem).data)
                 .cast::<T>()
                 .copy_from_nonoverlapping(slice.as_ptr(), slice.len());
 
@@ -152,8 +137,8 @@ macro_rules! impl_list_empty {
                 #[repr(align(64))]
                 struct MaxAlign;
 
-                static EMPTY: ListSkeleton<$header_ty, MaxAlign> =
-                    ListSkeleton { header: $header_init, len: 0, data: [] };
+                static EMPTY: RawList<$header_ty, MaxAlign> =
+                    RawList { header: $header_init, len: 0, data: [] };
 
                 assert!(align_of::<T>() <= align_of::<MaxAlign>());
 
@@ -237,12 +222,12 @@ impl<H, T> Deref for RawList<H, T> {
 impl<H, T> AsRef<[T]> for RawList<H, T> {
     #[inline(always)]
     fn as_ref(&self) -> &[T] {
-        let data_ptr = (&raw const self.skel.data).cast::<T>();
+        let data_ptr = (&raw const self.data).cast::<T>();
         // SAFETY: `data_ptr` has the same provenance as `self` and can therefore
         // access the `self.skel.len` elements stored at `self.skel.data`.
         // Note that we specifically don't reborrow `&self.skel.data`, because that
         // would give us a pointer with provenance over 0 bytes.
-        unsafe { slice::from_raw_parts(data_ptr, self.skel.len) }
+        unsafe { slice::from_raw_parts(data_ptr, self.len) }
     }
 }
 
@@ -257,19 +242,6 @@ impl<'a, H, T: Copy> IntoIterator for &'a RawList<H, T> {
 
 unsafe impl<H: Sync, T: Sync> Sync for RawList<H, T> {}
 
-// We need this since `List` uses extern type `OpaqueListContents`.
-unsafe impl<H: DynSync, T: DynSync> DynSync for RawList<H, T> {}
-
-// Safety:
-// Layouts of `ListSkeleton<H, T>` and `RawList<H, T>` are the same, modulo opaque tail,
-// thus aligns of `ListSkeleton<H, T>` and `RawList<H, T>` must be the same.
-unsafe impl<H, T> Aligned for RawList<H, T> {
-    #[cfg(bootstrap)]
-    const ALIGN: ptr::Alignment = align_of::<ListSkeleton<H, T>>();
-    #[cfg(not(bootstrap))]
-    const ALIGN: mem::Alignment = align_of::<ListSkeleton<H, T>>();
-}
-
 /// A [`List`] that additionally stores type information inline to speed up
 /// [`TypeVisitableExt`](super::TypeVisitableExt) operations.
 pub type ListWithCachedTypeInfo<T> = RawList<TypeInfo, T>;
@@ -277,12 +249,12 @@ pub type ListWithCachedTypeInfo<T> = RawList<TypeInfo, T>;
 impl<T> ListWithCachedTypeInfo<T> {
     #[inline(always)]
     pub fn flags(&self) -> TypeFlags {
-        self.skel.header.flags
+        self.header.flags
     }
 
     #[inline(always)]
     pub fn outer_exclusive_binder(&self) -> DebruijnIndex {
-        self.skel.header.outer_exclusive_binder
+        self.header.outer_exclusive_binder
     }
 }
 
@@ -309,4 +281,19 @@ impl<'tcx> From<FlagComputation<TyCtxt<'tcx>>> for TypeInfo {
             outer_exclusive_binder: computation.outer_exclusive_binder,
         }
     }
+}
+
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // tidy-alphabetical-start
+    static_assert_size!(&List<u32>, 8);
+    static_assert_size!(&RawList<u8, u32>, 8);
+    static_assert_size!(List<u8>, 8);
+    static_assert_size!(List<u32>, 8);
+    static_assert_size!(RawList<u8, u32>, 16);
+    static_assert_size!(RawList<usize, u32>, 16);
+    // tidy-alphabetical-end
 }

@@ -119,14 +119,6 @@ impl<T> Erasable for &'_ [T] {
     type Storage = [u8; size_of::<&'_ [()]>()];
 }
 
-impl<T> Erasable for &'_ ty::List<T> {
-    type Storage = [u8; size_of::<&'_ ty::List<()>>()];
-}
-
-impl<T> Erasable for &'_ ty::ListWithCachedTypeInfo<T> {
-    type Storage = [u8; size_of::<&'_ ty::ListWithCachedTypeInfo<()>>()];
-}
-
 impl<T> Erasable for Result<&'_ T, traits::query::NoSolution> {
     type Storage = [u8; size_of::<Result<&'_ (), traits::query::NoSolution>>()];
 }
