@@ -23,7 +23,7 @@ fn main() {
         f(&s, |hellothere| {
             match hellothere.x { //~ ERROR cannot move out
                 box E::Foo(_) => {}
-                box E::Bar(x) => println!("{}", x.to_string()),
+                box E::Bar(ref x) => println!("{}", x.to_string()),
                 box E::Baz => {}
             }
         })
