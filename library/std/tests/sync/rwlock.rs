@@ -883,3 +883,35 @@ fn test_rwlock_with_mut() {
     assert_eq!(*rwlock.read(), 5);
     assert_eq!(result, 10);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Non-poison Tests
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+fn test_read_guard_unlocked() {
+    let rw_lock = std::sync::nonpoison::RwLock::new(1usize);
+    let mut read_guard = rw_lock.read();
+
+    assert!(matches!(rw_lock.try_write(), std::sync::nonpoison::TryLockResult::Err(_)));
+
+    RwLockReadGuard::unlocked(&mut read_guard, || {
+        assert!(matches!(rw_lock.try_write(), std::sync::nonpoison::TryLockResult::Ok(_)));
+    });
+
+    assert!(matches!(rw_lock.try_write(), std::sync::nonpoison::TryLockResult::Err(_)));
+}
+
+#[test]
+fn test_write_guard_unlocked() {
+    let rw_lock = std::sync::nonpoison::RwLock::new(1usize);
+    let mut write_guard = rw_lock.write();
+
+    assert!(matches!(rw_lock.try_write(), std::sync::nonpoison::TryLockResult::Err(_)));
+
+    RwLockWriteGuard::unlocked(&mut write_guard, || {
+        assert!(matches!(rw_lock.try_write(), std::sync::nonpoison::TryLockResult::Ok(_)));
+    });
+
+    assert!(matches!(rw_lock.try_write(), std::sync::nonpoison::TryLockResult::Err(_)));
+}
