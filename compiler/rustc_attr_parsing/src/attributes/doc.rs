@@ -136,7 +136,7 @@ fn parse_keyword_and_attribute<S: Stage>(
 
     let span = path.span();
     if attr_value.is_some() {
-        cx.duplicate_key(span, path.word_sym().unwrap());
+        cx.adcx().duplicate_key(span, path.word_sym().unwrap());
         return;
     }
 
@@ -275,7 +275,7 @@ impl DocParser {
             ArgParser::List(list) => {
                 for i in list.mixed() {
                     let Some(alias) = i.lit().and_then(|i| i.value_str()) else {
-                        cx.expected_string_literal(i.span(), i.lit());
+                        cx.adcx().expected_string_literal(i.span(), i.lit());
                         continue;
                     };
 
@@ -284,7 +284,7 @@ impl DocParser {
             }
             ArgParser::NameValue(nv) => {
                 let Some(alias) = nv.value_as_str() else {
-                    cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+                    cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
                     return;
                 };
                 self.add_alias(cx, alias, nv.value_span);
@@ -661,7 +661,7 @@ impl DocParser {
     ) {
         match args {
             ArgParser::NoArgs => {
-                let suggestions = cx.suggestions();
+                let suggestions = cx.adcx().suggestions();
                 let span = cx.attr_span;
                 cx.emit_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
