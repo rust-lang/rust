@@ -38,11 +38,18 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     }
     let match_arm = ast::MatchArm::cast(or_pat.syntax().parent()?)?;
     let match_arm_body = match_arm.expr()?;
+    let pats_after = pipe_token
+        .siblings_with_tokens(Direction::Next)
+        .filter_map(|it| ast::Pat::cast(it.into_node()?))
+        .collect::<Vec<_>>();
 
     // We don't need to check for leading pipe because it is directly under `MatchArm`
     // without `OrPat`.
 
     let new_parent = match_arm.syntax().parent()?;
+    if pats_after.is_empty() {
+        return None;
+    }
 
     acc.add(
         AssistId::refactor_rewrite("unmerge_match_arm"),
@@ -51,10 +58,6 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         |edit| {
             let make = SyntaxFactory::with_mappings();
             let mut editor = edit.make_editor(&new_parent);
-            let pats_after = pipe_token
-                .siblings_with_tokens(Direction::Next)
-                .filter_map(|it| ast::Pat::cast(it.into_node()?))
-                .collect::<Vec<_>>();
             // It is guaranteed that `pats_after` has at least one element
             let new_pat = if pats_after.len() == 1 {
                 pats_after[0].clone()
@@ -183,6 +186,21 @@ fn main() {
 fn main() {
     let y = match 0 {
         |$0 0 => { 1i32 }
+        1 => { 2i32 }
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unmerge_match_arm_trailing_pipe() {
+        check_assist_not_applicable(
+            unmerge_match_arm,
+            r#"
+fn main() {
+    let y = match 0 {
+        0 |$0 => { 1i32 }
         1 => { 2i32 }
     };
 }
