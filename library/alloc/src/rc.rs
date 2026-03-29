@@ -396,6 +396,85 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
             ptr::drop_in_place(&mut (*self.ptr.as_ptr()).value);
         }
     }
+
+    /// Converts an `Rc` into a `UniqueRc` if the `Rc` has exactly one strong
+    /// reference.
+    ///
+    /// Otherwise, returns `None`. If the `Rc` is still needed in the error
+    /// case, consider using `try_into_unique` instead
+    ///
+    /// This will succeed even if there are outstanding weak references.
+    /// However, attempting to upgrade those weak references will fail while
+    /// this `UniqueRc` exists.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    ///
+    /// use std::rc::{Rc, UniqueRc};
+    ///
+    /// let a = Rc::new(7);
+    /// let mut unique_a: UniqueRc<i32> = Rc::into_unique(a).unwrap();
+    /// *unique_a = 5;
+    /// ```
+    #[inline]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn into_unique(this: Self) -> Option<UniqueRc<T, A>> {
+        // Prevent `Weak` upgrades by decrementing the strong count to zero,
+        // or simply decrementing the refcount in the case that other strong
+        // owners remain.
+        this.inner().dec_strong();
+        if this.inner().strong() != 0 {
+            return None;
+        }
+        let this = ManuallyDrop::new(this);
+        // Move the allocator out.
+        // SAFETY: `this.alloc` will not be accessed again, nor dropped because it is in
+        // a `ManuallyDrop`.
+        let alloc: A = unsafe { ptr::read(&this.alloc) };
+
+        Some(UniqueRc { ptr: this.ptr, _marker: PhantomData, _marker2: PhantomData, alloc })
+    }
+
+    /// Converts an `Rc` into a `UniqueRc` if the `Rc` has exactly one strong
+    /// reference.
+    ///
+    /// Otherwise, an `Err` is returned containing the original `Rc`.
+    ///
+    /// This will succeed even if there are outstanding weak references.
+    /// However, attempting to upgrade those weak references will fail while
+    /// this `UniqueRc` exists.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    ///
+    /// use std::rc::{Rc, UniqueRc};
+    ///
+    /// let a = Rc::new(7);
+    /// let mut unique_a: UniqueRc<i32> = Rc::try_into_unique(a).unwrap();
+    /// *unique_a = 5;
+    /// ```
+    #[inline]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn try_into_unique(this: Self) -> Result<UniqueRc<T, A>, Self> {
+        if Rc::strong_count(&this) != 1 {
+            return Err(this);
+        }
+        let this = ManuallyDrop::new(this);
+
+        // Prevent `Weak` upgrades by setting the strong count to zero.
+        this.inner().strong.set(0);
+
+        // Move the allocator out.
+        // SAFETY: `this.alloc` will not be accessed again, nor dropped because it is in
+        // a `ManuallyDrop`.
+        let alloc: A = unsafe { ptr::read(&this.alloc) };
+
+        Ok(UniqueRc { ptr: this.ptr, _marker: PhantomData, _marker2: PhantomData, alloc })
+    }
 }
 
 impl<T> Rc<T> {
