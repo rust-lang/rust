@@ -24,8 +24,8 @@ use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::config::{
-    CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
-    TargetModifier,
+    CrateType, ExtendedTargetModifierInfo, ExternEntry, ExternLocation, Externs,
+    OptionsTargetModifiers, TargetModifier,
 };
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
 use rustc_session::output::validate_crate_name;
@@ -34,7 +34,7 @@ use rustc_session::{Session, lint};
 use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
-use rustc_target::spec::{PanicStrategy, Target};
+use rustc_target::spec::{HasTargetSpec, Os, PanicStrategy, Target};
 use tracing::{debug, info, trace};
 
 use crate::errors;
@@ -1127,6 +1127,53 @@ impl CStore {
         }
     }
 
+    /// Injects the `hermit` crate if necessary.
+    ///
+    /// On Hermit, the OS is included in the `hermit` crate. This method makes
+    /// sure we link against the possibly renamed `hermit` crate if it is
+    /// provided even if there is no explicit `extern hermit`.
+    ///
+    /// This is similar to replacing `--extern hermit` with `--extern force:hermit`.
+    fn inject_hermit_crate(&mut self, tcx: TyCtxt<'_>) {
+        let Os::Hermit = tcx.target_spec().os else {
+            return;
+        };
+
+        let hermit_names = tcx
+            .sess
+            .opts
+            .externs
+            .iter()
+            .filter_map(|(name, entry)| is_hermit(entry).then_some(name.as_str()))
+            .map(Symbol::intern);
+
+        for name in hermit_names {
+            if self.used_extern_options.contains(&name) {
+                continue;
+            }
+
+            self.resolve_crate(
+                tcx,
+                name,
+                DUMMY_SP,
+                CrateDepKind::Unconditional,
+                CrateOrigin::Extern,
+            );
+        }
+
+        fn is_hermit(ext_ent: &ExternEntry) -> bool {
+            ext_ent
+                .files()
+                .into_iter()
+                .flatten()
+                .filter_map(|file| file.original().file_name())
+                .filter_map(|file_name| file_name.to_str())
+                .any(|file_name| {
+                    file_name.starts_with("libhermit-") && file_name.ends_with(".rlib")
+                })
+        }
+    }
+
     fn inject_forced_externs(&mut self, tcx: TyCtxt<'_>) {
         for (name, entry) in tcx.sess.opts.externs.iter() {
             if entry.force {
@@ -1253,6 +1300,7 @@ impl CStore {
 
     pub fn postprocess(&mut self, tcx: TyCtxt<'_>, krate: &ast::Crate) {
         self.inject_compiler_builtins(tcx, krate);
+        self.inject_hermit_crate(tcx);
         self.inject_forced_externs(tcx);
         self.inject_profiler_runtime(tcx);
         self.inject_allocator_crate(tcx, krate);
