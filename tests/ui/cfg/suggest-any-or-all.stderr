@@ -1,0 +1,25 @@
+error[E0805]: malformed `cfg` attribute input
+  --> $DIR/suggest-any-or-all.rs:1:1
+   |
+LL | #[cfg(foo, bar)]
+   | ^^^^^----------^
+   | |    |
+   | |    expected a single argument here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0805]: malformed `cfg` attribute input
+  --> $DIR/suggest-any-or-all.rs:5:1
+   |
+LL | #[cfg()]
+   | ^^^^^--^
+   | |    |
+   | |    expected a single argument here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0805`.
