@@ -929,6 +929,8 @@ pub(crate) struct FoundExprWouldBeStmt {
 pub(crate) struct FrontmatterExtraCharactersAfterClose {
     #[primary_span]
     pub span: Span,
+    #[suggestion("remove the extra characters", code = "", applicability = "machine-applicable")]
+    pub remove: Span,
 }
 
 #[derive(Diagnostic)]
