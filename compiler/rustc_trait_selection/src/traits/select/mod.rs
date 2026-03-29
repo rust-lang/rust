@@ -750,7 +750,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if pred.0.has_free_regions()
                         || pred.0.has_bound_regions()
                         || pred.0.has_non_region_infer()
-                        || pred.0.has_non_region_infer()
+                        || pred.0.has_non_region_param()
                     {
                         Ok(EvaluatedToOkModuloRegions)
                     } else {
