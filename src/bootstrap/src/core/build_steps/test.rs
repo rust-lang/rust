@@ -37,8 +37,8 @@ use crate::core::{android, debuggers};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
-    self, LldThreads, add_dylib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
-    linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
+    self, ArgCategory, LldThreads, add_dylib_path, add_rustdoc_cargo_linker_args, dylib_path,
+    dylib_path_var, linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envify};
@@ -969,13 +969,15 @@ impl Step for Clippy {
             let paths = &builder.config.paths[..];
             let mut test_names = Vec::new();
             for path in paths {
-                if let Some(path) =
-                    helpers::is_valid_test_suite_arg(path, "src/tools/clippy/tests", builder)
-                {
-                    test_names.push(path);
-                } else if path.ends_with("src/tools/clippy") {
-                    // When src/tools/clippy is called directly, all tests should be run.
-                    break 'partially_test;
+                match helpers::is_valid_test_suite_arg(path, "src/tools/clippy/tests", builder) {
+                    ArgCategory::Arg(path) => {
+                        test_names.push(path);
+                    }
+                    ArgCategory::Fullsuite => {
+                        // When src/tools/clippy is called directly, all tests should be run.
+                        break 'partially_test;
+                    }
+                    ArgCategory::Uninteresting => {}
                 }
             }
             cargo.env("TESTNAME", test_names.join(","));
@@ -1104,16 +1106,30 @@ impl Step for RustdocJSStd {
             .arg(builder.doc_out(self.target))
             .arg("--test-folder")
             .arg(builder.src.join("tests/rustdoc-js-std"));
-        for path in &builder.paths {
-            if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder)
-            {
-                if !p.ends_with(".js") {
-                    eprintln!("A non-js file was given: `{}`", path.display());
-                    panic!("Cannot run rustdoc-js-std tests");
+
+        let full_suite = builder.paths.iter().any(|path| {
+            matches!(
+                helpers::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder),
+                ArgCategory::Fullsuite
+            )
+        });
+
+        // If we have to also run the full suite, don't worry about the individual arguments.
+        // They will be covered by running the entire suite
+        if !full_suite {
+            for path in &builder.paths {
+                if let ArgCategory::Arg(p) =
+                    helpers::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder)
+                {
+                    if !p.ends_with(".js") {
+                        eprintln!("A non-js file was given: `{}`", path.display());
+                        panic!("Cannot run rustdoc-js-std tests");
+                    }
+                    command.arg("--test-file").arg(path);
                 }
-                command.arg("--test-file").arg(path);
             }
         }
+
         builder.ensure(crate::core::build_steps::doc::Std::from_build_compiler(
             self.build_compiler,
             self.target,
@@ -1252,14 +1268,27 @@ impl Step for RustdocGUI {
 
         add_rustdoc_cargo_linker_args(&mut cmd, builder, self.test_compiler.host, LldThreads::No);
 
-        for path in &builder.paths {
-            if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {
-                if !p.ends_with(".goml") {
-                    eprintln!("A non-goml file was given: `{}`", path.display());
-                    panic!("Cannot run rustdoc-gui tests");
-                }
-                if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
-                    cmd.arg("--goml-file").arg(name);
+        let full_suite = builder.paths.iter().any(|path| {
+            matches!(
+                helpers::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder),
+                ArgCategory::Fullsuite
+            )
+        });
+
+        // If we have to also run the full suite, don't worry about the individual arguments.
+        // They will be covered by running the entire suite
+        if !full_suite {
+            for path in &builder.paths {
+                if let ArgCategory::Arg(p) =
+                    helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder)
+                {
+                    if !p.ends_with(".goml") {
+                        eprintln!("A non-goml file was given: `{}`", path.display());
+                        panic!("Cannot run rustdoc-gui tests");
+                    }
+                    if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
+                        cmd.arg("--goml-file").arg(name);
+                    }
                 }
             }
         }
@@ -2270,11 +2299,23 @@ Please disable assertions with `rust.debug-assertions = false`.
             }
             paths = &paths_v;
         }
+
         // Get test-args by striping suite path
-        let mut test_args: Vec<&str> = paths
-            .iter()
-            .filter_map(|p| helpers::is_valid_test_suite_arg(p, suite_path, builder))
-            .collect();
+        let mut test_args = Vec::new();
+        for p in paths {
+            match helpers::is_valid_test_suite_arg(p, suite_path, builder) {
+                ArgCategory::Fullsuite => {
+                    // If we also have to run the full suite, don't append _any_ test args here,
+                    // clear the list instead and break out.
+                    // That way none of the more specific paths make it into test_args,
+                    // since running the whole suite will run the specific ones anyway.
+                    test_args.clear();
+                    break;
+                }
+                ArgCategory::Arg(a) => test_args.push(a),
+                ArgCategory::Uninteresting => {}
+            }
+        }
 
         test_args.append(&mut builder.config.test_args());
 
