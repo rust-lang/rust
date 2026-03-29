@@ -240,18 +240,24 @@ pub fn target_supports_cranelift_backend(target: TargetSelection) -> bool {
     }
 }
 
+pub enum ArgCategory<'a> {
+    Fullsuite,
+    Arg(&'a str),
+    Uninteresting,
+}
+
 pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     path: &'a Path,
     suite_path: P,
     builder: &Builder<'_>,
-) -> Option<&'a str> {
+) -> ArgCategory<'a> {
     let suite_path = suite_path.as_ref();
     let path = match path.strip_prefix(".") {
         Ok(p) => p,
         Err(_) => path,
     };
     if !path.starts_with(suite_path) {
-        return None;
+        return ArgCategory::Uninteresting;
     }
     let abs_path = builder.src.join(path);
     let exists = abs_path.is_dir() || abs_path.is_file();
@@ -268,8 +274,8 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     // flag is respected, so providing an empty --test-args conflicts with
     // any following it.
     match path.strip_prefix(suite_path).ok().and_then(|p| p.to_str()) {
-        Some(s) if !s.is_empty() => Some(s),
-        _ => None,
+        Some(s) if !s.is_empty() => ArgCategory::Arg(s),
+        _ => ArgCategory::Fullsuite,
     }
 }
 
