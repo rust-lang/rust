@@ -66,8 +66,6 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) inlined: FxHashSet<ItemId>,
     /// Used by `calculate_doc_coverage`.
     pub(crate) output_format: OutputFormat,
-    /// Used by `strip_private`.
-    pub(crate) show_coverage: bool,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -133,7 +131,7 @@ impl<'tcx> DocContext<'tcx> {
     ///
     /// If another option like `--show-coverage` is enabled, it will return `false`.
     pub(crate) fn is_json_output(&self) -> bool {
-        self.output_format.is_json() && !self.show_coverage
+        self.output_format == OutputFormat::IrJson
     }
 
     /// If `--document-private-items` was passed to rustdoc.
@@ -380,7 +378,6 @@ pub(crate) fn run_global_ctxt(
         cache: Cache::new(render_options.document_private, render_options.document_hidden),
         inlined: FxHashSet::default(),
         output_format,
-        show_coverage,
     };
 
     for cnum in tcx.crates(()) {
