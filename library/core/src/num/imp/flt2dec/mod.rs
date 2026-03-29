@@ -244,18 +244,18 @@ fn digits_to_dec_str<'a>(
 }
 
 /// Formats the given decimal digits `0.<...buf...> * 10^exp` into the exponential
-/// form with at least the given number of significant digits. When `upper` is `true`,
+/// form with at least the given number of fractional digits. When `upper` is `true`,
 /// the exponent will be prefixed by `E`; otherwise that's `e`. The result is
 /// stored to the supplied parts array and a slice of written parts is returned.
 ///
-/// `min_digits` can be less than the number of actual significant digits in `buf`;
+/// `frac_digits` can be less than the number of actual fractional digits in `buf`;
 /// it will be ignored and full digits will be printed. It is only used to print
-/// additional zeroes after rendered digits. Thus, `min_digits == 0` means that
+/// additional zeroes after rendered digits. Thus, `frac_digits == 0` means that
 /// it will only print the given digits and nothing else.
 fn digits_to_exp_str<'a>(
     buf: &'a [u8],
     exp: i16,
-    min_ndigits: usize,
+    frac_digits: usize,
     upper: bool,
     parts: &'a mut [MaybeUninit<Part<'a>>],
 ) -> &'a [Part<'a>] {
@@ -268,12 +268,16 @@ fn digits_to_exp_str<'a>(
     parts[n] = MaybeUninit::new(Part::Copy(&buf[..1]));
     n += 1;
 
-    if buf.len() > 1 || min_ndigits > 1 {
+    let actual_frac_digits = buf.len() - 1;
+    if actual_frac_digits > 0 || frac_digits > 0 {
         parts[n] = MaybeUninit::new(Part::Copy(b"."));
-        parts[n + 1] = MaybeUninit::new(Part::Copy(&buf[1..]));
-        n += 2;
-        if min_ndigits > buf.len() {
-            parts[n] = MaybeUninit::new(Part::Zero(min_ndigits - buf.len()));
+        n += 1;
+        if actual_frac_digits > 0 {
+            parts[n] = MaybeUninit::new(Part::Copy(&buf[1..]));
+            n += 1;
+        }
+        if frac_digits > actual_frac_digits {
+            parts[n] = MaybeUninit::new(Part::Zero(frac_digits - actual_frac_digits));
             n += 1;
         }
     }
@@ -492,7 +496,7 @@ fn estimate_max_buf_len(exp: i16) -> usize {
 }
 
 /// Formats given floating point number into the exponential form with
-/// exactly given number of significant digits. The result is stored to
+/// exactly given number of fractional digits. The result is stored to
 /// the supplied parts array while utilizing given byte buffer as a scratch.
 /// `upper` is used to determine the case of the exponent prefix (`e` or `E`).
 /// The first part to be rendered is always a `Part::Sign` (which can be
@@ -502,8 +506,8 @@ fn estimate_max_buf_len(exp: i16) -> usize {
 /// It should return the part of the buffer that it initialized.
 /// You probably would want `strategy::grisu::format_exact` for this.
 ///
-/// The byte buffer should be at least `ndigits` bytes long unless `ndigits` is
-/// so large that only the fixed number of digits will be ever written.
+/// The byte buffer should be at least `frac_digits + 1` bytes long unless
+/// `frac_digits` is so large that only the fixed number of digits will be ever written.
 /// (The tipping point for `f64` is about 800, so 1000 bytes should be enough.)
 /// There should be at least 6 parts available, due to the worst case like
 /// `[+][1][.][2345][e][-][6]`.
@@ -511,7 +515,7 @@ pub fn to_exact_exp_str<'a, T, F>(
     mut format_exact: F,
     v: T,
     sign: Sign,
-    ndigits: usize,
+    frac_digits: usize,
     upper: bool,
     buf: &'a mut [MaybeUninit<u8>],
     parts: &'a mut [MaybeUninit<Part<'a>>],
@@ -521,7 +525,6 @@ where
     F: FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
     assert!(parts.len() >= 6);
-    assert!(ndigits > 0);
 
     let (negative, full_decoded) = decode(v);
     let sign = determine_sign(sign, &full_decoded, negative);
@@ -537,10 +540,10 @@ where
             Formatted { sign, parts: unsafe { parts[..1].assume_init_ref() } }
         }
         FullDecoded::Zero => {
-            if ndigits > 1 {
+            if frac_digits > 0 {
                 // [0.][0000][e0]
                 parts[0] = MaybeUninit::new(Part::Copy(b"0."));
-                parts[1] = MaybeUninit::new(Part::Zero(ndigits - 1));
+                parts[1] = MaybeUninit::new(Part::Zero(frac_digits));
                 parts[2] = MaybeUninit::new(Part::Copy(if upper { b"E0" } else { b"e0" }));
                 Formatted {
                     sign,
@@ -558,11 +561,11 @@ where
         }
         FullDecoded::Finite(ref decoded) => {
             let maxlen = estimate_max_buf_len(decoded.exp);
-            assert!(buf.len() >= ndigits || buf.len() >= maxlen);
+            let sig_digits = if frac_digits < maxlen { frac_digits + 1 } else { maxlen };
+            assert!(buf.len() >= sig_digits);
 
-            let trunc = if ndigits < maxlen { ndigits } else { maxlen };
-            let (buf, exp) = format_exact(decoded, &mut buf[..trunc], i16::MIN);
-            Formatted { sign, parts: digits_to_exp_str(buf, exp, ndigits, upper, parts) }
+            let (buf, exp) = format_exact(decoded, &mut buf[..sig_digits], i16::MIN);
+            Formatted { sign, parts: digits_to_exp_str(buf, exp, frac_digits, upper, parts) }
         }
     }
 }
