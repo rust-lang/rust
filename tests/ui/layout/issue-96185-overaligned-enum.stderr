@@ -36,51 +36,23 @@ error: layout_of(Aligned1) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(8 bytes),
-                       align: AbiAlign {
-                           abi: Align(8 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: Some(
-                           Align(8 bytes),
-                       ),
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(8 bytes),
-                       align: AbiAlign {
-                           abi: Align(8 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: Some(
-                           Align(8 bytes),
-                       ),
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -139,51 +111,23 @@ error: layout_of(Aligned2) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: Some(
-                           Align(1 bytes),
-                       ),
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: Some(
-                           Align(1 bytes),
-                       ),
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },

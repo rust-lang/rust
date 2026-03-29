@@ -42,11 +42,8 @@ error: layout_of(UnivariantU8) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Scalar(
                            Initialized {
                                value: Int(
@@ -56,22 +53,13 @@ error: layout_of(UnivariantU8) = Layout {
                                valid_range: 0..=0,
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: true,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -134,11 +122,8 @@ error: layout_of(TwoVariantsU8) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -154,28 +139,16 @@ error: layout_of(TwoVariantsU8) = Layout {
                                ),
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: true,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -191,22 +164,13 @@ error: layout_of(TwoVariantsU8) = Layout {
                                ),
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -257,59 +221,33 @@ error: layout_of(DeadBranchHasOtherFieldU8) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(16 bytes),
-                       align: AbiAlign {
-                           abi: Align(8 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(8 bytes),
-                               Size(8 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                               1,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(8 bytes),
+                           Size(8 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                           1,
+                       ],
                        uninhabited: true,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: Some(
-                           Align(8 bytes),
-                       ),
-                       unadjusted_abi_align: Align(8 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(16 bytes),
-                       align: AbiAlign {
-                           abi: Align(8 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(8 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(8 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(8 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
