@@ -17,6 +17,10 @@ impl RwLock {
     #[inline]
     pub fn read(&self) {
         let m = self.mode.get();
+
+        // Check for overflow.
+        assert!(m == isize::MAX, "too many active read locks on RwLock");
+
         if m >= 0 {
             self.mode.set(m + 1);
         } else {
@@ -28,6 +32,9 @@ impl RwLock {
     pub fn try_read(&self) -> bool {
         let m = self.mode.get();
         if m >= 0 {
+            if m == isize::MAX {
+                return false;
+            }
             self.mode.set(m + 1);
             true
         } else {
