@@ -136,6 +136,7 @@
 #![feature(f16)]
 #![feature(f128)]
 #![feature(field_projections)]
+#![feature(final_associated_functions)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(funnel_shifts)]
