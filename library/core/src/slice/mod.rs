@@ -5296,8 +5296,6 @@ impl<T> [T] {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// #![feature(substr_range)]
-    ///
     /// let nums = &[0, 5, 10, 0, 0, 5];
     ///
     /// let mut iter = nums
@@ -5310,7 +5308,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(5..6));
     /// ```
     #[must_use]
-    #[unstable(feature = "substr_range", issue = "126769")]
+    #[stable(feature = "substr_range", since = "CURRENT_RUSTC_VERSION")]
     pub fn subslice_range(&self, subslice: &[T]) -> Option<Range<usize>> {
         if T::IS_ZST {
             panic!("elements are zero-sized");
