@@ -3,14 +3,16 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Bound, Range, RangeBounds};
 use std::rc::Rc;
-use std::{fmt, iter, slice};
+use std::{fmt, iter};
 
 use Chunk::*;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
+use crate::bit_set::raw::RawBitIter;
 use crate::{Idx, IndexVec};
 
+mod raw;
 #[cfg(test)]
 mod tests;
 
@@ -183,48 +185,18 @@ impl<T: Idx> DenseBitSet<T> {
         self.words.iter().all(|a| *a == 0)
     }
 
-    /// Insert `elem`. Returns whether the set has changed.
+    /// Inserts `value` into the set, and returns true if the set has changed
+    /// (i.e. the set did not contain the value).
     #[inline]
-    pub fn insert(&mut self, elem: T) -> bool {
-        assert!(
-            elem.index() < self.domain_size,
-            "inserting element at index {} but domain size is {}",
-            elem.index(),
-            self.domain_size,
-        );
-        let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
-        let word = *word_ref;
-        let new_word = word | mask;
-        *word_ref = new_word;
-        new_word != word
+    pub fn insert(&mut self, value: T) -> bool {
+        raw::insert(self.domain_size, &mut self.words, value.index())
     }
 
     #[inline]
-    pub fn insert_range(&mut self, elems: impl RangeBounds<T>) {
-        let Some((start, end)) = inclusive_start_end(elems, self.domain_size) else {
-            return;
-        };
-
-        let (start_word_index, start_mask) = word_index_and_mask(start);
-        let (end_word_index, end_mask) = word_index_and_mask(end);
-
-        // Set all words in between start and end (exclusively of both).
-        for word_index in (start_word_index + 1)..end_word_index {
-            self.words[word_index] = !0;
-        }
-
-        if start_word_index != end_word_index {
-            // Start and end are in different words, so we handle each in turn.
-            //
-            // We set all leading bits. This includes the start_mask bit.
-            self.words[start_word_index] |= !(start_mask - 1);
-            // And all trailing bits (i.e. from 0..=end) in the end word,
-            // including the end.
-            self.words[end_word_index] |= end_mask | (end_mask - 1);
-        } else {
-            self.words[start_word_index] |= end_mask | (end_mask - start_mask);
-        }
+    pub fn insert_range(&mut self, range: impl RangeBounds<T>) {
+        let start = range.start_bound().map(|i| i.index());
+        let end = range.end_bound().map(|i| i.index());
+        raw::insert_range(self.domain_size, &mut self.words, (start, end));
     }
 
     /// Sets all bits to true.
@@ -235,40 +207,17 @@ impl<T: Idx> DenseBitSet<T> {
 
     /// Checks whether any bit in the given range is a 1.
     #[inline]
-    pub fn contains_any(&self, elems: impl RangeBounds<T>) -> bool {
-        let Some((start, end)) = inclusive_start_end(elems, self.domain_size) else {
-            return false;
-        };
-        let (start_word_index, start_mask) = word_index_and_mask(start);
-        let (end_word_index, end_mask) = word_index_and_mask(end);
-
-        if start_word_index == end_word_index {
-            self.words[start_word_index] & (end_mask | (end_mask - start_mask)) != 0
-        } else {
-            if self.words[start_word_index] & !(start_mask - 1) != 0 {
-                return true;
-            }
-
-            let remaining = start_word_index + 1..end_word_index;
-            if remaining.start <= remaining.end {
-                self.words[remaining].iter().any(|&w| w != 0)
-                    || self.words[end_word_index] & (end_mask | (end_mask - 1)) != 0
-            } else {
-                false
-            }
-        }
+    pub fn contains_any(&self, range: impl RangeBounds<T>) -> bool {
+        let start = range.start_bound().map(|i| i.index());
+        let end = range.end_bound().map(|i| i.index());
+        raw::contains_any(self.domain_size, &self.words, (start, end))
     }
 
-    /// Returns `true` if the set has changed.
+    /// Removes `value` from the set, and returns true if the set has changed
+    /// (i.e. the set did contain the value).
     #[inline]
-    pub fn remove(&mut self, elem: T) -> bool {
-        assert!(elem.index() < self.domain_size);
-        let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
-        let word = *word_ref;
-        let new_word = word & !mask;
-        *word_ref = new_word;
-        new_word != word
+    pub fn remove(&mut self, value: T) -> bool {
+        raw::remove(self.domain_size, &mut self.words, value.index())
     }
 
     /// Iterates over the indices of set bits in a sorted order.
@@ -278,33 +227,9 @@ impl<T: Idx> DenseBitSet<T> {
     }
 
     pub fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T> {
-        let (start, end) = inclusive_start_end(range, self.domain_size)?;
-        let (start_word_index, _) = word_index_and_mask(start);
-        let (end_word_index, end_mask) = word_index_and_mask(end);
-
-        let end_word = self.words[end_word_index] & (end_mask | (end_mask - 1));
-        if end_word != 0 {
-            let pos = max_bit(end_word) + WORD_BITS * end_word_index;
-            if start <= pos {
-                return Some(T::new(pos));
-            }
-        }
-
-        // We exclude end_word_index from the range here, because we don't want
-        // to limit ourselves to *just* the last word: the bits set it in may be
-        // after `end`, so it may not work out.
-        if let Some(offset) =
-            self.words[start_word_index..end_word_index].iter().rposition(|&w| w != 0)
-        {
-            let word_idx = start_word_index + offset;
-            let start_word = self.words[word_idx];
-            let pos = max_bit(start_word) + WORD_BITS * word_idx;
-            if start <= pos {
-                return Some(T::new(pos));
-            }
-        }
-
-        None
+        let start = range.start_bound().map(|i| i.index());
+        let end = range.end_bound().map(|i| i.index());
+        raw::last_set_in(self.domain_size, &self.words, (start, end)).map(T::new)
     }
 
     bit_relations_inherent_impls! {}
@@ -410,54 +335,22 @@ impl<T: Idx> ToString for DenseBitSet<T> {
 }
 
 pub struct BitIter<'a, T: Idx> {
-    /// A copy of the current word, but with any already-visited bits cleared.
-    /// (This lets us use `trailing_zeros()` to find the next set bit.) When it
-    /// is reduced to 0, we move onto the next word.
-    word: Word,
-
-    /// The offset (measured in bits) of the current word.
-    offset: usize,
-
-    /// Underlying iterator over the words.
-    iter: slice::Iter<'a, Word>,
-
+    raw: RawBitIter<'a>,
     marker: PhantomData<T>,
 }
 
 impl<'a, T: Idx> BitIter<'a, T> {
-    #[inline]
-    fn new(words: &'a [Word]) -> BitIter<'a, T> {
-        // We initialize `word` and `offset` to degenerate values. On the first
-        // call to `next()` we will fall through to getting the first word from
-        // `iter`, which sets `word` to the first word (if there is one) and
-        // `offset` to 0. Doing it this way saves us from having to maintain
-        // additional state about whether we have started.
-        BitIter {
-            word: 0,
-            offset: usize::MAX - (WORD_BITS - 1),
-            iter: words.iter(),
-            marker: PhantomData,
-        }
+    #[inline(always)]
+    fn new(words: &'a [Word]) -> Self {
+        BitIter { raw: RawBitIter::new(words), marker: PhantomData }
     }
 }
 
 impl<'a, T: Idx> Iterator for BitIter<'a, T> {
     type Item = T;
-    fn next(&mut self) -> Option<T> {
-        loop {
-            if self.word != 0 {
-                // Get the position of the next set bit in the current word,
-                // then clear the bit.
-                let bit_pos = self.word.trailing_zeros() as usize;
-                self.word ^= 1 << bit_pos;
-                return Some(T::new(bit_pos + self.offset));
-            }
 
-            // Move onto the next word. `wrapping_add()` is needed to handle
-            // the degenerate initial value given to `offset` in `new()`.
-            self.word = *self.iter.next()?;
-            self.offset = self.offset.wrapping_add(WORD_BITS);
-        }
+    fn next(&mut self) -> Option<Self::Item> {
+        self.raw.next().map(T::new)
     }
 }
 
@@ -740,7 +633,7 @@ impl<T: Idx> ChunkedBitSet<T> {
             Some(Ones) => ChunkIter::Ones(0..chunk_domain_size as usize),
             Some(Mixed { ones_count: _, words }) => {
                 let num_words = num_words(chunk_domain_size as usize);
-                ChunkIter::Mixed(BitIter::new(&words[0..num_words]))
+                ChunkIter::Mixed(RawBitIter::new(&words[0..num_words]))
             }
             None => ChunkIter::Finished,
         }
@@ -1058,7 +951,7 @@ impl Chunk {
 enum ChunkIter<'a> {
     Zeros,
     Ones(Range<usize>),
-    Mixed(BitIter<'a, usize>),
+    Mixed(RawBitIter<'a>),
     Finished,
 }
 
@@ -1724,12 +1617,9 @@ fn num_chunks<T: Idx>(domain_size: T) -> usize {
     domain_size.index().div_ceil(CHUNK_BITS)
 }
 
-#[inline]
+#[inline(always)]
 fn word_index_and_mask<T: Idx>(elem: T) -> (usize, Word) {
-    let elem = elem.index();
-    let word_index = elem / WORD_BITS;
-    let mask = 1 << (elem % WORD_BITS);
-    (word_index, mask)
+    raw::word_index_and_mask(elem.index())
 }
 
 #[inline]
