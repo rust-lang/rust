@@ -1,0 +1,39 @@
+error[E0277]: can't compare `[u8; 4]` with `&[u8; 4]`
+  --> $DIR/assert-ne-no-invalid-help-issue-146204.rs:3:5
+   |
+LL |     assert_ne!(buf, b"----");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `[u8; 4] == &[u8; 4]`
+   |
+   = help: the trait `PartialEq<&[u8; 4]>` is not implemented for `[u8; 4]`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             `&[T]` implements `PartialEq<Vec<U, A>>`
+             `&[T]` implements `PartialEq<[U; N]>`
+             `&[u8; N]` implements `PartialEq<ByteStr>`
+             `&[u8; N]` implements `PartialEq<ByteString>`
+             `&[u8]` implements `PartialEq<ByteStr>`
+             `&[u8]` implements `PartialEq<ByteString>`
+             `&mut [T]` implements `PartialEq<Vec<U, A>>`
+             `&mut [T]` implements `PartialEq<[U; N]>`
+           and 11 others
+
+error[E0277]: can't compare `[u8; 4]` with `&[u8; 4]`
+  --> $DIR/assert-ne-no-invalid-help-issue-146204.rs:6:5
+   |
+LL |     assert_eq!(buf, b"----");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `[u8; 4] == &[u8; 4]`
+   |
+   = help: the trait `PartialEq<&[u8; 4]>` is not implemented for `[u8; 4]`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             `&[T]` implements `PartialEq<Vec<U, A>>`
+             `&[T]` implements `PartialEq<[U; N]>`
+             `&[u8; N]` implements `PartialEq<ByteStr>`
+             `&[u8; N]` implements `PartialEq<ByteString>`
+             `&[u8]` implements `PartialEq<ByteStr>`
+             `&[u8]` implements `PartialEq<ByteString>`
+             `&mut [T]` implements `PartialEq<Vec<U, A>>`
+             `&mut [T]` implements `PartialEq<[U; N]>`
+           and 11 others
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
