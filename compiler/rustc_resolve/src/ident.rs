@@ -1837,6 +1837,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 "too many leading `super` keywords".to_string(),
                                 "there are too many leading `super` keywords".to_string(),
                                 None,
+                                None,
                             )
                         },
                     );
@@ -1903,7 +1904,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 "can only be used in path start position".to_string(),
                             )
                         };
-                        (message, label, None)
+                        (message, label, None, None)
                     },
                 );
             }
@@ -2017,10 +2018,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             module_had_parse_errors,
                             module,
                             || {
+                                let import_inherent_item_error_flag =
+                                    self.tcx.features().import_trait_associated_functions()
+                                        && matches!(
+                                            res,
+                                            Res::Def(
+                                                DefKind::Struct
+                                                    | DefKind::Enum
+                                                    | DefKind::Union
+                                                    | DefKind::ForeignTy,
+                                                _
+                                            )
+                                        );
+                                // Show a different error message for items that can have associated items.
                                 let label = format!(
-                                    "`{ident}` is {} {}, not a module",
+                                    "`{ident}` is {} {}, not a module{}",
                                     res.article(),
-                                    res.descr()
+                                    res.descr(),
+                                    if import_inherent_item_error_flag {
+                                        " or a trait"
+                                    } else {
+                                        ""
+                                    }
                                 );
                                 let scope = match &path[..segment_idx] {
                                     [.., prev] => {
@@ -2035,7 +2054,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 // FIXME: reword, as the reason we expected a module is because of
                                 // the following path segment.
                                 let message = format!("cannot find module `{ident}` in {scope}");
-                                (message, label, None)
+                                let note = if import_inherent_item_error_flag {
+                                    Some(
+                                        "cannot import inherent associated items, only trait associated items".to_string(),
+                                    )
+                                } else {
+                                    None
+                                };
+                                (message, label, None, note)
                             },
                         );
                     }
@@ -2060,18 +2086,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         module_had_parse_errors,
                         module,
                         || {
-                            this.get_mut().report_path_resolution_error(
-                                path,
-                                opt_ns,
-                                parent_scope,
-                                ribs,
-                                ignore_decl,
-                                ignore_import,
-                                module,
-                                segment_idx,
-                                ident,
-                                diag_metadata,
-                            )
+                            let (message, label, suggestion) =
+                                this.get_mut().report_path_resolution_error(
+                                    path,
+                                    opt_ns,
+                                    parent_scope,
+                                    ribs,
+                                    ignore_decl,
+                                    ignore_import,
+                                    module,
+                                    segment_idx,
+                                    ident,
+                                    diag_metadata,
+                                );
+                            (message, label, suggestion, None)
                         },
                     );
                 }
