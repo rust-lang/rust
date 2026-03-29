@@ -16,6 +16,10 @@ LL | struct NoCopy(usize);
 ...
 LL |     let _ = dbg!(a);
    |                  - you could clone this value
+help: consider borrowing instead of transferring ownership
+   |
+LL |     let _ = dbg!(&a);
+   |                  +
 
 error: aborting due to 1 previous error
 
