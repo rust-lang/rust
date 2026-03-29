@@ -1,0 +1,26 @@
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/suboptimal-generic-suggestion-154220.rs:2:15
+   |
+LL |     fn foo(_: Option()) {}
+   |               ^^^^^^^^ only `Fn` traits may use parentheses
+   |
+help: use angle brackets instead
+   |
+LL |     fn foo(_: Option<()>) {}
+   |                     +  +
+
+error[E0107]: enum takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/suboptimal-generic-suggestion-154220.rs:2:15
+   |
+LL |     fn foo(_: Option()) {}
+   |               ^^^^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL |     fn foo(_: Option(T)) {}
+   |                      +
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0214.
+For more information about an error, try `rustc --explain E0107`.

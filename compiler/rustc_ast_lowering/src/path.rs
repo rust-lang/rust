@@ -318,22 +318,23 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                         ),
                     GenericArgsMode::Err => {
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
-                        let sub = if !data.inputs.is_empty() {
+                        let sub = if !matches!(itctx, ImplTraitContext::Disallowed(_))
+                            || !data.inputs.is_empty()
+                        {
                             // Start of the span to the 1st character of 1st argument
-                            let open_param = data.inputs_span.shrink_to_lo().to(data
-                                .inputs
-                                .first()
-                                .unwrap()
-                                .span
-                                .shrink_to_lo());
+                            // (or just the first character if empty)
+                            let open_param = if let Some(first) = data.inputs.first() {
+                                data.inputs_span.shrink_to_lo().to(first.span.shrink_to_lo())
+                            } else {
+                                data.inputs_span.shrink_to_lo()
+                            };
                             // Last character position of last argument to the end of the span
-                            let close_param = data
-                                .inputs
-                                .last()
-                                .unwrap()
-                                .span
-                                .shrink_to_hi()
-                                .to(data.inputs_span.shrink_to_hi());
+                            // (or just the last character if empty)
+                            let close_param = if let Some(last) = data.inputs.last() {
+                                last.span.shrink_to_hi().to(data.inputs_span.shrink_to_hi())
+                            } else {
+                                data.inputs_span.shrink_to_hi()
+                            };
 
                             Some(UseAngleBrackets { open_param, close_param })
                         } else {
