@@ -190,6 +190,16 @@ To fix the lint, you need to add a code example into the documentation block:
 pub fn no_code_example() {}
 ```
 
+This lint is not emitted on the following items:
+
+ * Impl blocks
+ * Enum variants
+ * Struct/union fields
+ * (associated) Type aliases
+ * Statics/constants
+ * Modules
+ * Foreign items (functions, statics, types, etc)
+
 ## `private_doc_tests`
 
 This lint is **allowed by default**. It detects documentation tests when they
