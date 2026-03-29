@@ -23,11 +23,10 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
-    self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
+    self, DynSend, DynSync, FreezeReadGuard, IntoPointer, Lock, RwLock, SyncTable, WorkerLocal,
 };
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
@@ -131,7 +130,7 @@ impl<'tcx> rustc_type_ir::inherent::Span<TyCtxt<'tcx>> for Span {
     }
 }
 
-type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
+type InternedSet<'tcx, T> = SyncTable<InternedInSet<'tcx, T>, ()>;
 
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc. are allocated from.
@@ -1803,6 +1802,7 @@ macro_rules! sty_debug_print {
         mod inner {
             use crate::ty::{self, TyCtxt};
             use crate::ty::context::InternedInSet;
+            use rustc_data_structures::sync::collect::pin;
 
             #[derive(Copy, Clone)]
             struct DebugStat {
@@ -1823,11 +1823,11 @@ macro_rules! sty_debug_print {
                 };
                 $(let mut $variant = total;)*
 
-                for shard in tcx.interners.type_.lock_shards() {
+                pin(|pin| {
                     // It seems that ordering doesn't affect anything here.
                     #[allow(rustc::potential_query_instability)]
-                    let types = shard.iter();
-                    for &(InternedInSet(t), ()) in types {
+                    let types = tcx.interners.type_.read(pin);
+                    for (&InternedInSet(t), _) in types.iter() {
                         let variant = match t.internee {
                             ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                                 ty::Float(..) | ty::Str | ty::Never => continue,
@@ -1845,7 +1845,7 @@ macro_rules! sty_debug_print {
                         if ct { total.ct_infer += 1; variant.ct_infer += 1 }
                         if lt && ty && ct { total.all_infer += 1; variant.all_infer += 1 }
                     }
-                }
+                });
                 writeln!(fmt, "Ty interner             total           ty lt ct all")?;
                 $(writeln!(fmt, "    {:18}: {uses:6} {usespc:4.1}%, \
                             {ty:4.1}% {lt:5.1}% {ct:4.1}% {all:4.1}%",

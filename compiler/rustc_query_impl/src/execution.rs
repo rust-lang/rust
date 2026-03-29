@@ -3,7 +3,7 @@ use std::mem::ManuallyDrop;
 
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::{DynSend, DynSync};
+use rustc_data_structures::sync::{DynSend, DynSync, collect};
 use rustc_data_structures::{outline, sharded, sync};
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
@@ -310,6 +310,10 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
             // Tell the guard to insert `value` in the cache and remove the status entry from
             // `query.state`.
             job_guard.complete(&query.cache, value, dep_node_index);
+
+            // Periodic memory reclamation trigger.
+            // We do this after `complete` since the default caches may have memory to free due to table expansion.
+            collect::collect();
 
             (value, Some(dep_node_index))
         }
