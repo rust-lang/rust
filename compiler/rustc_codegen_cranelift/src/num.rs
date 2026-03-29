@@ -500,8 +500,8 @@ fn codegen_ptr_binop<'tcx>(
 
 // In Rust floating point min and max don't propagate NaN (not even SNaN). In Cranelift they do
 // however. For this reason it is necessary to use `a.is_nan() ? b : (a >= b ? b : a)` for
-// `minnumf*` and `a.is_nan() ? b : (a <= b ? b : a)` for `maxnumf*`. NaN checks are done by
-// comparing a float against itself. Only in case of NaN is it not equal to itself.
+// `minimum_number_nsz` and `a.is_nan() ? b : (a <= b ? b : a)` for `maximum_number_nsz`. NaN checks
+// are done by comparing a float against itself. Only in case of NaN is it not equal to itself.
 pub(crate) fn codegen_float_min(fx: &mut FunctionCx<'_, '_, '_>, a: Value, b: Value) -> Value {
     // FIXME(bytecodealliance/wasmtime#8312): Replace with Cranelift `fcmp` once
     // `f16`/`f128` backend lowerings have been added to Cranelift.

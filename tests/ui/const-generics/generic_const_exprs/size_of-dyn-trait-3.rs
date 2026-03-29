@@ -17,5 +17,5 @@ where
 fn main() {
     let dst = Inline::<dyn Debug>::new(0);
     //~^ ERROR the size for values of type `dyn Debug` cannot be known at compilation time
-    //~| ERROR no function or associated item named `new` found for struct `Inline<T>`
+    //~| ERROR no associated function or constant named `new` found for struct `Inline<T>`
 }

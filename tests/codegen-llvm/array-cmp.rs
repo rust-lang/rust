@@ -39,16 +39,6 @@ pub fn array_of_tuple_le(a: &[(i16, u16); 2], b: &[(i16, u16); 2]) -> bool {
     // CHECK: %[[EQ00:.+]] = icmp eq i16 %[[A00]], %[[B00]]
     // CHECK-NEXT: br i1 %[[EQ00]], label %[[L01:.+]], label %[[EXIT_S:.+]]
 
-    // CHECK: [[L01]]:
-    // CHECK: %[[PA01:.+]] = getelementptr{{.+}}i8, ptr %a, {{i32|i64}} 2
-    // CHECK: %[[PB01:.+]] = getelementptr{{.+}}i8, ptr %b, {{i32|i64}} 2
-    // CHECK: %[[A01:.+]] = load i16, ptr %[[PA01]]
-    // CHECK: %[[B01:.+]] = load i16, ptr %[[PB01]]
-    // CHECK-NOT: cmp
-    // CHECK: %[[EQ01:.+]] = icmp eq i16 %[[A01]], %[[B01]]
-    // CHECK-NEXT: br i1 %[[EQ01]], label %[[L10:.+]], label %[[EXIT_U:.+]]
-
-    // CHECK: [[L10]]:
     // CHECK: %[[PA10:.+]] = getelementptr{{.+}}i8, ptr %a, {{i32|i64}} 4
     // CHECK: %[[PB10:.+]] = getelementptr{{.+}}i8, ptr %b, {{i32|i64}} 4
     // CHECK: %[[A10:.+]] = load i16, ptr %[[PA10]]
@@ -64,7 +54,16 @@ pub fn array_of_tuple_le(a: &[(i16, u16); 2], b: &[(i16, u16); 2]) -> bool {
     // CHECK: %[[B11:.+]] = load i16, ptr %[[PB11]]
     // CHECK-NOT: cmp
     // CHECK: %[[EQ11:.+]] = icmp eq i16 %[[A11]], %[[B11]]
-    // CHECK-NEXT: br i1 %[[EQ11]], label %[[DONE:.+]], label %[[EXIT_U]]
+    // CHECK-NEXT: br i1 %[[EQ11]], label %[[DONE:.+]], label %[[EXIT_U:.+]]
+
+    // CHECK: [[L01]]:
+    // CHECK: %[[PA01:.+]] = getelementptr{{.+}}i8, ptr %a, {{i32|i64}} 2
+    // CHECK: %[[PB01:.+]] = getelementptr{{.+}}i8, ptr %b, {{i32|i64}} 2
+    // CHECK: %[[A01:.+]] = load i16, ptr %[[PA01]]
+    // CHECK: %[[B01:.+]] = load i16, ptr %[[PB01]]
+    // CHECK-NOT: cmp
+    // CHECK: %[[EQ01:.+]] = icmp eq i16 %[[A01]], %[[B01]]
+    // CHECK-NEXT: br i1 %[[EQ01]], label %{{.+}}, label %[[EXIT_U]]
 
     // CHECK: [[DONE]]:
     // CHECK: %[[RET:.+]] = phi i1 [ %{{.+}}, %[[EXIT_S]] ], [ %{{.+}}, %[[EXIT_U]] ], [ true, %[[L11]] ]

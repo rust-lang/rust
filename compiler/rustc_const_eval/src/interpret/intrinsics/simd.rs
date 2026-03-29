@@ -174,8 +174,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | sym::simd_le
             | sym::simd_gt
             | sym::simd_ge
-            | sym::simd_fmax
-            | sym::simd_fmin
+            | sym::simd_maximum_number_nsz
+            | sym::simd_minimum_number_nsz
             | sym::simd_saturating_add
             | sym::simd_saturating_sub
             | sym::simd_arith_offset => {
@@ -211,8 +211,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::simd_le => Op::MirOp(BinOp::Le),
                     sym::simd_gt => Op::MirOp(BinOp::Gt),
                     sym::simd_ge => Op::MirOp(BinOp::Ge),
-                    sym::simd_fmax => Op::FMinMax(MinMax::MaximumNumberNsz),
-                    sym::simd_fmin => Op::FMinMax(MinMax::MinimumNumberNsz),
+                    sym::simd_maximum_number_nsz => Op::FMinMax(MinMax::MaximumNumberNsz),
+                    sym::simd_minimum_number_nsz => Op::FMinMax(MinMax::MinimumNumberNsz),
                     sym::simd_saturating_add => Op::SaturatingOp(BinOp::Add),
                     sym::simd_saturating_sub => Op::SaturatingOp(BinOp::Sub),
                     sym::simd_arith_offset => Op::WrappingOffset,

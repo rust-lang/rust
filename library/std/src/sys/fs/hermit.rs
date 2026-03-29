@@ -109,15 +109,15 @@ pub struct DirBuilder {
 
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat_val.st_mtim.tv_sec, self.stat_val.st_mtim.tv_nsec))
+        SystemTime::new(self.stat_val.st_mtim.tv_sec, self.stat_val.st_mtim.tv_nsec.into())
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat_val.st_atim.tv_sec, self.stat_val.st_atim.tv_nsec))
+        SystemTime::new(self.stat_val.st_atim.tv_sec, self.stat_val.st_atim.tv_nsec.into())
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat_val.st_ctim.tv_sec, self.stat_val.st_ctim.tv_nsec))
+        SystemTime::new(self.stat_val.st_ctim.tv_sec, self.stat_val.st_ctim.tv_nsec.into())
     }
 
     pub fn size(&self) -> u64 {

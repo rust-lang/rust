@@ -1615,7 +1615,7 @@ impl<'v> RootCollector<'_, 'v> {
                 if (self.strategy == MonoItemCollectionStrategy::Eager || is_pub_fn_coroutine)
                     && !self
                         .tcx
-                        .generics_of(self.tcx.typeck_root_def_id(def_id.to_def_id()))
+                        .generics_of(self.tcx.typeck_root_def_id_local(def_id))
                         .requires_monomorphization(self.tcx)
                 {
                     let instance = match *self.tcx.type_of(def_id).instantiate_identity().kind() {
