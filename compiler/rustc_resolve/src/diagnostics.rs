@@ -575,12 +575,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     span,
                     label: None,
                     refer_to_type_directly: None,
+                    use_let: None,
                     sugg: None,
                     static_or_const,
                     is_self,
-                    item: inner_item.as_ref().map(|(span, kind)| {
+                    item: inner_item.as_ref().map(|(label_span, _, kind)| {
                         errs::GenericParamsFromOuterItemInnerItem {
-                            span: *span,
+                            span: *label_span,
                             descr: kind.descr().to_string(),
                             is_self,
                         }
@@ -588,10 +589,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
 
                 let sm = self.tcx.sess.source_map();
+                // Note: do not early return for missing def_id here,
+                // we still want to provide suggestions for `Res::SelfTyParam` and `Res::SelfTyAlias`.
                 let def_id = match outer_res {
                     Res::SelfTyParam { .. } => {
                         err.label = Some(Label::SelfTyParam(span));
-                        return self.dcx().create_err(err);
+                        None
                     }
                     Res::SelfTyAlias { alias_to: def_id, .. } => {
                         err.label = Some(Label::SelfTyAlias(reduce_impl_span_to_impl_keyword(
@@ -600,15 +603,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         )));
                         err.refer_to_type_directly =
                             current_self_ty.map(|snippet| errs::UseTypeDirectly { span, snippet });
-                        return self.dcx().create_err(err);
+                        None
                     }
                     Res::Def(DefKind::TyParam, def_id) => {
                         err.label = Some(Label::TyParam(self.def_span(def_id)));
-                        def_id
+                        Some(def_id)
                     }
                     Res::Def(DefKind::ConstParam, def_id) => {
                         err.label = Some(Label::ConstParam(self.def_span(def_id)));
-                        def_id
+                        Some(def_id)
                     }
                     _ => {
                         bug!(
@@ -619,8 +622,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 };
 
-                if let HasGenericParams::Yes(span) = has_generic_params
-                    && !matches!(inner_item, Some((_, ItemKind::Delegation(..))))
+                if let Some((_, item_span, ItemKind::Const(_))) = inner_item.as_ref() {
+                    err.use_let = Some(errs::GenericParamsFromOuterItemUseLet {
+                        span: sm.span_until_whitespace(*item_span),
+                    });
+                }
+
+                if let Some(def_id) = def_id
+                    && let HasGenericParams::Yes(span) = has_generic_params
+                    && !matches!(inner_item, Some((_, _, ItemKind::Delegation(..))))
                 {
                     let name = self.tcx.item_name(def_id);
                     let (span, snippet) = if span.is_empty() {

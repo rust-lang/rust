@@ -1596,12 +1596,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let item = if let Some(diag_metadata) = diag_metadata
                             && let Some(current_item) = diag_metadata.current_item
                         {
-                            let span = current_item
+                            let label_span = current_item
                                 .kind
                                 .ident()
                                 .map(|i| i.span)
                                 .unwrap_or(current_item.span);
-                            Some((span, current_item.kind.clone()))
+                            Some((label_span, current_item.span, current_item.kind.clone()))
                         } else {
                             None
                         };
@@ -1693,12 +1693,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let item = if let Some(diag_metadata) = diag_metadata
                             && let Some(current_item) = diag_metadata.current_item
                         {
-                            let span = current_item
+                            let label_span = current_item
                                 .kind
                                 .ident()
                                 .map(|i| i.span)
                                 .unwrap_or(current_item.span);
-                            Some((span, current_item.kind.clone()))
+                            Some((label_span, current_item.span, current_item.kind.clone()))
                         } else {
                             None
                         };
