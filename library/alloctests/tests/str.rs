@@ -2452,3 +2452,65 @@ fn ceil_char_boundary() {
     // above len
     check_many("hello", 5..=10, 5);
 }
+const _: () = {
+    assert!(matches!("hello".first_char(), Some('h')));
+    assert!(matches!("hello".last_char(), Some('o')));
+    assert!(matches!("🦀rust".first_char(), Some('🦀')));
+    assert!(matches!("rust🦀".last_char(), Some('🦀')));
+    assert!("".first_char().is_none());
+    assert!("".last_char().is_none());
+    assert!(matches!("hello".split_first_char(), Some(('h', _))));
+    assert!(matches!("hello".split_last_char(), Some(('o', _))));
+};
+
+#[test]
+fn first_char() {
+    assert_eq!("".first_char(), None);
+    assert_eq!("x".first_char(), Some('x'));
+    assert_eq!("hello".first_char(), Some('h'));
+    // 2-byte char
+    assert_eq!("ĵƥ".first_char(), Some('ĵ'));
+    // 3-byte char
+    assert_eq!("日本".first_char(), Some('日'));
+    // 4-byte char
+    assert_eq!("🦀rust".first_char(), Some('🦀'));
+}
+
+#[test]
+fn last_char() {
+    assert_eq!("".last_char(), None);
+    assert_eq!("x".last_char(), Some('x'));
+    assert_eq!("hello".last_char(), Some('o'));
+    // 2-byte char
+    assert_eq!("ĵƥ".last_char(), Some('ƥ'));
+    // 3-byte char
+    assert_eq!("日本".last_char(), Some('本'));
+    // 4-byte char
+    assert_eq!("rust🦀".last_char(), Some('🦀'));
+}
+
+#[test]
+fn split_first_char() {
+    assert_eq!("".split_first_char(), None);
+    assert_eq!("x".split_first_char(), Some(('x', "")));
+    assert_eq!("hello".split_first_char(), Some(('h', "ello")));
+    // 2-byte char
+    assert_eq!("ĵƥ".split_first_char(), Some(('ĵ', "ƥ")));
+    // 3-byte char
+    assert_eq!("日本".split_first_char(), Some(('日', "本")));
+    // 4-byte char
+    assert_eq!("🦀rust".split_first_char(), Some(('🦀', "rust")));
+}
+
+#[test]
+fn split_last_char() {
+    assert_eq!("".split_last_char(), None);
+    assert_eq!("x".split_last_char(), Some(('x', "")));
+    assert_eq!("hello".split_last_char(), Some(('o', "hell")));
+    // 2-byte char
+    assert_eq!("ĵƥ".split_last_char(), Some(('ƥ', "ĵ")));
+    // 3-byte char
+    assert_eq!("日本".split_last_char(), Some(('本', "日")));
+    // 4-byte char
+    assert_eq!("rust🦀".split_last_char(), Some(('🦀', "rust")));
+}
