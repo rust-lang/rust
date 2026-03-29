@@ -1271,6 +1271,10 @@ pub struct Resolver<'ra, 'tcx> {
     glob_error: Option<ErrorGuaranteed> = None,
     visibilities_for_hashing: Vec<(LocalDefId, Visibility)> = Vec::new(),
     used_imports: FxHashSet<NodeId> = default::fx_hash_set(),
+    /// First segments of import paths that failed to resolve.
+    /// Used to suppress redundant resolution errors in late resolver
+    /// for paths sharing the same unresolved prefix.
+    failed_import_prefixes: FxHashSet<Symbol>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 
     /// Privacy errors are delayed until the end in order to deduplicate them.
@@ -1693,6 +1697,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             extern_module_map: Default::default(),
 
             glob_map: Default::default(),
+            failed_import_prefixes: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
 
             arenas,
