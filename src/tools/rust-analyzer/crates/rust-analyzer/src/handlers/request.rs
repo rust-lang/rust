@@ -1395,7 +1395,10 @@ pub(crate) fn handle_references(
 
     let Some(refs) = snap.analysis.find_all_refs(
         position,
-        &FindAllRefsConfig { search_scope: None, minicore: snap.minicore() },
+        &FindAllRefsConfig {
+            search_scope: None,
+            ra_fixture: snap.config.ra_fixture(snap.minicore()),
+        },
     )?
     else {
         return Ok(None);
@@ -2202,7 +2205,10 @@ fn show_ref_command_link(
             .analysis
             .find_all_refs(
                 *position,
-                &FindAllRefsConfig { search_scope: None, minicore: snap.minicore() },
+                &FindAllRefsConfig {
+                    search_scope: None,
+                    ra_fixture: snap.config.ra_fixture(snap.minicore()),
+                },
             )
             .unwrap_or(None)
     {
