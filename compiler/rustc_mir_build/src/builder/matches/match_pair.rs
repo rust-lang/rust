@@ -455,7 +455,7 @@ impl<'tcx> InterPat<'tcx> {
             }
 
             PatKind::Guard { ref subpattern, condition } => {
-                extra_data.guard_paterns.push(condition);
+                extra_data.guard_patterns.push(condition);
                 MatchPairTree::for_pattern(place_builder, subpattern, cx, match_pairs, extra_data);
                 return;
             }
