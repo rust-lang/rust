@@ -113,7 +113,7 @@ impl<'a> Renderer<'a> {
                 Ok(f) => Some(f),
                 Err(e) => {
                     println!(
-                        "Couldn't open file {} to write test failutes to: {e}. (attempted because --record was passed). Test failures will not be recorded.",
+                        "Couldn't open file {} to write test failutes to: {e}. (attempted because `--record` was passed). Test failures will not be recorded.",
                         path.display()
                     );
                     None
@@ -394,7 +394,7 @@ impl<'a> Renderer<'a> {
                 if let Some(failed_tests) = &mut self.failed_tests {
                     if let Err(e) = writeln!(failed_tests, "{}", outcome.name) {
                         eprintln!(
-                            "failed to write test failure to file: {e} (attempted because --record was passed)"
+                            "failed to write test failure to file: {e} (attempted because `--record` was passed)"
                         );
                     }
                 }
