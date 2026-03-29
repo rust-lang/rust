@@ -91,6 +91,9 @@ pub struct Declaration {
 pub struct FindAllRefsConfig<'a> {
     pub search_scope: Option<SearchScope>,
     pub ra_fixture: RaFixtureConfig<'a>,
+    pub exclude_imports: bool,
+    pub exclude_tests: bool,
+    pub exclude_library_refs: bool,
 }
 
 /// Find all references to the item at the given position.
@@ -127,8 +130,20 @@ pub(crate) fn find_all_refs(
     let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {
-            let mut usages =
-                def.usages(sema).set_scope(config.search_scope.as_ref()).include_self_refs().all();
+            let mut excluded_categories = ReferenceCategory::empty();
+            if config.exclude_imports {
+                excluded_categories |= ReferenceCategory::IMPORT;
+            }
+            if config.exclude_tests {
+                excluded_categories |= ReferenceCategory::TEST;
+            }
+            let mut usages = def
+                .usages(sema)
+                .set_scope(config.search_scope.as_ref())
+                .set_excluded_categories(excluded_categories)
+                .set_exclude_library_files(config.exclude_library_refs)
+                .include_self_refs()
+                .all();
             if literal_search {
                 retain_adt_literal_usages(&mut usages, def, sema);
             }
@@ -1568,6 +1583,9 @@ fn main() {
         let config = FindAllRefsConfig {
             search_scope: search_scope.map(|it| it(&analysis.db)),
             ra_fixture: RaFixtureConfig::default(),
+            exclude_imports: false,
+            exclude_tests: false,
+            exclude_library_refs: false,
         };
         let refs = analysis.find_all_refs(pos, &config).unwrap().unwrap();
 

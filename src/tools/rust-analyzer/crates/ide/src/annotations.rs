@@ -216,7 +216,13 @@ pub(crate) fn resolve_annotation(
             *data = find_all_refs(
                 &Semantics::new(db),
                 pos,
-                &FindAllRefsConfig { search_scope: None, ra_fixture: config.ra_fixture },
+                &FindAllRefsConfig {
+                    search_scope: None,
+                    ra_fixture: config.ra_fixture,
+                    exclude_imports: false,
+                    exclude_tests: false,
+                    exclude_library_refs: false,
+                },
             )
             .map(|result| {
                 result

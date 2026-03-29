@@ -9,8 +9,8 @@ use base64::{Engine, prelude::BASE64_STANDARD};
 use ide::{
     AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve, FilePosition,
     FileRange, FileStructureConfig, FindAllRefsConfig, HoverAction, HoverGotoTypeData,
-    InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory, Runnable, RunnableKind,
-    SingleResolve, SourceChange, TextEdit,
+    InlayFieldsToResolve, Query, RangeInfo, Runnable, RunnableKind, SingleResolve, SourceChange,
+    TextEdit,
 };
 use ide_db::{FxHashMap, SymbolKind};
 use itertools::Itertools;
@@ -1396,12 +1396,16 @@ pub(crate) fn handle_references(
 
     let exclude_imports = snap.config.find_all_refs_exclude_imports();
     let exclude_tests = snap.config.find_all_refs_exclude_tests();
+    let exclude_library_refs = snap.config.find_all_refs_exclude_libraries();
 
     let Some(refs) = snap.analysis.find_all_refs(
         position,
         &FindAllRefsConfig {
             search_scope: None,
             ra_fixture: snap.config.ra_fixture(snap.minicore()),
+            exclude_imports,
+            exclude_library_refs,
+            exclude_tests,
         },
     )?
     else {
@@ -1423,12 +1427,7 @@ pub(crate) fn handle_references(
             refs.references
                 .into_iter()
                 .flat_map(|(file_id, refs)| {
-                    refs.into_iter()
-                        .filter(|&(_, category)| {
-                            (!exclude_imports || !category.contains(ReferenceCategory::IMPORT))
-                                && (!exclude_tests || !category.contains(ReferenceCategory::TEST))
-                        })
-                        .map(move |(range, _)| FileRange { file_id, range })
+                    refs.into_iter().map(move |(range, _)| FileRange { file_id, range })
                 })
                 .chain(decl)
         })
@@ -2211,7 +2210,11 @@ fn show_ref_command_link(
                 *position,
                 &FindAllRefsConfig {
                     search_scope: None,
+
                     ra_fixture: snap.config.ra_fixture(snap.minicore()),
+                    exclude_imports: snap.config.find_all_refs_exclude_imports(),
+                    exclude_tests: snap.config.find_all_refs_exclude_tests(),
+                    exclude_library_refs: snap.config.find_all_refs_exclude_libraries(),
                 },
             )
             .unwrap_or(None)

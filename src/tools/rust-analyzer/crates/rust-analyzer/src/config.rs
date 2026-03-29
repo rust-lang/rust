@@ -409,6 +409,9 @@ config_data! {
         /// Exclude imports from find-all-references.
         references_excludeImports: bool = false,
 
+        /// Exclude references from dependencies and stdlib in find-all-references.
+        references_excludeLibraries: bool = false,
+
         /// Exclude tests from find-all-references and call-hierarchy.
         references_excludeTests: bool = false,
 
@@ -2650,6 +2653,10 @@ impl Config {
 
     pub fn find_all_refs_exclude_imports(&self) -> bool {
         *self.references_excludeImports()
+    }
+
+    pub fn find_all_refs_exclude_libraries(&self) -> bool {
+        *self.references_excludeLibraries()
     }
 
     pub fn find_all_refs_exclude_tests(&self) -> bool {
