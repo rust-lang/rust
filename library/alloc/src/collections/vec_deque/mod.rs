@@ -3589,6 +3589,13 @@ __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, [U; N], }
 __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &[U; N], }
 __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &mut [U; N], }
 
+__impl_slice_eq2! { [] Vec<T, A>, VecDeque<U, A>, }
+__impl_slice_eq2! { [] &[T], VecDeque<U, A>, }
+__impl_slice_eq2! { [] &mut [T], VecDeque<U, A>, }
+__impl_slice_eq2! { [const N: usize] [T; N], VecDeque<U, A>, }
+__impl_slice_eq2! { [const N: usize] &[T; N], VecDeque<U, A>, }
+__impl_slice_eq2! { [const N: usize] &mut [T; N], VecDeque<U, A>, }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd, A: Allocator> PartialOrd for VecDeque<T, A> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
