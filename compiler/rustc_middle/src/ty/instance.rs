@@ -625,14 +625,17 @@ impl<'tcx> Instance<'tcx> {
         })
     }
 
-    pub fn expect_resolve_for_vtable(
+    /// Fallible version of [`Instance::expect_resolve_for_vtable`].
+    ///
+    /// Returns `Err` if instance resolution fails, e.g. due to a broken
+    /// impl with unsatisfied supertrait bounds.
+    pub fn try_resolve_for_vtable(
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-        span: Span,
-    ) -> Instance<'tcx> {
-        debug!("resolve_for_vtable(def_id={:?}, args={:?})", def_id, args);
+    ) -> Result<Instance<'tcx>, ErrorGuaranteed> {
+        debug!("try_resolve_for_vtable(def_id={:?}, args={:?})", def_id, args);
         let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
         let is_vtable_shim = !fn_sig.inputs().skip_binder().is_empty()
             && fn_sig.input(0).skip_binder().is_param(0)
@@ -640,10 +643,16 @@ impl<'tcx> Instance<'tcx> {
 
         if is_vtable_shim {
             debug!(" => associated item with unsizeable self: Self");
-            return Instance { def: InstanceKind::VTableShim(def_id), args };
+            return Ok(Instance { def: InstanceKind::VTableShim(def_id), args });
         }
 
-        let mut resolved = Instance::expect_resolve(tcx, typing_env, def_id, args, span);
+        let mut resolved =
+            Instance::try_resolve(tcx, typing_env, def_id, args)?.ok_or_else(|| {
+                tcx.dcx().delayed_bug(format!(
+                    "failed to resolve instance for vtable: {}",
+                    tcx.def_path_str_with_args(def_id, args)
+                ))
+            })?;
 
         let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::Vtable);
         match resolved.def {
@@ -700,7 +709,25 @@ impl<'tcx> Instance<'tcx> {
             _ => {}
         }
 
-        resolved
+        Ok(resolved)
+    }
+
+    pub fn expect_resolve_for_vtable(
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        def_id: DefId,
+        args: GenericArgsRef<'tcx>,
+        span: Span,
+    ) -> Instance<'tcx> {
+        Instance::try_resolve_for_vtable(tcx, typing_env, def_id, args).unwrap_or_else(|e| {
+            let span =
+                if span.is_dummy() && def_id.is_local() { tcx.def_span(def_id) } else { span };
+            span_bug!(
+                span,
+                "failed to resolve instance for {}: {e:#?}",
+                tcx.def_path_str_with_args(def_id, args)
+            )
+        })
     }
 
     pub fn resolve_closure(
