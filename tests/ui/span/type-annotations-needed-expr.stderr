@@ -4,10 +4,10 @@ error[E0282]: type annotations needed
 LL |     let _ = (vec![1,2,3]).into_iter().sum() as f64;
    |                                       ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the generic type `S`
    |
-LL |     let _ = (vec![1,2,3]).into_iter().sum::<S>() as f64;
-   |                                          +++++
+LL |     let _ = (vec![1,2,3]).into_iter().sum::<SomeConcreteType>() as f64;
+   |                                          ++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

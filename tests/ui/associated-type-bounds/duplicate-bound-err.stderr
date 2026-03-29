@@ -4,10 +4,10 @@ error[E0282]: type annotations needed
 LL |     iter::empty()
    |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the generic type `T`
    |
-LL |     iter::empty::<T>()
-   |                +++++
+LL |     iter::empty::<SomeConcreteType>()
+   |                ++++++++++++++++++++
 
 error[E0282]: type annotations needed
   --> $DIR/duplicate-bound-err.rs:18:5
@@ -15,10 +15,10 @@ error[E0282]: type annotations needed
 LL |     iter::empty()
    |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the generic type `T`
    |
-LL |     iter::empty::<T>()
-   |                +++++
+LL |     iter::empty::<SomeConcreteType>()
+   |                ++++++++++++++++++++
 
 error[E0282]: type annotations needed
   --> $DIR/duplicate-bound-err.rs:22:5
@@ -26,10 +26,10 @@ error[E0282]: type annotations needed
 LL |     iter::empty()
    |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the generic type `T`
    |
-LL |     iter::empty::<T>()
-   |                +++++
+LL |     iter::empty::<SomeConcreteType>()
+   |                ++++++++++++++++++++
 
 error: unconstrained opaque type
   --> $DIR/duplicate-bound-err.rs:26:51

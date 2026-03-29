@@ -53,10 +53,10 @@ error[E0282]: type annotations needed
 LL |         Receiver.generic();
    |                  ^^^^^^^ cannot infer type of the type parameter `T` declared on the method `generic`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the generic type `T`
    |
-LL |         Receiver.generic::<T>();
-   |                         +++++
+LL |         Receiver.generic::<SomeConcreteType>();
+   |                         ++++++++++++++++++++
 
 error: aborting due to 4 previous errors
 

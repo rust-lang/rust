@@ -4,10 +4,10 @@ error[E0282]: type annotations needed
 LL |         Self::func_a();
    |         ^^^^^^^^^^^^ cannot infer type of the type parameter `U` declared on the associated function `func_a`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the generic type `U`
    |
-LL |         Self::func_a::<U>();
-   |                     +++++
+LL |         Self::func_a::<SomeConcreteType>();
+   |                     ++++++++++++++++++++
 
 error: aborting due to 1 previous error
 
