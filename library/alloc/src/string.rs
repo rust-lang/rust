@@ -67,6 +67,11 @@ use crate::str::{self, CharIndices, Chars, Utf8Error, from_utf8_unchecked_mut};
 use crate::str::{FromStr, from_boxed_utf8_unchecked};
 use crate::vec::{self, Vec};
 
+mod extract_if;
+
+#[unstable(feature = "string_extract_if", issue = "154318")]
+pub use self::extract_if::ExtractIf;
+
 /// A UTF-8–encoded, growable string.
 ///
 /// `String` is the most common string type. It has ownership over the contents
@@ -2205,6 +2210,69 @@ impl String {
     pub fn leak<'a>(self) -> &'a mut str {
         let slice = self.vec.leak();
         unsafe { from_utf8_unchecked_mut(slice) }
+    }
+
+    /// Creates an iterator which uses a closure to determine if a character should be removed.
+    ///
+    /// If the closure returns `true`, the character is removed from the string
+    /// and yielded. If the closure returns `false`, or panics, the character
+    /// remains in the string and will not be yielded.
+    ///
+    /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining characters will be retained.
+    /// If you don't need the returned iterator, use `extract_if().for_each(drop)` or
+    /// [`retain`] with a negated predicate.
+    ///
+    /// [`retain`]: String::retain
+    ///
+    /// Using this method is equivalent to the following code:
+    ///
+    /// ```
+    /// # #![feature(string_extract_if)]
+    /// # let some_predicate = |c: char| c.is_whitespace();
+    /// # let mut s = "a\nb\u{3000}\td🦀".to_string();
+    /// # let mut s2 = s.clone();
+    /// let mut i = 0;
+    /// # let mut extracted = String::new();
+    ///
+    /// while let Some(c) = s[i..].chars().next() {
+    ///     if some_predicate(c) {
+    ///         s.remove(i);
+    ///         // your code here
+    /// #         extracted.push(c);
+    ///     } else {
+    ///         i += c.len_utf8();
+    ///     }
+    /// }
+    ///
+    /// # let extracted2: String = s2.extract_if(some_predicate).collect();
+    /// # assert_eq!(s, s2);
+    /// # assert_eq!(extracted, extracted2);
+    /// ```
+    ///
+    /// But `extract_if` is easier to use. `extract_if` is also more efficient,
+    /// because it can backshift the characters of the string in bulk
+    /// and does not need to perform additional UTF-8 validity checks.
+    ///
+    /// # Examples
+    ///
+    /// Extracting control characters from a string into a separate buffer, reusing the original string:
+    ///
+    /// ```
+    /// #![feature(string_extract_if)]
+    /// let mut string = "Hello,\u{0008} World!\r\n".to_string();
+    ///
+    /// let extracted: Vec<char> = string.extract_if(|c| c.is_control()).collect();
+    ///
+    /// assert_eq!(string, "Hello, World!");
+    /// assert_eq!(extracted, vec!['\u{0008}', '\r', '\n']);
+    /// ```
+    #[unstable(feature = "string_extract_if", issue = "154318")]
+    pub fn extract_if<F>(&mut self, filter: F) -> ExtractIf<'_, F>
+    where
+        F: FnMut(char) -> bool,
+    {
+        ExtractIf::new(self, filter)
     }
 }
 
