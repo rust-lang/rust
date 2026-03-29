@@ -4,7 +4,7 @@ use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir, expr_local, local_as
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_n_hir_expr_refs, sym};
+use clippy_utils::{DefinedTy, ExprUseNode, get_expr_use_site, peel_n_hir_expr_refs, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -17,6 +17,7 @@ use rustc_middle::ty::{
     self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty,
 };
 use rustc_session::impl_lint_pass;
+use rustc_span::SyntaxContext;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::collections::VecDeque;
@@ -82,10 +83,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if matches!(expr.kind, ExprKind::AddrOf(..))
             && !expr.span.from_expansion()
-            && let use_cx = expr_use_ctxt(cx, expr)
-            && use_cx.same_ctxt
-            && !use_cx.is_ty_unified
-            && let use_node = use_cx.use_node(cx)
+            && let use_site = get_expr_use_site(cx.tcx, cx.typeck_results(), SyntaxContext::root(), expr)
+            && use_site.same_ctxt
+            && !use_site.is_ty_unified
+            && let use_node = use_site.use_node(cx)
             && let Some(DefinedTy::Mir { def_site_def_id: _, ty }) = use_node.defined_ty(cx)
             && let ty::Param(param_ty) = *ty.skip_binder().kind()
             && let Some((hir_id, fn_id, i)) = match use_node {

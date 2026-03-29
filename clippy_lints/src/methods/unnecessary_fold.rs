@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_blocks, strip_pat_refs};
+use clippy_utils::{DefinedTy, ExprUseNode, get_expr_use_site, peel_blocks, strip_pat_refs};
 use rustc_ast::ast;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag};
@@ -17,10 +17,10 @@ use super::UNNECESSARY_FOLD;
 /// Do we need to suggest turbofish when suggesting a replacement method?
 /// Changing `fold` to `sum` needs it sometimes when the return type can't be
 /// inferred. This checks for some common cases where it can be safely omitted
-fn needs_turbofish<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
-    let use_cx = expr_use_ctxt(cx, expr);
-    if use_cx.same_ctxt
-        && let use_node = use_cx.use_node(cx)
+fn needs_turbofish<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) -> bool {
+    let use_site = get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr);
+    if use_site.same_ctxt
+        && let use_node = use_site.use_node(cx)
         && let Some(ty) = use_node.defined_ty(cx)
     {
         // some common cases where turbofish isn't needed:
@@ -209,7 +209,7 @@ fn check_fold_with_method(
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
-    expr: &hir::Expr<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
     init: &hir::Expr<'_>,
     acc: &hir::Expr<'_>,
     fold_span: Span,
