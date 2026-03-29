@@ -1,0 +1,19 @@
+error[E0382]: borrow of moved value: `peter`
+  --> $DIR/index-mut-suggest-borrow-issue.rs:55:27
+   |
+LL |     let peter = "peter".to_string();
+   |         ----- move occurs because `peter` has type `String`, which does not implement the `Copy` trait
+...
+LL |     map.insert(peter, 23); // WORKS
+   |                ----- value moved here
+LL |     println!("my name is {peter}");
+   |                           ^^^^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     map.insert(peter.clone(), 23); // WORKS
+   |                     ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
