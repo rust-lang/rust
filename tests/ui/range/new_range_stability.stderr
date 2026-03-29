@@ -28,16 +28,26 @@ LL | use std::range::RangeIter;
    = help: add `#![feature(new_range_api)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature `new_range_api`
+error[E0658]: use of unstable library feature `new_range_remainder`
+  --> $DIR/new_range_stability.rs:22:7
+   |
+LL |     i.remainder();
+   |       ^^^^^^^^^
+   |
+   = note: see issue #154458 <https://github.com/rust-lang/rust/issues/154458> for more information
+   = help: add `#![feature(new_range_remainder)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `new_range_remainder`
   --> $DIR/new_range_stability.rs:43:7
    |
 LL |     i.remainder();
    |       ^^^^^^^^^
    |
-   = note: see issue #125687 <https://github.com/rust-lang/rust/issues/125687> for more information
-   = help: add `#![feature(new_range_api)]` to the crate attributes to enable
+   = note: see issue #154458 <https://github.com/rust-lang/rust/issues/154458> for more information
+   = help: add `#![feature(new_range_remainder)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
