@@ -8,7 +8,7 @@ note: found an item that was configured out
   --> $DIR/pub-in-path-153848.rs:7:16
    |
 LL |     #[cfg(test)]
-   |           ---- the item is gated here
+   |           ---- the item is gated behind `test`
 LL |     use super::a;
    |                ^
 help: you might be missing a crate named `a`, add it to your project and import it in your code

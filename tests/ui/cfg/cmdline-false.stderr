@@ -8,7 +8,7 @@ note: found an item that was configured out
   --> $DIR/cmdline-false.rs:5:4
    |
 LL | #[cfg(false)]
-   |       ----- the item is gated here
+   |       ----- the item is disabled
 LL | fn foo() {}
    |    ^^^
 

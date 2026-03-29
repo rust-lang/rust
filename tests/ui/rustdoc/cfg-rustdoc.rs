@@ -1,4 +1,4 @@
-#[cfg(doc)] //~ NOTE the item is gated here
+#[cfg(doc)] //~ NOTE the item is gated behind `doc`
 pub struct Foo; //~ NOTE found an item that was configured out
 
 fn main() {

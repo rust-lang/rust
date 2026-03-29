@@ -1375,7 +1375,9 @@ pub(crate) struct FoundItemConfigureOut {
 }
 
 pub(crate) enum ItemWas {
-    BehindFeature { feature: Symbol, span: Span },
+    BehindFeature { name: Symbol, value: Option<Symbol>, span: Span },
+    BehindCargoFeature { name: Symbol, span: Span },
+    Disabled { span: Span },
     CfgOut { span: Span },
 }
 
@@ -1383,12 +1385,30 @@ impl Subdiagnostic for FoundItemConfigureOut {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let mut multispan: MultiSpan = self.span.into();
         match self.item_was {
-            ItemWas::BehindFeature { feature, span } => {
-                let value = feature.into_diag_arg(&mut None);
-                let msg = msg!("the item is gated behind the `{$feature}` feature")
-                    .arg("feature", value)
-                    .format();
+            ItemWas::BehindFeature { name, value, span } => {
+                let name = name.into_diag_arg(&mut None);
+                let msg = match value {
+                    Some(value) => {
+                        let value = value.into_diag_arg(&mut None);
+                        msg!("the item is gated behind `{$name} = \"{$value}\"`")
+                            .arg("name", name)
+                            .arg("value", value)
+                            .format()
+                    }
+                    None => msg!("the item is gated behind `{$name}`").arg("name", name).format(),
+                };
                 multispan.push_span_label(span, msg);
+            }
+            ItemWas::BehindCargoFeature { name, span } => {
+                multispan.push_span_label(
+                    span,
+                    msg!("the item is gated behind the `{$name}` feature")
+                        .arg("name", name)
+                        .format(),
+                );
+            }
+            ItemWas::Disabled { span } => {
+                multispan.push_span_label(span, msg!("the item is disabled"))
             }
             ItemWas::CfgOut { span } => {
                 multispan.push_span_label(span, msg!("the item is gated here"));
