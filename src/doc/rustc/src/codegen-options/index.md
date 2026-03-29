@@ -209,6 +209,12 @@ Note that while the `-C instrument-coverage` option is stable, the profile data
 format produced by the resulting instrumentation may change, and may not work
 with coverage tools other than those built and shipped with the compiler.
 
+## instrument-mcount
+
+This option inserts an mcount profiling call into each function prologue within
+the crate being compiled. The instrumentation is compatible with gprof and
+similiar tools.
+
 ## jump-tables
 
 This option is used to allow or prevent the LLVM codegen backend from creating
