@@ -1934,6 +1934,7 @@ fn deny_equality_constraints(
 
     // Given `<A as Foo>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
     if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind
+        && qself.position > 0 // `<T>::AssocTy` is handled further down
         && let TyKind::Path(None, path) = &qself.ty.kind
         && let [PathSegment { ident, args: None, .. }] = &path.segments[..]
     {
@@ -2078,6 +2079,35 @@ fn deny_equality_constraints(
                         {
                             suggest(poly, potential_assoc, predicate);
                         }
+                    }
+                }
+            }
+        }
+    }
+    // Given `A: Foo, <A>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
+    if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind
+        && qself.position == 0
+        && let TyKind::Path(None, path) = &qself.ty.kind
+        && let [potential_param] = &path.segments[..]
+        && let [potential_assoc] = &full_path.segments[..]
+    {
+        for (ident, bounds) in generics.params.iter().map(|p| (p.ident, &p.bounds)).chain(
+            generics.where_clause.predicates.iter().filter_map(|pred| match &pred.kind {
+                WherePredicateKind::BoundPredicate(p)
+                    if let ast::TyKind::Path(None, path) = &p.bounded_ty.kind
+                        && let [segment] = &path.segments[..] =>
+                {
+                    Some((segment.ident, &p.bounds))
+                }
+                _ => None,
+            }),
+        ) {
+            if ident == potential_param.ident {
+                for bound in bounds {
+                    if let ast::GenericBound::Trait(poly) = bound
+                        && poly.modifiers == TraitBoundModifiers::NONE
+                    {
+                        suggest(poly, potential_assoc, predicate);
                     }
                 }
             }
