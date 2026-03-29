@@ -824,6 +824,7 @@
     "rint": {
         "sources": [
             "libm/src/math/arch/aarch64/rounding.rs",
+            "libm/src/math/arch/i586/rounding.rs",
             "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/generic/rint.rs",
             "libm/src/math/rint.rs"

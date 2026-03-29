@@ -297,15 +297,6 @@ impl MaybeOverride<(f32,)> for SpecialCase {
 
 impl MaybeOverride<(f64,)> for SpecialCase {
     fn check_float<F: Float>(input: (f64,), actual: F, expected: F, ctx: &CheckCtx) -> CheckAction {
-        if cfg!(x86_no_sse2)
-            && (ctx.base_name == BaseName::Rint || ctx.base_name == BaseName::Roundeven)
-            && (expected - actual).abs() <= F::ONE
-            && (expected - actual).abs() > F::ZERO
-        {
-            // Our rounding mode is incorrect.
-            return XFAIL("i586 rint rounding mode");
-        }
-
         if ctx.base_name == BaseName::J0 && input.0 < -1e300 {
             // Errors get huge close to -inf
             return XFAIL_NOCHECK;

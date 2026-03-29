@@ -48,6 +48,7 @@ cfg_if! {
         pub use i586::{
             ceil,
             floor,
+            rint,
             x87_exp,
             x87_exp10,
             x87_exp10f,

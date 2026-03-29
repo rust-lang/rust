@@ -37,6 +37,7 @@ pub fn rint(x: f64) -> f64 {
             all(target_arch = "aarch64", target_feature = "neon"),
             all(target_arch = "wasm32", intrinsics_enabled),
         ),
+        use_arch_required: x86_no_sse2,
         args: x,
     }
 
