@@ -56,10 +56,26 @@ fn test_is_cased() {
 fn test_char_case() {
     for c in '\0'..='\u{10FFFF}' {
         match c.case() {
-            None => assert!(!c.is_cased()),
-            Some(CharCase::Lower) => assert!(c.is_lowercase()),
-            Some(CharCase::Upper) => assert!(c.is_uppercase()),
-            Some(CharCase::Title) => assert!(c.is_titlecase()),
+            None => {
+                assert!(
+                    !c.is_cased() && !c.is_lowercase() && !c.is_titlecase() && !c.is_uppercase()
+                );
+                assert_eq!(c.to_lowercase(), c);
+                assert_eq!(c.to_uppercase(), c);
+                assert_eq!(c.to_titlecase(), c);
+            }
+            Some(CharCase::Lower) => {
+                assert!(c.is_cased() && c.is_lowercase() && !c.is_titlecase() && !c.is_uppercase());
+                assert_eq!(c.to_lowercase(), c)
+            }
+            Some(CharCase::Upper) => {
+                assert!(c.is_cased() && !c.is_lowercase() && !c.is_titlecase() && c.is_uppercase());
+                assert_eq!(c.to_uppercase(), c)
+            }
+            Some(CharCase::Title) => {
+                assert!(c.is_cased() && !c.is_lowercase() && c.is_titlecase() && !c.is_uppercase());
+                assert_eq!(c.to_titlecase(), c)
+            }
         }
     }
 }
