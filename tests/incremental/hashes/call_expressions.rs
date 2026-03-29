@@ -29,9 +29,9 @@ pub fn change_callee_function() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_callee_function() {
     callee2(1, 2)
@@ -63,9 +63,9 @@ mod change_callee_indirectly_function {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::callee2 as callee;
 
-    #[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail2")]
+    #[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail5")]
+    #[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     pub fn change_callee_indirectly_function() {
         callee(1, 2)
@@ -87,9 +87,9 @@ pub fn change_callee_method() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_callee_method() {
     let s = Struct;
@@ -125,9 +125,9 @@ pub fn change_ufcs_callee_method() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_ufcs_callee_method() {
     let s = Struct;
@@ -163,9 +163,9 @@ pub fn change_to_ufcs() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 // One might think this would be expanded in the opt_hir_owner_nodes/Mir, but it actually
 // results in slightly different hir_owner/Mir.
@@ -187,9 +187,9 @@ pub mod change_ufcs_callee_indirectly {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::Struct2 as Struct;
 
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="cfail6")]
     pub fn change_ufcs_callee_indirectly() {
         let s = Struct;
