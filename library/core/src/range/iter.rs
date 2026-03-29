@@ -11,12 +11,15 @@ use crate::{intrinsics, mem};
 pub struct RangeIter<A>(legacy::Range<A>);
 
 impl<A> RangeIter<A> {
-    #[unstable(feature = "new_range_api", issue = "125687")]
+    #[unstable(feature = "new_range_remainder", issue = "154458")]
     /// Returns the remainder of the range being iterated over.
     ///
     /// # Examples
+    ///
     /// ```
     /// #![feature(new_range_api)]
+    /// #![feature(new_range_remainder)]
+    ///
     /// let range = core::range::Range::from(3..11);
     /// let mut iter = range.into_iter();
     /// assert_eq!(iter.clone().remainder(), range);
@@ -175,7 +178,10 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// If the iterator is exhausted or empty, returns `None`.
     ///
     /// # Examples
+    ///
     /// ```
+    /// #![feature(new_range_remainder)]
+    ///
     /// let range = core::range::RangeInclusive::from(3..=11);
     /// let mut iter = range.into_iter();
     /// assert_eq!(iter.clone().remainder().unwrap(), range);
@@ -184,7 +190,7 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// iter.by_ref().for_each(drop);
     /// assert!(iter.remainder().is_none());
     /// ```
-    #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
+    #[unstable(feature = "new_range_remainder", issue = "154458")]
     pub fn remainder(self) -> Option<RangeInclusive<A>> {
         if self.0.is_empty() {
             return None;
@@ -330,8 +336,10 @@ impl<A: Step> RangeFromIter<A> {
     /// Returns the remainder of the range being iterated over.
     ///
     /// # Examples
+    ///
     /// ```
-    /// #![feature(new_range_api)]
+    /// #![feature(new_range_remainder)]
+    ///
     /// let range = core::range::RangeFrom::from(3..);
     /// let mut iter = range.into_iter();
     /// assert_eq!(iter.clone().remainder(), range);
@@ -340,7 +348,7 @@ impl<A: Step> RangeFromIter<A> {
     /// ```
     #[inline]
     #[rustc_inherit_overflow_checks]
-    #[unstable(feature = "new_range_api", issue = "125687")]
+    #[unstable(feature = "new_range_remainder", issue = "154458")]
     pub fn remainder(self) -> RangeFrom<A> {
         // Need to handle this case even if overflow-checks are disabled,
         // because a `RangeFromIter` could be exhausted in a crate with
