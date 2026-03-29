@@ -48,7 +48,7 @@ The "entry point" to this module is
 The first step in [`clean::utils::krate`][ck1] is to invoke
 [`visit_ast::RustdocVisitor`] to process the module tree into an intermediate [`visit_ast::Module`].
 This is the step that actually crawls the
-[`rustc_hir::Crate`], normalizing various aspects of name resolution, such as:
+[`rustc_middle::hir::Crate`], normalizing various aspects of name resolution, such as:
 
   * handling `#[doc(inline)]` and `#[doc(no_inline)]`
   * handling import globs and cycles, so there are no duplicates or infinite
@@ -79,7 +79,7 @@ which describe the publicly-documentable items in the target crate.
 [`core.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/core.rs
 [`Item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/clean/types/struct.Item.html
 [`run_global_ctxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/core/fn.run_global_ctxt.html
-[`rustc_hir::Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Crate.html
+[`rustc_middle::hir::Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/struct.Crate.html
 [`rustdoc::core::DocContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/core/struct.DocContext.html
 [`rustdoc::core::run_global_ctxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/core/fn.run_global_ctxt.html
 [`visit_ast::Module`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/visit_ast/struct.Module.html

@@ -35,7 +35,7 @@ data structure basically just contains the root module, the HIR
 `Crate` structure contains a number of maps and other things that
 serve to organize the content of the crate for easier access.
 
-[`Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Crate.html
+[`Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/struct.Crate.html
 
 For example, the contents of individual items (e.g. modules,
 functions, traits, impls, etc) in the HIR are not immediately
