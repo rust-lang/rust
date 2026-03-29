@@ -3,22 +3,34 @@ error[E0805]: malformed `cfg` attribute input
    |
 LL | #[cfg(foo, bar)]
    | ^^^^^----------^
-   | |    |
-   | |    expected a single argument here
-   | help: must be of the form: `#[cfg(predicate)]`
+   |      |
+   |      expected a single argument here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: if the crate should be enabled when all these predicates are, wrap them in `all`
+   |
+LL - #[cfg(foo, bar)]
+LL + #[cfg(all(foo, bar))]
+   |
+help: alternately, if the crate should be enabled when any of these predicates are, wrap them in `any`
+   |
+LL - #[cfg(foo, bar)]
+LL + #[cfg(any(foo, bar))]
+   |
 
 error[E0805]: malformed `cfg` attribute input
   --> $DIR/suggest-any-or-all.rs:5:1
    |
 LL | #[cfg()]
    | ^^^^^--^
-   | |    |
-   | |    expected a single argument here
-   | help: must be of the form: `#[cfg(predicate)]`
+   |      |
+   |      expected a single argument here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: if the crate should be disabled, use `#[cfg(false)]`
+   |
+LL | #[cfg(false)]
+   |       +++++
 
 error: aborting due to 2 previous errors
 

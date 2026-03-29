@@ -48,8 +48,37 @@ pub fn parse_cfg<S: Stage>(
         cx.adcx().expected_list(attr_span, args);
         return None;
     };
+
     let Some(single) = list.single() else {
-        cx.adcx().expected_single_argument(list.span);
+        let target = cx.target;
+        let mut adcx = cx.adcx();
+        if list.is_empty() {
+            // `#[cfg()]`
+            let message = format!("if the {target} should be disabled, use `#[cfg(false)]`");
+            adcx.push_suggestion(message, list.span, "(false)".to_string());
+        } else {
+            // `#[cfg(foo, bar)]`
+            if let Ok(args) = adcx
+                .sess()
+                .source_map()
+                .span_to_source(list.span, |src, start, end| Ok(src[start..end].to_string()))
+            {
+                let all = format!("(all{args})");
+                let any = format!("(any{args})");
+
+                let all_msg = format!(
+                    "if the {target} should be enabled when all these predicates are, wrap them in `all`"
+                );
+                let any_msg = format!(
+                    "alternately, if the {target} should be enabled when any of these predicates are, wrap them in `any`"
+                );
+
+                adcx.push_suggestion(all_msg, list.span, all);
+                adcx.push_suggestion(any_msg, list.span, any);
+            }
+        }
+
+        adcx.expected_single_argument(list.span);
         return None;
     };
     parse_cfg_entry(cx, single).ok()
