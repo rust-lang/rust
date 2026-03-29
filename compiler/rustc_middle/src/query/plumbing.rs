@@ -432,11 +432,12 @@ macro_rules! define_callbacks {
             }
 
             /// Returns the default span for this query if `span` is a dummy span.
+            #[tracing::instrument(level = "debug", skip(tcx, span))]
             pub fn default_span(&self, tcx: TyCtxt<'tcx>, span: Span) -> Span {
                 if !span.is_dummy() {
                     return span
                 }
-                if let TaggedQueryKey::def_span(..) = self {
+                if let TaggedQueryKey::def_span(..) | TaggedQueryKey::local_def_id_to_hir_id(..) = self {
                     // The `def_span` query is used to calculate `default_span`,
                     // so exit to avoid infinite recursion.
                     return DUMMY_SP
