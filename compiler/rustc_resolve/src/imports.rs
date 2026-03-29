@@ -256,15 +256,22 @@ impl<'ra> NameResolution<'ra> {
         NameResolution { single_imports: FxIndexSet::default(), orig_ident_span, .. }
     }
 
-    /// Returns the binding for the name if it is known or None if it not known.
-    pub(crate) fn binding(&self) -> Option<Decl<'ra>> {
-        self.best_decl().and_then(|binding| {
-            if !binding.is_glob_import() || self.single_imports.is_empty() {
-                Some(binding)
-            } else {
-                None
-            }
-        })
+    /// Returns the best declaration if it is not going to change, and `None` if the best
+    /// declaration may still change to something else.
+    /// FIXME: this function considers `single_imports`, but not `unexpanded_invocations`, so
+    /// the returned declaration may actually change after expanding macros in the same module,
+    /// because of this fact we have glob overwriting (`select_glob_decl`). Consider using
+    /// `unexpanded_invocations` here and avoiding glob overwriting entirely, if it doesn't cause
+    /// code breakage in practice.
+    /// FIXME: relationship between this function and similar `DeclData::determined` is unclear.
+    pub(crate) fn determined_decl(&self) -> Option<Decl<'ra>> {
+        if self.non_glob_decl.is_some() {
+            self.non_glob_decl
+        } else if self.glob_decl.is_some() && self.single_imports.is_empty() {
+            self.glob_decl
+        } else {
+            None
+        }
     }
 
     pub(crate) fn best_decl(&self) -> Option<Decl<'ra>> {
@@ -448,41 +455,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             orig_ident_span,
             warn_ambiguity,
             |this, resolution| {
-                if let Some(old_decl) = resolution.best_decl() {
-                    assert_ne!(decl, old_decl);
-                    assert!(!decl.warn_ambiguity.get());
-                    if res == Res::Err && old_decl.res() != Res::Err {
-                        // Do not override real declarations with `Res::Err`s from error recovery.
-                        return Ok(());
-                    }
-                    match (old_decl.is_glob_import(), decl.is_glob_import()) {
-                        (true, true) => {
-                            resolution.glob_decl =
-                                Some(this.select_glob_decl(old_decl, decl, warn_ambiguity));
-                        }
-                        (old_glob @ true, false) | (old_glob @ false, true) => {
-                            let (glob_decl, non_glob_decl) =
-                                if old_glob { (old_decl, decl) } else { (decl, old_decl) };
-                            resolution.non_glob_decl = Some(non_glob_decl);
-                            if let Some(old_glob_decl) = resolution.glob_decl
-                                && old_glob_decl != glob_decl
-                            {
-                                resolution.glob_decl =
-                                    Some(this.select_glob_decl(old_glob_decl, glob_decl, false));
-                            } else {
-                                resolution.glob_decl = Some(glob_decl);
-                            }
-                        }
-                        (false, false) => {
-                            return Err(old_decl);
-                        }
-                    }
+                assert!(!decl.warn_ambiguity.get());
+                if decl.is_glob_import() {
+                    resolution.glob_decl = Some(match resolution.glob_decl {
+                        Some(old_decl) => this.select_glob_decl(
+                            old_decl,
+                            decl,
+                            warn_ambiguity && resolution.non_glob_decl.is_none(),
+                        ),
+                        None => decl,
+                    })
                 } else {
-                    if decl.is_glob_import() {
-                        resolution.glob_decl = Some(decl);
-                    } else {
-                        resolution.non_glob_decl = Some(decl);
-                    }
+                    resolution.non_glob_decl = Some(match resolution.non_glob_decl {
+                        Some(old_decl) => return Err(old_decl),
+                        None => decl,
+                    })
                 }
 
                 Ok(())
@@ -509,11 +496,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let resolution = &mut *self
                 .resolution_or_default(module, key, orig_ident_span)
                 .borrow_mut_unchecked();
-            let old_decl = resolution.binding();
+            let old_decl = resolution.determined_decl();
 
             let t = f(self, resolution);
 
-            if let Some(binding) = resolution.binding()
+            if let Some(binding) = resolution.determined_decl()
                 && old_decl != Some(binding)
             {
                 (binding, t, warn_ambiguity || old_decl.is_some())
@@ -539,13 +526,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             if self.is_accessible_from(binding.vis(), scope) {
                 let import_decl = self.new_import_decl(binding, *import);
-                let _ = self.try_plant_decl_into_local_module(
+                self.try_plant_decl_into_local_module(
                     ident,
                     orig_ident_span,
                     key.ns,
                     import_decl,
                     warn_ambiguity,
-                );
+                )
+                .expect("planting a glob cannot fail");
             }
         }
 
@@ -564,6 +552,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.per_ns(|this, ns| {
                 let module = import.parent_scope.module;
                 let ident = IdentKey::new(target);
+                // This can fail, dummies are inserted only in non-occupied slots.
                 let _ = this.try_plant_decl_into_local_module(
                     ident,
                     target.span,
@@ -1601,7 +1590,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .iter()
             .filter_map(|(key, resolution)| {
                 let resolution = resolution.borrow();
-                resolution.binding().map(|binding| (*key, binding, resolution.orig_ident_span))
+                resolution.determined_decl().map(|decl| (*key, decl, resolution.orig_ident_span))
             })
             .collect::<Vec<_>>();
         for (mut key, binding, orig_ident_span) in bindings {
@@ -1617,15 +1606,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let import_decl = self.new_import_decl(binding, import);
                 let warn_ambiguity = self
                     .resolution(import.parent_scope.module, key)
-                    .and_then(|r| r.binding())
+                    .and_then(|r| r.determined_decl())
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                let _ = self.try_plant_decl_into_local_module(
+                self.try_plant_decl_into_local_module(
                     key.ident,
                     orig_ident_span,
                     key.ns,
                     import_decl,
                     warn_ambiguity,
-                );
+                )
+                .expect("planting a glob cannot fail");
             }
         }
 
