@@ -1,4 +1,3 @@
-//@ check-pass
 struct Foo<'a>(&'a ())
 where
     (): Trait<'a>;
@@ -21,7 +20,7 @@ where
 }
 
 fn main() {
-    let bar: for<'a, 'b> fn(Foo<'a>, &'b ()) = |_, _| {};
+    let bar: for<'a, 'b> fn(Foo<'a>, &'b ()) = |_, _| {}; //~ ERROR: lifetime may not live long enough
 
     // If `could_use_implied_bounds` were to use implied bounds,
     // keeping 'a late-bound, then we could assign that function
