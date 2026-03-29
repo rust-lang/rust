@@ -1000,6 +1000,50 @@ impl Duration {
         }
     }
 
+    #[inline]
+    #[track_caller]
+    #[cfg(target_has_reliable_f128)]
+    fn from_nanos_f128_subnormal(nanos: f128) -> Duration {
+        // NB: the mul/div methods below are converting nanos with `f128::from_bits`, which puts
+        // them in the subnormal range, with the value packed in the least-significant bits of the
+        // mantissa -- even `Duration::MAX` fits this way. This avoids double-rounding operations,
+        // since we're not keeping any excess precision, and we can convert back `to_bits()`.
+        if nanos < 0.0 {
+            panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
+        } else if nanos == 0.0 {
+            // In particular, -0.0 is an exception that we can't just
+            // convert `to_bits()`, but it's still a valid zero.
+            return Duration::ZERO;
+        }
+        let nanos = nanos.to_bits();
+        if nanos > const { Self::MAX.as_nanos() } {
+            panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::OverflowOrNan });
+        }
+        Self::from_nanos_u128(nanos)
+    }
+
+    #[inline]
+    #[track_caller]
+    #[cfg(target_has_reliable_f128)]
+    fn mul_f128(self, rhs: f128) -> Duration {
+        if rhs < 0.0 && self != Self::ZERO {
+            panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
+        }
+        let nanos = f128::from_bits(self.as_nanos()) * (rhs as f128);
+        Self::from_nanos_f128_subnormal(nanos)
+    }
+
+    #[inline]
+    #[track_caller]
+    #[cfg(target_has_reliable_f128)]
+    fn div_f128(self, rhs: f128) -> Duration {
+        if rhs < 0.0 && rhs.is_finite() && self != Self::ZERO {
+            panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
+        }
+        let nanos = f128::from_bits(self.as_nanos()) / (rhs as f128);
+        Self::from_nanos_f128_subnormal(nanos)
+    }
+
     /// Multiplies `Duration` by `f64`.
     ///
     /// # Panics
@@ -1018,7 +1062,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn mul_f64(self, rhs: f64) -> Duration {
-        Duration::from_secs_f64(rhs * self.as_secs_f64())
+        crate::cfg_select! {
+            target_has_reliable_f128 => self.mul_f128(rhs.into()),
+            _ => Duration::from_secs_f64(rhs * self.as_secs_f64()),
+        }
     }
 
     /// Multiplies `Duration` by `f32`.
@@ -1031,7 +1078,7 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
+    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_283));
     /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847_800, 0));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
@@ -1039,7 +1086,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn mul_f32(self, rhs: f32) -> Duration {
-        Duration::from_secs_f32(rhs * self.as_secs_f32())
+        crate::cfg_select! {
+            target_has_reliable_f128 => self.mul_f128(rhs.into()),
+            _ => self.mul_f64(rhs.into()),
+        }
     }
 
     /// Divides `Duration` by `f64`.
@@ -1060,7 +1110,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn div_f64(self, rhs: f64) -> Duration {
-        Duration::from_secs_f64(self.as_secs_f64() / rhs)
+        crate::cfg_select! {
+            target_has_reliable_f128 => self.div_f128(rhs.into()),
+            _ => Duration::from_secs_f64(self.as_secs_f64() / rhs),
+        }
     }
 
     /// Divides `Duration` by `f32`.
@@ -1075,7 +1128,7 @@ impl Duration {
     /// let dur = Duration::new(2, 700_000_000);
     /// // note that due to rounding errors result is slightly
     /// // different from 0.859_872_611
-    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_580));
+    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_583));
     /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_599));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
@@ -1083,7 +1136,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn div_f32(self, rhs: f32) -> Duration {
-        Duration::from_secs_f32(self.as_secs_f32() / rhs)
+        crate::cfg_select! {
+            target_has_reliable_f128 => self.div_f128(rhs.into()),
+            _ => self.div_f64(rhs.into()),
+        }
     }
 
     /// Divides `Duration` by `Duration` and returns `f64`.
