@@ -1439,9 +1439,17 @@ impl Step for Sanitizers {
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
 
+        // LLVM doesn't distinguish `windows-gnullvm` and `windows-gnu` like Rust does.
+        // Use regular `windows-gnu` triple and configuration options instead.
+        let cmake_target = if self.target.is_windows_gnullvm() {
+            self.target.triple.trim_end_matches("llvm")
+        } else {
+            &self.target.triple
+        };
+
         let mut cfg = cmake::Config::new(&compiler_rt_dir);
         cfg.profile("Release");
-        cfg.define("CMAKE_C_COMPILER_TARGET", self.target.triple);
+        cfg.define("CMAKE_C_COMPILER_TARGET", cmake_target);
         cfg.define("COMPILER_RT_BUILD_BUILTINS", "OFF");
         cfg.define("COMPILER_RT_BUILD_CRT", "OFF");
         cfg.define("COMPILER_RT_BUILD_LIBFUZZER", "OFF");
@@ -1452,8 +1460,11 @@ impl Step for Sanitizers {
         cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
         cfg.define("LLVM_CONFIG_PATH", &host_llvm_config);
 
-        if self.target.contains("ohos") {
+        if self.target.contains("ohos") || self.target.is_windows_gnullvm() {
             cfg.define("COMPILER_RT_USE_BUILTINS_LIBRARY", "ON");
+        }
+        if self.target.is_windows_gnullvm() {
+            cfg.define("SANITIZER_CXX_ABI", "libc++");
         }
 
         // On Darwin targets the sanitizer runtimes are build as universal binaries.
@@ -1527,6 +1538,18 @@ fn supported_sanitizers(
             .collect()
     };
 
+    let windows_libs =
+        |os: &str, arch: &str, components: &[(&str, &str)]| -> Vec<SanitizerRuntime> {
+            components
+                .iter()
+                .map(move |(target, obj)| SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{target}-{arch}"),
+                    path: out_dir.join(format!("build/lib/{os}/libclang_rt.{obj}-{arch}.dll.a",)),
+                    name: format!("librustc-{channel}_rt.{obj}.dll.a"),
+                })
+                .collect()
+        };
+
     match &*target.triple {
         "aarch64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan", "rtsan"]),
         "aarch64-apple-ios" => darwin_libs("ios", &["asan", "tsan", "rtsan"]),
@@ -1571,6 +1594,9 @@ fn supported_sanitizers(
         }
         "x86_64-unknown-linux-ohos" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
+        }
+        "x86_64-pc-windows-gnullvm" => {
+            windows_libs("windows", "x86_64", &[("asan-dynamic", "asan_dynamic")])
         }
         _ => Vec::new(),
     }
