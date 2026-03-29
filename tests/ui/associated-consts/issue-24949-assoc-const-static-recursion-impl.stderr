@@ -4,22 +4,22 @@ error[E0391]: cycle detected when checking if `IMPL_REF_BAR` is a trivial const
 LL | const IMPL_REF_BAR: u32 = GlobalImplRef::BAR;
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires building MIR for `IMPL_REF_BAR`...
+   - which requires building MIR for `IMPL_REF_BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:1
    |
 LL | const IMPL_REF_BAR: u32 = GlobalImplRef::BAR;
    | ^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires checking if `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR` is a trivial const...
+   - which requires checking if `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR` is a trivial const...
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:5
    |
 LL |     const BAR: u32 = IMPL_REF_BAR;
    |     ^^^^^^^^^^^^^^
-note: ...which requires building MIR for `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR`...
+   - which requires building MIR for `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:5
    |
 LL |     const BAR: u32 = IMPL_REF_BAR;
    |     ^^^^^^^^^^^^^^
-   = note: ...which again requires checking if `IMPL_REF_BAR` is a trivial const, completing the cycle
+   - which again requires checking if `IMPL_REF_BAR` is a trivial const, completing the cycle
 note: cycle used when simplifying constant for the type system `IMPL_REF_BAR`
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:1
    |

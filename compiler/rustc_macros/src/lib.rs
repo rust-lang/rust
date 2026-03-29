@@ -184,6 +184,7 @@ decl_derive!(
         help,
         help_once,
         note,
+        bullet_point,
         note_once,
         warning,
         // field attributes
@@ -203,6 +204,7 @@ decl_derive!(
         help,
         help_once,
         note,
+        bullet_point,
         note_once,
         warning,
         subdiagnostic,

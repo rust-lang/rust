@@ -297,6 +297,7 @@ impl DiagInner {
             Level::ForceWarning
             | Level::Warning
             | Level::Note
+            | Level::BulletPoint
             | Level::OnceNote
             | Level::Help
             | Level::OnceHelp
@@ -687,6 +688,20 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self.sub_with_highlights(Level::Note, msg, MultiSpan::new());
         self
     }
+
+    with_fn! { with_bullet_point,
+    /// Add a bullet point to this diagnostic.
+    pub fn bullet_point(&mut self, msg: impl Into<DiagMessage>) -> &mut Self {
+        self.sub(Level::BulletPoint, msg, MultiSpan::new());
+        self
+    } }
+
+    with_fn! { with_span_bullet_point,
+    /// Add a bullet point to this diagnostic.
+    pub fn span_bullet_point(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) -> &mut Self {
+        self.sub(Level::BulletPoint, msg, sp.into());
+        self
+    } }
 
     pub fn highlighted_span_note(
         &mut self,

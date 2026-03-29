@@ -4,8 +4,8 @@ error[E0391]: cycle detected when computing whether impls specialize one another
 LL | impl<T> Foo for T where T: Bar {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...which requires evaluating trait selection obligation `u64: Bar`...
-   = note: ...which again requires computing whether impls specialize one another, completing the cycle
+   - which requires evaluating trait selection obligation `u64: Bar`...
+   - which again requires computing whether impls specialize one another, completing the cycle
 note: cycle used when building specialization graph of trait `Foo`
   --> $DIR/issue-39618.rs:7:1
    |

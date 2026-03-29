@@ -4,17 +4,17 @@ error[E0391]: cycle detected when resolving lifetimes for `IntFactory::stream`
 LL |     fn stream(self) -> impl IntFactory<stream(..): Send>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires computing function signature of `IntFactory::stream`...
+   - which requires computing function signature of `IntFactory::stream`...
   --> $DIR/impl-trait-in-trait.rs:4:5
    |
 LL |     fn stream(self) -> impl IntFactory<stream(..): Send>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires looking up late bound vars inside `IntFactory::stream`...
+   - which requires looking up late bound vars inside `IntFactory::stream`...
   --> $DIR/impl-trait-in-trait.rs:4:5
    |
 LL |     fn stream(self) -> impl IntFactory<stream(..): Send>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires resolving lifetimes for `IntFactory::stream`, completing the cycle
+   - which again requires resolving lifetimes for `IntFactory::stream`, completing the cycle
 note: cycle used when listing captured lifetimes for opaque `IntFactory::stream::{opaque#0}`
   --> $DIR/impl-trait-in-trait.rs:4:24
    |

@@ -18,7 +18,8 @@ error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#
 LL |                 type Frc = Frc<{}>::Arc;;
    |                            ^^^^^^^
    |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc` again
+   - which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc` again
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
@@ -57,7 +58,8 @@ LL | |                 },
 LL | |             >::Arc;;
    | |_____________^
    |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc` again
+   - which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc` again
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
@@ -88,7 +90,8 @@ error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#
 LL |                         type Frc = Frc<{}>::Arc;;
    |                                    ^^^^^^^
    |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc` again
+   - which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc` again
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
@@ -127,7 +130,8 @@ LL | |                         },
 LL | |                     >::Arc;;
    | |_____________________^
    |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc` again
+   - which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc` again
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
@@ -158,7 +162,8 @@ error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                                  ^^^^^^^
    |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   - which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
@@ -197,7 +202,8 @@ LL | | ...                       },
 LL | | ...                   >::Arc;;
    | |_______________________^
    |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   - which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
@@ -228,7 +234,8 @@ error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                                  ^^^^^^^
    |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   - which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
@@ -267,7 +274,8 @@ LL | | ...                       },
 LL | | ...                   >::Arc;;
    | |_______________________^
    |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   - which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
@@ -298,7 +306,8 @@ error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                                  ^^^^^^^
    |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   - which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
@@ -337,7 +346,8 @@ LL | | ...                       },
 LL | | ...                   >::Arc;;
    | |_______________________^
    |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   - which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
@@ -368,7 +378,8 @@ error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                                  ^^^^^^^
    |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   - which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information

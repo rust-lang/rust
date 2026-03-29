@@ -28,7 +28,7 @@ error[E0391]: cycle detected when computing type of `S::S`
 LL | struct S<const S: (), const S: S = { S }>;
    |                                ^
    |
-   = note: ...which immediately requires computing type of `S::S` again
+   - which immediately requires computing type of `S::S` again
 note: cycle used when checking that `S` is well-formed
   --> $DIR/issue-103790.rs:4:1
    |

@@ -1,6 +1,7 @@
 error[E0391]: cycle detected when looking up span for `Default`
    |
-   = note: ...which immediately requires looking up span for `Default` again
+   - which immediately requires looking up span for `Default` again
+   |
    = note: cycle used when perform lints prior to AST lowering
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
