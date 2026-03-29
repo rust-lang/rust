@@ -81,6 +81,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     let sme_f64f64 = _sysctlbyname(c"hw.optional.arm.FEAT_SME_F64F64");
     let sme_i16i64 = _sysctlbyname(c"hw.optional.arm.FEAT_SME_I16I64");
     let ssbs = _sysctlbyname(c"hw.optional.arm.FEAT_SSBS");
+    let sve_b16b16 = _sysctlbyname(c"hw.optional.arm.FEAT_SVE_B16B16");
     let wfxt = _sysctlbyname(c"hw.optional.arm.FEAT_WFxT");
 
     // The following features are not exposed by `is_aarch64_feature_detected`,
@@ -160,6 +161,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::sme_f64f64, sme_f64f64);
     enable_feature(Feature::sme_i16i64, sme_i16i64);
     enable_feature(Feature::ssbs, ssbs);
+    enable_feature(Feature::sve_b16b16, sve_b16b16);
     enable_feature(Feature::wfxt, wfxt);
 
     value
