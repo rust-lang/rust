@@ -132,6 +132,7 @@ pub(crate) struct FnParamDocComment {
     pub span: Span,
 }
 
+// FIXME(splat): add splat to the allowed built-in attributes when it is complete/stabilized
 #[derive(Diagnostic)]
 #[diag(
     "allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters"

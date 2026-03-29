@@ -1,0 +1,31 @@
+error[E0053]: method `has_splat` has an incompatible type for trait
+  --> $DIR/splat-inconsistent.rs:30:5
+   |
+LL |     fn has_splat(_: ()) {}
+   |     ^^^^^^^^^^^^^^^^^^^ expected splatted fn, found non-splatted function
+   |
+note: type in trait
+  --> $DIR/splat-inconsistent.rs:22:5
+   |
+LL |     fn has_splat(#[splat] _: ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn(())`
+              found signature `fn(())`
+
+error[E0053]: method `no_splat` has an incompatible type for trait
+  --> $DIR/splat-inconsistent.rs:32:5
+   |
+LL |     fn no_splat(#[splat] _: (u32, f64)) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected non-splatted fn, found splatted function
+   |
+note: type in trait
+  --> $DIR/splat-inconsistent.rs:24:5
+   |
+LL |     fn no_splat(_: (u32, f64));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn((_, _))`
+              found signature `fn((_, _))`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

@@ -2063,6 +2063,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         *inputs,
                         infcx.next_ty_var(DUMMY_SP),
                         false,
+                        false,
                         hir::Safety::Safe,
                         ExternAbi::Rust,
                     )
@@ -2070,6 +2071,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 _ => infcx.tcx.mk_fn_sig(
                     [inputs],
                     infcx.next_ty_var(DUMMY_SP),
+                    false,
                     false,
                     hir::Safety::Safe,
                     ExternAbi::Rust,

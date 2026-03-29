@@ -1087,6 +1087,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 liberated_sig.inputs().iter().copied(),
                 peeled_ty,
                 liberated_sig.c_variadic,
+                liberated_sig.splatted,
                 hir::Safety::Safe,
                 rustc_abi::ExternAbi::Rust,
             )),

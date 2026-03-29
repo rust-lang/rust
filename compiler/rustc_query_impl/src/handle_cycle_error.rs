@@ -67,6 +67,7 @@ fn fn_sig<'tcx>(
         std::iter::repeat_n(err, arity),
         err,
         false,
+        false,
         rustc_hir::Safety::Safe,
         rustc_abi::ExternAbi::Rust,
     )))

@@ -102,6 +102,7 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
             [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
             tcx.types.isize,
             false,
+            false,
             hir::Safety::Safe,
             ExternAbi::Rust,
         ));

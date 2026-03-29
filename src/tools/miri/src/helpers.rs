@@ -409,6 +409,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             args.iter().map(|a| a.layout.ty),
             dest.layout.ty,
             /*c_variadic*/ false,
+            /*splatted*/ false,
             Safety::Safe,
             caller_abi,
         );

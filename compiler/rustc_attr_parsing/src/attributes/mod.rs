@@ -63,6 +63,7 @@ pub(crate) mod rustc_allocator;
 pub(crate) mod rustc_dump;
 pub(crate) mod rustc_internal;
 pub(crate) mod semantics;
+pub(crate) mod splat;
 pub(crate) mod stability;
 pub(crate) mod test_attrs;
 pub(crate) mod traits;

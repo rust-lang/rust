@@ -190,6 +190,7 @@ impl AttributeKind {
             RustcUnsafeSpecializationMarker(..) => No,
             Sanitize { .. } => No,
             ShouldPanic { .. } => No,
+            Splat(..) => Yes,
             Stability { .. } => Yes,
             TargetFeature { .. } => No,
             TestRunner(..) => Yes,

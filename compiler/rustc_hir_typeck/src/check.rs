@@ -204,7 +204,14 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
         ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
     ]);
     let expected_sig = ty::Binder::bind_with_vars(
-        tcx.mk_fn_sig([panic_info_ref_ty], tcx.types.never, false, fn_sig.safety, ExternAbi::Rust),
+        tcx.mk_fn_sig(
+            [panic_info_ref_ty],
+            tcx.types.never,
+            false,
+            false,
+            fn_sig.safety,
+            ExternAbi::Rust,
+        ),
         bounds,
     );
 
@@ -227,7 +234,14 @@ fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id:
     let generic_ty = Ty::new_param(tcx, fn_generic.index, fn_generic.name);
     let main_fn_ty = Ty::new_fn_ptr(
         tcx,
-        Binder::dummy(tcx.mk_fn_sig([], generic_ty, false, hir::Safety::Safe, ExternAbi::Rust)),
+        Binder::dummy(tcx.mk_fn_sig(
+            [],
+            generic_ty,
+            false,
+            false,
+            hir::Safety::Safe,
+            ExternAbi::Rust,
+        )),
     );
 
     let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
@@ -238,6 +252,7 @@ fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id:
             tcx.types.u8,
         ],
         tcx.types.isize,
+        false,
         false,
         fn_sig.safety,
         ExternAbi::Rust,

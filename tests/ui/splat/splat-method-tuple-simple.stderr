@@ -1,0 +1,13 @@
+warning: fields `0` and `1` are never read
+  --> $DIR/splat-method-tuple-simple.rs:19:20
+   |
+LL | struct TupleStruct(u32, i8);
+   |        ----------- ^^^  ^^
+   |        |
+   |        fields in this struct
+   |
+   = help: consider removing these fields
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

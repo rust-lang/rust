@@ -43,6 +43,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             [],
             tcx.thread_local_ptr_ty(instance.def_id()),
             false,
+            false,
             hir::Safety::Safe,
             rustc_abi::ExternAbi::Rust,
         );
@@ -75,6 +76,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 iter::once(env_ty).chain(sig.inputs().iter().cloned()),
                 sig.output(),
                 sig.c_variadic,
+                sig.splatted,
                 sig.safety,
                 sig.abi,
             )
@@ -120,6 +122,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
                 ),
                 sig.c_variadic,
+                sig.splatted,
                 sig.safety,
                 sig.abi,
             )
@@ -228,6 +231,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     [env_ty, resume_ty],
                     ret_ty,
                     false,
+                    false,
                     hir::Safety::Safe,
                     rustc_abi::ExternAbi::Rust,
                 )
@@ -236,6 +240,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 tcx.mk_fn_sig(
                     [env_ty],
                     ret_ty,
+                    false,
                     false,
                     hir::Safety::Safe,
                     rustc_abi::ExternAbi::Rust,

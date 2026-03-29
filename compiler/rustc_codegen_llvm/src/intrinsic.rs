@@ -1288,6 +1288,7 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
             [i8p],
             tcx.types.unit,
             false,
+            false,
             hir::Safety::Unsafe,
             ExternAbi::Rust,
         )),
@@ -1299,6 +1300,7 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
             [i8p, i8p],
             tcx.types.unit,
             false,
+            false,
             hir::Safety::Unsafe,
             ExternAbi::Rust,
         )),
@@ -1307,6 +1309,7 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
     let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
         [try_fn_ty, i8p, catch_fn_ty],
         tcx.types.i32,
+        false,
         false,
         hir::Safety::Unsafe,
         ExternAbi::Rust,

@@ -873,6 +873,7 @@ pub(crate) fn assert_assignable<'tcx>(
             let FnSig {
                 inputs_and_output: types_from,
                 c_variadic: c_variadic_from,
+                splatted: splatted_from,
                 safety: unsafety_from,
                 abi: abi_from,
             } = from_sig;
@@ -881,6 +882,7 @@ pub(crate) fn assert_assignable<'tcx>(
             let FnSig {
                 inputs_and_output: types_to,
                 c_variadic: c_variadic_to,
+                splatted: splatted_to,
                 safety: unsafety_to,
                 abi: abi_to,
             } = to_sig;
@@ -895,6 +897,11 @@ pub(crate) fn assert_assignable<'tcx>(
             }
             assert_eq!(
                 c_variadic_from, c_variadic_to,
+                "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
+                from_sig, to_sig, fx,
+            );
+            assert_eq!(
+                splatted_from, splatted_to,
                 "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
                 from_sig, to_sig, fx,
             );

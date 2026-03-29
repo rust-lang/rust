@@ -71,6 +71,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
         [ty, resume_ty],
         tcx.types.unit,
         false,
+        false,
         Safety::Safe,
         ExternAbi::Rust,
     ));
@@ -313,6 +314,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
     let sig = tcx.mk_fn_sig(
         [env_ty, Ty::new_task_context(tcx)],
         ret_ty,
+        false,
         false,
         hir::Safety::Safe,
         ExternAbi::Rust,

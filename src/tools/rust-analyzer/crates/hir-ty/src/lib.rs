@@ -584,6 +584,7 @@ pub fn callable_sig_from_fn_trait<'db>(
                     Binder::dummy(FnSig {
                         inputs_and_output,
                         c_variadic: false,
+                        // FIXME(splat): handle splatted arguments
                         safety: abi::Safety::Safe,
                         abi: FnAbi::RustCall,
                     }),

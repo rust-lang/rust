@@ -40,6 +40,7 @@ pub enum TypeError<I: Interner> {
     ArgumentSorts(ExpectedFound<I::Ty>, usize),
     Traits(ExpectedFound<I::TraitId>),
     VariadicMismatch(ExpectedFound<bool>),
+    SplatMismatch(ExpectedFound<bool>),
 
     /// Instantiating a type variable with the given type would have
     /// created a cycle (because it appears somewhere within that
@@ -75,7 +76,7 @@ impl<I: Interner> TypeError<I> {
         match self {
             CyclicTy(_) | CyclicConst(_) | SafetyMismatch(_) | PolarityMismatch(_) | Mismatch
             | AbiMismatch(_) | ArraySize(_) | ArgumentSorts(..) | Sorts(_)
-            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            | VariadicMismatch(_) | SplatMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
             | ArgumentMutability(_)

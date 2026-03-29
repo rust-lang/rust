@@ -1,0 +1,17 @@
+error[E0053]: method `tuple_1` has an incompatible type for trait
+  --> $DIR/splat-non-tuple.rs:41:5
+   |
+LL |     fn tuple_1(_: (u32,)) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^ expected splatted fn, found non-splatted function
+   |
+note: type in trait
+  --> $DIR/splat-non-tuple.rs:19:5
+   |
+LL |     fn tuple_1(#[splat] _: (u32,));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn((_,))`
+              found signature `fn((_,))`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.
