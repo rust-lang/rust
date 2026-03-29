@@ -1,0 +1,14 @@
+error: the constant `1` is not of type `usize`
+  --> $DIR/type_const-mismatched-type-incremental.rs:4:1
+   |
+LL | type const FOO: usize = 1_i32;
+   | ^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `i32`
+
+error: the constant `-1` is not of type `usize`
+  --> $DIR/type_const-mismatched-type-incremental.rs:5:1
+   |
+LL | type const BAR: usize = -1_i32;
+   | ^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `i32`
+
+error: aborting due to 2 previous errors
+
