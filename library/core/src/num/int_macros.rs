@@ -1827,7 +1827,8 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the square root of the number, rounded down.
+        /// Returns the non-negative integer square root of the number, rounded down.
+        /// This is the greatest integer `n` such that `n * n <= self`.
         ///
         /// Returns `None` if `self` is negative.
         ///
@@ -3122,7 +3123,8 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the square root of the number, rounded down.
+        /// Returns the non-negative integer square root of the number, rounded down.
+        /// This is the greatest integer `n` such that `n * n <= self`.
         ///
         /// # Panics
         ///
