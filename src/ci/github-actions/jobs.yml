@@ -96,7 +96,7 @@ jobs:
     env:
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist.sh
-    <<: *job-linux-36c-codebuild
+    os: self-hosted-demo
 
 
 # Jobs that run on each push to a pull request (PR).
