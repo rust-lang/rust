@@ -53,11 +53,12 @@ use tracing::{debug, instrument};
 
 use crate::borrow_set::{BorrowData, BorrowSet};
 use crate::consumers::{BodyWithBorrowckFacts, RustcFacts};
-use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
+use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows, Pins};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
 };
 use crate::path_utils::*;
+use crate::pin_set::PinSet;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
 use crate::polonius::PoloniusContext;
@@ -81,6 +82,7 @@ mod diagnostics;
 mod handle_placeholders;
 mod nll;
 mod path_utils;
+mod pin_set;
 mod place_ext;
 mod places_conflict;
 mod polonius;
@@ -292,6 +294,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     promoted: IndexVec<Promoted, Body<'tcx>>,
     move_data: MoveData<'tcx>,
     borrow_set: BorrowSet<'tcx>,
+    pin_set: PinSet<'tcx>,
     location_table: PoloniusLocationTable,
     location_map: Rc<DenseLocationMap>,
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
@@ -336,6 +339,7 @@ fn borrowck_collect_region_constraints<'tcx>(
 
     let locals_are_invalidated_at_exit = tcx.hir_body_owner_kind(def).is_fn_or_closure();
     let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
+    let pin_set_data = PinSet::build(tcx, body);
 
     let location_map = Rc::new(DenseLocationMap::new(body));
 
@@ -371,6 +375,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         promoted,
         move_data,
         borrow_set,
+        pin_set: pin_set_data,
         location_table,
         location_map,
         universal_region_relations,
@@ -395,6 +400,7 @@ fn borrowck_check_region_constraints<'tcx>(
         promoted,
         move_data,
         borrow_set,
+        pin_set,
         location_table,
         location_map,
         universal_region_relations,
@@ -480,6 +486,7 @@ fn borrowck_check_region_constraints<'tcx>(
             used_mut: Default::default(),
             used_mut_upvars: SmallVec::new(),
             borrow_set: &borrow_set,
+            pin_set: &pin_set,
             upvars: &[],
             local_names: OnceCell::from(IndexVec::from_elem(None, &promoted_body.local_decls)),
             region_names: RefCell::default(),
@@ -519,6 +526,7 @@ fn borrowck_check_region_constraints<'tcx>(
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
         borrow_set: &borrow_set,
+        pin_set: &pin_set,
         upvars: tcx.closure_captures(def),
         local_names: OnceCell::new(),
         region_names: RefCell::default(),
@@ -536,7 +544,7 @@ fn borrowck_check_region_constraints<'tcx>(
         mbcx.report_region_errors(nll_errors);
     }
 
-    let flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+    let flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &pin_set, &regioncx);
     visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
@@ -600,15 +608,17 @@ fn get_flow_results<'a, 'tcx>(
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
+    pin_set: &'a PinSet<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
 ) -> Results<'tcx, Borrowck<'a, 'tcx>> {
-    // We compute these three analyses individually, but them combine them into
+    // We compute these four analyses individually, but them combine them into
     // a single results so that `mbcx` can visit them all together.
     let borrows = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
         tcx,
         body,
         Some("borrowck"),
     );
+    let pins = Pins::new(tcx, body, pin_set).iterate_to_fixpoint(tcx, body, Some("borrowck"));
     let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data).iterate_to_fixpoint(
         tcx,
         body,
@@ -622,16 +632,27 @@ fn get_flow_results<'a, 'tcx>(
 
     let analysis = Borrowck {
         borrows: borrows.analysis,
+        pins: pins.analysis,
         uninits: uninits.analysis,
         ever_inits: ever_inits.analysis,
     };
 
+    assert_eq!(borrows.entry_states.len(), pins.entry_states.len());
     assert_eq!(borrows.entry_states.len(), uninits.entry_states.len());
     assert_eq!(borrows.entry_states.len(), ever_inits.entry_states.len());
-    let entry_states: EntryStates<_> =
-        itertools::izip!(borrows.entry_states, uninits.entry_states, ever_inits.entry_states)
-            .map(|(borrows, uninits, ever_inits)| BorrowckDomain { borrows, uninits, ever_inits })
-            .collect();
+    let entry_states: EntryStates<_> = itertools::izip!(
+        borrows.entry_states,
+        pins.entry_states,
+        uninits.entry_states,
+        ever_inits.entry_states
+    )
+    .map(|(borrows, pins, uninits, ever_inits)| BorrowckDomain {
+        borrows,
+        pins,
+        uninits,
+        ever_inits,
+    })
+    .collect();
 
     Results { analysis, entry_states }
 }
@@ -756,6 +777,10 @@ pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 
     /// The set of borrows extracted from the MIR
     borrow_set: &'a BorrowSet<'tcx>,
+
+    /// The set of pins extracted from the MIR
+    #[allow(dead_code)]
+    pin_set: &'a PinSet<'tcx>,
 
     /// Information about upvars not necessarily preserved in types or MIR
     upvars: &'tcx [&'tcx ty::CapturedPlace<'tcx>],
@@ -1241,7 +1266,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         location: Location,
         state: &'s BorrowckDomain,
     ) -> Cow<'s, MixedBitSet<BorrowIndex>> {
-        if let Some(polonius) = &self.polonius_output {
+        let mut borrows = if let Some(polonius) = &self.polonius_output {
             // Use polonius output if it has been enabled.
             let location = self.location_table.start_index(location);
             let mut polonius_output = MixedBitSet::new_empty(self.borrow_set.len());
@@ -1251,7 +1276,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             Cow::Owned(polonius_output)
         } else {
             Cow::Borrowed(&state.borrows)
+        };
+
+        // For pinned borrows, the Pins dataflow determines their liveness
+        // independently of NLL regions. If a pin is active, its corresponding
+        // borrow should be treated as in scope even if NLL killed it.
+        for (borrow_idx, borrow_data) in self.borrow_set.iter_enumerated() {
+            if let crate::borrow_set::Pinnedness::Pinned { at, .. } = borrow_data.pinnedness {
+                if let Some(pin_idx) = self.pin_set.get_index_of(&at) {
+                    if state.pins.contains(pin_idx) && !borrows.contains(borrow_idx) {
+                        borrows.to_mut().insert(borrow_idx);
+                    }
+                }
+            }
         }
+
+        borrows
     }
 
     #[instrument(level = "debug", skip(self, state))]

@@ -14,13 +14,16 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::{Analysis, GenKill, JoinSemiLattice};
 use tracing::debug;
 
-use crate::{BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict};
+use crate::{
+    BorrowSet, PinSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict,
+};
 
 // This analysis is different to most others. Its results aren't computed with
 // `iterate_to_fixpoint`, but are instead composed from the results of three sub-analyses that are
 // computed individually with `iterate_to_fixpoint`.
 pub(crate) struct Borrowck<'a, 'tcx> {
     pub(crate) borrows: Borrows<'a, 'tcx>,
+    pub(crate) pins: Pins<'a, 'tcx>,
     pub(crate) uninits: MaybeUninitializedPlaces<'a, 'tcx>,
     pub(crate) ever_inits: EverInitializedPlaces<'a, 'tcx>,
 }
@@ -33,6 +36,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
         BorrowckDomain {
             borrows: self.borrows.bottom_value(body),
+            pins: self.pins.bottom_value(body),
             uninits: self.uninits.bottom_value(body),
             ever_inits: self.ever_inits.bottom_value(body),
         }
@@ -50,6 +54,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
         loc: Location,
     ) {
         self.borrows.apply_early_statement_effect(&mut state.borrows, stmt, loc);
+        self.pins.apply_early_statement_effect(&mut state.pins, stmt, loc);
         self.uninits.apply_early_statement_effect(&mut state.uninits, stmt, loc);
         self.ever_inits.apply_early_statement_effect(&mut state.ever_inits, stmt, loc);
     }
@@ -61,6 +66,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
         loc: Location,
     ) {
         self.borrows.apply_primary_statement_effect(&mut state.borrows, stmt, loc);
+        self.pins.apply_primary_statement_effect(&mut state.pins, stmt, loc);
         self.uninits.apply_primary_statement_effect(&mut state.uninits, stmt, loc);
         self.ever_inits.apply_primary_statement_effect(&mut state.ever_inits, stmt, loc);
     }
@@ -72,6 +78,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
         loc: Location,
     ) {
         self.borrows.apply_early_terminator_effect(&mut state.borrows, term, loc);
+        self.pins.apply_early_terminator_effect(&mut state.pins, term, loc);
         self.uninits.apply_early_terminator_effect(&mut state.uninits, term, loc);
         self.ever_inits.apply_early_terminator_effect(&mut state.ever_inits, term, loc);
     }
@@ -83,6 +90,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
         loc: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
         self.borrows.apply_primary_terminator_effect(&mut state.borrows, term, loc);
+        self.pins.apply_primary_terminator_effect(&mut state.pins, term, loc);
         self.uninits.apply_primary_terminator_effect(&mut state.uninits, term, loc);
         self.ever_inits.apply_primary_terminator_effect(&mut state.ever_inits, term, loc);
 
@@ -116,6 +124,8 @@ where
     fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("borrows: ")?;
         self.borrows.fmt_with(ctxt, f)?;
+        f.write_str(" pins: ")?;
+        self.pins.fmt_with(ctxt, f)?;
         f.write_str(" uninits: ")?;
         self.uninits.fmt_with(ctxt, f)?;
         f.write_str(" ever_inits: ")?;
@@ -131,6 +141,12 @@ where
         if self.borrows != old.borrows {
             f.write_str("borrows: ")?;
             self.borrows.fmt_diff_with(&old.borrows, ctxt, f)?;
+            f.write_str("\n")?;
+        }
+
+        if self.pins != old.pins {
+            f.write_str("pins: ")?;
+            self.pins.fmt_diff_with(&old.pins, ctxt, f)?;
             f.write_str("\n")?;
         }
 
@@ -154,6 +170,7 @@ where
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct BorrowckDomain {
     pub(crate) borrows: BorrowsDomain,
+    pub(crate) pins: PinsDomain,
     pub(crate) uninits: MaybeUninitializedPlacesDomain,
     pub(crate) ever_inits: EverInitializedPlacesDomain,
 }
@@ -163,6 +180,16 @@ rustc_index::newtype_index! {
     #[debug_format = "bw{}"]
     pub struct BorrowIndex {}
 }
+
+impl<C> DebugWithContext<C> for BorrowIndex {}
+
+rustc_index::newtype_index! {
+    #[orderable]
+    #[debug_format = "pi{}"]
+    pub struct PinIndex {}
+}
+
+impl<C> DebugWithContext<C> for PinIndex {}
 
 /// `Borrows` stores the data used in the analyses that track the flow
 /// of borrows.
@@ -176,6 +203,19 @@ pub struct Borrows<'a, 'tcx> {
     body: &'a Body<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
+}
+
+/// `Pins` stores the data used in the analyses that track the flow
+/// of pins.
+///
+/// It uniquely identifies every pinned borrow by a
+/// `PinIndex`, and maps each such index to a `PinData`
+/// describing the pin. These indexes are used for representing the
+/// pins in compact bitvectors.
+pub(crate) struct Pins<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    body: &'a Body<'tcx>,
+    pin_set: &'a PinSet<'tcx>,
 }
 
 struct OutOfScopePrecomputer<'a, 'tcx> {
@@ -617,4 +657,168 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 }
 
-impl<C> DebugWithContext<C> for BorrowIndex {}
+impl<'a, 'tcx> Pins<'a, 'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, pin_set: &'a PinSet<'tcx>) -> Self {
+        Pins { tcx, body, pin_set }
+    }
+
+    /// Kill any pins whose original pinned place conflicts with `place`.
+    fn kill_pins_on_place(&self, state: &mut <Self as Analysis<'tcx>>::Domain, place: Place<'tcx>) {
+        debug!("kill_pins_on_place: place={:?}", place);
+
+        let other_pins_of_local =
+            self.pin_set.local_map.get(&place.local).into_iter().flat_map(|ps| ps.iter()).copied();
+
+        // If the place is a local with no projections, all pins of this
+        // local must be killed. This is purely an optimization so we don't have to call
+        // `places_conflict` for every pin.
+        if place.projection.is_empty() {
+            state.kill_all(other_pins_of_local);
+            return;
+        }
+
+        // By passing `PlaceConflictBias::NoOverlap`, we conservatively assume that any given
+        // pair of array indices are not equal, so that when `places_conflict` returns true, we
+        // will be assured that two places being compared definitely denotes the same sets of
+        // locations.
+        let definitely_conflicting_pins = other_pins_of_local.filter(|&i| {
+            places_conflict(
+                self.tcx,
+                self.body,
+                self.pin_set[i].pinned_place,
+                place,
+                PlaceConflictBias::NoOverlap,
+            )
+        });
+
+        state.kill_all(definitely_conflicting_pins);
+    }
+
+    /// Kill any pins whose Pin result local is `local`.
+    /// This is used when the Pin value goes out of scope (StorageDead).
+    fn kill_pins_by_pin_local(
+        &self,
+        state: &mut <Self as Analysis<'tcx>>::Domain,
+        local: mir::Local,
+    ) {
+        debug!("kill_pins_by_pin_local: local={:?}", local);
+
+        let pins_of_local =
+            self.pin_set.pin_local_map.get(&local).into_iter().flat_map(|ps| ps.iter()).copied();
+
+        state.kill_all(pins_of_local);
+    }
+}
+
+type PinsDomain = MixedBitSet<PinIndex>;
+
+/// Forward dataflow computation of the set of pins that are in scope at a particular location.
+/// - we gen the introduced pins
+/// - we kill pins on locals going out of scope
+/// - we kill pins when the pinned place is moved or overwritten
+impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Pins<'_, 'tcx> {
+    type Domain = PinsDomain;
+
+    const NAME: &'static str = "pins";
+
+    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = nothing is pinned yet
+        MixedBitSet::new_empty(self.pin_set.len())
+    }
+
+    fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
+        // no pins have been created prior to function execution
+    }
+
+    fn apply_early_statement_effect(
+        &self,
+        state: &mut Self::Domain,
+        statement: &mir::Statement<'tcx>,
+        _location: Location,
+    ) {
+        // Kill pins early on reassignment/StorageDead so that the visitor
+        // (which runs after the early phase) sees the updated pin state.
+        match &statement.kind {
+            mir::StatementKind::Assign(box (lhs, _)) => {
+                self.kill_pins_on_place(state, *lhs);
+            }
+            mir::StatementKind::StorageDead(local) => {
+                self.kill_pins_on_place(state, Place::from(*local));
+                self.kill_pins_by_pin_local(state, *local);
+            }
+            _ => {}
+        }
+    }
+
+    fn apply_primary_statement_effect(
+        &self,
+        state: &mut Self::Domain,
+        stmt: &mir::Statement<'tcx>,
+        location: Location,
+    ) {
+        match &stmt.kind {
+            mir::StatementKind::Assign(box (lhs, rhs)) => {
+                // Check if this is a Pin aggregate creation
+                if let mir::Rvalue::Aggregate(box agg_kind, _) = rhs
+                    && let mir::AggregateKind::Adt(adt_did, _, args, _, _) = agg_kind
+                    && self.tcx.adt_def(*adt_did).is_pin()
+                    && args.type_at(0).is_ref()
+                {
+                    // Generate the pin
+                    if let Some(index) = self.pin_set.get_index_of(&location) {
+                        state.gen_(index);
+                    }
+                }
+
+                // Kill any pins on the place being assigned to
+                self.kill_pins_on_place(state, *lhs);
+            }
+
+            mir::StatementKind::StorageDead(local) => {
+                // Kill all pins on locals that are going out of scope
+                self.kill_pins_on_place(state, Place::from(*local));
+                // Also kill pins whose Pin result local is going out of scope
+                self.kill_pins_by_pin_local(state, *local);
+            }
+
+            mir::StatementKind::FakeRead(..)
+            | mir::StatementKind::SetDiscriminant { .. }
+            | mir::StatementKind::StorageLive(..)
+            | mir::StatementKind::Retag { .. }
+            | mir::StatementKind::PlaceMention(..)
+            | mir::StatementKind::AscribeUserType(..)
+            | mir::StatementKind::Coverage(..)
+            | mir::StatementKind::Intrinsic(..)
+            | mir::StatementKind::ConstEvalCounter
+            | mir::StatementKind::BackwardIncompatibleDropHint { .. }
+            | mir::StatementKind::Nop => {}
+        }
+    }
+
+    fn apply_early_terminator_effect(
+        &self,
+        _state: &mut Self::Domain,
+        _terminator: &mir::Terminator<'tcx>,
+        _location: Location,
+    ) {
+        // No early terminator effects for pins
+    }
+
+    fn apply_primary_terminator_effect<'mir>(
+        &self,
+        state: &mut Self::Domain,
+        terminator: &'mir mir::Terminator<'tcx>,
+        _location: Location,
+    ) -> TerminatorEdges<'mir, 'tcx> {
+        if let mir::TerminatorKind::InlineAsm { operands, .. } = &terminator.kind {
+            for op in operands {
+                if let mir::InlineAsmOperand::Out { place: Some(place), .. }
+                | mir::InlineAsmOperand::InOut { out_place: Some(place), .. } = *op
+                {
+                    self.kill_pins_on_place(state, place);
+                }
+            }
+        }
+        terminator.edges()
+    }
+}
