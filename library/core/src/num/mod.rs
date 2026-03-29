@@ -41,6 +41,7 @@ mod int_macros; // import int_impl!
 #[macro_use]
 mod uint_macros; // import uint_impl!
 
+mod complex;
 mod error;
 #[cfg(not(no_fp_fmt_parse))]
 mod float_parse;
@@ -52,6 +53,8 @@ mod wrapping;
 #[doc(hidden)]
 pub mod niche_types;
 
+#[unstable(feature = "complex_numbers", issue = "154023")]
+pub use complex::Complex;
 #[stable(feature = "int_error_matching", since = "1.55.0")]
 pub use error::IntErrorKind;
 #[stable(feature = "rust1", since = "1.0.0")]
