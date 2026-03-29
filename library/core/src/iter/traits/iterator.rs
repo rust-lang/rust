@@ -49,9 +49,10 @@ pub const trait Iterator {
     /// Returns [`None`] when iteration is finished. Individual iterator
     /// implementations may choose to resume iteration, and so calling `next()`
     /// again may or may not eventually start returning [`Some(Item)`] again at some
-    /// point.
+    /// point.  For more on this, see [exhaustion] in the module documentation.
     ///
     /// [`Some(Item)`]: Some
+    /// [exhaustion]: index.html#exhaustion
     ///
     /// # Examples
     ///
