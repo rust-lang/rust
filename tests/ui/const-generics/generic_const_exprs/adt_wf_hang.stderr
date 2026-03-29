@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `S<{ U }> well-formed`
+error[E0275]: overflow evaluating whether `S<{ U }>` is well-formed
   --> $DIR/adt_wf_hang.rs:11:5
    |
 LL |     S<{ U }>:;
