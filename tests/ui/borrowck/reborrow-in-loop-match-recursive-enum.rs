@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/25579
 //@ check-pass
 
 enum Sexpression {

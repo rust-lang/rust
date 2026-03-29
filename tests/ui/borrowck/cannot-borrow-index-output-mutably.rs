@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/44405
 use std::ops::Index;
 
 struct Test;

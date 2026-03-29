@@ -1,3 +1,4 @@
+// Issue link https://github.com/rust-lang/rust/issues/45697
 // Test that assignments to an `&mut` pointer which is found in a
 // borrowed (but otherwise non-aliasable) location is illegal.
 

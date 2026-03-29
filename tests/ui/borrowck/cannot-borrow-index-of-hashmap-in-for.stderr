@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow data in an index of `HashMap<String, Vec<String>>` as mutable
-  --> $DIR/issue-41726.rs:5:9
+  --> $DIR/cannot-borrow-index-of-hashmap-in-for.rs:6:9
    |
 LL |         things[src.as_str()].sort();
    |         ^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable

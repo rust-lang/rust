@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/4335
 #![feature(fn_traits)]
 
 fn id<T>(t: T) -> T { t }

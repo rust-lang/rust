@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/40288
 fn save_ref<'a>(refr: &'a i32, to: &mut [&'a i32]) {
     for val in &mut *to {
         *val = refr;
