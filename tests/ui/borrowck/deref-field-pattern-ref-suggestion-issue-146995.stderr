@@ -1,0 +1,32 @@
+error[E0507]: cannot move out of dereference of `DataBox<Complex>`
+  --> $DIR/deref-field-pattern-ref-suggestion-issue-146995.rs:12:26
+   |
+LL |     if let Some(mut s) = db.s {
+   |                 -----    ^^^^
+   |                 |
+   |                 data moved here because `s` has type `Simple`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     if let Some(ref mut s) = db.s {
+   |                 +++
+
+error[E0382]: use of partially moved value: `clone`
+  --> $DIR/deref-field-pattern-ref-suggestion-issue-146995.rs:22:11
+   |
+LL |     if let Some(mut s) = clone.s {
+   |                 ----- value partially moved here
+...
+LL |     *db = clone;
+   |           ^^^^^ value used here after partial move
+   |
+   = note: partial move occurs because value has type `Simple`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     if let Some(ref mut s) = clone.s {
+   |                 +++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0382, E0507.
+For more information about an error, try `rustc --explain E0382`.
