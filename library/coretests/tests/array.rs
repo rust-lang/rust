@@ -193,7 +193,7 @@ fn iterator_drops() {
     // Simple: drop new iterator.
     let i = Cell::new(0);
     {
-        IntoIterator::into_iter(five(&i));
+        drop(IntoIterator::into_iter(five(&i)));
     }
     assert_eq!(i.get(), 5);
 
