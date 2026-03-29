@@ -218,8 +218,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         self,
                         negative_impls,
                         span.to(of_trait.trait_ref.path.span),
-                        "negative trait bounds are not fully implemented; \
-                         use marker types for now"
+                        "negative impls are experimental",
+                        "use marker types for now"
                     );
                 }
 
@@ -614,6 +614,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     soft_gate_all_legacy_dont_use!(auto_traits, "`auto` traits are unstable");
     soft_gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
     soft_gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
+    soft_gate_all_legacy_dont_use!(negative_impls, "negative impls are experimental");
     soft_gate_all_legacy_dont_use!(trait_alias, "trait aliases are experimental");
     soft_gate_all_legacy_dont_use!(try_blocks, "`try` blocks are unstable");
     // tidy-alphabetical-end
