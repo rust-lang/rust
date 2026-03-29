@@ -1,0 +1,14 @@
+error: function `g` is never used
+  --> $DIR/allow-dead-code-transitive.rs:4:8
+   |
+LL | pub fn g() {}
+   |        ^
+   |
+note: the lint level is defined here
+  --> $DIR/allow-dead-code-transitive.rs:2:9
+   |
+LL | #![deny(unused_pub_items_in_binary)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
