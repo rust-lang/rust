@@ -272,6 +272,16 @@ impl Socket {
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
+    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+        let value: i32 = if keepalive { 1 } else { 0 };
+        unsafe { setsockopt(self, netc::SOL_SOCKET, netc::SO_KEEPALIVE, value) }
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        let raw: i32 = unsafe { getsockopt(self, netc::SOL_SOCKET, netc::SO_KEEPALIVE)? };
+        Ok(raw != 0)
+    }
+
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         let value: i32 = if nodelay { 1 } else { 0 };
         unsafe { setsockopt(self, netc::IPPROTO_TCP, netc::TCP_NODELAY, value) }

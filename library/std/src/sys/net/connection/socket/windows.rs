@@ -425,6 +425,15 @@ impl Socket {
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
+    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+        unsafe { setsockopt(self, c::SOL_SOCKET, c::SO_KEEPALIVE, keepalive as c::BOOL) }
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        let raw: c::BOOL = unsafe { getsockopt(self, c::SOL_SOCKET, c::SO_KEEPALIVE)? };
+        Ok(raw != 0)
+    }
+
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         unsafe { setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BOOL) }
     }
