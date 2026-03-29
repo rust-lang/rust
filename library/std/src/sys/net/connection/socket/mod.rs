@@ -764,7 +764,7 @@ impl UdpSocket {
                 &self.inner,
                 c::IPPROTO_IP,
                 c::IP_MULTICAST_TTL,
-                multicast_ttl_v4 as IpV4MultiCastType,
+                cmp::min(multicast_ttl_v4, u8::MAX as u32) as IpV4MultiCastType,
             )
         }
     }
