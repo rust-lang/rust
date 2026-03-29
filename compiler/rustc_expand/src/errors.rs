@@ -413,8 +413,15 @@ pub(crate) struct MissingFragmentSpecifier {
         code = ":spec",
         applicability = "maybe-incorrect"
     )]
-    pub add_span: Span,
+    pub add_span: Option<Span>,
     pub valid: &'static str,
+    #[suggestion(
+        "use `:` instead of `;`",
+        style = "verbose",
+        code = ":",
+        applicability = "maybe-incorrect"
+    )]
+    pub semi_span: Option<Span>,
 }
 
 #[derive(Diagnostic)]
