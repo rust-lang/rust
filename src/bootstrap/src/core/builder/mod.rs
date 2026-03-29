@@ -894,6 +894,7 @@ impl<'a> Builder<'a> {
                 test::CargoMiri,
                 test::Clippy,
                 test::CompiletestTest,
+                test::StdarchVerify,
                 test::CrateRunMakeSupport,
                 test::CrateBuildHelper,
                 test::RustdocJSStd,
