@@ -3423,19 +3423,6 @@ pub(crate) struct InvalidAttrStyle {
 }
 
 #[derive(Diagnostic)]
-#[diag("unused attribute")]
-pub(crate) struct UnusedDuplicate {
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
-    pub this: Span,
-    #[note("attribute also specified here")]
-    pub other: Span,
-    #[warning(
-        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-    )]
-    pub warning: bool,
-}
-
-#[derive(Diagnostic)]
 #[diag("malformed `doc` attribute input")]
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
@@ -3455,24 +3442,6 @@ pub(crate) struct ExpectedNoArgs;
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
 pub(crate) struct ExpectedNameValue;
-
-#[derive(Diagnostic)]
-#[diag("unsafe attribute used without unsafe")]
-pub(crate) struct UnsafeAttrOutsideUnsafeLint {
-    #[label("usage of unsafe attribute")]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: Option<UnsafeAttrOutsideUnsafeSuggestion>,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion("wrap the attribute in `unsafe(...)`", applicability = "machine-applicable")]
-pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
-    #[suggestion_part(code = "unsafe(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
-}
 
 #[derive(Diagnostic)]
 #[diag("doc alias is duplicated")]
