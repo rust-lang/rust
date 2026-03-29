@@ -1,0 +1,43 @@
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:32:17
+   |
+LL |     consume_int({ 7 });
+   |                 ^^ ^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused_braces-issue-154247.rs:5:9
+   |
+LL | #![warn(unused_braces)]
+   |         ^^^^^^^^^^^^^
+help: remove these braces
+   |
+LL -     consume_int({ 7 });
+LL +     consume_int(7);
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused_braces-issue-154247.rs:35:17
+   |
+LL |     consume_int({ x });
+   |                 ^^ ^^
+   |
+help: remove these braces
+   |
+LL -     consume_int({ x });
+LL +     consume_int(x);
+   |
+
+warning: unnecessary braces around method argument
+  --> $DIR/unused_braces-issue-154247.rs:38:42
+   |
+LL |     Lockable(Mutex::new(vec![1])).update({ 7 });
+   |                                          ^^ ^^
+   |
+help: remove these braces
+   |
+LL -     Lockable(Mutex::new(vec![1])).update({ 7 });
+LL +     Lockable(Mutex::new(vec![1])).update(7);
+   |
+
+warning: 3 warnings emitted
+
