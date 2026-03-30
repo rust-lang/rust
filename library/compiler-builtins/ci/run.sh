@@ -20,11 +20,37 @@ if [ "${USING_CONTAINER_RUSTC:-}" = 1 ]; then
         rustup target add "$target"
 fi
 
+# If nextest is available, use that
+command -v cargo-nextest && nextest=1 || nextest=0
+if [ "$nextest" = "1" ]; then
+    test_runner=(cargo nextest run --max-fail=20)
+    profile_flag="--cargo-profile"
+
+    # Workaround for https://github.com/nextest-rs/nextest/issues/2066
+    if [ -n "${CARGO_TARGET_DIR:-}" ]; then
+        cfg_file="/tmp/nextest-config.toml"
+        echo "[store]" >> "$cfg_file"
+        echo "dir = \"$CARGO_TARGET_DIR/nextest\"" >> "$cfg_file"
+        test_runner+=(--config-file "$cfg_file")
+    fi
+
+    # Not all configurations have tests to run on wasm
+    [[ "$target" = *"wasm"* ]] && test_runner+=(--no-tests=warn)
+else
+    test_runner=(cargo test --no-fail-fast)
+    profile_flag="--profile"
+fi
+
 # Test our implementation
 if [ "${BUILD_ONLY:-}" = "1" ]; then
     echo "no tests to run for build-only targets"
 else
-    test_builtins=(cargo test --package builtins-test --no-fail-fast --target "$target")
+    test_builtins=(
+        "${test_runner[@]}"
+        --package builtins-test
+        --target "$target"
+    )
+
     "${test_builtins[@]}"
     "${test_builtins[@]}" --release
     "${test_builtins[@]}" --features c
@@ -157,28 +183,7 @@ if [ "${BUILD_ONLY:-}" = "1" ]; then
 else
     # symcheck tests need specific env setup, and is already tested above
     mflags+=(--workspace --exclude symbol-check --target "$target")
-    cmd=(cargo test "${mflags[@]}")
-    profile_flag="--profile"
-
-    # If nextest is available, use that
-    command -v cargo-nextest && nextest=1 || nextest=0
-    if [ "$nextest" = "1" ]; then
-        cmd=(cargo nextest run --max-fail=10)
-
-        # Workaround for https://github.com/nextest-rs/nextest/issues/2066
-        if [ -n "${CARGO_TARGET_DIR:-}" ]; then
-            cfg_file="/tmp/nextest-config.toml"
-            echo "[store]" >> "$cfg_file"
-            echo "dir = \"$CARGO_TARGET_DIR/nextest\"" >> "$cfg_file"
-            cmd+=(--config-file "$cfg_file")
-        fi
-
-        # Not all configurations have tests to run on wasm
-        [[ "$target" = *"wasm"* ]] && cmd+=(--no-tests=warn)
-
-        cmd+=("${mflags[@]}")
-        profile_flag="--cargo-profile"
-    fi
+    cmd=("${test_runner[@]}" "${mflags[@]}")
 
     # Test once without intrinsics
     "${cmd[@]}"
