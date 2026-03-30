@@ -126,7 +126,6 @@ macro_rules! define_queries {
                 }
 
                 fn will_cache_on_disk_for_key<'tcx>(
-                    _tcx: TyCtxt<'tcx>,
                     _key: rustc_middle::queries::$name::Key<'tcx>,
                 ) -> bool {
                     cfg_select! {
@@ -164,7 +163,7 @@ macro_rules! define_queries {
                             use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
 
                             // Check the cache-on-disk condition for this key.
-                            if !$crate::query_impl::$name::will_cache_on_disk_for_key(tcx, key) {
+                            if !$crate::query_impl::$name::will_cache_on_disk_for_key(key) {
                                 return None;
                             }
 
