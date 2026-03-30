@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs, mem};
 
 use crate::core::build_steps::compile;
+use crate::core::build_steps::test::failed_tests::IsForRerunningTests;
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, SourceType, Tool, prepare_tool_cargo,
 };
@@ -436,7 +437,9 @@ impl Step for Standalone {
 
         // We open doc/index.html as the default if invoked as `x.py doc --open`
         // with no particular explicit doc requested (e.g. library/core).
-        if builder.paths.is_empty() || builder.was_invoked_explicitly::<Self>(Kind::Doc) {
+        if builder.paths(IsForRerunningTests::DontCare).is_empty()
+            || builder.was_invoked_explicitly::<Self>(Kind::Doc)
+        {
             let index = out.join("index.html");
             builder.open_in_browser(index);
         }
@@ -720,7 +723,11 @@ impl Step for Std {
 
         // Open if the format is HTML
         if let DocumentationFormat::Html = self.format {
-            if builder.paths.iter().any(|path| path.ends_with("library")) {
+            if builder
+                .paths(IsForRerunningTests::DontCare)
+                .iter()
+                .any(|path| path.ends_with("library"))
+            {
                 // For `x.py doc library --open`, open `std` by default.
                 let index = out.join("std").join("index.html");
                 builder.maybe_open_in_browser::<Self>(index);
@@ -991,7 +998,11 @@ impl Step for Rustc {
             }
         }
 
-        if builder.paths.iter().any(|path| path.ends_with("compiler")) {
+        if builder
+            .paths(IsForRerunningTests::DontCare)
+            .iter()
+            .any(|path| path.ends_with("compiler"))
+        {
             // For `x.py doc compiler --open`, open `rustc_middle` by default.
             let index = out.join("rustc_middle").join("index.html");
             builder.open_in_browser(index);
