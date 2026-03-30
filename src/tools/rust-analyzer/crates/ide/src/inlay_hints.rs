@@ -9,7 +9,8 @@ use hir::{
     HirDisplay, HirDisplayError, HirWrite, InRealFile, ModuleDef, ModuleDefId, Semantics, sym,
 };
 use ide_db::{
-    FileRange, MiniCore, RootDatabase, famous_defs::FamousDefs, text_edit::TextEditBuilder,
+    FileRange, RootDatabase, famous_defs::FamousDefs, ra_fixture::RaFixtureConfig,
+    text_edit::TextEditBuilder,
 };
 use ide_db::{FxHashSet, text_edit::TextEdit};
 use itertools::Itertools;
@@ -328,7 +329,7 @@ pub struct InlayHintsConfig<'a> {
     pub max_length: Option<usize>,
     pub closing_brace_hints_min_lines: Option<usize>,
     pub fields_to_resolve: InlayFieldsToResolve,
-    pub minicore: MiniCore<'a>,
+    pub ra_fixture: RaFixtureConfig<'a>,
 }
 
 impl InlayHintsConfig<'_> {
@@ -899,7 +900,7 @@ mod tests {
 
     use expect_test::Expect;
     use hir::ClosureStyle;
-    use ide_db::MiniCore;
+    use ide_db::ra_fixture::RaFixtureConfig;
     use itertools::Itertools;
     use test_utils::extract_annotations;
 
@@ -942,7 +943,7 @@ mod tests {
         implicit_drop_hints: false,
         implied_dyn_trait_hints: false,
         range_exclusive_hints: false,
-        minicore: MiniCore::default(),
+        ra_fixture: RaFixtureConfig::default(),
     };
     pub(super) const TEST_CONFIG: InlayHintsConfig<'_> = InlayHintsConfig {
         type_hints: true,

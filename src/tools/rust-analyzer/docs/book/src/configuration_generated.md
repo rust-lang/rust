@@ -618,6 +618,15 @@ The warnings will be indicated by a blue squiggly underline in code and a blue i
 the `Problems Panel`.
 
 
+## rust-analyzer.disableFixtureSupport {#disableFixtureSupport}
+
+Default: `false`
+
+Disable support for `#[rust_analyzer::rust_fixture]` snippets.
+
+If you are not working on rust-analyzer itself, you should ignore this config.
+
+
 ## rust-analyzer.document.symbol.search.excludeLocals {#document.symbol.search.excludeLocals}
 
 Default: `true`
