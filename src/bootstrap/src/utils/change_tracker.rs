@@ -621,4 +621,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`x.py` stopped accepting partial argument names. Use full names to avoid errors.",
     },
+    ChangeInfo {
+        change_id: 154586,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.record_failed_tests_path` to store failed tests when passing `--record`. These can be rerun with `--rerun`.",
+    },
 ];

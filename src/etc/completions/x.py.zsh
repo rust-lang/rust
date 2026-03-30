@@ -386,6 +386,8 @@ _arguments "${_arguments_options[@]}" : \
 '--no-capture[don'\''t capture stdout/stderr of tests]' \
 '--bypass-ignore-backends[Ignore \`//@ ignore-backends\` directives]' \
 '--no-doc[Deprecated. Use \`--all-targets\` or \`--tests\` instead]' \
+'--record[Record all the failed tests in a file in the build directory]' \
+'--rerun[Rerun tests that previously failed, and stored with \`--record\`]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \

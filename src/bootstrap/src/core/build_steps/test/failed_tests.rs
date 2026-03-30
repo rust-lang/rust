@@ -80,7 +80,7 @@ pub fn collect_previously_failed_tests(failed_tests_file_path: &PathBuf) -> Vec<
     for line in lines {
         let trimmed = line.as_str().trim();
         let without_revision =
-            trimmed.rsplit_once("#").map(|(before, _)| before).unwrap_or(&trimmed);
+            trimmed.rsplit_once("#").map(|(before, _)| before).unwrap_or(trimmed);
         let without_suite_prefix = without_revision
             .strip_prefix("[")
             .and_then(|rest| rest.split_once("]"))
@@ -90,7 +90,7 @@ pub fn collect_previously_failed_tests(failed_tests_file_path: &PathBuf) -> Vec<
         let failed_test_path = PathBuf::from(without_suite_prefix.to_string());
         if set_tracking_duplicates.insert(failed_test_path.clone()) {
             if num_printed == 0 {
-                println!("rerunning previousy failed tests:");
+                println!("rerunning previously failed tests:");
             }
             if num_printed < MAX_RERUN_PRINTS {
                 println!("    {}", failed_test_path.display());
