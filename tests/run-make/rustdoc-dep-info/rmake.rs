@@ -19,6 +19,7 @@ fn main() {
         .arg("--markdown-after-content=after.md")
         .arg("--extend-css=extend.css")
         .arg("--theme=theme.css")
+        .arg("--index-page=index-page.md")
         .emit("dep-info")
         .run();
 
@@ -31,6 +32,7 @@ fn main() {
     assert_contains(&content, "before.html:");
     assert_contains(&content, "extend.css:");
     assert_contains(&content, "theme.css:");
+    assert_contains(&content, "index-page.md:");
 
     // Now we check that we can provide a file name to the `dep-info` argument.
     rustdoc().input("lib.rs").arg("-Zunstable-options").emit("dep-info=bla.d").run();
@@ -80,6 +82,7 @@ fn main() {
         .arg("--markdown-after-content=after.md")
         .arg("--extend-css=extend.css")
         .arg("--theme=theme.css")
+        .arg("--index-page=index-page.md")
         .emit("dep-info=example.d")
         .run();
     let content = rfs::read_to_string("example.d");
@@ -92,4 +95,5 @@ fn main() {
     assert_contains(&content, "before.html:");
     assert_contains(&content, "extend.css:");
     assert_contains(&content, "theme.css:");
+    assert_contains(&content, "index-page.md:");
 }
