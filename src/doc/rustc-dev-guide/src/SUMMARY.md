@@ -189,6 +189,7 @@
         - [Significant changes and quirks](./solve/significant-changes.md)
         - [Sharing the trait solver with rust-analyzer](./solve/sharing-crates-with-rust-analyzer.md)
     - [`Unsize` and `CoerceUnsized` traits](./traits/unsize.md)
+    - [Having separate `Trait` and `Projection` bounds](./traits/separate-projection-bounds.md)
 - [Variance](./variance.md)
 - [Coherence checking](./coherence.md)
 - [HIR Type checking](./hir-typeck/summary.md)
