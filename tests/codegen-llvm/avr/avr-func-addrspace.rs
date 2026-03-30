@@ -30,8 +30,6 @@ fn arbitrary_black_box(ptr: &usize, _: &mut u32) -> Result<(), ()> {
 }
 
 #[inline(never)]
-#[allow(no_mangle_generic_items)]
-#[no_mangle]
 fn call_through_fn_trait(a: &mut impl Fn<(), Output = ()>) {
     (*a)()
 }
@@ -50,7 +48,7 @@ pub extern "C" fn test() {
 
     // A call through the Fn trait must use address space 1.
     //
-    // CHECK: call{{.+}}addrspace(1) void @call_through_fn_trait({{.*}})
+    // CHECK: call{{.+}}addrspace(1) void @{{.*call_through_fn_trait.*}}({{.*}})
     call_through_fn_trait(&mut update_bar_value);
 
     // A call through a global variable must use address space 1.
@@ -98,7 +96,6 @@ pub fn should_not_combine_addrspace(x: Either<&i32, fn()>) -> Either<&i32, fn()>
 // a `ptrtoint`/`inttoptr` roundtrip to convert from `ptr` to `ptr addrspace(1)`.
 
 // CHECK-LABEL: @call_with_fn_ptr
-#[allow(no_mangle_generic_items)]
 #[no_mangle]
 pub fn call_with_fn_ptr<'a>(f: fn()) -> Either<&'a i32, fn()> {
     // CHECK-NOT: ptrtoint
