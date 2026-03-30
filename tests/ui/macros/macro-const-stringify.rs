@@ -1,4 +1,6 @@
 //@ check-pass
+//Tests to check that a macro generating an impl block with stringify for a trait associated const
+//https://github.com/rust-lang/rust/issues/38160
 trait MyTrait {
     const MY_CONST: &'static str;
 }
