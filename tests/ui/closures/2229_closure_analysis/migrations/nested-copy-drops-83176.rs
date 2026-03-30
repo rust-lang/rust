@@ -1,3 +1,4 @@
+// Regression test for https://github.com/rust-lang/rust/issues/83176.
 //@ run-pass
 
 #![warn(rust_2021_incompatible_closure_captures)]
