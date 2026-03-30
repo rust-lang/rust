@@ -29,7 +29,7 @@ LL | #[cfg()]
    |      expected a single argument here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
-help: if the crate should be disabled, use `#[cfg(false)]`
+help: if the struct should be disabled, use `#[cfg(false)]`
    |
 LL | #[cfg(false)]
    |       +++++
@@ -43,12 +43,12 @@ LL | #[cfg(a, b)]
    |      expected a single argument here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
-help: if the crate should be enabled when all these predicates are, wrap them in `all`
+help: if the struct should be enabled when all these predicates are, wrap them in `all`
    |
 LL - #[cfg(a, b)]
 LL + #[cfg(all(a, b))]
    |
-help: alternately, if the crate should be enabled when any of these predicates are, wrap them in `any`
+help: alternately, if the struct should be enabled when any of these predicates are, wrap them in `any`
    |
 LL - #[cfg(a, b)]
 LL + #[cfg(any(a, b))]
