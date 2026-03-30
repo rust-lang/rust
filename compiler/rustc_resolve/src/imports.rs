@@ -1188,6 +1188,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 for error in &mut self.privacy_errors[privacy_errors_len..] {
                     error.outermost_res = res;
                 }
+            } else {
+                // The final item is not a module (e.g., a struct, function, or macro).
+                // Resolve it directly in the parent module to get its Res, so
+                // `report_privacy_error()` can search for public re-export paths.
+                for ns in [TypeNS, ValueNS, MacroNS] {
+                    if let Ok(binding) = self.cm().resolve_ident_in_module(
+                        module,
+                        ident,
+                        ns,
+                        &import.parent_scope,
+                        None,
+                        ignore_decl,
+                        None,
+                    ) {
+                        let res = binding.res();
+                        for error in &mut self.privacy_errors[privacy_errors_len..] {
+                            error.outermost_res = Some((res, ident));
+                        }
+                        break;
+                    }
+                }
             }
         }
 
