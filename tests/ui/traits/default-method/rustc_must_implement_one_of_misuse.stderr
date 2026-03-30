@@ -3,18 +3,25 @@ error[E0539]: malformed `rustc_must_implement_one_of` attribute input
    |
 LL | #[rustc_must_implement_one_of(a)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^
-   | |                            |
-   | |                            expected 2 or more items
-   | help: must be of the form: `#[rustc_must_implement_one_of(function1, function2, ...)]`
+   |                              |
+   |                              expected 2 or more items
+   |
+help: must be of the form
+   |
+LL - #[rustc_must_implement_one_of(a)]
+LL + #[rustc_must_implement_one_of(function1, function2, ...)]
+   |
 
 error[E0539]: malformed `rustc_must_implement_one_of` attribute input
   --> $DIR/rustc_must_implement_one_of_misuse.rs:20:1
    |
 LL | #[rustc_must_implement_one_of]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected this to be a list
-   | help: must be of the form: `#[rustc_must_implement_one_of(function1, function2, ...)]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected this to be a list
+   |
+help: must be of the form
+   |
+LL | #[rustc_must_implement_one_of(function1, function2, ...)]
+   |                              +++++++++++++++++++++++++++
 
 error: `#[rustc_must_implement_one_of]` attribute cannot be used on functions
   --> $DIR/rustc_must_implement_one_of_misuse.rs:38:1
