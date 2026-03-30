@@ -1114,10 +1114,10 @@ impl<'tcx> Candidate<'tcx> {
     ) -> Self {
         // Use `FlatPat` to build simplified match pairs, then immediately
         // incorporate them into a new candidate.
-        Self::from_flat_pat(
-            FlatPat::new(place, pattern, cx),
-            matches!(has_guard, HasMatchGuard::Yes),
-        )
+        let flat_pat = FlatPat::new(place, pattern, cx);
+        let has_guard = matches!(has_guard, HasMatchGuard::Yes)
+            || !flat_pat.extra_data.guard_patterns.is_empty();
+        Self::from_flat_pat(flat_pat, has_guard)
     }
 
     /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
