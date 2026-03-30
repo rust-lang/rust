@@ -2915,12 +2915,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
             | ObligationCauseCode::LetElse
             | ObligationCauseCode::UnOp { .. }
-            | ObligationCauseCode::BinOp { .. }
             | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
             | ObligationCauseCode::AlwaysApplicableImpl
             | ObligationCauseCode::ConstParam(_)
             | ObligationCauseCode::ReferenceOutlivesReferent(..)
             | ObligationCauseCode::ObjectTypeBound(..) => {}
+            ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, .. } => {
+                if let hir::Node::Expr(lhs) = tcx.hir_node(lhs_hir_id)
+                    && let hir::Node::Expr(rhs) = tcx.hir_node(rhs_hir_id)
+                    && tcx.sess.source_map().lookup_char_pos(lhs.span.lo()).line
+                        != tcx.sess.source_map().lookup_char_pos(rhs.span.hi()).line
+                {
+                    err.span_label(lhs.span, "");
+                    err.span_label(rhs.span, "");
+                }
+            }
             ObligationCauseCode::RustCall => {
                 if let Some(pred) = predicate.as_trait_clause()
                     && tcx.is_lang_item(pred.def_id(), LangItem::Sized)

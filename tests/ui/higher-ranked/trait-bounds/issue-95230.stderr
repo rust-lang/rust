@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `for<'a> &'a mut Bar well-formed`
+error[E0275]: overflow evaluating whether `&'a mut Bar` is well-formed
   --> $DIR/issue-95230.rs:7:13
    |
 LL |     for<'a> &'a mut Self:;
