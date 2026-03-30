@@ -696,7 +696,7 @@ impl<'db> Ty<'db> {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                         TypeParamProvenance::ArgumentImplTrait => {
                             let predicates = GenericPredicates::query_all(db, param.id.parent())
-                                .iter_identity_copied()
+                                .iter_identity()
                                 .filter(|wc| match wc.kind().skip_binder() {
                                     ClauseKind::Trait(tr) => tr.self_ty() == self,
                                     ClauseKind::Projection(pred) => pred.self_ty() == self,
