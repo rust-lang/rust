@@ -1,3 +1,8 @@
+//! A module for working with processes.
+//!
+//! Most process-related functionality requires std, but [`abort_immediate`]
+//! is available on all targets.
+
 /// Terminates the process in a violent fashion.
 ///
 /// The function will never return and will immediately terminate the current
