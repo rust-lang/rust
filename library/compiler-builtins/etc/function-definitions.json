@@ -344,7 +344,8 @@
         "sources": [
             "libm/src/math/arch/aarch64/fma.rs",
             "libm/src/math/arch/x86/fma.rs",
-            "libm/src/math/fma.rs"
+            "libm/src/math/fma.rs",
+            "libm/src/math/generic/fma.rs"
         ],
         "type": "f64"
     },
@@ -352,13 +353,15 @@
         "sources": [
             "libm/src/math/arch/aarch64/fma.rs",
             "libm/src/math/arch/x86/fma.rs",
-            "libm/src/math/fma.rs"
+            "libm/src/math/fma.rs",
+            "libm/src/math/generic/fma.rs"
         ],
         "type": "f32"
     },
     "fmaf128": {
         "sources": [
-            "libm/src/math/fma.rs"
+            "libm/src/math/fma.rs",
+            "libm/src/math/generic/fma.rs"
         ],
         "type": "f128"
     },
@@ -822,6 +825,7 @@
         "sources": [
             "libm/src/math/arch/aarch64/rounding.rs",
             "libm/src/math/arch/wasm32/rounding.rs",
+            "libm/src/math/generic/rint.rs",
             "libm/src/math/rint.rs"
         ],
         "type": "f64"
@@ -830,12 +834,14 @@
         "sources": [
             "libm/src/math/arch/aarch64/rounding.rs",
             "libm/src/math/arch/wasm32/rounding.rs",
+            "libm/src/math/generic/rint.rs",
             "libm/src/math/rint.rs"
         ],
         "type": "f32"
     },
     "rintf128": {
         "sources": [
+            "libm/src/math/generic/rint.rs",
             "libm/src/math/rint.rs"
         ],
         "type": "f128"
@@ -843,6 +849,7 @@
     "rintf16": {
         "sources": [
             "libm/src/math/arch/aarch64/rounding.rs",
+            "libm/src/math/generic/rint.rs",
             "libm/src/math/rint.rs"
         ],
         "type": "f16"

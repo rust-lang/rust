@@ -118,10 +118,20 @@ class Crate:
 
     def _init_defs(self, index: IndexTy) -> None:
         defs = {name: set() for name in self.public_functions}
-        funcs = (i for i in index.values() if "function" in i["inner"])
-        funcs = (f for f in funcs if f["name"] in self.public_functions)
-        for func in funcs:
-            defs[func["name"]].add(func["span"]["filename"])
+        all_funcs = (i for i in index.values() if "function" in i["inner"])
+
+        for func_def in all_funcs:
+            func_def_name = func_def["name"]
+            for pub_func_name in self.public_functions:
+                needles = [
+                    pub_func_name,
+                    f"{pub_func_name}_round",
+                    f"{pub_func_name}_status",
+                ]
+                if not any(needle == func_def_name for needle in needles):
+                    continue
+
+                defs[pub_func_name].add(func_def["span"]["filename"])
 
         # A lot of the `arch` module is often configured out so doesn't show up in docs. Use
         # string matching as a fallback.
@@ -136,6 +146,8 @@ class Crate:
 
         for name, sources in defs.items():
             base_sources = defs[base_name(name)[0]]
+
+            # Also add any functions in `generic` that use this function's base name
             for src in (s for s in base_sources if "generic" in s):
                 sources.add(src)
 
