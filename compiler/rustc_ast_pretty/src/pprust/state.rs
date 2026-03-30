@@ -1649,6 +1649,85 @@ impl<'a> State<'a> {
         );
     }
 
+    fn inline_asm_template_and_operands<'asm>(
+        asm: &'asm ast::InlineAsm,
+    ) -> (String, Vec<&'asm InlineAsmOperand>) {
+        fn is_explicit_reg(op: &InlineAsmOperand) -> bool {
+            match op {
+                InlineAsmOperand::In { reg, .. }
+                | InlineAsmOperand::Out { reg, .. }
+                | InlineAsmOperand::InOut { reg, .. }
+                | InlineAsmOperand::SplitInOut { reg, .. } => {
+                    matches!(reg, InlineAsmRegOrRegClass::Reg(_))
+                }
+                InlineAsmOperand::Const { .. }
+                | InlineAsmOperand::Sym { .. }
+                | InlineAsmOperand::Label { .. } => false,
+            }
+        }
+
+        // After macro expansion, named operands become positional. The grammar
+        // requires positional operands to precede explicit register operands,
+        // so we must reorder when any non-explicit operand follows an explicit
+        // one. When no reordering is needed, we use the original template
+        // string and operand order to avoid duplicating the Display logic in
+        // InlineAsmTemplatePiece.
+        let needs_reorder = {
+            let mut seen_explicit = false;
+            asm.operands.iter().any(|(op, _)| {
+                if is_explicit_reg(op) {
+                    seen_explicit = true;
+                    false
+                } else {
+                    seen_explicit
+                }
+            })
+        };
+
+        if !needs_reorder {
+            let template = InlineAsmTemplatePiece::to_string(&asm.template);
+            let operands = asm.operands.iter().map(|(op, _)| op).collect();
+            return (template, operands);
+        }
+
+        let mut non_explicit = Vec::new();
+        let mut explicit = Vec::new();
+        for (i, (op, _)) in asm.operands.iter().enumerate() {
+            if is_explicit_reg(op) {
+                explicit.push(i);
+            } else {
+                non_explicit.push(i);
+            }
+        }
+        let order = non_explicit.into_iter().chain(explicit).collect::<Vec<_>>();
+
+        // Build old-index -> new-index mapping for template renumbering.
+        let mut old_to_new = vec![0usize; asm.operands.len()];
+        for (new_idx, old_idx) in order.iter().copied().enumerate() {
+            old_to_new[old_idx] = new_idx;
+        }
+
+        // Remap template placeholder indices and reuse the existing Display
+        // impl to build the template string.
+        let remapped = asm
+            .template
+            .iter()
+            .map(|piece| match piece {
+                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span } => {
+                    InlineAsmTemplatePiece::Placeholder {
+                        operand_idx: old_to_new[*operand_idx],
+                        modifier: *modifier,
+                        span: *span,
+                    }
+                }
+                other => other.clone(),
+            })
+            .collect::<Vec<_>>();
+        let template = InlineAsmTemplatePiece::to_string(&remapped);
+        let operands = order.iter().map(|&idx| &asm.operands[idx].0).collect();
+        (template, operands)
+    }
+
     fn print_inline_asm(&mut self, asm: &ast::InlineAsm) {
         enum AsmArg<'a> {
             Template(String),
@@ -1657,8 +1736,9 @@ impl<'a> State<'a> {
             Options(InlineAsmOptions),
         }
 
-        let mut args = vec![AsmArg::Template(InlineAsmTemplatePiece::to_string(&asm.template))];
-        args.extend(asm.operands.iter().map(|(o, _)| AsmArg::Operand(o)));
+        let (template, operands) = Self::inline_asm_template_and_operands(asm);
+        let mut args = vec![AsmArg::Template(template)];
+        args.extend(operands.into_iter().map(AsmArg::Operand));
         for (abi, _) in &asm.clobber_abis {
             args.push(AsmArg::ClobberAbi(*abi));
         }

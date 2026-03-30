@@ -60,7 +60,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Helper function for argument untupling.
-    pub(super) fn fn_arg_field(
+    fn fn_arg_project_field(
         &self,
         arg: &FnArg<'tcx, M::Provenance>,
         field: FieldIdx,
@@ -655,12 +655,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     if caller_abi == ExternAbi::RustCall && !args.is_empty() {
                         // Untuple
                         let (untuple_arg, args) = args.split_last().unwrap();
+                        let ty::Tuple(untuple_fields) = untuple_arg.layout().ty.kind() else {
+                            span_bug!(self.cur_span(), "untuple argument must be a tuple")
+                        };
                         trace!("init_fn_call: Will pass last argument by untupling");
                         Cow::from(
                             args.iter()
+                                // The regular arguments.
                                 .map(|a| interp_ok(a.clone()))
-                                .chain((0..untuple_arg.layout().fields.count()).map(|i| {
-                                    self.fn_arg_field(untuple_arg, FieldIdx::from_usize(i))
+                                // The fields of the untupled argument.
+                                .chain((0..untuple_fields.len()).map(|i| {
+                                    self.fn_arg_project_field(untuple_arg, FieldIdx::from_usize(i))
                                 }))
                                 .collect::<InterpResult<'_, Vec<_>>>()?,
                         )

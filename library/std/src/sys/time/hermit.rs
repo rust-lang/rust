@@ -1,18 +1,21 @@
 use hermit_abi::{self, CLOCK_MONOTONIC, CLOCK_REALTIME};
 
-use crate::hash::Hash;
+use crate::io;
 use crate::sys::pal::time::Timespec;
 use crate::time::Duration;
+
+fn clock_gettime(clock: hermit_abi::clockid_t) -> Timespec {
+    let mut t = hermit_abi::timespec { tv_sec: 0, tv_nsec: 0 };
+    let _ = unsafe { hermit_abi::clock_gettime(clock, &raw mut t) };
+    Timespec::new(t.tv_sec, t.tv_nsec.into()).unwrap()
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(Timespec);
 
 impl Instant {
     pub fn now() -> Instant {
-        let mut time: Timespec = Timespec::zero();
-        let _ = unsafe { hermit_abi::clock_gettime(CLOCK_MONOTONIC, &raw mut time.t) };
-
-        Instant(time)
+        Instant(clock_gettime(CLOCK_MONOTONIC))
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
@@ -38,15 +41,12 @@ impl SystemTime {
 
     pub const MIN: SystemTime = SystemTime(Timespec::MIN);
 
-    pub fn new(tv_sec: i64, tv_nsec: i32) -> SystemTime {
-        SystemTime(Timespec::new(tv_sec, tv_nsec))
+    pub fn new(tv_sec: i64, tv_nsec: i64) -> Result<SystemTime, io::Error> {
+        Ok(SystemTime(Timespec::new(tv_sec, tv_nsec)?))
     }
 
     pub fn now() -> SystemTime {
-        let mut time: Timespec = Timespec::zero();
-        let _ = unsafe { hermit_abi::clock_gettime(CLOCK_REALTIME, &raw mut time.t) };
-
-        SystemTime(time)
+        SystemTime(clock_gettime(CLOCK_REALTIME))
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {

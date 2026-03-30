@@ -1274,12 +1274,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     if let ty::Param(param_ty) = *self_ty.kind()
                         && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
                         && let param = generics.type_param(param_ty, self.infcx.tcx)
-                        && let Some(hir_generics) = self
-                            .infcx
-                            .tcx
-                            .typeck_root_def_id(self.mir_def_id().to_def_id())
-                            .as_local()
-                            .and_then(|def_id| self.infcx.tcx.hir_get_generics(def_id))
+                        && let Some(hir_generics) = self.infcx.tcx.hir_get_generics(
+                            self.infcx.tcx.typeck_root_def_id_local(self.mir_def_id()),
+                        )
                         && let spans = hir_generics
                             .predicates
                             .iter()

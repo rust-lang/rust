@@ -99,7 +99,7 @@ pub unsafe fn f16x2_neg(a: f16x2) -> f16x2 {
 #[cfg_attr(test, assert_instr(min.f16x2))]
 #[unstable(feature = "stdarch_nvptx", issue = "111199")]
 pub unsafe fn f16x2_min(a: f16x2, b: f16x2) -> f16x2 {
-    simd_fmin(a, b)
+    simd_minimum_number_nsz(a, b)
 }
 
 /// Find the minimum of two values, NaNs pass through.
@@ -123,7 +123,7 @@ pub unsafe fn f16x2_min_nan(a: f16x2, b: f16x2) -> f16x2 {
 #[cfg_attr(test, assert_instr(max.f16x2))]
 #[unstable(feature = "stdarch_nvptx", issue = "111199")]
 pub unsafe fn f16x2_max(a: f16x2, b: f16x2) -> f16x2 {
-    simd_fmax(a, b)
+    simd_maximum_number_nsz(a, b)
 }
 
 /// Find the maximum of two values, NaNs pass through.

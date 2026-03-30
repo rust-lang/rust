@@ -1569,10 +1569,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let tcx = self.infcx.tcx;
         let generics = tcx.generics_of(self.mir_def_id());
 
-        let Some(hir_generics) = tcx
-            .typeck_root_def_id(self.mir_def_id().to_def_id())
-            .as_local()
-            .and_then(|def_id| tcx.hir_get_generics(def_id))
+        let Some(hir_generics) =
+            tcx.hir_get_generics(tcx.typeck_root_def_id_local(self.mir_def_id()))
         else {
             return;
         };

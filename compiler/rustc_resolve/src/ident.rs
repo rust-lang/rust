@@ -638,6 +638,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Err(ControlFlow::Break(..)) => return decl,
                 }
             }
+            Scope::ModuleGlobs(module, _)
+                if let ModuleKind::Def(_, def_id, _) = module.kind
+                    && !def_id.is_local() =>
+            {
+                // Fast path: external module decoding only creates non-glob declarations.
+                Err(Determined)
+            }
             Scope::ModuleGlobs(module, derive_fallback_lint_id) => {
                 let (adjusted_parent_scope, adjusted_finalize) = if matches!(
                     scope_set,

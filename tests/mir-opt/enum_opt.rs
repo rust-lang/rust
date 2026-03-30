@@ -1,7 +1,8 @@
 // skip-filecheck
 //@ test-mir-pass: EnumSizeOpt
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
-//@ compile-flags: -Zunsound-mir-opts -Zdump-mir-exclude-alloc-bytes
+//@ compile-flags: -Zunsound-mir-opts
+//@ ignore-endian-big
 
 // Tests that an enum with a variant with no data gets correctly transformed.
 pub enum NoData {

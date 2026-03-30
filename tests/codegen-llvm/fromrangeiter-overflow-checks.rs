@@ -11,6 +11,7 @@
 
 #![crate_type = "lib"]
 #![feature(new_range_api)]
+
 use std::range::RangeFrom;
 
 // CHECK-LABEL: @rangefrom_increments(

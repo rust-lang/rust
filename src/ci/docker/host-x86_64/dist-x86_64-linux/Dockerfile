@@ -80,8 +80,7 @@ ENV PGO_HOST=x86_64-unknown-linux-gnu
 
 ENV HOSTS=x86_64-unknown-linux-gnu
 
-ENV RUST_CONFIGURE_ARGS \
-      --enable-full-tools \
+ENV RUST_CONFIGURE_ARGS="--enable-full-tools \
       --enable-sanitizers \
       --enable-profiler \
       --enable-compiler-docs \
@@ -94,23 +93,23 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.jemalloc \
       --set rust.bootstrap-override-lld=true \
       --set rust.lto=thin \
-      --set rust.codegen-units=1
+      --set rust.codegen-units=1"
 
 COPY host-x86_64/dist-x86_64-linux/dist.sh /scripts/
 COPY host-x86_64/dist-x86_64-linux/dist-alt.sh /scripts/
 
-ENV SCRIPT "Must specify DOCKER_SCRIPT for this image"
+ENV SCRIPT="Must specify DOCKER_SCRIPT for this image"
 
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
 
 # This is the only builder which will create source tarballs
-ENV DIST_SRC 1
+ENV DIST_SRC="1"
 
 # When we build cargo in this container, we don't want it to use the system
 # libcurl, instead it should compile its own.
-ENV LIBCURL_NO_PKG_CONFIG 1
+ENV LIBCURL_NO_PKG_CONFIG="1"
 
-ENV DIST_REQUIRE_ALL_TOOLS 1
+ENV DIST_REQUIRE_ALL_TOOLS="1"
 
 # FIXME: Without this, LLVMgold.so incorrectly resolves to the system
 # libstdc++, instead of the one we build.

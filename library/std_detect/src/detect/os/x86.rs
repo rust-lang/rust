@@ -202,6 +202,28 @@ pub(crate) fn detect_features() -> cache::Initializer {
                 // Test `XCR0.APX[19]` with the mask `0b1000_0000_0000_0000_0000 == 0x80000`
                 let os_apx_support = xcr0 & 0x80000 == 0x80000;
 
+                if os_amx_support {
+                    enable(extended_features_edx, 24, Feature::amx_tile);
+                    enable(extended_features_edx, 25, Feature::amx_int8);
+                    enable(extended_features_edx, 22, Feature::amx_bf16);
+                    enable(extended_features_eax_leaf_1, 21, Feature::amx_fp16);
+                    enable(extended_features_edx_leaf_1, 8, Feature::amx_complex);
+
+                    if max_basic_leaf >= 0x1e {
+                        let CpuidResult { eax: amx_feature_flags_eax, .. } =
+                            __cpuid_count(0x1e_u32, 1);
+
+                        enable(amx_feature_flags_eax, 4, Feature::amx_fp8);
+                        enable(amx_feature_flags_eax, 6, Feature::amx_tf32);
+                        enable(amx_feature_flags_eax, 7, Feature::amx_avx512);
+                        enable(amx_feature_flags_eax, 8, Feature::amx_movrs);
+                    }
+                }
+
+                if os_apx_support {
+                    enable(extended_features_edx_leaf_1, 21, Feature::apxf);
+                }
+
                 // Only if the OS and the CPU support saving/restoring the AVX
                 // registers we enable `xsave` support:
                 if os_avx_support {
@@ -236,9 +258,10 @@ pub(crate) fn detect_features() -> cache::Initializer {
                     enable(extended_features_ebx, 5, Feature::avx2);
 
                     // "Short" versions of AVX512 instructions
-                    enable(extended_features_eax_leaf_1, 4, Feature::avxvnni);
-                    enable(extended_features_eax_leaf_1, 23, Feature::avxifma);
-                    enable(extended_features_edx_leaf_1, 4, Feature::avxvnniint8);
+                    let avxvnni = enable(extended_features_eax_leaf_1, 4, Feature::avxvnni);
+                    let avxvnniint8 = enable(extended_features_eax_leaf_1, 23, Feature::avxifma);
+                    let avxvnniint16 =
+                        enable(extended_features_edx_leaf_1, 4, Feature::avxvnniint8);
                     enable(extended_features_edx_leaf_1, 5, Feature::avxneconvert);
                     enable(extended_features_edx_leaf_1, 10, Feature::avxvnniint16);
 
@@ -269,37 +292,18 @@ pub(crate) fn detect_features() -> cache::Initializer {
                         enable(extended_features_edx, 8, Feature::avx512vp2intersect);
                         enable(extended_features_edx, 23, Feature::avx512fp16);
                         enable(extended_features_eax_leaf_1, 5, Feature::avx512bf16);
-                    }
-                }
 
-                if os_amx_support {
-                    enable(extended_features_edx, 24, Feature::amx_tile);
-                    enable(extended_features_edx, 25, Feature::amx_int8);
-                    enable(extended_features_edx, 22, Feature::amx_bf16);
-                    enable(extended_features_eax_leaf_1, 21, Feature::amx_fp16);
-                    enable(extended_features_edx_leaf_1, 8, Feature::amx_complex);
+                        let avx10_1 = enable(extended_features_edx_leaf_1, 19, Feature::avx10_1);
+                        if avx10_1 {
+                            let CpuidResult { ebx, .. } = __cpuid(0x24);
+                            let avx10_version = ebx & 0xff;
 
-                    if max_basic_leaf >= 0x1e {
-                        let CpuidResult { eax: amx_feature_flags_eax, .. } =
-                            __cpuid_count(0x1e_u32, 1);
-
-                        enable(amx_feature_flags_eax, 4, Feature::amx_fp8);
-                        enable(amx_feature_flags_eax, 6, Feature::amx_tf32);
-                        enable(amx_feature_flags_eax, 7, Feature::amx_avx512);
-                        enable(amx_feature_flags_eax, 8, Feature::amx_movrs);
-                    }
-                }
-
-                if os_apx_support {
-                    enable(extended_features_edx_leaf_1, 21, Feature::apxf);
-                }
-
-                let avx10_1 = enable(extended_features_edx_leaf_1, 19, Feature::avx10_1);
-                if avx10_1 {
-                    let CpuidResult { ebx, .. } = __cpuid(0x24);
-                    let avx10_version = ebx & 0xff;
-                    if avx10_version >= 2 {
-                        value.set(Feature::avx10_2 as u32);
+                            // AVX10.2 supports masked versions of dot-product instructions available in avxvnni etc,
+                            // so it doesn't make sense to have it without the unmasked versions
+                            if avx10_version >= 2 && avxvnni && avxvnniint8 && avxvnniint16 {
+                                value.set(Feature::avx10_2 as u32);
+                            }
+                        }
                     }
                 }
             }
