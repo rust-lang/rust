@@ -1,4 +1,8 @@
-//@ edition:2021
+//@ revisions: edition2015 edition2018 edition2021 edition2024
+//@ [edition2015] edition:2015
+//@ [edition2018] edition:2018
+//@ [edition2021] edition:2021
+//@ [edition2024] edition:2024
 
 // When a `use` statement accesses an item through a private module,
 // the compiler should suggest a public re-export if one exists.
@@ -25,15 +29,24 @@ use outer::inner::my_function; //~ ERROR module `inner` is private
 use outer::inner::MyTrait; //~ ERROR module `inner` is private
 use outer::inner::MyEnum; //~ ERROR module `inner` is private
 
-// From a sibling module, the suggestion should use `super::`.
+// From a sibling module, the suggestion should keep the full path
+// (shortening to `super::` would not reduce the segment count here).
 mod sibling {
-    use crate::outer::inner::MyStruct; //~ ERROR module `inner` is private
+    #[cfg(edition2015)]
+    use outer::inner::MyStruct; //[edition2015]~ ERROR module `inner` is private
+
+    #[cfg(not(edition2015))]
+    use crate::outer::inner::MyStruct; //[edition2018,edition2021,edition2024]~ ERROR module `inner` is private
 }
 
 // From a deeply nested module, the suggestion should keep the full path.
 mod deep {
     mod nested {
-        use crate::outer::inner::MyStruct; //~ ERROR module `inner` is private
+        #[cfg(edition2015)]
+        use outer::inner::MyStruct; //[edition2015]~ ERROR module `inner` is private
+
+        #[cfg(not(edition2015))]
+        use crate::outer::inner::MyStruct; //[edition2018,edition2021,edition2024]~ ERROR module `inner` is private
     }
 }
 
