@@ -150,17 +150,17 @@ where
     let s1_u2: F::ISet1 = ((m_u2) >> (F::BITS - F::ISet1::BITS)).cast();
 
     // Perform iterations, if any, at quarter width (used for `f128`).
-    let (r1_u0, _s1_u2) = goldschmidt::<F, F::ISet1>(r1_u0, s1_u2, F::SET1_ROUNDS, false);
+    let (r1_u0, _s1_u2) = goldschmidt::<F::ISet1>(r1_u0, s1_u2, F::SET1_ROUNDS, false);
 
     // Widen values and perform iterations at half width (used for `f64` and `f128`).
     let r2_u0: F::ISet2 = F::ISet2::from(r1_u0) << (F::ISet2::BITS - F::ISet1::BITS);
     let s2_u2: F::ISet2 = ((m_u2) >> (F::BITS - F::ISet2::BITS)).cast();
-    let (r2_u0, _s2_u2) = goldschmidt::<F, F::ISet2>(r2_u0, s2_u2, F::SET2_ROUNDS, false);
+    let (r2_u0, _s2_u2) = goldschmidt::<F::ISet2>(r2_u0, s2_u2, F::SET2_ROUNDS, false);
 
     // Perform final iterations at full width (used for all float types).
     let r_u0: F::Int = F::Int::from(r2_u0) << (F::BITS - F::ISet2::BITS);
     let s_u2: F::Int = m_u2;
-    let (_r_u0, s_u2) = goldschmidt::<F, F::Int>(r_u0, s_u2, F::FINAL_ROUNDS, true);
+    let (_r_u0, s_u2) = goldschmidt::<F::Int>(r_u0, s_u2, F::FINAL_ROUNDS, true);
 
     // Shift back to mantissa position.
     let mut m = s_u2 >> (F::EXP_BITS - 2);
@@ -236,9 +236,8 @@ fn wmulh<I: HInt>(a: I, b: I) -> I {
 /// Note that performance relies on the optimizer being able to unroll these loops (reasonably
 /// trivial, `count` is a constant when called).
 #[inline]
-fn goldschmidt<F, I>(mut r_u0: I, mut s_u2: I, count: u32, final_set: bool) -> (I, I)
+fn goldschmidt<I>(mut r_u0: I, mut s_u2: I, count: u32, final_set: bool) -> (I, I)
 where
-    F: SqrtHelper,
     I: HInt + From<u8>,
 {
     let three_u2 = I::from(0b11u8) << (I::BITS - 2);
