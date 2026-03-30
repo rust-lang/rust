@@ -520,7 +520,7 @@ impl ExpressionStore {
         self.const_expr_origins().iter().map(|&(id, _)| id)
     }
 
-    /// Like [`Self::signature_const_expr_roots`], but also returns the origin
+    /// Like [`Self::expr_roots`], but also returns the origin
     /// of each expression.
     pub fn expr_roots_with_origins(&self) -> impl Iterator<Item = (ExprId, RootExprOrigin)> {
         self.const_expr_origins().iter().map(|&(id, origin)| (id, origin))
