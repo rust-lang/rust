@@ -86,8 +86,8 @@ impl<'sm> CachingSourceMapView<'sm> {
 
         // Check if the position is in one of the cached lines
         let cache_idx = self.cache_entry_index(pos);
-        if cache_idx != -1 {
-            let cache_entry = &mut self.line_cache[cache_idx as usize];
+        if let Some(cache_idx) = cache_idx {
+            let cache_entry = &mut self.line_cache[cache_idx];
             cache_entry.touch(self.time_stamp);
 
             let col = RelativeBytePos(pos.to_u32() - cache_entry.line.start.to_u32());
@@ -118,23 +118,23 @@ impl<'sm> CachingSourceMapView<'sm> {
         self.time_stamp += 1;
 
         // Check if lo and hi are in the cached lines.
-        let lo_cache_idx: isize = self.cache_entry_index(span_data.lo);
+        let lo_cache_idx = self.cache_entry_index(span_data.lo);
         let hi_cache_idx = self.cache_entry_index(span_data.hi);
 
-        if lo_cache_idx != -1 && hi_cache_idx != -1 {
+        if let (Some(lo_cache_idx), Some(hi_cache_idx)) = (lo_cache_idx, hi_cache_idx) {
             // Cache hit for span lo and hi. Check if they belong to the same file.
-            let lo_file_index = self.line_cache[lo_cache_idx as usize].file_index;
-            let hi_file_index = self.line_cache[hi_cache_idx as usize].file_index;
+            let lo_file_index = self.line_cache[lo_cache_idx].file_index;
+            let hi_file_index = self.line_cache[hi_cache_idx].file_index;
 
             if lo_file_index != hi_file_index {
                 return None;
             }
 
-            self.line_cache[lo_cache_idx as usize].touch(self.time_stamp);
-            self.line_cache[hi_cache_idx as usize].touch(self.time_stamp);
+            self.line_cache[lo_cache_idx].touch(self.time_stamp);
+            self.line_cache[hi_cache_idx].touch(self.time_stamp);
 
-            let lo = &self.line_cache[lo_cache_idx as usize];
-            let hi = &self.line_cache[hi_cache_idx as usize];
+            let lo = &self.line_cache[lo_cache_idx];
+            let hi = &self.line_cache[hi_cache_idx];
             return Some((
                 &lo.file,
                 lo.line_number,
@@ -145,9 +145,10 @@ impl<'sm> CachingSourceMapView<'sm> {
         }
 
         // No cache hit or cache hit for only one of span lo and hi.
-        let oldest = if lo_cache_idx != -1 || hi_cache_idx != -1 {
-            let avoid_idx = if lo_cache_idx != -1 { lo_cache_idx } else { hi_cache_idx };
-            self.oldest_cache_entry_index_avoid(avoid_idx as usize)
+        let oldest = if let Some(lo_cache_idx) = lo_cache_idx {
+            self.oldest_cache_entry_index_avoid(lo_cache_idx)
+        } else if let Some(hi_cache_idx) = hi_cache_idx {
+            self.oldest_cache_entry_index_avoid(hi_cache_idx)
         } else {
             self.oldest_cache_entry_index()
         };
@@ -173,7 +174,7 @@ impl<'sm> CachingSourceMapView<'sm> {
         // Update the cache entries.
         let (lo_idx, hi_idx) = match (lo_cache_idx, hi_cache_idx) {
             // Oldest cache entry is for span_data.lo line.
-            (-1, -1) => {
+            (None, None) => {
                 let lo = &mut self.line_cache[oldest];
                 lo.update(new_file_and_idx, span_data.lo, self.time_stamp);
 
@@ -188,22 +189,22 @@ impl<'sm> CachingSourceMapView<'sm> {
                 }
             }
             // Oldest cache entry is for span_data.lo line.
-            (-1, _) => {
+            (None, Some(hi_cache_idx)) => {
                 let lo = &mut self.line_cache[oldest];
                 lo.update(new_file_and_idx, span_data.lo, self.time_stamp);
-                let hi = &mut self.line_cache[hi_cache_idx as usize];
+                let hi = &mut self.line_cache[hi_cache_idx];
                 hi.touch(self.time_stamp);
-                (oldest, hi_cache_idx as usize)
+                (oldest, hi_cache_idx)
             }
             // Oldest cache entry is for span_data.hi line.
-            (_, -1) => {
+            (Some(lo_cache_idx), None) => {
                 let hi = &mut self.line_cache[oldest];
                 hi.update(new_file_and_idx, span_data.hi, self.time_stamp);
-                let lo = &mut self.line_cache[lo_cache_idx as usize];
+                let lo = &mut self.line_cache[lo_cache_idx];
                 lo.touch(self.time_stamp);
-                (lo_cache_idx as usize, oldest)
+                (lo_cache_idx, oldest)
             }
-            _ => {
+            (Some(_), Some(_)) => {
                 panic!(
                     "the case of neither value being equal to -1 was handled above and the function returns."
                 );
@@ -232,14 +233,14 @@ impl<'sm> CachingSourceMapView<'sm> {
         ))
     }
 
-    fn cache_entry_index(&self, pos: BytePos) -> isize {
+    fn cache_entry_index(&self, pos: BytePos) -> Option<usize> {
         for (idx, cache_entry) in self.line_cache.iter().enumerate() {
             if cache_entry.line.contains(&pos) {
-                return idx as isize;
+                return Some(idx)
             }
         }
 
-        -1
+        None
     }
 
     fn oldest_cache_entry_index(&self) -> usize {
