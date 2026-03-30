@@ -1063,8 +1063,11 @@ impl str {
         Chars { iter: self.as_bytes().iter() }
     }
 
+    /// # Safety
+    ///
+    /// `bytes` must be the UTF-8 encoding of exactly one valid Unicode scalar value.
     #[inline]
-    const fn decode_utf8_char(bytes: &[u8]) -> char {
+    const unsafe fn decode_utf8_char(bytes: &[u8]) -> char {
         let ch = match bytes {
             &[a] => a as u32,
             &[a, b] => ((a & 0x1F) as u32) << 6 | (b & 0x3F) as u32,
@@ -1118,7 +1121,8 @@ impl str {
         let width = utf8_char_width(x);
         // SAFETY: self is valid UTF-8 and width is correct
         let (head, tail) = unsafe { self.split_at_unchecked(width) };
-        Some((Self::decode_utf8_char(head.as_bytes()), tail))
+        // SAFETY: head is valid UTF-8 for exactly one char
+        Some((unsafe { Self::decode_utf8_char(head.as_bytes()) }, tail))
     }
 
     /// Returns the last [`prim@char`] and the rest of the string slice, or [`None`] if it's empty.
@@ -1136,7 +1140,8 @@ impl str {
         }
         // SAFETY: i is a char boundary
         let (head, tail) = unsafe { self.split_at_unchecked(i) };
-        Some((Self::decode_utf8_char(tail.as_bytes()), head))
+        // SAFETY: tail is valid UTF-8 for exactly one char
+        Some((unsafe { Self::decode_utf8_char(tail.as_bytes()) }, head))
     }
 
     /// Returns an iterator over the [`char`]s of a string slice, and their
