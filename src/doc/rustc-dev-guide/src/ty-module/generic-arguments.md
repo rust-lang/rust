@@ -126,3 +126,35 @@ For the `MyStruct<U>` written in the `Foo` type alias, we would represent it in 
 - There would be an `AdtDef` (and corresponding `DefId`) for `MyStruct`.
 - There would be a `GenericArgs` containing the list `[GenericArgKind::Type(Ty(u32))]`
 - And finally a `TyKind::Adt` with the `AdtDef` and `GenericArgs` listed above.
+
+## Nested generic args
+
+```rust
+struct MyStruct<T>(T);
+
+impl<T> MyStruct<T> {
+    fn func<T2, T3>() {}
+}
+
+fn main() {
+    MyStruct::<u32>::func::<bool, char>();
+}
+```
+
+The construct `MyStruct::<u32>::func::<bool, char>` is represented by a tuple: a DefId pointing at `func`, and then a
+`GenericArgs` list that "walks" all containing generic parameters - in this case, the list would be `[u32, bool, char]`.
+
+The [`ty::Generics`] type (returned by the [`generics_of`] query) contains the information of how a nested hierarchy
+gets flattened down to a list, and lets you figure out which index in the `GenericArgs` list corresponds to which
+generic. The general theme of how it works is outermost to innermost (`T` before `T2` in the example), left to right
+(`T2` before `T3`), but there are several complications:
+
+- Traits have an implicit `Self` generic parameter which is the first (i.e. 0th) generic parameter. Note that `Self` doesn't mean a generic parameter in all situations, see [Res::SelfTyAlias](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def/enum.Res.html#variant.SelfTyAlias) and [Res::SelfCtor](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def/enum.Res.html#variant.SelfCtor).
+- Only early-bound generic parameters are included, [late-bound generics] are not.
+- ... and more...
+
+Check out [`ty::Generics`] for exact specifics on how the flattening works.
+
+[`ty::Generics`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Generics.html
+[`generics_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.generics_of
+[late-bound generics]: ../early-late-parameters.md
