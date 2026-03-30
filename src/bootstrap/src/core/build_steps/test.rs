@@ -1410,7 +1410,7 @@ impl Step for RustdocGUI {
 /// (To run the tidy tool's internal tests, use the alias "tidyselftest" instead.)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Tidy {
-    is_for_rerunning_tests: IsForRerunningTests,
+    pub is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for Tidy {

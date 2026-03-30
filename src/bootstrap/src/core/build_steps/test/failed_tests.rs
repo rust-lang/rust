@@ -25,8 +25,16 @@ impl RecordFailedTests {
     }
 }
 
-impl RecordFailedTests {}
-
+/// This step is run as a dependency of most testing steps.
+/// Upon running, a file is created for failed tests to be recorded in if `--record` is passed on
+/// the command line.
+///
+/// This step is the only way to get access to a token type called [`RecordFailedTests`].
+/// Having this token type signifies the fact that a file was created to store failed tests in,
+/// and is required to create a `Renderer`, the type that renders the outputs of tests.
+///
+/// If `--rerun` isn't passed, or we're in dry-run mode, running this step is a no-op,
+/// and the `RecordFailedTest` type doesn't (need to) signify anything.
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub struct SetupFailedTestsFile;
 impl Step for SetupFailedTestsFile {
@@ -80,7 +88,7 @@ pub fn collect_previously_failed_tests(failed_tests_file_path: &PathBuf) -> Vec<
     for line in lines {
         let trimmed = line.as_str().trim();
         let without_revision =
-            trimmed.rsplit_once("#").map(|(before, _)| before).unwrap_or(&trimmed);
+            trimmed.rsplit_once("#").map(|(before, _)| before).unwrap_or(trimmed);
         let without_suite_prefix = without_revision
             .strip_prefix("[")
             .and_then(|rest| rest.split_once("]"))
@@ -90,7 +98,7 @@ pub fn collect_previously_failed_tests(failed_tests_file_path: &PathBuf) -> Vec<
         let failed_test_path = PathBuf::from(without_suite_prefix.to_string());
         if set_tracking_duplicates.insert(failed_test_path.clone()) {
             if num_printed == 0 {
-                println!("rerunning previousy failed tests:");
+                println!("rerunning previously failed tests:");
             }
             if num_printed < MAX_RERUN_PRINTS {
                 println!("    {}", failed_test_path.display());

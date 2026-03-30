@@ -195,7 +195,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     {
         let run_test_path = |path: &Path, is_for_rerunning_tests| {
             for StepExtra { desc, should_run } in &steps {
-                if let Some(suite) = should_run.is_suite_path(&path) {
+                if let Some(suite) = should_run.is_suite_path(path) {
                     desc.maybe_run(builder, vec![suite.clone()], is_for_rerunning_tests);
                     return false;
                 }

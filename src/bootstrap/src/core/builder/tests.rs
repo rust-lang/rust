@@ -35,7 +35,7 @@ fn run_build(paths: &[PathBuf], config: Config) -> Cache {
     let kind = config.cmd.kind();
     let build = Build::new(config);
     let builder = Builder::new(&build);
-    builder.run_step_descriptions(&Builder::get_step_descriptions(kind), paths);
+    builder.run_step_descriptions(&Builder::get_step_descriptions(kind), paths, &[]);
     builder.cache
 }
 
@@ -509,6 +509,7 @@ fn any_debug() {
 mod snapshot {
     use std::path::PathBuf;
 
+    use crate::core::build_steps::test::failed_tests::IsForRerunningTests;
     use crate::core::build_steps::{compile, dist, doc, test, tool};
     use crate::core::builder::tests::{
         RenderConfig, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, configure, first, host_target,
@@ -2378,7 +2379,7 @@ mod snapshot {
 
         let host = TargetSelection::from_user(&host_target());
         steps.assert_contains(StepMetadata::test("compiletest-rustdoc-ui", host).stage(1));
-        steps.assert_not_contains(test::Tidy);
+        steps.assert_not_contains(test::Tidy { is_for_rerunning_tests: IsForRerunningTests::No });
     }
 
     #[test]
@@ -3238,7 +3239,7 @@ impl ConfigBuilder {
         let kind = config.cmd.kind();
         let build = Build::new(config);
         let builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(kind), &builder.paths);
+        builder.run_step_descriptions(&Builder::get_step_descriptions(kind), &builder.paths, &[]);
         builder.cache
     }
 
