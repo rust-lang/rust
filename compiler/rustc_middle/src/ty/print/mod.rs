@@ -133,8 +133,15 @@ pub trait Printer<'tcx>: Sized {
         self.print_path_with_generic_args(|p| p.print_def_path(def_id, parent_args), &[kind.into()])
     }
 
-    // Defaults (should not be overridden):
+    fn reset_path(&mut self) -> Result<(), PrintError> {
+        Ok(())
+    }
 
+    fn should_omit_parent_def_path(&self, _parent_def_id: DefId) -> bool {
+        false
+    }
+
+    // Defaults (should not be overridden):
     #[instrument(skip(self), level = "debug")]
     fn default_print_def_path(
         &mut self,
@@ -210,9 +217,15 @@ pub trait Printer<'tcx>: Sized {
                         && self.tcx().generics_of(parent_def_id).parent_count == 0;
                 }
 
+                let omit_parent = matches!(key.disambiguated_data.data, DefPathData::TypeNs(..))
+                    && self.should_omit_parent_def_path(parent_def_id);
+
                 self.print_path_with_simple(
                     |p: &mut Self| {
-                        if trait_qualify_parent {
+                        if omit_parent {
+                            p.reset_path()?;
+                            Ok(())
+                        } else if trait_qualify_parent {
                             let trait_ref = ty::TraitRef::new(
                                 p.tcx(),
                                 parent_def_id,

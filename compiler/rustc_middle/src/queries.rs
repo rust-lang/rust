@@ -1222,9 +1222,9 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
+    query typeck_root(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
         desc { "type-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { !tcx.is_typeck_child(key.to_def_id()) }
+        cache_on_disk_if { true }
     }
 
     query used_trait_imports(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
