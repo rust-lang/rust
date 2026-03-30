@@ -161,7 +161,7 @@ pub mod epoll {
 pub mod net {
     use std::io;
 
-    use super::{errno_check, errno_result};
+    use super::errno_result;
 
     /// IPv4 localhost address bytes
     pub const IPV4_LOCALHOST: [u8; 4] = [127, 0, 0, 1];
@@ -276,25 +276,27 @@ pub mod net {
     }
 
     /// Connect the socket to the specified IPv4 address.
-    pub fn connect_ipv4(sockfd: libc::c_int, addr: libc::sockaddr_in) {
+    pub fn connect_ipv4(sockfd: libc::c_int, addr: libc::sockaddr_in) -> io::Result<()> {
         unsafe {
-            errno_check(libc::connect(
+            errno_result(libc::connect(
                 sockfd,
                 (&addr as *const libc::sockaddr_in).cast(),
                 size_of::<libc::sockaddr_in>() as libc::socklen_t,
-            ));
+            ))?;
         }
+        Ok(())
     }
 
     /// Connect the socket to the specified IPv6 address.
-    pub fn connect_ipv6(sockfd: libc::c_int, addr: libc::sockaddr_in6) {
+    pub fn connect_ipv6(sockfd: libc::c_int, addr: libc::sockaddr_in6) -> io::Result<()> {
         unsafe {
-            errno_check(libc::connect(
+            errno_result(libc::connect(
                 sockfd,
                 (&addr as *const libc::sockaddr_in6).cast(),
                 size_of::<libc::sockaddr_in6>() as libc::socklen_t,
-            ));
+            ))?;
         }
+        Ok(())
     }
 
     /// Set a socket option. It's the caller's responsibility to ensure that `T` is

@@ -31,7 +31,7 @@ fn main() {
         assert_eq!(bytes_written as usize, 128);
     });
 
-    net::connect_ipv4(client_sockfd, addr);
+    net::connect_ipv4(client_sockfd, addr).unwrap();
 
     let reader_thread = thread::spawn(move || {
         let mut buffer = [0u8; 8];
