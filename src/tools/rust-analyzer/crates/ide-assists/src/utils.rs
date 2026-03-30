@@ -758,6 +758,16 @@ pub(crate) fn generate_trait_impl_intransitive_with_item(
     generate_impl_inner_with_factory(make, false, adt, Some(trait_), false, Some(body))
 }
 
+pub(crate) fn generate_trait_impl_with_item(
+    make: &SyntaxFactory,
+    is_unsafe: bool,
+    adt: &ast::Adt,
+    trait_: ast::Type,
+    body: ast::AssocItemList,
+) -> ast::Impl {
+    generate_impl_inner_with_factory(make, is_unsafe, adt, Some(trait_), true, Some(body))
+}
+
 fn generate_impl_inner(
     is_unsafe: bool,
     adt: &ast::Adt,

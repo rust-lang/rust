@@ -2053,6 +2053,17 @@ impl SyntaxFactory {
         self.path_unqualified(self.path_segment(self.name_ref(ident)))
     }
 
+    pub fn path_from_idents<'a>(
+        &self,
+        parts: impl IntoIterator<Item = &'a str>,
+    ) -> Option<ast::Path> {
+        make::ext::path_from_idents(parts).map(|path| path.clone_for_update())
+    }
+
+    pub fn token_tree_from_node(&self, node: &SyntaxNode) -> ast::TokenTree {
+        make::ext::token_tree_from_node(node).clone_for_update()
+    }
+
     pub fn expr_unit(&self) -> ast::Expr {
         self.expr_tuple([]).into()
     }
