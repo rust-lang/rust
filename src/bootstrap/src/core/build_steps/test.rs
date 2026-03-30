@@ -2292,6 +2292,10 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--verbose");
         }
 
+        if builder.config.cmd.quiet() {
+            cmd.arg("--quiet");
+        }
+
         if builder.config.rustc_debug_assertions {
             cmd.arg("--with-rustc-debug-assertions");
         }

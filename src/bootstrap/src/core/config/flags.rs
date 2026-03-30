@@ -423,6 +423,10 @@ pub enum Subcommand {
         /// don't capture stdout/stderr of tests
         no_capture: bool,
         #[arg(long)]
+        /// suppress verbose subprocess output for successful run-make tests (useful with
+        /// --no-capture for panic=abort test suites like cg_clif)
+        quiet: bool,
+        #[arg(long)]
         /// Use a different codegen backend when running tests.
         test_codegen_backend: Option<CodegenBackendKind>,
         #[arg(long)]
@@ -627,6 +631,13 @@ impl Subcommand {
     pub fn no_capture(&self) -> bool {
         match *self {
             Subcommand::Test { no_capture, .. } => no_capture,
+            _ => false,
+        }
+    }
+
+    pub fn quiet(&self) -> bool {
+        match *self {
+            Subcommand::Test { quiet, .. } => quiet,
             _ => false,
         }
     }

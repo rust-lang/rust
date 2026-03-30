@@ -5,6 +5,11 @@ use crate::env::env_var;
 use crate::path_helpers::cwd;
 
 pub(crate) fn verbose_print_command(cmd: &Command, output: &CompletedProcess) {
+    // Suppressed when `--quiet` is active (env var not set), so that
+    // `--no-capture --quiet` doesn't flood the terminal for passing tests.
+    if std::env::var_os("__RMAKE_VERBOSE_SUBPROCESS_OUTPUT").is_none() {
+        return;
+    }
     cmd.inspect(|std_cmd| {
         eprintln!("{std_cmd:?}");
     });
@@ -29,7 +34,15 @@ pub(crate) fn handle_failed_output(
     } else {
         eprintln!("command failed at line {caller_line_number}");
     }
-    verbose_print_command(cmd, &output);
+    cmd.inspect(|std_cmd| {
+        eprintln!("{std_cmd:?}");
+    });
+    eprintln!("output status: `{}`", output.status());
+    eprintln!("=== STDOUT ===\n{}\n\n", output.stdout_utf8());
+    eprintln!("=== STDERR ===\n{}\n\n", output.stderr_utf8());
+    if !cmd.get_context().is_empty() {
+        eprintln!("Context:\n{}", cmd.get_context());
+    }
     std::process::exit(1)
 }
 
