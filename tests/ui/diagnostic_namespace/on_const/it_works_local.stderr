@@ -1,11 +1,8 @@
 error[E0277]: my message
-  --> $DIR/it_works_local.rs:21:5
+  --> $DIR/it_works_local.rs:20:5
    |
-LL | impl PartialEq for X {
-   | -------------------- my label
-...
 LL |     x == x;
-   |     ^^^^^^
+   |     ^^^^^^ my label
    |
    = note: my note
    = note: my other note
