@@ -31,7 +31,7 @@ pub fn ceil(x: f64) -> f64 {
     select_implementation! {
         name: ceil,
         use_arch: all(target_arch = "wasm32", intrinsics_enabled),
-        use_arch_required: all(target_arch = "x86", not(target_feature = "sse2")),
+        use_arch_required: x86_no_sse2,
         args: x,
     }
 
