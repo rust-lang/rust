@@ -384,6 +384,7 @@ _arguments "${_arguments_options[@]}" : \
 '--only-modified[only run tests that result has been changed]' \
 '--rustfix-coverage[enable this to generate a Rustfix coverage file, which is saved in \`/<build_base>/rustfix_missing_coverage.txt\`]' \
 '--no-capture[don'\''t capture stdout/stderr of tests]' \
+'--quiet[suppress verbose subprocess output for successful run-make tests (useful with --no-capture for panic=abort test suites like cg_clif)]' \
 '--bypass-ignore-backends[Ignore \`//@ ignore-backends\` directives]' \
 '--no-doc[Deprecated. Use \`--all-targets\` or \`--tests\` instead]' \
 '*-v[use verbose output (-vv for very verbose)]' \

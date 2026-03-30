@@ -337,6 +337,7 @@ complete -c x -n "__fish_x_using_subcommand test" -l force-rerun -d 'rerun tests
 complete -c x -n "__fish_x_using_subcommand test" -l only-modified -d 'only run tests that result has been changed'
 complete -c x -n "__fish_x_using_subcommand test" -l rustfix-coverage -d 'enable this to generate a Rustfix coverage file, which is saved in `/<build_base>/rustfix_missing_coverage.txt`'
 complete -c x -n "__fish_x_using_subcommand test" -l no-capture -d 'don\'t capture stdout/stderr of tests'
+complete -c x -n "__fish_x_using_subcommand test" -l quiet -d 'suppress verbose subprocess output for successful run-make tests (useful with --no-capture for panic=abort test suites like cg_clif)'
 complete -c x -n "__fish_x_using_subcommand test" -l bypass-ignore-backends -d 'Ignore `//@ ignore-backends` directives'
 complete -c x -n "__fish_x_using_subcommand test" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
 complete -c x -n "__fish_x_using_subcommand test" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
