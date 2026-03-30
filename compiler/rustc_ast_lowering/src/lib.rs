@@ -39,6 +39,7 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::visit::Visitor;
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, Late, OmitDoc};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -2563,12 +2564,14 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let span = self.lower_span(expr.span);
 
         let overly_complex_const = |this: &mut Self| {
-            let e = this.dcx().struct_span_err(
-                expr.span,
-                "complex const arguments must be placed inside of a `const` block",
-            );
+            let msg = "complex const arguments must be placed inside of a `const` block";
+            let e = if expr::WillCreateDefIdsVisitor.visit_expr(expr).is_break() {
+                this.dcx().struct_span_fatal(expr.span, msg).emit()
+            } else {
+                this.dcx().struct_span_err(expr.span, msg).emit()
+            };
 
-            ConstArg { hir_id: this.next_id(), kind: hir::ConstArgKind::Error(e.emit()), span }
+            ConstArg { hir_id: this.next_id(), kind: hir::ConstArgKind::Error(e), span }
         };
 
         match &expr.kind {
