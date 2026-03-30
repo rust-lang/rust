@@ -134,13 +134,19 @@ fn simd_ops_f16() {
         assert_eq!(simd_reduce_min(b), -4.0f16);
 
         assert_eq!(
-            simd_maximum_number_nsz(f16x2::from_array([0.0, f16::NAN]), f16x2::from_array([f16::NAN, 0.0])),
+            simd_maximum_number_nsz(
+                f16x2::from_array([0.0, f16::NAN]),
+                f16x2::from_array([f16::NAN, 0.0])
+            ),
             f16x2::from_array([0.0, 0.0])
         );
         assert_eq!(simd_reduce_max(f16x2::from_array([0.0, f16::NAN])), 0.0f16);
         assert_eq!(simd_reduce_max(f16x2::from_array([f16::NAN, 0.0])), 0.0f16);
         assert_eq!(
-            simd_minimum_number_nsz(f16x2::from_array([0.0, f16::NAN]), f16x2::from_array([f16::NAN, 0.0])),
+            simd_minimum_number_nsz(
+                f16x2::from_array([0.0, f16::NAN]),
+                f16x2::from_array([f16::NAN, 0.0])
+            ),
             f16x2::from_array([0.0, 0.0])
         );
         assert_eq!(simd_reduce_min(f16x2::from_array([0.0, f16::NAN])), 0.0f16);
@@ -348,13 +354,19 @@ fn simd_ops_f128() {
         assert_eq!(simd_reduce_min(b), -4.0f128);
 
         assert_eq!(
-            simd_maximum_number_nsz(f128x2::from_array([0.0, f128::NAN]), f128x2::from_array([f128::NAN, 0.0])),
+            simd_maximum_number_nsz(
+                f128x2::from_array([0.0, f128::NAN]),
+                f128x2::from_array([f128::NAN, 0.0])
+            ),
             f128x2::from_array([0.0, 0.0])
         );
         assert_eq!(simd_reduce_max(f128x2::from_array([0.0, f128::NAN])), 0.0f128);
         assert_eq!(simd_reduce_max(f128x2::from_array([f128::NAN, 0.0])), 0.0f128);
         assert_eq!(
-            simd_minimum_number_nsz(f128x2::from_array([0.0, f128::NAN]), f128x2::from_array([f128::NAN, 0.0])),
+            simd_minimum_number_nsz(
+                f128x2::from_array([0.0, f128::NAN]),
+                f128x2::from_array([f128::NAN, 0.0])
+            ),
             f128x2::from_array([0.0, 0.0])
         );
         assert_eq!(simd_reduce_min(f128x2::from_array([0.0, f128::NAN])), 0.0f128);
