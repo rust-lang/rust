@@ -903,7 +903,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         &condition_options,
                         &format_args,
                     );
-                    let OnUnimplementedNote { message, label, notes, parent_label } = note;
+
+                    let OnUnimplementedNote { message, label, notes, parent_label: _ } = note;
 
                     if let Some(message) = message {
                         diag.primary_message(message);
@@ -913,9 +914,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     for note in notes {
                         diag.note(note);
-                    }
-                    if let Some(parent_label) = parent_label {
-                        diag.span_label(impl_span, parent_label);
                     }
                 } else if let Some(impl_did) = impl_did.as_local()
                     && let item = self.tcx.hir_expect_item(impl_did)
