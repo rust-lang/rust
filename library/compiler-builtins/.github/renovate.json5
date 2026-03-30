@@ -10,7 +10,7 @@
       matchCategories: [
         "rust"
       ],
-      updateTypes: [
+      matchUpdateTypes: [
         "patch"
       ],
       // Disable patch updates for single dependencies because patches
