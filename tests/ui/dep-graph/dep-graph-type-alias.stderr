@@ -49,8 +49,8 @@ LL | #[rustc_then_this_would_need(fn_sig)]
 error: OK
   --> $DIR/dep-graph-type-alias.rs:53:30
    |
-LL | #[rustc_then_this_would_need(typeck)]
-   |                              ^^^^^^
+LL | #[rustc_then_this_would_need(typeck_root)]
+   |                              ^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:36:34
@@ -67,8 +67,8 @@ LL |     #[rustc_then_this_would_need(fn_sig)]
 error: OK
   --> $DIR/dep-graph-type-alias.rs:45:34
    |
-LL |     #[rustc_then_this_would_need(typeck)]
-   |                                  ^^^^^^
+LL |     #[rustc_then_this_would_need(typeck_root)]
+   |                                  ^^^^^^^^^^^
 
 error: aborting due to 12 previous errors
 
