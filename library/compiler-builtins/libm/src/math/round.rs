@@ -29,72 +29,78 @@ pub fn roundf128(x: f128) -> f128 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::support::{Float, Hex};
 
-    #[test]
-    #[cfg(f16_enabled)]
-    fn zeroes_f16() {
-        assert_biteq!(generic::round(0.0_f16), 0.0_f16);
-        assert_biteq!(generic::round(-0.0_f16), -0.0_f16);
+    macro_rules! cases {
+        ($f:ty) => {
+            [
+                // roundtrip
+                (0.0, 0.0),
+                (-0.0, -0.0),
+                (1.0, 1.0),
+                (-1.0, -1.0),
+                (<$f>::INFINITY, <$f>::INFINITY),
+                (<$f>::NEG_INFINITY, <$f>::NEG_INFINITY),
+                // with rounding
+                (0.1, 0.0),
+                (-0.1, -0.0),
+                (0.5, 1.0),
+                (-0.5, -1.0),
+                (0.9, 1.0),
+                (-0.9, -1.0),
+                (1.1, 1.0),
+                (-1.1, -1.0),
+                (1.5, 2.0),
+                (-1.5, -2.0),
+                (1.9, 2.0),
+                (-1.9, -2.0),
+            ]
+        };
+    }
+
+    #[track_caller]
+    fn check<F: Float>(cases: &[(F, F)]) {
+        for &(x, exp_res) in cases {
+            let val = generic::round(x);
+            assert_biteq!(val, exp_res, "round({x:?}) {}", Hex(x));
+        }
     }
 
     #[test]
     #[cfg(f16_enabled)]
-    fn sanity_check_f16() {
-        assert_eq!(generic::round(-1.0_f16), -1.0);
-        assert_eq!(generic::round(2.8_f16), 3.0);
-        assert_eq!(generic::round(-0.5_f16), -1.0);
-        assert_eq!(generic::round(0.5_f16), 1.0);
-        assert_eq!(generic::round(-1.5_f16), -2.0);
-        assert_eq!(generic::round(1.5_f16), 2.0);
+    fn check_f16() {
+        check::<f16>(&cases!(f16));
+        check::<f16>(&[
+            (hf16!("0x1p10"), hf16!("0x1p10")),
+            (hf16!("-0x1p10"), hf16!("-0x1p10")),
+        ]);
     }
 
     #[test]
-    fn zeroes_f32() {
-        assert_biteq!(generic::round(0.0_f32), 0.0_f32);
-        assert_biteq!(generic::round(-0.0_f32), -0.0_f32);
+    fn check_f32() {
+        check::<f32>(&cases!(f32));
+        check::<f32>(&[
+            (hf32!("0x1p23"), hf32!("0x1p23")),
+            (hf32!("-0x1p23"), hf32!("-0x1p23")),
+        ]);
     }
 
     #[test]
-    fn sanity_check_f32() {
-        assert_eq!(generic::round(-1.0_f32), -1.0);
-        assert_eq!(generic::round(2.8_f32), 3.0);
-        assert_eq!(generic::round(-0.5_f32), -1.0);
-        assert_eq!(generic::round(0.5_f32), 1.0);
-        assert_eq!(generic::round(-1.5_f32), -2.0);
-        assert_eq!(generic::round(1.5_f32), 2.0);
-    }
-
-    #[test]
-    fn zeroes_f64() {
-        assert_biteq!(generic::round(0.0_f64), 0.0_f64);
-        assert_biteq!(generic::round(-0.0_f64), -0.0_f64);
-    }
-
-    #[test]
-    fn sanity_check_f64() {
-        assert_eq!(generic::round(-1.0_f64), -1.0);
-        assert_eq!(generic::round(2.8_f64), 3.0);
-        assert_eq!(generic::round(-0.5_f64), -1.0);
-        assert_eq!(generic::round(0.5_f64), 1.0);
-        assert_eq!(generic::round(-1.5_f64), -2.0);
-        assert_eq!(generic::round(1.5_f64), 2.0);
+    fn check_f64() {
+        check::<f64>(&cases!(f64));
+        check::<f64>(&[
+            (hf64!("0x1p52"), hf64!("0x1p52")),
+            (hf64!("-0x1p52"), hf64!("-0x1p52")),
+        ]);
     }
 
     #[test]
     #[cfg(f128_enabled)]
-    fn zeroes_f128() {
-        assert_biteq!(generic::round(0.0_f128), 0.0_f128);
-        assert_biteq!(generic::round(-0.0_f128), -0.0_f128);
-    }
-
-    #[test]
-    #[cfg(f128_enabled)]
-    fn sanity_check_f128() {
-        assert_eq!(generic::round(-1.0_f128), -1.0);
-        assert_eq!(generic::round(2.8_f128), 3.0);
-        assert_eq!(generic::round(-0.5_f128), -1.0);
-        assert_eq!(generic::round(0.5_f128), 1.0);
-        assert_eq!(generic::round(-1.5_f128), -2.0);
-        assert_eq!(generic::round(1.5_f128), 2.0);
+    fn check_f128() {
+        check::<f128>(&cases!(f128));
+        check::<f128>(&[
+            (hf128!("0x1p112"), hf128!("0x1p112")),
+            (hf128!("-0x1p112"), hf128!("-0x1p112")),
+        ]);
     }
 }

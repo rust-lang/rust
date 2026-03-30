@@ -55,82 +55,87 @@ mod tests {
     use super::*;
     use crate::support::{Float, FpResult, Hex, Status};
 
-    fn spec_test<F: Float>(cases: &[(F, F, Status)]) {
-        let roundtrip = [
-            F::ZERO,
-            F::ONE,
-            F::NEG_ONE,
-            F::NEG_ZERO,
-            F::INFINITY,
-            F::NEG_INFINITY,
-        ];
+    macro_rules! cases {
+        ($f:ty) => {
+            [
+                // roundtrip
+                (0.0, 0.0, Status::OK),
+                (-0.0, -0.0, Status::OK),
+                (1.0, 1.0, Status::OK),
+                (-1.0, -1.0, Status::OK),
+                (<$f>::INFINITY, <$f>::INFINITY, Status::OK),
+                (<$f>::NEG_INFINITY, <$f>::NEG_INFINITY, Status::OK),
+                // with rounding
+                (0.1, 0.0, Status::INEXACT),
+                (-0.1, -0.0, Status::INEXACT),
+                (0.5, 0.0, Status::INEXACT),
+                (-0.5, -0.0, Status::INEXACT),
+                (0.9, 1.0, Status::INEXACT),
+                (-0.9, -1.0, Status::INEXACT),
+                (1.1, 1.0, Status::INEXACT),
+                (-1.1, -1.0, Status::INEXACT),
+                (1.5, 2.0, Status::INEXACT),
+                (-1.5, -2.0, Status::INEXACT),
+                (1.9, 2.0, Status::INEXACT),
+                (-1.9, -2.0, Status::INEXACT),
+                (2.5, 2.0, Status::INEXACT),
+                (-2.5, -2.0, Status::INEXACT),
+                (3.5, 4.0, Status::INEXACT),
+                (-3.5, -4.0, Status::INEXACT),
+            ]
+        };
+    }
 
-        for x in roundtrip {
+    #[track_caller]
+    fn check<F: Float>(cases: &[(F, F, Status)]) {
+        for &(x, exp_res, exp_stat) in cases {
             let FpResult { val, status } = generic::rint_status(x);
-            assert_biteq!(val, x, "rint_status({})", Hex(x));
-            assert_eq!(status, Status::OK, "{}", Hex(x));
-        }
-
-        for &(x, res, res_stat) in cases {
-            let FpResult { val, status } = generic::rint_status(x);
-            assert_biteq!(val, res, "rint_status({})", Hex(x));
-            assert_eq!(status, res_stat, "{}", Hex(x));
+            assert_biteq!(val, exp_res, "roundeven({x:?}) ({})", Hex(x));
+            assert_eq!(
+                status,
+                exp_stat,
+                "{x:?} {} -> {exp_res:?} {}",
+                Hex(x),
+                Hex(exp_res)
+            );
         }
     }
 
     #[test]
     #[cfg(f16_enabled)]
-    fn spec_tests_f16() {
-        let cases = [];
-        spec_test::<f16>(&cases);
+    fn check_f16() {
+        check::<f16>(&cases!(f16));
+        check::<f16>(&[
+            (hf16!("0x1p10"), hf16!("0x1p10"), Status::OK),
+            (hf16!("-0x1p10"), hf16!("-0x1p10"), Status::OK),
+        ]);
     }
 
     #[test]
-    fn spec_tests_f32() {
-        let cases = [
-            (0.1, 0.0, Status::INEXACT),
-            (-0.1, -0.0, Status::INEXACT),
-            (0.5, 0.0, Status::INEXACT),
-            (-0.5, -0.0, Status::INEXACT),
-            (0.9, 1.0, Status::INEXACT),
-            (-0.9, -1.0, Status::INEXACT),
-            (1.1, 1.0, Status::INEXACT),
-            (-1.1, -1.0, Status::INEXACT),
-            (1.5, 2.0, Status::INEXACT),
-            (-1.5, -2.0, Status::INEXACT),
-            (1.9, 2.0, Status::INEXACT),
-            (-1.9, -2.0, Status::INEXACT),
-            (2.8, 3.0, Status::INEXACT),
-            (-2.8, -3.0, Status::INEXACT),
-        ];
-        spec_test::<f32>(&cases);
+    fn check_f32() {
+        check::<f32>(&cases!(f32));
+        check::<f32>(&[
+            (hf32!("0x1p23"), hf32!("0x1p23"), Status::OK),
+            (hf32!("-0x1p23"), hf32!("-0x1p23"), Status::OK),
+        ]);
     }
 
     #[test]
-    fn spec_tests_f64() {
-        let cases = [
-            (0.1, 0.0, Status::INEXACT),
-            (-0.1, -0.0, Status::INEXACT),
-            (0.5, 0.0, Status::INEXACT),
-            (-0.5, -0.0, Status::INEXACT),
-            (0.9, 1.0, Status::INEXACT),
-            (-0.9, -1.0, Status::INEXACT),
-            (1.1, 1.0, Status::INEXACT),
-            (-1.1, -1.0, Status::INEXACT),
-            (1.5, 2.0, Status::INEXACT),
-            (-1.5, -2.0, Status::INEXACT),
-            (1.9, 2.0, Status::INEXACT),
-            (-1.9, -2.0, Status::INEXACT),
-            (2.8, 3.0, Status::INEXACT),
-            (-2.8, -3.0, Status::INEXACT),
-        ];
-        spec_test::<f64>(&cases);
+    fn check_f64() {
+        check::<f64>(&cases!(f64));
+        check::<f64>(&[
+            (hf64!("0x1p52"), hf64!("0x1p52"), Status::OK),
+            (hf64!("-0x1p52"), hf64!("-0x1p52"), Status::OK),
+        ]);
     }
 
     #[test]
     #[cfg(f128_enabled)]
-    fn spec_tests_f128() {
-        let cases = [];
-        spec_test::<f128>(&cases);
+    fn check_f128() {
+        check::<f128>(&cases!(f128));
+        check::<f128>(&[
+            (hf128!("0x1p112"), hf128!("0x1p112"), Status::OK),
+            (hf128!("-0x1p112"), hf128!("-0x1p112"), Status::OK),
+        ]);
     }
 }

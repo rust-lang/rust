@@ -83,7 +83,7 @@ mod tests {
     fn check<F: Float>(cases: &[(F, F, Status)]) {
         for &(x, exp_res, exp_stat) in cases {
             let FpResult { val, status } = generic::floor_status(x);
-            assert_biteq!(val, exp_res, "{x:?} {}", Hex(x));
+            assert_biteq!(val, exp_res, "floor({x:?}) ({})", Hex(x));
             assert_eq!(
                 status,
                 exp_stat,
@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     #[cfg(f128_enabled)]
-    fn spec_tests_f128() {
+    fn check_f128() {
         check::<f128>(&cases!(f128));
         check::<f128>(&[
             (hf128!("0x1p112"), hf128!("0x1p112"), Status::OK),
