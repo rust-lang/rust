@@ -5558,7 +5558,8 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
+    /// # #![deny(varargs_without_pattern)]
     /// // Using `...` in non-foreign function definitions is unstable, however stability is
     /// // currently only checked after attributes are expanded, so using `#[cfg(false)]` here will
     /// // allow this to compile on stable Rust.
@@ -5590,10 +5591,10 @@ declare_lint! {
     ///
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub VARARGS_WITHOUT_PATTERN,
-    Warn,
+    Deny,
     "detects usage of `...` arguments without a pattern in non-foreign items",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #145544),
-        report_in_deps: false,
+        report_in_deps: true,
     };
 }
