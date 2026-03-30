@@ -1162,7 +1162,7 @@ mod print_tests {
         assert_eq!(Hex(f64::NAN).to_string(), "qNaN");
         assert_eq!(Hex(f32::NEG_NAN).to_string(), "-qNaN");
         assert_eq!(Hex(f64::NEG_NAN).to_string(), "-qNaN");
-        if !cfg!(x86_no_sse) {
+        if !cfg!(x86_no_sse2) {
             // FIXME(rust-lang/rust#115567): calls quiet the sNaN
             assert_eq!(Hex(f32::SNAN).to_string(), "sNaN");
             assert_eq!(Hex(f64::SNAN).to_string(), "sNaN");

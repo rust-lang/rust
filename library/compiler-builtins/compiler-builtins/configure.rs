@@ -82,10 +82,10 @@ pub fn configure_aliases(target: &Target) {
     }
 
     // Config shorthands
-    println!("cargo:rustc-check-cfg=cfg(x86_no_sse)");
-    if target.arch == "x86" && !target.features.iter().any(|f| f == "sse") {
+    println!("cargo:rustc-check-cfg=cfg(x86_no_sse2)");
+    if target.arch == "x86" && !target.features.iter().any(|f| f == "sse2") {
         // Shorthand to detect i586 targets
-        println!("cargo:rustc-cfg=x86_no_sse");
+        println!("cargo:rustc-cfg=x86_no_sse2");
     }
 
     /* Not all backends support `f16` and `f128` to the same level on all architectures, so we

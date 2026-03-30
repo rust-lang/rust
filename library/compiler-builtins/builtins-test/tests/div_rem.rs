@@ -139,7 +139,7 @@ macro_rules! float {
     };
 }
 
-#[cfg(not(x86_no_sse))]
+#[cfg(not(x86_no_sse2))]
 mod float_div {
     use super::*;
 

@@ -49,7 +49,7 @@ cfg_if! {
     }
 }
 cfg_if! {
-    if #[cfg(x86_no_sse)] {
+    if #[cfg(x86_no_sse2)] {
         pub use i586::{x87_exp10f, x87_exp10, x87_expf, x87_exp, x87_exp2f, x87_exp2};
     }
 }

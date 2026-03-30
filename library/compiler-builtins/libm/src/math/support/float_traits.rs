@@ -569,7 +569,7 @@ mod tests {
         }
         assert!(f32::NAN.is_qnan());
         // FIXME(rust-lang/rust#115567): x87 use in `is_snan` quiets the sNaN
-        if !cfg!(x86_no_sse) {
+        if !cfg!(x86_no_sse2) {
             assert!(f32::SNAN.is_snan());
         }
 
@@ -614,7 +614,7 @@ mod tests {
         }
         assert!(f64::NAN.is_qnan());
         // FIXME(rust-lang/rust#115567): x87 use in `is_snan` quiets the sNaN
-        if !cfg!(x86_no_sse) {
+        if !cfg!(x86_no_sse2) {
             assert!(f64::SNAN.is_snan());
         }
 

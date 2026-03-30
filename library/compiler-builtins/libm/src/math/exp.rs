@@ -85,7 +85,7 @@ const P5: f64 = 4.13813679705723846039e-08; /* 0x3E663769, 0x72BEA4D0 */
 pub fn exp(mut x: f64) -> f64 {
     select_implementation! {
         name: x87_exp,
-        use_arch_required: x86_no_sse,
+        use_arch_required: x86_no_sse2,
         args: x,
     }
 

@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     // FIXME(correctness): inaccurate results on i586
-    #[cfg_attr(x86_no_sse, ignore)]
+    #[cfg_attr(x86_no_sse2, ignore)]
     fn test_near_pi() {
         let arg = 3.141592025756836;
         let arg = force_eval!(arg);

@@ -69,7 +69,7 @@ where
         use anyhow::Context;
         use libm_test::CheckOutput;
 
-        if cfg!(x86_no_sse) && musl_extra.skip_on_i586 {
+        if cfg!(x86_no_sse2) && musl_extra.skip_on_i586 {
             break;
         }
 

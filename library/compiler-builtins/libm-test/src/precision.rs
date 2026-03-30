@@ -115,7 +115,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
     let mut orig_ulp = ulp;
 
     // These have a separate implementation on i586 which is more accurate.
-    if cfg!(x86_no_sse) {
+    if cfg!(x86_no_sse2) {
         match ctx.fn_ident {
             Id::Exp => ulp = 1,
             Id::Exp2 => ulp = 1,
@@ -166,8 +166,8 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
             Id::Cbrt => ulp = 2,
             Id::Cosh => ulp = 2,
             Id::Coshf => ulp = 2,
-            Id::Exp10 if cfg!(x86_no_sse) => ulp = 4,
-            Id::Exp10f if cfg!(x86_no_sse) => ulp = 4,
+            Id::Exp10 if cfg!(x86_no_sse2) => ulp = 4,
+            Id::Exp10f if cfg!(x86_no_sse2) => ulp = 4,
             Id::Exp2f => ulp = 1,
             Id::Expf => ulp = 1,
             Id::Tanh => ulp = 4,
@@ -294,7 +294,7 @@ impl MaybeOverride<(f32,)> for SpecialCase {
 
 impl MaybeOverride<(f64,)> for SpecialCase {
     fn check_float<F: Float>(input: (f64,), actual: F, expected: F, ctx: &CheckCtx) -> CheckAction {
-        if cfg!(x86_no_sse)
+        if cfg!(x86_no_sse2)
             && (ctx.base_name == BaseName::Rint || ctx.base_name == BaseName::Roundeven)
             && (expected - actual).abs() <= F::ONE
             && (expected - actual).abs() > F::ZERO
@@ -533,7 +533,7 @@ fn int_float_common<F1: Float, F2: Float>(
 
     // Our bessel functions blow up with large N values
     if ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn {
-        if cfg!(x86_no_sse) {
+        if cfg!(x86_no_sse2) {
             // Precision is especially bad on i586, not worth checking.
             return XFAIL_NOCHECK;
         }

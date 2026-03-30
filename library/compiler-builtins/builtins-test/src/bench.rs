@@ -43,7 +43,7 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
         return true;
     }
 
-    if cfg!(x86_no_sse) && X86_NO_SSE_SKIPPED.contains(&test_name) {
+    if cfg!(x86_no_sse2) && X86_NO_SSE_SKIPPED.contains(&test_name) {
         return true;
     }
 

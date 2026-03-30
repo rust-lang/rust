@@ -111,10 +111,10 @@ fn emit_optimization_cfg(cfg: &Config) {
 
 /// Provide an alias for common longer config combinations.
 fn emit_cfg_shorthands(cfg: &Config) {
-    println!("cargo:rustc-check-cfg=cfg(x86_no_sse)");
-    if cfg.target_arch == "x86" && !cfg.target_features.iter().any(|f| f == "sse") {
+    println!("cargo:rustc-check-cfg=cfg(x86_no_sse2)");
+    if cfg.target_arch == "x86" && !cfg.target_features.iter().any(|f| f == "sse2") {
         // Shorthand to detect i586 targets
-        println!("cargo:rustc-cfg=x86_no_sse");
+        println!("cargo:rustc-cfg=x86_no_sse2");
     }
 }
 
