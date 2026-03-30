@@ -59,6 +59,93 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_immediate(*res_lane, &dest)?;
                 }
             }
+
+            // Wrapping pairwise addition.
+            //
+            // Concatenates the two input vectors and adds adjacent elements. For input vectors `v`
+            // and `w` this computes `[v0 + v1, v2 + v3, ..., w0 + w1, w2 + w3, ...]`, using
+            // wrapping addition for `+`.
+            //
+            // Used by `vpadd_{s8, u8, s16, u16, s32, u32}`.
+            name if name.starts_with("neon.addp.") => {
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                let (left, left_len) = this.project_to_simd(left)?;
+                let (right, right_len) = this.project_to_simd(right)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
+
+                assert_eq!(left_len, right_len);
+                assert_eq!(left_len, dest_len);
+
+                assert_eq!(left.layout, right.layout);
+                assert_eq!(left.layout, dest.layout);
+
+                assert!(dest_len.is_multiple_of(2));
+                let half_len = dest_len.strict_div(2);
+
+                for lane_idx in 0..dest_len {
+                    // The left and right vectors are concatenated.
+                    let (src, src_pair_idx) = if lane_idx < half_len {
+                        (&left, lane_idx)
+                    } else {
+                        (&right, lane_idx.strict_sub(half_len))
+                    };
+                    // Convert "pair index" into "index of first element of the pair".
+                    let i = src_pair_idx.strict_mul(2);
+
+                    let lhs = this.read_immediate(&this.project_index(src, i)?)?;
+                    let rhs = this.read_immediate(&this.project_index(src, i.strict_add(1))?)?;
+
+                    // Wrapping addition on the element type.
+                    let sum = this.binary_op(BinOp::Add, &lhs, &rhs)?;
+
+                    let dst_lane = this.project_index(&dest, lane_idx)?;
+                    this.write_immediate(*sum, &dst_lane)?;
+                }
+            }
+
+            // Widening pairwise addition.
+            //
+            // Takes a single input vector, and an output vector with half as many lanes and double
+            // the element width. Takes adjacent pairs of elements, widens both, and then adds them
+            // together.
+            //
+            // Used by `vpaddl_{u8, u16, u32}` and `vpaddlq_{u8, u16, u32}`.
+            name if name.starts_with("neon.uaddlp.") => {
+                let [src] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                let (src, src_len) = this.project_to_simd(src)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
+
+                // Operates pairwise, so src has twice as many lanes.
+                assert_eq!(src_len, dest_len.strict_mul(2));
+
+                let src_elem_size = src.layout.field(this, 0).size;
+                let dest_elem_size = dest.layout.field(this, 0).size;
+
+                // Widens, so dest elements must be exactly twice as wide.
+                assert_eq!(dest_elem_size.bytes(), src_elem_size.bytes().strict_mul(2));
+
+                for dest_idx in 0..dest_len {
+                    let src_idx = dest_idx.strict_mul(2);
+
+                    let a_scalar = this.read_scalar(&this.project_index(&src, src_idx)?)?;
+                    let b_scalar =
+                        this.read_scalar(&this.project_index(&src, src_idx.strict_add(1))?)?;
+
+                    let a_val = a_scalar.to_uint(src_elem_size)?;
+                    let b_val = b_scalar.to_uint(src_elem_size)?;
+
+                    // Use addition on u128 to simulate widening addition for the destination type.
+                    // This cannot wrap since the element type is at most u64.
+                    let sum = a_val.strict_add(b_val);
+
+                    let dst_lane = this.project_index(&dest, dest_idx)?;
+                    this.write_scalar(Scalar::from_uint(sum, dest_elem_size), &dst_lane)?;
+                }
+            }
+
             // Vector table lookup: each index selects a byte from the 16-byte table, out-of-range -> 0.
             // Used to implement vtbl1_u8 function.
             // LLVM does not have a portable shuffle that takes non-const indices
