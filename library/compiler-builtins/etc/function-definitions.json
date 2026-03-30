@@ -98,8 +98,8 @@
     },
     "ceil": {
         "sources": [
-            "libm/src/math/arch/i586.rs",
-            "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/i586/rounding.rs",
+            "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/ceil.rs",
             "libm/src/math/generic/ceil.rs"
         ],
@@ -107,7 +107,7 @@
     },
     "ceilf": {
         "sources": [
-            "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/ceil.rs",
             "libm/src/math/generic/ceil.rs"
         ],
@@ -253,7 +253,7 @@
     },
     "fabs": {
         "sources": [
-            "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/wasm32/fabs.rs",
             "libm/src/math/fabs.rs",
             "libm/src/math/generic/fabs.rs"
         ],
@@ -261,7 +261,7 @@
     },
     "fabsf": {
         "sources": [
-            "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/wasm32/fabs.rs",
             "libm/src/math/fabs.rs",
             "libm/src/math/generic/fabs.rs"
         ],
@@ -311,8 +311,8 @@
     },
     "floor": {
         "sources": [
-            "libm/src/math/arch/i586.rs",
-            "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/i586/rounding.rs",
+            "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/floor.rs",
             "libm/src/math/generic/floor.rs"
         ],
@@ -320,7 +320,7 @@
     },
     "floorf": {
         "sources": [
-            "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/floor.rs",
             "libm/src/math/generic/floor.rs"
         ],
@@ -342,7 +342,7 @@
     },
     "fma": {
         "sources": [
-            "libm/src/math/arch/aarch64.rs",
+            "libm/src/math/arch/aarch64/fma.rs",
             "libm/src/math/arch/x86/fma.rs",
             "libm/src/math/fma.rs"
         ],
@@ -350,7 +350,7 @@
     },
     "fmaf": {
         "sources": [
-            "libm/src/math/arch/aarch64.rs",
+            "libm/src/math/arch/aarch64/fma.rs",
             "libm/src/math/arch/x86/fma.rs",
             "libm/src/math/fma.rs"
         ],
@@ -820,16 +820,16 @@
     },
     "rint": {
         "sources": [
-            "libm/src/math/arch/aarch64.rs",
-            "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/aarch64/rounding.rs",
+            "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/rint.rs"
         ],
         "type": "f64"
     },
     "rintf": {
         "sources": [
-            "libm/src/math/arch/aarch64.rs",
-            "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/aarch64/rounding.rs",
+            "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/rint.rs"
         ],
         "type": "f32"
@@ -842,7 +842,7 @@
     },
     "rintf16": {
         "sources": [
-            "libm/src/math/arch/aarch64.rs",
+            "libm/src/math/arch/aarch64/rounding.rs",
             "libm/src/math/rint.rs"
         ],
         "type": "f16"
@@ -965,9 +965,9 @@
     },
     "sqrt": {
         "sources": [
-            "libm/src/math/arch/aarch64.rs",
-            "libm/src/math/arch/wasm32.rs",
-            "libm/src/math/arch/x86.rs",
+            "libm/src/math/arch/aarch64/sqrt.rs",
+            "libm/src/math/arch/wasm32/sqrt.rs",
+            "libm/src/math/arch/x86/sqrt.rs",
             "libm/src/math/generic/sqrt.rs",
             "libm/src/math/sqrt.rs"
         ],
@@ -975,9 +975,9 @@
     },
     "sqrtf": {
         "sources": [
-            "libm/src/math/arch/aarch64.rs",
-            "libm/src/math/arch/wasm32.rs",
-            "libm/src/math/arch/x86.rs",
+            "libm/src/math/arch/aarch64/sqrt.rs",
+            "libm/src/math/arch/wasm32/sqrt.rs",
+            "libm/src/math/arch/x86/sqrt.rs",
             "libm/src/math/generic/sqrt.rs",
             "libm/src/math/sqrt.rs"
         ],
@@ -992,7 +992,7 @@
     },
     "sqrtf16": {
         "sources": [
-            "libm/src/math/arch/aarch64.rs",
+            "libm/src/math/arch/aarch64/sqrt.rs",
             "libm/src/math/generic/sqrt.rs",
             "libm/src/math/sqrt.rs"
         ],
@@ -1036,7 +1036,7 @@
     },
     "trunc": {
         "sources": [
-            "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/generic/trunc.rs",
             "libm/src/math/trunc.rs"
         ],
@@ -1044,7 +1044,7 @@
     },
     "truncf": {
         "sources": [
-            "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/generic/trunc.rs",
             "libm/src/math/trunc.rs"
         ],
