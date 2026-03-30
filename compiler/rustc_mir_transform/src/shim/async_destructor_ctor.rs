@@ -124,13 +124,13 @@ pub(super) fn build_async_drop_shim<'tcx>(
         return body;
     }
 
-    let mut dropee_ptr = Place::from(body.local_decls.push(LocalDecl::new(drop_ptr_ty, span)));
+    let dropee_ptr = Place::from(body.local_decls.push(LocalDecl::new(drop_ptr_ty, span)));
     let st_kind = StatementKind::Assign(Box::new((
         dropee_ptr,
         Rvalue::Use(Operand::Move(coroutine_layout_dropee)),
     )));
     body.basic_blocks_mut()[START_BLOCK].statements.push(Statement::new(source_info, st_kind));
-    dropee_ptr = dropee_emit_retag(tcx, &mut body, dropee_ptr, span);
+    dropee_emit_retag(tcx, &mut body, dropee_ptr, span);
 
     let dropline = body.basic_blocks.last_index();
 
