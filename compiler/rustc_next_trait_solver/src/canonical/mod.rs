@@ -16,7 +16,7 @@ use rustc_index::IndexVec;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner,
+    self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner, Ty,
     TypeFoldable,
 };
 use tracing::instrument;
@@ -53,7 +53,7 @@ impl<I: Interner, T> ResponseT<I> for inspect::State<I, T> {
 pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
-    opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
+    opaque_types: &[(ty::OpaqueTypeKey<I>, Ty<I>)],
 ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>)
 where
     D: SolverDelegate<Interner = I>,
@@ -264,7 +264,7 @@ fn register_region_constraints<D, I>(
 
 fn register_new_opaque_types<D, I>(
     delegate: &D,
-    opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
+    opaque_types: &[(ty::OpaqueTypeKey<I>, Ty<I>)],
     span: I::Span,
 ) where
     D: SolverDelegate<Interner = I>,
