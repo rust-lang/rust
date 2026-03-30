@@ -4,10 +4,15 @@ use std::sync::Arc;
 use crate::source_map::SourceMap;
 use crate::{BytePos, Pos, RelativeBytePos, SourceFile, SpanData};
 
+/// A `SourceMap` wrapper that caches info about a single recent code position. This gives a good
+/// speedup when hashing spans, because often multiple spans within a single line are hashed in
+/// succession, and this avoids expensive `SourceMap` lookups each time the cache is hit. We used
+/// to cache multiple code positions, but caching a single position ended up being simpler and
+/// faster.
 #[derive(Clone)]
-struct CacheEntry {
-    time_stamp: usize,
-    line_number: usize,
+pub struct CachingSourceMapView<'sm> {
+    source_map: &'sm SourceMap,
+    file: Arc<SourceFile>,
     // The line's byte position range in the `SourceMap`. This range will fail to contain a valid
     // position in certain edge cases. Spans often start/end one past something, and when that
     // something is the last character of a file (this can happen when a file doesn't end in a
@@ -20,260 +25,134 @@ struct CacheEntry {
     // entry contains a position, the only ramification of the above is that we will get cache
     // misses for these rare positions. A line lookup for the position via `SourceMap::lookup_line`
     // after a cache miss will produce the last line number, as desired.
-    line: Range<BytePos>,
-    file: Arc<SourceFile>,
-    file_index: usize,
-}
-
-impl CacheEntry {
-    #[inline]
-    fn update(
-        &mut self,
-        new_file_and_idx: Option<(Arc<SourceFile>, usize)>,
-        pos: BytePos,
-        time_stamp: usize,
-    ) {
-        if let Some((file, file_idx)) = new_file_and_idx {
-            self.file = file;
-            self.file_index = file_idx;
-        }
-
-        let pos = self.file.relative_position(pos);
-        let line_index = self.file.lookup_line(pos).unwrap();
-        let line_bounds = self.file.line_bounds(line_index);
-        self.line_number = line_index + 1;
-        self.line = line_bounds;
-        self.touch(time_stamp);
-    }
-
-    #[inline]
-    fn touch(&mut self, time_stamp: usize) {
-        self.time_stamp = time_stamp;
-    }
-}
-
-#[derive(Clone)]
-pub struct CachingSourceMapView<'sm> {
-    source_map: &'sm SourceMap,
-    line_cache: [CacheEntry; 3],
-    time_stamp: usize,
+    line_bounds: Range<BytePos>,
+    line_number: usize,
 }
 
 impl<'sm> CachingSourceMapView<'sm> {
     pub fn new(source_map: &'sm SourceMap) -> CachingSourceMapView<'sm> {
         let files = source_map.files();
         let first_file = Arc::clone(&files[0]);
-        let entry = CacheEntry {
-            time_stamp: 0,
-            line_number: 0,
-            line: BytePos(0)..BytePos(0),
-            file: first_file,
-            file_index: 0,
-        };
-
         CachingSourceMapView {
             source_map,
-            line_cache: [entry.clone(), entry.clone(), entry],
-            time_stamp: 0,
+            file: first_file,
+            line_bounds: BytePos(0)..BytePos(0),
+            line_number: 0,
         }
+    }
+
+    #[inline]
+    fn pos_to_line(&self, pos: BytePos) -> (Range<BytePos>, usize) {
+        let pos = self.file.relative_position(pos);
+        let line_index = self.file.lookup_line(pos).unwrap();
+        let line_bounds = self.file.line_bounds(line_index);
+        let line_number = line_index + 1;
+        (line_bounds, line_number)
+    }
+
+    #[inline]
+    fn update(&mut self, new_file: Option<Arc<SourceFile>>, pos: BytePos) {
+        if let Some(file) = new_file {
+            self.file = file;
+        }
+        (self.line_bounds, self.line_number) = self.pos_to_line(pos);
     }
 
     pub fn byte_pos_to_line_and_col(
         &mut self,
         pos: BytePos,
     ) -> Option<(Arc<SourceFile>, usize, RelativeBytePos)> {
-        self.time_stamp += 1;
-
-        // Check if the position is in one of the cached lines
-        let cache_entry = if let Some(cache_idx) = self.cache_entry_index(pos) {
-            let cache_entry = &mut self.line_cache[cache_idx];
-            cache_entry.touch(self.time_stamp);
-            cache_entry
+        if self.line_bounds.contains(&pos) {
+            // Cache hit: do nothing.
         } else {
-            // No cache hit ...
-            let oldest = self.oldest_cache_entry_index();
-
-            // If the entry doesn't point to the correct file, get the new file and index.
-            let new_file_and_idx = if !file_contains(&self.line_cache[oldest].file, pos) {
+            // Cache miss. If the entry doesn't point to the correct file, get the new file and
+            // index.
+            let new_file = if !file_contains(&self.file, pos) {
                 Some(self.file_for_position(pos)?)
             } else {
                 None
             };
-
-            let cache_entry = &mut self.line_cache[oldest];
-            cache_entry.update(new_file_and_idx, pos, self.time_stamp);
-            cache_entry
+            self.update(new_file, pos);
         };
 
-        let col = RelativeBytePos(pos.to_u32() - cache_entry.line.start.to_u32());
-        Some((Arc::clone(&cache_entry.file), cache_entry.line_number, col))
+        let col = RelativeBytePos(pos.to_u32() - self.line_bounds.start.to_u32());
+        Some((Arc::clone(&self.file), self.line_number, col))
     }
 
     pub fn span_data_to_lines_and_cols(
         &mut self,
         span_data: &SpanData,
     ) -> Option<(&SourceFile, usize, BytePos, usize, BytePos)> {
-        self.time_stamp += 1;
-
-        // Check if lo and hi are in the cached lines.
-        let lo_cache_idx = self.cache_entry_index(span_data.lo);
-        let hi_cache_idx = self.cache_entry_index(span_data.hi);
-
-        if let (Some(lo_cache_idx), Some(hi_cache_idx)) = (lo_cache_idx, hi_cache_idx) {
-            // Cache hit for span lo and hi. Check if they belong to the same file.
-            let lo_file_index = self.line_cache[lo_cache_idx].file_index;
-            let hi_file_index = self.line_cache[hi_cache_idx].file_index;
-
-            if lo_file_index != hi_file_index {
-                return None;
-            }
-
-            self.line_cache[lo_cache_idx].touch(self.time_stamp);
-            self.line_cache[hi_cache_idx].touch(self.time_stamp);
-
-            let lo = &self.line_cache[lo_cache_idx];
-            let hi = &self.line_cache[hi_cache_idx];
+        let lo_hit = self.line_bounds.contains(&span_data.lo);
+        let hi_hit = self.line_bounds.contains(&span_data.hi);
+        if lo_hit && hi_hit {
+            // span_data.lo and span_data.hi are cached (i.e. both in the same line).
             return Some((
-                &lo.file,
-                lo.line_number,
-                span_data.lo - lo.line.start,
-                hi.line_number,
-                span_data.hi - hi.line.start,
+                &self.file,
+                self.line_number,
+                span_data.lo - self.line_bounds.start,
+                self.line_number,
+                span_data.hi - self.line_bounds.start,
             ));
         }
 
-        // No cache hit or cache hit for only one of span lo and hi.
-        let oldest = if let Some(lo_cache_idx) = lo_cache_idx {
-            self.oldest_cache_entry_index_avoid(lo_cache_idx)
-        } else if let Some(hi_cache_idx) = hi_cache_idx {
-            self.oldest_cache_entry_index_avoid(hi_cache_idx)
-        } else {
-            self.oldest_cache_entry_index()
-        };
-
-        // If the entry doesn't point to the correct file, get the new file and index.
-        // Return early if the file containing beginning of span doesn't contain end of span.
-        let new_file_and_idx = if !file_contains(&self.line_cache[oldest].file, span_data.lo) {
-            let new_file_and_idx = self.file_for_position(span_data.lo)?;
-            if !file_contains(&new_file_and_idx.0, span_data.hi) {
+        // If the cached file is wrong, update it. Return early if the span lo and hi are in
+        // different files.
+        let new_file = if !file_contains(&self.file, span_data.lo) {
+            let new_file = self.file_for_position(span_data.lo)?;
+            if !file_contains(&new_file, span_data.hi) {
                 return None;
             }
-
-            Some(new_file_and_idx)
+            Some(new_file)
         } else {
-            let file = &self.line_cache[oldest].file;
-            if !file_contains(file, span_data.hi) {
+            if !file_contains(&self.file, span_data.hi) {
                 return None;
             }
-
             None
         };
 
-        // Update the cache entries.
-        let (lo_idx, hi_idx) = match (lo_cache_idx, hi_cache_idx) {
-            // Oldest cache entry is for span_data.lo line.
-            (None, None) => {
-                let lo = &mut self.line_cache[oldest];
-                lo.update(new_file_and_idx, span_data.lo, self.time_stamp);
+        // If we reach here, lo and hi are in the same file.
 
-                if !lo.line.contains(&span_data.hi) {
-                    let new_file_and_idx = Some((Arc::clone(&lo.file), lo.file_index));
-                    let next_oldest = self.oldest_cache_entry_index_avoid(oldest);
-                    let hi = &mut self.line_cache[next_oldest];
-                    hi.update(new_file_and_idx, span_data.hi, self.time_stamp);
-                    (oldest, next_oldest)
-                } else {
-                    (oldest, oldest)
-                }
-            }
-            // Oldest cache entry is for span_data.lo line.
-            (None, Some(hi_cache_idx)) => {
-                let lo = &mut self.line_cache[oldest];
-                lo.update(new_file_and_idx, span_data.lo, self.time_stamp);
-                let hi = &mut self.line_cache[hi_cache_idx];
-                hi.touch(self.time_stamp);
-                (oldest, hi_cache_idx)
-            }
-            // Oldest cache entry is for span_data.hi line.
-            (Some(lo_cache_idx), None) => {
-                let hi = &mut self.line_cache[oldest];
-                hi.update(new_file_and_idx, span_data.hi, self.time_stamp);
-                let lo = &mut self.line_cache[lo_cache_idx];
-                lo.touch(self.time_stamp);
-                (lo_cache_idx, oldest)
-            }
-            (Some(_), Some(_)) => {
-                panic!(
-                    "the case of neither value being equal to -1 was handled above and the function returns."
-                );
-            }
+        if !lo_hit {
+            // We cache the lo information.
+            self.update(new_file, span_data.lo);
+        }
+        let lo_line_bounds = &self.line_bounds;
+        let lo_line_number = self.line_number.clone();
+
+        let (hi_line_bounds, hi_line_number) = if !self.line_bounds.contains(&span_data.hi) {
+            // hi and lo are in different lines. We compute but don't cache the hi information.
+            self.pos_to_line(span_data.hi)
+        } else {
+            // hi and lo are in the same line.
+            (self.line_bounds.clone(), self.line_number)
         };
-
-        let lo = &self.line_cache[lo_idx];
-        let hi = &self.line_cache[hi_idx];
 
         // Span lo and hi may equal line end when last line doesn't
         // end in newline, hence the inclusive upper bounds below.
-        assert!(span_data.lo >= lo.line.start);
-        assert!(span_data.lo <= lo.line.end);
-        assert!(span_data.hi >= hi.line.start);
-        assert!(span_data.hi <= hi.line.end);
-        assert!(lo.file.contains(span_data.lo));
-        assert!(lo.file.contains(span_data.hi));
-        assert_eq!(lo.file_index, hi.file_index);
+        assert!(span_data.lo >= lo_line_bounds.start);
+        assert!(span_data.lo <= lo_line_bounds.end);
+        assert!(span_data.hi >= hi_line_bounds.start);
+        assert!(span_data.hi <= hi_line_bounds.end);
+        assert!(self.file.contains(span_data.lo));
+        assert!(self.file.contains(span_data.hi));
 
         Some((
-            &lo.file,
-            lo.line_number,
-            span_data.lo - lo.line.start,
-            hi.line_number,
-            span_data.hi - hi.line.start,
+            &self.file,
+            lo_line_number,
+            span_data.lo - lo_line_bounds.start,
+            hi_line_number,
+            span_data.hi - hi_line_bounds.start,
         ))
     }
 
-    fn cache_entry_index(&self, pos: BytePos) -> Option<usize> {
-        for (idx, cache_entry) in self.line_cache.iter().enumerate() {
-            if cache_entry.line.contains(&pos) {
-                return Some(idx)
-            }
-        }
-
-        None
-    }
-
-    fn oldest_cache_entry_index(&self) -> usize {
-        let mut oldest = 0;
-
-        for idx in 1..self.line_cache.len() {
-            if self.line_cache[idx].time_stamp < self.line_cache[oldest].time_stamp {
-                oldest = idx;
-            }
-        }
-
-        oldest
-    }
-
-    fn oldest_cache_entry_index_avoid(&self, avoid_idx: usize) -> usize {
-        let mut oldest = if avoid_idx != 0 { 0 } else { 1 };
-
-        for idx in 0..self.line_cache.len() {
-            if idx != avoid_idx
-                && self.line_cache[idx].time_stamp < self.line_cache[oldest].time_stamp
-            {
-                oldest = idx;
-            }
-        }
-
-        oldest
-    }
-
-    fn file_for_position(&self, pos: BytePos) -> Option<(Arc<SourceFile>, usize)> {
+    fn file_for_position(&self, pos: BytePos) -> Option<Arc<SourceFile>> {
         if !self.source_map.files().is_empty() {
             let file_idx = self.source_map.lookup_source_file_idx(pos);
             let file = &self.source_map.files()[file_idx];
 
             if file_contains(file, pos) {
-                return Some((Arc::clone(file), file_idx));
+                return Some(Arc::clone(file));
             }
         }
 
