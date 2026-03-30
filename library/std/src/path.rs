@@ -1364,7 +1364,7 @@ impl PathBuf {
 
         // absolute `path` replaces `self`
         if need_clear {
-            self.inner.truncate(0);
+            self.inner.clear();
 
         // verbatim paths need . and .. removed
         } else if comps.prefix_verbatim() && !path.inner.is_empty() {
@@ -2723,6 +2723,41 @@ impl Path {
         P: AsRef<Path>,
     {
         self._strip_prefix(base.as_ref())
+    }
+
+    /// Returns a path with the optional prefix removed.
+    ///
+    /// If `base` is not a prefix of `self` (i.e., [`starts_with`] returns `false`), returns the original path (`self`)
+    ///
+    /// [`starts_with`]: Path::starts_with
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(trim_prefix_suffix)]
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("/test/haha/foo.txt");
+    ///
+    /// // Prefix present - remove it
+    /// assert_eq!(path.trim_prefix("/"), Path::new("test/haha/foo.txt"));
+    /// assert_eq!(path.trim_prefix("/test"), Path::new("haha/foo.txt"));
+    /// assert_eq!(path.trim_prefix("/test/"), Path::new("haha/foo.txt"));
+    /// assert_eq!(path.trim_prefix("/test/haha/foo.txt"), Path::new(""));
+    /// assert_eq!(path.trim_prefix("/test/haha/foo.txt/"), Path::new(""));
+    ///
+    /// // Prefix absent - return original
+    /// assert_eq!(path.trim_prefix("test"), path);
+    /// assert_eq!(path.trim_prefix("/te"), path);
+    /// assert_eq!(path.trim_prefix("/haha"), path);
+    /// ```
+    #[must_use = "this returns the remaining path as a new path, without modifying the original"]
+    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    pub fn trim_prefix<P>(&self, base: P) -> &Path
+    where
+        P: AsRef<Path>,
+    {
+        self._strip_prefix(base.as_ref()).unwrap_or(self)
     }
 
     fn _strip_prefix(&self, base: &Path) -> Result<&Path, StripPrefixError> {

@@ -419,7 +419,6 @@ top_level_options!(
         /// If `Some`, enable incremental compilation, using the given
         /// directory to store intermediate results.
         incremental: Option<PathBuf> [UNTRACKED],
-        assert_incr_state: Option<IncrementalStateAssertion> [UNTRACKED],
         /// Set based on the result of the `Config::track_state` callback
         /// for custom drivers to invalidate the incremental cache.
         #[rustc_lint_opt_deny_field_access("should only be used via `Config::track_state`")]
@@ -889,6 +888,7 @@ mod desc {
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
+    pub(crate) const parse_assert_incr_state: &str = "one of: `loaded`, `not-loaded`";
 }
 
 pub mod parse {
@@ -2061,6 +2061,18 @@ pub mod parse {
 
         true
     }
+
+    pub(crate) fn parse_assert_incr_state(
+        slot: &mut Option<IncrementalStateAssertion>,
+        v: Option<&str>,
+    ) -> bool {
+        *slot = match v {
+            Some("loaded") => Some(IncrementalStateAssertion::Loaded),
+            Some("not-loaded") => Some(IncrementalStateAssertion::NotLoaded),
+            _ => return false,
+        };
+        true
+    }
 }
 
 options! {
@@ -2230,7 +2242,7 @@ options! {
     annotate_moves: AnnotateMoves = (AnnotateMoves::Disabled, parse_annotate_moves, [TRACKED],
         "emit debug info for compiler-generated move and copy operations \
         to make them visible in profilers. Can be a boolean or a size limit in bytes (default: disabled)"),
-    assert_incr_state: Option<String> = (None, parse_opt_string, [UNTRACKED],
+    assert_incr_state: Option<IncrementalStateAssertion> = (None, parse_assert_incr_state, [UNTRACKED],
         "assert that the incremental cache is in given state: \
          either `loaded` or `not-loaded`."),
     assume_incomplete_release: bool = (false, parse_bool, [TRACKED],

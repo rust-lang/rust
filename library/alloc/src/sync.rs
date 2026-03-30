@@ -19,14 +19,14 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, Alignment, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{Residual, Try};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use core::pin::{Pin, PinCoerceUnsized};
-use core::ptr::{self, Alignment, NonNull};
+use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
@@ -1581,29 +1581,32 @@ impl<T: ?Sized> Arc<T> {
     /// Constructs an `Arc<T>` from a raw pointer.
     ///
     /// The raw pointer must have been previously returned by a call to
-    /// [`Arc<U>::into_raw`][into_raw] with the following requirements:
+    /// [`Arc<U>::into_raw`][into_raw] or [`Arc<U>::into_raw_with_allocator`][into_raw_with_allocator].
     ///
+    /// # Safety
+    ///
+    /// * Creating a `Arc<T>` from a pointer other than one returned from
+    ///   [`Arc<U>::into_raw`][into_raw] or [`Arc<U>::into_raw_with_allocator`][into_raw_with_allocator]
+    ///   is undefined behavior.
     /// * If `U` is sized, it must have the same size and alignment as `T`. This
     ///   is trivially true if `U` is `T`.
     /// * If `U` is unsized, its data pointer must have the same size and
     ///   alignment as `T`. This is trivially true if `Arc<U>` was constructed
     ///   through `Arc<T>` and then converted to `Arc<U>` through an [unsized
     ///   coercion].
-    ///
-    /// Note that if `U` or `U`'s data pointer is not `T` but has the same size
-    /// and alignment, this is basically like transmuting references of
-    /// different types. See [`mem::transmute`][transmute] for more information
-    /// on what restrictions apply in this case.
-    ///
-    /// The raw pointer must point to a block of memory allocated by the global allocator.
-    ///
-    /// The user of `from_raw` has to make sure a specific value of `T` is only
-    /// dropped once.
+    /// * Note that if `U` or `U`'s data pointer is not `T` but has the same size
+    ///   and alignment, this is basically like transmuting references of
+    ///   different types. See [`mem::transmute`][transmute] for more information
+    ///   on what restrictions apply in this case.
+    /// * The raw pointer must point to a block of memory allocated by the global allocator.
+    /// * The user of `from_raw` has to make sure a specific value of `T` is only
+    ///   dropped once.
     ///
     /// This function is unsafe because improper use may lead to memory unsafety,
     /// even if the returned `Arc<T>` is never accessed.
     ///
     /// [into_raw]: Arc::into_raw
+    /// [into_raw_with_allocator]: Arc::into_raw_with_allocator
     /// [transmute]: core::mem::transmute
     /// [unsized coercion]: https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions
     ///
@@ -1819,29 +1822,32 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// Constructs an `Arc<T, A>` from a raw pointer.
     ///
     /// The raw pointer must have been previously returned by a call to [`Arc<U,
-    /// A>::into_raw`][into_raw] with the following requirements:
+    /// A>::into_raw`][into_raw] or [`Arc<U, A>::into_raw_with_allocator`][into_raw_with_allocator].
     ///
+    /// # Safety
+    ///
+    /// * Creating a `Arc<T, A>` from a pointer other than one returned from
+    ///   [`Arc<U, A>::into_raw`][into_raw] or [`Arc<U, A>::into_raw_with_allocator`][into_raw_with_allocator]
+    ///   is undefined behavior.
     /// * If `U` is sized, it must have the same size and alignment as `T`. This
     ///   is trivially true if `U` is `T`.
     /// * If `U` is unsized, its data pointer must have the same size and
-    ///   alignment as `T`. This is trivially true if `Arc<U>` was constructed
-    ///   through `Arc<T>` and then converted to `Arc<U>` through an [unsized
+    ///   alignment as `T`. This is trivially true if `Arc<U, A>` was constructed
+    ///   through `Arc<T, A>` and then converted to `Arc<U, A>` through an [unsized
     ///   coercion].
-    ///
-    /// Note that if `U` or `U`'s data pointer is not `T` but has the same size
-    /// and alignment, this is basically like transmuting references of
-    /// different types. See [`mem::transmute`][transmute] for more information
-    /// on what restrictions apply in this case.
-    ///
-    /// The raw pointer must point to a block of memory allocated by `alloc`
-    ///
-    /// The user of `from_raw` has to make sure a specific value of `T` is only
-    /// dropped once.
+    /// * Note that if `U` or `U`'s data pointer is not `T` but has the same size
+    ///   and alignment, this is basically like transmuting references of
+    ///   different types. See [`mem::transmute`][transmute] for more information
+    ///   on what restrictions apply in this case.
+    /// * The raw pointer must point to a block of memory allocated by `alloc`
+    /// * The user of `from_raw` has to make sure a specific value of `T` is only
+    ///   dropped once.
     ///
     /// This function is unsafe because improper use may lead to memory unsafety,
     /// even if the returned `Arc<T>` is never accessed.
     ///
     /// [into_raw]: Arc::into_raw
+    /// [into_raw_with_allocator]: Arc::into_raw_with_allocator
     /// [transmute]: core::mem::transmute
     /// [unsized coercion]: https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions
     ///

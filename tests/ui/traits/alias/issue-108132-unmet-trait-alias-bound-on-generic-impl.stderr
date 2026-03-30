@@ -1,11 +1,11 @@
-error[E0599]: the function or associated item `f` exists for struct `Foo<()>`, but its trait bounds were not satisfied
+error[E0599]: the associated function or constant `f` exists for struct `Foo<()>`, but its trait bounds were not satisfied
   --> $DIR/issue-108132-unmet-trait-alias-bound-on-generic-impl.rs:14:16
    |
 LL | struct Foo<I>(I);
-   | ------------- function or associated item `f` not found for this struct
+   | ------------- associated function or constant `f` not found for this struct
 ...
 LL |     Foo::<()>::f()
-   |                ^ function or associated item cannot be called on `Foo<()>` due to unsatisfied trait bounds
+   |                ^ associated function or constant cannot be called on `Foo<()>` due to unsatisfied trait bounds
    |
 note: trait bound `(): Iterator` was not satisfied
   --> $DIR/issue-108132-unmet-trait-alias-bound-on-generic-impl.rs:5:23

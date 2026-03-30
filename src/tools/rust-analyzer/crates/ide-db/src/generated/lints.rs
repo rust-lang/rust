@@ -11576,9 +11576,9 @@ The tracking issue for this feature is: [#85731]
         label: "try_blocks",
         description: r##"# `try_blocks`
 
-The tracking issue for this feature is: [#31436]
+The tracking issue for this feature is: [#154391]
 
-[#31436]: https://github.com/rust-lang/rust/issues/31436
+[#154391]: https://github.com/rust-lang/rust/issues/154391
 
 ------------------------
 
@@ -11590,14 +11590,14 @@ block creates a new scope one can use the `?` operator in.
 
 use std::num::ParseIntError;
 
-let result: Result<i32, ParseIntError> = try {
+let result = try {
     "1".parse::<i32>()?
         + "2".parse::<i32>()?
         + "3".parse::<i32>()?
 };
 assert_eq!(result, Ok(6));
 
-let result: Result<i32, ParseIntError> = try {
+let result = try {
     "1".parse::<i32>()?
         + "foo".parse::<i32>()?
         + "3".parse::<i32>()?
