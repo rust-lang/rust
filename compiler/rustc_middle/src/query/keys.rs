@@ -36,6 +36,8 @@ pub trait QueryKey: Sized + QueryKeyBounds {
     /// [`QueryCache`]: rustc_middle::query::QueryCache
     type Cache<V> = DefaultCache<Self, V>;
 
+    type LocalQueryKey = !;
+
     /// In the event that a cycle occurs, if no explicit span has been
     /// given for a query with key `self`, what span should we use?
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span;
@@ -45,14 +47,12 @@ pub trait QueryKey: Sized + QueryKeyBounds {
     fn key_as_def_id(&self) -> Option<DefId> {
         None
     }
-}
-
-pub trait AsLocalQueryKey: QueryKey {
-    type LocalQueryKey;
 
     /// Given an instance of this key, what crate is it referring to?
     /// This is used to find the provider.
-    fn as_local_key(&self) -> Option<Self::LocalQueryKey>;
+    fn as_local_key(&self) -> Option<Self::LocalQueryKey> {
+        None
+    }
 }
 
 impl QueryKey for () {
@@ -96,13 +96,11 @@ impl<'tcx> QueryKey for ty::LitToConstInput<'tcx> {
 impl QueryKey for CrateNum {
     type Cache<V> = VecCache<Self, V, DepNodeIndex>;
 
+    type LocalQueryKey = LocalCrate;
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
-}
-
-impl AsLocalQueryKey for CrateNum {
-    type LocalQueryKey = LocalCrate;
 
     #[inline(always)]
     fn as_local_key(&self) -> Option<Self::LocalQueryKey> {
@@ -136,6 +134,7 @@ impl QueryKey for LocalDefId {
 
 impl QueryKey for DefId {
     type Cache<V> = DefIdCache<V>;
+    type LocalQueryKey = LocalDefId;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(*self)
@@ -145,10 +144,6 @@ impl QueryKey for DefId {
     fn key_as_def_id(&self) -> Option<DefId> {
         Some(*self)
     }
-}
-
-impl AsLocalQueryKey for DefId {
-    type LocalQueryKey = LocalDefId;
 
     #[inline(always)]
     fn as_local_key(&self) -> Option<Self::LocalQueryKey> {
@@ -197,13 +192,11 @@ impl QueryKey for (LocalDefId, LocalDefId, Ident) {
 }
 
 impl QueryKey for (CrateNum, DefId) {
+    type LocalQueryKey = DefId;
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.1.default_span(tcx)
     }
-}
-
-impl AsLocalQueryKey for (CrateNum, DefId) {
-    type LocalQueryKey = DefId;
 
     #[inline(always)]
     fn as_local_key(&self) -> Option<Self::LocalQueryKey> {
@@ -212,13 +205,11 @@ impl AsLocalQueryKey for (CrateNum, DefId) {
 }
 
 impl QueryKey for (CrateNum, SimplifiedType) {
+    type LocalQueryKey = SimplifiedType;
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
-}
-
-impl AsLocalQueryKey for (CrateNum, SimplifiedType) {
-    type LocalQueryKey = SimplifiedType;
 
     #[inline(always)]
     fn as_local_key(&self) -> Option<Self::LocalQueryKey> {

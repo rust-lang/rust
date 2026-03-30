@@ -93,7 +93,7 @@ fn encode_query_values_inner<'a, 'tcx, C, V>(
 
     assert!(all_inactive(&query.state));
     query.cache.for_each(&mut |key, value, dep_node| {
-        if (query.will_cache_on_disk_for_key_fn)(*key) {
+        if query.cache_on_disk(*key) {
             encoder.encode_query_value::<V>(dep_node, &erase::restore_val::<V>(*value));
         }
     });
@@ -152,7 +152,7 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
 
     // If the recovered key isn't eligible for cache-on-disk, then there's no
     // value on disk to promote.
-    if !(query.will_cache_on_disk_for_key_fn)(key) {
+    if !query.cache_on_disk(key) {
         return;
     }
 
