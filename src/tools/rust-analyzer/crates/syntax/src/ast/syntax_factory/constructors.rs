@@ -2053,13 +2053,7 @@ impl SyntaxFactory {
         &self,
         parts: impl IntoIterator<Item = &'a str>,
     ) -> Option<ast::Path> {
-        let mut iter = parts.into_iter();
-        let base = self.ident_path(iter.next()?);
-        let path = iter.fold(base, |base, s| {
-            let segment = self.ident_path(s);
-            self.path_concat(base, segment)
-        });
-        Some(path)
+        make::ext::path_from_idents(parts).map(|path| path.clone_for_update())
     }
 
     pub fn token_tree_from_node(&self, node: &SyntaxNode) -> ast::TokenTree {
