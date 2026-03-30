@@ -6,6 +6,14 @@ use std::path::{Path, PathBuf};
 use crate::core::builder::{Builder, ShouldRun, Step};
 use crate::t;
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Copy)]
+pub enum IsForRerunningTests {
+    /// For steps that aren't part of tests, same as no
+    DontCare,
+    No,
+    Yes,
+}
+
 #[derive(Clone)]
 pub struct RecordFailedTests {
     failed_tests_path: Option<PathBuf>,
@@ -46,7 +54,9 @@ impl Step for SetupFailedTestsFile {
     }
 }
 
-pub fn collect_previously_failed_tests(failed_tests_file_path: &PathBuf, paths: &mut Vec<PathBuf>) {
+pub fn collect_previously_failed_tests(failed_tests_file_path: &PathBuf) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+
     println!(
         "`--rerun` passed so looking for failed tests in {}",
         failed_tests_file_path.display()
@@ -58,7 +68,7 @@ pub fn collect_previously_failed_tests(failed_tests_file_path: &PathBuf, paths: 
             println!(
                 "WARNING: failed tests file doesn't exist: `--rerun` only makes sense after a previous test run with `--record`"
             );
-            return;
+            return Vec::new();
         }
         Err(e) => t!(Err(e)),
     };
@@ -99,4 +109,6 @@ pub fn collect_previously_failed_tests(failed_tests_file_path: &PathBuf, paths: 
             "WARNING: failed tests file doesn't contain any failed tests: `--rerun` only makes sense after a previous test run with `--record`"
         );
     }
+
+    paths
 }

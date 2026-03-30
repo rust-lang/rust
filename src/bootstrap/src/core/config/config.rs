@@ -308,6 +308,8 @@ pub struct Config {
     /// The paths to work with. For example: with `./x check foo bar` we get
     /// `paths=["foo", "bar"]`.
     pub paths: Vec<PathBuf>,
+    /// A list of tests that failed during a previous run, recorded with `--record`,
+    pub previously_failed_test_paths: Vec<PathBuf>,
 
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
     pub compiletest_diff_tool: Option<String>,
@@ -1301,15 +1303,10 @@ impl Config {
 
         let record_failed_tests_path =
             out.join(build_record_failed_tests_path.unwrap_or_else(|| "failed-tests".to_string()));
-
-        let paths = {
-            let mut paths = Vec::new();
-            if flags_cmd.rerun() {
-                collect_previously_failed_tests(&record_failed_tests_path, &mut paths);
-            } else {
-                paths.extend(flags_paths);
-            }
-            paths
+        let previously_failed_test_paths = if flags_cmd.rerun() {
+            collect_previously_failed_tests(&record_failed_tests_path)
+        } else {
+            Vec::new()
         };
 
         Config {
@@ -1442,7 +1439,8 @@ impl Config {
             out,
             patch_binaries_for_nix: build_patch_binaries_for_nix,
             path_modification_cache,
-            paths,
+            paths: flags_paths,
+            previously_failed_test_paths,
             prefix: install_prefix.map(PathBuf::from),
             print_step_rusage: build_print_step_rusage.unwrap_or(false),
             print_step_timings: build_print_step_timings.unwrap_or(false),

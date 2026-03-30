@@ -723,6 +723,13 @@ impl Subcommand {
             _ => false,
         }
     }
+
+    pub fn rerun(&self) -> bool {
+        match self {
+            Subcommand::Test { rerun, .. } => *rerun,
+            _ => false,
+        }
+    }
 }
 
 /// Returns the shell completion for a given shell, if the result differs from the current

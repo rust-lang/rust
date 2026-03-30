@@ -20,6 +20,7 @@ use serde_derive::Deserialize;
 use tracing::span;
 
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
+use crate::core::build_steps::test::failed_tests::IsForRerunningTests;
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
@@ -1027,7 +1028,7 @@ impl Step for Rustc {
     fn make_run(run: RunConfig<'_>) {
         // If only `compiler` was passed, do not run this step.
         // Instead the `Assemble` step will take care of compiling Rustc.
-        if run.builder.paths == vec![PathBuf::from("compiler")] {
+        if run.builder.paths(IsForRerunningTests::DontCare) == vec![PathBuf::from("compiler")] {
             return;
         }
 
