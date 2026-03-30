@@ -947,10 +947,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         read_discriminant();
                     }
                 }
+                PatKind::Guard(..) => read_discriminant(),
                 PatKind::Or(_)
                 | PatKind::Box(_)
                 | PatKind::Ref(..)
-                | PatKind::Guard(..)
                 | PatKind::Tuple(..)
                 | PatKind::Wild
                 | PatKind::Missing
