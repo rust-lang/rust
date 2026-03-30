@@ -1193,7 +1193,6 @@ rustc_queries! {
     query check_liveness(key: LocalDefId) -> &'tcx rustc_index::bit_set::DenseBitSet<abi::FieldIdx> {
         arena_cache
         desc { "checking liveness of variables in `{}`", tcx.def_path_str(key.to_def_id()) }
-        cache_on_disk_if { tcx.is_typeck_child(key.to_def_id()) }
     }
 
     /// Return the live symbols in the crate for dead code check.
