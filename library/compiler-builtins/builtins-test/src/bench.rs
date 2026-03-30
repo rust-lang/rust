@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use core::cell::RefCell;
 
-use compiler_builtins::float::Float;
+use compiler_builtins::support::Float;
 
 /// Fuzz with these many items to ensure equal functions
 pub const CHECK_ITER_ITEMS: u32 = 10_000;

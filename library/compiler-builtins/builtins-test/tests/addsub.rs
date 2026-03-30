@@ -87,7 +87,8 @@ macro_rules! float_sum {
             #[test]
             fn $fn_add() {
                 use core::ops::{Add, Sub};
-                use compiler_builtins::float::{{add::$fn_add, sub::$fn_sub}, Float};
+                use compiler_builtins::float::{add::$fn_add, sub::$fn_sub};
+                use compiler_builtins::support::Float;
 
                 fuzz_float_2(N, |x: $f, y: $f| {
                     let add0 = apfloat_fallback!($f, $apfloat_ty, $sys_available, Add::add, x, y);

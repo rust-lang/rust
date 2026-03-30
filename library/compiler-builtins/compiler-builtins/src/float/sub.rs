@@ -1,4 +1,4 @@
-use crate::float::Float;
+use crate::support::Float;
 
 intrinsics! {
     #[cfg(f16_enabled)]

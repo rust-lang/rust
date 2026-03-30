@@ -16,7 +16,8 @@ macro_rules! pow {
             #[cfg($sys_available)]
             fn $fn() {
                 use compiler_builtins::float::pow::$fn;
-                use compiler_builtins::float::Float;
+                use compiler_builtins::support::Float;
+
                 fuzz_float_2(N, |x: $f, y: $f| {
                     if !(Float::is_subnormal(x) || Float::is_subnormal(y) || x.is_nan()) {
                         let n = y.to_bits() & !<$f as Float>::SIG_MASK;

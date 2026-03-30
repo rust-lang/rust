@@ -109,7 +109,8 @@ macro_rules! float {
         $(
             #[test]
             fn $fn() {
-                use compiler_builtins::float::{div::$fn, Float};
+                use compiler_builtins::float::div::$fn;
+                use compiler_builtins::support::Float;
                 use core::ops::Div;
 
                 fuzz_float_2(N, |x: $f, y: $f| {

@@ -1,7 +1,6 @@
 #![allow(unreachable_code)]
 
-use crate::float::Float;
-use crate::support::{MinInt, cfg_if};
+use crate::support::{Float, MinInt, cfg_if};
 
 // Taken from LLVM config [1], which should match GCC's `CMPtype` [2].
 //

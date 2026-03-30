@@ -48,6 +48,7 @@ force-soft-floats = []
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [
-  # compiler-builtins sets this feature, but we use it in `libm`
+  # compiler-builtins sets these features, but we use them in `libm`
   'cfg(feature, values("compiler-builtins"))',
+  'cfg(feature, values("mangled-names"))',
 ] }

@@ -96,7 +96,8 @@ macro_rules! float_mul {
         $(
             #[test]
             fn $fn() {
-                use compiler_builtins::float::{mul::$fn, Float};
+                use compiler_builtins::float::mul::$fn;
+                use compiler_builtins::support::Float;
                 use core::ops::Mul;
 
                 fuzz_float_2(N, |x: $f, y: $f| {
