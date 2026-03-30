@@ -22,6 +22,7 @@ use crate::os::raw::c_char;
 use crate::sys::env;
 
 pub mod futex;
+#[path = "../unix/time.rs"]
 pub mod time;
 
 pub fn unsupported<T>() -> io::Result<T> {

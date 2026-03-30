@@ -82,7 +82,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
     &tcx.typeck(def_id).used_trait_imports
 }
 
-fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
+fn typeck_root<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
     typeck_with_inspect(tcx, def_id, None)
 }
 
@@ -95,6 +95,13 @@ pub fn inspect_typeck<'tcx>(
     def_id: LocalDefId,
     inspect: ObligationInspector<'tcx>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
+    // Closures' typeck results come from their outermost function,
+    // as they are part of the same "inference environment".
+    let typeck_root_def_id = tcx.typeck_root_def_id_local(def_id);
+    if typeck_root_def_id != def_id {
+        return tcx.typeck(typeck_root_def_id);
+    }
+
     typeck_with_inspect(tcx, def_id, Some(inspect))
 }
 
@@ -104,12 +111,7 @@ fn typeck_with_inspect<'tcx>(
     def_id: LocalDefId,
     inspector: Option<ObligationInspector<'tcx>>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
-    // Closures' typeck results come from their outermost function,
-    // as they are part of the same "inference environment".
-    let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id()).expect_local();
-    if typeck_root_def_id != def_id {
-        return tcx.typeck(typeck_root_def_id);
-    }
+    assert!(!tcx.is_typeck_child(def_id.to_def_id()));
 
     let id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(id);
@@ -660,7 +662,7 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         method_autoderef_steps: method::probe::method_autoderef_steps,
-        typeck,
+        typeck_root,
         used_trait_imports,
         check_transmutes: intrinsicck::check_transmutes,
         ..*providers

@@ -1,8 +1,8 @@
-error[E0599]: no function or associated item named `mew` found for struct `Vec<Q>` in the current scope
+error[E0599]: no associated function or constant named `mew` found for struct `Vec<Q>` in the current scope
   --> $DIR/bad-builder.rs:2:15
    |
 LL |     Vec::<Q>::mew()
-   |               ^^^ function or associated item not found in `Vec<Q>`
+   |               ^^^ associated function or constant not found in `Vec<Q>`
    |
 note: if you're trying to build a new `Vec<Q>` consider using one of the following associated functions:
       Vec::<T>::new

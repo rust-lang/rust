@@ -2278,6 +2278,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         })
     }
 
+    /// Emits a SIMD min/max operation for floats. The semantics for each lane are: if one
+    /// side is NaN (QNaN or SNaN), the other side is returned.
     fn vector_extremum(
         &mut self,
         a: RValue<'gcc>,
@@ -2286,8 +2288,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     ) -> RValue<'gcc> {
         let vector_type = a.get_type();
 
-        // mask out the NaNs in b and replace them with the corresponding lane in a, so when a and
-        // b get compared & spliced together, we get the numeric values instead of NaNs.
+        // Mask out the NaNs (both QNaN and SNaN) in b and replace them with the corresponding lane
+        // in a, so when a and b get compared & spliced together, we get the numeric values instead
+        // of NaNs.
         let b_nan_mask = self.context.new_comparison(self.location, ComparisonOp::NotEquals, b, b);
         let mask_type = b_nan_mask.get_type();
         let b_nan_mask_inverted =
@@ -2309,7 +2312,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.context.new_bitcast(self.location, res, vector_type)
     }
 
-    pub fn vector_fmin(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn vector_minimum_number_nsz(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.vector_extremum(a, b, ExtremumOperation::Min)
     }
 
@@ -2341,7 +2344,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    pub fn vector_fmax(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn vector_maximum_number_nsz(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.vector_extremum(a, b, ExtremumOperation::Max)
     }
 

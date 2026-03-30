@@ -665,11 +665,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
 
         // TODO(calebcartwright): consider enabling box_patterns feature gate
-        match (&ai.kind, visitor_kind) {
-            (ast::AssocItemKind::Const(c), AssocTraitItem) => {
+        match (&ai.kind, assoc_ctxt) {
+            (ast::AssocItemKind::Const(c), visit::AssocCtxt::Trait) => {
                 self.visit_static(&StaticParts::from_trait_item(ai, c.ident))
             }
-            (ast::AssocItemKind::Const(c), AssocImplItem) => {
+            (ast::AssocItemKind::Const(c), visit::AssocCtxt::Impl { .. }) => {
                 self.visit_static(&StaticParts::from_impl_item(ai, c.ident))
             }
             (ast::AssocItemKind::Fn(ref fn_kind), _) => {
@@ -714,7 +714,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             (ast::AssocItemKind::MacCall(ref mac), _) => {
                 self.visit_mac(mac, MacroPosition::Item);
             }
-            _ => unreachable!(),
+            (ast::AssocItemKind::Delegation(_) | ast::AssocItemKind::DelegationMac(_), _) => {
+                // TODO(ytmimi) #![feature(fn_delegation)]
+                // add formatting for `AssocItemKind::Delegation` and `AssocItemKind::DelegationMac`
+                self.push_rewrite(ai.span, None);
+            }
         }
     }
 

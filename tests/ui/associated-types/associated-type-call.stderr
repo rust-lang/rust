@@ -1,8 +1,8 @@
-error[E0599]: no associated item named `Assoc` found for unit type `()` in the current scope
+error[E0599]: no associated function or constant named `Assoc` found for unit type `()` in the current scope
   --> $DIR/associated-type-call.rs:17:17
    |
 LL |         <Self>::Assoc();
-   |                 ^^^^^ associated item not found in `()`
+   |                 ^^^^^ associated function or constant not found in `()`
    |
 help: to construct a value of type `T`, use the explicit path
    |

@@ -1,11 +1,11 @@
-error[E0599]: no function or associated item named `new` found for struct `T` in the current scope
+error[E0599]: no associated function or constant named `new` found for struct `T` in the current scope
   --> $DIR/dont-suggest-private-trait-method.rs:4:8
    |
 LL | struct T;
-   | -------- function or associated item `new` not found for this struct
+   | -------- associated function or constant `new` not found for this struct
 ...
 LL |     T::new();
-   |        ^^^ function or associated item not found in `T`
+   |        ^^^ associated function or constant not found in `T`
 
 error: aborting due to 1 previous error
 

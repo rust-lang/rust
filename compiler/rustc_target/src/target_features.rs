@@ -392,7 +392,11 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
             "avx512vpopcntdq",
         ],
     ),
-    ("avx10.2", Unstable(sym::avx10_target_feature), &["avx10.1"]),
+    (
+        "avx10.2",
+        Unstable(sym::avx10_target_feature),
+        &["avx10.1", "avxvnni", "avxvnniint8", "avxvnniint16"],
+    ),
     ("avx512bf16", Stable, &["avx512bw"]),
     ("avx512bitalg", Stable, &["avx512bw"]),
     ("avx512bw", Stable, &["avx512f"]),
