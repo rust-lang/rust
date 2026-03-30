@@ -1,0 +1,119 @@
+error[E0603]: module `inner` is private
+  --> $DIR/suggest-public-reexport-for-use.rs:23:12
+   |
+LL | use outer::inner::MyStruct;
+   |            ^^^^^ private module
+   |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:12:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
+help: consider importing this struct through its public re-export instead
+   |
+LL - use outer::inner::MyStruct;
+LL + use crate::outer::MyStruct;
+   |
+
+error[E0603]: module `inner` is private
+  --> $DIR/suggest-public-reexport-for-use.rs:24:12
+   |
+LL | use outer::inner::my_function;
+   |            ^^^^^ private module
+   |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:12:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
+help: consider importing this function through its public re-export instead
+   |
+LL - use outer::inner::my_function;
+LL + use crate::outer::my_function;
+   |
+
+error[E0603]: module `inner` is private
+  --> $DIR/suggest-public-reexport-for-use.rs:25:12
+   |
+LL | use outer::inner::MyTrait;
+   |            ^^^^^ private module
+   |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:12:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
+help: consider importing this trait through its public re-export instead
+   |
+LL - use outer::inner::MyTrait;
+LL + use crate::outer::MyTrait;
+   |
+
+error[E0603]: module `inner` is private
+  --> $DIR/suggest-public-reexport-for-use.rs:26:12
+   |
+LL | use outer::inner::MyEnum;
+   |            ^^^^^ private module
+   |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:12:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
+help: consider importing this enum through its public re-export instead
+   |
+LL - use outer::inner::MyEnum;
+LL + use crate::outer::MyEnum;
+   |
+
+error[E0603]: module `inner` is private
+  --> $DIR/suggest-public-reexport-for-use.rs:30:23
+   |
+LL |     use crate::outer::inner::MyStruct;
+   |                       ^^^^^ private module
+   |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:12:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
+help: consider importing this struct through its public re-export instead
+   |
+LL -     use crate::outer::inner::MyStruct;
+LL +     use crate::outer::MyStruct;
+   |
+
+error[E0603]: module `inner` is private
+  --> $DIR/suggest-public-reexport-for-use.rs:36:27
+   |
+LL |         use crate::outer::inner::MyStruct;
+   |                           ^^^^^ private module
+   |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:12:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
+help: consider importing this struct through its public re-export instead
+   |
+LL -         use crate::outer::inner::MyStruct;
+LL +         use crate::outer::MyStruct;
+   |
+
+error[E0603]: module `hidden` is private
+  --> $DIR/suggest-public-reexport-for-use.rs:47:18
+   |
+LL | use no_reexport::hidden::Secret;
+   |                  ^^^^^^  ------ struct `Secret` is not publicly re-exported
+   |                  |
+   |                  private module
+   |
+note: the module `hidden` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:42:5
+   |
+LL |     mod hidden {
+   |     ^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0603`.
