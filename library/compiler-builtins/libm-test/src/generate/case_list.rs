@@ -1501,7 +1501,11 @@ fn tanh_cases() -> Vec<TestCase<op::tanh::Routine>> {
 }
 
 fn tanhf_cases() -> Vec<TestCase<op::tanhf::Routine>> {
-    cases![]
+    cases![
+        // Inaccuracy in musl
+        ((0.24503659,), 0.24024734),
+        ((0.19125812,), 0.18895969),
+    ]
 }
 
 fn tgamma_cases() -> Vec<TestCase<op::tgamma::Routine>> {
