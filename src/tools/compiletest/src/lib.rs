@@ -131,11 +131,7 @@ fn parse_config(args: Vec<String>) -> Config {
         )
         .optflag("", "optimize-tests", "run tests with optimizations enabled")
         .optflag("", "verbose", "run tests verbosely, showing all output")
-        .optflag(
-            "",
-            "quiet",
-            "suppress verbose subprocess output for successful run-make tests",
-        )
+        .optflag("", "quiet", "suppress verbose subprocess output for successful run-make tests")
         .optflag(
             "",
             "bless",
