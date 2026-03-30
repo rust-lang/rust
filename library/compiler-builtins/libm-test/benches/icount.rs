@@ -5,7 +5,7 @@
 use std::hint::black_box;
 
 use gungraun::{library_benchmark, library_benchmark_group, main};
-use libm::support::{HInt, Hex, hf16, hf32, hf64, hf128, u256};
+use libm::support::{HInt, Hex, hf16, hf32, hf64, hf128, i256, u256};
 use libm_test::generate::spaced;
 use libm_test::{CheckBasis, CheckCtx, GeneratorKind, MathOp, OpRustArgs, TupleCall, op};
 
@@ -103,6 +103,13 @@ fn setup_u256_shift() -> Vec<(u256, u32)> {
     v
 }
 
+fn setup_i256_shift() -> Vec<(i256, u32)> {
+    setup_u256_shift()
+        .into_iter()
+        .map(|(x, i)| (x.signed(), i))
+        .collect()
+}
+
 #[library_benchmark]
 #[bench::linspace(setup_u128_mul())]
 fn icount_bench_u128_widen_mul(cases: Vec<(u128, u128)>) {
@@ -154,15 +161,25 @@ fn icount_bench_u256_shr(cases: Vec<(u256, u32)>) {
     }
 }
 
+#[library_benchmark]
+#[bench::linspace(setup_i256_shift())]
+fn icount_bench_i256_shr(cases: Vec<(i256, u32)>) {
+    for (x, y) in cases.iter().copied() {
+        black_box(black_box(x) >> black_box(y));
+    }
+}
+
 library_benchmark_group!(
-    name = icount_bench_u128_group;
-    benchmarks =
-    icount_bench_u128_widen_mul,
-    icount_bench_u256_narrowing_div,
-    icount_bench_u256_add,
-    icount_bench_u256_sub,
-    icount_bench_u256_shl,
-    icount_bench_u256_shr
+    name = icount_bench_u128_group,
+    benchmarks = [
+        icount_bench_u128_widen_mul,
+        icount_bench_u256_narrowing_div,
+        icount_bench_u256_add,
+        icount_bench_u256_sub,
+        icount_bench_u256_shl,
+        icount_bench_u256_shr,
+        icount_bench_i256_shr,
+    ]
 );
 
 #[library_benchmark]
@@ -194,12 +211,13 @@ fn icount_bench_hf128(s: &str) -> f128 {
 }
 
 library_benchmark_group!(
-    name = icount_bench_hf_parse_group;
-    benchmarks =
-    icount_bench_hf16,
-    icount_bench_hf32,
-    icount_bench_hf64,
-    icount_bench_hf128
+    name = icount_bench_hf_parse_group,
+    benchmarks = [
+        icount_bench_hf16,
+        icount_bench_hf32,
+        icount_bench_hf64,
+        icount_bench_hf128,
+    ]
 );
 
 #[library_benchmark]
