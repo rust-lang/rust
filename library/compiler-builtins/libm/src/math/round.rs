@@ -59,9 +59,11 @@ mod tests {
     }
 
     #[track_caller]
-    fn check<F: Float>(cases: &[(F, F)]) {
+    fn check<F: Float>(f: fn(F) -> F, cases: &[(F, F)]) {
         for &(x, exp_res) in cases {
             let val = generic::round(x);
+            assert_biteq!(val, exp_res, "generic::round_status({x:?}) {}", Hex(x));
+            let val = f(x);
             assert_biteq!(val, exp_res, "round({x:?}) {}", Hex(x));
         }
     }
@@ -69,38 +71,50 @@ mod tests {
     #[test]
     #[cfg(f16_enabled)]
     fn check_f16() {
-        check::<f16>(&cases!(f16));
-        check::<f16>(&[
-            (hf16!("0x1p10"), hf16!("0x1p10")),
-            (hf16!("-0x1p10"), hf16!("-0x1p10")),
-        ]);
+        check::<f16>(roundf16, &cases!(f16));
+        check::<f16>(
+            roundf16,
+            &[
+                (hf16!("0x1p10"), hf16!("0x1p10")),
+                (hf16!("-0x1p10"), hf16!("-0x1p10")),
+            ],
+        );
     }
 
     #[test]
     fn check_f32() {
-        check::<f32>(&cases!(f32));
-        check::<f32>(&[
-            (hf32!("0x1p23"), hf32!("0x1p23")),
-            (hf32!("-0x1p23"), hf32!("-0x1p23")),
-        ]);
+        check::<f32>(roundf, &cases!(f32));
+        check::<f32>(
+            roundf,
+            &[
+                (hf32!("0x1p23"), hf32!("0x1p23")),
+                (hf32!("-0x1p23"), hf32!("-0x1p23")),
+            ],
+        );
     }
 
     #[test]
     fn check_f64() {
-        check::<f64>(&cases!(f64));
-        check::<f64>(&[
-            (hf64!("0x1p52"), hf64!("0x1p52")),
-            (hf64!("-0x1p52"), hf64!("-0x1p52")),
-        ]);
+        check::<f64>(round, &cases!(f64));
+        check::<f64>(
+            round,
+            &[
+                (hf64!("0x1p52"), hf64!("0x1p52")),
+                (hf64!("-0x1p52"), hf64!("-0x1p52")),
+            ],
+        );
     }
 
     #[test]
     #[cfg(f128_enabled)]
     fn check_f128() {
-        check::<f128>(&cases!(f128));
-        check::<f128>(&[
-            (hf128!("0x1p112"), hf128!("0x1p112")),
-            (hf128!("-0x1p112"), hf128!("-0x1p112")),
-        ]);
+        check::<f128>(roundf128, &cases!(f128));
+        check::<f128>(
+            roundf128,
+            &[
+                (hf128!("0x1p112"), hf128!("0x1p112")),
+                (hf128!("-0x1p112"), hf128!("-0x1p112")),
+            ],
+        );
     }
 }

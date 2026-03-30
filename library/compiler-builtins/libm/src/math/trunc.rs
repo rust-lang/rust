@@ -79,10 +79,10 @@ mod tests {
     }
 
     #[track_caller]
-    fn check<F: Float>(cases: &[(F, F, Status)]) {
+    fn check<F: Float>(f: fn(F) -> F, cases: &[(F, F, Status)]) {
         for &(x, exp_res, exp_stat) in cases {
             let FpResult { val, status } = generic::trunc_status(x);
-            assert_biteq!(val, exp_res, "trunc({x:?}) ({})", Hex(x));
+            assert_biteq!(val, exp_res, "generic::trunc_status({x:?}) ({})", Hex(x));
             assert_eq!(
                 status,
                 exp_stat,
@@ -90,44 +90,58 @@ mod tests {
                 Hex(x),
                 Hex(exp_res)
             );
+            let val = f(x);
+            assert_biteq!(val, exp_res, "trunc({x:?}) ({})", Hex(x));
         }
     }
 
     #[test]
     #[cfg(f16_enabled)]
     fn check_f16() {
-        check::<f16>(&cases!(f16));
-        check::<f16>(&[
-            (hf16!("0x1p10"), hf16!("0x1p10"), Status::OK),
-            (hf16!("-0x1p10"), hf16!("-0x1p10"), Status::OK),
-        ]);
+        check::<f16>(truncf16, &cases!(f16));
+        check::<f16>(
+            truncf16,
+            &[
+                (hf16!("0x1p10"), hf16!("0x1p10"), Status::OK),
+                (hf16!("-0x1p10"), hf16!("-0x1p10"), Status::OK),
+            ],
+        );
     }
 
     #[test]
     fn check_f32() {
-        check::<f32>(&cases!(f32));
-        check::<f32>(&[
-            (hf32!("0x1p23"), hf32!("0x1p23"), Status::OK),
-            (hf32!("-0x1p23"), hf32!("-0x1p23"), Status::OK),
-        ]);
+        check::<f32>(truncf, &cases!(f32));
+        check::<f32>(
+            truncf,
+            &[
+                (hf32!("0x1p23"), hf32!("0x1p23"), Status::OK),
+                (hf32!("-0x1p23"), hf32!("-0x1p23"), Status::OK),
+            ],
+        );
     }
 
     #[test]
     fn check_f64() {
-        check::<f64>(&cases!(f64));
-        check::<f64>(&[
-            (hf64!("0x1p52"), hf64!("0x1p52"), Status::OK),
-            (hf64!("-0x1p52"), hf64!("-0x1p52"), Status::OK),
-        ]);
+        check::<f64>(trunc, &cases!(f64));
+        check::<f64>(
+            trunc,
+            &[
+                (hf64!("0x1p52"), hf64!("0x1p52"), Status::OK),
+                (hf64!("-0x1p52"), hf64!("-0x1p52"), Status::OK),
+            ],
+        );
     }
 
     #[test]
     #[cfg(f128_enabled)]
     fn check_f128() {
-        check::<f128>(&cases!(f128));
-        check::<f128>(&[
-            (hf128!("0x1p112"), hf128!("0x1p112"), Status::OK),
-            (hf128!("-0x1p112"), hf128!("-0x1p112"), Status::OK),
-        ]);
+        check::<f128>(truncf128, &cases!(f128));
+        check::<f128>(
+            truncf128,
+            &[
+                (hf128!("0x1p112"), hf128!("0x1p112"), Status::OK),
+                (hf128!("-0x1p112"), hf128!("-0x1p112"), Status::OK),
+            ],
+        );
     }
 }
