@@ -1573,7 +1573,7 @@ pub const fn roundf128(x: f128) -> f128;
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fadd_fast<T: Copy>(a: T, b: T) -> T;
+pub unsafe fn fadd_fast<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
 /// Float subtraction that allows optimizations based on algebraic rules.
 /// Requires that inputs and output of the operation are finite, causing UB otherwise.
@@ -1581,7 +1581,7 @@ pub unsafe fn fadd_fast<T: Copy>(a: T, b: T) -> T;
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fsub_fast<T: Copy>(a: T, b: T) -> T;
+pub unsafe fn fsub_fast<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
 /// Float multiplication that allows optimizations based on algebraic rules.
 /// Requires that inputs and output of the operation are finite, causing UB otherwise.
@@ -1589,7 +1589,7 @@ pub unsafe fn fsub_fast<T: Copy>(a: T, b: T) -> T;
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fmul_fast<T: Copy>(a: T, b: T) -> T;
+pub unsafe fn fmul_fast<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
 /// Float division that allows optimizations based on algebraic rules.
 /// Requires that inputs and output of the operation are finite, causing UB otherwise.
@@ -1597,7 +1597,7 @@ pub unsafe fn fmul_fast<T: Copy>(a: T, b: T) -> T;
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fdiv_fast<T: Copy>(a: T, b: T) -> T;
+pub unsafe fn fdiv_fast<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
 /// Float remainder that allows optimizations based on algebraic rules.
 /// Requires that inputs and output of the operation are finite, causing UB otherwise.
@@ -1605,7 +1605,7 @@ pub unsafe fn fdiv_fast<T: Copy>(a: T, b: T) -> T;
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn frem_fast<T: Copy>(a: T, b: T) -> T;
+pub unsafe fn frem_fast<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
 /// Converts with LLVM’s fptoui/fptosi, which may return undef for values out of range
 /// (<https://github.com/rust-lang/rust/issues/10184>)
@@ -1613,42 +1613,43 @@ pub unsafe fn frem_fast<T: Copy>(a: T, b: T) -> T;
 /// Stabilized as [`f32::to_int_unchecked`] and [`f64::to_int_unchecked`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn float_to_int_unchecked<Float: Copy, Int: Copy>(value: Float) -> Int;
+pub unsafe fn float_to_int_unchecked<Float: bounds::FloatPrimitive, Int: Copy>(value: Float)
+-> Int;
 
 /// Float addition that allows optimizations based on algebraic rules.
 ///
 /// Stabilized as [`f16::algebraic_add`], [`f32::algebraic_add`], [`f64::algebraic_add`] and [`f128::algebraic_add`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn fadd_algebraic<T: Copy>(a: T, b: T) -> T;
+pub const fn fadd_algebraic<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
 /// Float subtraction that allows optimizations based on algebraic rules.
 ///
 /// Stabilized as [`f16::algebraic_sub`], [`f32::algebraic_sub`], [`f64::algebraic_sub`] and [`f128::algebraic_sub`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn fsub_algebraic<T: Copy>(a: T, b: T) -> T;
+pub const fn fsub_algebraic<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
 /// Float multiplication that allows optimizations based on algebraic rules.
 ///
 /// Stabilized as [`f16::algebraic_mul`], [`f32::algebraic_mul`], [`f64::algebraic_mul`] and [`f128::algebraic_mul`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn fmul_algebraic<T: Copy>(a: T, b: T) -> T;
+pub const fn fmul_algebraic<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
 /// Float division that allows optimizations based on algebraic rules.
 ///
 /// Stabilized as [`f16::algebraic_div`], [`f32::algebraic_div`], [`f64::algebraic_div`] and [`f128::algebraic_div`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn fdiv_algebraic<T: Copy>(a: T, b: T) -> T;
+pub const fn fdiv_algebraic<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
 /// Float remainder that allows optimizations based on algebraic rules.
 ///
 /// Stabilized as [`f16::algebraic_rem`], [`f32::algebraic_rem`], [`f64::algebraic_rem`] and [`f128::algebraic_rem`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn frem_algebraic<T: Copy>(a: T, b: T) -> T;
+pub const fn frem_algebraic<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
 /// Returns the number of bits set in an integer type `T`
 ///
@@ -3389,39 +3390,14 @@ pub const fn maximumf128(x: f128, y: f128) -> f128 {
     }
 }
 
-/// Returns the absolute value of an `f16`.
+/// Returns the absolute value of a floating-point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::abs`](../../std/primitive.f16.html#method.abs)
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn fabsf16(x: f16) -> f16;
-
-/// Returns the absolute value of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::abs`](../../std/primitive.f32.html#method.abs)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `abs` method. For example, [`f32::abs`].
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn fabsf32(x: f32) -> f32;
-
-/// Returns the absolute value of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::abs`](../../std/primitive.f64.html#method.abs)
-#[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-pub const fn fabsf64(x: f64) -> f64;
-
-/// Returns the absolute value of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::abs`](../../std/primitive.f128.html#method.abs)
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn fabsf128(x: f128) -> f128;
+pub const fn fabs<T: bounds::FloatPrimitive>(x: T) -> T;
 
 /// Copies the sign from `y` to `x` for `f16` values.
 ///

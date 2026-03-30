@@ -12,7 +12,7 @@ impl S {
 
 fn main() {
     S::bar();
-    //~^ ERROR no function or associated item named `bar`
+    //~^ ERROR no associated function or constant named `bar`
     //~| HELP you might have meant to use `foo`
 
     let s = S;

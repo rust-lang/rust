@@ -349,7 +349,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
         &mut self,
         pending_obligation: &mut PendingPredicateObligation<'tcx>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
-        pending_obligation.stalled_on.truncate(0);
+        pending_obligation.stalled_on.clear();
 
         let obligation = &mut pending_obligation.obligation;
 

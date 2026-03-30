@@ -1405,7 +1405,6 @@ impl Default for Options {
         };
 
         Options {
-            assert_incr_state: None,
             crate_types: Vec::new(),
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
@@ -2287,20 +2286,6 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
     if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
 }
 
-fn parse_assert_incr_state(
-    early_dcx: &EarlyDiagCtxt,
-    opt_assertion: &Option<String>,
-) -> Option<IncrementalStateAssertion> {
-    match opt_assertion {
-        Some(s) if s.as_str() == "loaded" => Some(IncrementalStateAssertion::Loaded),
-        Some(s) if s.as_str() == "not-loaded" => Some(IncrementalStateAssertion::NotLoaded),
-        Some(s) => {
-            early_dcx.early_fatal(format!("unexpected incremental state assertion value: {s}"))
-        }
-        None => None,
-    }
-}
-
 pub fn parse_externs(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
@@ -2505,8 +2490,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     }
 
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
-
-    let assert_incr_state = parse_assert_incr_state(early_dcx, &unstable_opts.assert_incr_state);
 
     if cg.profile_generate.enabled() && cg.profile_use.is_some() {
         early_dcx.early_fatal("options `-C profile-generate` and `-C profile-use` are exclusive");
@@ -2759,7 +2742,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
 
     Options {
-        assert_incr_state,
         crate_types,
         optimize: opt_level,
         debuginfo,

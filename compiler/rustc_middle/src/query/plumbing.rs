@@ -7,14 +7,15 @@ use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_errors::Diag;
+use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{QueryCache, QueryJob, QueryStackFrame};
-use crate::ty::TyCtxt;
+use crate::query::{IntoQueryKey, QueryCache, QueryJob, QueryStackFrame};
+use crate::ty::{self, TyCtxt};
 
 /// For a particular query, keeps track of "active" keys, i.e. keys whose
 /// evaluation has started but has not yet finished successfully.
@@ -200,7 +201,21 @@ pub struct TyCtxtEnsureDone<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
+impl<'tcx> TyCtxtEnsureOk<'tcx> {
+    pub fn typeck(self, def_id: impl IntoQueryKey<LocalDefId>) {
+        self.typeck_root(
+            self.tcx.typeck_root_def_id(def_id.into_query_key().to_def_id()).expect_local(),
+        )
+    }
+}
+
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn typeck(self, def_id: impl IntoQueryKey<LocalDefId>) -> &'tcx ty::TypeckResults<'tcx> {
+        self.typeck_root(
+            self.typeck_root_def_id(def_id.into_query_key().to_def_id()).expect_local(),
+        )
+    }
+
     /// Returns a transparent wrapper for `TyCtxt` which uses
     /// `span` as the location of queries performed through it.
     #[inline(always)]

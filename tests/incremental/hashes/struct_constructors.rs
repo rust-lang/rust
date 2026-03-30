@@ -60,9 +60,9 @@ pub fn change_field_order_regular_struct() -> RegularStruct {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_field_order_regular_struct() -> RegularStruct {
     RegularStruct {
@@ -91,9 +91,9 @@ pub fn add_field_regular_struct() -> RegularStruct {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_field_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
@@ -128,9 +128,9 @@ pub fn change_field_label_regular_struct() -> RegularStruct {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_field_label_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
@@ -165,9 +165,9 @@ pub fn change_constructor_path_regular_struct() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_constructor_path_regular_struct() {
     let _ = RegularStruct2 {
@@ -186,9 +186,9 @@ pub mod change_constructor_path_indirectly_regular_struct {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::RegularStruct2 as Struct;
 
-    #[rustc_clean(cfg="cfail2", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck")]
+    #[rustc_clean(cfg="cfail2", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck")]
+    #[rustc_clean(cfg="cfail5", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="cfail6")]
     pub fn function() -> Struct {
         Struct {
@@ -229,9 +229,9 @@ pub fn change_constructor_path_tuple_struct() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck_root")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck_root")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_constructor_path_tuple_struct() {
     let _ = TupleStruct2(0, 1, 2);
@@ -246,9 +246,9 @@ pub mod change_constructor_path_indirectly_tuple_struct {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::TupleStruct2 as Struct;
 
-    #[rustc_clean(cfg="cfail5", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck")]
+    #[rustc_clean(cfg="cfail5", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="cfail6")]
-    #[rustc_clean(cfg="cfail2", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck")]
+    #[rustc_clean(cfg="cfail2", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="cfail3")]
     pub fn function() -> Struct {
         Struct(0, 1, 2)

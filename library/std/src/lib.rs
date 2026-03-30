@@ -94,8 +94,8 @@
 //! pull-requests for your suggested changes.
 //!
 //! Contributions are appreciated! If you see a part of the docs that can be
-//! improved, submit a PR, or chat with us first on [Zulip][rust-zulip]
-//! #docs.
+//! improved, submit a PR, or chat with us first on [Zulip][t-libs-zulip]
+//! #t-libs.
 //!
 //! # A Tour of The Rust Standard Library
 //!
@@ -209,7 +209,7 @@
 //! [multithreading]: thread
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/ch03-02-data-types.html
-//! [rust-zulip]: https://rust-lang.zulipchat.com/
+//! [t-libs-zulip]: https://rust-lang.zulipchat.com/#narrow/channel/219381-t-libs/
 //! [array]: prim@array
 //! [slice]: prim@slice
 
@@ -337,6 +337,8 @@
 #![feature(formatting_options)]
 #![feature(funnel_shifts)]
 #![feature(generic_atomic)]
+#![feature(hash_map_internals)]
+#![feature(hash_map_macro)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(hint_must_use)]

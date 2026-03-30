@@ -75,9 +75,9 @@ fn add_lower_bound(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 fn add_lower_bound(slice: &[u32]) -> &[u32] {
     &slice[3..4]
@@ -92,9 +92,9 @@ fn add_upper_bound(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 fn add_upper_bound(slice: &[u32]) -> &[u32] {
     &slice[3..7]
@@ -109,9 +109,9 @@ fn change_mutability(slice: &mut [u32]) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 fn change_mutability(slice: &mut [u32]) -> u32 {
     (&    slice[3..5])[0]
@@ -126,9 +126,9 @@ fn exclusive_to_inclusive_range(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 fn exclusive_to_inclusive_range(slice: &[u32]) -> &[u32] {
     &slice[3..=7]

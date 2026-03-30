@@ -191,7 +191,7 @@ impl TestCx<'_> {
             let mut stdout = BufReader::new(adb.stdout.take().unwrap());
             let mut line = String::new();
             loop {
-                line.truncate(0);
+                line.clear();
                 stdout.read_line(&mut line).unwrap();
                 if line.starts_with("Listening on port 5039") {
                     break;

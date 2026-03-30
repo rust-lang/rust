@@ -1,8 +1,8 @@
-error[E0599]: no associated item named `XXX` found for type `u32` in the current scope
+error[E0599]: no associated function or constant named `XXX` found for type `u32` in the current scope
   --> $DIR/no-double-error.rs:8:14
    |
 LL |         u32::XXX => { }
-   |              ^^^ associated item not found in `u32`
+   |              ^^^ associated function or constant not found in `u32`
 
 error: aborting due to 1 previous error
 

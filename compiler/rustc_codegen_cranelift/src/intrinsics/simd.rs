@@ -493,7 +493,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
         }
 
-        sym::simd_fmin | sym::simd_fmax => {
+        sym::simd_minimum_number_nsz | sym::simd_maximum_number_nsz => {
             intrinsic_args!(fx, args => (x, y); intrinsic);
 
             if !x.layout().ty.is_simd() {
@@ -508,8 +508,12 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     _ => unreachable!("{:?}", lane_ty),
                 }
                 match intrinsic {
-                    sym::simd_fmin => crate::num::codegen_float_min(fx, x_lane, y_lane),
-                    sym::simd_fmax => crate::num::codegen_float_max(fx, x_lane, y_lane),
+                    sym::simd_minimum_number_nsz => {
+                        crate::num::codegen_float_min(fx, x_lane, y_lane)
+                    }
+                    sym::simd_maximum_number_nsz => {
+                        crate::num::codegen_float_max(fx, x_lane, y_lane)
+                    }
                     _ => unreachable!(),
                 }
             });
