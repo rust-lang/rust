@@ -17,12 +17,8 @@ impl RwLock {
     #[inline]
     pub fn read(&self) {
         let m = self.mode.get();
-
-        // Check for overflow.
-        assert!(m == isize::MAX, "too many active read locks on RwLock");
-
         if m >= 0 {
-            self.mode.set(m + 1);
+            self.mode.set(m.checked_add(1).expect("rwlock overflowed read locks"));
         } else {
             rtabort!("rwlock locked for writing");
         }
@@ -63,16 +59,19 @@ impl RwLock {
 
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        self.mode.set(self.mode.get() - 1);
+        assert!(
+            self.mode.replace(self.mode.get() - 1) > 0,
+            "rwlock has not been locked for reading"
+        );
     }
 
     #[inline]
     pub unsafe fn write_unlock(&self) {
-        assert_eq!(self.mode.replace(0), -1);
+        assert_eq!(self.mode.replace(0), -1, "rwlock has not been locked for writing");
     }
 
     #[inline]
     pub unsafe fn downgrade(&self) {
-        assert_eq!(self.mode.replace(1), -1);
+        assert_eq!(self.mode.replace(1), -1, "rwlock has not been locked for writing");
     }
 }
