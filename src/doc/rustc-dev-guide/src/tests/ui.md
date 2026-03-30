@@ -636,6 +636,13 @@ but not `tests/rustdoc-ui`) will specify
 - `-A unused`
 - `-W unused_attributes` (since these tend to be interesting for ui tests)
 - `-A internal_features`
+- `-A incomplete_features`
+- `-A unused_parens`
+- `-A unused_braces`
+
+For more details, see [runtest].
+
+[runtest]: https://github.com/rust-lang/rust/blob/HEAD/src/tools/compiletest/src/runtest.rs
 
 If:
 
