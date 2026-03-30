@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 /* origin: musl src/math/rint.c */
 
-use crate::support::{Float, FpResult, Round};
+use crate::support::{Float, FpResult, Status};
 
 /// IEEE 754-2019 `roundToIntegralExact`, which respects rounding mode and raises inexact if
 /// applicable.
 #[inline]
-pub fn rint_round<F: Float>(x: F, _round: Round) -> FpResult<F> {
+pub fn rint_status<F: Float>(x: F) -> FpResult<F> {
     let toint = F::ONE / F::EPSILON;
     let e = x.ex();
     let positive = x.is_sign_positive();
@@ -41,5 +41,10 @@ pub fn rint_round<F: Float>(x: F, _round: Round) -> FpResult<F> {
         }
     };
 
-    FpResult::ok(res)
+    let status = if res == x {
+        Status::OK
+    } else {
+        Status::INEXACT
+    };
+    FpResult::new(res, status)
 }

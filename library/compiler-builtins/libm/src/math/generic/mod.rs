@@ -45,7 +45,7 @@ pub use fminimum_num::fminimum_num;
 pub use fmod::fmod;
 pub use frexp::frexp;
 pub use ilogb::ilogb;
-pub use rint::rint_round;
+pub use rint::rint_status;
 pub use round::round;
 pub use scalbn::scalbn;
 #[cfg(test)]
