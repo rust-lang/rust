@@ -50,7 +50,7 @@ impl ops::AddAssign<u8> for IndentLevel {
 }
 
 impl IndentLevel {
-    pub fn single() -> IndentLevel {
+    pub fn zero() -> IndentLevel {
         IndentLevel(0)
     }
     pub fn is_zero(&self) -> bool {

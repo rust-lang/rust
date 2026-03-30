@@ -18,6 +18,7 @@ use hir_expand::{
 };
 use intern::{Symbol, sym};
 use rustc_hash::FxHashMap;
+use smallvec::smallvec;
 use stdx::never;
 use syntax::{
     AstNode, AstPtr, SyntaxNodePtr,
@@ -28,7 +29,6 @@ use syntax::{
     },
 };
 use thin_vec::ThinVec;
-use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
@@ -39,7 +39,7 @@ use crate::{
     expr_store::{
         Body, BodySourceMap, ExprPtr, ExpressionStore, ExpressionStoreBuilder,
         ExpressionStoreDiagnostics, ExpressionStoreSourceMap, HygieneId, LabelPtr, LifetimePtr,
-        PatPtr, TypePtr,
+        PatPtr, RootExprOrigin, TypePtr,
         expander::Expander,
         lower::generics::ImplTraitLowerFn,
         path::{AssociatedTypeBinding, GenericArg, GenericArgs, GenericArgsParentheses, Path},
@@ -53,6 +53,7 @@ use crate::{
     item_tree::FieldsShape,
     lang_item::{LangItemTarget, LangItems},
     nameres::{DefMap, LocalDefMap, MacroSubNs, block_def_map},
+    signatures::StructSignature,
     type_ref::{
         ArrayType, ConstRef, FnType, LifetimeRef, LifetimeRefId, Mutability, PathId, Rawness,
         RefType, TraitBoundModifier, TraitRef, TypeBound, TypeRef, TypeRefId, UseArgRef,
@@ -79,7 +80,7 @@ pub(super) fn lower_body(
     let mut self_param = None;
     let mut source_map_self_param = None;
     let mut params = vec![];
-    let mut collector = ExprCollector::new(db, module, current_file_id);
+    let mut collector = ExprCollector::body(db, module, current_file_id);
 
     let skip_body = AttrFlags::query(
         db,
@@ -117,9 +118,10 @@ pub(super) fn lower_body(
             params = (0..count).map(|_| collector.missing_pat()).collect();
         };
         let body_expr = collector.missing_expr();
+        collector.store.inference_roots = Some(smallvec![(body_expr, RootExprOrigin::BodyRoot)]);
         let (store, source_map) = collector.store.finish();
         return (
-            Body { store, params: params.into_boxed_slice(), self_param, body_expr },
+            Body { store, params: params.into_boxed_slice(), self_param },
             BodySourceMap { self_param: source_map_self_param, store: source_map },
         );
     }
@@ -173,10 +175,11 @@ pub(super) fn lower_body(
             }
         },
     );
+    collector.store.inference_roots = Some(smallvec![(body_expr, RootExprOrigin::BodyRoot)]);
 
     let (store, source_map) = collector.store.finish();
     (
-        Body { store, params: params.into_boxed_slice(), self_param, body_expr },
+        Body { store, params: params.into_boxed_slice(), self_param },
         BodySourceMap { self_param: source_map_self_param, store: source_map },
     )
 }
@@ -186,7 +189,7 @@ pub(crate) fn lower_type_ref(
     module: ModuleId,
     type_ref: InFile<Option<ast::Type>>,
 ) -> (ExpressionStore, ExpressionStoreSourceMap, TypeRefId) {
-    let mut expr_collector = ExprCollector::new(db, module, type_ref.file_id);
+    let mut expr_collector = ExprCollector::signature(db, module, type_ref.file_id);
     let type_ref =
         expr_collector.lower_type_ref_opt(type_ref.value, &mut ExprCollector::impl_trait_allocator);
     let (store, source_map) = expr_collector.store.finish();
@@ -200,13 +203,13 @@ pub(crate) fn lower_generic_params(
     file_id: HirFileId,
     param_list: Option<ast::GenericParamList>,
     where_clause: Option<ast::WhereClause>,
-) -> (Arc<ExpressionStore>, Arc<GenericParams>, ExpressionStoreSourceMap) {
-    let mut expr_collector = ExprCollector::new(db, module, file_id);
+) -> (ExpressionStore, GenericParams, ExpressionStoreSourceMap) {
+    let mut expr_collector = ExprCollector::signature(db, module, file_id);
     let mut collector = generics::GenericParamsCollector::new(def);
     collector.lower(&mut expr_collector, param_list, where_clause);
     let params = collector.finish();
     let (store, source_map) = expr_collector.store.finish();
-    (Arc::new(store), params, source_map)
+    (store, params, source_map)
 }
 
 pub(crate) fn lower_impl(
@@ -214,8 +217,8 @@ pub(crate) fn lower_impl(
     module: ModuleId,
     impl_syntax: InFile<ast::Impl>,
     impl_id: ImplId,
-) -> (ExpressionStore, ExpressionStoreSourceMap, TypeRefId, Option<TraitRef>, Arc<GenericParams>) {
-    let mut expr_collector = ExprCollector::new(db, module, impl_syntax.file_id);
+) -> (ExpressionStore, ExpressionStoreSourceMap, TypeRefId, Option<TraitRef>, GenericParams) {
+    let mut expr_collector = ExprCollector::signature(db, module, impl_syntax.file_id);
     let self_ty =
         expr_collector.lower_type_ref_opt_disallow_impl_trait(impl_syntax.value.self_ty());
     let trait_ = impl_syntax.value.trait_().and_then(|it| match &it {
@@ -242,8 +245,8 @@ pub(crate) fn lower_trait(
     module: ModuleId,
     trait_syntax: InFile<ast::Trait>,
     trait_id: TraitId,
-) -> (ExpressionStore, ExpressionStoreSourceMap, Arc<GenericParams>) {
-    let mut expr_collector = ExprCollector::new(db, module, trait_syntax.file_id);
+) -> (ExpressionStore, ExpressionStoreSourceMap, GenericParams) {
+    let mut expr_collector = ExprCollector::signature(db, module, trait_syntax.file_id);
     let mut collector = generics::GenericParamsCollector::with_self_param(
         &mut expr_collector,
         trait_id.into(),
@@ -264,14 +267,9 @@ pub(crate) fn lower_type_alias(
     module: ModuleId,
     alias: InFile<ast::TypeAlias>,
     type_alias_id: TypeAliasId,
-) -> (
-    ExpressionStore,
-    ExpressionStoreSourceMap,
-    Arc<GenericParams>,
-    Box<[TypeBound]>,
-    Option<TypeRefId>,
-) {
-    let mut expr_collector = ExprCollector::new(db, module, alias.file_id);
+) -> (ExpressionStore, ExpressionStoreSourceMap, GenericParams, Box<[TypeBound]>, Option<TypeRefId>)
+{
+    let mut expr_collector = ExprCollector::signature(db, module, alias.file_id);
     let bounds = alias
         .value
         .type_bound_list()
@@ -307,13 +305,13 @@ pub(crate) fn lower_function(
 ) -> (
     ExpressionStore,
     ExpressionStoreSourceMap,
-    Arc<GenericParams>,
+    GenericParams,
     Box<[TypeRefId]>,
     Option<TypeRefId>,
     bool,
     bool,
 ) {
-    let mut expr_collector = ExprCollector::new(db, module, fn_.file_id);
+    let mut expr_collector = ExprCollector::signature(db, module, fn_.file_id);
     let mut collector = generics::GenericParamsCollector::new(function_id.into());
     collector.lower(&mut expr_collector, fn_.value.generic_param_list(), fn_.value.where_clause());
     let mut params = vec![];
@@ -419,7 +417,7 @@ pub(crate) fn lower_function(
 pub struct ExprCollector<'db> {
     db: &'db dyn DefDatabase,
     cfg_options: &'db CfgOptions,
-    expander: Expander,
+    expander: Expander<'db>,
     def_map: &'db DefMap,
     local_def_map: &'db LocalDefMap,
     module: ModuleId,
@@ -532,7 +530,20 @@ impl BindingList {
 }
 
 impl<'db> ExprCollector<'db> {
-    pub fn new(
+    /// Creates a collector for a signature store, this will populate `const_expr_origins` to any
+    /// top level const arg roots.
+    pub fn signature(
+        db: &dyn DefDatabase,
+        module: ModuleId,
+        current_file_id: HirFileId,
+    ) -> ExprCollector<'_> {
+        let mut this = Self::body(db, module, current_file_id);
+        this.store.inference_roots = Some(Default::default());
+        this
+    }
+
+    /// Creates a collector for a bidy store.
+    pub fn body(
         db: &dyn DefDatabase,
         module: ModuleId,
         current_file_id: HirFileId,
@@ -577,7 +588,10 @@ impl<'db> ExprCollector<'db> {
         self.expander.span_map()
     }
 
-    pub fn lower_lifetime_ref(&mut self, lifetime: ast::Lifetime) -> LifetimeRefId {
+    pub(in crate::expr_store) fn lower_lifetime_ref(
+        &mut self,
+        lifetime: ast::Lifetime,
+    ) -> LifetimeRefId {
         // FIXME: Keyword check?
         let lifetime_ref = match &*lifetime.text() {
             "" | "'" => LifetimeRef::Error,
@@ -588,7 +602,10 @@ impl<'db> ExprCollector<'db> {
         self.alloc_lifetime_ref(lifetime_ref, AstPtr::new(&lifetime))
     }
 
-    pub fn lower_lifetime_ref_opt(&mut self, lifetime: Option<ast::Lifetime>) -> LifetimeRefId {
+    pub(in crate::expr_store) fn lower_lifetime_ref_opt(
+        &mut self,
+        lifetime: Option<ast::Lifetime>,
+    ) -> LifetimeRefId {
         match lifetime {
             Some(lifetime) => self.lower_lifetime_ref(lifetime),
             None => self.alloc_lifetime_ref_desugared(LifetimeRef::Placeholder),
@@ -596,7 +613,7 @@ impl<'db> ExprCollector<'db> {
     }
 
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
-    pub fn lower_type_ref(
+    pub(in crate::expr_store) fn lower_type_ref(
         &mut self,
         node: ast::Type,
         impl_trait_lower_fn: ImplTraitLowerFn<'_>,
@@ -621,6 +638,9 @@ impl<'db> ExprCollector<'db> {
             }
             ast::Type::ArrayType(inner) => {
                 let len = self.lower_const_arg_opt(inner.const_arg());
+                if let Some(const_expr_origins) = &mut self.store.inference_roots {
+                    const_expr_origins.push((len.expr, RootExprOrigin::ArrayLength));
+                }
                 TypeRef::Array(ArrayType {
                     ty: self.lower_type_ref_opt(inner.ty(), impl_trait_lower_fn),
                     len,
@@ -810,7 +830,7 @@ impl<'db> ExprCollector<'db> {
 
     /// Collect `GenericArgs` from the parts of a fn-like path, i.e. `Fn(X, Y)
     /// -> Z` (which desugars to `Fn<(X, Y), Output=Z>`).
-    pub fn lower_generic_args_from_fn_path(
+    pub(in crate::expr_store) fn lower_generic_args_from_fn_path(
         &mut self,
         args: Option<ast::ParenthesizedArgList>,
         ret_type: Option<ast::RetType>,
@@ -905,6 +925,9 @@ impl<'db> ExprCollector<'db> {
                 }
                 ast::GenericArg::ConstArg(arg) => {
                     let arg = self.lower_const_arg(arg);
+                    if let Some(const_expr_origins) = &mut self.store.inference_roots {
+                        const_expr_origins.push((arg.expr, RootExprOrigin::GenericArgsPath));
+                    }
                     args.push(GenericArg::Const(arg))
                 }
             }
@@ -1045,15 +1068,28 @@ impl<'db> ExprCollector<'db> {
     }
 
     fn lower_const_arg_opt(&mut self, arg: Option<ast::ConstArg>) -> ConstRef {
-        ConstRef { expr: self.collect_expr_opt(arg.and_then(|it| it.expr())) }
+        let const_expr_origins = self.store.inference_roots.take();
+        let r = ConstRef { expr: self.collect_expr_opt(arg.and_then(|it| it.expr())) };
+        self.store.inference_roots = const_expr_origins;
+        r
     }
 
-    fn lower_const_arg(&mut self, arg: ast::ConstArg) -> ConstRef {
-        ConstRef { expr: self.collect_expr_opt(arg.expr()) }
+    pub fn lower_const_arg(&mut self, arg: ast::ConstArg) -> ConstRef {
+        let const_expr_origins = self.store.inference_roots.take();
+        let r = ConstRef { expr: self.collect_expr_opt(arg.expr()) };
+        self.store.inference_roots = const_expr_origins;
+        r
     }
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
         self.maybe_collect_expr(expr).unwrap_or_else(|| self.missing_expr())
+    }
+
+    pub(in crate::expr_store) fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
+        match expr {
+            Some(expr) => self.collect_expr(expr),
+            None => self.missing_expr(),
+        }
     }
 
     /// Returns `None` if and only if the expression is `#[cfg]`d out.
@@ -2065,13 +2101,6 @@ impl<'db> ExprCollector<'db> {
         }
     }
 
-    pub fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
-        match expr {
-            Some(expr) => self.collect_expr(expr),
-            None => self.missing_expr(),
-        }
-    }
-
     fn collect_macro_as_stmt(
         &mut self,
         statements: &mut Vec<Statement>,
@@ -2332,7 +2361,7 @@ impl<'db> ExprCollector<'db> {
                         }
                         Some(ModuleDefId::AdtId(AdtId::StructId(s)))
                         // FIXME: This can cause a cycle if the user is writing invalid code
-                            if self.db.struct_signature(s).shape != FieldsShape::Record =>
+                            if StructSignature::of(self.db, s).shape != FieldsShape::Record =>
                         {
                             (None, Pat::Path(name.into()))
                         }

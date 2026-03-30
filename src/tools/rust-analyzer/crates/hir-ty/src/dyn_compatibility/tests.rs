@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use hir_def::db::DefDatabase;
+use hir_def::signatures::TraitSignature;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
@@ -40,8 +40,7 @@ fn check_dyn_compatibility<'a>(
             .declarations()
             .filter_map(|def| {
                 if let hir_def::ModuleDefId::TraitId(trait_id) = def {
-                    let name = db
-                        .trait_signature(trait_id)
+                    let name = TraitSignature::of(&db, trait_id)
                         .name
                         .display_no_db(file_id.edition(&db))
                         .to_smolstr();

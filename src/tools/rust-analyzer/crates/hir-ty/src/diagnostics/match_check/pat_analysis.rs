@@ -4,6 +4,7 @@ use std::{cell::LazyCell, fmt};
 
 use hir_def::{
     EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId, attrs::AttrFlags,
+    signatures::VariantFields,
 };
 use intern::sym;
 use rustc_pattern_analysis::{
@@ -363,7 +364,8 @@ impl<'a, 'db> PatCx for MatchCheckCtx<'a, 'db> {
                     let adt = adt_def.def_id().0;
                     let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
 
-                    let visibilities = LazyCell::new(|| self.db.field_visibilities(variant));
+                    let visibilities =
+                        LazyCell::new(|| VariantFields::field_visibilities(self.db, variant));
 
                     self.list_variant_fields(*ty, variant)
                         .map(move |(fid, ty)| {

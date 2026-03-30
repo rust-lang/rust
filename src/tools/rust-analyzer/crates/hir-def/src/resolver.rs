@@ -13,14 +13,13 @@ use rustc_hash::FxHashSet;
 use smallvec::{SmallVec, smallvec};
 use span::SyntaxContext;
 use syntax::ast::HasName;
-use triomphe::Arc;
 
 use crate::{
-    AdtId, AstIdLoc, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
-    ExternCrateId, FunctionId, FxIndexMap, GenericDefId, GenericParamId, HasModule, ImplId,
-    ItemContainerId, LifetimeParamId, Lookup, Macro2Id, MacroId, MacroRulesId, ModuleDefId,
-    ModuleId, ProcMacroId, StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId,
-    TypeParamId, UseId, VariantId,
+    AdtId, AstIdLoc, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
+    ExpressionStoreOwnerId, ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId,
+    GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId, Lookup, Macro2Id, MacroId,
+    MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitId, TypeAliasId,
+    TypeOrConstParamId, TypeParamId, UseId, VariantId,
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr_store::{
@@ -36,6 +35,7 @@ use crate::{
     lang_item::LangItemTarget,
     nameres::{DefMap, LocalDefMap, MacroSubNs, ResolvePathResultPrefixInfo, block_def_map},
     per_ns::PerNs,
+    signatures::ImplSignature,
     src::HasSource,
     type_ref::LifetimeRef,
     visibility::{RawVisibility, Visibility},
@@ -65,13 +65,13 @@ impl fmt::Debug for ModuleItemMap<'_> {
 }
 
 #[derive(Clone)]
-struct ExprScope {
-    owner: DefWithBodyId,
-    expr_scopes: Arc<ExprScopes>,
+struct ExprScope<'db> {
+    owner: ExpressionStoreOwnerId,
+    expr_scopes: &'db ExprScopes,
     scope_id: ScopeId,
 }
 
-impl fmt::Debug for ExprScope {
+impl fmt::Debug for ExprScope<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExprScope")
             .field("owner", &self.owner)
@@ -86,9 +86,9 @@ enum Scope<'db> {
     BlockScope(ModuleItemMap<'db>),
     /// Brings the generic parameters of an item into scope as well as the `Self` type alias /
     /// generic for ADTs and impls.
-    GenericParams { def: GenericDefId, params: Arc<GenericParams> },
+    GenericParams { def: GenericDefId, params: &'db GenericParams },
     /// Local bindings
-    ExprScope(ExprScope),
+    ExprScope(ExprScope<'db>),
     /// Macro definition inside bodies that affects all paths after it in the same block.
     MacroDefScope(MacroDefId),
 }
@@ -653,7 +653,7 @@ impl<'db> Resolver<'db> {
             match scope {
                 Scope::BlockScope(m) => traits.extend(m.def_map[m.module_id].scope.traits()),
                 &Scope::GenericParams { def: GenericDefId::ImplId(impl_), .. } => {
-                    let impl_data = db.impl_signature(impl_);
+                    let impl_data = ImplSignature::of(db, impl_);
                     if let Some(target_trait) = impl_data.target_trait
                         && let Some(TypeNs::TraitId(trait_)) = self
                             .resolve_path_in_type_ns_fully(db, &impl_data.store[target_trait.path])
@@ -724,19 +724,19 @@ impl<'db> Resolver<'db> {
 
     pub fn generic_params(&self) -> Option<&GenericParams> {
         self.scopes().find_map(|scope| match scope {
-            Scope::GenericParams { params, .. } => Some(&**params),
+            &Scope::GenericParams { params, .. } => Some(params),
             _ => None,
         })
     }
 
-    pub fn all_generic_params(&self) -> impl Iterator<Item = (&GenericParams, &GenericDefId)> {
+    pub fn all_generic_params(&self) -> impl Iterator<Item = (&GenericParams, GenericDefId)> {
         self.scopes().filter_map(|scope| match scope {
-            Scope::GenericParams { params, def } => Some((&**params, def)),
+            &Scope::GenericParams { params, def } => Some((params, def)),
             _ => None,
         })
     }
 
-    pub fn body_owner(&self) -> Option<DefWithBodyId> {
+    pub fn expression_store_owner(&self) -> Option<ExpressionStoreOwnerId> {
         self.scopes().find_map(|scope| match scope {
             Scope::ExprScope(it) => Some(it.owner),
             _ => None,
@@ -854,25 +854,30 @@ impl<'db> Resolver<'db> {
     pub fn update_to_inner_scope(
         &mut self,
         db: &'db dyn DefDatabase,
-        owner: DefWithBodyId,
+        owner: impl Into<ExpressionStoreOwnerId>,
+        expr_id: ExprId,
+    ) -> UpdateGuard {
+        self.update_to_inner_scope_(db, owner.into(), expr_id)
+    }
+
+    fn update_to_inner_scope_(
+        &mut self,
+        db: &'db dyn DefDatabase,
+        owner: ExpressionStoreOwnerId,
         expr_id: ExprId,
     ) -> UpdateGuard {
         #[inline(always)]
         fn append_expr_scope<'db>(
             db: &'db dyn DefDatabase,
             resolver: &mut Resolver<'db>,
-            owner: DefWithBodyId,
-            expr_scopes: &Arc<ExprScopes>,
+            owner: ExpressionStoreOwnerId,
+            expr_scopes: &'db ExprScopes,
             scope_id: ScopeId,
         ) {
             if let Some(macro_id) = expr_scopes.macro_def(scope_id) {
                 resolver.scopes.push(Scope::MacroDefScope(**macro_id));
             }
-            resolver.scopes.push(Scope::ExprScope(ExprScope {
-                owner,
-                expr_scopes: expr_scopes.clone(),
-                scope_id,
-            }));
+            resolver.scopes.push(Scope::ExprScope(ExprScope { owner, expr_scopes, scope_id }));
             if let Some(block) = expr_scopes.block(scope_id) {
                 let def_map = block_def_map(db, block);
                 let local_def_map = block.lookup(db).module.only_local_def_map(db);
@@ -890,21 +895,20 @@ impl<'db> Resolver<'db> {
         let start = self.scopes.len();
         let innermost_scope = self.scopes().find(|scope| !matches!(scope, Scope::MacroDefScope(_)));
         match innermost_scope {
-            Some(&Scope::ExprScope(ExprScope { scope_id, ref expr_scopes, owner })) => {
-                let expr_scopes = expr_scopes.clone();
+            Some(&Scope::ExprScope(ExprScope { scope_id, expr_scopes, owner })) => {
                 let scope_chain = expr_scopes
                     .scope_chain(expr_scopes.scope_for(expr_id))
                     .take_while(|&it| it != scope_id);
                 for scope_id in scope_chain {
-                    append_expr_scope(db, self, owner, &expr_scopes, scope_id);
+                    append_expr_scope(db, self, owner, expr_scopes, scope_id);
                 }
             }
             _ => {
-                let expr_scopes = db.expr_scopes(owner);
+                let expr_scopes = ExprScopes::of(db, owner);
                 let scope_chain = expr_scopes.scope_chain(expr_scopes.scope_for(expr_id));
 
                 for scope_id in scope_chain {
-                    append_expr_scope(db, self, owner, &expr_scopes, scope_id);
+                    append_expr_scope(db, self, owner, expr_scopes, scope_id);
                 }
             }
         }
@@ -1016,7 +1020,7 @@ impl<'db> Scope<'db> {
                     })
                 });
             }
-            &Scope::GenericParams { ref params, def: parent } => {
+            &Scope::GenericParams { params, def: parent } => {
                 if let GenericDefId::ImplId(impl_) = parent {
                     acc.add(&Name::new_symbol_root(sym::Self_), ScopeDef::ImplSelfType(impl_));
                 } else if let GenericDefId::AdtId(adt) = parent {
@@ -1026,7 +1030,7 @@ impl<'db> Scope<'db> {
                 for (local_id, param) in params.iter_type_or_consts() {
                     if let Some(name) = &param.name() {
                         let id = TypeOrConstParamId { parent, local_id };
-                        let data = &db.generic_params(parent)[local_id];
+                        let data = &GenericParams::of(db, parent)[local_id];
                         acc.add(
                             name,
                             ScopeDef::GenericParam(match data {
@@ -1060,20 +1064,21 @@ impl<'db> Scope<'db> {
 
 pub fn resolver_for_scope(
     db: &dyn DefDatabase,
-    owner: DefWithBodyId,
+    owner: impl Into<ExpressionStoreOwnerId> + HasResolver,
     scope_id: Option<ScopeId>,
 ) -> Resolver<'_> {
-    let r = owner.resolver(db);
-    let scopes = db.expr_scopes(owner);
-    resolver_for_scope_(db, scopes, scope_id, r, owner)
+    let store_owner = owner.into();
+    let r = store_owner.resolver(db);
+    let scopes = ExprScopes::of(db, store_owner);
+    resolver_for_scope_(db, scopes, scope_id, r, store_owner)
 }
 
 fn resolver_for_scope_<'db>(
     db: &'db dyn DefDatabase,
-    scopes: Arc<ExprScopes>,
+    scopes: &'db ExprScopes,
     scope_id: Option<ScopeId>,
     mut r: Resolver<'db>,
-    owner: DefWithBodyId,
+    owner: ExpressionStoreOwnerId,
 ) -> Resolver<'db> {
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     r.scopes.reserve(scope_chain.len());
@@ -1093,7 +1098,7 @@ fn resolver_for_scope_<'db>(
             r = r.push_scope(Scope::MacroDefScope(**macro_id));
         }
 
-        r = r.push_expr_scope(owner, Arc::clone(&scopes), scope);
+        r = r.push_expr_scope(owner, scopes, scope);
     }
     r
 }
@@ -1109,7 +1114,7 @@ impl<'db> Resolver<'db> {
         db: &'db dyn DefDatabase,
         def: GenericDefId,
     ) -> Resolver<'db> {
-        let params = db.generic_params(def);
+        let params = GenericParams::of(db, def);
         self.push_scope(Scope::GenericParams { def, params })
     }
 
@@ -1124,8 +1129,8 @@ impl<'db> Resolver<'db> {
 
     fn push_expr_scope(
         self,
-        owner: DefWithBodyId,
-        expr_scopes: Arc<ExprScopes>,
+        owner: ExpressionStoreOwnerId,
+        expr_scopes: &'db ExprScopes,
         scope_id: ScopeId,
     ) -> Resolver<'db> {
         self.push_scope(Scope::ExprScope(ExprScope { owner, expr_scopes, scope_id }))
@@ -1405,6 +1410,16 @@ impl HasResolver for GenericDefId {
             GenericDefId::ImplId(inner) => inner.resolver(db),
             GenericDefId::ConstId(inner) => inner.resolver(db),
             GenericDefId::StaticId(inner) => inner.resolver(db),
+        }
+    }
+}
+
+impl HasResolver for ExpressionStoreOwnerId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver<'_> {
+        match self {
+            ExpressionStoreOwnerId::Signature(def) => def.resolver(db),
+            ExpressionStoreOwnerId::Body(def) => def.resolver(db),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => variant_id.resolver(db),
         }
     }
 }

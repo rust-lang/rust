@@ -4,16 +4,17 @@ use std::{fmt::Write, iter, mem};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, GenericParamId, HasModule,
-    ItemContainerId, LocalFieldId, Lookup, TraitId, TupleId,
+    AdtId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, GeneralConstId, GenericParamId,
+    HasModule, ItemContainerId, LocalFieldId, Lookup, TraitId, TupleId,
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm,
-        Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread,
+        Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread, generics::GenericParams,
     },
     item_tree::FieldsShape,
     lang_item::LangItems,
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
+    signatures::{ConstSignature, EnumSignature, FunctionSignature, StaticSignature},
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -185,7 +186,7 @@ impl MirLowerError {
                 }
             }
             MirLowerError::MissingFunctionDefinition(owner, it) => {
-                let body = db.body(*owner);
+                let body = Body::of(db, *owner);
                 writeln!(
                     f,
                     "Missing function definition for {}",
@@ -202,13 +203,13 @@ impl MirLowerError {
             MirLowerError::GenericArgNotProvided(id, subst) => {
                 let param_name = match *id {
                     GenericParamId::TypeParamId(id) => {
-                        db.generic_params(id.parent())[id.local_id()].name().cloned()
+                        GenericParams::of(db, id.parent())[id.local_id()].name().cloned()
                     }
                     GenericParamId::ConstParamId(id) => {
-                        db.generic_params(id.parent())[id.local_id()].name().cloned()
+                        GenericParams::of(db, id.parent())[id.local_id()].name().cloned()
                     }
                     GenericParamId::LifetimeParamId(id) => {
-                        Some(db.generic_params(id.parent)[id.local_id].name.clone())
+                        Some(GenericParams::of(db, id.parent)[id.local_id].name.clone())
                     }
                 };
                 writeln!(
@@ -307,7 +308,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             closures: vec![],
         };
         let resolver = owner.resolver(db);
-        let env = db.trait_environment_for_body(owner);
+        let env = db.trait_environment(ExpressionStoreOwnerId::from(owner));
         let interner = DbInterner::new_with(db, resolver.krate());
         // FIXME(next-solver): Is `non_body_analysis()` correct here? Don't we want to reveal opaque types defined by this body?
         let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -472,7 +473,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 if let DefWithBodyId::FunctionId(f) = self.owner {
                     let assoc = f.lookup(self.db);
                     if let ItemContainerId::TraitId(t) = assoc.container {
-                        let name = &self.db.function_signature(f).name;
+                        let name = &FunctionSignature::of(self.db, f).name;
                         return Err(MirLowerError::TraitFunctionDefinition(t, name.clone()));
                     }
                 }
@@ -1546,6 +1547,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         MirLowerError::ConstEvalError(name.into(), Box::new(e))
                     })?
                 }
+                GeneralConstId::AnonConstId(_) => {
+                    return Err(MirLowerError::IncompleteExpr);
+                }
             }
         };
         let ty = self
@@ -1553,6 +1557,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             .value_ty(match const_id {
                 GeneralConstId::ConstId(id) => id.into(),
                 GeneralConstId::StaticId(id) => id.into(),
+                GeneralConstId::AnonConstId(_) => unreachable!("handled above"),
             })
             .unwrap()
             .instantiate(self.interner(), subst);
@@ -1989,7 +1994,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 let loc = variant.lookup(db);
                 let name = format!(
                     "{}::{}",
-                    self.db.enum_signature(loc.parent).name.display(db, edition),
+                    EnumSignature::of(db, loc.parent).name.display(db, edition),
                     loc.parent
                         .enum_variants(self.db)
                         .variant_name_by_id(variant)
@@ -2106,8 +2111,10 @@ pub fn mir_body_for_closure_query<'db>(
     closure: InternedClosureId,
 ) -> Result<'db, Arc<MirBody>> {
     let InternedClosure(owner, expr) = db.lookup_intern_closure(closure);
-    let body = db.body(owner);
-    let infer = InferenceResult::for_body(db, owner);
+    let body_owner =
+        owner.as_def_with_body().expect("MIR lowering should only happen for body-owned closures");
+    let body = Body::of(db, body_owner);
+    let infer = InferenceResult::of(db, body_owner);
     let Expr::Closure { args, body: root, .. } = &body[expr] else {
         implementation_error!("closure expression is not closure");
     };
@@ -2115,7 +2122,7 @@ pub fn mir_body_for_closure_query<'db>(
         implementation_error!("closure expression is not closure");
     };
     let (captures, kind) = infer.closure_info(closure);
-    let mut ctx = MirLowerCtx::new(db, owner, &body.store, infer);
+    let mut ctx = MirLowerCtx::new(db, body_owner, &body.store, infer);
     // 0 is return local
     ctx.result.locals.alloc(Local { ty: infer.expr_ty(*root).store() });
     let closure_local = ctx.result.locals.alloc(Local {
@@ -2138,7 +2145,7 @@ pub fn mir_body_for_closure_query<'db>(
     });
     ctx.result.param_locals.push(closure_local);
     let sig = ctx.interner().signature_unclosure(substs.as_closure().sig(), Safety::Safe);
-    let resolver_guard = ctx.resolver.update_to_inner_scope(db, owner, expr);
+    let resolver_guard = ctx.resolver.update_to_inner_scope(db, body_owner, expr);
     let current = ctx.lower_params_and_bindings(
         args.iter().zip(sig.skip_binder().inputs().iter()).map(|(it, y)| (*it, *y)),
         None,
@@ -2222,13 +2229,12 @@ pub fn mir_body_query<'db>(
     let edition = krate.data(db).edition;
     let detail = match def {
         DefWithBodyId::FunctionId(it) => {
-            db.function_signature(it).name.display(db, edition).to_string()
+            FunctionSignature::of(db, it).name.display(db, edition).to_string()
         }
         DefWithBodyId::StaticId(it) => {
-            db.static_signature(it).name.display(db, edition).to_string()
+            StaticSignature::of(db, it).name.display(db, edition).to_string()
         }
-        DefWithBodyId::ConstId(it) => db
-            .const_signature(it)
+        DefWithBodyId::ConstId(it) => ConstSignature::of(db, it)
             .name
             .clone()
             .unwrap_or_else(Name::missing)
@@ -2243,9 +2249,9 @@ pub fn mir_body_query<'db>(
         }
     };
     let _p = tracing::info_span!("mir_body_query", ?detail).entered();
-    let body = db.body(def);
-    let infer = InferenceResult::for_body(db, def);
-    let mut result = lower_body_to_mir(db, def, &body, infer, body.body_expr)?;
+    let body = Body::of(db, def);
+    let infer = InferenceResult::of(db, def);
+    let mut result = lower_body_to_mir(db, def, body, infer, body.root_expr())?;
     result.shrink_to_fit();
     Ok(Arc::new(result))
 }
@@ -2269,7 +2275,7 @@ pub fn lower_body_to_mir<'db>(
     // but this is currently also used for `X` in `[(); X]` which live in the same expression store
     root_expr: ExprId,
 ) -> Result<'db, MirBody> {
-    let is_root = root_expr == body.body_expr;
+    let is_root = root_expr == body.root_expr();
     // Extract params and self_param only when lowering the body's root expression for a function.
     if is_root && let DefWithBodyId::FunctionId(fid) = owner {
         let callable_sig =

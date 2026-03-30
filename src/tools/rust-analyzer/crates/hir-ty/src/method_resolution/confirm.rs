@@ -456,7 +456,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
 
         substs_from_args_and_bindings(
             self.db(),
-            self.ctx.body,
+            self.ctx.store,
             generic_args,
             self.candidate.into(),
             true,

@@ -142,12 +142,12 @@ fn edit_struct_def(
 fn edit_struct_references(
     ctx: &AssistContext<'_>,
     edit: &mut SourceChangeBuilder,
-    strukt: Either<hir::Struct, hir::Variant>,
+    strukt: Either<hir::Struct, hir::EnumVariant>,
     names: &[ast::Name],
 ) {
     let strukt_def = match strukt {
         Either::Left(s) => Definition::Adt(hir::Adt::Struct(s)),
-        Either::Right(v) => Definition::Variant(v),
+        Either::Right(v) => Definition::EnumVariant(v),
     };
     let usages = strukt_def.usages(&ctx.sema).include_self_refs().all();
 
@@ -191,7 +191,7 @@ fn process_struct_name_reference(
                     full_path,
                     generate_record_pat_list(&tuple_struct_pat, names),
                 );
-                editor.replace_all(cover_edit_range(source, range), vec![new.syntax().clone().into()]);
+                editor.replace_all(cover_edit_range(source.syntax(), range), vec![new.syntax().clone().into()]);
             },
             ast::PathExpr(path_expr) => {
                 let call_expr = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
@@ -207,7 +207,7 @@ fn process_struct_name_reference(
                 let mut first_insert = vec![];
                 for (expr, name) in arg_list.args().zip(names) {
                     let range = ctx.sema.original_range_opt(expr.syntax())?.range;
-                    let place = cover_edit_range(source, range);
+                    let place = cover_edit_range(source.syntax(), range);
                     let elements = vec![
                         make.name_ref(&name.text()).syntax().clone().into(),
                         make.token(T![:]).into(),
@@ -236,7 +236,7 @@ fn process_delimiter(
     first_insert: Vec<syntax::SyntaxElement>,
 ) {
     let Some(range) = ctx.sema.original_range_opt(list.syntax()) else { return };
-    let place = cover_edit_range(source, range.range);
+    let place = cover_edit_range(source.syntax(), range.range);
 
     let l_paren = match place.start() {
         syntax::NodeOrToken::Node(node) => node.first_token(),
@@ -290,7 +290,7 @@ fn edit_field_references(
                     && let Some(original) = ctx.sema.original_range_opt(name_ref.syntax())
                 {
                     editor.replace_all(
-                        cover_edit_range(&source, original.range),
+                        cover_edit_range(source.syntax(), original.range),
                         vec![name.syntax().clone().into()],
                     );
                 }

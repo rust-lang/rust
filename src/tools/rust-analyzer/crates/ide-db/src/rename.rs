@@ -170,7 +170,7 @@ impl Definition {
                 hir::Adt::Union(it) => name_range(it, sema).and_then(syn_ctx_is_root),
                 hir::Adt::Enum(it) => name_range(it, sema).and_then(syn_ctx_is_root),
             },
-            Definition::Variant(it) => name_range(it, sema).and_then(syn_ctx_is_root),
+            Definition::EnumVariant(it) => name_range(it, sema).and_then(syn_ctx_is_root),
             Definition::Const(it) => name_range(it, sema).and_then(syn_ctx_is_root),
             Definition::Static(it) => name_range(it, sema).and_then(syn_ctx_is_root),
             Definition::Trait(it) => name_range(it, sema).and_then(syn_ctx_is_root),

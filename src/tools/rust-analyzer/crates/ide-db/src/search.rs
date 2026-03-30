@@ -10,9 +10,9 @@ use std::{cell::LazyCell, cmp::Reverse};
 use base_db::{RootQueryDb, SourceDatabase};
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, DefWithBody, EditionedFileId, FileRange, FileRangeWrapper, HasAttrs,
-    HasContainer, HasSource, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer,
-    ModuleSource, PathResolution, Semantics, Visibility,
+    Adt, AsAssocItem, DefWithBody, EditionedFileId, ExpressionStoreOwner, FileRange,
+    FileRangeWrapper, HasAttrs, HasContainer, HasSource, InFile, InFileWrapper, InRealFile,
+    InlineAsmOperand, ItemContainer, ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
@@ -310,10 +310,26 @@ impl Definition {
 
         if let Definition::Local(var) = self {
             let def = match var.parent(db) {
-                DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                ExpressionStoreOwner::Body(def) => match def {
+                    DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::EnumVariant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::Signature(def) => match def {
+                    hir::GenericDef::Function(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Adt(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Trait(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::TypeAlias(it) => {
+                        it.source(db).map(|src| src.syntax().cloned())
+                    }
+                    hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::VariantFields(it) => {
+                    it.source(db).map(|src| src.syntax().cloned())
+                }
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -325,10 +341,26 @@ impl Definition {
 
         if let Definition::InlineAsmOperand(op) = self {
             let def = match op.parent(db) {
-                DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                ExpressionStoreOwner::Body(def) => match def {
+                    DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::EnumVariant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::Signature(def) => match def {
+                    hir::GenericDef::Function(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Adt(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Trait(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::TypeAlias(it) => {
+                        it.source(db).map(|src| src.syntax().cloned())
+                    }
+                    hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::VariantFields(it) => {
+                    it.source(db).map(|src| src.syntax().cloned())
+                }
             };
             return match def {
                 Some(def) => SearchScope::file_range(

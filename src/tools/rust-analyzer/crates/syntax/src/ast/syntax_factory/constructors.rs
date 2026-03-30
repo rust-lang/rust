@@ -29,6 +29,10 @@ impl SyntaxFactory {
         make::ext::expr_todo().clone_for_update()
     }
 
+    pub fn expr_self(&self) -> ast::Expr {
+        make::ext::expr_self().clone_for_update()
+    }
+
     pub fn lifetime(&self, text: &str) -> ast::Lifetime {
         make::lifetime(text).clone_for_update()
     }
@@ -57,6 +61,26 @@ impl SyntaxFactory {
         }
 
         ast
+    }
+
+    pub fn type_bound(&self, bound: ast::Type) -> ast::TypeBound {
+        make::type_bound(bound).clone_for_update()
+    }
+
+    pub fn type_bound_list(
+        &self,
+        bounds: impl IntoIterator<Item = ast::TypeBound>,
+    ) -> Option<ast::TypeBoundList> {
+        let (bounds, input) = iterator_input(bounds);
+        let ast = make::type_bound_list(bounds)?.clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input, ast.bounds().map(|b| b.syntax().clone()));
+            builder.finish(&mut mapping);
+        }
+
+        Some(ast)
     }
 
     pub fn type_param(
@@ -1450,6 +1474,22 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn record_expr_field_list(
+        &self,
+        fields: impl IntoIterator<Item = ast::RecordExprField>,
+    ) -> ast::RecordExprFieldList {
+        let (fields, input) = iterator_input(fields);
+        let ast = make::record_expr_field_list(fields).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input, ast.fields().map(|f| f.syntax().clone()));
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn record_expr_field(
         &self,
         name: ast::NameRef,
@@ -1460,7 +1500,20 @@ impl SyntaxFactory {
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
 
-            builder.map_node(name.syntax().clone(), ast.name_ref().unwrap().syntax().clone());
+            if let Some(ast_name_ref) = ast.name_ref() {
+                // NameRef is a direct child
+                builder.map_node(name.syntax().clone(), ast_name_ref.syntax().clone());
+            } else {
+                // NameRef is nested inside PathExpr > Path > PathSegment.
+                // map_node requires the output to be a direct child of the builder's parent, so
+                // we need a separate builder scoped to PathSegment.
+                let ast::Expr::PathExpr(path_expr) = ast.expr().unwrap() else { unreachable!() };
+                let path_segment = path_expr.path().unwrap().segment().unwrap();
+                let inner_name_ref = path_segment.name_ref().unwrap();
+                let mut inner_builder = SyntaxMappingBuilder::new(path_segment.syntax().clone());
+                inner_builder.map_node(name.syntax().clone(), inner_name_ref.syntax().clone());
+                inner_builder.finish(&mut mapping);
+            }
             if let Some(expr) = expr {
                 builder.map_node(expr.syntax().clone(), ast.expr().unwrap().syntax().clone());
             }
@@ -1665,8 +1718,10 @@ impl SyntaxFactory {
             }
 
             if let Some(discriminant) = discriminant {
-                builder
-                    .map_node(discriminant.syntax().clone(), ast.expr().unwrap().syntax().clone());
+                builder.map_node(
+                    discriminant.syntax().clone(),
+                    ast.const_arg().unwrap().syntax().clone(),
+                );
             }
 
             builder.finish(&mut mapping);
@@ -1757,6 +1812,10 @@ impl SyntaxFactory {
         }
 
         ast
+    }
+
+    pub fn assoc_item_list_empty(&self) -> ast::AssocItemList {
+        make::assoc_item_list(None).clone_for_update()
     }
 
     pub fn attr_outer(&self, meta: ast::Meta) -> ast::Attr {

@@ -480,7 +480,7 @@ fn rename_to_self(
     }
 
     let fn_def = match local.parent(sema.db) {
-        hir::DefWithBody::Function(func) => func,
+        hir::ExpressionStoreOwner::Body(hir::DefWithBody::Function(func)) => func,
         _ => bail!("Cannot rename local to self outside of function"),
     };
 
@@ -743,7 +743,7 @@ fn rename_self_to_param(
     }
 
     let fn_def = match local.parent(sema.db) {
-        hir::DefWithBody::Function(func) => func,
+        hir::ExpressionStoreOwner::Body(hir::DefWithBody::Function(func)) => func,
         _ => bail!("Cannot rename local to self outside of function"),
     };
 

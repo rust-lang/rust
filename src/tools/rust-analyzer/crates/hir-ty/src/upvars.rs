@@ -44,10 +44,10 @@ pub fn upvars_mentioned(
     db: &dyn HirDatabase,
     owner: DefWithBodyId,
 ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
-    let body = db.body(owner);
+    let body = Body::of(db, owner);
     let mut resolver = owner.resolver(db);
     let mut result = FxHashMap::default();
-    handle_expr_outside_closure(db, &mut resolver, owner, &body, body.body_expr, &mut result);
+    handle_expr_outside_closure(db, &mut resolver, owner, body, body.root_expr(), &mut result);
     return if result.is_empty() {
         None
     } else {
@@ -198,7 +198,7 @@ fn resolve_maybe_upvar<'db>(
 #[cfg(test)]
 mod tests {
     use expect_test::{Expect, expect};
-    use hir_def::{ModuleDefId, db::DefDatabase, nameres::crate_def_map};
+    use hir_def::{ModuleDefId, expr_store::Body, nameres::crate_def_map};
     use itertools::Itertools;
     use span::Edition;
     use test_fixture::WithFixture;
@@ -219,7 +219,7 @@ mod tests {
                 })
                 .exactly_one()
                 .unwrap_or_else(|_| panic!("expected one function"));
-            let (body, source_map) = db.body_with_source_map(func.into());
+            let (body, source_map) = Body::with_source_map(&db, func.into());
             let Some(upvars) = upvars_mentioned(&db, func.into()) else {
                 expectation.assert_eq("");
                 return;

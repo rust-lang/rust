@@ -3,14 +3,14 @@ use std::iter::{self, Peekable};
 use either::Either;
 use hir::{Adt, AsAssocItem, Crate, FindPathConfig, HasAttrs, ModuleDef, Semantics};
 use ide_db::RootDatabase;
-use ide_db::assists::ExprFillDefaultMode;
 use ide_db::syntax_helpers::suggest_name;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
-use syntax::ToSmolStr;
-use syntax::ast::edit::{AstNodeEdit, IndentLevel};
+use syntax::ast::edit::IndentLevel;
 use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::ast::{self, AstNode, MatchArmList, MatchExpr, Pat, make};
+use syntax::syntax_editor::{Position, SyntaxEditor};
+use syntax::{SyntaxKind, SyntaxNode, ToSmolStr};
 
 use crate::{AssistContext, AssistId, Assists, utils};
 
@@ -80,9 +80,16 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
     let module = scope.module();
     let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(scope.krate()));
     let self_ty = if ctx.config.prefer_self_ty {
-        scope
-            .containing_function()
-            .and_then(|function| function.as_assoc_item(ctx.db())?.implementing_ty(ctx.db()))
+        scope.expression_store_owner().and_then(|def| {
+            match def {
+                hir::ExpressionStoreOwner::Body(def_with_body) => {
+                    def_with_body.as_assoc_item(ctx.db())
+                }
+                hir::ExpressionStoreOwner::Signature(def) => def.as_assoc_item(ctx.db()),
+                hir::ExpressionStoreOwner::VariantFields(_) => None,
+            }?
+            .implementing_ty(ctx.db())
+        })
     } else {
         None
     };
@@ -224,61 +231,26 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             // having any hidden variants means that we need a catch-all arm
             needs_catch_all_arm |= has_hidden_variants;
 
-            let missing_arms = missing_pats
+            let mut missing_arms = missing_pats
                 .filter(|(_, hidden)| {
                     // filter out hidden patterns because they're handled by the catch-all arm
                     !hidden
                 })
-                .map(|(pat, _)| {
-                    make.match_arm(
-                        pat,
-                        None,
-                        match ctx.config.expr_fill_default {
-                            ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                            ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-                            ExprFillDefaultMode::Default => make::ext::expr_todo(),
-                        },
-                    )
-                });
-
-            let mut arms: Vec<_> = match_arm_list
-                .arms()
-                .filter(|arm| {
-                    if matches!(arm.pat(), Some(ast::Pat::WildcardPat(_))) {
-                        if arm.expr().is_none_or(is_empty_expr) {
-                            false
-                        } else {
-                            cov_mark::hit!(add_missing_match_arms_empty_expr);
-                            true
-                        }
-                    } else {
-                        true
-                    }
-                })
-                .map(|arm| arm.reset_indent().indent(IndentLevel(1)))
-                .collect();
-
-            let first_new_arm_idx = arms.len();
-            arms.extend(missing_arms);
+                .map(|(pat, _)| make.match_arm(pat, None, utils::expr_fill_default(ctx.config)))
+                .collect::<Vec<_>>();
 
             if needs_catch_all_arm && !has_catch_all_arm {
                 cov_mark::hit!(added_wildcard_pattern);
                 let arm = make.match_arm(
                     make.wildcard_pat().into(),
                     None,
-                    match ctx.config.expr_fill_default {
-                        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-                        ExprFillDefaultMode::Default => make::ext::expr_todo(),
-                    },
+                    utils::expr_fill_default(ctx.config),
                 );
-                arms.push(arm);
+                missing_arms.push(arm);
             }
 
-            let new_match_arm_list = make.match_arm_list(arms);
-
             // FIXME: Hack for syntax trees not having great support for macros
-            // Just replace the element that the original range came from
+            // Just edit the element that the original range came from
             let old_place = {
                 // Find the original element
                 let file = ctx.sema.parse(arm_list_range.file_id);
@@ -295,25 +267,27 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             };
 
             let mut editor = builder.make_editor(&old_place);
-            let new_match_arm_list = new_match_arm_list.indent(IndentLevel::from_node(&old_place));
-            editor.replace(old_place, new_match_arm_list.syntax());
+            let mut arms_edit = ArmsEdit { match_arm_list, place: old_place, last_arm: None };
+
+            arms_edit.remove_wildcard_arms(ctx, &mut editor);
+            arms_edit.add_comma_after_last_arm(ctx, &make, &mut editor);
+            arms_edit.append_arms(&missing_arms, &make, &mut editor);
 
             if let Some(cap) = ctx.config.snippet_cap {
-                if let Some(it) = new_match_arm_list
-                    .arms()
-                    .nth(first_new_arm_idx)
+                if let Some(it) = missing_arms
+                    .first()
                     .and_then(|arm| arm.syntax().descendants().find_map(ast::WildcardPat::cast))
                 {
                     editor.add_annotation(it.syntax(), builder.make_placeholder_snippet(cap));
                 }
 
-                for arm in new_match_arm_list.arms().skip(first_new_arm_idx) {
+                for arm in &missing_arms {
                     if let Some(expr) = arm.expr() {
                         editor.add_annotation(expr.syntax(), builder.make_placeholder_snippet(cap));
                     }
                 }
 
-                if let Some(arm) = new_match_arm_list.arms().skip(first_new_arm_idx).last() {
+                if let Some(arm) = missing_arms.last() {
                     editor.add_annotation(arm.syntax(), builder.make_tabstop_after(cap));
                 }
             }
@@ -372,6 +346,101 @@ fn cursor_at_trivial_match_arm_list(
     None
 }
 
+struct ArmsEdit {
+    match_arm_list: MatchArmList,
+    place: SyntaxNode,
+    last_arm: Option<ast::MatchArm>,
+}
+
+impl ArmsEdit {
+    fn remove_wildcard_arms(&mut self, ctx: &AssistContext<'_>, editor: &mut SyntaxEditor) {
+        for arm in self.match_arm_list.arms() {
+            if !matches!(arm.pat(), Some(Pat::WildcardPat(_))) {
+                self.last_arm = Some(arm);
+                continue;
+            }
+            if !arm.expr().is_none_or(is_empty_expr) {
+                cov_mark::hit!(add_missing_match_arms_empty_expr);
+                self.last_arm = Some(arm);
+                continue;
+            }
+            let Some(range) = self.cover_edit_range(ctx, &arm) else { continue };
+
+            let prev = match range.start() {
+                syntax::NodeOrToken::Node(node) => {
+                    node.first_token().and_then(|it| it.prev_token())
+                }
+                syntax::NodeOrToken::Token(tok) => tok.prev_token(),
+            };
+            if let Some(prev) = prev
+                && prev.kind() == SyntaxKind::WHITESPACE
+            {
+                editor.delete(prev);
+            }
+
+            editor.delete_all(range);
+        }
+    }
+
+    fn append_arms(&self, arms: &[ast::MatchArm], make: &SyntaxFactory, editor: &mut SyntaxEditor) {
+        let Some(mut before) = self.place.last_token() else {
+            stdx::never!("match arm list not contain any token");
+            return;
+        };
+        if let Some(prev) = before.prev_token()
+            && prev.kind() == SyntaxKind::WHITESPACE
+        {
+            before = prev;
+        }
+        let open_curly =
+            !self.place.text().contains_char('\n') || before.kind() == SyntaxKind::WHITESPACE;
+        let indent = IndentLevel::from_node(&self.place);
+        let arm_indent = indent + 1;
+        let indent = make.whitespace(&format!("\n{indent}"));
+        let arm_indent = make.whitespace(&format!("\n{arm_indent}"));
+        let elements = arms
+            .iter()
+            .flat_map(|arm| [arm_indent.clone().into(), arm.syntax().clone().into()])
+            .chain(open_curly.then(|| indent.clone().into()))
+            .collect();
+
+        if before.kind() == SyntaxKind::WHITESPACE {
+            editor.replace_with_many(before, elements);
+        } else {
+            editor.insert_all(Position::before(before), elements);
+        }
+    }
+
+    fn add_comma_after_last_arm(
+        &self,
+        ctx: &AssistContext<'_>,
+        make: &SyntaxFactory,
+        editor: &mut SyntaxEditor,
+    ) {
+        if let Some(last_arm) = &self.last_arm
+            && last_arm.comma_token().is_none()
+            && last_arm.expr().is_none_or(|it| !it.is_block_like())
+            && let Some(range) = self.cover_edit_range(ctx, last_arm)
+        {
+            editor.insert(Position::after(range.end()), make.token(syntax::T![,]));
+        }
+    }
+
+    fn cover_edit_range(
+        &self,
+        ctx: &AssistContext<'_>,
+        node: &impl AstNode,
+    ) -> Option<std::ops::RangeInclusive<syntax::SyntaxElement>> {
+        let range = ctx.sema.original_range_opt(node.syntax())?;
+
+        if !self.place.text_range().contains_range(range.range) {
+            return None;
+        }
+
+        Some(utils::cover_edit_range(&self.place, range.range))
+    }
+}
+
 fn is_variant_missing(existing_pats: &[Pat], var: &Pat) -> bool {
     !existing_pats.iter().any(|pat| does_pat_match_variant(pat, var))
 }
@@ -409,7 +478,7 @@ enum ExtendedEnum {
 enum ExtendedVariant {
     True,
     False,
-    Variant { variant: hir::Variant, use_self: bool },
+    Variant { variant: hir::EnumVariant, use_self: bool },
 }
 
 impl ExtendedVariant {
@@ -1749,7 +1818,7 @@ enum Test {
 
 fn foo(t: Test) {
     m!(match t {
-        Test::A=>(),
+        Test::A => (),
         Test::B => ${1:todo!()},
         Test::C => ${2:todo!()},$0
     });
@@ -2182,6 +2251,35 @@ fn foo(t: E) {
     match t {
         E::A => ${1:todo!()},
         E::B => ${2:todo!()},$0
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn keep_comments() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum E { A, B, C }
+
+fn foo(t: E) -> i32 {
+    match $0t {
+        // variant a
+        E::A => 2
+        // comment on end
+    }
+}"#,
+            r#"
+enum E { A, B, C }
+
+fn foo(t: E) -> i32 {
+    match t {
+        // variant a
+        E::A => 2,
+        // comment on end
+        E::B => ${1:todo!()},
+        E::C => ${2:todo!()},$0
     }
 }"#,
         );

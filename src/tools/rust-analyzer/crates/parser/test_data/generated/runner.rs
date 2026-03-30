@@ -25,6 +25,8 @@ mod ok {
     #[test]
     fn asm_label() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_label.rs"); }
     #[test]
+    fn asm_sym_paren() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_sym_paren.rs"); }
+    #[test]
     fn assoc_const_eq() {
         run_and_expect_no_errors("test_data/parser/inline/ok/assoc_const_eq.rs");
     }

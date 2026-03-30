@@ -210,7 +210,7 @@ impl ast::AssocItemList {
                     normalize_ws_between_braces(editor, self.syntax());
                     (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly), "\n")
                 }
-                None => (IndentLevel::single(), Position::last_child_of(self.syntax()), "\n"),
+                None => (IndentLevel::zero(), Position::last_child_of(self.syntax()), "\n"),
             },
         };
 
@@ -242,7 +242,7 @@ impl ast::VariantList {
                     normalize_ws_between_braces(editor, self.syntax());
                     (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly))
                 }
-                None => (IndentLevel::single(), Position::last_child_of(self.syntax())),
+                None => (IndentLevel::zero(), Position::last_child_of(self.syntax())),
             },
         };
         let elements: Vec<SyntaxElement> = vec![

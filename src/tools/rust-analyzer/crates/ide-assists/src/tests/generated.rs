@@ -507,8 +507,8 @@ fn main() {
         r#####"
 fn main() {
     let x = vec![1, 2, 3];
-    let mut tmp = x.into_iter();
-    while let Some(v) = tmp.next() {
+    let mut iter = x.into_iter();
+    while let Some(v) = iter.next() {
         let y = v * 2;
     };
 }

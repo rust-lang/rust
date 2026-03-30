@@ -288,7 +288,7 @@ pub(crate) struct PatternContext {
     pub(crate) record_pat: Option<ast::RecordPat>,
     pub(crate) impl_or_trait: Option<Either<ast::Impl, ast::Trait>>,
     /// List of missing variants in a match expr
-    pub(crate) missing_variants: Vec<hir::Variant>,
+    pub(crate) missing_variants: Vec<hir::EnumVariant>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -527,7 +527,7 @@ impl CompletionContext<'_> {
                 hir::ModuleDef::Module(it) => self.is_visible(it),
                 hir::ModuleDef::Function(it) => self.is_visible(it),
                 hir::ModuleDef::Adt(it) => self.is_visible(it),
-                hir::ModuleDef::Variant(it) => self.is_visible(it),
+                hir::ModuleDef::EnumVariant(it) => self.is_visible(it),
                 hir::ModuleDef::Const(it) => self.is_visible(it),
                 hir::ModuleDef::Static(it) => self.is_visible(it),
                 hir::ModuleDef::Trait(it) => self.is_visible(it),

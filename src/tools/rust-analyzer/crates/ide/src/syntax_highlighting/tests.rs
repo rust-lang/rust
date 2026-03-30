@@ -210,7 +210,7 @@ fn never() -> ! {
     loop {}
 }
 
-fn const_param<const FOO: usize>() -> usize {
+fn const_param<const FOO: usize>() -> usize where [(); FOO]: Sized {
     const_param::<{ FOO }>();
     FOO
 }
