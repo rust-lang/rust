@@ -149,7 +149,7 @@ gets flattened down to a list, and lets you figure out which index in the `Gener
 generic. The general theme of how it works is outermost to innermost (`T` before `T2` in the example), left to right
 (`T2` before `T3`), but there are several complications:
 
-- `Self` is sometimes a generic parameter, and should sometimes be included in the list.
+- Traits have an implicit `Self` generic parameter which is the first (i.e. 0th) generic parameter. Note that `Self` doesn't mean a generic parameter in all situations, see [Res::SelfTyAlias](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def/enum.Res.html#variant.SelfTyAlias) and [Res::SelfCtor](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def/enum.Res.html#variant.SelfCtor).
 - Only early-bound generic parameters are included, [late-bound generics] are not.
 - ... and more...
 
