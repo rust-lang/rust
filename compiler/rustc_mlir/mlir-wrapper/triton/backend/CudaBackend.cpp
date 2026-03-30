@@ -137,9 +137,9 @@ LogicalResult CudaBackend::makeLLVMIR(MLIRContext &context, ModuleOp module) {
 
 LogicalResult CudaBackend::makeASM(MLIRContext &context, ModuleOp module) {
   // TODO: remove hardcoded values
-  int ptx_version = 120;
+  int ptx_version = 87;
   std::string triple = "nvptx64-nvidia-cuda";
-  std::string proc = "sm_120";
+  std::string proc = "sm_120a";
   std::string features = ""; // get_features(m_options, m_options.arch);
 
   std::vector<std::string> flags = {"nvptx-mad-wide-opt"};
