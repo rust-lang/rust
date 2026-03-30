@@ -966,6 +966,7 @@ impl Step for StdarchVerify {
 
     fn run(self, builder: &Builder<'_>) {
         let host = builder.config.host_target;
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
         let build_compiler = builder.compiler(0, host);
 
         let cargo = tool::prepare_tool_cargo(
@@ -986,6 +987,7 @@ impl Step for StdarchVerify {
             Some("stdarch-verify"),
             host,
             builder,
+            record_failed_tests,
         );
     }
 }

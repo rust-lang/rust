@@ -1314,7 +1314,7 @@ impl Config {
         let paths = {
             let mut paths = Vec::new();
             if flags_cmd.rerun() {
-                collect_previously_failed_tests(&record_failed_tests_path, &mut paths);
+                paths = collect_previously_failed_tests(&record_failed_tests_path);
             } else {
                 paths.extend(flags_paths);
             }
