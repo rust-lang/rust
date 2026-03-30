@@ -85,27 +85,25 @@ impl<'sm> CachingSourceMapView<'sm> {
         self.time_stamp += 1;
 
         // Check if the position is in one of the cached lines
-        let cache_idx = self.cache_entry_index(pos);
-        if let Some(cache_idx) = cache_idx {
+        let cache_entry = if let Some(cache_idx) = self.cache_entry_index(pos) {
             let cache_entry = &mut self.line_cache[cache_idx];
             cache_entry.touch(self.time_stamp);
-
-            let col = RelativeBytePos(pos.to_u32() - cache_entry.line.start.to_u32());
-            return Some((Arc::clone(&cache_entry.file), cache_entry.line_number, col));
-        }
-
-        // No cache hit ...
-        let oldest = self.oldest_cache_entry_index();
-
-        // If the entry doesn't point to the correct file, get the new file and index.
-        let new_file_and_idx = if !file_contains(&self.line_cache[oldest].file, pos) {
-            Some(self.file_for_position(pos)?)
+            cache_entry
         } else {
-            None
-        };
+            // No cache hit ...
+            let oldest = self.oldest_cache_entry_index();
 
-        let cache_entry = &mut self.line_cache[oldest];
-        cache_entry.update(new_file_and_idx, pos, self.time_stamp);
+            // If the entry doesn't point to the correct file, get the new file and index.
+            let new_file_and_idx = if !file_contains(&self.line_cache[oldest].file, pos) {
+                Some(self.file_for_position(pos)?)
+            } else {
+                None
+            };
+
+            let cache_entry = &mut self.line_cache[oldest];
+            cache_entry.update(new_file_and_idx, pos, self.time_stamp);
+            cache_entry
+        };
 
         let col = RelativeBytePos(pos.to_u32() - cache_entry.line.start.to_u32());
         Some((Arc::clone(&cache_entry.file), cache_entry.line_number, col))
