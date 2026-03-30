@@ -18,7 +18,7 @@ mod i_to_f {
                 #[test]
                 fn $fn() {
                     use compiler_builtins::float::conv::$fn;
-                    use compiler_builtins::int::Int;
+                    use compiler_builtins::support::Int;
 
                     fuzz(N, |x: $i_ty| {
                         let f0 = apfloat_fallback!(
@@ -27,7 +27,7 @@ mod i_to_f {
                             // When the builtin is not available, we need to use a different conversion
                             // method (since apfloat doesn't support `as` casting).
                             |x: $i_ty| {
-                                use compiler_builtins::int::MinInt;
+                                use compiler_builtins::support::MinInt;
 
                                 let apf = if <$i_ty>::SIGNED {
                                     FloatTy::from_i128(x.try_into().unwrap()).value
@@ -155,7 +155,7 @@ mod f_to_i {
                         // When the builtin is not available, we need to use a different conversion
                         // method (since apfloat doesn't support `as` casting).
                         |x: $f_ty| {
-                            use compiler_builtins::int::MinInt;
+                            use compiler_builtins::support::MinInt;
 
                             let apf = FloatTy::from_bits(x.to_bits().into());
                             let bits: usize = <$i_ty>::BITS.try_into().unwrap();

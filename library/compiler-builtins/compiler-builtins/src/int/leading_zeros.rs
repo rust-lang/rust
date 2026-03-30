@@ -9,7 +9,7 @@ pub use implementation::{leading_zeros_default, leading_zeros_riscv};
 pub(crate) use implementation::{leading_zeros_default, leading_zeros_riscv};
 
 mod implementation {
-    use crate::int::{CastFrom, Int};
+    use crate::support::{CastFrom, Int};
 
     /// Returns the number of leading binary zeros in `x`.
     #[allow(dead_code)]

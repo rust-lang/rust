@@ -1,6 +1,6 @@
 use core::ops;
 
-use crate::int::{DInt, Int, MinInt};
+use crate::support::{DInt, Int, MinInt};
 
 /// Wrapper to extract the integer type half of the float's size
 pub type HalfRep<F> = <<F as Float>::Int as DInt>::H;

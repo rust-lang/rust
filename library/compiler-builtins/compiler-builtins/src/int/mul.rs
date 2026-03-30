@@ -1,4 +1,4 @@
-use crate::int::{DInt, HInt, Int};
+use crate::support::{DInt, HInt, Int};
 
 trait Mul: DInt + Int
 where

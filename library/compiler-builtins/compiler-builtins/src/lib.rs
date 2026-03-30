@@ -48,6 +48,9 @@ pub mod mem;
 pub mod sync;
 
 // `libm` expects its `support` module to be available in the crate root.
+#[cfg(feature = "unstable-public-internals")]
+pub use math::libm_math::support;
+#[cfg(not(feature = "unstable-public-internals"))]
 use math::libm_math::support;
 
 #[cfg(target_arch = "arm")]

@@ -20,7 +20,7 @@ pub mod bench;
 extern crate alloc;
 
 use compiler_builtins::float::Float;
-use compiler_builtins::int::{Int, MinInt};
+use compiler_builtins::support::{Int, MinInt};
 use rand_xoshiro::Xoshiro128StarStar;
 use rand_xoshiro::rand_core::{Rng, SeedableRng};
 

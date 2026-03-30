@@ -84,7 +84,7 @@ use core::ops;
 
 use super::HalfRep;
 use crate::float::Float;
-use crate::int::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
+use crate::support::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
 
 fn div<F: Float>(a: F, b: F) -> F
 where
