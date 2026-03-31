@@ -6,7 +6,7 @@ publish = false
 license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
 
 [dependencies]
-compiler_builtins = { workspace = true, features = ["unstable-public-internals"] }
+compiler_builtins = { workspace = true, features = ["mangled-names", "unstable-public-internals"] }
 
 # For fuzzing tests we want a deterministic seedable RNG. We also eliminate potential
 # problems with system RNGs on the variety of platforms this crate is tested on.
@@ -29,11 +29,10 @@ utest-cortex-m-qemu = { default-features = false, git = "https://github.com/japa
 utest-macros = { git = "https://github.com/japaric/utest" }
 
 [features]
-default = ["mangled-names"]
+default = []
 c = ["compiler_builtins/c"]
 no-asm = ["compiler_builtins/no-asm"]
 mem = ["compiler_builtins/mem"]
-mangled-names = ["compiler_builtins/mangled-names"]
 # Skip tests that rely on f128 symbols being available on the system
 no-sys-f128 = ["no-sys-f128-int-convert", "no-sys-f16-f128-convert"]
 # Some platforms have some f128 functions but everything except integer conversions
