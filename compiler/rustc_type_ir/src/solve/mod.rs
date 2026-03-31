@@ -11,7 +11,7 @@ use rustc_type_ir_macros::{
 
 use crate::lang_items::SolverTraitLangItem;
 use crate::search_graph::PathKind;
-use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
+use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Ty, Upcast};
 
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
     ty::CanonicalQueryInput<I, QueryInput<I, T>>;
@@ -254,7 +254,7 @@ impl<I: Interner> Eq for Response<I> {}
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct ExternalConstraintsData<I: Interner> {
     pub region_constraints: Vec<ty::OutlivesPredicate<I, I::GenericArg>>,
-    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, Ty<I>)>,
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 

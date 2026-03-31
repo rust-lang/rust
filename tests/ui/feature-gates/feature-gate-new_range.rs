@@ -1,5 +1,3 @@
-#![feature(new_range_api)]
-
 fn main() {
     let a: core::range::RangeFrom<u8> = 1..;
     //~^ ERROR mismatched types
