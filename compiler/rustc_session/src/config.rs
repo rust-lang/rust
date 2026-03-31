@@ -636,10 +636,10 @@ macro_rules! define_output_types {
             const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
         }
 
-        impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
+        impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OutputType {
             type KeyType = Self;
 
-            fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+            fn to_stable_hash_key(&self, _: &Hcx) -> Self::KeyType {
                 *self
             }
         }

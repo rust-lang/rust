@@ -1363,6 +1363,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             }
         }
     }
+
+    if sess.opts.unstable_opts.packed_stack {
+        if sess.target.arch != Arch::S390x {
+            sess.dcx().emit_err(errors::UnsupportedPackedStack);
+        }
+    }
 }
 
 /// Holds data on the current incremental compilation session, if there is one.
