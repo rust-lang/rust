@@ -323,6 +323,13 @@ impl<'tcx> Const<'tcx> {
         matches!(self.kind(), ty::ConstKind::Infer(_))
     }
 
+    pub fn ct_vid(self) -> Option<ty::ConstVid> {
+        match self.kind() {
+            ConstKind::Infer(ty::InferConst::Var(vid)) => Some(vid),
+            _ => None,
+        }
+    }
+
     /// Iterator that walks `self` and any types reachable from
     /// `self`, in depth-first order. Note that just walks the types
     /// that appear in `self`, it does not descend into the fields of
