@@ -500,11 +500,14 @@ impl Analysis {
     }
 
     /// Returns the set of folding ranges.
-    pub fn folding_ranges(&self, file_id: FileId) -> Cancellable<Vec<Fold>> {
+    pub fn folding_ranges(&self, file_id: FileId, collapsed_text: bool) -> Cancellable<Vec<Fold>> {
         self.with_db(|db| {
             let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
 
-            folding_ranges::folding_ranges(&db.parse(editioned_file_id_wrapper).tree())
+            folding_ranges::folding_ranges(
+                &db.parse(editioned_file_id_wrapper).tree(),
+                collapsed_text,
+            )
         })
     }
 
