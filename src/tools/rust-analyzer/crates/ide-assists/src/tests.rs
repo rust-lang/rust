@@ -479,6 +479,7 @@ pub fn test_some_range(a: int) -> bool {
     expect![[r#"
         Extract into...
         Replace if let with match
+        Convert to guarded return
     "#]]
     .assert_eq(&expected);
 }
@@ -511,6 +512,7 @@ pub fn test_some_range(a: int) -> bool {
         expect![[r#"
             Extract into...
             Replace if let with match
+            Convert to guarded return
         "#]]
         .assert_eq(&expected);
     }
