@@ -504,6 +504,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "zerotrie",
     "zerovec",
     "zerovec-derive",
+    "zlib-rs",
     // tidy-alphabetical-end
 ];
 
