@@ -14,7 +14,7 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions, msg,
     pluralize, struct_span_code_err,
 };
-use rustc_hir::attrs::diagnostic::{AppendConstMessage, OnUnimplementedNote};
+use rustc_hir::attrs::diagnostic::OnUnimplementedNote;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem, Node, find_attr};
@@ -193,7 +193,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             label,
                             notes,
                             parent_label,
-                            append_const_msg,
                         } = self.on_unimplemented_note(main_trait_predicate, main_obligation, &mut long_ty_file);
 
                         let have_alt_message = message.is_some() || label.is_some();
@@ -210,7 +209,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let question_mark_message = "the question mark operation (`?`) implicitly \
                                                      performs a conversion on the error value \
                                                      using the `From` trait";
-                        let (message, notes, append_const_msg) = if is_try_conversion {
+                        let (message, notes) = if is_try_conversion {
                             let ty = self.tcx.short_string(
                                 main_trait_predicate.skip_binder().self_ty(),
                                 &mut long_ty_file,
@@ -219,7 +218,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             (
                                 Some(format!("`?` couldn't convert the error to `{ty}`")),
                                 vec![question_mark_message.to_owned()],
-                                Some(AppendConstMessage::Default),
                             )
                         } else if is_question_mark {
                             let main_trait_predicate =
@@ -233,17 +231,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                      not satisfied",
                                 )),
                                 vec![question_mark_message.to_owned()],
-                                Some(AppendConstMessage::Default),
                             )
                         } else {
-                            (message, notes, append_const_msg)
+                            (message, notes)
                         };
 
                         let default_err_msg = || self.get_standard_error_message(
                             main_trait_predicate,
                             message,
                             None,
-                            append_const_msg,
                             post_message,
                             &mut long_ty_file,
                         );
@@ -859,7 +855,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             trait_ref,
             None,
             Some(predicate.constness()),
-            None,
             String::new(),
             &mut file,
         );
@@ -919,7 +914,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             label,
                             notes,
                             parent_label,
-                            append_const_msg: _,
                         } = note;
 
                         if let Some(message) = message {
@@ -2838,27 +2832,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_predicate: ty::PolyTraitPredicate<'tcx>,
         message: Option<String>,
         predicate_constness: Option<ty::BoundConstness>,
-        append_const_msg: Option<AppendConstMessage>,
         post_message: String,
         long_ty_path: &mut Option<PathBuf>,
     ) -> String {
         message
             .and_then(|cannot_do_this| {
-                match (predicate_constness, append_const_msg) {
+                match predicate_constness {
                     // do nothing if predicate is not const
-                    (None, _) => Some(cannot_do_this),
+                    None => Some(cannot_do_this),
                     // suggested using default post message
-                    (
-                        Some(ty::BoundConstness::Const | ty::BoundConstness::Maybe),
-                        Some(AppendConstMessage::Default),
-                    ) => Some(format!("{cannot_do_this} in const contexts")),
-                    // overridden post message
-                    (
-                        Some(ty::BoundConstness::Const | ty::BoundConstness::Maybe),
-                        Some(AppendConstMessage::Custom(custom_msg, _)),
-                    ) => Some(format!("{cannot_do_this}{custom_msg}")),
-                    // fallback to generic message
-                    (Some(ty::BoundConstness::Const | ty::BoundConstness::Maybe), None) => None,
+                    Some(ty::BoundConstness::Const | ty::BoundConstness::Maybe) => {
+                        Some(format!("{cannot_do_this} in const contexts"))
+                    }
                 }
             })
             .unwrap_or_else(|| {

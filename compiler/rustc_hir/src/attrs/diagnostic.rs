@@ -19,7 +19,6 @@ pub struct Directive {
     pub label: Option<(Span, FormatString)>,
     pub notes: ThinVec<FormatString>,
     pub parent_label: Option<FormatString>,
-    pub append_const_msg: Option<AppendConstMessage>,
 }
 
 impl Directive {
@@ -63,7 +62,6 @@ impl Directive {
         let mut label = None;
         let mut notes = Vec::new();
         let mut parent_label = None;
-        let mut append_const_msg = None;
         info!(
             "evaluate_directive({:?}, trait_ref={:?}, options={:?}, args ={:?})",
             self, trait_name, condition_options, args
@@ -91,8 +89,6 @@ impl Directive {
             if let Some(ref parent_label_) = command.parent_label {
                 parent_label = Some(parent_label_.clone());
             }
-
-            append_const_msg = command.append_const_msg;
         }
 
         OnUnimplementedNote {
@@ -100,7 +96,6 @@ impl Directive {
             message: message.map(|m| m.1.format(args)),
             notes: notes.into_iter().map(|n| n.format(args)).collect(),
             parent_label: parent_label.map(|e_s| e_s.format(args)),
-            append_const_msg,
         }
     }
 }
@@ -111,17 +106,6 @@ pub struct OnUnimplementedNote {
     pub label: Option<String>,
     pub notes: Vec<String>,
     pub parent_label: Option<String>,
-    // If none, should fall back to a generic message
-    pub append_const_msg: Option<AppendConstMessage>,
-}
-
-/// Append a message for `[const] Trait` errors.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-#[derive(HashStable_Generic, Encodable, Decodable, PrintAttribute)]
-pub enum AppendConstMessage {
-    #[default]
-    Default,
-    Custom(Symbol, Span),
 }
 
 /// Like [std::fmt::Arguments] this is a string that has been parsed into "pieces",
