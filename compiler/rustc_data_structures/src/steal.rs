@@ -71,8 +71,8 @@ impl<T> Steal<T> {
     }
 }
 
-impl<CTX, T: HashStable<CTX>> HashStable<CTX> for Steal<T> {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+impl<Hcx, T: HashStable<Hcx>> HashStable<Hcx> for Steal<T> {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.borrow().hash_stable(hcx, hasher);
     }
 }
