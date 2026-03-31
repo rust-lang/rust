@@ -49,8 +49,8 @@ no-asm = []
 # when using as `std`'s dependency.'
 compiler-builtins = ["dep:core", "unmangled-names"]
 
-# Generate memory-related intrinsics like memcpy
-mem = []
+# Enable `no_mangle` symbols for memory-related intrinsics like memcpy. The
+# mangled versions are always available.
 
 # Enable `no_mangle` symbols so this crate gets used as the runtime intrinsic
 # implementation. Leave this disabled for testing to avoid conflicting with

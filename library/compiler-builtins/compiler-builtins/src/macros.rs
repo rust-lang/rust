@@ -392,7 +392,7 @@ macro_rules! intrinsics {
         intrinsics!($($rest)*);
     );
 
-    // C mem* functions are only generated when the "mem" feature is enabled.
+    // C mem* functions are only exposed via `no_mangle` when the "mem" feature is enabled.
     (
         #[mem_builtin]
         $(#[$($attr:tt)*])*

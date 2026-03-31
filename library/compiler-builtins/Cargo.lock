@@ -155,9 +155,6 @@ dependencies = [
  "paste",
  "rand_xoshiro",
  "rustc_apfloat",
- "test",
- "utest-cortex-m-qemu",
- "utest-macros",
 ]
 
 [[package]]
@@ -1085,12 +1082,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sc"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "010e18bd3bfd1d45a7e666b236c78720df0d9a7698ebaa9c1c559961eb60a38b"
-
-[[package]]
 name = "semver"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1207,11 +1198,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f50febec83f5ee1df3015341d8bd429f2d1cc62bcba7ea2076759d315084683"
 
 [[package]]
-name = "test"
-version = "0.1.0"
-source = "git+https://github.com/japaric/utest#e32073e2b078e3bee46001c13ae4c1acf368d762"
-
-[[package]]
 name = "tinytemplate"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1250,19 +1236,6 @@ name = "unit-prefix"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81e544489bf3d8ef66c953931f56617f423cd4b5494be343d9b9d3dda037b9a3"
-
-[[package]]
-name = "utest-cortex-m-qemu"
-version = "0.1.0"
-source = "git+https://github.com/japaric/utest#e32073e2b078e3bee46001c13ae4c1acf368d762"
-dependencies = [
- "sc",
-]
-
-[[package]]
-name = "utest-macros"
-version = "0.1.0"
-source = "git+https://github.com/japaric/utest#e32073e2b078e3bee46001c13ae4c1acf368d762"
 
 [[package]]
 name = "utf8parse"

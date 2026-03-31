@@ -23,16 +23,10 @@ gungraun = { workspace = true, optional = true }
 [dev-dependencies]
 paste.workspace = true
 
-[target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
-test = { git = "https://github.com/japaric/utest" }
-utest-cortex-m-qemu = { default-features = false, git = "https://github.com/japaric/utest" }
-utest-macros = { git = "https://github.com/japaric/utest" }
-
 [features]
 default = []
 c = ["compiler_builtins/c"]
 no-asm = ["compiler_builtins/no-asm"]
-mem = ["compiler_builtins/mem"]
 # Skip tests that rely on f128 symbols being available on the system
 no-sys-f128 = ["no-sys-f128-int-convert", "no-sys-f16-f128-convert"]
 # Some platforms have some f128 functions but everything except integer conversions

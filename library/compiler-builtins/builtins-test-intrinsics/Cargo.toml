@@ -6,8 +6,14 @@ publish = false
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+# FIXME: `aeabi_mem*` tests will require the "mem" feature to be enabled here.
 compiler_builtins = { path = "../builtins-shim", features = ["compiler-builtins", "unmangled-names"] }
 panic-handler = { path = "../crates/panic-handler" }
+
+[target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
+test = { git = "https://github.com/japaric/utest" }
+utest-cortex-m-qemu = { default-features = false, git = "https://github.com/japaric/utest" }
+utest-macros = { git = "https://github.com/japaric/utest" }
 
 [features]
 c = ["compiler_builtins/c"]
