@@ -4449,14 +4449,14 @@ impl Trait for () {
         let a = Self::Assoc { x };
       //    ^ S
         let a = <Self>::Assoc { x }; // unstable
-      //    ^ {unknown}
+      //    ^ S
 
         // should be `Copy` but we don't track ownership anyway.
         let value = S { x };
         if let Self::Assoc { x } = value {}
       //                     ^ u32
         if let <Self>::Assoc { x } = value {} // unstable
-      //                       ^ {unknown}
+      //                       ^ u32
     }
 }
     "#,
@@ -4508,22 +4508,22 @@ impl Trait for () {
         let a = Self::Assoc::Struct { x };
       //    ^ E
         let a = <Self>::Assoc::Struct { x }; // unstable
-      //    ^ {unknown}
+      //    ^ E
         let a = <Self::Assoc>::Struct { x }; // unstable
-      //    ^ {unknown}
+      //    ^ E
         let a = <<Self>::Assoc>::Struct { x }; // unstable
-      //    ^ {unknown}
+      //    ^ E
 
         // should be `Copy` but we don't track ownership anyway.
         let value = E::Struct { x: 42 };
         if let Self::Assoc::Struct { x } = value {}
       //                             ^ u32
         if let <Self>::Assoc::Struct { x } = value {} // unstable
-      //                               ^ {unknown}
+      //                               ^ u32
         if let <Self::Assoc>::Struct { x } = value {} // unstable
-      //                               ^ {unknown}
+      //                               ^ u32
         if let <<Self>::Assoc>::Struct { x } = value {} // unstable
-      //                                 ^ {unknown}
+      //                                 ^ u32
     }
 }
     "#,
@@ -5146,5 +5146,100 @@ fn foo(v: Struct<f32>) {
  // ^^^^^^^^^^ (((), f32), i32)
 }
     "#,
+    );
+}
+
+#[test]
+fn more_qualified_paths() {
+    check_infer(
+        r#"
+struct T;
+struct S {
+    a: u32,
+}
+
+trait Trait {
+    type Assoc;
+
+    fn foo();
+}
+
+impl Trait for T {
+    type Assoc = S;
+
+    fn foo() {
+        let <Self>::Assoc { a } = <Self>::Assoc { a: 0 };
+    }
+}
+
+enum E {
+    ES { a: u32 },
+    ET(u32),
+}
+
+impl Trait for E {
+    type Assoc = Self;
+
+    fn foo() {
+        let <Self>::Assoc::ES { a } = <Self>::Assoc::ES { a: 0 };
+    }
+}
+
+fn foo() {
+    let <T as Trait>::Assoc { a } = <T as Trait>::Assoc { a: 0 };
+
+    let <E>::ES { a } = (<E>::ES { a: 0 }) else { loop {} };
+    let <E>::ET(a) = <E>::ET(0) else { loop {} };
+    let <E as Trait>::Assoc::ES { a } = (<E as Trait>::Assoc::ES { a: 0 }) else { loop {} };
+    let <E as Trait>::Assoc::ET(a) = <E as Trait>::Assoc::ET(0) else { loop {} };
+}
+    "#,
+        expect![[r#"
+            137..202 '{     ...     }': ()
+            151..170 '<Self>... { a }': S
+            167..168 'a': u32
+            173..195 '<Self>...a: 0 }': S
+            192..193 '0': u32
+            306..379 '{     ...     }': ()
+            320..343 '<Self>... { a }': E
+            340..341 'a': u32
+            346..372 '<Self>...a: 0 }': E
+            369..370 '0': u32
+            392..748 '{     ...} }; }': ()
+            402..427 '<T as ... { a }': S
+            424..425 'a': u32
+            430..458 '<T as ...a: 0 }': S
+            455..456 '0': u32
+            469..482 '<E>::ES { a }': E
+            479..480 'a': u32
+            486..502 '<E>::E...a: 0 }': E
+            499..500 '0': u32
+            509..520 '{ loop {} }': !
+            511..518 'loop {}': !
+            516..518 '{}': ()
+            530..540 '<E>::ET(a)': E
+            538..539 'a': u32
+            543..550 '<E>::ET': fn ET(u32) -> E
+            543..553 '<E>::ET(0)': E
+            551..552 '0': u32
+            559..570 '{ loop {} }': !
+            561..568 'loop {}': !
+            566..568 '{}': ()
+            580..609 '<E as ... { a }': E
+            606..607 'a': u32
+            613..645 '<E as ...a: 0 }': E
+            642..643 '0': u32
+            652..663 '{ loop {} }': !
+            654..661 'loop {}': !
+            659..661 '{}': ()
+            673..699 '<E as ...:ET(a)': E
+            697..698 'a': u32
+            702..725 '<E as ...oc::ET': fn ET(u32) -> E
+            702..728 '<E as ...:ET(0)': E
+            726..727 '0': u32
+            734..745 '{ loop {} }': !
+            736..743 'loop {}': !
+            741..743 '{}': ()
+        "#]],
     );
 }
