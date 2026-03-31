@@ -196,6 +196,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         } = self.on_unimplemented_note(main_trait_predicate, main_obligation, &mut long_ty_file);
 
                         let have_alt_message = message.is_some() || label.is_some();
+
+                        let message = message.unwrap_or_else(|| self.get_standard_error_message(
+                            main_trait_predicate,
+                            None,
+                            post_message,
+                            &mut long_ty_file,
+                        ));
                         let is_try_conversion = self.is_try_conversion(span, main_trait_predicate.def_id());
                         let is_question_mark = matches!(
                             root_obligation.cause.code().peel_derives(),
@@ -216,7 +223,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             );
                             // We have a `-> Result<_, E1>` and `gives_E2()?`.
                             (
-                                Some(format!("`?` couldn't convert the error to `{ty}`")),
+                                format!("`?` couldn't convert the error to `{ty}`"),
                                 vec![question_mark_message.to_owned()],
                             )
                         } else if is_question_mark {
@@ -226,23 +233,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             // trait object: `-> Result<_, Box<dyn Error>` and `gives_E()?` when
                             // `E: Error` isn't met.
                             (
-                                Some(format!(
+                                format!(
                                     "`?` couldn't convert the error: `{main_trait_predicate}` is \
                                      not satisfied",
-                                )),
+                                ),
                                 vec![question_mark_message.to_owned()],
                             )
                         } else {
                             (message, notes)
                         };
-
-                        let default_err_msg = || self.get_standard_error_message(
-                            main_trait_predicate,
-                            message,
-                            None,
-                            post_message,
-                            &mut long_ty_file,
-                        );
 
                         let (err_msg, safe_transmute_explanation) = if self.tcx.is_lang_item(
                             main_trait_predicate.def_id(),
@@ -267,7 +266,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     );
                                 }
                                 GetSafeTransmuteErrorAndReason::Default => {
-                                    (default_err_msg(), None)
+                                    (message, None)
                                 }
                                 GetSafeTransmuteErrorAndReason::Error {
                                     err_msg,
@@ -275,7 +274,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 } => (err_msg, safe_transmute_explanation),
                             }
                         } else {
-                            (default_err_msg(), None)
+                            (message, None)
                         };
 
                         let mut err = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
@@ -853,7 +852,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let err_msg = self.get_standard_error_message(
             trait_ref,
-            None,
             Some(predicate.constness()),
             String::new(),
             &mut file,
@@ -2830,31 +2828,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn get_standard_error_message(
         &self,
         trait_predicate: ty::PolyTraitPredicate<'tcx>,
-        message: Option<String>,
         predicate_constness: Option<ty::BoundConstness>,
         post_message: String,
         long_ty_path: &mut Option<PathBuf>,
     ) -> String {
-        message
-            .and_then(|cannot_do_this| {
-                match predicate_constness {
-                    // do nothing if predicate is not const
-                    None => Some(cannot_do_this),
-                    // suggested using default post message
-                    Some(ty::BoundConstness::Const | ty::BoundConstness::Maybe) => {
-                        Some(format!("{cannot_do_this} in const contexts"))
-                    }
-                }
-            })
-            .unwrap_or_else(|| {
-                format!(
-                    "the trait bound `{}` is not satisfied{post_message}",
-                    self.tcx.short_string(
-                        trait_predicate.print_with_bound_constness(predicate_constness),
-                        long_ty_path,
-                    ),
-                )
-            })
+        format!(
+            "the trait bound `{}` is not satisfied{post_message}",
+            self.tcx.short_string(
+                trait_predicate.print_with_bound_constness(predicate_constness),
+                long_ty_path,
+            ),
+        )
     }
 
     fn select_transmute_obligation_for_reporting(
