@@ -27,6 +27,7 @@ use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex
 use super::{DepKind, DepNode, WorkProductId, read_deps, with_deps};
 use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashingContext;
+use crate::query::{QueryCache, QueryVTable};
 use crate::ty::TyCtxt;
 use crate::verify_ich::incremental_verify_ich;
 
@@ -572,13 +573,12 @@ impl DepGraph {
     /// FIXME: If the code is changed enough for this node to be marked before requiring the
     /// caller's node, we suppose that those changes will be enough to mark this node red and
     /// force a recomputation using the "normal" way.
-    pub fn with_feed_task<'tcx, R>(
+    pub fn with_feed_task<'tcx, C: QueryCache>(
         &self,
-        node: DepNode,
         tcx: TyCtxt<'tcx>,
-        result: &R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-        format_value_fn: fn(&R) -> String,
+        query: &'tcx QueryVTable<'tcx, C>,
+        node: DepNode,
+        value: &C::Value,
     ) -> DepNodeIndex {
         if let Some(data) = self.data.as_ref() {
             // The caller query has more dependencies than the node we are creating. We may
@@ -590,17 +590,10 @@ impl DepGraph {
             if let Some(prev_index) = data.previous.node_to_index_opt(&node) {
                 let dep_node_index = data.colors.current(prev_index);
                 if let Some(dep_node_index) = dep_node_index {
-                    incremental_verify_ich(
-                        tcx,
-                        data,
-                        result,
-                        prev_index,
-                        hash_result,
-                        format_value_fn,
-                    );
+                    incremental_verify_ich(tcx, data, query, value, prev_index);
 
                     #[cfg(debug_assertions)]
-                    if hash_result.is_some() {
+                    if query.hash_value_fn.is_some() {
                         data.current.record_edge(
                             dep_node_index,
                             node,
@@ -624,7 +617,7 @@ impl DepGraph {
                 }
             });
 
-            data.hash_result_and_alloc_node(tcx, node, edges, result, hash_result)
+            data.hash_result_and_alloc_node(tcx, node, edges, value, query.hash_value_fn)
         } else {
             // Incremental compilation is turned off. We just execute the task
             // without tracking. We still provide a dep-node index that uniquely
