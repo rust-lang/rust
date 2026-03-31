@@ -16,10 +16,10 @@ where
 {
     pub(super) fn normalize_free_alias(
         &mut self,
-        goal: Goal<I, ty::NormalizesTo<I>>,
+        goal: Goal<I, ty::ProjectionPredicate<I>>,
     ) -> QueryResult<I> {
         let cx = self.cx();
-        let free_alias = goal.predicate.alias;
+        let free_alias = goal.predicate.projection_term;
 
         // Check where clauses
         self.add_goals(
@@ -35,7 +35,7 @@ where
             cx.const_of_item(free_alias.def_id).instantiate(cx, free_alias.args).into()
         };
 
-        self.instantiate_normalizes_to_term(goal, actual);
+        self.instantiate_projection_term(goal, actual)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }

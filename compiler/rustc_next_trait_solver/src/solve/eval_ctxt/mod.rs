@@ -40,7 +40,7 @@ mod probe;
 /// This has effects on cycle handling handling and on how we compute
 /// query responses, see the variant descriptions for more info.
 #[derive(Debug, Copy, Clone)]
-enum CurrentGoalKind {
+pub(super) enum CurrentGoalKind {
     Misc,
     /// We're proving an trait goal for a coinductive trait, either an auto trait or `Sized`.
     ///
@@ -93,15 +93,15 @@ where
     /// If some `InferCtxt` method is missing, please first think defensively about
     /// the method's compatibility with this solver, or if an existing one does
     /// the job already.
-    delegate: &'a D,
+    pub(super) delegate: &'a D,
 
     /// The variable info for the `var_values`, only used to make an ambiguous response
     /// with no constraints.
-    var_kinds: I::CanonicalVarKinds,
+    pub(super) var_kinds: I::CanonicalVarKinds,
 
     /// What kind of goal we're currently computing, see the enum definition
     /// for more info.
-    current_goal_kind: CurrentGoalKind,
+    pub(super) current_goal_kind: CurrentGoalKind,
     pub(super) var_values: CanonicalVarValues<I>,
 
     /// The highest universe index nameable by the caller.
@@ -486,6 +486,7 @@ where
             &orig_values,
             response,
             self.origin_span,
+            self.delegate.universe(),
         );
 
         // FIXME: We previously had an assert here that checked that recomputing
@@ -564,7 +565,7 @@ where
     pub(super) fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
         let Goal { param_env, predicate } = goal;
         let kind = predicate.kind();
-        self.enter_forall(kind, |ecx, kind| match kind {
+        let resp = self.enter_forall(kind, |ecx, kind| match kind {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
                 ecx.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
             }
@@ -604,8 +605,8 @@ where
             ty::PredicateKind::ConstEquate(_, _) => {
                 panic!("ConstEquate should not be emitted when `-Znext-solver` is active")
             }
-            ty::PredicateKind::NormalizesTo(predicate) => {
-                ecx.compute_normalizes_to_goal(Goal { param_env, predicate })
+            ty::PredicateKind::NormalizesTo(_) => {
+                unreachable!()
             }
             ty::PredicateKind::AliasRelate(lhs, rhs, direction) => {
                 ecx.compute_alias_relate_goal(Goal { param_env, predicate: (lhs, rhs, direction) })
@@ -613,7 +614,9 @@ where
             ty::PredicateKind::Ambiguous => {
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
-        })
+        })?;
+        debug_assert!(resp.value.external_constraints.normalization_nested_goals.is_empty());
+        Ok(resp)
     }
 
     // Recursively evaluates all the goals added to this `EvalCtxt` to completion, returning
@@ -806,6 +809,7 @@ where
     ///
     /// This is the case if the `term` does not occur in any other part of the predicate
     /// and is able to name all other placeholder and inference variables.
+    #[allow(unused)]
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn term_is_fully_unconstrained(&self, goal: Goal<I, ty::NormalizesTo<I>>) -> bool {
         let universe_of_term = match goal.predicate.term.kind() {
@@ -832,6 +836,7 @@ where
             cache: HashSet<I::Ty>,
         }
 
+        #[allow(unused)]
         impl<D: SolverDelegate<Interner = I>, I: Interner> ContainsTermOrNotNameable<'_, D, I> {
             fn check_nameable(&self, universe: ty::UniverseIndex) -> ControlFlow<()> {
                 if self.universe_of_term.can_name(universe) {
@@ -1423,16 +1428,15 @@ where
 
     fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
         match ty.kind() {
-            ty::Alias(..) if !ty.has_escaping_bound_vars() => {
+            ty::Alias(_, alias) if !ty.has_escaping_bound_vars() => {
                 let infer_ty = self.ecx.next_ty_infer();
-                let normalizes_to = ty::PredicateKind::AliasRelate(
-                    ty.into(),
-                    infer_ty.into(),
-                    ty::AliasRelationDirection::Equate,
-                );
+                let projection = ty::ClauseKind::Projection(ty::ProjectionPredicate {
+                    projection_term: alias.into(),
+                    term: infer_ty.into(),
+                });
                 self.ecx.add_goal(
                     self.normalization_goal_source,
-                    Goal::new(self.cx(), self.param_env, normalizes_to),
+                    Goal::new(self.cx(), self.param_env, projection),
                 );
                 infer_ty
             }
@@ -1452,16 +1456,15 @@ where
 
     fn fold_const(&mut self, ct: I::Const) -> I::Const {
         match ct.kind() {
-            ty::ConstKind::Unevaluated(..) if !ct.has_escaping_bound_vars() => {
+            ty::ConstKind::Unevaluated(uc) if !ct.has_escaping_bound_vars() => {
                 let infer_ct = self.ecx.next_const_infer();
-                let normalizes_to = ty::PredicateKind::AliasRelate(
-                    ct.into(),
-                    infer_ct.into(),
-                    ty::AliasRelationDirection::Equate,
-                );
+                let projection = ty::ClauseKind::Projection(ty::ProjectionPredicate {
+                    projection_term: uc.into(),
+                    term: infer_ct.into(),
+                });
                 self.ecx.add_goal(
                     self.normalization_goal_source,
-                    Goal::new(self.cx(), self.param_env, normalizes_to),
+                    Goal::new(self.cx(), self.param_env, projection),
                 );
                 infer_ct
             }
@@ -1528,6 +1531,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
         &proof_tree.orig_values,
         response,
         origin_span,
+        delegate.universe(),
     );
 
     (Ok(normalization_nested_goals), proof_tree)

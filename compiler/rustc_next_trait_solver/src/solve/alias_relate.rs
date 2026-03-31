@@ -52,7 +52,13 @@ where
             let term = self.next_term_infer_of_kind(lhs);
             self.add_goal(
                 GoalSource::TypeRelating,
-                goal.with(cx, ty::NormalizesTo { alias, term }),
+                goal.with(
+                    cx,
+                    ty::ClauseKind::Projection(ty::ProjectionPredicate {
+                        projection_term: alias,
+                        term,
+                    }),
+                ),
             );
             term
         } else {
@@ -64,7 +70,13 @@ where
             let term = self.next_term_infer_of_kind(rhs);
             self.add_goal(
                 GoalSource::TypeRelating,
-                goal.with(cx, ty::NormalizesTo { alias, term }),
+                goal.with(
+                    cx,
+                    ty::ClauseKind::Projection(ty::ProjectionPredicate {
+                        projection_term: alias,
+                        term,
+                    }),
+                ),
             );
             term
         } else {
