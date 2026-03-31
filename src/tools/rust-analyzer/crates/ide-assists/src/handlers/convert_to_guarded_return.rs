@@ -1068,6 +1068,37 @@ fn main() {
     }
 
     #[test]
+    fn convert_let_inside_for_with_else() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    for n in ns {
+        if$0 let Some(n) = n {
+            foo(n);
+            bar();
+        } else {
+            baz()
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    for n in ns {
+        let Some(n) = n else {
+            baz();
+            continue
+        };
+        foo(n);
+        bar();
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn convert_let_stmt_inside_fn() {
         check_assist(
             convert_to_guarded_return,
