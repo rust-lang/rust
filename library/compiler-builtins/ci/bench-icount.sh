@@ -35,6 +35,11 @@ function run_icount_benchmarks() {
         "--bench" "*icount*"
         "--no-default-features"
         "--features" "unstable,unstable-float,icount"
+        # Enable unmangled-names so our compiler-builtins gets used for
+        # intrinsics. This makes performance impacts of c-b changes show up
+        # in libm benchmarks and gives us a better idea of what will happen
+        # in std (e.g. speedups in __addtf3 will show up in fmaf128).
+        "--features" "compiler_builtins/unmangled-names"
     )
 
     gungraun_args=(
