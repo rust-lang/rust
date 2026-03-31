@@ -1,0 +1,100 @@
+error[E0369]: cannot add `{integer}` to `bool`
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:28:13
+   |
+LL |     a.field + 5;
+   |     ------- ^ - {integer}
+   |     |
+   |     bool
+   |
+   = note: there is a field `field` on `A` with type `usize`, but it is private
+
+error[E0369]: cannot add `{integer}` to `bool`
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:36:13
+   |
+LL |     a.field + 5;
+   |     ------- ^ - {integer}
+   |     |
+   |     bool
+   |
+   = note: there is a field `field` on `A` with type `usize`, but it is private
+
+error[E0277]: cannot add `bool` to `{integer}`
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:44:7
+   |
+LL |     5 + a.field;
+   |       ^ no implementation for `{integer} + bool`
+   |
+   = help: the trait `Add<bool>` is not implemented for `{integer}`
+   = note: there is a field `field` on `A` with type `usize`, but it is private
+   = help: the following other types implement trait `Add<Rhs>`:
+             `&f128` implements `Add<f128>`
+             `&f128` implements `Add`
+             `&f16` implements `Add<f16>`
+             `&f16` implements `Add`
+             `&f32` implements `Add<f32>`
+             `&f32` implements `Add`
+             `&f64` implements `Add<f64>`
+             `&f64` implements `Add`
+           and 56 others
+
+error[E0277]: cannot add `bool` to `{integer}`
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:53:7
+   |
+LL |     5 + a.field;
+   |       ^ no implementation for `{integer} + bool`
+   |
+   = help: the trait `Add<bool>` is not implemented for `{integer}`
+   = note: there is a field `field` on `A` with type `usize`, but it is private
+   = help: the following other types implement trait `Add<Rhs>`:
+             `&f128` implements `Add<f128>`
+             `&f128` implements `Add`
+             `&f16` implements `Add<f16>`
+             `&f16` implements `Add`
+             `&f32` implements `Add<f32>`
+             `&f32` implements `Add`
+             `&f64` implements `Add<f64>`
+             `&f64` implements `Add`
+           and 56 others
+
+error[E0277]: cannot add-assign `bool` to `{integer}`
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:63:7
+   |
+LL |     n += a.field;
+   |       ^^ no implementation for `{integer} += bool`
+   |
+   = help: the trait `AddAssign<bool>` is not implemented for `{integer}`
+   = note: there is a field `field` on `A` with type `usize`, but it is private
+   = help: the following other types implement trait `AddAssign<Rhs>`:
+             `f128` implements `AddAssign<&f128>`
+             `f128` implements `AddAssign`
+             `f16` implements `AddAssign<&f16>`
+             `f16` implements `AddAssign`
+             `f32` implements `AddAssign<&f32>`
+             `f32` implements `AddAssign`
+             `f64` implements `AddAssign<&f64>`
+             `f64` implements `AddAssign`
+           and 24 others
+
+error[E0277]: cannot add-assign `bool` to `{integer}`
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:73:7
+   |
+LL |     n += a.field;
+   |       ^^ no implementation for `{integer} += bool`
+   |
+   = help: the trait `AddAssign<bool>` is not implemented for `{integer}`
+   = note: there is a field `field` on `A` with type `usize`, but it is private
+   = help: the following other types implement trait `AddAssign<Rhs>`:
+             `f128` implements `AddAssign<&f128>`
+             `f128` implements `AddAssign`
+             `f16` implements `AddAssign<&f16>`
+             `f16` implements `AddAssign`
+             `f32` implements `AddAssign<&f32>`
+             `f32` implements `AddAssign`
+             `f64` implements `AddAssign<&f64>`
+             `f64` implements `AddAssign`
+           and 24 others
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0369.
+For more information about an error, try `rustc --explain E0277`.

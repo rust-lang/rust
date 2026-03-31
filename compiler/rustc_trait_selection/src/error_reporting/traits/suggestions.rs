@@ -242,6 +242,69 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
 }
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    pub fn note_field_shadowed_by_private_candidate(
+        &self,
+        err: &mut Diag<'_>,
+        hir_id: hir::HirId,
+        param_env: ty::ParamEnv<'tcx>,
+    ) {
+        let Some(typeck_results) = &self.typeck_results else {
+            return;
+        };
+        let Node::Expr(expr) = self.tcx.hir_node(hir_id) else {
+            return;
+        };
+        let hir::ExprKind::Field(base_expr, field_ident) = expr.kind else {
+            return;
+        };
+
+        let Some(base_ty) = typeck_results.expr_ty_opt(base_expr) else {
+            return;
+        };
+        let base_ty = self.resolve_vars_if_possible(base_ty);
+        if base_ty.references_error() {
+            return;
+        }
+
+        let fn_body_hir_id = self.tcx.local_def_id_to_hir_id(typeck_results.hir_owner.def_id);
+        let mut private_candidate = None;
+
+        for (deref_base_ty, _) in (self.autoderef_steps)(base_ty) {
+            let ty::Adt(base_def, args) = deref_base_ty.kind() else {
+                continue;
+            };
+
+            if base_def.is_enum() {
+                continue;
+            }
+
+            let (adjusted_ident, def_scope) =
+                self.tcx.adjust_ident_and_get_scope(field_ident, base_def.did(), fn_body_hir_id);
+
+            let Some((_, field_def)) =
+                base_def.non_enum_variant().fields.iter_enumerated().find(|(_, field)| {
+                    field.ident(self.tcx).normalize_to_macros_2_0() == adjusted_ident
+                })
+            else {
+                continue;
+            };
+
+            if field_def.vis.is_accessible_from(def_scope, self.tcx) {
+                let accessible_field_ty = field_def.ty(self.tcx, args);
+                if let Some((private_base_ty, private_field_ty)) = private_candidate
+                    && !self.can_eq(param_env, private_field_ty, accessible_field_ty)
+                {
+                    err.note(format!(
+                        "there is a field `{field_ident}` on `{private_base_ty}` with type `{private_field_ty}`, but it is private"
+                    ));
+                }
+                return;
+            }
+
+            private_candidate.get_or_insert((deref_base_ty, field_def.ty(self.tcx, args)));
+        }
+    }
+
     pub fn suggest_restricting_param_bound(
         &self,
         err: &mut Diag<'_>,
