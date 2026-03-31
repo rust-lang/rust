@@ -11,12 +11,12 @@ use Sign::{Minus, MinusPlus};
 
 use crate::num::{ldexp_f32, ldexp_f64};
 
+mod equiv;
 mod estimator;
 mod strategy {
     mod dragon;
     mod grisu;
 }
-mod random;
 
 /// Buffer that fits enough digits to format any `f64`.
 const LARGE_TEST_BUF: [MaybeUninit<u8>; 1024] = [MaybeUninit::new(b'_'); 1024];
