@@ -1154,7 +1154,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            Rvalue::Ref(..) => {}
+            Rvalue::Ref(..) | Rvalue::Reborrow(..) => {}
             Rvalue::BinaryOp(op, vals) => {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);
@@ -1461,6 +1461,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let left_ty = dest.ty(&self.body.local_decls, self.tcx).ty;
                 let right_ty = rvalue.ty(&self.body.local_decls, self.tcx);
 
+                if matches!(rvalue, Rvalue::Reborrow(..)) {
+                    // Trust me bro: Reborrow/CoerceShared is only inserted if types match.
+                    return;
+                }
                 if !self.mir_assign_valid_types(right_ty, left_ty) {
                     self.fail(
                         location,
