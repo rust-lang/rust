@@ -221,6 +221,10 @@ rustc_queries! {
         desc { "getting child of lowered delayed AST owner `{}`", tcx.def_path_str(def_id) }
     }
 
+    query hir_maybe_owner_unprocessed(def_id: LocalDefId) -> &'tcx hir::MaybeOwner<'tcx> {
+        desc { "getting MaybeOwner straight from `tcx.hir_crate(()).owners` for `{}`", tcx.def_path_str(def_id) }
+    }
+
     /// All items in the crate.
     query hir_crate_items(_: ()) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache

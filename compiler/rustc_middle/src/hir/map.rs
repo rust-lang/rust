@@ -836,7 +836,24 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn hir_opt_ident(self, id: HirId) -> Option<Ident> {
-        self.hir_crate(()).opt_ident(self, id)
+        // If possible don't force lowering of delayed owner, as it can lead to cycles.
+        if let MaybeOwner::Delayed(delayed_owner) =
+            self.hir_maybe_owner_unprocessed(id.owner.def_id)
+        {
+            return Some(delayed_owner.ident);
+        }
+
+        match self.hir_node(id) {
+            Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
+            // A `Ctor` doesn't have an identifier itself, but its parent
+            // struct/variant does. Compare with `hir::Map::span`.
+            Node::Ctor(..) => match self.parent_hir_node(id) {
+                Node::Item(item) => Some(item.kind.ident().unwrap()),
+                Node::Variant(variant) => Some(variant.ident),
+                _ => unreachable!(),
+            },
+            node => node.ident(),
+        }
     }
 
     #[inline]

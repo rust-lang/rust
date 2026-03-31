@@ -21,7 +21,7 @@ use rustc_hir::lints::DelayedLint;
 use rustc_hir::*;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::{ErrorGuaranteed, ExpnId, Ident, Span};
+use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
 use crate::query::Providers;
 use crate::ty::{ResolverAstLowering, TyCtxt};
@@ -75,25 +75,6 @@ impl<'hir> Crate<'hir> {
         }
 
         tcx.delayed_owner(def_id)
-    }
-
-    pub fn opt_ident(&self, tcx: TyCtxt<'hir>, id: HirId) -> Option<Ident> {
-        // If possible don't force lowering of delayed owner, as it can lead to cycles.
-        if let MaybeOwner::Delayed(delayed_owner) = self.owners[id.owner.def_id] {
-            return Some(delayed_owner.ident);
-        }
-
-        match tcx.hir_node(id) {
-            Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
-            // A `Ctor` doesn't have an identifier itself, but its parent
-            // struct/variant does. Compare with `hir::Map::span`.
-            Node::Ctor(..) => match tcx.parent_hir_node(id) {
-                Node::Item(item) => Some(item.kind.ident().unwrap()),
-                Node::Variant(variant) => Some(variant.ident),
-                _ => unreachable!(),
-            },
-            node => node.ident(),
-        }
     }
 }
 
@@ -510,6 +491,7 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
+    providers.hir_maybe_owner_unprocessed = |tcx, id| &tcx.hir_crate(()).owners[id];
     providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.hir_crate(()).owner(tcx, def_id) {
         MaybeOwner::Owner(_) => HirId::make_owner(def_id),
         MaybeOwner::NonOwner(hir_id) => hir_id,
