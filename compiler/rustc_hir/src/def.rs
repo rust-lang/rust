@@ -712,11 +712,11 @@ impl IntoDiagArg for Namespace {
     }
 }
 
-impl<CTX: crate::HashStableContext> ToStableHashKey<CTX> for Namespace {
+impl<Hcx: crate::HashStableContext> ToStableHashKey<Hcx> for Namespace {
     type KeyType = Namespace;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &CTX) -> Namespace {
+    fn to_stable_hash_key(&self, _: &Hcx) -> Namespace {
         *self
     }
 }

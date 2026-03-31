@@ -60,10 +60,10 @@ impl fmt::UpperHex for Pu128 {
     }
 }
 
-impl<CTX> HashStable<CTX> for Pu128 {
+impl<Hcx> HashStable<Hcx> for Pu128 {
     #[inline]
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        { self.0 }.hash_stable(ctx, hasher)
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        { self.0 }.hash_stable(hcx, hasher)
     }
 }
 
