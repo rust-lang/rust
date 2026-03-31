@@ -31,6 +31,9 @@
         "vscode": "^1.93.0"
     },
     "enabledApiProposals": [],
+    "extensionKind": [
+        "workspace"
+    ],
     "scripts": {
         "vscode:prepublish": "npm run build-base -- --minify",
         "package": "vsce package -o rust-analyzer.vsix",
