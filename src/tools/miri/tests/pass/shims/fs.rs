@@ -30,9 +30,9 @@ fn main() {
     test_file_clone();
     test_file_set_len();
     test_file_sync();
+    test_rename();
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) {
-        test_rename();
         test_directory();
         test_canonicalize();
         #[cfg(unix)]

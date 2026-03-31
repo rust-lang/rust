@@ -490,6 +490,36 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
+    fn MoveFileExW(
+        &mut self,
+        existing_name: &OpTy<'tcx>,
+        new_name: &OpTy<'tcx>,
+        flags: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let existing_name = this.read_path_from_wide_str(this.read_pointer(existing_name)?)?;
+        let new_name = this.read_path_from_wide_str(this.read_pointer(new_name)?)?;
+
+        let flags = this.read_scalar(flags)?.to_u32()?;
+
+        // Flag to indicate whether we should replace an existing file.
+        // https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw
+        let movefile_replace_existing = this.eval_windows_u32("c", "MOVEFILE_REPLACE_EXISTING");
+
+        if flags != movefile_replace_existing {
+            throw_unsup_format!("MoveFileExW: Unsupported `dwFlags` value {}", flags);
+        }
+
+        match std::fs::rename(existing_name, new_name) {
+            Ok(_) => interp_ok(this.eval_windows("c", "TRUE")),
+            Err(e) => {
+                this.set_last_error(e)?;
+                interp_ok(this.eval_windows("c", "FALSE"))
+            }
+        }
+    }
+
     fn DeleteFileW(
         &mut self,
         file_name: &OpTy<'tcx>, // LPCWSTR
