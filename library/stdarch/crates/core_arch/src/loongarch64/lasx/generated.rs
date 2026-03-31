@@ -5044,7 +5044,7 @@ pub unsafe fn lasx_xvld<const IMM_S12: i32>(mem_addr: *const i8) -> m256i {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvst<const IMM_S12: i32>(a: m256i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S12, 12);
-    transmute(__lasx_xvst(transmute(a), mem_addr, IMM_S12))
+    __lasx_xvst(transmute(a), mem_addr, IMM_S12)
 }
 
 #[inline(always)]
@@ -5054,7 +5054,7 @@ pub unsafe fn lasx_xvst<const IMM_S12: i32>(a: m256i, mem_addr: *mut i8) {
 pub unsafe fn lasx_xvstelm_b<const IMM_S8: i32, const IMM4: u32>(a: m256i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM4, 4);
-    transmute(__lasx_xvstelm_b(transmute(a), mem_addr, IMM_S8, IMM4))
+    __lasx_xvstelm_b(transmute(a), mem_addr, IMM_S8, IMM4)
 }
 
 #[inline(always)]
@@ -5064,7 +5064,7 @@ pub unsafe fn lasx_xvstelm_b<const IMM_S8: i32, const IMM4: u32>(a: m256i, mem_a
 pub unsafe fn lasx_xvstelm_h<const IMM_S8: i32, const IMM3: u32>(a: m256i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM3, 3);
-    transmute(__lasx_xvstelm_h(transmute(a), mem_addr, IMM_S8, IMM3))
+    __lasx_xvstelm_h(transmute(a), mem_addr, IMM_S8, IMM3)
 }
 
 #[inline(always)]
@@ -5074,7 +5074,7 @@ pub unsafe fn lasx_xvstelm_h<const IMM_S8: i32, const IMM3: u32>(a: m256i, mem_a
 pub unsafe fn lasx_xvstelm_w<const IMM_S8: i32, const IMM2: u32>(a: m256i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM2, 2);
-    transmute(__lasx_xvstelm_w(transmute(a), mem_addr, IMM_S8, IMM2))
+    __lasx_xvstelm_w(transmute(a), mem_addr, IMM_S8, IMM2)
 }
 
 #[inline(always)]
@@ -5084,7 +5084,7 @@ pub unsafe fn lasx_xvstelm_w<const IMM_S8: i32, const IMM2: u32>(a: m256i, mem_a
 pub unsafe fn lasx_xvstelm_d<const IMM_S8: i32, const IMM1: u32>(a: m256i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM1, 1);
-    transmute(__lasx_xvstelm_d(transmute(a), mem_addr, IMM_S8, IMM1))
+    __lasx_xvstelm_d(transmute(a), mem_addr, IMM_S8, IMM1)
 }
 
 #[inline(always)]
@@ -5192,7 +5192,7 @@ pub unsafe fn lasx_xvldx(mem_addr: *const i8, b: i64) -> m256i {
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvstx(a: m256i, mem_addr: *mut i8, b: i64) {
-    transmute(__lasx_xvstx(transmute(a), mem_addr, transmute(b)))
+    __lasx_xvstx(transmute(a), mem_addr, transmute(b))
 }
 
 #[inline(always)]

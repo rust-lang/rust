@@ -5052,7 +5052,7 @@ pub fn lsx_vfrintrm_d(a: m128d) -> m128d {
 pub unsafe fn lsx_vstelm_b<const IMM_S8: i32, const IMM4: u32>(a: m128i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM4, 4);
-    transmute(__lsx_vstelm_b(transmute(a), mem_addr, IMM_S8, IMM4))
+    __lsx_vstelm_b(transmute(a), mem_addr, IMM_S8, IMM4)
 }
 
 #[inline(always)]
@@ -5062,7 +5062,7 @@ pub unsafe fn lsx_vstelm_b<const IMM_S8: i32, const IMM4: u32>(a: m128i, mem_add
 pub unsafe fn lsx_vstelm_h<const IMM_S8: i32, const IMM3: u32>(a: m128i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM3, 3);
-    transmute(__lsx_vstelm_h(transmute(a), mem_addr, IMM_S8, IMM3))
+    __lsx_vstelm_h(transmute(a), mem_addr, IMM_S8, IMM3)
 }
 
 #[inline(always)]
@@ -5072,7 +5072,7 @@ pub unsafe fn lsx_vstelm_h<const IMM_S8: i32, const IMM3: u32>(a: m128i, mem_add
 pub unsafe fn lsx_vstelm_w<const IMM_S8: i32, const IMM2: u32>(a: m128i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM2, 2);
-    transmute(__lsx_vstelm_w(transmute(a), mem_addr, IMM_S8, IMM2))
+    __lsx_vstelm_w(transmute(a), mem_addr, IMM_S8, IMM2)
 }
 
 #[inline(always)]
@@ -5082,7 +5082,7 @@ pub unsafe fn lsx_vstelm_w<const IMM_S8: i32, const IMM2: u32>(a: m128i, mem_add
 pub unsafe fn lsx_vstelm_d<const IMM_S8: i32, const IMM1: u32>(a: m128i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM1, 1);
-    transmute(__lsx_vstelm_d(transmute(a), mem_addr, IMM_S8, IMM1))
+    __lsx_vstelm_d(transmute(a), mem_addr, IMM_S8, IMM1)
 }
 
 #[inline(always)]
@@ -6376,7 +6376,7 @@ pub unsafe fn lsx_vld<const IMM_S12: i32>(mem_addr: *const i8) -> m128i {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lsx_vst<const IMM_S12: i32>(a: m128i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S12, 12);
-    transmute(__lsx_vst(transmute(a), mem_addr, IMM_S12))
+    __lsx_vst(transmute(a), mem_addr, IMM_S12)
 }
 
 #[inline(always)]
@@ -6455,7 +6455,7 @@ pub unsafe fn lsx_vldx(mem_addr: *const i8, b: i64) -> m128i {
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lsx_vstx(a: m128i, mem_addr: *mut i8, b: i64) {
-    transmute(__lsx_vstx(transmute(a), mem_addr, transmute(b)))
+    __lsx_vstx(transmute(a), mem_addr, transmute(b))
 }
 
 #[inline(always)]
