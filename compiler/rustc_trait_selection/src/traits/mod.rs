@@ -676,9 +676,9 @@ pub fn try_evaluate_const<'tcx>(
 
                     (args, typing_env)
                 }
-                Some(ty::AnonConstKind::OGCA) => {
+                Some(ty::AnonConstKind::GCA) => {
                     if infcx.typing_mode() != TypingMode::PostAnalysis {
-                        // OGCA anon consts should be treated as always having generics
+                        // GCA anon consts should be treated as always having generics
                         // during anything before codegen (or maybe MIR opts too).
                         return Err(EvaluateConstErr::HasGenericsOrInfers);
                     }

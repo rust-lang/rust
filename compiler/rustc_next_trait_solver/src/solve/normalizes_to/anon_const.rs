@@ -15,11 +15,11 @@ where
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
         if self.typing_mode() == TypingMode::Coherence
-            && self.cx().anon_const_kind(goal.predicate.alias.def_id) == ty::AnonConstKind::OGCA
+            && self.cx().anon_const_kind(goal.predicate.alias.def_id) == ty::AnonConstKind::GCA
         {
-            // During coherence, OGCA consts should be normalized ambiguously
+            // During coherence, GCA consts should be normalized ambiguously
             // because they are opaque but eventually resolved to a real value.
-            // We don't want two OGCAs that have the same value to be treated
+            // We don't want two GCAs that have the same value to be treated
             // as distinct for coherence purposes. (Just like opaque types.)
             //
             // We can't rely on evaluate_const below because that particular wrapper
