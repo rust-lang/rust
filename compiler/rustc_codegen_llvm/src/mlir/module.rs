@@ -20,7 +20,7 @@ use melior::Context;
 use melior::ir::{Location, Module};
 use rustc_codegen_ssa::back::write::CodegenContext;
 use rustc_errors::DiagCtxtHandle;
-use rustc_mlir::ffi::MlirTritonCompiler;
+use rustc_mlir::ffi::{CompileOptions, MlirTritonCompiler};
 use rustc_mlir::triton::TritonCompiler;
 
 use crate::mlir::backend::MlirCodegenBackend;
@@ -45,7 +45,8 @@ impl<'c> MlirModule<'c> {
         let location = Location::unknown(&context);
         let module = Module::new(location);
 
-        let compiler = TritonCompiler::new(context.to_raw(), "cuda", "")
+        let options = CompileOptions::default_cuda();
+        let compiler = TritonCompiler::new(context.to_raw(), "cuda", &options)
             .expect("Failed to create Triton compiler");
 
         Self { name: mod_name.to_string(), mlir: module, compiler, context, ptx_asm: None }
@@ -64,7 +65,8 @@ impl<'c> MlirModule<'c> {
         let context = Context::new();
         let location = Location::unknown(&context);
         let module = Module::new(location);
-        let compiler = TritonCompiler::new(context.to_raw(), "cuda", "")
+        let options = CompileOptions::default_cuda();
+        let compiler = TritonCompiler::new(context.to_raw(), "cuda", &options)
             .expect("Failed to create Triton compiler");
 
         Self {

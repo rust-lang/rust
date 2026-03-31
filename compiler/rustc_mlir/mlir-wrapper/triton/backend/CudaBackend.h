@@ -17,10 +17,9 @@
 #ifndef TRITON_CUDA_BACKEND_H
 #define TRITON_CUDA_BACKEND_H
 
-#include <map>
-#include <optional>
+#include <stddef.h>
+#include <stdint.h>
 #include <string>
-#include <tuple>
 #include <vector>
 
 #include "llvm/IR/Module.h"
@@ -38,35 +37,86 @@ namespace triton {
 
 namespace ttng = mlir::triton::nvidia_gpu;
 
-struct CudaOptions {
-  int num_warps = 4;
-  int num_ctas = 1;
-  int num_stages = 3;
-  std::optional<int> maxnreg = std::nullopt;
-  std::tuple<int, int, int> cluster_dims = {1, 1, 1};
-  std::optional<int> ptx_version = std::nullopt;
-  std::optional<std::string> ptx_options = std::nullopt;
-  // filename of a user-defined IR (*.{ttir|ttgir|llir|ptx})
-  std::optional<std::string> ir_override = std::nullopt;
-  bool enable_fp_fusion = true;
-  bool launch_cooperative_grid = false;
-  bool launch_pdl = false;
-  std::vector<std::string> supported_fp8_dtypes = {"fp8e5", "fp8e4b15"};
-  std::vector<std::string> deprecated_fp8_dot_operand_dtypes = {};
-  std::string default_dot_input_precision = "tf32";
-  std::vector<std::string> allowed_dot_input_precisions = {"tf32", "tf32x3",
-                                                           "ieee"};
-  std::optional<bool> max_num_imprecise_acc_default = std::nullopt;
-  std::map<std::string, std::string> extern_libs = {};
-  bool debug = false;
-  std::string backend_name = "cuda";
-  bool sanitize_overflow = true;
-  std::optional<std::string> arch = std::nullopt;
-  bool dump_enabled = false;
-  bool enable_experimental_consan = false;
-  bool instrumentation = false;
-  bool disable_line_info = false;
-  bool enable_reflect_ftz = false;
+// ---------------------------------------------------------------------------
+// FFI-safe helper types
+// These map directly to #[repr(C)] Rust structs with equivalent fields.
+// ---------------------------------------------------------------------------
+
+/// An optional 32-bit signed integer.
+struct OptionalI32 {
+  bool has_value;
+  int32_t value;
+};
+
+/// An optional boolean.
+struct OptionalBool {
+  bool has_value;
+  bool value;
+};
+
+/// A 3-component integer dimension (x, y, z).
+struct Dim3 {
+  int32_t x;
+  int32_t y;
+  int32_t z;
+};
+
+// ---------------------------------------------------------------------------
+// CUDA backend compile options (FFI-safe / repr(C))
+//
+// Uses only C-compatible types so it can be shared across the C/Rust FFI
+// boundary (equivalent to a #[repr(C)] Rust struct).
+//
+// Ownership conventions for pointer fields:
+//   - All `const char *` string fields are null-terminated C strings.
+//     NULL means "use the backend default".
+//   - All `const char **` array fields are paired with a `size_t` length.
+//   - The *caller* is responsible for keeping all pointed-to data alive
+//     for the duration of the compilation call.
+// ---------------------------------------------------------------------------
+
+/// FFI-safe compilation options for the CUDA (Triton NVIDIA) backend.
+struct CudaCompileOptions {
+  int32_t num_warps;
+  int32_t num_ctas;
+  int32_t num_stages;
+  int32_t capability;
+  OptionalI32 maxnreg;
+  Dim3 cluster_dims;
+  OptionalI32 ptx_version;
+  const char *ptx_options; ///< NULL = not set
+  const char *ir_override; ///< NULL = not set
+
+  bool enable_fp_fusion;
+  bool launch_cooperative_grid;
+  bool launch_pdl;
+
+  const char **supported_fp8_dtypes;
+  size_t supported_fp8_dtypes_len;
+
+  const char **deprecated_fp8_dot_operand_dtypes;
+  size_t deprecated_fp8_dot_operand_dtypes_len;
+
+  const char *default_dot_input_precision; ///< NULL = "tf32"
+  const char **allowed_dot_input_precisions;
+  size_t allowed_dot_input_precisions_len;
+
+  OptionalBool max_num_imprecise_acc_default;
+
+  /// Parallel key/value arrays describing external library (name, path) pairs.
+  const char **extern_lib_keys;
+  const char **extern_lib_values;
+  size_t extern_libs_len;
+
+  bool debug;
+  const char *backend_name; ///< NULL = "cuda"
+  bool sanitize_overflow;
+  const char *arch; ///< NULL = not set
+  bool dump_enabled;
+  bool enable_experimental_consan;
+  bool instrumentation;
+  bool disable_line_info;
+  bool enable_reflect_ftz;
 };
 
 enum Capability {
@@ -114,7 +164,7 @@ enum CudaPass {
 
 class CudaBackend : public Backend {
 public:
-  CudaBackend(std::string target, CudaOptions options);
+  CudaBackend(std::string target, CudaCompileOptions options);
 
   virtual ~CudaBackend();
 
@@ -164,7 +214,7 @@ private:
                                  const std::vector<std::string> & /*flags*/,
                                  bool /*enableFpFusion*/, bool /*verbose*/);
 
-  CudaOptions m_options;
+  CudaCompileOptions m_options;
   Capability m_capability;
 
   std::unordered_map<CudaPass, std::unique_ptr<Pass> (*)()> m_nvidia_pass_fns =

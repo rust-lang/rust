@@ -48,9 +48,19 @@ using namespace mlir;
 using namespace triton;
 using namespace nvidia_gpu;
 
-CudaBackend::CudaBackend(std::string target, CudaOptions options)
+CudaBackend::CudaBackend(std::string target, CudaCompileOptions options)
     : Backend(target), m_options(options) {
-  m_capability = Capability::Sm120; // AXM FIXME: Get capability from target
+  m_capability = static_cast<Capability>(options.capability);
+
+  llvm::outs() << "CudaBackend: capability = " << m_capability << "\n";
+  if (options.ptx_version.has_value) {
+    llvm::outs() << "CudaBackend: ptx_version = " << options.ptx_version.value
+                 << "\n";
+  } else {
+    llvm::outs() << "CudaBackend: ptx_version = not set\n";
+  }
+  llvm::outs() << "CudaBackend: ptx_version = " << options.ptx_version.value
+               << "\n";
 }
 
 CudaBackend::~CudaBackend() {
@@ -110,10 +120,10 @@ LogicalResult CudaBackend::makeLLVMIR(MLIRContext &context, ModuleOp module) {
   }
 
   // Link extern libs from options when the module has undefined symbols
-  if (!m_options.extern_libs.empty()) {
+  if (m_options.extern_libs_len > 0) {
     std::vector<std::string> libPaths;
-    for (const auto &pair : m_options.extern_libs) {
-      libPaths.push_back(pair.second);
+    for (size_t i = 0; i < m_options.extern_libs_len; ++i) {
+      libPaths.push_back(m_options.extern_lib_values[i]);
     }
 
     auto result = linkExternLibs(llvmContext, *llvmMod, libPaths);
@@ -136,12 +146,17 @@ LogicalResult CudaBackend::makeLLVMIR(MLIRContext &context, ModuleOp module) {
 }
 
 LogicalResult CudaBackend::makeASM(MLIRContext &context, ModuleOp module) {
-  // TODO: remove hardcoded values
-  int ptx_version = 87;
-  std::string triple = "nvptx64-nvidia-cuda";
-  std::string proc = "sm_120a";
-  std::string features = ""; // get_features(m_options, m_options.arch);
+  int ptx_version = this->m_options.ptx_version.has_value
+                        ? this->m_options.ptx_version.value
+                        : 90;
+  std::string features = ""; // AXM TODO - get_features
 
+  std::string proc = "sm_" + std::to_string(this->m_capability);
+  if (this->m_capability >= 90) {
+    proc += "a";
+  }
+
+  std::string triple = "nvptx64-nvidia-cuda";
   std::vector<std::string> flags = {"nvptx-mad-wide-opt"};
 
   // 2. Translate LLVM module to assembly (PTX)
@@ -261,8 +276,8 @@ LogicalResult CudaBackend::makeTTGIR(MLIRContext &context, ModuleOp module) {
   auto op = module.getOperation();
   auto emuTF32 = (capability_major >= 8);
 
-  if (m_options.maxnreg.has_value()) {
-    auto maxnreg = m_options.maxnreg.value();
+  if (m_options.maxnreg.has_value) {
+    auto maxnreg = m_options.maxnreg.value;
     OpBuilder builder(&context);
 
     op->setAttr("ttg.maxnreg", builder.getI32IntegerAttr(maxnreg));
@@ -374,7 +389,8 @@ LogicalResult CudaBackend::makeLLIR(MLIRContext &context, ModuleOp module) {
   PassManager pm(&context);
   auto capability = getCapability();
   auto capability_major = static_cast<int>(capability) / 10;
-  auto ptx_version = m_options.ptx_version.value_or(90);
+  auto ptx_version =
+      m_options.ptx_version.has_value ? m_options.ptx_version.value : 90;
   auto op = module.getOperation();
 
   addPass(pm, MlirPass::ttgpuir_combine_tensor_select_and_if);

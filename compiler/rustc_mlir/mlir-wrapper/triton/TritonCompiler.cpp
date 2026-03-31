@@ -28,12 +28,16 @@ namespace mlir {
 namespace triton {
 
 TritonCompiler::TritonCompiler(MLIRContext *context, std::string target,
-                               std::string options)
+                               CompileOptions options)
     : Compiler(context, target, options) {
-  if (target.find("spirv") != std::string::npos) {
+  switch (options.backend) {
+  case TargetBackend_Spirv:
     backend = new SpirVBackend(target, SpirVOptions());
-  } else {
-    backend = new CudaBackend(target, CudaOptions());
+    break;
+  case TargetBackend_Cuda:
+  default:
+    backend = new CudaBackend(target, options.data.cuda);
+    break;
   }
   backend->loadDialects(*context);
 }

@@ -18,7 +18,7 @@ use std::ffi::{CStr, CString};
 
 use mlir_sys::{MlirContext, MlirModule};
 
-use crate::ffi::{self, MlirTritonCompiler};
+use crate::ffi::{self, CompileOptions, MlirTritonCompiler};
 
 /// Safe wrapper around the Triton compiler C API.
 ///
@@ -34,16 +34,16 @@ impl TritonCompiler {
     /// Creates a new Triton compiler for the given MLIR context and target.
     ///
     /// * `context` - MLIR context (e.g. from melior).
-    /// * `target` - Target name, e.g. `"cuda"`.
-    /// * `options` - Optional compiler options as a string; pass `None` for defaults.
+    /// * `target`  - Target name, e.g. `"cuda"`.
+    /// * `options` - Compile options; use [`CompileOptions::default_cuda`] for
+    ///               sensible CUDA defaults.
     ///
     /// Returns `None` if creation failed (e.g. invalid context or target).
-    pub fn new(context: MlirContext, target: &str, options: &str) -> Option<Self> {
+    pub fn new(context: MlirContext, target: &str, options: &CompileOptions) -> Option<Self> {
         let target_c = CString::new(target).ok()?;
-        let options_c = CString::new(options).ok()?;
 
         let raw = unsafe {
-            ffi::mlirTritonCompilerCreate(context, target_c.as_ptr(), options_c.as_ptr())
+            ffi::mlirTritonCompilerCreate(context, target_c.as_ptr(), options as *const _)
         };
 
         if raw.ptr.is_null() {

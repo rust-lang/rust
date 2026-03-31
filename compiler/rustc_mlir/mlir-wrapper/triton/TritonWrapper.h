@@ -33,10 +33,12 @@ typedef struct MlirTritonCompiler {
 DEFINE_C_API_PTR_METHODS(MlirTritonCompiler, TritonCompiler)
 
 /// Creates a Triton compiler handle for the given MLIR context and target
-/// (e.g. "cuda").
+/// (e.g. "cuda").  `options` must point to a valid CompileOptions whose
+/// backend field matches `target`; the caller retains ownership and must
+/// keep all pointer fields within `options` alive until the compiler is freed.
 MlirTritonCompiler mlirTritonCompilerCreate(MlirContext context,
                                             const char *target,
-                                            const char *options);
+                                            const CompileOptions *options);
 
 /// Runs the Triton compilation pipeline on `module`. On success, the module is
 /// transformed in-place and the textual IR is stored as the handle output.

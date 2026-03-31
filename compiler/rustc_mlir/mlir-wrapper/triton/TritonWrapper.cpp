@@ -28,15 +28,15 @@
 using namespace mlir;
 using namespace mlir::triton;
 
-extern "C" ::MlirTritonCompiler mlirTritonCompilerCreate(MlirContext context,
-                                                         const char *target,
-                                                         const char *options) {
-  if (!context.ptr || !target) {
+extern "C" ::MlirTritonCompiler
+mlirTritonCompilerCreate(MlirContext context, const char *target,
+                         const CompileOptions *options) {
+  if (!context.ptr || !target || !options) {
     return ::MlirTritonCompiler{nullptr};
   }
 
   auto *ctx = unwrap(context);
-  auto *handle = new TritonCompiler(ctx, target, options);
+  auto *handle = new TritonCompiler(ctx, target, *options);
   return ::MlirTritonCompiler{handle};
 }
 

@@ -205,7 +205,7 @@ where
     }
 }
 
-pub mod std {
+pub mod core {
     pub mod ops {
         // Arithmetic operation lang items
         #[lang = "mul"]
@@ -316,488 +316,620 @@ pub mod std {
             }
         }
     }
+}pub mod triton {
+pub use super::*;
+/*
+ * Copyright (c) 2026 Teenygrad.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+use core::ops::Add;
+
+use self::types::{self as ty};
+
+
+pub use types::*;
+
+#[repr(i32)]
+pub enum Axis {
+    X = 0,
+    Y = 1,
+    Z = 2,
 }
+
+pub trait Triton
+where
+    Self::I32Tensor: Add<i32, Output = Self::I32Tensor>,
+    Self::I32Tensor: Comparison<i32, BoolTensor = Self::BoolTensor>,
+{
+    type BF16: ty::BF16;
+    type BoolTensor: ty::BoolTensor;
+    type I32Tensor: ty::I32Tensor;
+    type Tensor<D: ty::Dtype>: ty::Tensor<D> + Add<Self::Tensor<D>, Output = Self::Tensor<D>>;
+    type Pointer<D: ty::Dtype>: ty::Pointer<D, I32Tensor = Self::I32Tensor>
+        + AddOffsets<i32, Self::I32Tensor, Output = Self::Tensor<Self::Pointer<D>>>;
+
+    fn program_id(axis: Axis) -> i32;
+
+    fn num_programs(axis: Axis) -> i32;
+
+    fn arange(start: impl Into<i32>, end: impl Into<i32>) -> Self::I32Tensor;
+
+    fn load<D: ty::Dtype>(
+        ptr: Self::Tensor<Self::Pointer<D>>,
+        mask: Self::BoolTensor,
+    ) -> Self::Tensor<D>;
+
+    fn store<D: ty::Dtype>(
+        dest: Self::Tensor<Self::Pointer<D>>,
+        src: Self::Tensor<D>,
+        mask: Self::BoolTensor,
+    );
+}
+pub mod types {
+pub use super::*;
+/*
+ * Copyright (c) 2026 Teenygrad.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+use core::ops::Add;
+
+// Dtype — base marker trait for all types that can flow through the system
+pub trait Dtype: Copy + Clone {}
+
+// Num — numeric scalars; BITS is used for device buffer allocation
+pub trait Num: Dtype {
+    const BITS: u8;
+}
+
+pub trait Float: Num {}
+pub trait Int: Num {}
+pub trait Bool: Dtype + Copy {}
+
+// Floating-point specialisations
+pub trait F8E4M3FN: Float {}
+pub trait F8E4M3FNUZ: Float {}
+pub trait F8E5M2: Float {}
+pub trait F8E5M2FNUZ: Float {}
+pub trait BF16: Float {}
+
+// Integer specialisations
+pub trait I4: Int {}
+
+// Primitive impls
+impl Dtype for bool {}
+
+impl Dtype for i8 {}
+impl Num for i8 {
+    const BITS: u8 = 8;
+}
+impl Int for i8 {}
+
+impl Dtype for i16 {}
+impl Num for i16 {
+    const BITS: u8 = 16;
+}
+impl Int for i16 {}
+
+impl Dtype for i32 {}
+impl Num for i32 {
+    const BITS: u8 = 32;
+}
+impl Int for i32 {}
+
+impl Dtype for i64 {}
+impl Num for i64 {
+    const BITS: u8 = 64;
+}
+impl Int for i64 {}
+
+impl Dtype for u8 {}
+impl Num for u8 {
+    const BITS: u8 = 8;
+}
+impl Int for u8 {}
+
+impl Dtype for u16 {}
+impl Num for u16 {
+    const BITS: u8 = 16;
+}
+impl Int for u16 {}
+
+impl Dtype for u32 {}
+impl Num for u32 {
+    const BITS: u8 = 32;
+}
+impl Int for u32 {}
+
+impl Dtype for u64 {}
+impl Num for u64 {
+    const BITS: u8 = 64;
+}
+impl Int for u64 {}
+
+impl Dtype for f32 {}
+impl Num for f32 {
+    const BITS: u8 = 32;
+}
+impl Float for f32 {}
+
+impl Dtype for f64 {}
+impl Num for f64 {
+    const BITS: u8 = 64;
+}
+impl Float for f64 {}
+
+// Tensor
+pub trait RankedTensor<D: Dtype>: Copy + Clone {}
+
+pub trait Tensor<D: Dtype>: RankedTensor<D> {}
+
+pub trait BoolTensor: Tensor<bool> {}
+
+pub trait Comparison<I: Num> {
+    type BoolTensor: BoolTensor;
+
+    fn lt(self, other: I) -> Self::BoolTensor;
+}
+
+pub trait I32Tensor: Tensor<i32> + Add<i32> + Comparison<i32> {}
+
+// Offsets trait for adding tensor offsets to pointers
+pub trait AddOffsets<I: Int, T: Tensor<I>> {
+    type Output;
+
+    fn add_offsets(self, offsets: T) -> Self::Output;
+}
+
+// Pointer — Dtype itself (can be stored in tensors), no BITS needed
+pub trait Pointer<D: Dtype>:
+    Sized + Copy + Clone + Dtype + AddOffsets<i32, Self::I32Tensor> + Add<Self>
+{
+    type I32Tensor: I32Tensor;
+}
+}
+pub mod llvm {
+pub use super::super::*;
+/*
+ * Copyright (c) 2026 Teenygrad.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 pub mod triton {
-    pub use super::*;
-    /*
-     * Copyright (c) 2026 Teenygrad.
-     *
-     * Licensed under the Apache License, Version 2.0 (the "License");
-     * you may not use this file except in compliance with the License.
-     * You may obtain a copy of the License at
-     *
-     *   http://www.apache.org/licenses/LICENSE-2.0
-     *
-     * Unless required by applicable law or agreed to in writing, software
-     * distributed under the License is distributed on an "AS IS" BASIS,
-     * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-     * See the License for the specific language governing permissions and
-     * limitations under the License.
-     */
+pub use super::super::super::*;
+/*
+ * Copyright (c) 2026 Teenygrad.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-    use core::ops::Add;
+use super::super::Triton;
+use super::super::{Axis, types as ty};
 
-    use self::types::{self as ty};
 
-    pub use types::*;
+pub struct LlvmTriton {}
 
-    #[repr(i32)]
-    pub enum Axis {
-        X = 0,
-        Y = 1,
-        Z = 2,
+impl Triton for LlvmTriton {
+    type BF16 = num::BF16;
+
+    type BoolTensor = tensor::BoolTensor;
+    type I32Tensor = tensor::I32Tensor;
+    type Tensor<D: ty::Dtype> = tensor::Tensor<D>;
+    type Pointer<D: ty::Dtype> = pointer::Pointer<D>;
+
+    #[inline(never)]
+    fn program_id(_axis: Axis) -> i32 {
+        // dummy implementation not used in final output
+        0
     }
 
-    pub trait Triton
-    where
-        Self::I32Tensor: Add<i32, Output = Self::I32Tensor>,
-        Self::I32Tensor: Comparison<i32, BoolTensor = Self::BoolTensor>,
-    {
-        type BF16: ty::BF16;
-        type BoolTensor: ty::BoolTensor;
-        type I32Tensor: ty::I32Tensor;
-        type Tensor<D: ty::Dtype>: ty::Tensor<D> + Add<Self::Tensor<D>, Output = Self::Tensor<D>>;
-        type Pointer<D: ty::Dtype>: ty::Pointer<D, I32Tensor = Self::I32Tensor>
-            + AddOffsets<i32, Self::I32Tensor, Output = Self::Tensor<Self::Pointer<D>>>;
-
-        fn program_id(axis: Axis) -> i32;
-
-        fn num_programs(axis: Axis) -> i32;
-
-        fn arange(start: impl Into<i32>, end: impl Into<i32>) -> Self::I32Tensor;
-
-        fn load<D: ty::Dtype>(
-            ptr: Self::Tensor<Self::Pointer<D>>,
-            mask: Self::BoolTensor,
-        ) -> Self::Tensor<D>;
-
-        fn store<D: ty::Dtype>(
-            dest: Self::Tensor<Self::Pointer<D>>,
-            src: Self::Tensor<D>,
-            mask: Self::BoolTensor,
-        );
+    #[inline(never)]
+    fn num_programs(_axis: Axis) -> i32 {
+        // dummy implementation not used in final output
+        0
     }
-    pub mod types {
-        pub use super::*;
-        /*
-         * Copyright (c) 2026 Teenygrad.
-         *
-         * Licensed under the Apache License, Version 2.0 (the "License");
-         * you may not use this file except in compliance with the License.
-         * You may obtain a copy of the License at
-         *
-         *   http://www.apache.org/licenses/LICENSE-2.0
-         *
-         * Unless required by applicable law or agreed to in writing, software
-         * distributed under the License is distributed on an "AS IS" BASIS,
-         * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-         * See the License for the specific language governing permissions and
-         * limitations under the License.
-         */
 
-        use core::ops::{Add, Mul};
-
-        // Dtype Type
-        pub trait Dtype: Copy + Clone {}
-
-        pub trait Num: Dtype {}
-
-        pub trait Float: Num {}
-        pub trait Int: Num {}
-        pub trait Bool: Dtype + Copy {}
-
-        // Tensor
-        pub trait RankedTensor<D: Dtype>: Copy + Clone {}
-
-        // Floating-point types
-        pub trait F8E4M3FN: Float {}
-        pub trait F8E4M3FNUZ: Float {}
-        pub trait F8E5M2: Float {}
-        pub trait F8E5M2FNUZ: Float {}
-
-        pub trait BF16: Float {}
-
-        pub trait I4: Int {}
-
-        impl Dtype for bool {}
-
-        impl Dtype for i8 {}
-        impl Num for i8 {}
-        impl Int for i8 {}
-
-        impl Dtype for i16 {}
-        impl Num for i16 {}
-        impl Int for i16 {}
-
-        impl Dtype for i32 {}
-        impl Num for i32 {}
-        impl Int for i32 {}
-
-        impl Dtype for i64 {}
-        impl Num for i64 {}
-        impl Int for i64 {}
-
-        impl Dtype for u8 {}
-        impl Num for u8 {}
-        impl Int for u8 {}
-
-        impl Dtype for u16 {}
-        impl Num for u16 {}
-        impl Int for u16 {}
-
-        impl Dtype for u32 {}
-        impl Num for u32 {}
-        impl Int for u32 {}
-
-        impl Dtype for u64 {}
-        impl Num for u64 {}
-        impl Int for u64 {}
-
-        impl Dtype for f32 {}
-        impl Num for f32 {}
-        impl Float for f32 {}
-
-        impl Dtype for f64 {}
-        impl Num for f64 {}
-        impl Float for f64 {}
-
-        // Int Tensor
-        pub trait Tensor<D: Dtype>: RankedTensor<D> {}
-
-        pub trait BoolTensor: Tensor<bool> {}
-
-        pub trait Comparison<I: Num> {
-            type BoolTensor: BoolTensor;
-
-            fn lt(self, other: I) -> Self::BoolTensor;
-        }
-        pub trait I32Tensor: Tensor<i32> + Add<i32> + Comparison<i32> {}
-
-        // Offsets trait for adding tensor offsets to pointers
-        pub trait AddOffsets<I: Int, T: Tensor<I>> {
-            type Output;
-
-            fn add_offsets(self, offsets: T) -> Self::Output;
-        }
-
-        // Pointer Type
-        pub trait Pointer<D: Dtype>:
-            Sized + Copy + Clone + Dtype + AddOffsets<i32, Self::I32Tensor> + Add<Self>
-        {
-            type I32Tensor: I32Tensor;
-        }
+    #[inline(never)]
+    fn arange(_start: impl Into<i32>, _end: impl Into<i32>) -> Self::I32Tensor {
+        // dummy implementation not used in final output
+        tensor::Tensor(0 as *mut i32)
     }
-    pub mod llvm {
-        pub use super::super::*;
-        /*
-         * Copyright (c) 2026 Teenygrad.
-         *
-         * Licensed under the Apache License, Version 2.0 (the "License");
-         * you may not use this file except in compliance with the License.
-         * You may obtain a copy of the License at
-         *
-         *   http://www.apache.org/licenses/LICENSE-2.0
-         *
-         * Unless required by applicable law or agreed to in writing, software
-         * distributed under the License is distributed on an "AS IS" BASIS,
-         * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-         * See the License for the specific language governing permissions and
-         * limitations under the License.
-         */
 
-        pub mod triton {
-            pub use super::super::super::*;
-            /*
-             * Copyright (c) 2026 Teenygrad.
-             *
-             * Licensed under the Apache License, Version 2.0 (the "License");
-             * you may not use this file except in compliance with the License.
-             * You may obtain a copy of the License at
-             *
-             *   http://www.apache.org/licenses/LICENSE-2.0
-             *
-             * Unless required by applicable law or agreed to in writing, software
-             * distributed under the License is distributed on an "AS IS" BASIS,
-             * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-             * See the License for the specific language governing permissions and
-             * limitations under the License.
-             */
-
-            use super::super::Triton;
-            use super::super::{Axis, types as ty};
-
-            pub struct LlvmTriton {}
-
-            impl Triton for LlvmTriton {
-                type BF16 = num::BF16;
-
-                type BoolTensor = tensor::BoolTensor;
-                type I32Tensor = tensor::I32Tensor;
-                type Tensor<D: ty::Dtype> = tensor::Tensor<D>;
-                type Pointer<D: ty::Dtype> = pointer::Pointer<D>;
-
-                #[inline(never)]
-                fn program_id(_axis: Axis) -> i32 {
-                    // dummy implementation not used in final output
-                    0
-                }
-
-                #[inline(never)]
-                fn num_programs(_axis: Axis) -> i32 {
-                    // dummy implementation not used in final output
-                    0
-                }
-
-                #[inline(never)]
-                fn arange(_start: impl Into<i32>, _end: impl Into<i32>) -> Self::I32Tensor {
-                    // dummy implementation not used in final output
-                    tensor::Tensor(0 as *mut i32)
-                }
-
-                #[inline(never)]
-                fn load<D: ty::Dtype>(
-                    _ptr: Self::Tensor<Self::Pointer<D>>,
-                    _mask: Self::BoolTensor,
-                ) -> Self::Tensor<D> {
-                    // dummy implementation not used in final output
-                    tensor::Tensor(0 as *mut D)
-                }
-
-                #[inline(never)]
-                fn store<D: ty::Dtype>(
-                    _dest: Self::Tensor<Self::Pointer<D>>,
-                    _src: Self::Tensor<D>,
-                    _mask: Self::BoolTensor,
-                ) {
-                    // nop
-                }
-            }
-            pub mod types {
-                pub use super::super::super::*;
-                /*
-                 * Copyright (c) 2026 Teenygrad.
-                 *
-                 * Licensed under the Apache License, Version 2.0 (the "License");
-                 * you may not use this file except in compliance with the License.
-                 * You may obtain a copy of the License at
-                 *
-                 *   http://www.apache.org/licenses/LICENSE-2.0
-                 *
-                 * Unless required by applicable law or agreed to in writing, software
-                 * distributed under the License is distributed on an "AS IS" BASIS,
-                 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-                 * See the License for the specific language governing permissions and
-                 * limitations under the License.
-                 */
-            }
-            pub mod pointer {
-                pub use super::super::super::*;
-                /*
-                 * Copyright (c) 2026 Teenygrad.
-                 *
-                 * Licensed under the Apache License, Version 2.0 (the "License");
-                 * you may not use this file except in compliance with the License.
-                 * You may obtain a copy of the License at
-                 *
-                 *   http://www.apache.org/licenses/LICENSE-2.0
-                 *
-                 * Unless required by applicable law or agreed to in writing, software
-                 * distributed under the License is distributed on an "AS IS" BASIS,
-                 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-                 * See the License for the specific language governing permissions and
-                 * limitations under the License.
-                 */
-
-                use core::ops::Add;
-
-                use crate::triton::llvm::triton::tensor::{I32Tensor, Tensor};
-
-                use super::super::super::types::{self as ty};
-
-                pub struct Pointer<D: ty::Dtype>(pub *mut D);
-                impl<D: ty::Dtype> Clone for Pointer<D> {
-                    fn clone(&self) -> Self {
-                        *self
-                    }
-                }
-                impl<D: ty::Dtype> Copy for Pointer<D> {}
-
-                impl<D: ty::Dtype> ty::Dtype for Pointer<D> {}
-
-                impl<D: ty::Dtype> ty::Pointer<D> for Pointer<D> {
-                    type I32Tensor = I32Tensor;
-                }
-
-                // Implement AddOffsets for I64Tensor
-                impl<D: ty::Dtype> ty::AddOffsets<i32, I32Tensor> for Pointer<D> {
-                    type Output = Tensor<Self>;
-
-                    #[inline(never)]
-                    #[allow(clippy::zero_ptr)]
-                    fn add_offsets(self, _offsets: I32Tensor) -> Self::Output {
-                        // dummy implementation not used in final output
-                        Tensor(0 as *mut Self)
-                    }
-                }
-
-                impl<D: ty::Dtype> Add<Pointer<D>> for Pointer<D> {
-                    type Output = Self;
-
-                    #[inline(never)]
-                    fn add(self, _other: Pointer<D>) -> Self::Output {
-                        // dummy implementation not used in final output
-                        self
-                    }
-                }
-            }
-            pub mod num {
-                pub use super::super::super::*;
-                /*
-                 * Copyright (c) 2026 Teenygrad.
-                 *
-                 * Licensed under the Apache License, Version 2.0 (the "License");
-                 * you may not use this file except in compliance with the License.
-                 * You may obtain a copy of the License at
-                 *
-                 *   http://www.apache.org/licenses/LICENSE-2.0
-                 *
-                 * Unless required by applicable law or agreed to in writing, software
-                 * distributed under the License is distributed on an "AS IS" BASIS,
-                 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-                 * See the License for the specific language governing permissions and
-                 * limitations under the License.
-                 */
-
-                use super::super::super::types as ty;
-
-                /*--------------------------------- BF16 ---------------------------------*/
-
-                pub struct BF16;
-                impl Copy for BF16 {}
-                impl Clone for BF16 {
-                    #[inline(always)]
-                    fn clone(&self) -> Self {
-                        *self
-                    }
-                }
-
-                impl ty::Dtype for BF16 {}
-                impl ty::Num for BF16 {}
-                impl ty::Float for BF16 {}
-                impl ty::BF16 for BF16 {}
-            }
-            pub mod tensor {
-                pub use super::super::super::*;
-                /*
-                 * Copyright (c) 2026 Teenygrad.
-                 *
-                 * Licensed under the Apache License, Version 2.0 (the "License");
-                 * you may not use this file except in compliance with the License.
-                 * You may obtain a copy of the License at
-                 *
-                 *   http://www.apache.org/licenses/LICENSE-2.0
-                 *
-                 * Unless required by applicable law or agreed to in writing, software
-                 * distributed under the License is distributed on an "AS IS" BASIS,
-                 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-                 * See the License for the specific language governing permissions and
-                 * limitations under the License.
-                 */
-
-                use core::ops::Add;
-
-                use super::super::super::types::{self as ty};
-
-                /*--------------------------------- Tensor ---------------------------------*/
-
-                pub struct Tensor<D: ty::Dtype>(pub *mut D);
-                impl<D: ty::Dtype> Clone for Tensor<D> {
-                    fn clone(&self) -> Self {
-                        *self
-                    }
-                }
-                impl<D: ty::Dtype> Copy for Tensor<D> {}
-
-                impl<D: ty::Dtype> ty::Tensor<D> for Tensor<D> {}
-                impl<D: ty::Dtype> ty::RankedTensor<D> for Tensor<D> {}
-
-                // Element-wise addition for tensors
-                impl<D: ty::Dtype> Add<Tensor<D>> for Tensor<D> {
-                    type Output = Tensor<D>;
-
-                    #[inline(never)]
-                    #[allow(clippy::zero_ptr)]
-                    fn add(self, _rhs: Tensor<D>) -> Self::Output {
-                        // dummy implementation not used in final output
-                        Tensor(0 as *mut D)
-                    }
-                }
-
-                pub type BoolTensor = Tensor<bool>;
-                impl ty::BoolTensor for BoolTensor {}
-
-                pub type I32Tensor = Tensor<i32>;
-
-                impl ty::I32Tensor for I32Tensor {}
-
-                impl ty::Comparison<i32> for I32Tensor {
-                    type BoolTensor = BoolTensor;
-
-                    #[inline(never)]
-                    #[allow(clippy::zero_ptr)]
-                    fn lt(self, _other: i32) -> Self::BoolTensor {
-                        // dummy implementation not used in final output
-                        Tensor(0 as *mut bool)
-                    }
-                }
-
-                // Blanket implementation for any type implementing I64, including <I32 as Mul<u32>>::Output
-                impl Add<i32> for I32Tensor {
-                    type Output = I32Tensor;
-
-                    #[inline(never)]
-                    #[allow(clippy::zero_ptr)]
-                    fn add(self, _rhs: i32) -> Self::Output {
-                        // dummy implementation not used in final output
-                        Tensor(0 as *mut i32)
-                    }
-                }
-            }
-        }
+    #[inline(never)]
+    fn load<D: ty::Dtype>(
+        _ptr: Self::Tensor<Self::Pointer<D>>,
+        _mask: Self::BoolTensor,
+    ) -> Self::Tensor<D> {
+        // dummy implementation not used in final output
+        tensor::Tensor(0 as *mut D)
     }
+
+    #[inline(never)]
+    fn store<D: ty::Dtype>(
+        _dest: Self::Tensor<Self::Pointer<D>>,
+        _src: Self::Tensor<D>,
+        _mask: Self::BoolTensor,
+    ) {
+        // nop
+    }
+}
+pub mod types {
+pub use super::super::super::*;
+/*
+ * Copyright (c) 2026 Teenygrad.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+use core::ops::Add;
+
+// Dtype — base marker trait for all types that can flow through the system
+pub trait Dtype: Copy + Clone {}
+
+// Num — numeric scalars; BITS is used for device buffer allocation
+pub trait Num: Dtype {
+    const BITS: u8;
+}
+
+pub trait Float: Num {}
+pub trait Int: Num {}
+pub trait Bool: Dtype + Copy {}
+
+// Floating-point specialisations
+pub trait F8E4M3FN: Float {}
+pub trait F8E4M3FNUZ: Float {}
+pub trait F8E5M2: Float {}
+pub trait F8E5M2FNUZ: Float {}
+pub trait BF16: Float {}
+
+// Integer specialisations
+pub trait I4: Int {}
+
+// Primitive impls
+impl Dtype for bool {}
+
+impl Dtype for i8 {}
+impl Num for i8 {
+    const BITS: u8 = 8;
+}
+impl Int for i8 {}
+
+impl Dtype for i16 {}
+impl Num for i16 {
+    const BITS: u8 = 16;
+}
+impl Int for i16 {}
+
+impl Dtype for i32 {}
+impl Num for i32 {
+    const BITS: u8 = 32;
+}
+impl Int for i32 {}
+
+impl Dtype for i64 {}
+impl Num for i64 {
+    const BITS: u8 = 64;
+}
+impl Int for i64 {}
+
+impl Dtype for u8 {}
+impl Num for u8 {
+    const BITS: u8 = 8;
+}
+impl Int for u8 {}
+
+impl Dtype for u16 {}
+impl Num for u16 {
+    const BITS: u8 = 16;
+}
+impl Int for u16 {}
+
+impl Dtype for u32 {}
+impl Num for u32 {
+    const BITS: u8 = 32;
+}
+impl Int for u32 {}
+
+impl Dtype for u64 {}
+impl Num for u64 {
+    const BITS: u8 = 64;
+}
+impl Int for u64 {}
+
+impl Dtype for f32 {}
+impl Num for f32 {
+    const BITS: u8 = 32;
+}
+impl Float for f32 {}
+
+impl Dtype for f64 {}
+impl Num for f64 {
+    const BITS: u8 = 64;
+}
+impl Float for f64 {}
+
+// Tensor
+pub trait RankedTensor<D: Dtype>: Copy + Clone {}
+
+pub trait Tensor<D: Dtype>: RankedTensor<D> {}
+
+pub trait BoolTensor: Tensor<bool> {}
+
+pub trait Comparison<I: Num> {
+    type BoolTensor: BoolTensor;
+
+    fn lt(self, other: I) -> Self::BoolTensor;
+}
+
+pub trait I32Tensor: Tensor<i32> + Add<i32> + Comparison<i32> {}
+
+// Offsets trait for adding tensor offsets to pointers
+pub trait AddOffsets<I: Int, T: Tensor<I>> {
+    type Output;
+
+    fn add_offsets(self, offsets: T) -> Self::Output;
+}
+
+// Pointer — Dtype itself (can be stored in tensors), no BITS needed
+pub trait Pointer<D: Dtype>:
+    Sized + Copy + Clone + Dtype + AddOffsets<i32, Self::I32Tensor> + Add<Self>
+{
+    type I32Tensor: I32Tensor;
+}
+}
+pub mod pointer {
+pub use super::super::super::*;
+/*
+ * Copyright (c) 2026 Teenygrad.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+use core::ops::Add;
+
+use crate::triton::llvm::triton::tensor::{I32Tensor, Tensor};
+
+use super::super::super::types::{self as ty};
+
+pub struct Pointer<D: ty::Dtype>(pub *mut D);
+impl<D: ty::Dtype> Clone for Pointer<D> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<D: ty::Dtype> Copy for Pointer<D> {}
+
+impl<D: ty::Dtype> ty::Dtype for Pointer<D> {}
+
+impl<D: ty::Dtype> ty::Pointer<D> for Pointer<D> {
+    type I32Tensor = I32Tensor;
+}
+
+// Implement AddOffsets for I64Tensor
+impl<D: ty::Dtype> ty::AddOffsets<i32, I32Tensor> for Pointer<D> {
+    type Output = Tensor<Self>;
+
+    #[inline(never)]
+    #[allow(clippy::zero_ptr)]
+    fn add_offsets(self, _offsets: I32Tensor) -> Self::Output {
+        // dummy implementation not used in final output
+        Tensor(0 as *mut Self)
+    }
+}
+
+impl<D: ty::Dtype> Add<Pointer<D>> for Pointer<D> {
+    type Output = Self;
+
+    #[inline(never)]
+    fn add(self, _other: Pointer<D>) -> Self::Output {
+        // dummy implementation not used in final output
+        self
+    }
+}
+}
+pub mod num {
+pub use super::super::super::*;
+/*
+ * Copyright (c) 2026 Teenygrad.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+use super::super::super::types as ty;
+
+/*--------------------------------- BF16 ---------------------------------*/
+
+pub struct BF16;
+impl Copy for BF16 {}
+impl Clone for BF16 {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl ty::Dtype for BF16 {}
+impl ty::Num for BF16 {
+    const BITS: u8 = 16;
+}
+impl ty::Float for BF16 {}
+impl ty::BF16 for BF16 {}
+}
+pub mod tensor {
+pub use super::super::super::*;
+/*
+ * Copyright (c) 2026 Teenygrad.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+use core::ops::Add;
+
+use super::super::super::types::{self as ty};
+
+/*--------------------------------- Tensor ---------------------------------*/
+
+pub struct Tensor<D: ty::Dtype>(pub *mut D);
+impl<D: ty::Dtype> Clone for Tensor<D> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<D: ty::Dtype> Copy for Tensor<D> {}
+
+impl<D: ty::Dtype> ty::Tensor<D> for Tensor<D> {}
+impl<D: ty::Dtype> ty::RankedTensor<D> for Tensor<D> {}
+
+// Element-wise addition for tensors
+impl<D: ty::Dtype> Add<Tensor<D>> for Tensor<D> {
+    type Output = Tensor<D>;
+
+    #[inline(never)]
+    #[allow(clippy::zero_ptr)]
+    fn add(self, _rhs: Tensor<D>) -> Self::Output {
+        // dummy implementation not used in final output
+        Tensor(0 as *mut D)
+    }
+}
+
+pub type BoolTensor = Tensor<bool>;
+impl ty::BoolTensor for BoolTensor {}
+
+pub type I32Tensor = Tensor<i32>;
+
+impl ty::I32Tensor for I32Tensor {}
+
+impl ty::Comparison<i32> for I32Tensor {
+    type BoolTensor = BoolTensor;
+
+    #[inline(never)]
+    #[allow(clippy::zero_ptr)]
+    fn lt(self, _other: i32) -> Self::BoolTensor {
+        // dummy implementation not used in final output
+        Tensor(0 as *mut bool)
+    }
+}
+
+// Blanket implementation for any type implementing I64, including <I32 as Mul<u32>>::Output
+impl Add<i32> for I32Tensor {
+    type Output = I32Tensor;
+
+    #[inline(never)]
+    #[allow(clippy::zero_ptr)]
+    fn add(self, _rhs: i32) -> Self::Output {
+        // dummy implementation not used in final output
+        Tensor(0 as *mut i32)
+    }
+}
+}
+}
+}
 }
 pub use triton::*;
+pub fn tensor_add < T : Triton, D : types :: Dtype, const BLOCK_SIZE : i32 >
+(x_ptr : T :: Pointer < D > , y_ptr : T :: Pointer < D > , output_ptr : T ::
+Pointer < D > , n_elements : i32,)
+{
+    let pid = T :: program_id(Axis :: X); let block_start = pid * BLOCK_SIZE;
+    let offsets = T :: arange(0, BLOCK_SIZE) + block_start; let mask =
+    offsets.lt(n_elements); let x = T ::
+    load(x_ptr.add_offsets(offsets), mask); let y = T ::
+    load(y_ptr.add_offsets(offsets), mask); let output = x + y; T ::
+    store(output_ptr.add_offsets(offsets), output, mask);
+}
 
 use triton::llvm::triton::num::*;
 use triton::llvm::triton::pointer::Pointer;
-
 type LlvmTriton = triton::llvm::triton::LlvmTriton;
 
 #[no_mangle]
-pub extern "C" fn entry_point(
-    x_ptr: *mut f32,
-    y_ptr: *mut f32,
-    output_ptr: *mut f32,
-    n_elements: i32,
-) {
+pub extern "C" fn entry_point(x_ptr: *mut f32, y_ptr: *mut f32, output_ptr: *mut f32, n_elements: i32) {
     let x_ptr = Pointer(x_ptr as *mut _);
     let y_ptr = Pointer(y_ptr as *mut _);
     let output_ptr = Pointer(output_ptr as *mut _);
-
     tensor_add::<LlvmTriton, f32, 128>(x_ptr, y_ptr, output_ptr, n_elements);
-}
-pub extern "C" fn tensor_add<T: Triton, D: types::Dtype, const BLOCK_SIZE: i32>(
-    x_ptr: T::Pointer<D>,
-    y_ptr: T::Pointer<D>,
-    output_ptr: T::Pointer<D>,
-    n_elements: i32,
-) {
-    let pid = T::program_id(Axis::X);
-    let block_start = pid * BLOCK_SIZE;
-    let offsets = T::arange(0, BLOCK_SIZE) + block_start;
-    let mask = offsets.lt(n_elements);
-    let x = T::load(x_ptr.add_offsets(offsets), mask);
-    let y = T::load(y_ptr.add_offsets(offsets), mask);
-    let output = x + y;
-    T::store(output_ptr.add_offsets(offsets), output, mask);
 }

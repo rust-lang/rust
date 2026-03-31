@@ -31,7 +31,8 @@ namespace triton {
 
 class TritonCompiler : public Compiler {
 public:
-  TritonCompiler(MLIRContext *context, std::string target, std::string options);
+  TritonCompiler(MLIRContext *context, std::string target,
+                 CompileOptions options);
 
   virtual ~TritonCompiler() override;
 

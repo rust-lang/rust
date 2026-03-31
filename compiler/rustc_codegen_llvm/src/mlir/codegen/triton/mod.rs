@@ -523,24 +523,11 @@ impl<'a> TritonCodegen<'a> {
             TypingEnv::fully_monomorphized(),
             EarlyBinder::bind(arg1.ty(mir, tcx)),
         );
-
-        let pointee_ty = match arg1_ty.kind() {
-            TyKind::RawPtr(pointee_ty, _) => {
-                self.type_mapper.map_type(self.module.context(), &tcx, pointee_ty)
-            }
-            _ => todo!("codegen_create_pointer: arg1_ty: {:?}", arg1_ty),
-        };
-        let pointer_type = pointer_type(pointee_ty);
-        let pointer_op = create_ub_poison(
-            self.module.context(),
-            Location::unknown(self.module.context()),
-            pointer_type,
-        )
-        .map_err(|e| MlirError::CreateOperation { err: e })?;
-
-        let pointer_result = pointer_op.result(0).unwrap();
-        mlir_block.append_operation(pointer_op);
-        Ok(Some(pointer_result.into()))
+        // `Pointer<T>` is a newtype wrapper around a raw pointer in Triton DSL.
+        // Preserve the wrapped pointer SSA value rather than materializing poison.
+        let pointer_value =
+            self.codegen_operand(tcx, instance, arg1, arg1_ty, mlir_block, ssa_values)?;
+        Ok(Some(pointer_value))
     }
 
     fn codegen_const_adt<'tcx>(
@@ -579,18 +566,8 @@ impl<'a> TritonCodegen<'a> {
             mlir_block.append_operation(tensor_op);
             Ok(tensor_result.into())
         } else if name == "triton::llvm::triton::pointer::Pointer" {
-            let ty = map_ty(0);
-            let pointer_type = pointer_type(ty);
-            let pointer_op = create_ub_poison(
-                self.module.context(),
-                Location::unknown(self.module.context()),
-                pointer_type,
-            )
-            .map_err(|e| MlirError::CreateOperation { err: e })?;
-
-            let pointer_result = pointer_op.result(0).unwrap();
-            mlir_block.append_operation(pointer_op);
-            Ok(pointer_result.into())
+            // `Pointer<T>` is a newtype wrapper — pass through the wrapped value directly.
+            Ok(value)
         } else {
             todo!("Adt: {:?}", adt_def)
         }
