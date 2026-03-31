@@ -63,7 +63,10 @@ pub mod aarch64;
 // in the builtins-test tests. So this is a way of enabling the module during testing.
 #[cfg(all(
     target_arch = "aarch64",
-    any(target_feature = "outline-atomics", feature = "mangled-names")
+    any(
+        target_feature = "outline-atomics",
+        feature = "unstable-public-internals"
+    )
 ))]
 pub mod aarch64_outline_atomics;
 

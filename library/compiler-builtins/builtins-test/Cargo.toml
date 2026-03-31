@@ -6,7 +6,7 @@ publish = false
 license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
 
 [dependencies]
-compiler_builtins = { workspace = true, features = ["mangled-names", "unstable-public-internals"] }
+compiler_builtins = { workspace = true, features = ["unstable-public-internals"] }
 
 # For fuzzing tests we want a deterministic seedable RNG. We also eliminate potential
 # problems with system RNGs on the variety of platforms this crate is tested on.

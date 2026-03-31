@@ -63,7 +63,7 @@ fn main() {
     // mangling names though we assume that we're also in test mode so we don't
     // build anything and we rely on the upstream implementation of compiler-rt
     // functions
-    if !cfg!(feature = "mangled-names") && cfg!(feature = "c") {
+    if cfg!(feature = "unmangled-names") && cfg!(feature = "c") {
         // Don't use a C compiler for these targets:
         //
         // * nvptx - everything is bitcode, not compatible with mixed C/Rust

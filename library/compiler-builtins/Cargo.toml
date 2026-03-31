@@ -23,8 +23,8 @@ default-members = [
 ]
 
 exclude = [
-    # `builtins-test-intrinsics` needs the feature `compiler-builtins` enabled
-    # and `mangled-names` disabled, which is the opposite of what is needed for
+    # `builtins-test-intrinsics` needs the features `compiler-builtins` and
+    # `unmangled-names` enabled, which is the opposite of what is needed for
     # other tests, so it makes sense to keep it out of the workspace.
     "builtins-test-intrinsics",
     # We test via the `builtins-shim` crate, so exclude the `compiler-builtins`
