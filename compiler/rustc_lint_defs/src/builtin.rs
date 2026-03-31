@@ -190,6 +190,11 @@ declare_lint! {
         reason: fcw!(FutureReleaseError #81670),
         report_in_deps: true,
     };
+    // We exempt `FORBIDDEN_LINT_GROUPS` from `-Dwarnings` because it specifically
+    // triggers in cases (like #80988) where you have `forbid(warnings)`,
+    // and so if we turned that into an error, it'd defeat the purpose of the
+    // future compatibility warning.
+    ignore_deny_warnings
 }
 
 declare_lint! {
