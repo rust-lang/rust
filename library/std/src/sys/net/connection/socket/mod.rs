@@ -760,12 +760,10 @@ impl UdpSocket {
 
     pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
         unsafe {
-            setsockopt(
-                &self.inner,
-                c::IPPROTO_IP,
-                c::IP_MULTICAST_TTL,
-                cmp::min(multicast_ttl_v4, u8::MAX as u32) as IpV4MultiCastType,
-            )
+            let ttl: IpV4MultiCastType = multicast_ttl_v4
+                .try_into()
+                .map_err(|_| io::Error::from(io::ErrorKind::InvalidInput))?;
+            setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL, ttl)
         }
     }
 
