@@ -10,12 +10,12 @@ use Sign::{Minus, MinusPlus};
 
 use crate::num::{ldexp_f32, ldexp_f64};
 
+mod equiv;
 mod estimator;
 mod strategy {
     mod dragon;
     mod grisu;
 }
-mod random;
 
 fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
