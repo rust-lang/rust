@@ -36,7 +36,9 @@ rand = { workspace = true, optional = true }
 libtest-mimic.workspace = true
 
 [features]
-default = ["build-mpfr", "unstable-float"]
+# Defaults should match the defaults in compiler-builtins since we have that
+# dependency with `default-features=false`.
+default = ["build-mpfr", "unstable-float", "compiler_builtins/arch"]
 
 # Propagated from libm because this affects which functions we test.
 unstable-float = ["libm/unstable-float", "rug?/nightly-float"]

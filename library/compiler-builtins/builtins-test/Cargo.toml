@@ -6,7 +6,7 @@ publish = false
 license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
 
 [dependencies]
-compiler_builtins = { workspace = true, features = ["unstable-public-internals"] }
+compiler_builtins = { workspace = true, default-features = false, features = ["unstable-public-internals"] }
 
 # For fuzzing tests we want a deterministic seedable RNG. We also eliminate potential
 # problems with system RNGs on the variety of platforms this crate is tested on.
@@ -24,9 +24,10 @@ gungraun = { workspace = true, optional = true }
 paste.workspace = true
 
 [features]
-default = []
+# Defaults should match the defaults in compiler-builtins since we have that
+# dependency with `default-features=false`.
+default = ["compiler_builtins/arch"]
 c = ["compiler_builtins/c"]
-no-asm = ["compiler_builtins/no-asm"]
 
 # Enable icount benchmarks (requires gungraun-runner and valgrind locally)
 icount = ["dep:gungraun"]
@@ -35,11 +36,6 @@ icount = ["dep:gungraun"]
 # deps so are off by default for CI.
 benchmarking-reports = ["walltime", "criterion/plotters", "criterion/html_reports"]
 walltime = ["dep:criterion"]
-
-# NOTE: benchmarks must be run with `--no-default-features` or with
-# `-p builtins-test`, otherwise the default `compiler-builtins` feature
-# of the `compiler_builtins` crate gets activated, resulting in linker
-# errors.
 
 [[bench]]
 name = "float_add"

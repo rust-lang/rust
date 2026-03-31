@@ -4,10 +4,7 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
 // memcpy/memmove/memset have optimized implementations on some architectures
-#[cfg_attr(
-    all(not(feature = "no-asm"), target_arch = "x86_64"),
-    path = "x86_64.rs"
-)]
+#[cfg_attr(all(feature = "arch", target_arch = "x86_64"), path = "x86_64.rs")]
 mod impls;
 
 intrinsics! {

@@ -90,7 +90,7 @@ fn configure_libm(target: &Target) {
     set_cfg("intrinsics_enabled", true);
 
     // The arch module may contain assembly.
-    set_cfg("arch_enabled", !cfg!(feature = "no-asm"));
+    set_cfg("arch_enabled", cfg!(feature = "arch"));
 
     let opt = !matches!(target.opt_level.as_str(), "0" | "1");
     set_cfg("optimizations_enabled", opt);

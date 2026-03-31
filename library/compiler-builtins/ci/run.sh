@@ -55,10 +55,10 @@ else
     "${test_builtins[@]}" --release
     "${test_builtins[@]}" --features c
     "${test_builtins[@]}" --features c --release
-    "${test_builtins[@]}" --features no-asm
-    "${test_builtins[@]}" --features no-asm --release
     "${test_builtins[@]}" --benches
     "${test_builtins[@]}" --benches --release
+    "${test_builtins[@]}" --no-default-features
+    "${test_builtins[@]}" --no-default-features --release
 
     # Validate that having a verbatim path for the target directory works
     # (trivial to regress using `/` in paths to build artifacts rather than
@@ -85,8 +85,8 @@ symcheck_cb_args=(-- --package compiler_builtins --features compiler-builtins)
 "${symcheck[@]}" "${symcheck_cb_args[@]}" --release
 "${symcheck[@]}" "${symcheck_cb_args[@]}" --features c
 "${symcheck[@]}" "${symcheck_cb_args[@]}" --features c --release
-"${symcheck[@]}" "${symcheck_cb_args[@]}" --features no-asm
-"${symcheck[@]}" "${symcheck_cb_args[@]}" --features no-asm --release
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --no-default-features
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --no-default-features --release
 
 run_intrinsics_test() {
     build_args=(--verbose --manifest-path builtins-test-intrinsics/Cargo.toml)

@@ -34,16 +34,15 @@ core = { path = "../../core", optional = true }
 cc = { version = "1.2", optional = true }
 
 [features]
-default = []
+default = ["arch"]
+
+# Enable architecture-specific features such as SIMD or assembly routines. If
+# disabled, the generic version can be tested on any platform.
+arch = []
 
 # Enable compilation of C code in compiler-rt, filling in some more optimized
 # implementations and also filling in unimplemented intrinsics
 c = ["dep:cc"]
-
-# For implementations where there is both a generic version and a platform-
-# specific version, use the generic version. This is meant to enable testing
-# the generic versions on all platforms.
-no-asm = []
 
 # Flag this library as the unstable compiler-builtins lib. This must be enabled
 # when using as `std`'s dependency.'
