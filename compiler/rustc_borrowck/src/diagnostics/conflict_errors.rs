@@ -3531,9 +3531,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 );
             }
 
-            if let Some(cow) = tcx.get_diagnostic_item(sym::Cow)
-                && let ty::Adt(adtdef, _) = return_ty.kind()
-                && adtdef.did() == cow
+            if let Some(cow_did) = tcx.get_diagnostic_item(sym::Cow)
+                && let ty::Adt(adt_def, _) = return_ty.kind()
+                && adt_def.did() == cow_did
             {
                 if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(return_span) {
                     if let Some(pos) = snippet.rfind(".to_owned") {
