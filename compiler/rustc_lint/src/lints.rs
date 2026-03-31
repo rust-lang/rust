@@ -2,6 +2,7 @@
 
 use std::num::NonZero;
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
@@ -3231,8 +3232,23 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MismatchedLifetimeSyntaxes 
             diag.span_label(s, msg!("the lifetime is named here"));
         }
 
+        let mut hidden_output_counts: FxIndexMap<Span, usize> = FxIndexMap::default();
         for s in self.outputs.hidden {
-            diag.span_label(s, msg!("the same lifetime is hidden here"));
+            *hidden_output_counts.entry(s).or_insert(0) += 1;
+        }
+        for (span, count) in hidden_output_counts {
+            let label = msg!(
+                "the same {$count ->
+                    [one] lifetime
+                    *[other] lifetimes
+                } {$count ->
+                    [one] is
+                    *[other] are
+                } hidden here"
+            )
+            .arg("count", count)
+            .format();
+            diag.span_label(span, label);
         }
         for s in self.outputs.elided {
             diag.span_label(s, msg!("the same lifetime is elided here"));

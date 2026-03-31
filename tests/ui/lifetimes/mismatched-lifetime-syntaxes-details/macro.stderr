@@ -2,9 +2,9 @@ error: hiding or eliding a lifetime that's named elsewhere is confusing
   --> $DIR/macro.rs:10:12
    |
 LL |         ($($pair),+, $middle, $($pair),+)
-   |            ^^^^^                ^^^^^
+   |            ^^^^^                ^^^^^ the same lifetimes are hidden here
    |            |
-   |            the same lifetime is hidden here
+   |            the same lifetimes are hidden here
 ...
 LL | fn repeated_macro<'a>(x: &'a u8) -> repeated!(Pair, Pair; &'_ u8) {
    |                           --        -----------------------^^----

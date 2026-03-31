@@ -2,10 +2,8 @@ error: hiding a lifetime that's elided elsewhere is confusing
   --> $DIR/path-count.rs:19:15
    |
 LL | fn missing(_: &str) -> Foo {
-   |               ^^^^     ^^^
-   |               |        |
-   |               |        the same lifetime is hidden here
-   |               |        the same lifetime is hidden here
+   |               ^^^^     ^^^ the same lifetimes are hidden here
+   |               |
    |               the lifetime is elided here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
@@ -23,12 +21,9 @@ error: hiding a lifetime that's elided elsewhere is confusing
   --> $DIR/path-count.rs:24:22
    |
 LL | fn missing_double(_: &str) -> (Foo, Foo) {
-   |                      ^^^^      ^^^  ^^^
-   |                      |         |    |
-   |                      |         |    the same lifetime is hidden here
-   |                      |         |    the same lifetime is hidden here
-   |                      |         the same lifetime is hidden here
-   |                      |         the same lifetime is hidden here
+   |                      ^^^^      ^^^  ^^^ the same lifetimes are hidden here
+   |                      |         |
+   |                      |         the same lifetimes are hidden here
    |                      the lifetime is elided here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
@@ -41,10 +36,8 @@ error: hiding a lifetime that's elided elsewhere is confusing
   --> $DIR/path-count.rs:29:13
    |
 LL | fn empty(_: &str) -> Foo<> {
-   |             ^^^^     ^^^^^
-   |             |        |
-   |             |        the same lifetime is hidden here
-   |             |        the same lifetime is hidden here
+   |             ^^^^     ^^^^^ the same lifetimes are hidden here
+   |             |
    |             the lifetime is elided here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
@@ -57,10 +50,8 @@ error: hiding a lifetime that's elided elsewhere is confusing
   --> $DIR/path-count.rs:34:23
    |
 LL | fn wrapper_missing(_: &str) -> Wrapper<Foo> {
-   |                       ^^^^             ^^^
-   |                       |                |
-   |                       |                the same lifetime is hidden here
-   |                       |                the same lifetime is hidden here
+   |                       ^^^^             ^^^ the same lifetimes are hidden here
+   |                       |
    |                       the lifetime is elided here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
@@ -73,10 +64,8 @@ error: hiding a lifetime that's elided elsewhere is confusing
   --> $DIR/path-count.rs:39:23
    |
 LL | fn missing_generic(_: &str) -> Bar<u8> {
-   |                       ^^^^     ^^^^^^^
-   |                       |        |
-   |                       |        the same lifetime is hidden here
-   |                       |        the same lifetime is hidden here
+   |                       ^^^^     ^^^^^^^ the same lifetimes are hidden here
+   |                       |
    |                       the lifetime is elided here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
@@ -89,10 +78,8 @@ error: hiding a lifetime that's named elsewhere is confusing
   --> $DIR/path-count.rs:44:36
    |
 LL | fn named_missing<'a>(_: &'a u8) -> Foo {
-   |                          --        ^^^
-   |                          |         |
-   |                          |         the same lifetime is hidden here
-   |                          |         the same lifetime is hidden here
+   |                          --        ^^^ the same lifetimes are hidden here
+   |                          |
    |                          the lifetime is named here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
@@ -105,10 +92,8 @@ error: hiding a lifetime that's named elsewhere is confusing
   --> $DIR/path-count.rs:49:34
    |
 LL | fn named_empty<'a>(_: &'a u8) -> Foo<> {
-   |                        --        ^^^^^
-   |                        |         |
-   |                        |         the same lifetime is hidden here
-   |                        |         the same lifetime is hidden here
+   |                        --        ^^^^^ the same lifetimes are hidden here
+   |                        |
    |                        the lifetime is named here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
@@ -121,10 +106,8 @@ error: hiding a lifetime that's named elsewhere is confusing
   --> $DIR/path-count.rs:54:38
    |
 LL | fn static_missing(_: &'static u8) -> Foo {
-   |                       -------        ^^^
-   |                       |              |
-   |                       |              the same lifetime is hidden here
-   |                       |              the same lifetime is hidden here
+   |                       -------        ^^^ the same lifetimes are hidden here
+   |                       |
    |                       the lifetime is named here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
@@ -137,10 +120,8 @@ error: hiding a lifetime that's named elsewhere is confusing
   --> $DIR/path-count.rs:59:36
    |
 LL | fn static_empty(_: &'static u8) -> Foo<> {
-   |                     -------        ^^^^^
-   |                     |              |
-   |                     |              the same lifetime is hidden here
-   |                     |              the same lifetime is hidden here
+   |                     -------        ^^^^^ the same lifetimes are hidden here
+   |                     |
    |                     the lifetime is named here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
@@ -153,10 +134,8 @@ error: hiding a lifetime that's named elsewhere is confusing
   --> $DIR/path-count.rs:64:47
    |
 LL | fn static_missing_generic(_: &'static str) -> Bar<u8> {
-   |                               -------         ^^^^^^^
-   |                               |               |
-   |                               |               the same lifetime is hidden here
-   |                               |               the same lifetime is hidden here
+   |                               -------         ^^^^^^^ the same lifetimes are hidden here
+   |                               |
    |                               the lifetime is named here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
