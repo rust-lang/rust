@@ -1073,7 +1073,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// has a valid reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt<T>(
         gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
-        s: &'tcx Session,
+        sess: &'tcx Session,
         crate_types: Vec<CrateType>,
         stable_crate_id: StableCrateId,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
@@ -1087,16 +1087,16 @@ impl<'tcx> TyCtxt<'tcx> {
         jobserver_proxy: Arc<Proxy>,
         f: impl FnOnce(TyCtxt<'tcx>) -> T,
     ) -> T {
-        let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
-            s.dcx().emit_fatal(err);
+        let data_layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
+            sess.dcx().emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);
-        let common_types = CommonTypes::new(&interners, s, &untracked);
+        let common_types = CommonTypes::new(&interners, sess, &untracked);
         let common_lifetimes = CommonLifetimes::new(&interners);
-        let common_consts = CommonConsts::new(&interners, &common_types, s, &untracked);
+        let common_consts = CommonConsts::new(&interners, &common_types, sess, &untracked);
 
         let gcx = gcx_cell.get_or_init(|| GlobalCtxt {
-            sess: s,
+            sess,
             crate_types,
             stable_crate_id,
             arena,
@@ -1104,7 +1104,7 @@ impl<'tcx> TyCtxt<'tcx> {
             interners,
             dep_graph,
             hooks,
-            prof: s.prof.clone(),
+            prof: sess.prof.clone(),
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
