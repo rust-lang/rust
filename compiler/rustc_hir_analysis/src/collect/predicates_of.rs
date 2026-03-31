@@ -6,6 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::find_attr;
+use rustc_lint_defs;
 use rustc_middle::ty::{
     self, Binder, Clause, GenericArgKind, GenericArgs, GenericPredicates, ImplTraitInTraitData, Ty,
     TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable, TypeVisitor, Upcast, UpcastFrom,
@@ -31,7 +32,10 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
     let mut result = tcx.explicit_predicates_of(def_id);
     debug!("predicates_of: explicit_predicates_of({:?}) = {:?}", def_id, result);
 
-    if tcx.sess.opts.unstable_opts.strict_projection_item_bounds {
+    // Check lint cap level to avoid triggering this flag on deps.
+    if tcx.sess.opts.lint_cap != Some(rustc_lint_defs::Level::Allow)
+        && tcx.sess.opts.unstable_opts.strict_projection_item_bounds
+    {
         let implied_item_bounds = elaborate_projection_predicates(tcx, result.predicates.to_vec());
         result.predicates = tcx
             .arena

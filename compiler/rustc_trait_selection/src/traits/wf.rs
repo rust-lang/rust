@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
+use rustc_lint_defs;
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
@@ -467,7 +468,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 _ => false,
             }
         }
-        if tcx.sess.opts.unstable_opts.strict_projection_item_bounds {
+        // Check lint cap level to avoid triggering this flag on deps.
+        if tcx.sess.opts.lint_cap != Some(rustc_lint_defs::Level::Allow)
+            && tcx.sess.opts.unstable_opts.strict_projection_item_bounds
+        {
             // Add item bounds to the predicate term.
             // If the term is generic, we can skip these item bounds as they're implied by
             // `elaborate_projection_predicates`.
