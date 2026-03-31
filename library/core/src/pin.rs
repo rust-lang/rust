@@ -740,7 +740,7 @@
 //!
 //! While counter-intuitive, it's often the easier choice: if you do not expose a
 //! <code>[Pin]<[&mut] Field></code>, you do not need to be careful about other code
-//! moving out of that field, you just have to ensure is that you never create pinning
+//! moving out of that field, you just have to ensure that you never create a pinning
 //! reference to that field. This does of course also mean that if you decide a field does not
 //! have structural pinning, you must not write [`unsafe`] code that assumes (invalidly) that the
 //! field *is* structurally pinned!
