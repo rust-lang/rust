@@ -2114,7 +2114,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut cfg_pos = None;
         let mut attr_pos = None;
         for (pos, attr) in item.attrs().iter().enumerate() {
-            if !attr.is_doc_comment() && !self.cx.expanded_inert_attrs.is_marked(attr) {
+            if !attr.is_doc_comment()
+                && !attr.is_comment()
+                && !self.cx.expanded_inert_attrs.is_marked(attr)
+            {
                 let name = attr.name();
                 if name == Some(sym::cfg) || name == Some(sym::cfg_attr) {
                     cfg_pos = Some(pos); // a cfg attr found, no need to search anymore

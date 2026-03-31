@@ -22,7 +22,10 @@ use rustc_span::{Span, Symbol, sym};
 use crate::{AttributeParser, Late, session_diagnostics as errors};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
-    if attr.is_doc_comment() || attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace)
+    if attr.is_doc_comment()
+        || attr.is_comment()
+        || attr.has_name(sym::cfg_trace)
+        || attr.has_name(sym::cfg_attr_trace)
     {
         return;
     }

@@ -3394,6 +3394,9 @@ pub enum AttrKind {
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
     DocComment(CommentKind, Symbol),
+
+    /// A regular (non-doc) comment.
+    Comment(CommentKind, Symbol),
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

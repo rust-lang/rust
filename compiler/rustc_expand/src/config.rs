@@ -167,7 +167,7 @@ pub(crate) fn attr_into_trace(mut attr: Attribute, trace_name: Symbol) -> Attrib
             // This makes the trace attributes unobservable to token-based proc macros.
             *tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::default()));
         }
-        AttrKind::DocComment(..) => unreachable!(),
+        AttrKind::DocComment(..) | AttrKind::Comment(..) => unreachable!(),
     }
     attr
 }
@@ -415,6 +415,10 @@ impl<'a> StripUnconfigured<'a> {
     /// If attributes are not allowed on expressions, emit an error for `attr`
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
+        // Regular comments are never "real" attributes.
+        if attr.is_comment() {
+            return;
+        }
         if self.features.is_some_and(|features| !features.stmt_expr_attributes())
             && !attr.span.allows_unstable(sym::stmt_expr_attributes)
         {

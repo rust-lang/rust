@@ -72,6 +72,12 @@ fn parse(
     // additional trees if need be.
     let mut iter = input.iter();
     while let Some(tree) = iter.next() {
+        // Skip regular comments.
+        // They have no semantic meaning in macro rules.
+        if let tokenstream::TokenTree::Token(Token { kind: token::Comment(..), .. }, _) = tree {
+            continue;
+        }
+
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
         let tree = parse_tree(tree, &mut iter, part, sess, node_id, features, edition);

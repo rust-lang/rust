@@ -455,7 +455,7 @@ impl<'a> Parser<'a> {
 
     /// Parses prefix-forms of range notation: `..expr`, `..`, `..=expr`.
     fn parse_expr_prefix_range(&mut self, attrs: AttrWrapper) -> PResult<'a, Box<Expr>> {
-        if !attrs.is_empty() {
+        if !attrs.is_empty() && !attrs.is_all_comments() {
             let err = errors::DotDotRangeAttribute { span: self.token.span };
             self.dcx().emit_err(err);
         }
@@ -2890,6 +2890,9 @@ impl<'a> Parser<'a> {
         branch_span: Span,
         attrs: AttrWrapper,
     ) {
+        if attrs.is_all_comments() {
+            return;
+        }
         if !attrs.is_empty()
             && let [x0 @ xn] | [x0, .., xn] = &*attrs.take_for_recovery(self.psess)
         {
