@@ -5,7 +5,7 @@ use std::mem::MaybeUninit;
 use std::string::String;
 
 use flt2dec::strategy::{dragon, grisu};
-use flt2dec::{DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, decode};
+use flt2dec::{Decoded, MAX_SIG_DIGITS, decode};
 use rand::distr::{Distribution, Uniform};
 
 // Bits 0u16..0x7C00 cover the positive finite-range,
@@ -19,13 +19,6 @@ const F32_POS_FIN_RANGE: std::ops::Range<u32> = 1..f32::INFINITY.to_bits();
 // Bits 0u64..0x7FF0_0000_0000_0000 cover the positive finite-range,
 // with 1u64..0x7FF0_0000_0000_0000 for non-zero.
 const F64_POS_FIN_RANGE: std::ops::Range<u64> = 1..f64::INFINITY.to_bits();
-
-fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
-    match decode(v).1 {
-        FullDecoded::Finite(decoded) => decoded,
-        full_decoded => panic!("expected finite, got {full_decoded:?} instead"),
-    }
-}
 
 /// Verifies whether `format_short` of Grisu and Dragon both have the same
 /// outcome for n `Decoded` values from `v`. Values which get `None` from Grisu
@@ -118,7 +111,7 @@ fn test_short_f16_random_equiv() {
     let u = Uniform::new(F16_POS_FIN_RANGE.start, F16_POS_FIN_RANGE.end).unwrap();
     n_short_equiv(n, |_| {
         let x = f16::from_bits(u.sample(&mut rng));
-        decode_finite(x)
+        decode(x)
     });
 }
 
@@ -131,7 +124,7 @@ fn test_short_f32_random_equiv() {
     let u = Uniform::new(F32_POS_FIN_RANGE.start, F32_POS_FIN_RANGE.end).unwrap();
     n_short_equiv(n, |_| {
         let x = f32::from_bits(u.sample(&mut rng));
-        decode_finite(x)
+        decode(x)
     });
 }
 
@@ -144,7 +137,7 @@ fn test_short_f64_random_equiv() {
     let u = Uniform::new(F64_POS_FIN_RANGE.start, F64_POS_FIN_RANGE.end).unwrap();
     n_short_equiv(n, |_| {
         let x = f64::from_bits(u.sample(&mut rng));
-        decode_finite(x)
+        decode(x)
     });
 }
 
@@ -156,7 +149,7 @@ fn test_short_f64_random_equiv() {
 fn test_short_f16_exhaustive_equiv() {
     let omitted = n_short_equiv(F16_POS_FIN_RANGE.len(), |i: usize| {
         let x = f16::from_bits(F16_POS_FIN_RANGE.start + i as u16);
-        decode_finite(x)
+        decode(x)
     });
     assert_eq!(omitted, 2008, "number of inputs in {F16_POS_FIN_RANGE:?} not covered by Grisu");
 }
@@ -167,7 +160,7 @@ fn test_short_f16_exhaustive_equiv() {
 fn test_short_f32_exhaustive_equiv() {
     let omitted = n_short_equiv(F32_POS_FIN_RANGE.len(), |i: usize| {
         let x = f32::from_bits(F32_POS_FIN_RANGE.start + i as u32);
-        decode_finite(x)
+        decode(x)
     });
     assert_eq!(omitted, 17643158, "number of inputs in {F32_POS_FIN_RANGE:?} not covered by Grisu");
 }
@@ -183,7 +176,7 @@ fn test_fixed_f16_random_equiv() {
         let f16_range = Uniform::new(F16_POS_FIN_RANGE.start, F16_POS_FIN_RANGE.end).unwrap();
         n_fixed_equiv(n, bufn, |_| {
             let x = f16::from_bits(f16_range.sample(&mut rng));
-            decode_finite(x)
+            decode(x)
         });
     }
 }
@@ -198,7 +191,7 @@ fn test_fixed_f32_random_equiv() {
         let f32_range = Uniform::new(F32_POS_FIN_RANGE.start, F32_POS_FIN_RANGE.end).unwrap();
         n_fixed_equiv(n, bufn, |_| {
             let x = f32::from_bits(f32_range.sample(&mut rng));
-            decode_finite(x)
+            decode(x)
         });
     }
 }
@@ -213,7 +206,7 @@ fn test_fixed_f64_random_equiv() {
         let f64_range = Uniform::new(F64_POS_FIN_RANGE.start, F64_POS_FIN_RANGE.end).unwrap();
         n_fixed_equiv(n, bufn, |_| {
             let x = f64::from_bits(f64_range.sample(&mut rng));
-            decode_finite(x)
+            decode(x)
         });
     }
 }

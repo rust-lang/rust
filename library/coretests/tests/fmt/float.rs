@@ -242,6 +242,63 @@ fn test_format_f64_max_precision_exponential() {
     assert_exact_exp(format_args!("{:65535.65535e}", 1.0f64), "1.", "e0");
 }
 
+#[test]
+fn test_format_zero() {
+    let pos = 0.0_f32;
+    let neg = -0.0_f32;
+
+    // defaults
+    assert_eq!("0 0.0 0E0 0e0", format!("{pos} {pos:?} {pos:E} {pos:e}"));
+    assert_eq!("-0 -0.0 -0E0 -0e0", format!("{neg} {neg:?} {neg:E} {neg:e}"));
+
+    // explicit sign
+    assert_eq!("+0 +0.0 +0E0 +0e0", format!("{pos:+} {pos:+?} {pos:+E} {pos:+e}"));
+    assert_eq!("-0 -0.0 -0E0 -0e0", format!("{neg:+} {neg:+?} {neg:+E} {neg:+e}"));
+
+    // fixed precision
+    assert_eq!("0 0 0E0 0e0", format!("{pos:.0} {pos:.0?} {pos:.0E} {pos:.0e}"));
+    assert_eq!("-0 -0 -0E0 -0e0", format!("{neg:.0} {neg:.0?} {neg:.0E} {neg:.0e}"));
+    assert_eq!("0.0 0.0 0.0E0 0.0e0", format!("{pos:.1} {pos:.1?} {pos:.1E} {pos:.1e}"));
+    assert_eq!("-0.0 -0.0 -0.0E0 -0.0e0", format!("{neg:.1} {neg:.1?} {neg:.1E} {neg:.1e}"));
+    assert_eq!("0.00 0.00 0.00E0 0.00e0", format!("{pos:.2} {pos:.2?} {pos:.2E} {pos:.2e}"));
+    assert_eq!("-0.00 -0.00 -0.00E0 -0.00e0", format!("{neg:.2} {neg:.2?} {neg:.2E} {neg:.2e}"));
+}
+
+#[test]
+fn test_format_inf() {
+    let pos = 1.0_f32 / 0.0;
+    let neg = -1.0_f32 / 0.0;
+
+    // defaults
+    assert_eq!("inf inf inf inf", format!("{pos} {pos:?} {pos:E} {pos:e}"));
+    assert_eq!("-inf -inf -inf -inf", format!("{neg} {neg:?} {neg:E} {neg:e}"));
+
+    // explicit sign
+    assert_eq!("+inf +inf +inf +inf", format!("{pos:+} {pos:+?} {pos:+E} {pos:+e}"));
+    assert_eq!("-inf -inf -inf -inf", format!("{neg:+} {neg:+?} {neg:+E} {neg:+e}"));
+
+    // fixed precision
+    assert_eq!("inf inf inf inf", format!("{pos:.0} {pos:.0?} {pos:.0E} {pos:.0e}"));
+    assert_eq!("-inf -inf -inf -inf", format!("{neg:.0} {neg:.0?} {neg:.0E} {neg:.0e}"));
+    assert_eq!("inf inf inf inf", format!("{pos:.1} {pos:.1?} {pos:.1E} {pos:.1e}"));
+    assert_eq!("-inf -inf -inf -inf", format!("{neg:.1} {neg:.1?} {neg:.1E} {neg:.1e}"));
+    assert_eq!("inf inf inf inf", format!("{pos:.2} {pos:.2?} {pos:.2E} {pos:.2e}"));
+    assert_eq!("-inf -inf -inf -inf", format!("{neg:.2} {neg:.1?} {neg:.1E} {neg:.1e}"));
+}
+
+#[test]
+fn test_format_nan() {
+    let nan = 0.0_f32 / 0.0;
+    // defaults
+    assert_eq!("NaN NaN NaN NaN", format!("{nan} {nan:?} {nan:E} {nan:e}"));
+    // explicit sign
+    assert_eq!("NaN NaN NaN NaN", format!("{nan:+} {nan:+?} {nan:+E} {nan:+e}"));
+    // fixed precision
+    assert_eq!("NaN NaN NaN NaN", format!("{nan:.0} {nan:.0?} {nan:.0E} {nan:.0e}"));
+    assert_eq!("NaN NaN NaN NaN", format!("{nan:.1} {nan:.1?} {nan:.1E} {nan:.1e}"));
+    assert_eq!("NaN NaN NaN NaN", format!("{nan:.2} {nan:.2?} {nan:.2E} {nan:.2e}"));
+}
+
 fn is_exponential(s: &str) -> bool {
     s.contains("e") || s.contains("E")
 }
