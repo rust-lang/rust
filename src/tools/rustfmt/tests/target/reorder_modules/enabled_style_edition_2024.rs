@@ -2,8 +2,8 @@
 // rustfmt-reorder_modules: true
 
 mod A2;
-mod ABCD;
-mod ZYXW;
+mod abcde;
+mod zyxwv;
 mod ZYXW_;
 mod ZY_XW;
 mod ZY_XW;
@@ -11,7 +11,7 @@ mod Z_YXW;
 mod _ZYXW;
 mod _abcd;
 mod a1;
-mod abcd;
+mod abcde;
 mod u128;
 mod u16;
 mod u256;
@@ -44,4 +44,4 @@ mod x86_128;
 mod x86_32;
 mod x86_64;
 mod x87;
-mod zyxw;
+mod zyxwv;
