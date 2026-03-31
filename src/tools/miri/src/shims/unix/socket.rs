@@ -620,6 +620,48 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(e) => this.set_last_error_and_return_i32(e),
         }
     }
+
+    fn getpeername(
+        &mut self,
+        socket: &OpTy<'tcx>,
+        address: &OpTy<'tcx>,
+        address_len: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let address_ptr = this.read_pointer(address)?;
+        let address_len_ptr = this.read_pointer(address_len)?;
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+        };
+
+        let Some(socket) = fd.downcast::<Socket>() else {
+            // Man page specifies to return ENOTSOCK if `fd` is not a socket.
+            return this.set_last_error_and_return_i32(LibcError("ENOTSOCK"));
+        };
+
+        assert!(this.machine.communicate(), "cannot have `Socket` with isolation enabled!");
+
+        let state = socket.state.borrow();
+
+        let SocketState::Connected(stream) = &*state else {
+            // We can only read the peer address of connected sockets.
+            return this.set_last_error_and_return_i32(LibcError("ENOTCONN"));
+        };
+
+        let address = match stream.peer_addr() {
+            Ok(address) => address,
+            Err(e) => return this.set_last_error_and_return_i32(e),
+        };
+
+        match this.write_socket_address(&address, address_ptr, address_len_ptr, "getpeername")? {
+            Ok(_) => interp_ok(Scalar::from_i32(0)),
+            Err(e) => this.set_last_error_and_return_i32(e),
+        }
+    }
 }
 
 impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
