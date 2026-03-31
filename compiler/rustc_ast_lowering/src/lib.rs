@@ -2220,14 +2220,19 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 // since later compiler stages cannot handle them (and shouldn't need to be able to).
                 let default = default
                     .as_ref()
-                    .filter(|_| match source {
+                    .filter(|anon_const| match source {
                         hir::GenericParamSource::Generics => true,
                         hir::GenericParamSource::Binder => {
-                            self.dcx().emit_err(errors::GenericParamDefaultInBinder {
-                                span: param.span(),
-                            });
-
-                            false
+                            let err = errors::GenericParamDefaultInBinder { span: param.span() };
+                            if expr::WillCreateDefIdsVisitor
+                                .visit_expr(&anon_const.value)
+                                .is_break()
+                            {
+                                self.dcx().emit_fatal(err)
+                            } else {
+                                self.dcx().emit_err(err);
+                                false
+                            }
                         }
                     })
                     .map(|def| self.lower_anon_const_to_const_arg_and_alloc(def));
