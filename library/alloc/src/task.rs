@@ -39,7 +39,7 @@ use crate::sync::Arc;
 ///
 /// # Memory Ordering
 ///
-/// To avoid missed wakeups, the runtime must adhere to the requirement described for `Waker::wake`.
+/// To avoid missed wakeups, the runtime must adhere to the requirement described for [`Waker::wake`].
 ///
 /// # Examples
 ///
