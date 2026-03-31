@@ -39,9 +39,7 @@ use crate::sync::Arc;
 ///
 /// # Memory Ordering
 ///
-/// The executor must guarantee that the call to `wake` _happens-before_ the corresponding woken `poll`. 
-/// In addition, the executor must also guarantee that multiple calls to `wake` that were coalesced into a single 
-/// `poll()` invocation all _happens-before_ the corresponding woken `poll`.
+/// To avoid missed wakeups, the runtime must adhere to the requirement described for `Waker::wake`.
 ///
 /// # Examples
 ///
