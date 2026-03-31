@@ -993,7 +993,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         stable_crate_id,
         &arena,
         &hir_arena,
-        untracked,
+        &untracked,
         dep_graph,
         rustc_query_impl::make_dep_kind_vtables(&arena),
         rustc_query_impl::query_system(

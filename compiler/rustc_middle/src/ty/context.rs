@@ -174,6 +174,8 @@ impl<'tcx> rustc_type_ir::inherent::Span<TyCtxt<'tcx>> for Span {
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
 
 pub struct CtxtInterners<'tcx> {
+    sess: &'tcx Session,
+    untracked: &'tcx Untracked,
     /// The arena that types, regions, etc. are allocated from.
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 
@@ -207,11 +209,17 @@ pub struct CtxtInterners<'tcx> {
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
-    fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> CtxtInterners<'tcx> {
+    fn new(
+        sess: &'tcx Session,
+        untracked: &'tcx Untracked,
+        arena: &'tcx WorkerLocal<Arena<'tcx>>,
+    ) -> CtxtInterners<'tcx> {
         // Default interner size - this value has been chosen empirically, and may need to be
         // adjusted as the compiler evolves.
         const N: usize = 2048;
         CtxtInterners {
+            sess,
+            untracked,
             arena,
             // The factors have been chosen by @FractalFir based on observed interner sizes, and
             // local perf runs. To get the interner sizes, insert `eprintln` printing the size of
@@ -248,12 +256,12 @@ impl<'tcx> CtxtInterners<'tcx> {
     /// Interns a type. (Use `mk_*` functions instead, where possible.)
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline(never)]
-    fn intern_ty(&self, kind: TyKind<'tcx>, sess: &Session, untracked: &Untracked) -> Ty<'tcx> {
+    fn intern_ty(&self, kind: TyKind<'tcx>) -> Ty<'tcx> {
         Ty(Interned::new_unchecked(
             self.type_
                 .intern(kind, |kind| {
                     let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_kind(&kind);
-                    let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
+                    let stable_hash = self.stable_hash(&flags, &kind);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
                         internee: kind,
@@ -269,17 +277,12 @@ impl<'tcx> CtxtInterners<'tcx> {
     /// Interns a const. (Use `mk_*` functions instead, where possible.)
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline(never)]
-    fn intern_const(
-        &self,
-        kind: ty::ConstKind<'tcx>,
-        sess: &Session,
-        untracked: &Untracked,
-    ) -> Const<'tcx> {
+    fn intern_const(&self, kind: ty::ConstKind<'tcx>) -> Const<'tcx> {
         Const(Interned::new_unchecked(
             self.const_
                 .intern(kind, |kind: ty::ConstKind<'_>| {
                     let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_const_kind(&kind);
-                    let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
+                    let stable_hash = self.stable_hash(&flags, &kind);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
                         internee: kind,
@@ -292,21 +295,19 @@ impl<'tcx> CtxtInterners<'tcx> {
         ))
     }
 
-    fn stable_hash<'a, T: HashStable<StableHashingContext<'a>>>(
+    fn stable_hash<T: HashStable<StableHashingContext<'tcx>>>(
         &self,
         flags: &ty::FlagComputation<TyCtxt<'tcx>>,
-        sess: &'a Session,
-        untracked: &'a Untracked,
         val: &T,
     ) -> Fingerprint {
         // It's impossible to hash inference variables (and will ICE), so we don't need to try to
         // cache them. Without incremental, we rarely stable-hash types, so let's not do it
         // proactively.
-        if flags.flags.intersects(TypeFlags::HAS_INFER) || sess.opts.incremental.is_none() {
+        if flags.flags.intersects(TypeFlags::HAS_INFER) || self.sess.opts.incremental.is_none() {
             Fingerprint::ZERO
         } else {
             let mut hasher = StableHasher::new();
-            let mut hcx = StableHashingContext::new(sess, untracked);
+            let mut hcx = StableHashingContext::new(self.sess, self.untracked);
             val.hash_stable(&mut hcx, &mut hasher);
             hasher.finish()
         }
@@ -314,18 +315,13 @@ impl<'tcx> CtxtInterners<'tcx> {
 
     /// Interns a predicate. (Use `mk_predicate` instead, where possible.)
     #[inline(never)]
-    fn intern_predicate(
-        &self,
-        kind: Binder<'tcx, PredicateKind<'tcx>>,
-        sess: &Session,
-        untracked: &Untracked,
-    ) -> Predicate<'tcx> {
+    fn intern_predicate(&self, kind: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
         Predicate(Interned::new_unchecked(
             self.predicate
                 .intern(kind, |kind| {
                     let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_predicate(kind);
 
-                    let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
+                    let stable_hash = self.stable_hash(&flags, &kind);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
                         internee: kind,
@@ -466,12 +462,8 @@ pub struct CommonConsts<'tcx> {
 }
 
 impl<'tcx> CommonTypes<'tcx> {
-    fn new(
-        interners: &CtxtInterners<'tcx>,
-        sess: &Session,
-        untracked: &Untracked,
-    ) -> CommonTypes<'tcx> {
-        let mk = |ty| interners.intern_ty(ty, sess, untracked);
+    fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
+        let mk = |ty| interners.intern_ty(ty);
 
         let ty_vars =
             (0..NUM_PREINTERNED_TY_VARS).map(|n| mk(Infer(ty::TyVar(TyVid::from(n))))).collect();
@@ -587,18 +579,8 @@ impl<'tcx> CommonLifetimes<'tcx> {
 }
 
 impl<'tcx> CommonConsts<'tcx> {
-    fn new(
-        interners: &CtxtInterners<'tcx>,
-        types: &CommonTypes<'tcx>,
-        sess: &Session,
-        untracked: &Untracked,
-    ) -> CommonConsts<'tcx> {
-        let mk_const = |c| {
-            interners.intern_const(
-                c, sess, // This is only used to create a stable hashing context.
-                untracked,
-            )
-        };
+    fn new(interners: &CtxtInterners<'tcx>, types: &CommonTypes<'tcx>) -> CommonConsts<'tcx> {
+        let mk_const = |c| interners.intern_const(c);
 
         let mk_valtree = |v| {
             ty::ValTree(Interned::new_unchecked(
@@ -858,7 +840,7 @@ pub struct GlobalCtxt<'tcx> {
     /// be called from rustc_middle.
     pub(crate) hooks: crate::hooks::Providers,
 
-    untracked: Untracked,
+    untracked: &'tcx Untracked,
 
     pub query_system: QuerySystem<'tcx>,
     pub(crate) dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
@@ -1078,7 +1060,7 @@ impl<'tcx> TyCtxt<'tcx> {
         stable_crate_id: StableCrateId,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
-        untracked: Untracked,
+        untracked: &'tcx Untracked,
         dep_graph: DepGraph,
         dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
         query_system: QuerySystem<'tcx>,
@@ -1090,10 +1072,10 @@ impl<'tcx> TyCtxt<'tcx> {
         let data_layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
             sess.dcx().emit_fatal(err);
         });
-        let interners = CtxtInterners::new(arena);
-        let common_types = CommonTypes::new(&interners, sess, &untracked);
+        let interners = CtxtInterners::new(sess, untracked, arena);
+        let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
-        let common_consts = CommonConsts::new(&interners, &common_types, sess, &untracked);
+        let common_consts = CommonConsts::new(&interners, &common_types);
 
         let gcx = gcx_cell.get_or_init(|| GlobalCtxt {
             sess,
@@ -2224,12 +2206,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_predicate(self, binder: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
-        self.interners.intern_predicate(
-            binder,
-            self.sess,
-            // This is only used to create a stable hashing context.
-            &self.untracked,
-        )
+        self.interners.intern_predicate(binder)
     }
 
     #[inline]
@@ -2350,24 +2327,14 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_ct_from_kind(self, kind: ty::ConstKind<'tcx>) -> Const<'tcx> {
-        self.interners.intern_const(
-            kind,
-            self.sess,
-            // This is only used to create a stable hashing context.
-            &self.untracked,
-        )
+        self.interners.intern_const(kind)
     }
 
     // Avoid this in favour of more specific `Ty::new_*` methods, where possible.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     pub fn mk_ty_from_kind(self, st: TyKind<'tcx>) -> Ty<'tcx> {
-        self.interners.intern_ty(
-            st,
-            self.sess,
-            // This is only used to create a stable hashing context.
-            &self.untracked,
-        )
+        self.interners.intern_ty(st)
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
