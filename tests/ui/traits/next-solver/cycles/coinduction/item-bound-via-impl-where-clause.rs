@@ -33,7 +33,7 @@ fn main() {
     //[next]~| ERROR overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof == _`
     //[next]~| ERROR overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof == String`
     //[next]~| ERROR overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof: Sized`
-    //[next]~| ERROR overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof well-formed`
+    //[next]~| ERROR overflow evaluating whether `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof` is well-formed
     //[next]~| ERROR overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof == _`
     println!("{}", s); // ABC
 }

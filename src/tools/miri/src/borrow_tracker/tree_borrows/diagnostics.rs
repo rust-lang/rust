@@ -157,7 +157,7 @@ impl HistoryData {
             // to the user. The meaningful one is `access_range`.
             let access = access_cause.print_as_access(is_foreign);
             let access_range_text = match access_range {
-                Some(r) => format!("at offsets {r:?}"),
+                Some(r) => format!("at offsets {r}"),
                 None => format!("on every location previously accessed by this tag"),
             };
             self.events.push((
@@ -339,7 +339,7 @@ impl TbError<'_> {
         // all tags through which an access would cause UB.
         let accessed_is_conflicting = accessed.map(|a| a.tag) == Some(conflicting.tag);
         let title = format!(
-            "{cause} through {accessed_str} at {alloc_id:?}[{error_offset:#x}] is forbidden",
+            "{cause} through {accessed_str} at {alloc_id}[{error_offset:#x}] is forbidden",
             alloc_id = self.access_info.alloc_id
         );
         let (title, details, conflicting_tag_name) = match self.error_kind {

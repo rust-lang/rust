@@ -157,7 +157,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             Res::Def(_, def_id) => self.check_def_id(def_id),
             Res::SelfTyParam { trait_: t } => self.check_def_id(t),
             Res::SelfTyAlias { alias_to: i, .. } => self.check_def_id(i),
-            Res::ToolMod | Res::NonMacroAttr(..) | Res::Err => {}
+            Res::ToolMod | Res::NonMacroAttr(..) | Res::OpenMod(..) | Res::Err => {}
         }
     }
 
@@ -380,8 +380,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// for discussion).
     fn should_ignore_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) -> bool {
         if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
-            && let impl_of = self.tcx.parent(impl_item.owner_id.to_def_id())
-            && self.tcx.is_automatically_derived(impl_of)
+            && let impl_of = self.tcx.local_parent(impl_item.owner_id.def_id)
+            && self.tcx.is_automatically_derived(impl_of.to_def_id())
             && let trait_ref = self.tcx.impl_trait_ref(impl_of).instantiate_identity()
             && find_attr!(self.tcx, trait_ref.def_id, RustcTrivialFieldReads)
         {

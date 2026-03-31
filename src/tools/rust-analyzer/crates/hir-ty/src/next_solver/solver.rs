@@ -1,6 +1,9 @@
 //! Defining `SolverContext` for next-trait-solver.
 
-use hir_def::{AssocItemId, GeneralConstId};
+use hir_def::{
+    AssocItemId, GeneralConstId,
+    signatures::{ConstSignature, TypeAliasSignature},
+};
 use rustc_next_trait_solver::delegate::SolverDelegate;
 use rustc_type_ir::{
     AliasTyKind, GenericArgKind, InferCtxtLike, Interner, PredicatePolarity, TypeFlags,
@@ -18,7 +21,7 @@ use crate::next_solver::{
 };
 
 use super::{
-    DbInterner, ErrorGuaranteed, GenericArg, SolverDefId, Span,
+    Const, DbInterner, ErrorGuaranteed, GenericArg, SolverDefId, Span,
     infer::{DbInternerInferExt, InferCtxt, canonical::instantiate::CanonicalExt},
 };
 
@@ -181,52 +184,53 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             return Ok(None);
         };
         let impl_items = impl_id.impl_items(self.0.interner.db());
-        let id =
-            match trait_assoc_def_id {
-                SolverDefId::TypeAliasId(trait_assoc_id) => {
-                    let trait_assoc_data = self.0.interner.db.type_alias_signature(trait_assoc_id);
-                    impl_items
-                        .items
-                        .iter()
-                        .find_map(|(impl_assoc_name, impl_assoc_id)| {
-                            if let AssocItemId::TypeAliasId(impl_assoc_id) = *impl_assoc_id
-                                && *impl_assoc_name == trait_assoc_data.name
-                            {
-                                Some(impl_assoc_id)
-                            } else {
-                                None
-                            }
-                        })
-                        .or_else(|| {
-                            if trait_assoc_data.ty.is_some() { Some(trait_assoc_id) } else { None }
-                        })
-                        .map(SolverDefId::TypeAliasId)
-                }
-                SolverDefId::ConstId(trait_assoc_id) => {
-                    let trait_assoc_data = self.0.interner.db.const_signature(trait_assoc_id);
-                    let trait_assoc_name = trait_assoc_data
-                        .name
-                        .as_ref()
-                        .expect("unnamed consts should not get passed to the solver");
-                    impl_items
-                        .items
-                        .iter()
-                        .find_map(|(impl_assoc_name, impl_assoc_id)| {
-                            if let AssocItemId::ConstId(impl_assoc_id) = *impl_assoc_id
-                                && impl_assoc_name == trait_assoc_name
-                            {
-                                Some(impl_assoc_id)
-                            } else {
-                                None
-                            }
-                        })
-                        .or_else(|| {
+        let id = match trait_assoc_def_id {
+            SolverDefId::TypeAliasId(trait_assoc_id) => {
+                let trait_assoc_data = TypeAliasSignature::of(self.0.interner.db, trait_assoc_id);
+                impl_items
+                    .items
+                    .iter()
+                    .find_map(|(impl_assoc_name, impl_assoc_id)| {
+                        if let AssocItemId::TypeAliasId(impl_assoc_id) = *impl_assoc_id
+                            && *impl_assoc_name == trait_assoc_data.name
+                        {
+                            Some(impl_assoc_id)
+                        } else {
+                            None
+                        }
+                    })
+                    .or_else(|| {
+                        if trait_assoc_data.ty.is_some() { Some(trait_assoc_id) } else { None }
+                    })
+                    .map(SolverDefId::TypeAliasId)
+            }
+            SolverDefId::ConstId(trait_assoc_id) => {
+                let trait_assoc_data = ConstSignature::of(self.0.interner.db, trait_assoc_id);
+                let trait_assoc_name = trait_assoc_data
+                    .name
+                    .as_ref()
+                    .expect("unnamed consts should not get passed to the solver");
+                impl_items
+                    .items
+                    .iter()
+                    .find_map(|(impl_assoc_name, impl_assoc_id)| {
+                        if let AssocItemId::ConstId(impl_assoc_id) = *impl_assoc_id
+                            && impl_assoc_name == trait_assoc_name
+                        {
+                            Some(impl_assoc_id)
+                        } else {
+                            None
+                        }
+                    })
+                    .or_else(
+                        || {
                             if trait_assoc_data.has_body() { Some(trait_assoc_id) } else { None }
-                        })
-                        .map(SolverDefId::ConstId)
-                }
-                _ => panic!("Unexpected SolverDefId"),
-            };
+                        },
+                    )
+                    .map(SolverDefId::ConstId)
+            }
+            _ => panic!("Unexpected SolverDefId"),
+        };
         Ok(id)
     }
 
@@ -256,6 +260,11 @@ impl<'db> SolverDelegate for SolverContext<'db> {
                 let ec = self.cx().db.const_eval_static(c).ok()?;
                 Some(ec)
             }
+            // TODO: Wire up const_eval_anon query in Phase 5.
+            // For now, return an error const so normalization resolves the
+            // unevaluated const to Error (matching the old behavior where
+            // complex expressions produced ConstKind::Error directly).
+            GeneralConstId::AnonConstId(_) => Some(Const::error(self.cx())),
         }
     }
 

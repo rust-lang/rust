@@ -4,7 +4,6 @@
 // FIXME(deref_patterns): On stabilization, cases for deref patterns could be worked into that file
 // to keep the tests for empty types in one place and test more thoroughly.
 #![feature(deref_patterns)]
-#![expect(incomplete_features)]
 #![deny(unreachable_patterns)]
 
 enum Void {}

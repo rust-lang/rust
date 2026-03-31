@@ -317,7 +317,7 @@ fn find_refs_in_mod(
                 .into_iter()
                 .map(|v| Ref {
                     visible_name: v.name(ctx.db()),
-                    def: Definition::Variant(v),
+                    def: Definition::EnumVariant(v),
                     is_pub: true,
                 })
                 .collect(),
@@ -379,7 +379,7 @@ fn find_imported_defs(ctx: &AssistContext<'_>, use_item: Use) -> Vec<Definition>
                 | Definition::Module(_)
                 | Definition::Function(_)
                 | Definition::Adt(_)
-                | Definition::Variant(_)
+                | Definition::EnumVariant(_)
                 | Definition::Const(_)
                 | Definition::Static(_)
                 | Definition::Trait(_)

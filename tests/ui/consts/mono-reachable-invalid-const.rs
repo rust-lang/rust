@@ -1,5 +1,5 @@
 //@ build-fail
-
+//@ ignore-parallel-frontend post-monomorphization errors
 struct Bar<const BITS: usize>;
 
 impl<const BITS: usize> Bar<BITS> {

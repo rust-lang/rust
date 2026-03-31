@@ -27,8 +27,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, sym};
+use rustc_span::{DUMMY_SP, Spanned, sym};
 use tracing::debug;
 
 #[macro_use]
@@ -527,7 +526,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 
     // We only need to borrowck non-synthetic MIR.
     let tainted_by_errors = if !tcx.is_synthetic_mir(def) {
-        tcx.mir_borrowck(tcx.typeck_root_def_id(def.to_def_id()).expect_local()).err()
+        tcx.mir_borrowck(tcx.typeck_root_def_id_local(def)).err()
     } else {
         None
     };
@@ -555,14 +554,14 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     //
     // We do this check here and not during `mir_promoted` because that may result
     // in borrowck cycles if WF requires looking into an opaque hidden type.
-    let root = tcx.typeck_root_def_id(def.to_def_id());
+    let root = tcx.typeck_root_def_id_local(def);
     match tcx.def_kind(root) {
         DefKind::Fn
         | DefKind::AssocFn
         | DefKind::Static { .. }
         | DefKind::Const { .. }
         | DefKind::AssocConst { .. } => {
-            if let Err(guar) = tcx.ensure_result().check_well_formed(root.expect_local()) {
+            if let Err(guar) = tcx.ensure_result().check_well_formed(root) {
                 body.tainted_by_errors = Some(guar);
             }
         }
@@ -841,7 +840,7 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
     }
 
     if !tcx.is_synthetic_mir(def) {
-        tcx.ensure_done().mir_borrowck(tcx.typeck_root_def_id(def.to_def_id()).expect_local());
+        tcx.ensure_done().mir_borrowck(tcx.typeck_root_def_id_local(def));
     }
     let mut promoted = tcx.mir_promoted(def).1.steal();
 

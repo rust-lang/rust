@@ -358,6 +358,8 @@ impl Step for GenerateCompletions {
     }
 }
 
+/// The build step for generating the tables in `core/src/char/unicode/unicode_data.rs`
+/// and the tests in `library/coretests/tests/unicode/test_data.rs`.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct UnicodeTableGenerator;
 
@@ -375,7 +377,9 @@ impl Step for UnicodeTableGenerator {
 
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::UnicodeTableGenerator);
+        // Generated files that are checked into git:
         cmd.arg(builder.src.join("library/core/src/unicode/unicode_data.rs"));
+        cmd.arg(builder.src.join("library/coretests/tests/unicode/test_data.rs"));
         cmd.run(builder);
     }
 }

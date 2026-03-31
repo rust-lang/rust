@@ -728,7 +728,7 @@ fn check_def_in_mod_and_out_sel(
         }
         Definition::Function(x) => check_item!(x),
         Definition::Adt(x) => check_item!(x),
-        Definition::Variant(x) => check_item!(x),
+        Definition::EnumVariant(x) => check_item!(x),
         Definition::Const(x) => check_item!(x),
         Definition::Static(x) => check_item!(x),
         Definition::Trait(x) => check_item!(x),

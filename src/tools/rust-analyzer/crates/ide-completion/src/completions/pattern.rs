@@ -91,7 +91,7 @@ pub(crate) fn complete_pattern(
                     acc.add_struct_pat(ctx, pattern_ctx, strukt, Some(name.clone()));
                     true
                 }
-                hir::ModuleDef::Variant(variant)
+                hir::ModuleDef::EnumVariant(variant)
                     if refutable || single_variant_enum(variant.parent_enum(ctx.db)) =>
                 {
                     acc.add_variant_pat(ctx, pattern_ctx, None, variant, Some(name.clone()));
@@ -190,7 +190,7 @@ pub(crate) fn complete_pattern_path(
                 let add_completion = match res {
                     ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => mac.is_fn_like(ctx.db),
                     ScopeDef::ModuleDef(hir::ModuleDef::Adt(_)) => true,
-                    ScopeDef::ModuleDef(hir::ModuleDef::Variant(_)) => true,
+                    ScopeDef::ModuleDef(hir::ModuleDef::EnumVariant(_)) => true,
                     ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => true,
                     ScopeDef::ImplSelfType(_) => true,
                     _ => false,

@@ -1,4 +1,4 @@
-use crate::spec::{Arch, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, LlvmAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -16,6 +16,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             cpu: "mips32r6".into(),
             features: "+mips32r6".into(),
+            llvm_abiname: LlvmAbi::O32,
             max_atomic_width: Some(32),
             mcount: "_mcount".into(),
 

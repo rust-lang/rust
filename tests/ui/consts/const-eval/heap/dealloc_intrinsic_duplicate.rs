@@ -1,6 +1,6 @@
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
-
+//@ ignore-parallel-frontend different alloc ids
 use std::intrinsics;
 
 const _X: () = unsafe {

@@ -219,7 +219,7 @@ pub(crate) fn resolve_doc_path_for_def(
         Definition::Crate(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         Definition::Function(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         Definition::Adt(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
-        Definition::Variant(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
+        Definition::EnumVariant(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         Definition::Const(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         Definition::Static(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         Definition::Trait(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
@@ -678,7 +678,7 @@ fn filename_and_frag_for_def(
         Definition::Function(f) => {
             format!("fn.{}.html", f.name(db).as_str())
         }
-        Definition::Variant(ev) => {
+        Definition::EnumVariant(ev) => {
             let def = Definition::Adt(ev.parent_enum(db).into());
             let (_, file, _) = filename_and_frag_for_def(db, def)?;
             return Some((def, file, Some(format!("variant.{}", ev.name(db).as_str()))));
@@ -703,9 +703,9 @@ fn filename_and_frag_for_def(
         },
         Definition::Field(field) => {
             let def = match field.parent_def(db) {
-                hir::VariantDef::Struct(it) => Definition::Adt(it.into()),
-                hir::VariantDef::Union(it) => Definition::Adt(it.into()),
-                hir::VariantDef::Variant(it) => Definition::Variant(it),
+                hir::Variant::Struct(it) => Definition::Adt(it.into()),
+                hir::Variant::Union(it) => Definition::Adt(it.into()),
+                hir::Variant::EnumVariant(it) => Definition::EnumVariant(it),
             };
             let (_, file, _) = filename_and_frag_for_def(db, def)?;
             return Some((def, file, Some(format!("structfield.{}", field.name(db).as_str()))));

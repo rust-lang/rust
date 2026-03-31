@@ -8,7 +8,7 @@ macro_rules! suite {
         )*
     }
 }
-
+//@ ignore-parallel-frontend  different infer type: bool
 suite! {
     len;
     is_empty;

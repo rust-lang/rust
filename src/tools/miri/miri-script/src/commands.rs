@@ -80,7 +80,7 @@ impl Command {
 
         // `toolchain` goes first as it could affect the others
         if auto_toolchain {
-            Self::toolchain(vec![])?;
+            Self::toolchain(None, vec![])?;
         }
         if auto_fmt {
             Self::fmt(vec![])?;
@@ -121,15 +121,18 @@ impl Command {
             Command::Clippy { features, flags } => Self::clippy(features, flags),
             Command::Bench { target, no_install, save_baseline, load_baseline, benches } =>
                 Self::bench(target, no_install, save_baseline, load_baseline, benches),
-            Command::Toolchain { flags } => Self::toolchain(flags),
+            Command::Toolchain { commit, flags } => Self::toolchain(commit, flags),
             Command::Squash => Self::squash(),
         }
     }
 
-    fn toolchain(flags: Vec<String>) -> Result<()> {
+    fn toolchain(new_commit: Option<String>, flags: Vec<String>) -> Result<()> {
         let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
-        let new_commit = sh.read_file("rust-version")?.trim().to_owned();
+        let new_commit = match new_commit {
+            Some(c) => c,
+            None => sh.read_file("rust-version")?.trim().to_owned(),
+        };
         let current_commit = {
             let rustc_info = cmd!(sh, "rustc +miri --version -v").read();
             if let Ok(rustc_info) = rustc_info {

@@ -107,7 +107,8 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     | ItemKind::AssocTypeItem(..)
                     | ItemKind::PrimitiveItem(..)
                     | ItemKind::KeywordItem
-                    | ItemKind::AttributeItem => own_stability,
+                    | ItemKind::AttributeItem
+                    | ItemKind::PlaceholderImplItem => own_stability,
 
                     ItemKind::StrippedItem(..) => unreachable!(),
                 }

@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value: encountered ALLOC1<imm>, but expected a vtable pointer
+error[E0080]: constructing invalid value of type &dyn Trait: encountered ALLOC1<imm>, but expected a vtable pointer
   --> $DIR/ub-incorrect-vtable.rs:18:1
    |
 LL | const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
@@ -9,7 +9,7 @@ LL | const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
                ╾ALLOC0<imm>╼ ╾ALLOC1<imm>╼ │ ╾──────╼╾──────╼
            }
 
-error[E0080]: constructing invalid value: encountered ALLOC3<imm>, but expected a vtable pointer
+error[E0080]: constructing invalid value of type &dyn Trait: encountered ALLOC3<imm>, but expected a vtable pointer
   --> $DIR/ub-incorrect-vtable.rs:22:1
    |
 LL | const INVALID_VTABLE_SIZE: &dyn Trait =
@@ -20,7 +20,7 @@ LL | const INVALID_VTABLE_SIZE: &dyn Trait =
                ╾ALLOC2<imm>╼ ╾ALLOC3<imm>╼ │ ╾──────╼╾──────╼
            }
 
-error[E0080]: constructing invalid value at .0: encountered ALLOC5<imm>, but expected a vtable pointer
+error[E0080]: constructing invalid value of type W<&dyn Trait>: at .0, encountered ALLOC5<imm>, but expected a vtable pointer
   --> $DIR/ub-incorrect-vtable.rs:31:1
    |
 LL | const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
@@ -31,7 +31,7 @@ LL | const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
                ╾ALLOC4<imm>╼ ╾ALLOC5<imm>╼ │ ╾──────╼╾──────╼
            }
 
-error[E0080]: constructing invalid value at .0: encountered ALLOC7<imm>, but expected a vtable pointer
+error[E0080]: constructing invalid value of type W<&dyn Trait>: at .0, encountered ALLOC7<imm>, but expected a vtable pointer
   --> $DIR/ub-incorrect-vtable.rs:35:1
    |
 LL | const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
@@ -42,7 +42,7 @@ LL | const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
                ╾ALLOC6<imm>╼ ╾ALLOC7<imm>╼ │ ╾──────╼╾──────╼
            }
 
-error[E0080]: constructing invalid value at .0: encountered ALLOC9<imm>, but expected a vtable pointer
+error[E0080]: constructing invalid value of type W<&dyn Trait>: at .0, encountered ALLOC9<imm>, but expected a vtable pointer
   --> $DIR/ub-incorrect-vtable.rs:40:1
    |
 LL | const INVALID_VTABLE_UB: W<&dyn Trait> =
@@ -53,7 +53,7 @@ LL | const INVALID_VTABLE_UB: W<&dyn Trait> =
                ╾ALLOC8<imm>╼ ╾ALLOC9<imm>╼ │ ╾──────╼╾──────╼
            }
 
-error[E0080]: constructing invalid value at .1: encountered a dangling reference (going beyond the bounds of its allocation)
+error[E0080]: constructing invalid value of type Wide<'_>: at .1, encountered a dangling reference (going beyond the bounds of its allocation)
   --> $DIR/ub-incorrect-vtable.rs:86:1
    |
 LL | const G: Wide = unsafe { Transmute { t: FOO }.u };

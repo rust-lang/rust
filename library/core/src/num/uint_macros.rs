@@ -447,7 +447,7 @@ macro_rules! uint_impl {
         pub const fn funnel_shl(self, rhs: Self, n: u32) -> Self {
             assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
             // SAFETY: just checked that `shift` is in-range
-            unsafe { intrinsics::unchecked_funnel_shl(self, rhs, n) }
+            unsafe { self.unchecked_funnel_shl(rhs, n) }
         }
 
         /// Performs a right funnel shift (concatenates `self` and `rhs`, with `self`
@@ -482,7 +482,61 @@ macro_rules! uint_impl {
         pub const fn funnel_shr(self, rhs: Self, n: u32) -> Self {
             assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
             // SAFETY: just checked that `shift` is in-range
-            unsafe { intrinsics::unchecked_funnel_shr(self, rhs, n) }
+            unsafe { self.unchecked_funnel_shr(rhs, n) }
+        }
+
+        /// Unchecked funnel shift left.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior if `n` is greater than or equal to
+        #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
+        /// i.e. when [`funnel_shl`](Self::funnel_shl) would panic.
+        ///
+        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
+        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        #[track_caller]
+        pub const unsafe fn unchecked_funnel_shl(self, low: Self, n: u32) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_funnel_shl cannot overflow"),
+                (n: u32 = n) => n < <$ActualT>::BITS,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_funnel_shl(self, low, n)
+            }
+        }
+
+        /// Unchecked funnel shift right.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior if `n` is greater than or equal to
+        #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
+        /// i.e. when [`funnel_shr`](Self::funnel_shr) would panic.
+        ///
+        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
+        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        #[track_caller]
+        pub const unsafe fn unchecked_funnel_shr(self, low: Self, n: u32) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_funnel_shr cannot overflow"),
+                (n: u32 = n) => n < <$ActualT>::BITS,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_funnel_shr(self, low, n)
+            }
         }
 
         /// Performs a carry-less multiplication, returning the lower bits.

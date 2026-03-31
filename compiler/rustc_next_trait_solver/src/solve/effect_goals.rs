@@ -272,6 +272,7 @@ where
         todo!("Fn* are not yet const")
     }
 
+    #[instrument(level = "trace", skip_all, ret)]
     fn consider_builtin_fn_trait_candidates(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -289,7 +290,7 @@ where
         let output_is_sized_pred =
             ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output]);
         let requirements = cx
-            .const_conditions(def_id.into())
+            .const_conditions(def_id)
             .iter_instantiated(cx, args)
             .map(|trait_ref| {
                 (

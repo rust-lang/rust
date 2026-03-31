@@ -20,7 +20,6 @@ for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|//@ error-pa
 done
 
 git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
-git checkout -- tests/ui/proc-macro/pretty-print-hack/
 git checkout -- tests/ui/entry-point/auxiliary/bad_main_functions.rs
 
 # missing features
@@ -152,7 +151,6 @@ rm -r tests/run-make/short-ice # ICE backtrace begin/end marker mismatch
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 rm -r tests/run-make/strip # same
 rm -r tests/run-make-cargo/compiler-builtins # Expects lib/rustlib/src/rust to contains the standard library source
-rm -r tests/run-make/translation # same
 rm -r tests/run-make-cargo/panic-immediate-abort-works # same
 rm -r tests/run-make-cargo/panic-immediate-abort-codegen # same
 rm -r tests/run-make/missing-unstable-trait-bound # This disables support for unstable features, but running cg_clif needs some unstable features
@@ -175,7 +173,7 @@ rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 
 # bugs in the test suite
 # ======================
-rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
+rm tests/ui/process/nofile-limit.rs # FIXME some AArch64 linking issue
 rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
 rm -r tests/incremental/extern_static/issue-49153.rs # assumes reference to undefined static gets optimized away
 

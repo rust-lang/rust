@@ -1,5 +1,5 @@
-error[E0080]: constructing invalid value at [0]: encountered a maybe-null reference
-  --> $DIR/const_transmute_type_id7.rs:13:1
+error[E0080]: constructing invalid value of type ARRAY: at [0], encountered a maybe-null reference
+  --> $DIR/const_transmute_type_id7.rs:14:1
    |
 LL | const A: [&(); 16 / size_of::<*const ()>()] = unsafe { transmute(TypeId::of::<i32>()) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value

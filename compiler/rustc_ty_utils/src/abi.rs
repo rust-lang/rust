@@ -485,7 +485,7 @@ fn fn_abi_sanity_check<'tcx>(
                 match arg.layout.backend_repr {
                     BackendRepr::Scalar(_)
                     | BackendRepr::SimdVector { .. }
-                    | BackendRepr::ScalableVector { .. } => {}
+                    | BackendRepr::SimdScalableVector { .. } => {}
                     BackendRepr::ScalarPair(..) => {
                         panic!("`PassMode::Direct` used for ScalarPair type {}", arg.layout.ty)
                     }

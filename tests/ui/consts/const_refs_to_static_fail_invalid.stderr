@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value at .<deref>: encountered 0x0a, but expected a boolean
+error[E0080]: constructing invalid value of type &bool: at .<deref>, encountered 0x0a, but expected a boolean
   --> $DIR/const_refs_to_static_fail_invalid.rs:10:5
    |
 LL |     const C: &bool = unsafe { std::mem::transmute(&S) };

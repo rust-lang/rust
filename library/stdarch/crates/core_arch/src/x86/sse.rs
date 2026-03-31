@@ -208,7 +208,7 @@ pub fn _mm_min_ss(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(minps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_min_ps(a: __m128, b: __m128) -> __m128 {
-    // See the `test_mm_min_ps` test why this can't be implemented using `simd_fmin`.
+    // See the `test_mm_min_ps` test why this can't be implemented using `simd_minimum_number_nsz`.
     unsafe { minps(a, b) }
 }
 
@@ -234,7 +234,7 @@ pub fn _mm_max_ss(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(maxps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_max_ps(a: __m128, b: __m128) -> __m128 {
-    // See the `test_mm_min_ps` test why this can't be implemented using `simd_fmax`.
+    // See the `test_mm_min_ps` test why this can't be implemented using `simd_maximum_number_nsz`.
     unsafe { maxps(a, b) }
 }
 
@@ -2227,11 +2227,11 @@ mod tests {
         let r = _mm_min_ps(a, b);
         assert_eq_m128(r, _mm_setr_ps(-100.0, 5.0, 0.0, -10.0));
 
-        // `_mm_min_ps` can **not** be implemented using the `simd_min` rust intrinsic. `simd_min`
-        // is lowered by the llvm codegen backend to `llvm.minnum.v*` llvm intrinsic. This intrinsic
-        // doesn't specify how -0.0 is handled. Unfortunately it happens to behave different from
-        // the `minps` x86 instruction on x86. The `llvm.minnum.v*` llvm intrinsic equals
-        // `r1` to `a` and `r2` to `b`.
+        // `_mm_min_ps` can **not** be implemented using the `simd_minimum_number_nsz` rust
+        // intrinsic. That intrinsic is lowered by the llvm codegen backend to `llvm.minimumnum.v*`
+        // llvm intrinsic with the `nsz` attribute. The `nsz` attribute means -0.0 is handled
+        // non-deterministically. The `minps` x86 instruction however has a deterministic semantics
+        // for signed zeros.
         let a = _mm_setr_ps(-0.0, 0.0, 0.0, 0.0);
         let b = _mm_setr_ps(0.0, 0.0, 0.0, 0.0);
         let r1 = _mm_min_ps(a, b).as_f32x4().to_bits();

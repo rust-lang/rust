@@ -19,7 +19,7 @@ macro_rules! no_provenance {
         )+
     }
 }
-no_provenance!(i8 i16 i32 i64 isize u8 u16 u32 u64 usize ThreadId);
+no_provenance!(i8 i16 i32 i64 isize u8 u16 u32 u64 usize bool ThreadId);
 
 impl<T: VisitProvenance> VisitProvenance for Option<T> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {

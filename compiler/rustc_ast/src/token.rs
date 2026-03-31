@@ -94,6 +94,7 @@ pub enum MetaVarKind {
     },
     Path,
     Vis,
+    Guard,
     TT,
 }
 
@@ -114,6 +115,7 @@ impl fmt::Display for MetaVarKind {
             MetaVarKind::Meta { .. } => sym::meta,
             MetaVarKind::Path => sym::path,
             MetaVarKind::Vis => sym::vis,
+            MetaVarKind::Guard => sym::guard,
             MetaVarKind::TT => sym::tt,
         };
         write!(f, "{sym}")
@@ -1124,6 +1126,7 @@ pub enum NonterminalKind {
     Meta,
     Path,
     Vis,
+    Guard,
     TT,
 }
 
@@ -1161,6 +1164,7 @@ impl NonterminalKind {
             sym::meta => NonterminalKind::Meta,
             sym::path => NonterminalKind::Path,
             sym::vis => NonterminalKind::Vis,
+            sym::guard => NonterminalKind::Guard,
             sym::tt => NonterminalKind::TT,
             _ => return None,
         })
@@ -1182,6 +1186,7 @@ impl NonterminalKind {
             NonterminalKind::Meta => sym::meta,
             NonterminalKind::Path => sym::path,
             NonterminalKind::Vis => sym::vis,
+            NonterminalKind::Guard => sym::guard,
             NonterminalKind::TT => sym::tt,
         }
     }

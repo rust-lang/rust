@@ -101,7 +101,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
 
     let layout = match tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)) {
         Ok(layout) => layout,
-        Err(e) => tcx.dcx().emit_fatal(e.into_diagnostic()),
+        Err(e) => tcx.dcx().fatal(e.to_string()),
     };
     assert!(layout.is_sized(), "can't create a vtable for an unsized type");
     let size = layout.size.bytes();

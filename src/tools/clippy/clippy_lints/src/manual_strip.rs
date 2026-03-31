@@ -15,8 +15,7 @@ use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Symbol, SyntaxContext};
+use rustc_span::{Spanned, Symbol, SyntaxContext};
 use std::iter;
 
 declare_clippy_lint! {

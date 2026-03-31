@@ -312,7 +312,7 @@ impl SymbolKind {
     pub fn from_module_def(db: &dyn HirDatabase, it: hir::ModuleDef) -> Self {
         match it {
             hir::ModuleDef::Const(..) => SymbolKind::Const,
-            hir::ModuleDef::Variant(..) => SymbolKind::Variant,
+            hir::ModuleDef::EnumVariant(..) => SymbolKind::Variant,
             hir::ModuleDef::Function(..) => SymbolKind::Function,
             hir::ModuleDef::Macro(mac) if mac.is_proc_macro() => SymbolKind::ProcMacro,
             hir::ModuleDef::Macro(..) => SymbolKind::Macro,

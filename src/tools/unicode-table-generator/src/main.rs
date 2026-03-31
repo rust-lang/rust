@@ -72,7 +72,6 @@
 //! or not.
 
 use std::collections::{BTreeMap, HashMap};
-use std::fmt;
 use std::fmt::Write;
 use std::ops::Range;
 
@@ -80,10 +79,12 @@ use ucd_parse::Codepoints;
 
 mod cascading_map;
 mod case_mapping;
+mod fmt_helpers;
 mod raw_emitter;
 mod skiplist;
 mod unicode_download;
 
+use fmt_helpers::CharEscape;
 use raw_emitter::{RawEmitter, emit_codepoints, emit_whitespace};
 
 static PROPERTIES: &[&str] = &[
@@ -99,32 +100,25 @@ static PROPERTIES: &[&str] = &[
 
 struct UnicodeData {
     ranges: Vec<(&'static str, Vec<Range<u32>>)>,
+    /// Only stores mappings that are not to self
     to_upper: BTreeMap<u32, [u32; 3]>,
+    /// Only stores mappings that differ from `to_upper`
+    to_title: BTreeMap<u32, [u32; 3]>,
+    /// Only stores mappings that are not to self
     to_lower: BTreeMap<u32, [u32; 3]>,
 }
 
-fn to_mapping(origin: u32, codepoints: Vec<ucd_parse::Codepoint>) -> Option<[u32; 3]> {
-    let mut a = None;
-    let mut b = None;
-    let mut c = None;
-
-    for codepoint in codepoints {
-        if origin == codepoint.value() {
-            return None;
-        }
-
-        if a.is_none() {
-            a = Some(codepoint.value());
-        } else if b.is_none() {
-            b = Some(codepoint.value());
-        } else if c.is_none() {
-            c = Some(codepoint.value());
-        } else {
-            panic!("more than 3 mapped codepoints")
-        }
+fn to_mapping(
+    if_different_from: &[ucd_parse::Codepoint],
+    codepoints: &[ucd_parse::Codepoint],
+) -> Option<[u32; 3]> {
+    if codepoints == if_different_from {
+        return None;
     }
 
-    Some([a.unwrap(), b.unwrap_or(0), c.unwrap_or(0)])
+    let mut ret = [ucd_parse::Codepoint::default(); 3];
+    ret[0..codepoints.len()].copy_from_slice(codepoints);
+    Some(ret.map(ucd_parse::Codepoint::value))
 }
 
 static UNICODE_DIRECTORY: &str = "unicode-downloads";
@@ -144,8 +138,7 @@ fn load_data() -> UnicodeData {
         }
     }
 
-    let mut to_lower = BTreeMap::new();
-    let mut to_upper = BTreeMap::new();
+    let [mut to_lower, mut to_upper, mut to_title] = [const { BTreeMap::new() }; 3];
     for row in ucd_parse::UnicodeDataExpander::new(
         ucd_parse::parse::<_, ucd_parse::UnicodeData>(&UNICODE_DIRECTORY).unwrap(),
     ) {
@@ -171,6 +164,11 @@ fn load_data() -> UnicodeData {
         {
             to_upper.insert(row.codepoint.value(), [mapped.value(), 0, 0]);
         }
+        if let Some(mapped) = row.simple_titlecase_mapping
+            && Some(mapped) != row.simple_uppercase_mapping
+        {
+            to_title.insert(row.codepoint.value(), [mapped.value(), 0, 0]);
+        }
     }
 
     for row in ucd_parse::parse::<_, ucd_parse::SpecialCaseMapping>(&UNICODE_DIRECTORY).unwrap() {
@@ -180,14 +178,20 @@ fn load_data() -> UnicodeData {
         }
 
         let key = row.codepoint.value();
-        if let Some(lower) = to_mapping(key, row.lowercase) {
+        if let Some(lower) = to_mapping(&[row.codepoint], &row.lowercase) {
             to_lower.insert(key, lower);
         }
-        if let Some(upper) = to_mapping(key, row.uppercase) {
+        if let Some(upper) = to_mapping(&[row.codepoint], &row.uppercase) {
             to_upper.insert(key, upper);
+        }
+        if let Some(title) = to_mapping(&row.uppercase, &row.titlecase) {
+            to_title.insert(key, title);
         }
     }
 
+    // Filter out ASCII codepoints.
+    to_lower.retain(|&c, _| c > 0x7f);
+    to_upper.retain(|&c, _| c > 0x7f);
     let mut properties: Vec<(&'static str, Vec<Range<u32>>)> = properties
         .into_iter()
         .map(|(prop, codepoints)| {
@@ -203,29 +207,26 @@ fn load_data() -> UnicodeData {
         .collect();
 
     properties.sort_by_key(|p| p.0);
-    UnicodeData { ranges: properties, to_lower, to_upper }
+    UnicodeData { ranges: properties, to_lower, to_title, to_upper }
 }
 
 fn main() {
-    let write_location = std::env::args().nth(1).unwrap_or_else(|| {
-        eprintln!("Must provide path to write unicode tables to");
+    let args = std::env::args().collect::<Vec<_>>();
+
+    if args.len() != 3 {
+        eprintln!("Must provide paths to write unicode tables and tests to");
         eprintln!(
-            "e.g. {} library/core/src/unicode/unicode_data.rs",
-            std::env::args().next().unwrap_or_default()
+            "e.g. {} library/core/src/unicode/unicode_data.rs library/coretests/tests/unicode/test_data.rs",
+            args[0]
         );
         std::process::exit(1);
-    });
+    }
 
-    // Optional test path, which is a Rust source file testing that the unicode
-    // property lookups are correct.
-    let test_path = std::env::args().nth(2);
+    let data_path = &args[1];
+    let test_path = &args[2];
 
     let unicode_data = load_data();
     let ranges_by_property = &unicode_data.ranges;
-
-    if let Some(path) = test_path {
-        std::fs::write(&path, generate_tests(&unicode_data).unwrap()).unwrap();
-    }
 
     let mut table_file = String::new();
     table_file.push_str(
@@ -258,8 +259,8 @@ fn main() {
         total_bytes += emitter.bytes_used;
     }
     let (conversions, sizes) = case_mapping::generate_case_mapping(&unicode_data);
-    for (name, size) in ["to_lower", "to_upper"].iter().zip(sizes) {
-        table_file.push_str(&format!("// {:16}: {:5} bytes\n", name, size));
+    for (name, (desc, size)) in ["to_lower", "to_upper", "to_title"].iter().zip(sizes) {
+        table_file.push_str(&format!("// {:16}: {:5} bytes, {desc}\n", name, size,));
         total_bytes += size;
     }
     table_file.push_str(&format!("// {:16}: {:5} bytes\n", "Total", total_bytes));
@@ -288,7 +289,10 @@ fn main() {
         table_file.push_str("}\n\n");
     }
 
-    std::fs::write(&write_location, format!("{}\n", table_file.trim_end())).unwrap();
+    let test_file = generate_tests(&unicode_data);
+    std::fs::write(&test_path, test_file).unwrap();
+    std::fs::write(&data_path, table_file).unwrap();
+    eprintln!("Unicode data was generated. Remember to run \"x fmt\"!");
 }
 
 fn version() -> String {
@@ -328,87 +332,70 @@ fn fmt_list<V: std::fmt::Debug>(values: impl IntoIterator<Item = V>) -> String {
     out
 }
 
-fn generate_tests(data: &UnicodeData) -> Result<String, fmt::Error> {
-    let mut s = String::new();
-    writeln!(s, "#![feature(core_intrinsics)]")?;
-    writeln!(s, "#![allow(internal_features, dead_code)]")?;
-    writeln!(s, "// ignore-tidy-filelength")?;
-    writeln!(s, "use std::intrinsics;")?;
-    writeln!(s, "mod unicode_data;")?;
-    writeln!(s, "fn main() {{")?;
+fn generate_tests(data: &UnicodeData) -> String {
+    let mut out = String::from(
+        "\
+//! This file is generated by `./x run src/tools/unicode-table-generator`; do not edit manually!
+// ignore-tidy-filelength
+
+use std::ops::RangeInclusive;
+",
+    );
     for (property, ranges) in &data.ranges {
-        let prop = property.to_lowercase();
-        writeln!(s, r#"    println!("Testing {prop}");"#)?;
-        writeln!(s, "    {prop}_true();")?;
-        writeln!(s, "    {prop}_false();")?;
-        let (is_true, is_false): (Vec<_>, Vec<_>) = (char::MIN..=char::MAX)
+        let prop_upper = property.to_uppercase();
+        let is_true = (char::MIN..=char::MAX)
             .filter(|c| !c.is_ascii())
             .map(u32::from)
-            .partition(|c| ranges.iter().any(|r| r.contains(c)));
+            .filter(|c| ranges.iter().any(|r| r.contains(c)))
+            .collect::<Vec<_>>();
+        let is_true = ranges_from_set(&is_true)
+            .into_iter()
+            .map(|r| {
+                let start = char::from_u32(r.start).unwrap();
+                let end = char::from_u32(r.end - 1).unwrap();
+                CharEscape(start)..=CharEscape(end)
+            })
+            .collect::<Vec<_>>();
 
-        writeln!(s, "    fn {prop}_true() {{")?;
-        generate_asserts(&mut s, &prop, &is_true, true)?;
-        writeln!(s, "    }}")?;
-
-        writeln!(s, "    fn {prop}_false() {{")?;
-        generate_asserts(&mut s, &prop, &is_false, false)?;
-        writeln!(s, "    }}")?;
+        writeln!(
+            out,
+            r#"
+#[rustfmt::skip]
+pub(super) static {prop_upper}: &[RangeInclusive<char>; {is_true_len}] = &[{is_true}];
+"#,
+            is_true_len = is_true.len(),
+            is_true = fmt_list(is_true),
+        )
+        .unwrap();
     }
 
-    for (name, conversion) in ["to_lower", "to_upper"].iter().zip([&data.to_lower, &data.to_upper])
-    {
-        writeln!(s, r#"    println!("Testing {name}");"#)?;
-        for (c, mapping) in conversion {
-            let c = char::from_u32(*c).unwrap();
-            let mapping = mapping.map(|c| char::from_u32(c).unwrap());
-            writeln!(
-                s,
-                r#"    assert_eq!(unicode_data::conversions::{name}({c:?}), {mapping:?});"#
-            )?;
-        }
-        let unmapped: Vec<_> = (char::MIN..=char::MAX)
-            .filter(|c| !c.is_ascii())
-            .map(u32::from)
-            .filter(|c| !conversion.contains_key(c))
-            .collect();
-        let unmapped_ranges = ranges_from_set(&unmapped);
-        for range in unmapped_ranges {
-            let start = char::from_u32(range.start).unwrap();
-            let end = char::from_u32(range.end - 1).unwrap();
-            writeln!(s, "    for c in {start:?}..={end:?} {{")?;
-            writeln!(
-                s,
-                r#"        assert_eq!(unicode_data::conversions::{name}(c), [c, '\0', '\0']);"#
-            )?;
+    for (name, lut) in ["TO_LOWER", "TO_UPPER", "TO_TITLE"].iter().zip([
+        &data.to_lower,
+        &data.to_upper,
+        &data.to_title,
+    ]) {
+        let lut = lut
+            .iter()
+            .map(|(key, values)| {
+                let key = char::from_u32(*key).unwrap();
+                let values = values.map(|c| char::from_u32(c).unwrap());
+                (CharEscape(key), values.map(CharEscape))
+            })
+            .collect::<Vec<_>>();
 
-            writeln!(s, "    }}")?;
-        }
+        writeln!(
+            out,
+            r#"
+#[rustfmt::skip]
+pub(super) static {name}: &[(char, [char; 3]); {len}] = &[{lut}];
+"#,
+            len = lut.len(),
+            lut = fmt_list(lut),
+        )
+        .unwrap();
     }
 
-    writeln!(s, "}}")?;
-    Ok(s)
-}
-
-fn generate_asserts(
-    s: &mut String,
-    prop: &str,
-    points: &[u32],
-    truthy: bool,
-) -> Result<(), fmt::Error> {
-    let truthy = if truthy { "" } else { "!" };
-    for range in ranges_from_set(points) {
-        let start = char::from_u32(range.start).unwrap();
-        let end = char::from_u32(range.end - 1).unwrap();
-        match range.len() {
-            1 => writeln!(s, "        assert!({truthy}unicode_data::{prop}::lookup({start:?}));")?,
-            _ => {
-                writeln!(s, "        for c in {start:?}..={end:?} {{")?;
-                writeln!(s, "            assert!({truthy}unicode_data::{prop}::lookup(c));")?;
-                writeln!(s, "        }}")?;
-            }
-        }
-    }
-    Ok(())
+    out
 }
 
 /// Group the elements of `set` into contigous ranges

@@ -600,7 +600,7 @@ impl UnusedDelimLint for UnusedParens {
                     && !value.span.from_expansion()
                     && (ctx != UnusedDelimsCtx::LetScrutineeExpr
                         || !matches!(inner.kind, ast::ExprKind::Binary(
-                                rustc_span::source_map::Spanned { node, .. },
+                                rustc_span::Spanned { node, .. },
                                 _,
                                 _,
                             ) if node.is_lazy()))

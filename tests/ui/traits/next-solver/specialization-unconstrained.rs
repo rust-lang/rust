@@ -1,7 +1,6 @@
 //@ compile-flags: -Znext-solver
 
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
 
 // Do not treat the RHS of a projection-goal as an unconstrained `Certainty::Yes` response
 // if the impl is still further specializable.

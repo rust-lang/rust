@@ -7,9 +7,8 @@ use rustc_abi::{
     PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
-use rustc_error_messages::DiagMessage;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level, msg,
+    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
 use rustc_hir as hir;
 use rustc_hir::LangItem;
@@ -265,53 +264,6 @@ pub enum LayoutError<'tcx> {
     Cycle(ErrorGuaranteed),
 }
 
-impl<'tcx> LayoutError<'tcx> {
-    pub fn diagnostic_message(&self) -> DiagMessage {
-        use LayoutError::*;
-
-        match self {
-            Unknown(_) => msg!("the type `{$ty}` has an unknown layout"),
-            SizeOverflow(_) => {
-                msg!("values of the type `{$ty}` are too big for the target architecture")
-            }
-            InvalidSimd { kind: SimdLayoutError::TooManyLanes(_), .. } => {
-                msg!("the SIMD type `{$ty}` has more elements than the limit {$max_lanes}")
-            }
-            InvalidSimd { kind: SimdLayoutError::ZeroLength, .. } => {
-                msg!("the SIMD type `{$ty}` has zero elements")
-            }
-            TooGeneric(_) => msg!("the type `{$ty}` does not have a fixed layout"),
-            NormalizationFailure(_, _) => msg!(
-                "unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized"
-            ),
-            Cycle(_) => msg!("a cycle occurred during layout computation"),
-            ReferencesError(_) => msg!("the type has an unknown layout"),
-        }
-    }
-
-    pub fn into_diagnostic(self) -> crate::error::LayoutError<'tcx> {
-        use LayoutError::*;
-
-        use crate::error::LayoutError as E;
-        match self {
-            Unknown(ty) => E::Unknown { ty },
-            SizeOverflow(ty) => E::Overflow { ty },
-            InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(max_lanes) } => {
-                E::SimdTooManyLanes { ty, max_lanes }
-            }
-            InvalidSimd { ty, kind: SimdLayoutError::ZeroLength } => E::SimdZeroLength { ty },
-            TooGeneric(ty) => E::TooGeneric { ty },
-            NormalizationFailure(ty, e) => {
-                E::NormalizationFailure { ty, failure_ty: e.get_type_for_failure() }
-            }
-            Cycle(_) => E::Cycle,
-            ReferencesError(_) => E::ReferencesError,
-        }
-    }
-}
-
-// FIXME: Once the other errors that embed this error have been converted to translatable
-// diagnostics, this Display impl should be removed.
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -1333,7 +1285,7 @@ pub enum FnAbiError<'tcx> {
 impl<'a, 'b, G: EmissionGuarantee> Diagnostic<'a, G> for FnAbiError<'b> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         match self {
-            Self::Layout(e) => e.into_diagnostic().into_diag(dcx, level),
+            Self::Layout(e) => Diag::new(dcx, level, e.to_string()),
         }
     }
 }

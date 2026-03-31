@@ -218,7 +218,7 @@ fn write_static_files(
         try_err!(fs::write(&dst_path, buffer), &dst_path);
     }
 
-    if opt.emit.is_empty() || opt.emit.contains(&EmitType::Toolchain) {
+    if opt.emit.is_empty() || opt.emit.contains(&EmitType::HtmlStaticFiles) {
         static_files::for_each(|f: &static_files::StaticFile| {
             let filename = static_dir.join(f.output_filename());
             let contents: &[u8] =

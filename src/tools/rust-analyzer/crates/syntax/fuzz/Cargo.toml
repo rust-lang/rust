@@ -23,6 +23,3 @@ path = "fuzz_targets/parser.rs"
 [[bin]]
 name = "reparse"
 path = "fuzz_targets/reparse.rs"
-
-[lints]
-workspace = true

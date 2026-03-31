@@ -143,6 +143,12 @@ pub struct Session {
     /// None signifies that this is not tracked.
     pub using_internal_features: &'static AtomicBool,
 
+    /// Environment variables accessed during the build and their values when they exist.
+    pub env_depinfo: Lock<FxIndexSet<(Symbol, Option<Symbol>)>>,
+
+    /// File paths accessed during the build.
+    pub file_depinfo: Lock<FxIndexSet<Symbol>>,
+
     target_filesearch: FileSearch,
     host_filesearch: FileSearch,
 
@@ -527,9 +533,12 @@ impl Session {
     pub fn emit_lifetime_markers(&self) -> bool {
         self.opts.optimize != config::OptLevel::No
         // AddressSanitizer and KernelAddressSanitizer uses lifetimes to detect use after scope bugs.
+        //
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
-        // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
-        || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
+        //
+        // HWAddressSanitizer and KernelHWAddressSanitizer will use lifetimes to detect use after
+        // scope bugs in the future.
+        || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
     }
 
     pub fn diagnostic_width(&self) -> usize {
@@ -1095,6 +1104,8 @@ pub fn build_session(
         unstable_target_features: Default::default(),
         cfg_version,
         using_internal_features,
+        env_depinfo: Default::default(),
+        file_depinfo: Default::default(),
         target_filesearch,
         host_filesearch,
         invocation_temp,
@@ -1350,16 +1361,6 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             {
                 sess.dcx().emit_err(errors::FunctionReturnThunkExternRequiresNonLargeCodeModel);
             }
-        }
-    }
-
-    if sess.opts.cg.soft_float {
-        if sess.target.arch == Arch::Arm {
-            sess.dcx().emit_warn(errors::SoftFloatDeprecated);
-        } else {
-            // All `use_softfp` does is the equivalent of `-mfloat-abi` in GCC/clang, which only exists on ARM targets.
-            // We document this flag to only affect `*eabihf` targets, so let's show a warning for all other targets.
-            sess.dcx().emit_warn(errors::SoftFloatIgnored);
         }
     }
 }

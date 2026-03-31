@@ -6,14 +6,14 @@ use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
-    self as ast, Arm, AttrVec, BindingMode, ByRef, Expr, ExprKind, LocalKind, MacCall, Mutability,
-    Pat, PatField, PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax, Stmt, StmtKind,
+    self as ast, Arm, AttrVec, BindingMode, ByRef, Expr, ExprKind, Guard, LocalKind, MacCall,
+    Mutability, Pat, PatField, PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax, Stmt,
+    StmtKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagArgValue, PResult, StashKey};
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, kw, sym};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, Spanned, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, UsePreAttrPos};
@@ -111,11 +111,19 @@ impl<'a> Parser<'a> {
         let pat = self.parse_pat_no_top_guard(expected, rc, ra, rt)?;
 
         if self.eat_keyword(exp!(If)) {
-            let cond = self.parse_expr()?;
+            let guard = if let Some(guard) = self.eat_metavar_guard() {
+                guard
+            } else {
+                let leading_if_span = self.prev_token.span;
+                let cond = self.parse_expr()?;
+                let cond_span = cond.span;
+                Box::new(Guard { cond: *cond, span_with_leading_if: leading_if_span.to(cond_span) })
+            };
+
             // Feature-gate guard patterns
-            self.psess.gated_spans.gate(sym::guard_patterns, cond.span);
-            let span = pat.span.to(cond.span);
-            Ok(self.mk_pat(span, PatKind::Guard(Box::new(pat), cond)))
+            self.psess.gated_spans.gate(sym::guard_patterns, guard.span());
+            let span = pat.span.to(guard.span());
+            Ok(self.mk_pat(span, PatKind::Guard(Box::new(pat), guard)))
         } else {
             Ok(pat)
         }
@@ -602,17 +610,18 @@ impl<'a> Parser<'a> {
                                 }
                                 Some(guard) => {
                                     // Are parentheses required around the old guard?
-                                    let wrap_guard = guard.precedence() <= ExprPrecedence::LAnd;
+                                    let wrap_guard =
+                                        guard.cond.precedence() <= ExprPrecedence::LAnd;
 
                                     err.subdiagnostic(
                                         UnexpectedExpressionInPatternSugg::UpdateGuard {
                                             ident_span,
                                             guard_lo: if wrap_guard {
-                                                Some(guard.span.shrink_to_lo())
+                                                Some(guard.span().shrink_to_lo())
                                             } else {
                                                 None
                                             },
-                                            guard_hi: guard.span.shrink_to_hi(),
+                                            guard_hi: guard.span().shrink_to_hi(),
                                             guard_hi_paren: if wrap_guard { ")" } else { "" },
                                             ident,
                                             expr,
@@ -1740,6 +1749,9 @@ impl<'a> Parser<'a> {
         } else {
             // Parsing a pattern of the form `(box) (ref) (mut) fieldname`.
             let is_box = self.eat_keyword(exp!(Box));
+            if is_box {
+                self.psess.gated_spans.gate(sym::box_patterns, self.prev_token.span);
+            }
             let boxed_span = self.token.span;
             let mutability = self.parse_mutability();
             let by_ref = self.parse_byref();

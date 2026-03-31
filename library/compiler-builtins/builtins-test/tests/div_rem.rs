@@ -1,5 +1,5 @@
 #![feature(f128)]
-#![allow(unused_macros)]
+#![allow(unused_macros, unused_features)]
 
 use builtins_test::*;
 use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};

@@ -9,7 +9,7 @@ LL |         Some(_) => {}
    |
    = note: expected struct `Arc<Option<{integer}>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *x {
    |           +
@@ -25,7 +25,7 @@ LL |         None => {}
    |
    = note: expected struct `Arc<Option<{integer}>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *x {
    |           +
@@ -41,7 +41,7 @@ LL |         Some(_) => {}
    |
    = note: expected struct `Arc<Option<{integer}>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &*x {
    |            +
@@ -57,7 +57,7 @@ LL |         None => {}
    |
    = note: expected struct `Arc<Option<{integer}>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &*x {
    |            +
@@ -73,7 +73,7 @@ LL |         Some(_) => {}
    |
    = note: expected struct `Box<Option<{integer}>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *y {
    |           +
@@ -89,7 +89,7 @@ LL |         None => {}
    |
    = note: expected struct `Box<Option<{integer}>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *y {
    |           +
@@ -105,7 +105,7 @@ LL |         Some(_) => {}
    |
    = note: expected struct `Arc<Option<i32>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL -     match z as Arc<Option<i32>> {
 LL +     match *(z as Arc<Option<i32>>) {
@@ -122,7 +122,7 @@ LL |         None => {}
    |
    = note: expected struct `Arc<Option<i32>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL -     match z as Arc<Option<i32>> {
 LL +     match *(z as Arc<Option<i32>>) {
@@ -139,7 +139,7 @@ LL |         Some(_) => {}
    |
    = note: expected struct `Arc<Option<i32>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**z_const {
    |           +++
@@ -155,7 +155,7 @@ LL |         None => {}
    |
    = note: expected struct `Arc<Option<i32>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**z_const {
    |           +++
@@ -171,7 +171,7 @@ LL |         Some(_) => {}
    |
    = note: expected struct `Arc<Option<i32>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**z_mut {
    |           +++
@@ -187,7 +187,7 @@ LL |         None => {}
    |
    = note: expected struct `Arc<Option<i32>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**z_mut {
    |           +++
@@ -203,7 +203,7 @@ LL |         Some(_) => {}
    |
    = note: expected struct `Box<Option<i32>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**y_mut {
    |           +++
@@ -219,7 +219,7 @@ LL |         None => {}
    |
    = note: expected struct `Box<Option<i32>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**y_mut {
    |           +++
@@ -235,7 +235,7 @@ LL |         Some(_) => {}
    |
    = note: expected struct `Arc<Option<{integer}>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL -     match (& (&difficult)  ) {
 LL +     match &*difficult {
@@ -252,7 +252,7 @@ LL |         None => {}
    |
    = note: expected struct `Arc<Option<{integer}>>`
                 found enum `Option<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL -     match (& (&difficult)  ) {
 LL +     match &*difficult {

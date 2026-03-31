@@ -23,7 +23,7 @@ jobs:
           rustup component add --toolchain beta rust-src
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -45,7 +45,7 @@ jobs:
           key: ${{ runner.os }}-target-${{ github.sha }}
 
       - name: Upload build metrics
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-${{ github.sha }}
           path: target/build.json
@@ -66,7 +66,7 @@ jobs:
           rustup component add --toolchain beta rust-src
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Restore target cache
         uses: actions/cache@v4
@@ -78,7 +78,7 @@ jobs:
         run: cargo xtask metrics "${{ matrix.names }}"
 
       - name: Upload metrics
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.names }}-${{ github.sha }}
           path: target/${{ matrix.names }}.json
@@ -89,35 +89,35 @@ jobs:
     needs: [build_metrics, other_metrics]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download build metrics
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: build-${{ github.sha }}
 
       - name: Download self metrics
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: self-${{ github.sha }}
 
       - name: Download ripgrep-13.0.0 metrics
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ripgrep-13.0.0-${{ github.sha }}
 
       - name: Download webrender-2022 metrics
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: webrender-2022-${{ github.sha }}
 
       - name: Download diesel-1.4.8 metrics
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: diesel-1.4.8-${{ github.sha }}
 
       - name: Download hyper-0.14.18 metrics
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: hyper-0.14.18-${{ github.sha }}
 

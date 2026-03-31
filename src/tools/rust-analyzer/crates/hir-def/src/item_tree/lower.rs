@@ -2,7 +2,7 @@
 
 use std::cell::OnceCell;
 
-use base_db::FxIndexSet;
+use base_db::{Crate, FxIndexSet};
 use cfg::CfgOptions;
 use hir_expand::{
     HirFileId,
@@ -16,7 +16,6 @@ use syntax::{
     AstNode,
     ast::{self, HasModuleItem, HasName},
 };
-use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,
@@ -29,19 +28,20 @@ use crate::{
     },
 };
 
-pub(super) struct Ctx<'a> {
-    pub(super) db: &'a dyn DefDatabase,
+pub(super) struct Ctx<'db> {
+    pub(super) db: &'db dyn DefDatabase,
     tree: ItemTree,
-    source_ast_id_map: Arc<AstIdMap>,
+    source_ast_id_map: &'db AstIdMap,
     span_map: OnceCell<SpanMap>,
     file: HirFileId,
-    cfg_options: OnceCell<&'a CfgOptions>,
+    cfg_options: OnceCell<&'db CfgOptions>,
+    krate: Crate,
     top_level: Vec<ModItemId>,
     visibilities: FxIndexSet<RawVisibility>,
 }
 
-impl<'a> Ctx<'a> {
-    pub(super) fn new(db: &'a dyn DefDatabase, file: HirFileId) -> Self {
+impl<'db> Ctx<'db> {
+    pub(super) fn new(db: &'db dyn DefDatabase, file: HirFileId, krate: Crate) -> Self {
         Self {
             db,
             tree: ItemTree::default(),
@@ -51,12 +51,13 @@ impl<'a> Ctx<'a> {
             span_map: OnceCell::new(),
             visibilities: FxIndexSet::default(),
             top_level: Vec::new(),
+            krate,
         }
     }
 
     #[inline]
-    pub(super) fn cfg_options(&self) -> &'a CfgOptions {
-        self.cfg_options.get_or_init(|| self.file.krate(self.db).cfg_options(self.db))
+    pub(super) fn cfg_options(&self) -> &'db CfgOptions {
+        self.cfg_options.get_or_init(|| self.krate.cfg_options(self.db))
     }
 
     pub(super) fn span_map(&self) -> SpanMapRef<'_> {

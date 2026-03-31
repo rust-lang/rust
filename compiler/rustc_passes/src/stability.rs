@@ -131,7 +131,6 @@ const FORCE_UNSTABLE: Stability = Stability {
     level: StabilityLevel::Unstable {
         reason: UnstableReason::Default,
         issue: NonZero::new(27812),
-        is_soft: false,
         implied_by: None,
         old_name: None,
     },
@@ -964,12 +963,15 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let mut lang_features = UnordSet::default();
     for EnabledLangFeature { gate_name, attr_sp, stable_since } in enabled_lang_features {
         if let Some(version) = stable_since {
+            // Mark the feature as enabled, to ensure that it is not marked as unused.
+            let _ = tcx.features().enabled(*gate_name);
+
             // Warn if the user has enabled an already-stable lang feature.
             unnecessary_stable_feature_lint(tcx, *attr_sp, *gate_name, *version);
         }
         if !lang_features.insert(gate_name) {
             // Warn if the user enables a lang feature multiple times.
-            tcx.dcx().emit_err(errors::DuplicateFeatureErr { span: *attr_sp, feature: *gate_name });
+            duplicate_feature_lint(tcx, *attr_sp, *gate_name);
         }
     }
 
@@ -978,7 +980,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     for EnabledLibFeature { gate_name, attr_sp } in enabled_lib_features {
         if remaining_lib_features.contains_key(gate_name) {
             // Warn if the user enables a lib feature multiple times.
-            tcx.dcx().emit_err(errors::DuplicateFeatureErr { span: *attr_sp, feature: *gate_name });
+            duplicate_feature_lint(tcx, *attr_sp, *gate_name);
         }
         remaining_lib_features.insert(*gate_name, *attr_sp);
     }
@@ -1021,6 +1023,9 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             if let FeatureStability::AcceptedSince(since) = stability
                 && let Some(span) = remaining_lib_features.get(&feature)
             {
+                // Mark the feature as enabled, to ensure that it is not marked as unused.
+                let _ = tcx.features().enabled(feature);
+
                 // Warn if the user has enabled an already-stable lib feature.
                 if let Some(implies) = all_implications.get(&feature) {
                     unnecessary_partially_stable_feature_lint(tcx, *span, feature, *implies, since);
@@ -1158,5 +1163,14 @@ fn unnecessary_stable_feature_lint(
         hir::CRATE_HIR_ID,
         span,
         errors::UnnecessaryStableFeature { feature, since },
+    );
+}
+
+fn duplicate_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol) {
+    tcx.emit_node_span_lint(
+        lint::builtin::DUPLICATE_FEATURES,
+        hir::CRATE_HIR_ID,
+        span,
+        errors::DuplicateFeature { feature },
     );
 }

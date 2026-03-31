@@ -15,6 +15,7 @@ use triomphe::Arc;
 use crate::{
     Lookup, ModuleDefId, ModuleId,
     db::DefDatabase,
+    expr_store::{Body, scope::ExprScopes},
     nameres::{DefMap, ModuleSource, block_def_map, crate_def_map},
     src::HasSource,
 };
@@ -284,8 +285,8 @@ impl TestDB {
         // Find the innermost block expression that has a `DefMap`.
         let (def_with_body, file_id) = fn_def?;
         let def_with_body = def_with_body.into();
-        let source_map = self.body_with_source_map(def_with_body).1;
-        let scopes = self.expr_scopes(def_with_body);
+        let source_map = &Body::with_source_map(self, def_with_body).1;
+        let scopes = ExprScopes::body_expr_scopes(self, def_with_body);
 
         let root_syntax_node = self.parse(file_id).syntax_node();
         let scope_iter =

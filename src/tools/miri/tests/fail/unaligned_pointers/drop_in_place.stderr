@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered an unaligned reference (required ALIGN byte alignment but found ALIGN)
+error: Undefined Behavior: constructing invalid value of type &mut PartialDrop: encountered an unaligned reference (required ALIGN byte alignment but found ALIGN)
   --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
    |
 LL | / pub const unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T)

@@ -45,14 +45,13 @@ ENV TARGETS=$HOSTS
 ENV TARGETS=$TARGETS,loongarch64-unknown-none
 ENV TARGETS=$TARGETS,loongarch64-unknown-none-softfloat
 
-ENV RUST_CONFIGURE_ARGS \
-      --enable-extended \
+ENV RUST_CONFIGURE_ARGS="--enable-extended \
       --enable-full-tools \
       --enable-profiler \
       --enable-sanitizers \
       --disable-docs \
       --set rust.jemalloc \
       --set rust.lto=thin \
-      --set rust.codegen-units=1
+      --set rust.codegen-units=1"
 
-ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $TARGETS
+ENV SCRIPT="python3 ../x.py dist --host $HOSTS --target $TARGETS"

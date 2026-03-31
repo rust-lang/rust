@@ -5,10 +5,7 @@ LL |     match x {
    |           ^ cannot move out of here
 LL |
 LL |         X { x: y } => println!("contents: {}", y)
-   |                -
-   |                |
-   |                data moved here
-   |                move occurs because `y` has type `String`, which does not implement the `Copy` trait
+   |                - data moved here because `y` has type `String`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |

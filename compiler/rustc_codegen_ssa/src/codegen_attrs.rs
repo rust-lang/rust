@@ -150,7 +150,8 @@ fn process_builtin_attrs(
                     && let Some(fn_sig) = try_fn_sig(tcx, did, *attr_span)
                     && fn_sig.skip_binder().abi() != ExternAbi::Rust
                 {
-                    tcx.dcx().emit_err(errors::RequiresRustAbi { span: *attr_span });
+                    // This error is already reported in `rustc_ast_passes/src/ast_validation.rs`.
+                    tcx.dcx().delayed_bug("`#[track_caller]` requires the Rust ABI");
                 }
                 if is_closure
                     && !tcx.features().closure_track_caller()

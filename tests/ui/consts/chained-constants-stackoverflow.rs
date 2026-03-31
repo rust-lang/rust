@@ -1,5 +1,5 @@
 //@ run-pass
-
+//@ ignore-parallel-frontend queries overflow the depth limit
 // https://github.com/rust-lang/rust/issues/34997
 
 pub const CST_1: u32 = 0;

@@ -1,6 +1,6 @@
 #![cfg_attr(f16_enabled, feature(f16))]
 #![cfg_attr(f128_enabled, feature(f128))]
-#![allow(unused_macros)]
+#![allow(unused_macros, unused_features)]
 
 use builtins_test::*;
 

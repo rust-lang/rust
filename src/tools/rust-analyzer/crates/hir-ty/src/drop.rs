@@ -1,6 +1,9 @@
 //! Utilities for computing drop info about types.
 
-use hir_def::{AdtId, signatures::StructFlags};
+use hir_def::{
+    AdtId,
+    signatures::{StructFlags, StructSignature},
+};
 use rustc_hash::FxHashSet;
 use rustc_type_ir::inherent::{AdtDef, IntoKind};
 use stdx::never;
@@ -73,8 +76,7 @@ fn has_drop_glue_impl<'db>(
             }
             match adt_id {
                 AdtId::StructId(id) => {
-                    if db
-                        .struct_signature(id)
+                    if StructSignature::of(db, id)
                         .flags
                         .intersects(StructFlags::IS_MANUALLY_DROP | StructFlags::IS_PHANTOM_DATA)
                     {
@@ -132,9 +134,9 @@ fn has_drop_glue_impl<'db>(
         TyKind::Slice(ty) => has_drop_glue_impl(infcx, ty, env, visited),
         TyKind::Closure(closure_id, subst) => {
             let owner = db.lookup_intern_closure(closure_id.0).0;
-            let infer = InferenceResult::for_body(db, owner);
+            let infer = InferenceResult::of(db, owner);
             let (captures, _) = infer.closure_info(closure_id.0);
-            let env = db.trait_environment_for_body(owner);
+            let env = db.trait_environment(owner);
             captures
                 .iter()
                 .map(|capture| has_drop_glue_impl(infcx, capture.ty(db, subst), env, visited))

@@ -8,7 +8,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
-use rustc_target::spec::{Arch, Env, RustcAbi};
+use rustc_target::spec::{Arch, Env, LlvmAbi, RustcAbi};
 
 use crate::builder::Builder;
 use crate::llvm::{Type, Value};
@@ -551,7 +551,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
             registers_for_primitive(scalar1.primitive());
             registers_for_primitive(scalar2.primitive());
         }
-        BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => {
+        BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => {
             // Because no instance of VaArgSafe uses a non-scalar `BackendRepr`.
             unreachable!(
                 "No x86-64 SysV va_arg implementation for {:?}",
@@ -692,7 +692,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
         }
         // The Previous match on `BackendRepr` means control flow already escaped.
         BackendRepr::SimdVector { .. }
-        | BackendRepr::ScalableVector { .. }
+        | BackendRepr::SimdScalableVector { .. }
         | BackendRepr::Memory { .. } => unreachable!(),
     };
 
@@ -1077,7 +1077,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             AllowHigherAlign::Yes,
             ForceRightAdjust::Yes,
         ),
-        Arch::RiscV32 if target.llvm_abiname == "ilp32e" => {
+        Arch::RiscV32 if target.llvm_abiname == LlvmAbi::Ilp32e => {
             // FIXME: clang manually adjusts the alignment for this ABI. It notes:
             //
             // > To be compatible with GCC's behaviors, we force arguments with

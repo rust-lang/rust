@@ -47,7 +47,7 @@ pub(crate) fn render_variant_pat(
     ctx: RenderContext<'_>,
     pattern_ctx: &PatternContext,
     path_ctx: Option<&PathCompletionCtx<'_>>,
-    variant: hir::Variant,
+    variant: hir::EnumVariant,
     local_name: Option<Name>,
     path: Option<&hir::ModPath>,
 ) -> Option<CompletionItem> {

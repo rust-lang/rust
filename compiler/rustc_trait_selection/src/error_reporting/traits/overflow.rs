@@ -99,6 +99,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             "overflow assigning `{a}` to `{b}`",
                         )
                     }
+                    ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                        let term = with_short_path(self.tcx, term);
+                        struct_span_code_err!(
+                            self.dcx(),
+                            span,
+                            E0275,
+                            "overflow evaluating whether `{term}` is well-formed",
+                        )
+                    }
                     _ => {
                         let pred_str = with_short_path(self.tcx, predicate);
                         struct_span_code_err!(

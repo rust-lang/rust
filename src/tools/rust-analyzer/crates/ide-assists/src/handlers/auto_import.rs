@@ -268,7 +268,7 @@ pub(crate) fn relevance_score(
                         hir::Adt::Union(it) => it.ty(ctx.db()),
                         hir::Adt::Enum(it) => it.ty(ctx.db()),
                     }),
-                    hir::ModuleDef::Variant(variant) => Some(variant.constructor_ty(ctx.db())),
+                    hir::ModuleDef::EnumVariant(variant) => Some(variant.constructor_ty(ctx.db())),
                     hir::ModuleDef::Const(it) => Some(it.ty(ctx.db())),
                     hir::ModuleDef::Static(it) => Some(it.ty(ctx.db())),
                     hir::ModuleDef::TypeAlias(it) => Some(it.ty(ctx.db())),
