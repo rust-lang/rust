@@ -1,5 +1,5 @@
 error[E0369]: cannot add `{integer}` to `bool`
-  --> $DIR/private-field-deref-confusion-issue-149546.rs:28:13
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:46:13
    |
 LL |     a.field + 5;
    |     ------- ^ - {integer}
@@ -9,7 +9,7 @@ LL |     a.field + 5;
    = note: there is a field `field` on `A` with type `usize`, but it is private
 
 error[E0369]: cannot add `{integer}` to `bool`
-  --> $DIR/private-field-deref-confusion-issue-149546.rs:36:13
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:54:13
    |
 LL |     a.field + 5;
    |     ------- ^ - {integer}
@@ -19,7 +19,7 @@ LL |     a.field + 5;
    = note: there is a field `field` on `A` with type `usize`, but it is private
 
 error[E0277]: cannot add `bool` to `{integer}`
-  --> $DIR/private-field-deref-confusion-issue-149546.rs:44:7
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:62:7
    |
 LL |     5 + a.field;
    |       ^ no implementation for `{integer} + bool`
@@ -38,7 +38,7 @@ LL |     5 + a.field;
            and 56 others
 
 error[E0277]: cannot add `bool` to `{integer}`
-  --> $DIR/private-field-deref-confusion-issue-149546.rs:53:7
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:71:7
    |
 LL |     5 + a.field;
    |       ^ no implementation for `{integer} + bool`
@@ -57,7 +57,7 @@ LL |     5 + a.field;
            and 56 others
 
 error[E0277]: cannot add-assign `bool` to `{integer}`
-  --> $DIR/private-field-deref-confusion-issue-149546.rs:63:7
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:81:7
    |
 LL |     n += a.field;
    |       ^^ no implementation for `{integer} += bool`
@@ -76,7 +76,7 @@ LL |     n += a.field;
            and 24 others
 
 error[E0277]: cannot add-assign `bool` to `{integer}`
-  --> $DIR/private-field-deref-confusion-issue-149546.rs:73:7
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:91:7
    |
 LL |     n += a.field;
    |       ^^ no implementation for `{integer} += bool`
@@ -94,7 +94,53 @@ LL |     n += a.field;
              `f64` implements `AddAssign`
            and 24 others
 
-error: aborting due to 6 previous errors
+error[E0277]: the trait bound `bool: Marker` is not satisfied
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:100:16
+   |
+LL |     Wrapper(5) + a.field;
+   |                ^ the trait `Marker` is not implemented for `bool`
+   |
+   = note: there is a field `field` on `A` with type `usize`, but it is private
+help: the trait `Marker` is implemented for `usize`
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:32:1
+   |
+LL | impl Marker for usize {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+note: required for `Wrapper` to implement `Add<bool>`
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:37:17
+   |
+LL | impl<T: Marker> std::ops::Add<T> for Wrapper {
+   |         ------  ^^^^^^^^^^^^^^^^     ^^^^^^^
+   |         |
+   |         unsatisfied trait bound introduced here
 
-Some errors have detailed explanations: E0277, E0369.
+error[E0308]: mismatched types
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:107:17
+   |
+LL |     takes_usize(a.field);
+   |     ----------- ^^^^^^^ expected `usize`, found `bool`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: there is a field `field` on `A` with type `usize`, but it is private
+note: function defined here
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:27:4
+   |
+LL | fn takes_usize(_: usize) {}
+   |    ^^^^^^^^^^^ --------
+
+error[E0308]: mismatched types
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:116:5
+   |
+LL | fn return_value(a: &A) -> usize {
+   |                           ----- expected `usize` because of return type
+LL |
+LL |     a.field
+   |     ^^^^^^^ expected `usize`, found `bool`
+   |
+   = note: there is a field `field` on `A` with type `usize`, but it is private
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0369.
 For more information about an error, try `rustc --explain E0277`.

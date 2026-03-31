@@ -8,6 +8,7 @@ use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, EmissionGuarantee, MultiSpan, Style, SuggestionStyle, pluralize,
@@ -242,6 +243,54 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
 }
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    pub fn note_field_shadowed_by_private_candidate_in_cause(
+        &self,
+        err: &mut Diag<'_>,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) {
+        let mut hir_ids = UnordMap::default();
+        // Walk the parent chain so we can recover
+        // the source expression from whichever layer carries them.
+        let mut next_code = Some(cause.code());
+        while let Some(cause_code) = next_code {
+            match cause_code {
+                ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, .. } => {
+                    hir_ids.insert(lhs_hir_id.local_id.as_u32(), *lhs_hir_id);
+                    hir_ids.insert(rhs_hir_id.local_id.as_u32(), *rhs_hir_id);
+                }
+                ObligationCauseCode::FunctionArg { arg_hir_id, .. }
+                | ObligationCauseCode::ReturnValue(arg_hir_id)
+                | ObligationCauseCode::AwaitableExpr(arg_hir_id)
+                | ObligationCauseCode::BlockTailExpression(arg_hir_id, _)
+                | ObligationCauseCode::UnOp { hir_id: arg_hir_id } => {
+                    hir_ids.insert(arg_hir_id.local_id.as_u32(), *arg_hir_id);
+                }
+                ObligationCauseCode::OpaqueReturnType(Some((_, hir_id))) => {
+                    hir_ids.insert(hir_id.local_id.as_u32(), *hir_id);
+                }
+                _ => {}
+            }
+            next_code = cause_code.parent();
+        }
+
+        if cause.span != DUMMY_SP
+            && hir_ids.is_empty()
+            && let Some(body) = self.tcx.hir_maybe_body_owned_by(cause.body_id)
+        {
+            let mut expr_finder = FindExprBySpan::new(cause.span, self.tcx);
+            expr_finder.visit_body(body);
+            if let Some(expr) = expr_finder.result {
+                hir_ids.insert(expr.hir_id.local_id.as_u32(), expr.hir_id);
+            }
+        }
+
+        let hir_ids = hir_ids.into_sorted_stable_ord();
+        for (_, hir_id) in hir_ids {
+            self.note_field_shadowed_by_private_candidate(err, hir_id, param_env);
+        }
+    }
+
     pub fn note_field_shadowed_by_private_candidate(
         &self,
         err: &mut Diag<'_>,

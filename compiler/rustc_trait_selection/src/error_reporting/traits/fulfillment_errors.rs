@@ -559,9 +559,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             );
                         }
 
-                        self.note_shadowed_private_fields_in_binop(
+                        self.note_field_shadowed_by_private_candidate_in_cause(
                             &mut err,
-                            &obligation,
+                            &obligation.cause,
                             obligation.param_env,
                         );
                         self.try_to_add_help_message(
@@ -3229,25 +3229,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.suggest_tuple_wrapping(err, root_obligation, obligation);
         }
         self.suggest_shadowed_inherent_method(err, obligation, trait_predicate);
-    }
-
-    fn note_shadowed_private_fields_in_binop(
-        &self,
-        err: &mut Diag<'_>,
-        obligation: &PredicateObligation<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) {
-        if self.typeck_results.is_none() {
-            return;
-        }
-
-        let ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, .. } = obligation.cause.code()
-        else {
-            return;
-        };
-
-        self.note_field_shadowed_by_private_candidate(err, *lhs_hir_id, param_env);
-        self.note_field_shadowed_by_private_candidate(err, *rhs_hir_id, param_env);
     }
 
     fn add_help_message_for_fn_trait(

@@ -24,6 +24,24 @@ mod structs {
 
 use structs::A;
 
+fn takes_usize(_: usize) {}
+//~^ NOTE function defined here
+
+trait Marker {}
+
+impl Marker for usize {}
+//~^ HELP the trait `Marker` is implemented for `usize`
+
+struct Wrapper(i32);
+
+impl<T: Marker> std::ops::Add<T> for Wrapper {
+//~^ NOTE required for `Wrapper` to implement `Add<bool>`
+//~| NOTE unsatisfied trait bound introduced here
+    type Output = ();
+
+    fn add(self, _: T) {}
+}
+
 fn by_value(a: A) {
     a.field + 5;
     //~^ ERROR cannot add `{integer}` to `bool`
@@ -75,6 +93,29 @@ fn rhs_assign_op_by_ref(a: &A) {
     //~| NOTE no implementation for `{integer} += bool`
     //~| HELP the trait `AddAssign<bool>` is not implemented for `{integer}`
     //~| HELP the following other types implement trait `AddAssign<Rhs>`:
+    //~| NOTE there is a field `field` on `A` with type `usize`, but it is private
+}
+
+fn rhs_nested_obligation(a: A) {
+    Wrapper(5) + a.field;
+    //~^ ERROR the trait bound `bool: Marker` is not satisfied
+    //~| NOTE the trait `Marker` is not implemented for `bool`
+    //~| NOTE there is a field `field` on `A` with type `usize`, but it is private
+}
+
+fn function_arg(a: A) {
+    takes_usize(a.field);
+    //~^ ERROR mismatched types
+    //~| NOTE expected `usize`, found `bool`
+    //~| NOTE arguments to this function are incorrect
+    //~| NOTE there is a field `field` on `A` with type `usize`, but it is private
+}
+
+fn return_value(a: &A) -> usize {
+//~^ NOTE expected `usize` because of return type
+    a.field
+    //~^ ERROR mismatched types
+    //~| NOTE expected `usize`, found `bool`
     //~| NOTE there is a field `field` on `A` with type `usize`, but it is private
 }
 
