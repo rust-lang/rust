@@ -300,19 +300,14 @@ fn do_normalize_predicates<'tcx>(
         Ok(predicates) => Ok(predicates),
         Err(fixup_err) => {
             // If we encounter a fixup error, it means that some type
-            // variable wound up unconstrained. I actually don't know
-            // if this can happen, and I certainly don't expect it to
-            // happen often, but if it did happen it probably
-            // represents a legitimate failure due to some kind of
-            // unconstrained variable.
-            //
-            // @lcnr: Let's still ICE here for now. I want a test case
-            // for that.
-            span_bug!(
+            // variable wound up unconstrained. That can happen for
+            // ill-formed impls, so we delay a bug here instead of
+            // immediately ICEing and let type checking report the
+            // actual user-facing errors.
+            Err(tcx.dcx().span_delayed_bug(
                 span,
-                "inference variables in normalized parameter environment: {}",
-                fixup_err
-            );
+                format!("inference variables in normalized parameter environment: {fixup_err}"),
+            ))
         }
     }
 }
