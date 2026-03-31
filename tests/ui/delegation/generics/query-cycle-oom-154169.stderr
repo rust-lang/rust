@@ -20,6 +20,12 @@ error[E0220]: associated type `Assoc` not found for `Self`
 LL |         fn foo() -> Self::Assoc;
    |                           ^^^^^ associated type `Assoc` not found
 
+error[E0220]: associated type `Assoc` not found for `Self`
+  --> $DIR/query-cycle-oom-154169.rs:42:32
+   |
+LL |         fn foo(&self) -> Self::Assoc<3> {
+   |                                ^^^^^ associated type `Assoc` not found
+
 error[E0046]: not all trait items implemented, missing: `foo`
   --> $DIR/query-cycle-oom-154169.rs:27:5
    |
@@ -28,6 +34,14 @@ LL |         fn foo() -> Self::Assoc;
 ...
 LL |     impl Trait for u8 {
    |     ^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/query-cycle-oom-154169.rs:48:5
+   |
+LL |     impl () {
+   |     ^^^^^^^
+   |
+   = help: consider using an extension trait instead
 
 error[E0433]: cannot find module or crate `to_reuse` in this scope
   --> $DIR/query-cycle-oom-154169.rs:14:15
@@ -71,7 +85,19 @@ LL -         reuse Trait::* { &self.0 }
 LL +         fn fo&self.0 }
    |
 
-error: aborting due to 5 previous errors
+error[E0599]: no method named `foo` found for reference `&()` in the current scope
+  --> $DIR/query-cycle-oom-154169.rs:42:12
+   |
+LL |         fn foo(&self) -> Self::Assoc<3> {
+   |            ^^^ method not found in `&()`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `foo`, perhaps you need to implement one of them:
+           candidate #1: `test_1::Trait`
+           candidate #2: `test_2::Trait`
+           candidate #3: `test_3::Trait`
 
-Some errors have detailed explanations: E0046, E0061, E0107, E0220, E0433.
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0046, E0061, E0107, E0220, E0390, E0433, E0599.
 For more information about an error, try `rustc --explain E0046`.

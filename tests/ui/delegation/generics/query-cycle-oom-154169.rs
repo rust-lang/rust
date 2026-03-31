@@ -37,4 +37,17 @@ mod test_2 {
     }
 }
 
+mod test_3 {
+    trait Trait {
+        fn foo(&self) -> Self::Assoc<3> { //~ ERROR: associated type `Assoc` not found for `Self`
+        //~^ ERROR: no method named `foo` found for reference `&()` in the current scope
+            [(); 3]
+        }
+    }
+
+    impl () { //~ ERROR: cannot define inherent `impl` for primitive types
+        reuse Trait::*;
+    }
+}
+
 fn main() {}
