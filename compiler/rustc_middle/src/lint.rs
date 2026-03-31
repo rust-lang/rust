@@ -305,6 +305,18 @@ fn explain_lint_level_source(
             }
         }
     }
+
+    if let Some(warnings_group) = sess
+        .opts
+        .lint_opts
+        .iter()
+        .find_map(|(opt, level)| (opt == "warnings").then_some(level))
+        .copied()
+        && warnings_group >= Level::Deny
+        && level < warnings_group
+    {
+        err.note_once(format!("the `{name}` lint ignores `-D warnings`"));
+    }
 }
 
 /// The innermost function for emitting lints implementing the [`trait@Diagnostic`] trait.
