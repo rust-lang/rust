@@ -3045,6 +3045,41 @@ fn main() {
     }
 
     #[test]
+    fn enum_variant_name_exact_match_is_high_priority() {
+        check_relevance(
+            r#"
+struct Other;
+struct String;
+enum Foo {
+    String($0)
+}
+    "#,
+            expect![[r#"
+                st String String [name]
+                en Foo Foo []
+                st Other Other []
+                sp Self Foo []
+            "#]],
+        );
+
+        check_relevance(
+            r#"
+struct Other;
+struct String;
+enum Foo {
+    String(String, $0)
+}
+    "#,
+            expect![[r#"
+                en Foo Foo []
+                st Other Other []
+                sp Self Foo []
+                st String String []
+            "#]],
+        );
+    }
+
+    #[test]
     fn postfix_inexact_match_is_low_priority() {
         cov_mark::check!(postfix_inexact_match_is_low_priority);
         check_relevance_for_kinds(
