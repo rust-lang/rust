@@ -37,7 +37,18 @@ pub type List<T> = RawList<(), T>;
 #[repr(C)]
 pub struct RawList<H, T> {
     skel: ListSkeleton<H, T>,
-    opaque: OpaqueListContents,
+
+    // `List`/`RawList` is variable-sized. So we want it to be an unsized
+    // type because calling `size_of::<List<Foo>>` would be dangerous.
+    //
+    // We also want `&List`/`&RawList` to be thin pointers.
+    //
+    // A field with an extern type is a hacky way to achieve this. (See
+    // https://github.com/rust-lang/rust/pull/154399#issuecomment-4157036415
+    // for some discussion.) This field is never directly manipulated because
+    // `RawList` instances are created with manual memory layout in
+    // `from_arena`.
+    _extern_ty: ExternTy,
 }
 
 /// A [`RawList`] without the unsized tail. This type is used for layout computation
@@ -47,7 +58,8 @@ struct ListSkeleton<H, T> {
     header: H,
     len: usize,
     /// Although this claims to be a zero-length array, in practice `len`
-    /// elements are actually present.
+    /// elements are actually present. This is achieved with manual memory
+    /// layout in `from_arena`. See also the comment on `RawList::_extern_ty`.
     data: [T; 0],
 }
 
@@ -58,9 +70,7 @@ impl<T> Default for &List<T> {
 }
 
 unsafe extern "C" {
-    /// A dummy type used to force `List` to be unsized while not requiring
-    /// references to it be wide pointers.
-    type OpaqueListContents;
+    type ExternTy;
 }
 
 impl<H, T> RawList<H, T> {
@@ -257,12 +267,13 @@ impl<'a, H, T: Copy> IntoIterator for &'a RawList<H, T> {
 
 unsafe impl<H: Sync, T: Sync> Sync for RawList<H, T> {}
 
-// We need this since `List` uses extern type `OpaqueListContents`.
+// We need this because `List` uses the extern type `ExternTy`.
 unsafe impl<H: DynSync, T: DynSync> DynSync for RawList<H, T> {}
 
 // Safety:
-// Layouts of `ListSkeleton<H, T>` and `RawList<H, T>` are the same, modulo opaque tail,
-// thus aligns of `ListSkeleton<H, T>` and `RawList<H, T>` must be the same.
+// Layouts of `ListSkeleton<H, T>` and `RawList<H, T>` are the same, modulo the
+// `_extern_ty` field (which is never instantiated in practice). Therefore,
+// aligns of `ListSkeleton<H, T>` and `RawList<H, T>` must be the same.
 unsafe impl<H, T> Aligned for RawList<H, T> {
     #[cfg(bootstrap)]
     const ALIGN: ptr::Alignment = align_of::<ListSkeleton<H, T>>();
