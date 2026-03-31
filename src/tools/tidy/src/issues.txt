@@ -117,7 +117,6 @@ ui/associated-types/issue-44153.rs
 ui/associated-types/issue-47139-1.rs
 ui/associated-types/issue-47139-2.rs
 ui/associated-types/issue-47385.rs
-ui/associated-types/issue-47814.rs
 ui/associated-types/issue-48010.rs
 ui/associated-types/issue-48551.rs
 ui/associated-types/issue-50301.rs
@@ -406,7 +405,6 @@ ui/closures/2229_closure_analysis/match/issue-87097.rs
 ui/closures/2229_closure_analysis/match/issue-87426.rs
 ui/closures/2229_closure_analysis/match/issue-87988.rs
 ui/closures/2229_closure_analysis/match/issue-88331.rs
-ui/closures/2229_closure_analysis/migrations/issue-78720.rs
 ui/closures/2229_closure_analysis/migrations/issue-86753.rs
 ui/closures/2229_closure_analysis/migrations/issue-90024-adt-correct-subst.rs
 ui/closures/2229_closure_analysis/run_pass/issue-87378.rs
@@ -1001,7 +999,6 @@ ui/fmt/issue-86085.rs
 ui/fmt/issue-89173.rs
 ui/fmt/issue-91556.rs
 ui/fn/issue-1451.rs
-ui/fn/issue-1900.rs
 ui/fn/issue-3044.rs
 ui/fn/issue-3099.rs
 ui/fn/issue-3904.rs
