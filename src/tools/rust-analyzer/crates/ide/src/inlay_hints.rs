@@ -303,6 +303,7 @@ fn hints(
 pub struct InlayHintsConfig<'a> {
     pub render_colons: bool,
     pub type_hints: bool,
+    pub type_hints_placement: TypeHintsPlacement,
     pub sized_bound: bool,
     pub discriminant_hints: DiscriminantHints,
     pub parameter_hints: bool,
@@ -330,6 +331,12 @@ pub struct InlayHintsConfig<'a> {
     pub closing_brace_hints_min_lines: Option<usize>,
     pub fields_to_resolve: InlayFieldsToResolve,
     pub ra_fixture: RaFixtureConfig<'a>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TypeHintsPlacement {
+    Inline,
+    EndOfLine,
 }
 
 impl InlayHintsConfig<'_> {
@@ -908,12 +915,15 @@ mod tests {
     use crate::inlay_hints::{AdjustmentHints, AdjustmentHintsMode};
     use crate::{LifetimeElisionHints, fixture, inlay_hints::InlayHintsConfig};
 
-    use super::{ClosureReturnTypeHints, GenericParameterHints, InlayFieldsToResolve};
+    use super::{
+        ClosureReturnTypeHints, GenericParameterHints, InlayFieldsToResolve, TypeHintsPlacement,
+    };
 
     pub(super) const DISABLED_CONFIG: InlayHintsConfig<'_> = InlayHintsConfig {
         discriminant_hints: DiscriminantHints::Never,
         render_colons: false,
         type_hints: false,
+        type_hints_placement: TypeHintsPlacement::Inline,
         parameter_hints: false,
         parameter_hints_for_missing_arguments: false,
         sized_bound: false,
@@ -947,6 +957,7 @@ mod tests {
     };
     pub(super) const TEST_CONFIG: InlayHintsConfig<'_> = InlayHintsConfig {
         type_hints: true,
+        type_hints_placement: TypeHintsPlacement::Inline,
         parameter_hints: true,
         chaining_hints: true,
         closure_return_type_hints: ClosureReturnTypeHints::WithBlock,
