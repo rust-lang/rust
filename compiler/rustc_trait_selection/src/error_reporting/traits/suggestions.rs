@@ -545,8 +545,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .all(|obligation| self.predicate_may_hold(obligation))
             }) && steps > 0
             {
+                if span.in_external_macro(self.tcx.sess.source_map()) {
+                    return false;
+                }
                 let derefs = "*".repeat(steps);
                 let msg = "consider dereferencing here";
+
                 let call_node = self.tcx.hir_node(*call_hir_id);
                 let is_receiver = matches!(
                     call_node,
@@ -593,7 +597,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
         {
             // Suggest dereferencing the LHS, RHS, or both terms of a binop if possible
-
             let trait_pred = predicate.unwrap_or(trait_pred);
             let lhs_ty = self.tcx.instantiate_bound_regions_with_erased(trait_pred.self_ty());
             let lhs_autoderef = (self.autoderef_steps)(lhs_ty);
@@ -644,6 +647,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
             {
                 let make_sugg = |mut expr: &Expr<'_>, mut steps| {
+                    if expr.span.in_external_macro(self.tcx.sess.source_map()) {
+                        return None;
+                    }
                     let mut prefix_span = expr.span.shrink_to_lo();
                     let mut msg = "consider dereferencing here";
                     if let hir::ExprKind::AddrOf(_, _, inner) = expr.kind {
@@ -661,10 +667,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     // Empty suggestions with empty spans ICE with debug assertions
                     if steps == 0 {
-                        return (
+                        return Some((
                             msg.trim_end_matches(" and dereferencing instead"),
                             vec![(prefix_span, String::new())],
-                        );
+                        ));
                     }
                     let derefs = "*".repeat(steps);
                     let needs_parens = steps > 0 && expr_needs_parens(expr);
@@ -686,7 +692,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if !prefix_span.is_empty() {
                         suggestion.push((prefix_span, String::new()));
                     }
-                    (msg, suggestion)
+                    Some((msg, suggestion))
                 };
 
                 if let Some(lsteps) = lsteps
@@ -694,8 +700,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && lsteps > 0
                     && rsteps > 0
                 {
-                    let mut suggestion = make_sugg(lhs, lsteps).1;
-                    suggestion.append(&mut make_sugg(rhs, rsteps).1);
+                    let Some((_, mut suggestion)) = make_sugg(lhs, lsteps) else {
+                        return false;
+                    };
+                    let Some((_, mut rhs_suggestion)) = make_sugg(rhs, rsteps) else {
+                        return false;
+                    };
+                    suggestion.append(&mut rhs_suggestion);
                     err.multipart_suggestion(
                         "consider dereferencing both sides of the expression",
                         suggestion,
@@ -705,13 +716,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 } else if let Some(lsteps) = lsteps
                     && lsteps > 0
                 {
-                    let (msg, suggestion) = make_sugg(lhs, lsteps);
+                    let Some((msg, suggestion)) = make_sugg(lhs, lsteps) else {
+                        return false;
+                    };
                     err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
                     return true;
                 } else if let Some(rsteps) = rsteps
                     && rsteps > 0
                 {
-                    let (msg, suggestion) = make_sugg(rhs, rsteps);
+                    let Some((msg, suggestion)) = make_sugg(rhs, rsteps) else {
+                        return false;
+                    };
                     err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
                     return true;
                 }
@@ -4824,6 +4839,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         candidate_impls: &[ImplCandidate<'tcx>],
         span: Span,
     ) {
+        if span.in_external_macro(self.tcx.sess.source_map()) {
+            return;
+        }
         // We can only suggest the slice coercion for function and binary operation arguments,
         // since the suggestion would make no sense in turbofish or call
         let (ObligationCauseCode::BinOp { .. } | ObligationCauseCode::FunctionArg { .. }) =
