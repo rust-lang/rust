@@ -1,0 +1,3 @@
+test_vld3q
+neon::load_tests
+neon::store_tests
