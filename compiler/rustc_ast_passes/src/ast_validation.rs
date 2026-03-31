@@ -173,17 +173,19 @@ impl<'a> AstValidator<'a> {
         {
             let mut state = State::new();
 
+            let mut needs_comma = !ty_alias.after_where_clause.predicates.is_empty();
             if !ty_alias.after_where_clause.has_where_token {
                 state.space();
                 state.word_space("where");
+            } else if !needs_comma {
+                state.space();
             }
 
-            let mut first = ty_alias.after_where_clause.predicates.is_empty();
             for p in &ty_alias.generics.where_clause.predicates {
-                if !first {
+                if needs_comma {
                     state.word_space(",");
                 }
-                first = false;
+                needs_comma = true;
                 state.print_where_predicate(p);
             }
 
@@ -1832,7 +1834,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     Some((right, snippet))
                 }
             };
-            let left_sp = err.span;
+            let left_sp = self
+                .sess
+                .source_map()
+                .span_extend_prev_while(err.span, char::is_whitespace)
+                .unwrap_or(err.span);
             self.lint_buffer.dyn_buffer_lint(
                 DEPRECATED_WHERE_CLAUSE_LOCATION,
                 item.id,
@@ -1846,9 +1852,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                 sugg,
                             }
                         }
-                        None => {
-                            errors::DeprecatedWhereClauseLocationSugg::RemoveWhere { span: left_sp }
-                        }
+                        None => errors::DeprecatedWhereClauseLocationSugg::RemoveWhere {
+                            span: err.span,
+                        },
                     };
                     errors::DeprecatedWhereClauseLocation { suggestion }.into_diag(dcx, level)
                 },

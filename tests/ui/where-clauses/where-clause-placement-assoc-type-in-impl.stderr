@@ -9,7 +9,7 @@ LL |     type Assoc where u32: Copy = ();
 help: move it to the end of the type declaration
    |
 LL -     type Assoc where u32: Copy = ();
-LL +     type Assoc  = () where u32: Copy;
+LL +     type Assoc = () where u32: Copy;
    |
 
 warning: where clause not allowed here
@@ -22,7 +22,7 @@ LL |     type Assoc2 where u32: Copy = () where i32: Copy;
 help: move it to the end of the type declaration
    |
 LL -     type Assoc2 where u32: Copy = () where i32: Copy;
-LL +     type Assoc2  = () where i32: Copy, u32: Copy;
+LL +     type Assoc2 = () where i32: Copy, u32: Copy;
    |
 
 warning: where clause not allowed here
@@ -35,7 +35,7 @@ LL |     type Assoc3 where = ();
 help: move it to the end of the type declaration
    |
 LL -     type Assoc3 where = ();
-LL +     type Assoc3  = () where;
+LL +     type Assoc3 = () where;
    |
 
 warning: where clause not allowed here
@@ -48,7 +48,7 @@ LL |     type Assoc2 where u32: Copy, i32: Copy = ();
 help: move it to the end of the type declaration
    |
 LL -     type Assoc2 where u32: Copy, i32: Copy = ();
-LL +     type Assoc2  = () where u32: Copy, i32: Copy;
+LL +     type Assoc2 = () where u32: Copy, i32: Copy;
    |
 
 warning: where clause not allowed here
