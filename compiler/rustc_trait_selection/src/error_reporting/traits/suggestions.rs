@@ -275,7 +275,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         if cause.span != DUMMY_SP
-            && hir_ids.is_empty()
             && let Some(body) = self.tcx.hir_maybe_body_owned_by(cause.body_id)
         {
             let mut expr_finder = FindExprBySpan::new(cause.span, self.tcx);
