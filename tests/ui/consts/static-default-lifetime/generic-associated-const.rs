@@ -1,6 +1,5 @@
 #![deny(elided_lifetimes_in_associated_constant)]
 #![feature(generic_const_items)]
-//~^ WARN the feature `generic_const_items` is incomplete
 
 struct A;
 impl A {

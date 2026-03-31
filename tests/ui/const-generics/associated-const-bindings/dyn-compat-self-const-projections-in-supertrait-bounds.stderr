@@ -1,5 +1,5 @@
 error[E0038]: the trait `Trait` is not dyn compatible
-  --> $DIR/dyn-compat-self-const-projections-in-supertrait-bounds.rs:19:16
+  --> $DIR/dyn-compat-self-const-projections-in-supertrait-bounds.rs:18:16
    |
 LL |     let _: dyn Trait;
    |                ^^^^^ `Trait` is not dyn compatible

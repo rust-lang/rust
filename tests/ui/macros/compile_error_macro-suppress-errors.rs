@@ -36,5 +36,5 @@ fn main() {
     //~^ ERROR: cannot find function `some_function` in module `another_module`
     let _: another_module::SomeType = another_module::Hello::new();
     //~^ ERROR: cannot find type `SomeType` in module `another_module`
-    //~^^ ERROR: failed to resolve: could not find `Hello` in `another_module`
+    //~| ERROR: cannot find `Hello` in `another_module`
 }

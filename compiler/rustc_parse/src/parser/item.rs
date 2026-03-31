@@ -2,20 +2,18 @@ use std::fmt::Write;
 use std::mem;
 
 use ast::token::IdentIsRaw;
+use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
-use rustc_ast::{
-    attr, {self as ast},
-};
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, PResult, StashKey, struct_span_code_err};
+use rustc_errors::{Applicability, PResult, StashKey, msg, struct_span_code_err};
 use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, source_map, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
@@ -26,7 +24,7 @@ use super::{
     Parser, PathStyle, Recovered, Trailing, UsePreAttrPos,
 };
 use crate::errors::{self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField};
-use crate::{exp, fluent_generated as fluent};
+use crate::exp;
 
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
@@ -199,6 +197,8 @@ impl<'a> Parser<'a> {
 
             if let Defaultness::Default(span) = def {
                 this.dcx().emit_err(errors::DefaultNotFollowedByItem { span });
+            } else if let Defaultness::Final(span) = def {
+                this.dcx().emit_err(errors::FinalNotFollowedByItem { span });
             }
 
             if !attrs_allowed {
@@ -208,14 +208,24 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Error in-case `default` was parsed in an in-appropriate context.
+    /// Error in-case `default`/`final` was parsed in an in-appropriate context.
     fn error_on_unconsumed_default(&self, def: Defaultness, kind: &ItemKind) {
-        if let Defaultness::Default(span) = def {
-            self.dcx().emit_err(errors::InappropriateDefault {
-                span,
-                article: kind.article(),
-                descr: kind.descr(),
-            });
+        match def {
+            Defaultness::Default(span) => {
+                self.dcx().emit_err(errors::InappropriateDefault {
+                    span,
+                    article: kind.article(),
+                    descr: kind.descr(),
+                });
+            }
+            Defaultness::Final(span) => {
+                self.dcx().emit_err(errors::InappropriateFinal {
+                    span,
+                    article: kind.article(),
+                    descr: kind.descr(),
+                });
+            }
+            Defaultness::Implicit => (),
         }
     }
 
@@ -231,8 +241,8 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         case: Case,
     ) -> PResult<'a, Option<ItemKind>> {
-        let check_pub = def == &Defaultness::Final;
-        let mut def_ = || mem::replace(def, Defaultness::Final);
+        let check_pub = def == &Defaultness::Implicit;
+        let mut def_ = || mem::replace(def, Defaultness::Implicit);
 
         let info = if !self.is_use_closure() && self.eat_keyword_case(exp!(Use), case) {
             self.parse_use_item()?
@@ -286,13 +296,13 @@ impl<'a> Parser<'a> {
             // CONST ITEM
             self.recover_const_mut(const_span);
             self.recover_missing_kw_before_item()?;
-            let (ident, generics, ty, rhs) = self.parse_const_item(attrs)?;
+            let (ident, generics, ty, rhs_kind) = self.parse_const_item(false, const_span)?;
             ItemKind::Const(Box::new(ConstItem {
                 defaultness: def_(),
                 ident,
                 generics,
                 ty,
-                rhs,
+                rhs_kind,
                 define_opaque: None,
             }))
         } else if let Some(kind) = self.is_reuse_item() {
@@ -303,8 +313,26 @@ impl<'a> Parser<'a> {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
         } else if self.eat_keyword_case(exp!(Type), case) {
-            // TYPE ITEM
-            self.parse_type_alias(def_())?
+            if let Const::Yes(const_span) = self.parse_constness(case) {
+                // TYPE CONST (mgca)
+                self.recover_const_mut(const_span);
+                self.recover_missing_kw_before_item()?;
+                let (ident, generics, ty, rhs_kind) = self.parse_const_item(true, const_span)?;
+                // Make sure this is only allowed if the feature gate is enabled.
+                // #![feature(mgca_type_const_syntax)]
+                self.psess.gated_spans.gate(sym::mgca_type_const_syntax, lo.to(const_span));
+                ItemKind::Const(Box::new(ConstItem {
+                    defaultness: def_(),
+                    ident,
+                    generics,
+                    ty,
+                    rhs_kind,
+                    define_opaque: None,
+                }))
+            } else {
+                // TYPE ITEM
+                self.parse_type_alias(def_())?
+            }
         } else if self.eat_keyword_case(exp!(Enum), case) {
             // ENUM ITEM
             self.parse_item_enum()?
@@ -518,7 +546,7 @@ impl<'a> Parser<'a> {
         match self.parse_delim_args() {
             // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
             Ok(args) => {
-                self.eat_semi_for_macro_if_needed(&args);
+                self.eat_semi_for_macro_if_needed(&args, Some(&path));
                 self.complain_if_pub_macro(vis, false);
                 Ok(MacCall { path, args })
             }
@@ -989,22 +1017,87 @@ impl<'a> Parser<'a> {
         {
             self.bump(); // `default`
             Defaultness::Default(self.prev_token_uninterpolated_span())
+        } else if self.eat_keyword(exp!(Final)) {
+            self.psess.gated_spans.gate(sym::final_associated_functions, self.prev_token.span);
+            Defaultness::Final(self.prev_token_uninterpolated_span())
         } else {
-            Defaultness::Final
+            Defaultness::Implicit
         }
     }
 
-    /// Is this an `(const unsafe? auto?| unsafe auto? | auto) trait` item?
-    fn check_trait_front_matter(&mut self) -> bool {
-        // auto trait
-        self.check_keyword(exp!(Auto)) && self.is_keyword_ahead(1, &[kw::Trait])
-            // unsafe auto trait
-            || self.check_keyword(exp!(Unsafe)) && self.is_keyword_ahead(1, &[kw::Trait, kw::Auto])
-            || self.check_keyword(exp!(Const)) && ((self.is_keyword_ahead(1, &[kw::Trait]) || self.is_keyword_ahead(1, &[kw::Auto]) && self.is_keyword_ahead(2, &[kw::Trait]))
-                || self.is_keyword_ahead(1, &[kw::Unsafe]) && self.is_keyword_ahead(2, &[kw::Trait, kw::Auto]))
+    /// Is there an `[ impl(in? path) ]? trait` item `dist` tokens ahead?
+    fn is_trait_with_maybe_impl_restriction_in_front(&self, dist: usize) -> bool {
+        // `trait`
+        if self.is_keyword_ahead(dist, &[kw::Trait]) {
+            return true;
+        }
+        // `impl(`
+        if !self.is_keyword_ahead(dist, &[kw::Impl])
+            || !self.look_ahead(dist + 1, |t| t == &token::OpenParen)
+        {
+            return false;
+        }
+        // `crate | super | self) trait`
+        if self.is_keyword_ahead(dist + 2, &[kw::Crate, kw::Super, kw::SelfLower])
+            && self.look_ahead(dist + 3, |t| t == &token::CloseParen)
+            && self.is_keyword_ahead(dist + 4, &[kw::Trait])
+        {
+            return true;
+        }
+        // `impl(in? something) trait`
+        // We catch cases where the `in` keyword is missing to provide a
+        // better error message. This is handled later in
+        // `self.recover_incorrect_impl_restriction`.
+        self.tree_look_ahead(dist + 2, |t| {
+            if let TokenTree::Token(token, _) = t { token.is_keyword(kw::Trait) } else { false }
+        })
+        .unwrap_or(false)
     }
 
-    /// Parses `unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
+    /// Is this an `(const unsafe? auto? [ impl(in? path) ]? | unsafe auto? [ impl(in? path) ]? | auto [ impl(in? path) ]? | [ impl(in? path) ]?) trait` item?
+    fn check_trait_front_matter(&mut self) -> bool {
+        // `[ impl(in? path) ]? trait`
+        if self.is_trait_with_maybe_impl_restriction_in_front(0) {
+            return true;
+        }
+        // `auto [ impl(in? path) ]? trait`
+        if self.check_keyword(exp!(Auto)) && self.is_trait_with_maybe_impl_restriction_in_front(1) {
+            return true;
+        }
+        // `unsafe auto? [ impl(in? path) ]? trait`
+        if self.check_keyword(exp!(Unsafe))
+            && (self.is_trait_with_maybe_impl_restriction_in_front(1)
+                || self.is_keyword_ahead(1, &[kw::Auto])
+                    && self.is_trait_with_maybe_impl_restriction_in_front(2))
+        {
+            return true;
+        }
+        // `const` ...
+        if !self.check_keyword(exp!(Const)) {
+            return false;
+        }
+        // `const [ impl(in? path) ]? trait`
+        if self.is_trait_with_maybe_impl_restriction_in_front(1) {
+            return true;
+        }
+        // `const (unsafe | auto) [ impl(in? path) ]? trait`
+        if self.is_keyword_ahead(1, &[kw::Unsafe, kw::Auto])
+            && self.is_trait_with_maybe_impl_restriction_in_front(2)
+        {
+            return true;
+        }
+        // `const unsafe auto [ impl(in? path) ]? trait`
+        self.is_keyword_ahead(1, &[kw::Unsafe])
+            && self.is_keyword_ahead(2, &[kw::Auto])
+            && self.is_trait_with_maybe_impl_restriction_in_front(3)
+    }
+
+    /// Parses `const? unsafe? auto? [impl(in? path)]? trait Foo { ... }` or `trait Foo = Bar;`.
+    ///
+    /// FIXME(restrictions): The current keyword order follows the grammar specified in RFC 3323.
+    /// However, whether the restriction should be grouped closer to the visibility modifier
+    /// (e.g., `pub impl(crate) const unsafe auto trait`) remains an unresolved design question.
+    /// This ordering must be kept in sync with the logic in `check_trait_front_matter`.
     fn parse_item_trait(&mut self, attrs: &mut AttrVec, lo: Span) -> PResult<'a, ItemKind> {
         let constness = self.parse_constness(Case::Sensitive);
         if let Const::Yes(span) = constness {
@@ -1018,6 +1111,8 @@ impl<'a> Parser<'a> {
         } else {
             IsAuto::No
         };
+
+        let impl_restriction = self.parse_impl_restriction()?;
 
         self.expect_keyword(exp!(Trait))?;
         let ident = self.parse_ident()?;
@@ -1047,6 +1142,9 @@ impl<'a> Parser<'a> {
             if let Safety::Unsafe(_) = safety {
                 self.dcx().emit_err(errors::TraitAliasCannotBeUnsafe { span: whole_span });
             }
+            if let RestrictionKind::Restricted { .. } = impl_restriction.kind {
+                self.dcx().emit_err(errors::TraitAliasCannotBeImplRestricted { span: whole_span });
+            }
 
             self.psess.gated_spans.gate(sym::trait_alias, whole_span);
 
@@ -1059,6 +1157,7 @@ impl<'a> Parser<'a> {
                 constness,
                 is_auto,
                 safety,
+                impl_restriction,
                 ident,
                 generics,
                 bounds,
@@ -1113,13 +1212,12 @@ impl<'a> Parser<'a> {
                             define_opaque,
                         }) => {
                             self.dcx().emit_err(errors::AssociatedStaticItemNotAllowed { span });
-                            let rhs = expr.map(ConstItemRhs::Body);
                             AssocItemKind::Const(Box::new(ConstItem {
-                                defaultness: Defaultness::Final,
+                                defaultness: Defaultness::Implicit,
                                 ident,
                                 generics: Generics::default(),
                                 ty,
-                                rhs,
+                                rhs_kind: ConstItemRhsKind::Body { rhs: expr },
                                 define_opaque,
                             }))
                         }
@@ -1360,7 +1458,7 @@ impl<'a> Parser<'a> {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Const(box ConstItem { ident, ty, rhs, .. }) => {
+                        ItemKind::Const(box ConstItem { ident, ty, rhs_kind, .. }) => {
                             let const_span = Some(span.with_hi(ident.span.lo()))
                                 .filter(|span| span.can_be_used_for_suggestions());
                             self.dcx().emit_err(errors::ExternItemCannotBeConst {
@@ -1371,10 +1469,13 @@ impl<'a> Parser<'a> {
                                 ident,
                                 ty,
                                 mutability: Mutability::Not,
-                                expr: rhs.map(|b| match b {
-                                    ConstItemRhs::TypeConst(anon_const) => anon_const.value,
-                                    ConstItemRhs::Body(expr) => expr,
-                                }),
+                                expr: match rhs_kind {
+                                    ConstItemRhsKind::Body { rhs } => rhs,
+                                    ConstItemRhsKind::TypeConst { rhs: Some(anon) } => {
+                                        Some(anon.value)
+                                    }
+                                    ConstItemRhsKind::TypeConst { rhs: None } => None,
+                                },
                                 safety: Safety::Default,
                                 define_opaque: None,
                             }))
@@ -1516,13 +1617,17 @@ impl<'a> Parser<'a> {
 
     /// Parse a constant item with the prefix `"const"` already parsed.
     ///
+    /// If `const_arg` is true, any expression assigned to the const will be parsed
+    /// as a const_arg instead of a body expression.
+    ///
     /// ```ebnf
     /// Const = "const" ($ident | "_") Generics ":" $ty (= $expr)? WhereClause ";" ;
     /// ```
     fn parse_const_item(
         &mut self,
-        attrs: &[Attribute],
-    ) -> PResult<'a, (Ident, Generics, Box<Ty>, Option<ast::ConstItemRhs>)> {
+        const_arg: bool,
+        const_span: Span,
+    ) -> PResult<'a, (Ident, Generics, Box<Ty>, ConstItemRhsKind)> {
         let ident = self.parse_ident_or_underscore()?;
 
         let mut generics = self.parse_generics()?;
@@ -1549,14 +1654,13 @@ impl<'a> Parser<'a> {
         let before_where_clause =
             if self.may_recover() { self.parse_where_clause()? } else { WhereClause::default() };
 
-        let rhs = if self.eat(exp!(Eq)) {
-            if attr::contains_name(attrs, sym::type_const) {
-                Some(ConstItemRhs::TypeConst(self.parse_const_arg()?))
-            } else {
-                Some(ConstItemRhs::Body(self.parse_expr()?))
-            }
-        } else {
-            None
+        let rhs = match (self.eat(exp!(Eq)), const_arg) {
+            (true, true) => ConstItemRhsKind::TypeConst {
+                rhs: Some(self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?),
+            },
+            (true, false) => ConstItemRhsKind::Body { rhs: Some(self.parse_expr()?) },
+            (false, true) => ConstItemRhsKind::TypeConst { rhs: None },
+            (false, false) => ConstItemRhsKind::Body { rhs: None },
         };
 
         let after_where_clause = self.parse_where_clause()?;
@@ -1565,18 +1669,18 @@ impl<'a> Parser<'a> {
         // Users may be tempted to write such code if they are still used to the deprecated
         // where-clause location on type aliases and associated types. See also #89122.
         if before_where_clause.has_where_token
-            && let Some(rhs) = &rhs
+            && let Some(rhs_span) = rhs.span()
         {
             self.dcx().emit_err(errors::WhereClauseBeforeConstBody {
                 span: before_where_clause.span,
                 name: ident.span,
-                body: rhs.span(),
+                body: rhs_span,
                 sugg: if !after_where_clause.has_where_token {
-                    self.psess.source_map().span_to_snippet(rhs.span()).ok().map(|body_s| {
+                    self.psess.source_map().span_to_snippet(rhs_span).ok().map(|body_s| {
                         errors::WhereClauseBeforeConstBodySugg {
                             left: before_where_clause.span.shrink_to_lo(),
                             snippet: body_s,
-                            right: before_where_clause.span.shrink_to_hi().to(rhs.span()),
+                            right: before_where_clause.span.shrink_to_hi().to(rhs_span),
                         }
                     })
                 } else {
@@ -1612,6 +1716,9 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = where_clause;
 
+        if let Some(rhs) = self.try_recover_const_missing_semi(&rhs, const_span) {
+            return Ok((ident, generics, ty, ConstItemRhsKind::Body { rhs: Some(rhs) }));
+        }
         self.expect_semi()?;
 
         Ok((ident, generics, ty, rhs))
@@ -1721,7 +1828,7 @@ impl<'a> Parser<'a> {
 
             if this.token == token::Bang {
                 if let Err(err) = this.unexpected() {
-                    err.with_note(fluent::parse_macro_expands_to_enum_variant).emit();
+                    err.with_note(msg!("macros cannot expand to enum variants")).emit();
                 }
 
                 this.bump();
@@ -2370,7 +2477,7 @@ impl<'a> Parser<'a> {
         }
 
         let body = self.parse_delim_args()?;
-        self.eat_semi_for_macro_if_needed(&body);
+        self.eat_semi_for_macro_if_needed(&body, None);
         self.complain_if_pub_macro(vis, true);
 
         Ok(ItemKind::MacroDef(
@@ -2395,13 +2502,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn eat_semi_for_macro_if_needed(&mut self, args: &DelimArgs) {
+    fn eat_semi_for_macro_if_needed(&mut self, args: &DelimArgs, path: Option<&Path>) {
         if args.need_semicolon() && !self.eat(exp!(Semi)) {
-            self.report_invalid_macro_expansion_item(args);
+            self.report_invalid_macro_expansion_item(args, path);
         }
     }
 
-    fn report_invalid_macro_expansion_item(&self, args: &DelimArgs) {
+    fn report_invalid_macro_expansion_item(&self, args: &DelimArgs, path: Option<&Path>) {
         let span = args.dspan.entire();
         let mut err = self.dcx().struct_span_err(
             span,
@@ -2411,17 +2518,32 @@ impl<'a> Parser<'a> {
         // macros within the same crate (that we can fix), which is sad.
         if !span.from_expansion() {
             let DelimSpan { open, close } = args.dspan;
-            err.multipart_suggestion(
-                "change the delimiters to curly braces",
-                vec![(open, "{".to_string()), (close, '}'.to_string())],
-                Applicability::MaybeIncorrect,
-            );
-            err.span_suggestion(
-                span.with_neighbor(self.token.span).shrink_to_hi(),
-                "add a semicolon",
-                ';',
-                Applicability::MaybeIncorrect,
-            );
+            // Check if this looks like `macro_rules!(name) { ... }`
+            // a common mistake when trying to define a macro.
+            if let Some(path) = path
+                && path.segments.first().is_some_and(|seg| seg.ident.name == sym::macro_rules)
+                && args.delim == Delimiter::Parenthesis
+            {
+                let replace =
+                    if path.span.hi() + rustc_span::BytePos(1) < open.lo() { "" } else { " " };
+                err.multipart_suggestion(
+                    "to define a macro, remove the parentheses around the macro name",
+                    vec![(open, replace.to_string()), (close, String::new())],
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.multipart_suggestion(
+                    "change the delimiters to curly braces",
+                    vec![(open, "{".to_string()), (close, '}'.to_string())],
+                    Applicability::MaybeIncorrect,
+                );
+                err.span_suggestion(
+                    span.with_neighbor(self.token.span).shrink_to_hi(),
+                    "add a semicolon",
+                    ';',
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
         err.emit();
     }
@@ -2694,8 +2816,21 @@ impl<'a> Parser<'a> {
             *sig_hi = self.prev_token.span;
             (AttrVec::new(), None)
         } else if self.check(exp!(OpenBrace)) || self.token.is_metavar_block() {
-            self.parse_block_common(self.token.span, BlockCheckMode::Default, None)
-                .map(|(attrs, body)| (attrs, Some(body)))?
+            let prev_in_fn_body = self.in_fn_body;
+            self.in_fn_body = true;
+            let res = self.parse_block_common(self.token.span, BlockCheckMode::Default, None).map(
+                |(attrs, mut body)| {
+                    if let Some(guar) = self.fn_body_missing_semi_guar.take() {
+                        body.stmts.push(self.mk_stmt(
+                            body.span,
+                            StmtKind::Expr(self.mk_expr(body.span, ExprKind::Err(guar))),
+                        ));
+                    }
+                    (attrs, Some(body))
+                },
+            );
+            self.in_fn_body = prev_in_fn_body;
+            res?
         } else if self.token == token::Eq {
             // Recover `fn foo() = $expr;`.
             self.bump(); // `=`
@@ -2791,8 +2926,8 @@ impl<'a> Parser<'a> {
                         && !self.is_unsafe_foreign_mod()
                         // Rule out `async gen {` and `async gen move {`
                         && !self.is_async_gen_block()
-                        // Rule out `const unsafe auto` and `const unsafe trait`.
-                        && !self.is_keyword_ahead(2, &[kw::Auto, kw::Trait])
+                        // Rule out `const unsafe auto` and `const unsafe trait` and `const unsafe impl`.
+                        && !self.is_keyword_ahead(2, &[kw::Auto, kw::Trait, kw::Impl])
                     )
                 })
             // `extern ABI fn`
@@ -3422,7 +3557,7 @@ impl<'a> Parser<'a> {
             _ => return Ok(None),
         };
 
-        let eself = source_map::respan(eself_lo.to(eself_hi), eself);
+        let eself = respan(eself_lo.to(eself_hi), eself);
         Ok(Some(Param::from_self(AttrVec::default(), eself, eself_ident)))
     }
 
@@ -3450,6 +3585,37 @@ impl<'a> Parser<'a> {
                 .map_err(|e| e.cancel()),
             Ok(Some(_))
         )
+    }
+
+    /// Try to recover from over-parsing in const item when a semicolon is missing.
+    ///
+    /// This detects cases where we parsed too much because a semicolon was missing
+    /// and the next line started an expression that the parser treated as a continuation
+    /// (e.g., `foo() \n &bar` was parsed as `foo() & bar`).
+    ///
+    /// Returns a corrected expression if recovery is successful.
+    fn try_recover_const_missing_semi(
+        &mut self,
+        rhs: &ConstItemRhsKind,
+        const_span: Span,
+    ) -> Option<Box<Expr>> {
+        if self.token == TokenKind::Semi {
+            return None;
+        }
+        let ConstItemRhsKind::Body { rhs: Some(rhs) } = rhs else {
+            return None;
+        };
+        if !self.in_fn_body || !self.may_recover() || rhs.span.from_expansion() {
+            return None;
+        }
+        if let Some((span, guar)) =
+            self.missing_semi_from_binop("const", rhs, Some(const_span.shrink_to_lo()))
+        {
+            self.fn_body_missing_semi_guar = Some(guar);
+            Some(self.mk_expr(span, ExprKind::Err(guar)))
+        } else {
+            None
+        }
     }
 }
 

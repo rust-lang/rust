@@ -376,10 +376,14 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
         // `tcx.normalize_canonicalized_projection` may normalize to a type that
         // still has unevaluated consts, so keep normalizing here if that's the case.
         // Similarly, `tcx.normalize_canonicalized_free_alias` will only unwrap one layer
-        // of type and we need to continue folding it to reveal the TAIT behind it.
+        // of type/const and we need to continue folding it to reveal the TAIT behind it
+        // or further normalize nested unevaluated consts.
         if res != term.to_term(tcx)
-            && (res.as_type().map_or(false, |t| t.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION))
-                || term.kind(tcx) == ty::AliasTermKind::FreeTy)
+            && (res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
+                || matches!(
+                    term.kind(tcx),
+                    ty::AliasTermKind::FreeTy | ty::AliasTermKind::FreeConst
+                ))
         {
             res.try_fold_with(self)
         } else {

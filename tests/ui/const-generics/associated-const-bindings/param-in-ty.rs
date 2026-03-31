@@ -11,8 +11,7 @@
 use std::marker::ConstParamTy_;
 
 trait Trait<'a, T: 'a + ConstParamTy_, const N: usize> {
-    #[type_const]
-    const K: &'a [T; N];
+    type const K: &'a [T; N];
 }
 
 fn take0<'r, A: 'r + ConstParamTy_, const Q: usize>(
@@ -32,8 +31,7 @@ fn take0<'r, A: 'r + ConstParamTy_, const Q: usize>(
 ) {}
 
 trait Project: ConstParamTy_ {
-    #[type_const]
-    const SELF: Self;
+    type const SELF: Self;
 }
 
 fn take1(_: impl Project<SELF = const {}>) {}

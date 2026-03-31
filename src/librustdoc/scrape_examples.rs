@@ -3,10 +3,10 @@
 use std::fs;
 use std::path::PathBuf;
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::DiagCtxtHandle;
+use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir};
 use rustc_macros::{Decodable, Encodable};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
@@ -15,7 +15,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::getopts;
 use rustc_span::def_id::{CrateNum, DefPathHash, LOCAL_CRATE};
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, FileName, SourceFile};
+use rustc_span::{BytePos, FileName, SourceFile, Span};
 use tracing::{debug, trace, warn};
 
 use crate::html::render::Context;
@@ -114,6 +114,7 @@ struct FindCalls<'a, 'tcx> {
     target_crates: Vec<CrateNum>,
     calls: &'a mut AllCallLocations,
     bin_crate: bool,
+    call_ident_spans: FxHashSet<Span>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for FindCalls<'a, 'tcx>
@@ -164,6 +165,10 @@ where
                 return;
             }
         };
+
+        if !self.call_ident_spans.insert(ident_span) {
+            return;
+        }
 
         // If this span comes from a macro expansion, then the source code may not actually show
         // a use of the given item, so it would be a poor example. Hence, we skip all uses in
@@ -300,7 +305,13 @@ pub(crate) fn run(
 
         // Run call-finder on all items
         let mut calls = FxIndexMap::default();
-        let mut finder = FindCalls { calls: &mut calls, cx, target_crates, bin_crate };
+        let mut finder = FindCalls {
+            calls: &mut calls,
+            cx,
+            target_crates,
+            bin_crate,
+            call_ident_spans: FxHashSet::default(),
+        };
         tcx.hir_visit_all_item_likes_in_crate(&mut finder);
 
         // The visitor might have found a type error, which we need to

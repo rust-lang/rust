@@ -15,19 +15,16 @@ use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
     BlockCheckMode, CaptureBy, ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl,
-    FnRetTy, Label, MacCall, MetaItemLit, MgcaDisambiguation, Movability, Param, RangeLimits,
-    StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
+    FnRetTy, Guard, Label, MacCall, MetaItemLit, MgcaDisambiguation, Movability, Param,
+    RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
 use rustc_literal_escaper::unescape_char;
-use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{self, Spanned};
-use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Spanned, Symbol, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
@@ -297,12 +294,12 @@ impl<'a> Parser<'a> {
             let span = self.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
             lhs = match op {
                 AssocOp::Binary(ast_op) => {
-                    let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
+                    let binary = self.mk_binary(respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(span, binary)
                 }
                 AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span)),
                 AssocOp::AssignOp(aop) => {
-                    let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
+                    let aopexpr = self.mk_assign_op(respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr)
                 }
                 AssocOp::Cast | AssocOp::Range(_) => {
@@ -410,7 +407,7 @@ impl<'a> Parser<'a> {
             }
             _ => return None,
         };
-        Some(source_map::respan(span, op))
+        Some(respan(span, op))
     }
 
     /// Checks if this expression is a successfully parsed statement.
@@ -728,25 +725,26 @@ impl<'a> Parser<'a> {
                         );
 
                         let args_span = self.look_ahead(1, |t| t.span).to(span_after_type);
-                        let suggestion = errors::ComparisonOrShiftInterpretedAsGenericSugg {
-                            left: expr.span.shrink_to_lo(),
-                            right: expr.span.shrink_to_hi(),
-                        };
-
                         match self.token.kind {
                             token::Lt => {
                                 self.dcx().emit_err(errors::ComparisonInterpretedAsGeneric {
                                     comparison: self.token.span,
                                     r#type: path,
                                     args: args_span,
-                                    suggestion,
+                                    suggestion: errors::ComparisonInterpretedAsGenericSugg {
+                                        left: expr.span.shrink_to_lo(),
+                                        right: expr.span.shrink_to_hi(),
+                                    },
                                 })
                             }
                             token::Shl => self.dcx().emit_err(errors::ShiftInterpretedAsGeneric {
                                 shift: self.token.span,
                                 r#type: path,
                                 args: args_span,
-                                suggestion,
+                                suggestion: errors::ShiftInterpretedAsGenericSugg {
+                                    left: expr.span.shrink_to_lo(),
+                                    right: expr.span.shrink_to_hi(),
+                                },
                             }),
                             _ => {
                                 // We can end up here even without `<` being the next token, for
@@ -1140,7 +1138,7 @@ impl<'a> Parser<'a> {
     /// Parse the field access used in offset_of, matched by `$(e:expr)+`.
     /// Currently returns a list of idents. However, it should be possible in
     /// future to also do array indices, which might be arbitrary expressions.
-    fn parse_floating_field_access(&mut self) -> PResult<'a, Vec<Ident>> {
+    pub(crate) fn parse_floating_field_access(&mut self) -> PResult<'a, Vec<Ident>> {
         let mut fields = Vec::new();
         let mut trailing_dot = None;
 
@@ -1309,12 +1307,13 @@ impl<'a> Parser<'a> {
                             self.dcx()
                                 .create_err(errors::ParenthesesWithStructFields {
                                     span,
-                                    r#type: path,
                                     braces_for_struct: errors::BracesForStructLiteral {
                                         first: open_paren,
                                         second: close_paren,
+                                        r#type: path.clone(),
                                     },
                                     no_fields_for_fn: errors::NoFieldsForFnCall {
+                                        r#type: path,
                                         fields: fields
                                             .into_iter()
                                             .map(|field| field.span.until(field.expr.span))
@@ -1524,7 +1523,7 @@ impl<'a> Parser<'a> {
                     },
                 )
             } else if this.check_inline_const(0) {
-                this.parse_const_block(lo)
+                this.parse_const_block(lo, false)
             } else if this.may_recover() && this.is_do_catch_block() {
                 this.recover_do_catch()
             } else if this.is_try_block() {
@@ -1628,16 +1627,7 @@ impl<'a> Parser<'a> {
             let first_expr = self.parse_expr()?;
             if self.eat(exp!(Semi)) {
                 // Repeating array syntax: `[ 0; 512 ]`
-                let count = if self.eat_keyword(exp!(Const)) {
-                    // While we could just disambiguate `Direct` from `AnonConst` by
-                    // treating all const block exprs as `AnonConst`, that would
-                    // complicate the DefCollector and likely all other visitors.
-                    // So we strip the const blockiness and just store it as a block
-                    // in the AST with the extra disambiguator on the AnonConst
-                    self.parse_mgca_const_block(false)?
-                } else {
-                    self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?
-                };
+                let count = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?;
                 self.expect(close)?;
                 ExprKind::Repeat(first_expr, count)
             } else if self.eat(exp!(Comma)) {
@@ -1930,11 +1920,17 @@ impl<'a> Parser<'a> {
                         _ => false,
                     }
                 {
+                    let span = expr.span;
                     self.psess.buffer_lint(
                         BREAK_WITH_LABEL_AND_LOOP,
                         lo.to(expr.span),
                         ast::CRATE_NODE_ID,
-                        BuiltinLintDiag::BreakWithLabelAndLoop(expr.span),
+                        errors::BreakWithLabelAndLoop {
+                            sub: errors::BreakWithLabelAndLoopSub {
+                                left: span.shrink_to_lo(),
+                                right: span.shrink_to_hi(),
+                            },
+                        },
                     );
                 }
 
@@ -2529,7 +2525,7 @@ impl<'a> Parser<'a> {
                         ret_span,
                         "explicit return type requires closure body to be enclosed in braces",
                     );
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         "wrap the expression in curly braces",
                         vec![
                             (expr.span.shrink_to_lo(), "{ ".to_string()),
@@ -2771,10 +2767,10 @@ impl<'a> Parser<'a> {
 
     /// Parses a `let $pat = $expr` pseudo-expression.
     fn parse_expr_let(&mut self, restrictions: Restrictions) -> PResult<'a, Box<Expr>> {
-        let recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
+        let recovered: Recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
             let err = errors::ExpectedExpressionFoundLet {
                 span: self.token.span,
-                reason: ForbiddenLetReason::OtherForbidden,
+                reason: errors::ForbiddenLetReason::OtherForbidden,
                 missing_let: None,
                 comparison: None,
             };
@@ -3215,6 +3211,7 @@ impl<'a> Parser<'a> {
                     errors::MatchArmBodyWithoutBracesSugg::AddBraces {
                         left: span.shrink_to_lo(),
                         right: span.shrink_to_hi(),
+                        num_statements: stmts.len(),
                     }
                 } else {
                     errors::MatchArmBodyWithoutBracesSugg::UseComma { semicolon: semi_sp }
@@ -3466,44 +3463,54 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<Box<Expr>>> {
-        // Used to check the `if_let_guard` feature mostly by scanning
-        // `&&` tokens.
-        fn has_let_expr(expr: &Expr) -> bool {
-            match &expr.kind {
-                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
-                    let lhs_rslt = has_let_expr(lhs);
-                    let rhs_rslt = has_let_expr(rhs);
-                    lhs_rslt || rhs_rslt
-                }
-                ExprKind::Let(..) => true,
-                _ => false,
-            }
+    pub(crate) fn eat_metavar_guard(&mut self) -> Option<Box<Guard>> {
+        self.eat_metavar_seq_with_matcher(
+            |mv_kind| matches!(mv_kind, MetaVarKind::Guard),
+            |this| this.parse_match_arm_guard(),
+        )
+        .flatten()
+    }
+
+    fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<Box<Guard>>> {
+        if let Some(guard) = self.eat_metavar_guard() {
+            return Ok(Some(guard));
         }
+
         if !self.eat_keyword(exp!(If)) {
             // No match arm guard present.
             return Ok(None);
         }
-
-        let if_span = self.prev_token.span;
-        let mut cond = self.parse_match_guard_condition()?;
-
-        let mut checker = CondChecker::new(self, LetChainsPolicy::AlwaysAllowed);
-        checker.visit_expr(&mut cond);
-
-        if has_let_expr(&cond) {
-            let span = if_span.to(cond.span);
-            self.psess.gated_spans.gate(sym::if_let_guard, span);
-        }
-
-        Ok(Some(if let Some(guar) = checker.found_incorrect_let_chain {
-            self.mk_expr_err(cond.span, guar)
-        } else {
-            cond
-        }))
+        self.expect_match_arm_guard_cond(ForceCollect::No).map(Some)
     }
 
-    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Expr>>)> {
+    pub(crate) fn expect_match_arm_guard(
+        &mut self,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Box<Guard>> {
+        if let Some(guard) = self.eat_metavar_guard() {
+            return Ok(guard);
+        }
+
+        self.expect_keyword(exp!(If))?;
+        self.expect_match_arm_guard_cond(force_collect)
+    }
+
+    fn expect_match_arm_guard_cond(
+        &mut self,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Box<Guard>> {
+        let leading_if_span = self.prev_token.span;
+
+        let mut cond = self.parse_match_guard_condition(force_collect)?;
+        let cond_span = cond.span;
+
+        CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
+
+        let guard = Guard { cond: *cond, span_with_leading_if: leading_if_span.to(cond_span) };
+        Ok(Box::new(guard))
+    }
+
+    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Guard>>)> {
         if self.token == token::OpenParen {
             let left = self.token.span;
             let pat = self.parse_pat_no_top_guard(
@@ -3519,10 +3526,10 @@ impl<'a> Parser<'a> {
                 // FIXME(guard_patterns): convert this to a normal guard instead
                 let span = pat.span;
                 let ast::PatKind::Paren(subpat) = pat.kind else { unreachable!() };
-                let ast::PatKind::Guard(_, mut cond) = subpat.kind else { unreachable!() };
-                self.psess.gated_spans.ungate_last(sym::guard_patterns, cond.span);
+                let ast::PatKind::Guard(_, mut guard) = subpat.kind else { unreachable!() };
+                self.psess.gated_spans.ungate_last(sym::guard_patterns, guard.span());
                 let mut checker = CondChecker::new(self, LetChainsPolicy::AlwaysAllowed);
-                checker.visit_expr(&mut cond);
+                checker.visit_expr(&mut guard.cond);
 
                 let right = self.prev_token.span;
                 self.dcx().emit_err(errors::ParenthesesInMatchPat {
@@ -3530,14 +3537,10 @@ impl<'a> Parser<'a> {
                     sugg: errors::ParenthesesInMatchPatSugg { left, right },
                 });
 
-                Ok((
-                    self.mk_pat(span, ast::PatKind::Wild),
-                    (if let Some(guar) = checker.found_incorrect_let_chain {
-                        Some(self.mk_expr_err(cond.span, guar))
-                    } else {
-                        Some(cond)
-                    }),
-                ))
+                if let Some(guar) = checker.found_incorrect_let_chain {
+                    guard.cond = *self.mk_expr_err(guard.span(), guar);
+                }
+                Ok((self.mk_pat(span, ast::PatKind::Wild), Some(guard)))
             } else {
                 Ok((pat, self.parse_match_arm_guard()?))
             }
@@ -3553,33 +3556,47 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_match_guard_condition(&mut self) -> PResult<'a, Box<Expr>> {
+    fn parse_match_guard_condition(
+        &mut self,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Box<Expr>> {
         let attrs = self.parse_outer_attributes()?;
-        match self.parse_expr_res(Restrictions::ALLOW_LET | Restrictions::IN_IF_GUARD, attrs) {
-            Ok((expr, _)) => Ok(expr),
-            Err(mut err) => {
-                if self.prev_token == token::OpenBrace {
-                    let sugg_sp = self.prev_token.span.shrink_to_lo();
-                    // Consume everything within the braces, let's avoid further parse
-                    // errors.
-                    self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
-                    let msg = "you might have meant to start a match arm after the match guard";
-                    if self.eat(exp!(CloseBrace)) {
-                        let applicability = if self.token != token::FatArrow {
-                            // We have high confidence that we indeed didn't have a struct
-                            // literal in the match guard, but rather we had some operation
-                            // that ended in a path, immediately followed by a block that was
-                            // meant to be the match arm.
-                            Applicability::MachineApplicable
-                        } else {
-                            Applicability::MaybeIncorrect
-                        };
-                        err.span_suggestion_verbose(sugg_sp, msg, "=> ", applicability);
+        let expr = self.collect_tokens(
+            None,
+            AttrWrapper::empty(),
+            force_collect,
+            |this, _empty_attrs| {
+                match this
+                    .parse_expr_res(Restrictions::ALLOW_LET | Restrictions::IN_IF_GUARD, attrs)
+                {
+                    Ok((expr, _)) => Ok((expr, Trailing::No, UsePreAttrPos::No)),
+                    Err(mut err) => {
+                        if this.prev_token == token::OpenBrace {
+                            let sugg_sp = this.prev_token.span.shrink_to_lo();
+                            // Consume everything within the braces, let's avoid further parse
+                            // errors.
+                            this.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
+                            let msg =
+                                "you might have meant to start a match arm after the match guard";
+                            if this.eat(exp!(CloseBrace)) {
+                                let applicability = if this.token != token::FatArrow {
+                                    // We have high confidence that we indeed didn't have a struct
+                                    // literal in the match guard, but rather we had some operation
+                                    // that ended in a path, immediately followed by a block that was
+                                    // meant to be the match arm.
+                                    Applicability::MachineApplicable
+                                } else {
+                                    Applicability::MaybeIncorrect
+                                };
+                                err.span_suggestion_verbose(sugg_sp, msg, "=> ", applicability);
+                            }
+                        }
+                        Err(err)
                     }
                 }
-                Err(err)
-            }
-        }
+            },
+        )?;
+        Ok(expr)
     }
 
     pub(crate) fn is_builtin(&self) -> bool {
@@ -3874,6 +3891,15 @@ impl<'a> Parser<'a> {
                         recovered_async = Some(guar);
                     }
 
+                    // If we encountered an error which we are recovering from, treat the struct
+                    // as if it has a `..` in it, because we don’t know what fields the user
+                    // might have *intended* it to have.
+                    //
+                    // This assignment will be overwritten if we actually parse a `..` later.
+                    //
+                    // (Note that this code is duplicated between here and below in comma parsing.
+                    base = ast::StructRest::NoneWithError(guar);
+
                     // If the next token is a comma, then try to parse
                     // what comes next as additional fields, rather than
                     // bailing out until next `}`.
@@ -3924,6 +3950,10 @@ impl<'a> Parser<'a> {
                     } else if let Some(f) = field_ident(self, guar) {
                         fields.push(f);
                     }
+
+                    // See comment above on this same assignment inside of field parsing.
+                    base = ast::StructRest::NoneWithError(guar);
+
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
                     let _ = self.eat(exp!(Comma));
                 }
@@ -4189,22 +4219,6 @@ pub(crate) fn could_be_unclosed_char_literal(ident: Ident) -> bool {
         && unescape_char(ident.without_first_quote().name.as_str()).is_ok()
 }
 
-/// Used to forbid `let` expressions in certain syntactic locations.
-#[derive(Clone, Copy, Subdiagnostic)]
-pub(crate) enum ForbiddenLetReason {
-    /// `let` is not valid and the source environment is not important
-    OtherForbidden,
-    /// A let chain with the `||` operator
-    #[note(parse_not_supported_or)]
-    NotSupportedOr(#[primary_span] Span),
-    /// A let chain with invalid parentheses
-    ///
-    /// For example, `let 1 = 1 && (expr && expr)` is allowed
-    /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
-    #[note(parse_not_supported_parentheses)]
-    NotSupportedParentheses(#[primary_span] Span),
-}
-
 /// Whether let chains are allowed on all editions, or it's edition dependent (allowed only on
 /// 2024 and later). In case of edition dependence, specify the currently present edition.
 pub enum LetChainsPolicy {
@@ -4225,7 +4239,7 @@ struct CondChecker<'a> {
     parser: &'a Parser<'a>,
     let_chains_policy: LetChainsPolicy,
     depth: u32,
-    forbid_let_reason: Option<ForbiddenLetReason>,
+    forbid_let_reason: Option<errors::ForbiddenLetReason>,
     missing_let: Option<errors::MaybeMissingLet>,
     comparison: Option<errors::MaybeComparison>,
     found_incorrect_let_chain: Option<ErrorGuaranteed>,
@@ -4248,14 +4262,13 @@ impl<'a> CondChecker<'a> {
 impl MutVisitor for CondChecker<'_> {
     fn visit_expr(&mut self, e: &mut Expr) {
         self.depth += 1;
-        use ForbiddenLetReason::*;
 
         let span = e.span;
         match e.kind {
             ExprKind::Let(_, _, _, ref mut recovered @ Recovered::No) => {
                 if let Some(reason) = self.forbid_let_reason {
                     let error = match reason {
-                        NotSupportedOr(or_span) => {
+                        errors::ForbiddenLetReason::NotSupportedOr(or_span) => {
                             self.parser.dcx().emit_err(errors::OrInLetChain { span: or_span })
                         }
                         _ => {
@@ -4289,24 +4302,72 @@ impl MutVisitor for CondChecker<'_> {
                 mut_visit::walk_expr(self, e);
             }
             ExprKind::Binary(Spanned { node: BinOpKind::Or, span: or_span }, _, _)
-                if let None | Some(NotSupportedOr(_)) = self.forbid_let_reason =>
+                if let None | Some(errors::ForbiddenLetReason::NotSupportedOr(_)) =
+                    self.forbid_let_reason =>
             {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(NotSupportedOr(or_span));
+                self.forbid_let_reason = Some(errors::ForbiddenLetReason::NotSupportedOr(or_span));
                 mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
             ExprKind::Paren(ref inner)
-                if let None | Some(NotSupportedParentheses(_)) = self.forbid_let_reason =>
+                if let None | Some(errors::ForbiddenLetReason::NotSupportedParentheses(_)) =
+                    self.forbid_let_reason =>
             {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(NotSupportedParentheses(inner.span));
+                self.forbid_let_reason =
+                    Some(errors::ForbiddenLetReason::NotSupportedParentheses(inner.span));
                 mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
-            ExprKind::Assign(ref lhs, _, span) => {
+            ExprKind::Assign(ref lhs, ref rhs, span) => {
+                if let ExprKind::Call(_, _) = &lhs.kind {
+                    fn get_path_from_rhs(e: &Expr) -> Option<(u32, &Path)> {
+                        fn inner(e: &Expr, depth: u32) -> Option<(u32, &Path)> {
+                            match &e.kind {
+                                ExprKind::Binary(_, lhs, _) => inner(lhs, depth + 1),
+                                ExprKind::Path(_, path) => Some((depth, path)),
+                                _ => None,
+                            }
+                        }
+
+                        inner(e, 0)
+                    }
+
+                    if let Some((depth, path)) = get_path_from_rhs(rhs) {
+                        // For cases like if Some(_) = x && let Some(_) = y && let Some(_) = z
+                        // This return let Some(_) = y expression
+                        fn find_let_some(expr: &Expr) -> Option<&Expr> {
+                            match &expr.kind {
+                                ExprKind::Let(..) => Some(expr),
+
+                                ExprKind::Binary(op, lhs, rhs) if op.node == BinOpKind::And => {
+                                    find_let_some(lhs).or_else(|| find_let_some(rhs))
+                                }
+
+                                _ => None,
+                            }
+                        }
+
+                        let expr_span = lhs.span.to(path.span);
+
+                        if let Some(later_rhs) = find_let_some(rhs)
+                            && depth > 0
+                        {
+                            let guar = self.parser.dcx().emit_err(errors::LetChainMissingLet {
+                                span: lhs.span,
+                                label_span: expr_span,
+                                rhs_span: later_rhs.span,
+                                sug_span: lhs.span.shrink_to_lo(),
+                            });
+
+                            self.found_incorrect_let_chain = Some(guar);
+                        }
+                    }
+                }
+
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(OtherForbidden);
+                self.forbid_let_reason = Some(errors::ForbiddenLetReason::OtherForbidden);
                 let missing_let = self.missing_let;
                 if let ExprKind::Binary(_, _, rhs) = &lhs.kind
                     && let ExprKind::Path(_, _)
@@ -4339,7 +4400,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Tup(_)
             | ExprKind::Paren(_) => {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(OtherForbidden);
+                self.forbid_let_reason = Some(errors::ForbiddenLetReason::OtherForbidden);
                 mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
@@ -4347,7 +4408,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Type(ref mut op, _)
             | ExprKind::UnsafeBinderCast(_, ref mut op, _) => {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(OtherForbidden);
+                self.forbid_let_reason = Some(errors::ForbiddenLetReason::OtherForbidden);
                 self.visit_expr(op);
                 self.forbid_let_reason = forbid_let_reason;
             }

@@ -42,6 +42,8 @@ fn for_single_line() -> bool { for i in 0.. { return false; } }
 //    that it's readable
 fn for_in_arg(a: &[(); for x in 0..2 {}]) -> bool {
     //~^ ERROR mismatched types
+    //~| ERROR `std::ops::Range<{integer}>: const Iterator` is not satisfied
+    //~| ERROR `std::ops::Range<{integer}>: const Iterator` is not satisfied
     true
 }
 
@@ -86,6 +88,8 @@ fn loop_() -> bool {
 const C: i32 = {
     for i in 0.. {
     //~^ ERROR mismatched types
+    //~| ERROR `std::ops::RangeFrom<{integer}>: const Iterator` is not satisfied
+    //~| ERROR `std::ops::RangeFrom<{integer}>: const Iterator` is not satisfied
     }
 };
 
@@ -93,6 +97,8 @@ fn main() {
     let _ = [10; {
         for i in 0..5 {
         //~^ ERROR mismatched types
+        //~| ERROR `std::ops::Range<{integer}>: const Iterator` is not satisfied
+        //~| ERROR `std::ops::Range<{integer}>: const Iterator` is not satisfied
         }
     }];
 
@@ -105,4 +111,6 @@ fn main() {
 
     let _ = |a: &[(); for x in 0..2 {}]| {};
     //~^ ERROR mismatched types
+    //~| ERROR `std::ops::Range<{integer}>: const Iterator` is not satisfied
+    //~| ERROR `std::ops::Range<{integer}>: const Iterator` is not satisfied
 }

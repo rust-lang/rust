@@ -2,7 +2,9 @@ use std::ffi::CString;
 use std::path::Path;
 
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, inline_fluent};
+use rustc_errors::{
+    Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, format_diag_message, msg,
+};
 use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
@@ -24,11 +26,11 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let diag: Diag<'_, G> = self.0.into_diag(dcx, level);
         let (message, _) = diag.messages.first().expect("`LlvmError` with no message");
-        let message = dcx.eagerly_translate_to_string(message.clone(), diag.args.iter());
+        let message = format_diag_message(message, &diag.args);
         Diag::new(
             dcx,
             level,
-            inline_fluent!("failed to parse target machine config to target machine: {$error}"),
+            msg!("failed to parse target machine config to target machine: {$error}"),
         )
         .with_arg("error", message)
     }
@@ -94,15 +96,13 @@ pub(crate) struct LtoBitcodeFromRlib {
 }
 
 #[derive(Diagnostic)]
-pub enum LlvmError<'a> {
+pub(crate) enum LlvmError<'a> {
     #[diag("could not write output to {$path}")]
     WriteOutput { path: &'a Path },
     #[diag("could not create LLVM TargetMachine for triple: {$triple}")]
     CreateTargetMachine { triple: SmallCStr },
     #[diag("failed to run LLVM passes")]
     RunLlvmPasses,
-    #[diag("failed to serialize module {$name}")]
-    SerializeModule { name: &'a str },
     #[diag("failed to write LLVM IR to {$path}")]
     WriteIr { path: &'a Path },
     #[diag("failed to prepare thin LTO context")]
@@ -115,8 +115,6 @@ pub enum LlvmError<'a> {
     PrepareThinLtoModule,
     #[diag("failed to parse bitcode for LTO module")]
     ParseBitcode,
-    #[diag("failed to prepare autodiff: src: {$src}, target: {$target}, {$error}")]
-    PrepareAutoDiff { src: String, target: String, error: String },
 }
 
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
@@ -125,31 +123,25 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         use LlvmError::*;
         let msg_with_llvm_err = match &self.0 {
-            WriteOutput { .. } => inline_fluent!("could not write output to {$path}: {$llvm_err}"),
-            CreateTargetMachine { .. } => inline_fluent!(
-                "could not create LLVM TargetMachine for triple: {$triple}: {$llvm_err}"
-            ),
-            RunLlvmPasses => inline_fluent!("failed to run LLVM passes: {$llvm_err}"),
-            SerializeModule { .. } => {
-                inline_fluent!("failed to serialize module {$name}: {$llvm_err}")
+            WriteOutput { .. } => msg!("could not write output to {$path}: {$llvm_err}"),
+            CreateTargetMachine { .. } => {
+                msg!("could not create LLVM TargetMachine for triple: {$triple}: {$llvm_err}")
             }
-            WriteIr { .. } => inline_fluent!("failed to write LLVM IR to {$path}: {$llvm_err}"),
+            RunLlvmPasses => msg!("failed to run LLVM passes: {$llvm_err}"),
+            WriteIr { .. } => msg!("failed to write LLVM IR to {$path}: {$llvm_err}"),
             PrepareThinLtoContext => {
-                inline_fluent!("failed to prepare thin LTO context: {$llvm_err}")
+                msg!("failed to prepare thin LTO context: {$llvm_err}")
             }
             LoadBitcode { .. } => {
-                inline_fluent!("failed to load bitcode of module \"{$name}\": {$llvm_err}")
+                msg!("failed to load bitcode of module \"{$name}\": {$llvm_err}")
             }
             WriteThinLtoKey { .. } => {
-                inline_fluent!("error while writing ThinLTO key data: {$err}: {$llvm_err}")
+                msg!("error while writing ThinLTO key data: {$err}: {$llvm_err}")
             }
             PrepareThinLtoModule => {
-                inline_fluent!("failed to prepare thin LTO module: {$llvm_err}")
+                msg!("failed to prepare thin LTO module: {$llvm_err}")
             }
-            ParseBitcode => inline_fluent!("failed to parse bitcode for LTO module: {$llvm_err}"),
-            PrepareAutoDiff { .. } => inline_fluent!(
-                "failed to prepare autodiff: {$llvm_err}, src: {$src}, target: {$target}, {$error}"
-            ),
+            ParseBitcode => msg!("failed to parse bitcode for LTO module: {$llvm_err}"),
         };
         self.0
             .into_diag(dcx, level)
@@ -190,9 +182,9 @@ pub(crate) struct CopyBitcode {
 
 #[derive(Diagnostic)]
 #[diag(
-    "unknown debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo"
+    "unsupported debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo"
 )]
-pub(crate) struct UnknownCompression {
+pub(crate) struct UnsupportedCompression {
     pub algorithm: &'static str,
 }
 
@@ -214,5 +206,8 @@ pub(crate) struct FixedX18InvalidArch<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer-kcfi-arity` requires LLVM 21.0.0 or later.")]
-pub(crate) struct SanitizerKcfiArityRequiresLLVM2100;
+#[diag("`-Zpacked-stack` is incompatible with `backchain` target feature")]
+#[note(
+    "enabling both `-Zpacked-stack` and the `backchain` target feature is incompatible with the default s390x ABI. Switch to s390x-unknown-none-softfloat if you need both attributes"
+)]
+pub(crate) struct PackedStackBackchainNeedsSoftfloat;

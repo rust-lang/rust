@@ -1,4 +1,6 @@
 //@ edition:2018
+//@ run-rustfix
+#![allow(unused_variables)]
 use std::future::Future;
 
 async fn foo() {}

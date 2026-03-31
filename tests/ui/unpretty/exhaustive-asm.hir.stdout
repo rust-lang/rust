@@ -1,5 +1,5 @@
 extern crate std;
-#[prelude_import]
+#[attr = PreludeImport]
 use std::prelude::rust_2024::*;
 //@ revisions: expanded hir
 //@[expanded]compile-flags: -Zunpretty=expanded

@@ -1,6 +1,6 @@
 //! Computing the size and alignment of a value.
 
-use rustc_abi::WrappingRange;
+use rustc_abi::{Align, WrappingRange};
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
@@ -36,8 +36,10 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // Size is always <= isize::MAX.
             let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
             bx.range_metadata(size, WrappingRange { start: 0, end: size_bound });
-            // Alignment is always nonzero.
-            bx.range_metadata(align, WrappingRange { start: 1, end: !0 });
+            // Alignment is always a power of two, thus 1..=0x800…000,
+            // but also bounded by the maximum we support in type layout.
+            let align_bound = Align::max_for_target(bx.data_layout()).bytes().into();
+            bx.range_metadata(align, WrappingRange { start: 1, end: align_bound });
 
             (size, align)
         }

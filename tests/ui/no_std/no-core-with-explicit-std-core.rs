@@ -6,8 +6,7 @@
 
 //@ run-pass
 
-#![allow(stable_features)]
-#![feature(no_core, core)]
+#![feature(no_core)]
 #![no_core]
 
 extern crate core;

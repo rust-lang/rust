@@ -753,7 +753,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             QPath::Resolved(None, path)
                 if path.span.ctxt() == self.ctxt.get()
                     && path.segments.iter().all(|s| self.ctxt.get() == s.ident.span.ctxt())
-                    && let Res::Def(DefKind::Const, did) = path.res
+                    && let Res::Def(DefKind::Const { .. }, did) = path.res
                     && (matches!(
                         self.tcx.get_diagnostic_name(did),
                         Some(
@@ -841,11 +841,19 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     && ty.span.ctxt() == self.ctxt.get()
                     && ty_name.ident.span.ctxt() == self.ctxt.get()
                     && matches!(ty_path.res, Res::PrimTy(_))
-                    && let Some((DefKind::AssocConst, did)) = self.typeck.type_dependent_def(id) =>
+                    && let Some((DefKind::AssocConst { .. }, did)) = self.typeck.type_dependent_def(id)
+                    && self.tcx.inherent_impl_of_assoc(did).is_some() =>
             {
                 did
             },
-            _ if let Res::Def(DefKind::Const | DefKind::AssocConst, did) = self.typeck.qpath_res(qpath, id) => {
+            // TODO: revisit when feature `min_generic_const_args` is stabilized. In the meantime,
+            // `TyCtxt::const_eval_resolve()` will trigger an ICE when evaluating the body of the
+            // `type const` definition.
+            _ if let Res::Def(
+                DefKind::Const { is_type_const: false } | DefKind::AssocConst { is_type_const: false },
+                did,
+            ) = self.typeck.qpath_res(qpath, id) =>
+            {
                 self.source.set(ConstantSource::NonLocal);
                 did
             },
@@ -1142,7 +1150,7 @@ pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx
             ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
             ConstArgKind::Struct(..)
             | ConstArgKind::Tup(..)
-            | ConstArgKind::Literal(..)
+            | ConstArgKind::Literal { .. }
             | ConstArgKind::TupleCall(..)
             | ConstArgKind::Array(..)
             | ConstArgKind::Path(_)

@@ -6,13 +6,12 @@ use rustc_ast::NodeId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
+use rustc_errors::{Applicability, Diagnostic, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::{DefId, LocalDefIdMap};
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
     PUB_USE_OF_PRIVATE_EXTERN_CRATE, REDUNDANT_IMPORTS, UNUSED_IMPORTS,
@@ -26,9 +25,10 @@ use tracing::debug;
 use crate::Namespace::{self, *};
 use crate::diagnostics::{DiagMode, Suggestion, import_candidates};
 use crate::errors::{
-    CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
-    CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
-    ConsiderAddingMacroExport, ConsiderMarkingAsPub, ConsiderMarkingAsPubCrate,
+    self, CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS,
+    CannotBeReexportedPrivate, CannotBeReexportedPrivateNS, CannotDetermineImportResolution,
+    CannotGlobImportAllCrates, ConsiderAddingMacroExport, ConsiderMarkingAsPub,
+    ConsiderMarkingAsPubCrate,
 };
 use crate::ref_mut::CmCell;
 use crate::{
@@ -41,7 +41,7 @@ type Res = def::Res<NodeId>;
 
 /// A potential import declaration in the process of being planted into a module.
 /// Also used for lazily planting names from `--extern` flags to extern prelude.
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq, Debug)]
 pub(crate) enum PendingDecl<'ra> {
     Ready(Option<Decl<'ra>>),
     #[default]
@@ -70,7 +70,7 @@ pub(crate) enum ImportKind<'ra> {
         decls: PerNS<CmCell<PendingDecl<'ra>>>,
         /// `true` for `...::{self [as target]}` imports, `false` otherwise.
         type_ns_only: bool,
-        /// Did this import result from a nested import? ie. `use foo::{bar, baz};`
+        /// Did this import result from a nested import? i.e. `use foo::{bar, baz};`
         nested: bool,
         /// The ID of the `UseTree` that imported this `Import`.
         ///
@@ -371,6 +371,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // - A glob decl is overwritten by its clone after setting ambiguity in it.
         //   FIXME: avoid this by removing `warn_ambiguity`, or by triggering glob re-fetch
         //   with the same decl in some way.
+        // - A glob decl is overwritten by a glob decl with larger visibility.
+        //   FIXME: avoid this by updating this visibility in place.
         // - A glob decl is overwritten by a glob decl re-fetching an
         //   overwritten decl from other module (the recursive case).
         // Here we are detecting all such re-fetches and overwrite old decls
@@ -384,7 +386,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // FIXME: reenable the asserts when `warn_ambiguity` is removed (#149195).
             // assert_ne!(old_deep_decl, deep_decl);
             // assert!(old_deep_decl.is_glob_import());
-            assert!(!deep_decl.is_glob_import());
+            // FIXME: reenable the assert when visibility is updated in place.
+            // assert!(!deep_decl.is_glob_import());
             if old_glob_decl.ambiguity.get().is_some() && glob_decl.ambiguity.get().is_none() {
                 // Do not lose glob ambiguities when re-fetching the glob.
                 glob_decl.ambiguity.set_unchecked(old_glob_decl.ambiguity.get());
@@ -406,8 +409,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         } else if !old_glob_decl.vis().is_at_least(glob_decl.vis(), self.tcx) {
             // We are glob-importing the same item but with greater visibility.
-            old_glob_decl.vis.set_unchecked(glob_decl.vis());
-            old_glob_decl
+            // FIXME: Update visibility in place, but without regressions
+            // (#152004, #151124, #152347).
+            glob_decl
         } else if glob_decl.is_ambiguity_recursive() && !old_glob_decl.is_ambiguity_recursive() {
             // Overwriting a non-ambiguous glob import with an ambiguous glob import.
             old_glob_decl.ambiguity.set_unchecked(Some(glob_decl));
@@ -717,11 +721,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         AMBIGUOUS_GLOB_REEXPORTS,
                         import.root_id,
                         import.root_span,
-                        BuiltinLintDiag::AmbiguousGlobReexports {
+                        errors::AmbiguousGlobReexports {
                             name: key.ident.name.to_string(),
                             namespace: key.ns.descr().to_string(),
-                            first_reexport_span: import.root_span,
-                            duplicate_reexport_span: amb_binding.span,
+                            first_reexport: import.root_span,
+                            duplicate_reexport: amb_binding.span,
                         },
                     );
                 }
@@ -749,11 +753,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 HIDDEN_GLOB_REEXPORTS,
                                 binding_id,
                                 binding.span,
-                                BuiltinLintDiag::HiddenGlobReexports {
+                                errors::HiddenGlobReexports {
                                     name: key.ident.name.to_string(),
                                     namespace: key.ns.descr().to_owned(),
-                                    glob_reexport_span: glob_decl.span,
-                                    private_item_span: binding.span,
+                                    glob_reexport: glob_decl.span,
+                                    private_item: binding.span,
                                 },
                             );
                         }
@@ -1041,16 +1045,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 suggestion,
                 module,
                 error_implied_by_parse_error: _,
+                message,
             } => {
                 if no_ambiguity {
-                    assert!(import.imported_module.get().is_none());
+                    if !self.issue_145575_hack_applied {
+                        assert!(import.imported_module.get().is_none());
+                    }
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: Some(segment_name),
+                            segment: segment_name,
                             label,
                             suggestion,
                             module,
+                            message,
                         },
                     );
                 }
@@ -1066,7 +1074,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ..
             } => {
                 if no_ambiguity {
-                    assert!(import.imported_module.get().is_none());
+                    if !self.issue_145575_hack_applied {
+                        assert!(import.imported_module.get().is_none());
+                    }
                     let module = if let Some(ModuleOrUniformRoot::Module(m)) = module {
                         m.opt_def_id()
                     } else {
@@ -1276,6 +1286,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 if i.name == ident.name {
                                     return None;
                                 } // Never suggest the same name
+                                if i.name == kw::Underscore {
+                                    return None;
+                                } // `use _` is never valid
 
                                 let resolution = resolution.borrow();
                                 if let Some(name_binding) = resolution.best_decl() {
@@ -1522,11 +1535,31 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
             redundant_spans.sort();
             redundant_spans.dedup();
-            self.lint_buffer.buffer_lint(
+            self.lint_buffer.dyn_buffer_lint(
                 REDUNDANT_IMPORTS,
                 id,
                 import.span,
-                BuiltinLintDiag::RedundantImport(redundant_spans, source),
+                move |dcx, level| {
+                    let ident = source;
+                    let subs = redundant_spans
+                        .into_iter()
+                        .map(|(span, is_imported)| match (span.is_dummy(), is_imported) {
+                            (false, true) => {
+                                errors::RedundantImportSub::ImportedHere { span, ident }
+                            }
+                            (false, false) => {
+                                errors::RedundantImportSub::DefinedHere { span, ident }
+                            }
+                            (true, true) => {
+                                errors::RedundantImportSub::ImportedPrelude { span, ident }
+                            }
+                            (true, false) => {
+                                errors::RedundantImportSub::DefinedPrelude { span, ident }
+                            }
+                        })
+                        .collect();
+                    errors::RedundantImport { subs, ident }.into_diag(dcx, level)
+                },
             );
             return true;
         }

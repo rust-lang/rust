@@ -9,21 +9,22 @@ use std::cell::Cell;
 use std::vec;
 
 use rustc_abi::ExternAbi;
+use rustc_ast as ast;
 use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
 use rustc_ast::{DUMMY_NODE_ID, DelimArgs};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, BoxMarker, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
+use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, PrintAttribute};
 use rustc_hir::{
     BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg, GenericBound,
     GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
-    PreciseCapturingArg, RangeEnd, Term, TyPatKind,
+    PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind,
 };
-use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::{DUMMY_SP, FileName, Ident, Span, Symbol, kw, sym};
-use {rustc_ast as ast, rustc_hir as hir};
+use rustc_span::source_map::SourceMap;
+use rustc_span::{DUMMY_SP, FileName, Ident, Span, Spanned, Symbol, kw, sym};
 
 pub fn id_to_string(cx: &dyn rustc_hir::intravisit::HirTyCtxt<'_>, hir_id: HirId) -> String {
     to_string(&cx, |s| s.print_node(cx.hir_node(hir_id)))
@@ -463,6 +464,17 @@ impl<'a> State<'a> {
                 self.print_type(ty);
                 self.word(" is ");
                 self.print_ty_pat(pat);
+            }
+            hir::TyKind::FieldOf(ty, TyFieldPath { variant, field }) => {
+                self.word("field_of!(");
+                self.print_type(ty);
+                self.word(", ");
+                if let Some(variant) = *variant {
+                    self.print_ident(variant);
+                    self.word(".");
+                }
+                self.print_ident(*field);
+                self.word(")");
             }
         }
         self.end(ib)
@@ -937,7 +949,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(ti.span.lo());
         self.print_attrs(self.attrs(ti.hir_id()));
         match ti.kind {
-            hir::TraitItemKind::Const(ty, default) => {
+            hir::TraitItemKind::Const(ty, default, _) => {
                 self.print_associated_const(ti.ident, ti.generics, ty, default);
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(arg_idents)) => {
@@ -1158,9 +1170,12 @@ impl<'a> State<'a> {
             ConstArgKind::Anon(anon) => self.print_anon_const(anon),
             ConstArgKind::Error(_) => self.word("/*ERROR*/"),
             ConstArgKind::Infer(..) => self.word("_"),
-            ConstArgKind::Literal(node) => {
+            ConstArgKind::Literal { lit, negated } => {
+                if *negated {
+                    self.word("-");
+                }
                 let span = const_arg.span;
-                self.print_literal(&Spanned { span, node: *node })
+                self.print_literal(&Spanned { span, node: *lit })
             }
         }
     }
@@ -1300,6 +1315,7 @@ impl<'a> State<'a> {
                 self.end(ib);
             }
             hir::StructTailExpr::None => {}
+            hir::StructTailExpr::NoneWithError(_) => {}
         }
         self.space();
         self.word("}");

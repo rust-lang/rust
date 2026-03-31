@@ -130,7 +130,6 @@ pub(crate) struct MacroExportParser;
 
 impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
     const PATH: &[Symbol] = &[sym::macro_export];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["local_inner_macros"]);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
@@ -168,7 +167,6 @@ pub(crate) struct CollapseDebugInfoParser;
 
 impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
     const PATH: &[Symbol] = &[sym::collapse_debuginfo];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(
         List: &["no", "external", "yes"],
@@ -205,4 +203,13 @@ impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
 
         Some(AttributeKind::CollapseDebugInfo(info))
     }
+}
+
+pub(crate) struct RustcProcMacroDeclsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcProcMacroDeclsParser {
+    const PATH: &[Symbol] = &[sym::rustc_proc_macro_decls];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Static)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcProcMacroDecls;
 }

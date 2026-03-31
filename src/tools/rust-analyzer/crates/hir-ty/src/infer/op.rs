@@ -178,9 +178,9 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 // trait matching creating lifetime constraints that are too strict.
                 // e.g., adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
                 // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
-                let lhs_ty = self.infer_expr_no_expect(lhs_expr, ExprIsRead::No);
+                let lhs_ty = self.infer_expr_no_expect(lhs_expr, ExprIsRead::Yes);
                 let fresh_var = self.table.next_ty_var();
-                self.demand_coerce(lhs_expr, lhs_ty, fresh_var, AllowTwoPhase::No, ExprIsRead::No)
+                self.demand_coerce(lhs_expr, lhs_ty, fresh_var, AllowTwoPhase::No, ExprIsRead::Yes)
             }
         };
         let lhs_ty = self.table.resolve_vars_with_obligations(lhs_ty);
@@ -200,7 +200,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
         // see `NB` above
         let rhs_ty =
-            self.infer_expr_coerce(rhs_expr, &Expectation::HasType(rhs_ty_var), ExprIsRead::No);
+            self.infer_expr_coerce(rhs_expr, &Expectation::HasType(rhs_ty_var), ExprIsRead::Yes);
         let rhs_ty = self.table.resolve_vars_with_obligations(rhs_ty);
 
         let return_ty = match result {
@@ -320,7 +320,11 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 if let Some((rhs_expr, rhs_ty)) = opt_rhs
                     && rhs_ty.is_ty_var()
                 {
-                    self.infer_expr_coerce(rhs_expr, &Expectation::HasType(rhs_ty), ExprIsRead::No);
+                    self.infer_expr_coerce(
+                        rhs_expr,
+                        &Expectation::HasType(rhs_ty),
+                        ExprIsRead::Yes,
+                    );
                 }
 
                 // Construct an obligation `self_ty : Trait<input_tys>`

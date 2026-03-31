@@ -19,15 +19,14 @@ extern crate rustc_span;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-extern crate rustc_fluent_macro;
 extern crate rustc_macros;
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 
 extern crate rustc_middle;
 use rustc_middle::ty::Ty;
 
 extern crate rustc_errors;
-use rustc_errors::{Applicability, DiagMessage, ErrCode, MultiSpan, SubdiagMessage};
+use rustc_errors::{Applicability, DiagMessage, ErrCode, MultiSpan};
 
 extern crate rustc_session;
 
@@ -46,9 +45,9 @@ struct Hello {}
 //~^ ERROR unsupported type attribute for diagnostic derive enum
 enum DiagnosticOnEnum {
     Foo,
-    //~^ ERROR diagnostic slug not specified
+    //~^ ERROR diagnostic message not specified
     Bar,
-    //~^ ERROR diagnostic slug not specified
+    //~^ ERROR diagnostic message not specified
 }
 
 #[derive(Diagnostic)]
@@ -60,28 +59,28 @@ struct WrongStructAttrStyle {}
 #[derive(Diagnostic)]
 #[nonsense("this is an example message", code = E0123)]
 //~^ ERROR `#[nonsense(...)]` is not a valid attribute
-//~^^ ERROR diagnostic slug not specified
+//~^^ ERROR diagnostic message not specified
 //~^^^ ERROR cannot find attribute `nonsense` in this scope
 struct InvalidStructAttr {}
 
 #[derive(Diagnostic)]
 #[diag(code = E0123)]
-//~^ ERROR diagnostic slug not specified
+//~^ ERROR diagnostic message not specified
 struct InvalidLitNestedAttr {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense("foo"), code = E0123, slug = "foo")]
-//~^ ERROR derive(Diagnostic): diagnostic slug not specified
+//~^ ERROR derive(Diagnostic): diagnostic message not specified
 struct InvalidNestedStructAttr1 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = "...", code = E0123, slug = "foo")]
-//~^ ERROR diagnostic slug not specified
+//~^ ERROR diagnostic message not specified
 struct InvalidNestedStructAttr2 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = 4, code = E0123, slug = "foo")]
-//~^ ERROR diagnostic slug not specified
+//~^ ERROR diagnostic message not specified
 struct InvalidNestedStructAttr3 {}
 
 #[derive(Diagnostic)]
@@ -110,15 +109,15 @@ struct CodeSpecifiedTwice {}
 
 #[derive(Diagnostic)]
 #[diag("this is an example message", no_crate::example, code = E0123)]
-//~^ ERROR diagnostic slug must be the first argument
+//~^ ERROR diagnostic message must be the first argument
 struct SlugSpecifiedTwice {}
 
 #[derive(Diagnostic)]
-struct KindNotProvided {} //~ ERROR diagnostic slug not specified
+struct KindNotProvided {} //~ ERROR diagnostic message not specified
 
 #[derive(Diagnostic)]
 #[diag(code = E0123)]
-//~^ ERROR diagnostic slug not specified
+//~^ ERROR diagnostic message not specified
 struct SlugNotProvided {}
 
 #[derive(Diagnostic)]
@@ -138,7 +137,7 @@ struct MessageWrongType {
 struct InvalidPathFieldAttr {
     #[nonsense]
     //~^ ERROR `#[nonsense]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `nonsense` in this scope
+    //~| ERROR cannot find attribute `nonsense` in this scope
     foo: String,
 }
 
@@ -468,7 +467,15 @@ struct BoolField {
 #[diag("this is an example message", code = E0123)]
 struct LabelWithTrailingPath {
     #[label("with a label", foo)]
-    //~^ ERROR a diagnostic slug must be the first argument to the attribute
+    //~^ ERROR derive(Diagnostic): no nested attribute expected here
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("this is an example message", code = E0123)]
+struct LabelWithTrailingMessage {
+    #[label("with a label", "and another one?")]
+    //~^ ERROR derive(Diagnostic): a diagnostic message must be the first argument to the attribute
     span: Span,
 }
 
@@ -485,18 +492,6 @@ struct LabelWithTrailingNameValue {
 struct LabelWithTrailingList {
     #[label("with a label", foo("..."))]
     //~^ ERROR no nested attribute expected here
-    span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag("this is an example message")]
-struct LintsGood {}
-
-#[derive(LintDiagnostic)]
-#[diag("this is an example message")]
-struct PrimarySpanOnLint {
-    #[primary_span]
-    //~^ ERROR `#[primary_span]` is not a valid attribute
     span: Span,
 }
 
@@ -517,30 +512,23 @@ struct ErrorWithWarn {
 #[derive(Diagnostic)]
 #[error("this is an example message", code = E0123)]
 //~^ ERROR `#[error(...)]` is not a valid attribute
-//~| ERROR diagnostic slug not specified
+//~| ERROR diagnostic message not specified
 //~| ERROR cannot find attribute `error` in this scope
 struct ErrorAttribute {}
 
 #[derive(Diagnostic)]
 #[warn_("this is an example message", code = E0123)]
 //~^ ERROR `#[warn_(...)]` is not a valid attribute
-//~| ERROR diagnostic slug not specified
+//~| ERROR diagnostic message not specified
 //~| ERROR cannot find attribute `warn_` in this scope
 struct WarnAttribute {}
 
 #[derive(Diagnostic)]
 #[lint("this is an example message", code = E0123)]
 //~^ ERROR `#[lint(...)]` is not a valid attribute
-//~| ERROR diagnostic slug not specified
+//~| ERROR diagnostic message not specified
 //~| ERROR cannot find attribute `lint` in this scope
 struct LintAttributeOnSessionDiag {}
-
-#[derive(LintDiagnostic)]
-#[lint("this is an example message", code = E0123)]
-//~^ ERROR `#[lint(...)]` is not a valid attribute
-//~| ERROR diagnostic slug not specified
-//~| ERROR cannot find attribute `lint` in this scope
-struct LintAttributeOnLintDiag {}
 
 #[derive(Diagnostic)]
 #[diag("this is an example message", code = E0123)]
@@ -659,14 +647,6 @@ struct SubdiagnosticBadTwice {
 #[diag("this is an example message")]
 struct SubdiagnosticBadLitStr {
     #[subdiagnostic("bad")]
-    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
-    note: Note,
-}
-
-#[derive(LintDiagnostic)]
-#[diag("this is an example message")]
-struct SubdiagnosticEagerLint {
-    #[subdiagnostic(eager)]
     //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }

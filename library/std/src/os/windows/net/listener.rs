@@ -12,6 +12,8 @@ use crate::{fmt, io};
 
 /// A structure representing a Unix domain socket server.
 ///
+/// Under Windows, it will only work starting from Windows 10 17063.
+///
 /// # Examples
 ///
 /// ```no_run

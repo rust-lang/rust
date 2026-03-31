@@ -3286,7 +3286,7 @@ data-types = V4SI, V2DI, V2DI
 /// lsx_vorn_v
 name = lsx_vorn_v
 asm-fmts = vd, vj, vk
-data-types = V16QI, V16QI, V16QI
+data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vldi
 name = lsx_vldi

@@ -32,7 +32,7 @@ pub(super) fn check<'tcx>(
         expr.span,
         "comparing with null is better expressed by the `.is_null()` method",
         "try",
-        format!("{invert}{non_null_path_snippet}.is_null()",),
+        format!("{invert}{non_null_path_snippet}.is_null()"),
         applicability,
     );
     true

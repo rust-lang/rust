@@ -6,18 +6,18 @@ use std::sync::atomic::AtomicBool;
 
 use rustc_abi::Align;
 use rustc_data_structures::profiling::TimePassesFormat;
+use rustc_errors::ColorConfig;
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, registry};
 use rustc_hir::attrs::{CollapseMacroDebuginfo, NativeLibKind};
 use rustc_session::config::{
     AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CoverageLevel, CoverageOptions,
     DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs,
-    FmtDebug, FunctionReturn, InliningThreshold, Input, InstrumentCoverage, InstrumentXRay,
-    LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig,
-    Offload, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes,
-    PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
-    SymbolManglingVersion, WasiExecModel, build_configuration, build_session_options,
-    rustc_optgroups,
+    FmtDebug, FunctionReturn, IncrementalStateAssertion, InliningThreshold, Input,
+    InstrumentCoverage, InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli,
+    MirIncludeSpans, NextSolverConfig, Offload, Options, OutFileName, OutputType, OutputTypes,
+    PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip,
+    SwitchWithOptPath, SymbolManglingVersion, WasiExecModel, build_configuration,
+    build_session_options, rustc_optgroups,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -71,9 +71,6 @@ where
         let sess = build_session(
             sessopts,
             io,
-            None,
-            registry::Registry::new(&[]),
-            vec![],
             Default::default(),
             target,
             "",
@@ -640,7 +637,6 @@ fn test_codegen_options_tracking_hash() {
     tracked!(profile_use, Some(PathBuf::from("abc")));
     tracked!(relocation_model, Some(RelocModel::Pic));
     tracked!(relro_level, Some(RelroLevel::Full));
-    tracked!(soft_float, true);
     tracked!(split_debuginfo, Some(SplitDebuginfo::Packed));
     tracked!(symbol_mangling_version, Some(SymbolManglingVersion::V0));
     tracked!(target_cpu, Some(String::from("abc")));
@@ -690,7 +686,7 @@ fn test_unstable_options_tracking_hash() {
 
     // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
     // tidy-alphabetical-start
-    untracked!(assert_incr_state, Some(String::from("loaded")));
+    untracked!(assert_incr_state, Some(IncrementalStateAssertion::Loaded));
     untracked!(codegen_source_order, true);
     untracked!(deduplicate_diagnostics, false);
     untracked!(dump_dep_graph, true);
@@ -798,7 +794,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(dwarf_version, Some(5));
     tracked!(embed_metadata, false);
     tracked!(embed_source, true);
-    tracked!(emit_thin_lto, false);
     tracked!(emscripten_wasm_eh, false);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
@@ -826,6 +821,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(maximal_hir_to_mir_coverage, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(min_function_alignment, Some(Align::EIGHT));
+    tracked!(min_recursion_limit, Some(256));
     tracked!(mir_emit_retag, true);
     tracked!(mir_enable_passes, vec![("DestProp".to_string(), false)]);
     tracked!(mir_opt_level, Some(4));

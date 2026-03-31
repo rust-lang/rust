@@ -6,8 +6,7 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    #[type_const]
-    const K: usize;
+    type const K: usize;
 }
 
 // fn ctxt / body

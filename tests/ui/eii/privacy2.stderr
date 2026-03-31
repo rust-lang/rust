@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `eii3` in `codegen`
+error[E0433]: cannot find `eii3` in `codegen`
   --> $DIR/privacy2.rs:16:12
    |
 LL | #[codegen::eii3]

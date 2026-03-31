@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::peel_blocks;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet;
+use clippy_utils::{peel_blocks, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 
 use super::OPTION_AS_REF_DEREF;
 
@@ -58,7 +58,10 @@ pub(super) fn check(
                             .iter()
                             .map(|x| &x.kind)
                             .collect::<Box<[_]>>()
-                        && let [ty::adjustment::Adjust::Deref(ty::adjustment::DerefAdjustKind::Builtin), ty::adjustment::Adjust::Borrow(_)] = *adj
+                        && let [
+                            ty::adjustment::Adjust::Deref(ty::adjustment::DerefAdjustKind::Builtin),
+                            ty::adjustment::Adjust::Borrow(_),
+                        ] = *adj
                         && let method_did = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id).unwrap()
                         && let Some(method_name) = cx.tcx.get_diagnostic_name(method_did)
                     {

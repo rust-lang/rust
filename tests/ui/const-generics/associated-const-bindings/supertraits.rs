@@ -6,7 +6,7 @@
 #![feature(
     min_generic_const_args,
     adt_const_params,
-    unsized_const_params,
+    const_param_ty_trait,
     generic_const_parameter_types,
 )]
 #![allow(incomplete_features)]
@@ -16,8 +16,7 @@ use std::marker::ConstParamTy_;
 trait Trait: SuperTrait {}
 trait SuperTrait: SuperSuperTrait<i32> {}
 trait SuperSuperTrait<T: ConstParamTy_> {
-    #[type_const]
-    const K: T;
+    type const K: T;
 }
 
 fn take(_: impl Trait<K = 0>) {}

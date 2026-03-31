@@ -7,25 +7,20 @@
 #![expect(incomplete_features)]
 
 trait Trait: SuperTrait<C = 3> {
-    #[type_const]
-    const K: usize;
+    type const K: usize;
 }
 
 trait SuperTrait {
-    #[type_const]
-    const Q: usize;
-    #[type_const]
-    const C: usize;
+    type const Q: usize;
+    type const C: usize;
 }
 
 trait Bound {
-    #[type_const]
-    const N: usize;
+    type const N: usize;
 }
 
 impl Bound for () {
-    #[type_const]
-    const N: usize = 10;
+    type const N: usize = 10;
 }
 
 fn main() {

@@ -878,7 +878,7 @@ impl AsciiChar {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_char, ascii_char_variants, is_ascii_octdigit)]
+    /// #![feature(ascii_char, ascii_char_variants)]
     ///
     /// use std::ascii;
     ///

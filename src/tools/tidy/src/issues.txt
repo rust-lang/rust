@@ -117,7 +117,6 @@ ui/associated-types/issue-44153.rs
 ui/associated-types/issue-47139-1.rs
 ui/associated-types/issue-47139-2.rs
 ui/associated-types/issue-47385.rs
-ui/associated-types/issue-47814.rs
 ui/associated-types/issue-48010.rs
 ui/associated-types/issue-48551.rs
 ui/associated-types/issue-50301.rs
@@ -406,7 +405,6 @@ ui/closures/2229_closure_analysis/match/issue-87097.rs
 ui/closures/2229_closure_analysis/match/issue-87426.rs
 ui/closures/2229_closure_analysis/match/issue-87988.rs
 ui/closures/2229_closure_analysis/match/issue-88331.rs
-ui/closures/2229_closure_analysis/migrations/issue-78720.rs
 ui/closures/2229_closure_analysis/migrations/issue-86753.rs
 ui/closures/2229_closure_analysis/migrations/issue-90024-adt-correct-subst.rs
 ui/closures/2229_closure_analysis/run_pass/issue-87378.rs
@@ -927,7 +925,6 @@ ui/dst/issue-90528-unsizing-suggestion-3.rs
 ui/dst/issue-90528-unsizing-suggestion-4.rs
 ui/dyn-keyword/issue-5153.rs
 ui/dyn-keyword/issue-56327-dyn-trait-in-macro-is-okay.rs
-ui/empty/issue-37026.rs
 ui/enum-discriminant/auxiliary/issue-41394.rs
 ui/enum-discriminant/issue-104519.rs
 ui/enum-discriminant/issue-41394-rpass.rs
@@ -1002,7 +999,6 @@ ui/fmt/issue-86085.rs
 ui/fmt/issue-89173.rs
 ui/fmt/issue-91556.rs
 ui/fn/issue-1451.rs
-ui/fn/issue-1900.rs
 ui/fn/issue-3044.rs
 ui/fn/issue-3099.rs
 ui/fn/issue-3904.rs
@@ -1359,7 +1355,6 @@ ui/infinite/issue-41731-infinite-macro-print.rs
 ui/infinite/issue-41731-infinite-macro-println.rs
 ui/intrinsics/issue-28575.rs
 ui/intrinsics/issue-84297-reifying-copy.rs
-ui/invalid/issue-114435-layout-type-err.rs
 ui/iterators/issue-28098.rs
 ui/iterators/issue-58952-filter-type-length.rs
 ui/lang-items/issue-83471.rs
@@ -1477,7 +1472,6 @@ ui/lint/issue-97094.rs
 ui/lint/issue-99387.rs
 ui/lint/let_underscore/issue-119696-err-on-fn.rs
 ui/lint/let_underscore/issue-119697-extra-let.rs
-ui/lint/must_not_suspend/issue-89562.rs
 ui/lint/unused/issue-103320-must-use-ops.rs
 ui/lint/unused/issue-104397.rs
 ui/lint/unused/issue-105061-array-lint.rs
@@ -1706,9 +1700,6 @@ ui/mismatched_types/issue-47706.rs
 ui/mismatched_types/issue-74918-missing-lifetime.rs
 ui/mismatched_types/issue-75361-mismatched-impl.rs
 ui/mismatched_types/issue-84976.rs
-ui/missing-trait-bounds/auxiliary/issue-69725.rs
-ui/missing-trait-bounds/issue-35677.rs
-ui/missing-trait-bounds/issue-69725.rs
 ui/modules/auxiliary/issue-13872-1.rs
 ui/modules/auxiliary/issue-13872-2.rs
 ui/modules/auxiliary/issue-13872-3.rs
@@ -1726,14 +1717,6 @@ ui/moves/issue-46099-move-in-macro.rs
 ui/moves/issue-72649-uninit-in-loop.rs
 ui/moves/issue-75904-move-closure-loop.rs
 ui/moves/issue-99470-move-out-of-some.rs
-ui/never_type/issue-10176.rs
-ui/never_type/issue-13352.rs
-ui/never_type/issue-2149.rs
-ui/never_type/issue-44402.rs
-ui/never_type/issue-51506.rs
-ui/never_type/issue-52443.rs
-ui/never_type/issue-5500-1.rs
-ui/never_type/issue-96335.rs
 ui/nll/closure-requirements/issue-58127-mutliple-requirements.rs
 ui/nll/issue-112604-closure-output-normalize.rs
 ui/nll/issue-16223.rs
@@ -2292,8 +2275,6 @@ ui/recursion/issue-38591-non-regular-dropck-recursion.rs
 ui/recursion/issue-83150.rs
 ui/recursion/issue-86784.rs
 ui/recursion/issue-95134.rs
-ui/recursion_limit/issue-105700.rs
-ui/recursion_limit/issue-40003.rs
 ui/regions/issue-101280.rs
 ui/regions/issue-102374.rs
 ui/regions/issue-102392.rs
@@ -2414,7 +2395,6 @@ ui/rfcs/rfc-2396-target_feature-11/issue-99876.rs
 ui/rfcs/rfc-2497-if-let-chains/issue-88498.rs
 ui/rfcs/rfc-2497-if-let-chains/issue-90722.rs
 ui/rfcs/rfc-2497-if-let-chains/issue-92145.rs
-ui/rfcs/rfc-2497-if-let-chains/issue-93150.rs
 ui/rfcs/rfc-2497-if-let-chains/issue-99938.rs
 ui/rfcs/rfc-2528-type-changing-struct-update/issue-92010-trait-bound-not-satisfied.rs
 ui/rfcs/rfc-2528-type-changing-struct-update/issue-96878.rs
@@ -2450,7 +2430,6 @@ ui/single-use-lifetime/issue-107998.rs
 ui/single-use-lifetime/issue-117965.rs
 ui/span/issue-107353.rs
 ui/span/issue-11925.rs
-ui/span/issue-15480.rs
 ui/span/issue-23338-locals-die-before-temps-of-body.rs
 ui/span/issue-23729.rs
 ui/span/issue-23827.rs
@@ -2978,7 +2957,6 @@ ui/unboxed-closures/issue-18652.rs
 ui/unboxed-closures/issue-18661.rs
 ui/unboxed-closures/issue-30906.rs
 ui/unboxed-closures/issue-53448.rs
-ui/underscore-imports/issue-110164.rs
 ui/uniform-paths/auxiliary/issue-53691.rs
 ui/uniform-paths/issue-53691.rs
 ui/uninhabited/issue-107505.rs

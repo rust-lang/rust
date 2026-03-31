@@ -8,8 +8,8 @@ use std::marker::PhantomData;
 use crate::tokenstream::LazyAttrTokenStream;
 use crate::{
     Arm, AssocItem, AttrItem, AttrKind, AttrVec, Attribute, Block, Crate, Expr, ExprField,
-    FieldDef, ForeignItem, GenericParam, Item, NodeId, Param, Pat, PatField, Path, Stmt, StmtKind,
-    Ty, Variant, Visibility, WherePredicate,
+    FieldDef, ForeignItem, GenericParam, ImplRestriction, Item, NodeId, Param, Pat, PatField, Path,
+    Stmt, StmtKind, Ty, Variant, Visibility, WherePredicate,
 };
 
 /// A trait for AST nodes having an ID.
@@ -97,7 +97,19 @@ macro_rules! impl_has_tokens_none {
     };
 }
 
-impl_has_tokens!(AssocItem, AttrItem, Block, Expr, ForeignItem, Item, Pat, Path, Ty, Visibility);
+impl_has_tokens!(
+    AssocItem,
+    AttrItem,
+    Block,
+    Expr,
+    ForeignItem,
+    Item,
+    Pat,
+    Path,
+    Ty,
+    Visibility,
+    ImplRestriction
+);
 impl_has_tokens_none!(
     Arm,
     ExprField,
@@ -242,7 +254,7 @@ impl_has_attrs!(
     Variant,
     WherePredicate,
 );
-impl_has_attrs_none!(Attribute, AttrItem, Block, Pat, Path, Ty, Visibility);
+impl_has_attrs_none!(Attribute, AttrItem, Block, Pat, Path, Ty, Visibility, ImplRestriction);
 
 impl<T: HasAttrs> HasAttrs for Box<T> {
     const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::SUPPORTS_CUSTOM_INNER_ATTRS;

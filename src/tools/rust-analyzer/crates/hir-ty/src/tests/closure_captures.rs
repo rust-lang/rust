@@ -1,5 +1,8 @@
 use expect_test::{Expect, expect};
-use hir_def::db::DefDatabase;
+use hir_def::{
+    DefWithBodyId,
+    expr_store::{Body, ExpressionStore},
+};
 use hir_expand::{HirFileId, files::InFileWrapper};
 use itertools::Itertools;
 use span::TextRange;
@@ -28,19 +31,20 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
 
         let mut captures_info = Vec::new();
         for def in defs {
-            let def = match def {
+            let def: DefWithBodyId = match def {
                 hir_def::ModuleDefId::FunctionId(it) => it.into(),
                 hir_def::ModuleDefId::EnumVariantId(it) => it.into(),
                 hir_def::ModuleDefId::ConstId(it) => it.into(),
                 hir_def::ModuleDefId::StaticId(it) => it.into(),
                 _ => continue,
             };
-            let infer = InferenceResult::for_body(&db, def);
+            let infer = InferenceResult::of(&db, def);
             let db = &db;
             captures_info.extend(infer.closure_info.iter().flat_map(
                 |(closure_id, (captures, _))| {
                     let closure = db.lookup_intern_closure(*closure_id);
-                    let source_map = db.body_with_source_map(closure.0).1;
+                    let body_owner = closure.0;
+                    let source_map = ExpressionStore::with_source_map(db, body_owner).1;
                     let closure_text_range = source_map
                         .expr_syntax(closure.1)
                         .expect("failed to map closure to SyntaxNode")
@@ -56,7 +60,8 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
                         }
 
                         // FIXME: Deduplicate this with hir::Local::sources().
-                        let (body, source_map) = db.body_with_source_map(closure.0);
+                        let (body, source_map) =
+                            Body::with_source_map(db, body_owner.as_def_with_body().unwrap());
                         let local_text_range =
                             match body.self_param.zip(source_map.self_param_syntax()) {
                                 Some((param, source)) if param == capture.local() => {
@@ -71,7 +76,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
                                     .map(|it| format!("{it:?}"))
                                     .join(", "),
                             };
-                        let place = capture.display_place(closure.0, db);
+                        let place = capture.display_place(body_owner, db);
                         let capture_ty = capture
                             .ty
                             .get()

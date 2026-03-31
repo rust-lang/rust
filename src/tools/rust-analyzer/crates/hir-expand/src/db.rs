@@ -58,8 +58,8 @@ pub trait ExpandDatabase: RootQueryDb {
     fn proc_macros_for_crate(&self, krate: Crate) -> Option<Arc<CrateProcMacros>>;
 
     #[salsa::invoke(ast_id_map)]
-    #[salsa::lru(1024)]
-    fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
+    #[salsa::transparent]
+    fn ast_id_map(&self, file_id: HirFileId) -> &AstIdMap;
 
     #[salsa::transparent]
     fn resolve_span(&self, span: Span) -> FileRange;
@@ -162,7 +162,7 @@ fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) ->
 }
 
 fn resolve_span(db: &dyn ExpandDatabase, Span { range, anchor, ctx: _ }: Span) -> FileRange {
-    let file_id = EditionedFileId::from_span_guess_origin(db, anchor.file_id);
+    let file_id = EditionedFileId::from_span_file_id(db, anchor.file_id);
     let anchor_offset =
         db.ast_id_map(file_id.into()).get_erased(anchor.ast_id).text_range().start();
     FileRange { file_id, range: range + anchor_offset }
@@ -334,8 +334,9 @@ pub fn expand_speculative(
     Some((node.syntax_node(), token))
 }
 
-fn ast_id_map(db: &dyn ExpandDatabase, file_id: HirFileId) -> triomphe::Arc<AstIdMap> {
-    triomphe::Arc::new(AstIdMap::from_source(&db.parse_or_expand(file_id)))
+#[salsa::tracked(lru = 1024, returns(ref))]
+fn ast_id_map(db: &dyn ExpandDatabase, file_id: HirFileId) -> AstIdMap {
+    AstIdMap::from_source(&db.parse_or_expand(file_id))
 }
 
 /// Main public API -- parses a hir file, not caring whether it's a real

@@ -37,18 +37,6 @@ LL | struct B<T>(A<A<T>>);
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
-error[E0119]: conflicting implementations of trait `Foo` for type `B<u8>`
-  --> $DIR/issue-105231.rs:8:1
-   |
-LL | impl<T> Foo for T where T: Send {}
-   | ------------------------------- first implementation here
-LL | impl Foo for B<u8> {}
-   | ^^^^^^^^^^^^^^^^^^ conflicting implementation for `B<u8>`
-   |
-   = note: overflow evaluating the requirement `B<u8>: Send`
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_105231`)
+error: aborting due to 3 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0072, E0119.
-For more information about an error, try `rustc --explain E0072`.
+For more information about this error, try `rustc --explain E0072`.

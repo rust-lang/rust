@@ -4,8 +4,8 @@
 #![allow(incomplete_features)]
 
 trait Trait {
-    #[type_const]
-    const ASSOC: u8;
+
+    type const ASSOC: u8;
 }
 
 struct TakesArr<const N: [u8; 1]>;

@@ -104,7 +104,7 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
                     if self.depth >= self.cause_depth {
                         self.cause = Some(error.obligation.cause);
                         if let hir::TyKind::TraitObject(..) = ty.kind
-                            && let DefKind::AssocTy | DefKind::AssocConst | DefKind::AssocFn =
+                            && let DefKind::AssocTy | DefKind::AssocConst { .. } | DefKind::AssocFn =
                                 self.tcx.def_kind(self.def_id)
                         {
                             self.cause = Some(ObligationCause::new(
@@ -139,7 +139,7 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
             },
             hir::Node::TraitItem(item) => match item.kind {
                 hir::TraitItemKind::Type(_, ty) => ty.into_iter().collect(),
-                hir::TraitItemKind::Const(ty, _) => vec![ty],
+                hir::TraitItemKind::Const(ty, _, _) => vec![ty],
                 ref item => bug!("Unexpected TraitItem {:?}", item),
             },
             hir::Node::Item(item) => match item.kind {

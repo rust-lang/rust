@@ -114,9 +114,7 @@ pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
 
     let vtable_alloc_id = tcx.vtable_allocation((ty, trait_ref));
     let vtable_allocation = tcx.global_alloc(vtable_alloc_id).unwrap_memory();
-    let vtable_const = cx.const_data_from_alloc(vtable_allocation);
-    let align = cx.data_layout().pointer_align().abi;
-    let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));
+    let vtable = cx.static_addr_of(vtable_allocation, Some("vtable"));
 
     cx.apply_vcall_visibility_metadata(ty, trait_ref, vtable);
     cx.create_vtable_debuginfo(ty, trait_ref, vtable);
@@ -139,9 +137,8 @@ pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         && bx.cx().sess().lto() == Lto::Fat
     {
         if let Some(trait_ref) = dyn_trait_in_self(bx.tcx(), ty) {
-            let typeid =
-                bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), trait_ref).as_bytes()).unwrap();
-            let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
+            let typeid = typeid_for_trait_ref(bx.tcx(), trait_ref);
+            let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid.as_bytes());
             return func;
         } else if nonnull {
             bug!("load nonnull value from a vtable without a principal trait")

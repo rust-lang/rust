@@ -96,7 +96,7 @@ fn hash_stable_derive_with_mode(
 
     let context: syn::Type = match mode {
         HashStableMode::Normal => {
-            parse_quote!(::rustc_query_system::ich::StableHashingContext<'__ctx>)
+            parse_quote!(::rustc_middle::ich::StableHashingContext<'__ctx>)
         }
         HashStableMode::Generic | HashStableMode::NoContext => parse_quote!(__CTX),
     };

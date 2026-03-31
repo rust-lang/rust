@@ -3,7 +3,6 @@
 #![feature(exact_div)]
 #![feature(f128)]
 #![feature(f16)]
-#![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(macro_metavar_expr_concat)]
@@ -103,6 +102,7 @@ mod default_union_representation;
 mod dereference;
 mod derivable_impls;
 mod derive;
+mod disallowed_fields;
 mod disallowed_macros;
 mod disallowed_methods;
 mod disallowed_names;
@@ -210,6 +210,7 @@ mod manual_let_else;
 mod manual_main_separator_str;
 mod manual_non_exhaustive;
 mod manual_option_as_slice;
+mod manual_pop_if;
 mod manual_range_patterns;
 mod manual_rem_euclid;
 mod manual_retain;
@@ -857,11 +858,13 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(toplevel_ref_arg::ToplevelRefArg)),
         Box::new(|_| Box::new(volatile_composites::VolatileComposites)),
         Box::new(|_| Box::<replace_box::ReplaceBox>::default()),
+        Box::new(move |tcx| Box::new(disallowed_fields::DisallowedFields::new(tcx, conf))),
         Box::new(move |_| Box::new(manual_ilog2::ManualIlog2::new(conf))),
         Box::new(|_| Box::new(same_length_and_capacity::SameLengthAndCapacity)),
         Box::new(move |tcx| Box::new(duration_suboptimal_units::DurationSuboptimalUnits::new(tcx, conf))),
         Box::new(move |_| Box::new(manual_take::ManualTake::new(conf))),
         Box::new(|_| Box::new(manual_checked_ops::ManualCheckedOps)),
+        Box::new(move |_| Box::new(manual_pop_if::ManualPopIf::new(conf))),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);

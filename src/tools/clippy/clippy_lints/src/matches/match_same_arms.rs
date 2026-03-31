@@ -12,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Arm, Expr, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatExpr, PatExprKind, PatKind, RangeEnd};
 use rustc_lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, TypeckResults};
 use rustc_span::{ByteSymbol, ErrorGuaranteed, Span, Symbol};
 
 use super::MATCH_SAME_ARMS;
@@ -61,7 +61,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
 
         let check_eq_with_pat = |expr_a: &Expr<'_>, expr_b: &Expr<'_>| {
             let mut local_map: HirIdMap<HirId> = HirIdMap::default();
-            let eq_fallback = |a: &Expr<'_>, b: &Expr<'_>| {
+            let eq_fallback = |a_typeck_results: &TypeckResults<'tcx>,
+                               a: &Expr<'_>,
+                               b_typeck_results: &TypeckResults<'tcx>,
+                               b: &Expr<'_>| {
                 if let Some(a_id) = a.res_local_id()
                     && let Some(b_id) = b.res_local_id()
                     && let entry = match local_map.entry(a_id) {
@@ -71,7 +74,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                     }
                     // the names technically don't have to match; this makes the lint more conservative
                     && cx.tcx.hir_name(a_id) == cx.tcx.hir_name(b_id)
-                    && cx.typeck_results().expr_ty(a) == cx.typeck_results().expr_ty(b)
+                    && a_typeck_results.expr_ty(a) == b_typeck_results.expr_ty(b)
                     && pat_contains_local(lhs.pat, a_id)
                     && pat_contains_local(rhs.pat, b_id)
                 {
@@ -129,7 +132,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                     diag.span_label(last.span, "the wildcard arm");
 
                     let s = if prev.len() > 1 { "s" } else { "" };
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         format!("otherwise remove the non-wildcard arm{s}"),
                         prev.iter()
                             .map(|(_, arm)| (adjusted_arm_span(cx, arm.span), String::new()))
@@ -158,7 +161,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                             .chain([(dest.pat.span, pat_snippets.iter().join(" | "))])
                             .collect_vec();
 
-                        diag.multipart_suggestion_verbose(
+                        diag.multipart_suggestion(
                             "otherwise merge the patterns into a single arm",
                             suggs,
                             Applicability::MaybeIncorrect,

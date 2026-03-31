@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Maybe` for type `()`
-  --> $DIR/coherence.rs:15:1
+  --> $DIR/coherence.rs:13:1
    |
 LL | impl Maybe for () {}
    | ----------------- first implementation here

@@ -1831,7 +1831,7 @@ fn sysroot_to_crate_graph(
                     let display_name = CrateDisplayName::from_canonical_name(&stitched[krate].name);
                     let crate_id = crate_graph.add_crate_root(
                         file_id,
-                        Edition::CURRENT_FIXME,
+                        stitched.edition,
                         Some(display_name),
                         None,
                         cfg_options.clone(),

@@ -43,6 +43,7 @@
 //!     dispatch_from_dyn: unsize, pin
 //!     hash: sized
 //!     include:
+//!     include_bytes:
 //!     index: sized
 //!     infallible:
 //!     int_impl: size_of, transmute
@@ -953,6 +954,9 @@ pub mod ops {
             #[lang = "from_residual"]
             fn from_residual(residual: R) -> Self;
         }
+        pub const trait Residual<O>: Sized {
+            type TryType: [const] Try<Output = O, Residual = Self>;
+        }
         #[lang = "Try"]
         pub trait Try: FromResidual<Self::Residual> {
             type Output;
@@ -961,6 +965,12 @@ pub mod ops {
             fn from_output(output: Self::Output) -> Self;
             #[lang = "branch"]
             fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
+        }
+        #[lang = "into_try_type"]
+        pub const fn residual_into_try_type<R: [const] Residual<O>, O>(
+            r: R,
+        ) -> <R as Residual<O>>::TryType {
+            FromResidual::from_residual(r)
         }
 
         impl<B, C> Try for ControlFlow<B, C> {
@@ -985,6 +995,10 @@ pub mod ops {
                 }
             }
         }
+
+        impl<B, C> Residual<C> for ControlFlow<B, Infallible> {
+            type TryType = ControlFlow<B, C>;
+        }
         // region:option
         impl<T> Try for Option<T> {
             type Output = T;
@@ -1007,6 +1021,10 @@ pub mod ops {
                     Some(_) => loop {},
                 }
             }
+        }
+
+        impl<T> const Residual<T> for Option<Infallible> {
+            type TryType = Option<T>;
         }
         // endregion:option
         // region:result
@@ -1037,10 +1055,14 @@ pub mod ops {
                 }
             }
         }
+
+        impl<T, E> const Residual<T> for Result<Infallible, E> {
+            type TryType = Result<T, E>;
+        }
         // endregion:from
         // endregion:result
     }
-    pub use self::try_::{ControlFlow, FromResidual, Try};
+    pub use self::try_::{ControlFlow, FromResidual, Residual, Try};
     // endregion:try
 
     // region:add
@@ -1481,6 +1503,19 @@ pub mod slice {
             loop {}
         }
     }
+
+    // region:default
+    impl<T> const Default for &[T] {
+        fn default() -> Self {
+            &[]
+        }
+    }
+    impl<T> const Default for &mut [T] {
+        fn default() -> Self {
+            &mut []
+        }
+    }
+    // endregion:default
 }
 // endregion:slice
 
@@ -1667,6 +1702,21 @@ pub mod iter {
             }
         }
 
+        pub struct Filter<I, P> {
+            iter: I,
+            predicate: P,
+        }
+        impl<I: Iterator, P> Iterator for Filter<I, P>
+        where
+            P: FnMut(&I::Item) -> bool,
+        {
+            type Item = I::Item;
+
+            fn next(&mut self) -> Option<I::Item> {
+                loop {}
+            }
+        }
+
         pub struct FilterMap<I, F> {
             iter: I,
             f: F,
@@ -1683,7 +1733,7 @@ pub mod iter {
             }
         }
     }
-    pub use self::adapters::{FilterMap, Take};
+    pub use self::adapters::{Filter, FilterMap, Take};
 
     mod sources {
         mod repeat {
@@ -1731,6 +1781,13 @@ pub mod iter {
                 fn take(self, n: usize) -> crate::iter::Take<Self>
                 where
                     Self: Sized,
+                {
+                    loop {}
+                }
+                fn filter<P>(self, predicate: P) -> crate::iter::Filter<Self, P>
+                where
+                    Self: Sized,
+                    P: FnMut(&Self::Item) -> bool,
                 {
                     loop {}
                 }
@@ -2039,6 +2096,14 @@ mod macros {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
     // endregion:include
+
+    // region:include_bytes
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! include_bytes {
+        ($file:expr $(,)?) => {{ /* compiler built-in */ }};
+    }
+    // endregion:include_bytes
 
     // region:concat
     #[rustc_builtin_macro]

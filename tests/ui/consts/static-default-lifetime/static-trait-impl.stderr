@@ -4,13 +4,13 @@ error: `&` without an explicit lifetime name cannot be used here
 LL |     const STATIC: &str = "";
    |                   ^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
 note: cannot automatically infer `'static` because of other lifetimes in scope
   --> $DIR/static-trait-impl.rs:8:10
    |
 LL | impl Bar<'_> for A {
    |          ^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
 note: the lint level is defined here
   --> $DIR/static-trait-impl.rs:1:9
    |

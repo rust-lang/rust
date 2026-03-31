@@ -66,6 +66,23 @@ process for such contributions:
 This process is largely informal, and its primary goal is to more clearly communicate expectations.
 Please get in touch with us if you have any questions!
 
+## Scope of Miri shims
+
+Miri has "shims" to implement functionality that is usually implemented in C libraries which are
+invoked from Rust code, such as opening files or spawning threads, as well as for
+CPU-vendor-provided SIMD intrinsics. However, the set of C functions that Rust code invokes this way
+is enormous, and for obvious reasons we have no intention of implementing every C API ever written
+in Miri.
+
+At the moment, the general guideline for "could this function have a shim in Miri" is: we will
+generally only add shims for functions that can be implemented in a portable way using just what is
+provided by the Rust standard library. The function should also be reasonably widely-used in Rust
+code to justify the review and maintenance effort (i.e. the easier the function is to implement, the
+lower the barrier). Other than that, we might make exceptions for certain cases if (a) there is a
+good case for why Miri should support those APIs, and (b) robust and widely-used portable libraries
+exist in the Rust ecosystem. We will generally not add shims to Miri that would require Miri to
+directly interact with platform-specific APIs (such as `libc` or `windows-sys`).
+
 ## Preparing the build environment
 
 Miri heavily relies on internal and unstable rustc interfaces to execute MIR,
@@ -154,8 +171,8 @@ MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/pass/v
 ```
 
 Note that you will only get `info`, `warn` or `error` messages if you use a prebuilt compiler.
-In order to get `debug` and `trace` level messages, you need to build miri with a locally built
-compiler that has `debug=true` set in `bootstrap.toml`.
+In order to get `debug` and `trace` level messages, you need to build miri with a [locally built
+compiler](#advanced-topic-building-miri-against-a-locally-compiled-rustc) that has `debug=true` set in `bootstrap.toml`.
 
 #### Debugging error messages
 
@@ -171,6 +188,8 @@ you can visualize in [Perfetto](https://ui.perfetto.dev/). For example:
 ```sh
 MIRI_TRACING=1 ./miri run --features=tracing tests/pass/hello.rs
 ```
+
+See [doc/tracing.md](./doc/tracing.md) for more information.
 
 ### UI testing
 
@@ -299,6 +318,33 @@ You can also directly run Miri on a Rust source file:
 
 ```
 ./x.py run miri --stage 1 --args src/tools/miri/tests/pass/hello.rs
+```
+
+## Advanced topic: Building Miri against a locally compiled rustc
+
+Very rarely, it can be necessary to work with an out-of-tree Miri but build it against a rustc that
+was locally compiled. (Usually, you should instead work on the Miri that's in the Rust tree, as
+described in the previous subsection.)
+
+This requires a fully bootstrapped build:
+
+```sh
+# Build rustc, then build rustc with that rustc. This can take a while.
+./x build library --stage 3
+```
+
+You also need to set up a linked toolchain with rustup:
+
+```sh
+rustup toolchain link stage2 build/host/stage2
+```
+
+Then in the Miri folder, you can set this as the current toolchain and build against it:
+
+```sh
+rustup override set stage2
+# Prevent `./miri` from reseting the toolchain.
+export MIRI_AUTO_OPS=no
 ```
 
 ## Advanced topic: Syncing with the rustc repo

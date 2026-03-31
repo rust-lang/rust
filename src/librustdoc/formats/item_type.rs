@@ -122,7 +122,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::StaticItem(..) => ItemType::Static,
             clean::ConstantItem(..) => ItemType::Constant,
             clean::TraitItem(..) => ItemType::Trait,
-            clean::ImplItem(..) => ItemType::Impl,
+            clean::ImplItem(..) | clean::PlaceholderImplItem => ItemType::Impl,
             clean::RequiredMethodItem(..) => ItemType::TyMethod,
             clean::MethodItem(..) => ItemType::Method,
             clean::StructFieldItem(..) => ItemType::StructField,
@@ -156,7 +156,7 @@ impl ItemType {
             DefKind::Enum => Self::Enum,
             DefKind::Fn => Self::Function,
             DefKind::Mod => Self::Module,
-            DefKind::Const => Self::Constant,
+            DefKind::Const { .. } => Self::Constant,
             DefKind::Static { .. } => Self::Static,
             DefKind::Struct => Self::Struct,
             DefKind::Union => Self::Union,
@@ -180,7 +180,7 @@ impl ItemType {
             }
             DefKind::Ctor(CtorOf::Struct, _) => Self::Struct,
             DefKind::Ctor(CtorOf::Variant, _) => Self::Variant,
-            DefKind::AssocConst => Self::AssocConst,
+            DefKind::AssocConst { .. } => Self::AssocConst,
             DefKind::TyParam
             | DefKind::ConstParam
             | DefKind::ExternCrate

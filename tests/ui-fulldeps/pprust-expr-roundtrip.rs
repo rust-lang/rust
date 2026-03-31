@@ -38,9 +38,8 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust;
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, Spanned};
 use thin_vec::{thin_vec, ThinVec};
 
 // Helper functions for building exprs
@@ -219,7 +218,7 @@ fn main() {
 }
 
 fn run() {
-    let psess = ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE]);
+    let psess = ParseSess::new();
 
     iter_exprs(2, &mut |mut e| {
         // If the pretty printer is correct, then `parse(print(e))` should be identical to `e`,

@@ -7,13 +7,11 @@
 // though it contained inference variables, which would cause ICEs.
 
 trait Foo {
-    #[type_const]
-    const ASSOC<const N: u32>: u32;
+    type const ASSOC<const N: u32>: u32;
 }
 
 impl Foo for () {
-    #[type_const]
-    const ASSOC<const N: u32>: u32 = N;
+    type const ASSOC<const N: u32>: u32 = N;
 }
 
 fn bar<const N: u32, T: Foo<ASSOC<N> = 10>>() {}

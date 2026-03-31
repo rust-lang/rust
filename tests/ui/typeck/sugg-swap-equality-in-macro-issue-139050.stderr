@@ -2,7 +2,12 @@ error[E0425]: cannot find type `Item` in this scope
   --> $DIR/sugg-swap-equality-in-macro-issue-139050.rs:29:5
    |
 LL |     Item: Eq + Debug,
-   |     ^^^^ not found in this scope
+   |     ^^^^
+   |
+help: you might have meant to use an associated type of the same name
+   |
+LL |     I::Item: Eq + Debug,
+   |     +++
 
 error[E0308]: mismatched types
   --> $DIR/sugg-swap-equality-in-macro-issue-139050.rs:31:5

@@ -46,6 +46,8 @@ declare_clippy_lint! {
     "enforce import renames"
 }
 
+impl_lint_pass!(ImportRename => [MISSING_ENFORCED_IMPORT_RENAMES]);
+
 pub struct ImportRename {
     renames: DefIdMap<Symbol>,
 }
@@ -66,8 +68,6 @@ impl ImportRename {
         }
     }
 }
-
-impl_lint_pass!(ImportRename => [MISSING_ENFORCED_IMPORT_RENAMES]);
 
 impl LateLintPass<'_> for ImportRename {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
@@ -97,7 +97,7 @@ impl LateLintPass<'_> for ImportRename {
                         span_without_semi,
                         "this import should be renamed",
                         "try",
-                        format!("{import} as {name}",),
+                        format!("{import} as {name}"),
                         Applicability::MachineApplicable,
                     );
                 }

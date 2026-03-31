@@ -31,6 +31,7 @@ declare_clippy_lint! {
     restriction,
     "empty `Drop` implementations"
 }
+
 declare_lint_pass!(EmptyDrop => [EMPTY_DROP]);
 
 impl LateLintPass<'_> for EmptyDrop {

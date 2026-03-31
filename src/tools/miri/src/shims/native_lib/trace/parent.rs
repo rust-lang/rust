@@ -395,8 +395,6 @@ fn capstone_find_events(
                 _ => (),
             }
         }
-        // FIXME: arm64
-        _ => unimplemented!(),
     }
 
     false

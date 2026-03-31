@@ -39,6 +39,8 @@ declare_clippy_lint! {
     "capitalized acronyms are against the naming convention"
 }
 
+impl_lint_pass!(UpperCaseAcronyms => [UPPER_CASE_ACRONYMS]);
+
 pub struct UpperCaseAcronyms {
     avoid_breaking_exported_api: bool,
     upper_case_acronyms_aggressive: bool,
@@ -52,8 +54,6 @@ impl UpperCaseAcronyms {
         }
     }
 }
-
-impl_lint_pass!(UpperCaseAcronyms => [UPPER_CASE_ACRONYMS]);
 
 fn contains_acronym(s: &str) -> bool {
     let mut count = 0;

@@ -66,10 +66,10 @@ impl IsolatedAlloc {
         // And make sure the align is at least one page
         let align = std::cmp::max(layout.align(), self.page_size);
         // pg_count gives us the # of pages needed to satisfy the size. For
-        // align > page_size where align = n * page_size, a sufficently-aligned
+        // align > page_size where align = n * page_size, a sufficiently-aligned
         // address must exist somewhere in the range of
         // some_page_aligned_address..some_page_aligned_address + (n-1) * page_size
-        // (since if some_page_aligned_address + n * page_size is sufficently aligned,
+        // (since if some_page_aligned_address + n * page_size is sufficiently aligned,
         // then so is some_page_aligned_address itself per the definition of n, so we
         // can avoid using that 1 extra page).
         // Thus we allocate n-1 extra pages

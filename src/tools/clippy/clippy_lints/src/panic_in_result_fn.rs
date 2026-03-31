@@ -40,7 +40,7 @@ declare_clippy_lint! {
     "functions of type `Result<..>` that contain `panic!()` or assertion"
 }
 
-declare_lint_pass!(PanicInResultFn  => [PANIC_IN_RESULT_FN]);
+declare_lint_pass!(PanicInResultFn => [PANIC_IN_RESULT_FN]);
 
 impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
     fn check_fn(

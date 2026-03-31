@@ -42,12 +42,10 @@ pub fn foo2() -> Box<dyn TestTrait2> {
 }
 
 //~ MONO_ITEM fn <TestStruct2 as TestTrait2>::test_func2
-//~ MONO_ITEM fn alloc::alloc::exchange_malloc
 //~ MONO_ITEM fn foo2
 //~ MONO_ITEM fn std::alloc::Global::alloc_impl_runtime
 //~ MONO_ITEM fn std::boxed::Box::<TestStruct2>::new
-//~ MONO_ITEM fn std::alloc::Layout::from_size_align_unchecked::precondition_check
-//~ MONO_ITEM fn std::ptr::Alignment::new_unchecked::precondition_check
+//~ MONO_ITEM fn std::boxed::box_new_uninit
 //~ MONO_ITEM fn std::ptr::NonNull::<T>::new_unchecked::precondition_check
 
 struct Counter {
@@ -88,3 +86,4 @@ pub fn foo3() -> Box<dyn Iterator<Item = usize>> {
 //~ MONO_ITEM fn std::boxed::Box::<Counter>::new
 //~ MONO_ITEM fn Counter::new
 //~ MONO_ITEM fn std::fmt::Arguments::<'_>::from_str
+//~ MONO_ITEM fn std::boxed::box_new_uninit

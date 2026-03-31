@@ -1,4 +1,5 @@
 //@ needs-asm-support
+//@ reference: asm.operand-type.supported-operands.sym
 
 use std::arch::asm;
 

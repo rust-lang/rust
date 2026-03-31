@@ -1,9 +1,7 @@
 //! Construction of MIR from HIR.
 
 // tidy-alphabetical-start
-#![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(if_let_guard)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
@@ -17,8 +15,6 @@ mod errors;
 pub mod thir;
 
 use rustc_middle::util::Providers;
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     providers.queries.check_match = thir::pattern::check_match;

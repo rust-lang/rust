@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::usage::mutated_variables;
-use clippy_utils::{eq_expr_value, higher};
+use clippy_utils::{eq_expr_value, higher, sym};
 use rustc_ast::BindingMode;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
@@ -15,8 +15,7 @@ use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Symbol, SyntaxContext, sym};
+use rustc_span::{Spanned, Symbol, SyntaxContext};
 use std::iter;
 
 declare_clippy_lint! {
@@ -50,6 +49,8 @@ declare_clippy_lint! {
     "suggests using `strip_{prefix,suffix}` over `str::{starts,ends}_with` and slicing"
 }
 
+impl_lint_pass!(ManualStrip => [MANUAL_STRIP]);
+
 pub struct ManualStrip {
     msrv: Msrv,
 }
@@ -59,8 +60,6 @@ impl ManualStrip {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(ManualStrip => [MANUAL_STRIP]);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum StripKind {
@@ -242,13 +241,13 @@ fn find_stripping<'tcx>(
                 && self.cx.qpath_res(path, ex.hir_id) == self.target
             {
                 match (self.strip_kind, start, end) {
-                    (StripKind::Prefix, Some(start), None) => {
-                        if eq_pattern_length(self.cx, self.pattern, start, self.ctxt) {
-                            self.results.push(ex);
-                            return;
-                        }
+                    (StripKind::Prefix, Some(start), None)
+                        if eq_pattern_length(self.cx, self.pattern, start, self.ctxt) =>
+                    {
+                        self.results.push(ex);
+                        return;
                     },
-                    (StripKind::Suffix, None, Some(end)) => {
+                    (StripKind::Suffix, None, Some(end))
                         if let ExprKind::Binary(
                             Spanned {
                                 node: BinOpKind::Sub, ..
@@ -259,11 +258,10 @@ fn find_stripping<'tcx>(
                             && let Some(left_arg) = len_arg(self.cx, left)
                             && let ExprKind::Path(left_path) = &left_arg.kind
                             && self.cx.qpath_res(left_path, left_arg.hir_id) == self.target
-                            && eq_pattern_length(self.cx, self.pattern, right, self.ctxt)
-                        {
-                            self.results.push(ex);
-                            return;
-                        }
+                            && eq_pattern_length(self.cx, self.pattern, right, self.ctxt) =>
+                    {
+                        self.results.push(ex);
+                        return;
                     },
                     _ => {},
                 }

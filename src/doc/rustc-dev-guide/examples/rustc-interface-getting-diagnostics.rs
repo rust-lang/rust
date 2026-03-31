@@ -15,7 +15,7 @@ extern crate rustc_span;
 use std::sync::{Arc, Mutex};
 
 use rustc_errors::emitter::Emitter;
-use rustc_errors::registry::{self, Registry};
+use rustc_errors::registry::Registry;
 use rustc_errors::translation::Translate;
 use rustc_errors::{DiagInner, FluentBundle};
 use rustc_session::config;
@@ -59,14 +59,13 @@ fn main() {
     let x: &str = 1;
 }
 "
-            .into(),
+                .into(),
         },
         crate_cfg: Vec::new(),
         crate_check_cfg: Vec::new(),
         output_dir: None,
         output_file: None,
         file_loader: None,
-        locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES.to_owned(),
         lint_caps: rustc_hash::FxHashMap::default(),
         psess_created: Some(Box::new(|parse_sess| {
             parse_sess.dcx().set_emitter(Box::new(DebugEmitter {
@@ -76,7 +75,6 @@ fn main() {
         })),
         register_lints: None,
         override_queries: None,
-        registry: registry::Registry::new(rustc_errors::codes::DIAGNOSTICS),
         make_codegen_backend: None,
         expanded_args: Vec::new(),
         ice_file: None,

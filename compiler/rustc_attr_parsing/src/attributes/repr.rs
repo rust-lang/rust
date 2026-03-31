@@ -1,4 +1,4 @@
-use rustc_abi::Align;
+use rustc_abi::{Align, Size};
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
 use rustc_hir::attrs::{IntType, ReprAttr};
 
@@ -229,7 +229,7 @@ fn parse_repr_align<S: Stage>(
         return None;
     };
 
-    match parse_alignment(&lit.kind) {
+    match parse_alignment(&lit.kind, cx) {
         Ok(literal) => Some(match align_kind {
             AlignKind::Packed => ReprAttr::ReprPacked(literal),
             AlignKind::Align => ReprAttr::ReprAlign(literal),
@@ -248,31 +248,43 @@ fn parse_repr_align<S: Stage>(
     }
 }
 
-fn parse_alignment(node: &LitKind) -> Result<Align, &'static str> {
-    if let LitKind::Int(literal, LitIntType::Unsuffixed) = node {
-        // `Align::from_bytes` accepts 0 as an input, check is_power_of_two() first
-        if literal.get().is_power_of_two() {
-            // Only possible error is larger than 2^29
-            literal
-                .get()
-                .try_into()
-                .ok()
-                .and_then(|v| Align::from_bytes(v).ok())
-                .ok_or("larger than 2^29")
-        } else {
-            Err("not a power of two")
-        }
-    } else {
-        Err("not an unsuffixed integer")
+fn parse_alignment<S: Stage>(
+    node: &LitKind,
+    cx: &AcceptContext<'_, '_, S>,
+) -> Result<Align, String> {
+    let LitKind::Int(literal, LitIntType::Unsuffixed) = node else {
+        return Err("not an unsuffixed integer".to_string());
+    };
+
+    // `Align::from_bytes` accepts 0 as a valid input,
+    // so we check if its a power of two first
+    if !literal.get().is_power_of_two() {
+        return Err("not a power of two".to_string());
     }
+    // lit must be < 2^29
+    let align = literal
+        .get()
+        .try_into()
+        .ok()
+        .and_then(|a| Align::from_bytes(a).ok())
+        .ok_or("larger than 2^29".to_string())?;
+
+    // alignment must not be larger than the pointer width (`isize::MAX`)
+    let max = Size::from_bits(cx.sess.target.pointer_width).signed_int_max() as u64;
+    if align.bytes() > max {
+        return Err(format!(
+            "alignment larger than `isize::MAX` bytes ({max} for the current target)"
+        ));
+    }
+    Ok(align)
 }
 
 /// Parse #[align(N)].
 #[derive(Default)]
-pub(crate) struct AlignParser(Option<(Align, Span)>);
+pub(crate) struct RustcAlignParser(Option<(Align, Span)>);
 
-impl AlignParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_align];
+impl RustcAlignParser {
+    const PATH: &[Symbol] = &[sym::rustc_align];
     const TEMPLATE: AttributeTemplate = template!(List: &["<alignment in bytes>"]);
 
     fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
@@ -294,7 +306,7 @@ impl AlignParser {
                     return;
                 };
 
-                match parse_alignment(&lit.kind) {
+                match parse_alignment(&lit.kind, cx) {
                     Ok(literal) => self.0 = Ord::max(self.0, Some((literal, cx.attr_span))),
                     Err(message) => {
                         cx.emit_err(session_diagnostics::InvalidAlignmentValue {
@@ -308,7 +320,7 @@ impl AlignParser {
     }
 }
 
-impl<S: Stage> AttributeParser<S> for AlignParser {
+impl<S: Stage> AttributeParser<S> for RustcAlignParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -321,29 +333,29 @@ impl<S: Stage> AttributeParser<S> for AlignParser {
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (align, span) = self.0?;
-        Some(AttributeKind::Align { align, span })
+        Some(AttributeKind::RustcAlign { align, span })
     }
 }
 
 #[derive(Default)]
-pub(crate) struct AlignStaticParser(AlignParser);
+pub(crate) struct RustcAlignStaticParser(RustcAlignParser);
 
-impl AlignStaticParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_align_static];
-    const TEMPLATE: AttributeTemplate = AlignParser::TEMPLATE;
+impl RustcAlignStaticParser {
+    const PATH: &[Symbol] = &[sym::rustc_align_static];
+    const TEMPLATE: AttributeTemplate = RustcAlignParser::TEMPLATE;
 
     fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
         self.0.parse(cx, args)
     }
 }
 
-impl<S: Stage> AttributeParser<S> for AlignStaticParser {
+impl<S: Stage> AttributeParser<S> for RustcAlignStaticParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (align, span) = self.0.0?;
-        Some(AttributeKind::Align { align, span })
+        Some(AttributeKind::RustcAlign { align, span })
     }
 }

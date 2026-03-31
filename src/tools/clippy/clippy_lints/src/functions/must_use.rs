@@ -1,8 +1,9 @@
+use clippy_utils::res::MaybeDef as _;
 use hir::FnSig;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdSet;
-use rustc_hir::{self as hir, Attribute, QPath};
+use rustc_hir::{self as hir, Attribute, QPath, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::{self, Ty};
@@ -13,9 +14,7 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::source::snippet_indent;
 use clippy_utils::ty::is_must_use_ty;
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{return_ty, trait_ref_of_method};
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::find_attr;
+use clippy_utils::{is_entrypoint_fn, return_ty, trait_ref_of_method};
 use rustc_span::Symbol;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 
@@ -25,7 +24,7 @@ use super::{DOUBLE_MUST_USE, MUST_USE_CANDIDATE, MUST_USE_UNIT};
 
 pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
     let attrs = cx.tcx.hir_attrs(item.hir_id());
-    let attr = find_attr!(cx.tcx.hir_attrs(item.hir_id()), AttributeKind::MustUse { span, reason } => (span, reason));
+    let attr = find_attr!(cx.tcx, item.hir_id(), MustUse { span, reason } => (span, reason));
     if let hir::ItemKind::Fn {
         ref sig,
         body: ref body_id,
@@ -47,7 +46,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
                 attrs,
                 sig,
             );
-        } else if is_public && !is_proc_macro(attrs) && !find_attr!(attrs, AttributeKind::NoMangle(..)) {
+        } else if is_public && !is_proc_macro(attrs) && !find_attr!(attrs, NoMangle(..)) {
             check_must_use_candidate(
                 cx,
                 sig.decl,
@@ -66,8 +65,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         let attrs = cx.tcx.hir_attrs(item.hir_id());
-        let attr =
-            find_attr!(cx.tcx.hir_attrs(item.hir_id()), AttributeKind::MustUse { span, reason } => (span, reason));
+        let attr = find_attr!(cx.tcx, item.hir_id(), MustUse { span, reason } => (span, reason));
         if let Some((attr_span, reason)) = attr {
             check_needless_must_use(
                 cx,
@@ -100,8 +98,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
 
         let attrs = cx.tcx.hir_attrs(item.hir_id());
-        let attr =
-            find_attr!(cx.tcx.hir_attrs(item.hir_id()), AttributeKind::MustUse { span, reason } => (span, reason));
+        let attr = find_attr!(cx.tcx, item.hir_id(), MustUse { span, reason } => (span, reason));
         if let Some((attr_span, reason)) = attr {
             check_needless_must_use(
                 cx,
@@ -211,6 +208,7 @@ fn check_must_use_candidate<'tcx>(
         || !cx.effective_visibilities.is_exported(item_id.def_id)
         || is_must_use_ty(cx, return_ty(cx, item_id))
         || item_span.from_expansion()
+        || is_entrypoint_fn(cx, item_id.def_id.to_def_id())
     {
         return;
     }
@@ -219,9 +217,16 @@ fn check_must_use_candidate<'tcx>(
         diag.span_suggestion(
             item_span.shrink_to_lo(),
             "add the attribute",
-            format!("#[must_use] \n{indent}"),
+            format!("#[must_use]\n{indent}"),
             Applicability::MachineApplicable,
         );
+        if let Some(msg) = match return_ty(cx, item_id).opt_diag_name(cx) {
+            Some(sym::ControlFlow) => Some("`ControlFlow<B, C>` as `C` when `B` is uninhabited"),
+            Some(sym::Result) => Some("`Result<T, E>` as `T` when `E` is uninhabited"),
+            _ => None,
+        } {
+            diag.note(format!("a future version of Rust will treat {msg} wrt `#[must_use]`"));
+        }
     });
 }
 

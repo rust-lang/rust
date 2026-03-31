@@ -1,7 +1,7 @@
 use rustc_errors::{Applicability, Diag, MultiSpan, listify};
-use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::bug;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
@@ -723,7 +723,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         hir::Path {
                             res:
                                 hir::def::Res::Def(
-                                    hir::def::DefKind::Static { .. } | hir::def::DefKind::Const,
+                                    hir::def::DefKind::Static { .. }
+                                    | hir::def::DefKind::Const { .. },
                                     def_id,
                                 ),
                             ..
@@ -887,7 +888,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ]);
             // We suggest changing the argument from `mut ident: &Ty` to `ident: &'_ mut Ty` and the
             // assignment from `ident = val;` to `*ident = val;`.
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "you might have meant to mutate the pointed at value being passed in, instead of \
                 changing the reference in the local binding",
                 sugg,
@@ -1007,7 +1008,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let container_id = pick.item.container_id(self.tcx);
         let container = with_no_trimmed_paths!(self.tcx.def_path_str(container_id));
-        for def_id in pick.import_ids {
+        for &def_id in pick.import_ids {
             let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
             path_span
                 .push_span_label(self.tcx.hir_span(hir_id), format!("`{container}` imported here"));
@@ -1081,19 +1082,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir_id,
             |m| {
                 self.has_only_self_parameter(m)
-                    && self
-                        .tcx
-                        // This special internal attribute is used to permit
-                        // "identity-like" conversion methods to be suggested here.
-                        //
-                        // FIXME (#46459 and #46460): ideally
-                        // `std::convert::Into::into` and `std::borrow:ToOwned` would
-                        // also be `#[rustc_conversion_suggestion]`, if not for
-                        // method-probing false-positives and -negatives (respectively).
-                        //
-                        // FIXME? Other potential candidate methods: `as_ref` and
-                        // `as_mut`?
-                        .has_attr(m.def_id, sym::rustc_conversion_suggestion)
+                // This special internal attribute is used to permit
+                // "identity-like" conversion methods to be suggested here.
+                //
+                // FIXME (#46459 and #46460): ideally
+                // `std::convert::Into::into` and `std::borrow:ToOwned` would
+                // also be `#[rustc_conversion_suggestion]`, if not for
+                // method-probing false-positives and -negatives (respectively).
+                //
+                // FIXME? Other potential candidate methods: `as_ref` and
+                // `as_mut`?
+                && find_attr!(self.tcx, m.def_id, RustcConversionSuggestion)
             },
         );
 

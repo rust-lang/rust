@@ -1,4 +1,5 @@
 // rustfmt-edition: 2018
+#![feature(try_blocks)]
 
 fn main() -> Result<(), !> {
     let _x: Option<_> = try { 4 };
@@ -24,6 +25,11 @@ fn baz() -> Option<i32> {
         baz()?;
         7
     };
+
+    let _ = overflowed_expr(x, try {
+        foo()?;
+        bar()?;
+    });
 
     return None;
 }

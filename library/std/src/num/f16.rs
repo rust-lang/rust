@@ -16,6 +16,7 @@ use crate::intrinsics;
 use crate::sys::cmath;
 
 #[cfg(not(test))]
+#[doc(test(attr(allow(unused_features))))]
 impl f16 {
     /// Raises a number to a floating point power.
     ///
@@ -916,7 +917,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// #![feature(float_gamma)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -952,7 +952,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// #![feature(float_gamma)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -988,7 +987,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// #![feature(float_erf)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     /// /// The error function relates what percent of a normal distribution lies
@@ -1028,7 +1026,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// #![feature(float_erf)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     /// let x: f16 = 0.123;

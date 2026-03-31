@@ -55,8 +55,9 @@ fn macros() {
         r#"
 //- proc_macros: mirror, identity, derive_identity
 //- minicore: fmt, include, concat
-//- /lib.rs crate:lib
+//- /lib.rs crate:lib deps:pm
 use proc_macros::{mirror, identity, DeriveIdentity};
+use pm::proc_macro;
 
 mirror! {
     {
@@ -126,6 +127,11 @@ fn main() {
 //- /foo/foo.rs crate:foo
 mod foo {}
 use self::foo as bar;
+//- /pm.rs crate:pm
+#![crate_type = "proc-macro"]
+
+#[proc_macro_attribute]
+pub fn proc_macro() {}
 "#,
         expect_file!["./test_data/highlight_macros.html"],
         false,
@@ -204,7 +210,7 @@ fn never() -> ! {
     loop {}
 }
 
-fn const_param<const FOO: usize>() -> usize {
+fn const_param<const FOO: usize>() -> usize where [(); FOO]: Sized {
     const_param::<{ FOO }>();
     FOO
 }

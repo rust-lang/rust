@@ -39,6 +39,8 @@ declare_clippy_lint! {
     "the approximate of a known float constant (in `std::fXX::consts`)"
 }
 
+impl_lint_pass!(ApproxConstant => [APPROX_CONSTANT]);
+
 // Tuples are of the form (constant, name, min_digits, msrv)
 const KNOWN_CONSTS: [(f64, &str, usize, Option<RustcVersion>); 19] = [
     (f64::E, "E", 4, None),
@@ -110,8 +112,6 @@ impl ApproxConstant {
         }
     }
 }
-
-impl_lint_pass!(ApproxConstant => [APPROX_CONSTANT]);
 
 fn count_digits_after_dot(input: &str) -> usize {
     input

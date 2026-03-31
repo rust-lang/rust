@@ -88,7 +88,7 @@ pub enum CFProtection {
     Full,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, HashStable_Generic, Encodable, Decodable)]
 pub enum OptLevel {
     /// `-Copt-level=0`
     No,
@@ -108,7 +108,7 @@ pub enum OptLevel {
 /// and taking other command line options into account.
 ///
 /// Note that linker plugin-based LTO is a different mechanism entirely.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Encodable, Decodable)]
 pub enum Lto {
     /// Don't do any LTO whatsoever.
     No,
@@ -190,7 +190,7 @@ pub enum CoverageLevel {
 }
 
 // The different settings that the `-Z offload` flag can have.
-#[derive(Clone, PartialEq, Hash, Debug)]
+#[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum Offload {
     /// Entry point for `std::offload`, enables kernel compilation for a gpu device
     Device,
@@ -201,7 +201,7 @@ pub enum Offload {
 }
 
 /// The different settings that the `-Z autodiff` flag can have.
-#[derive(Clone, PartialEq, Hash, Debug)]
+#[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum AutoDiff {
     /// Enable the autodiff opt pipeline
     Enable,
@@ -528,7 +528,7 @@ impl FmtDebug {
     }
 }
 
-#[derive(Clone, PartialEq, Hash, Debug)]
+#[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum SwitchWithOptPath {
     Enabled(Option<PathBuf>),
     Disabled,
@@ -583,7 +583,7 @@ pub enum MirStripDebugInfo {
 /// DWARF provides a mechanism which allows the linker to skip the sections which don't require
 /// link-time relocation - either by putting those sections in DWARF object files, or by keeping
 /// them in the object file in such a way that the linker will skip them.
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub enum SplitDwarfKind {
     /// Sections which do not require relocation are written into object file but ignored by the
     /// linker.
@@ -636,10 +636,10 @@ macro_rules! define_output_types {
             const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
         }
 
-        impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
+        impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OutputType {
             type KeyType = Self;
 
-            fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+            fn to_stable_hash_key(&self, _: &Hcx) -> Self::KeyType {
                 *self
             }
         }
@@ -1405,7 +1405,6 @@ impl Default for Options {
         };
 
         Options {
-            assert_incr_state: None,
             crate_types: Vec::new(),
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
@@ -1539,7 +1538,7 @@ pub enum EntryFnType {
 
 pub use rustc_hir::attrs::CrateType;
 
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq, Encodable, Decodable)]
 pub enum Passes {
     Some(Vec<String>),
     All,
@@ -1615,7 +1614,7 @@ pub fn build_target_config(
             let mut err =
                 early_dcx.early_struct_fatal(format!("error loading target specification: {e}"));
             err.help("run `rustc --print target-list` for a list of built-in targets");
-            err.emit();
+            err.emit()
         }
     }
 }
@@ -2287,20 +2286,6 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
     if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
 }
 
-fn parse_assert_incr_state(
-    early_dcx: &EarlyDiagCtxt,
-    opt_assertion: &Option<String>,
-) -> Option<IncrementalStateAssertion> {
-    match opt_assertion {
-        Some(s) if s.as_str() == "loaded" => Some(IncrementalStateAssertion::Loaded),
-        Some(s) if s.as_str() == "not-loaded" => Some(IncrementalStateAssertion::NotLoaded),
-        Some(s) => {
-            early_dcx.early_fatal(format!("unexpected incremental state assertion value: {s}"))
-        }
-        None => None,
-    }
-}
-
 pub fn parse_externs(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
@@ -2505,8 +2490,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     }
 
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
-
-    let assert_incr_state = parse_assert_incr_state(early_dcx, &unstable_opts.assert_incr_state);
 
     if cg.profile_generate.enabled() && cg.profile_use.is_some() {
         early_dcx.early_fatal("options `-C profile-generate` and `-C profile-use` are exclusive");
@@ -2759,7 +2742,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
 
     Options {
-        assert_incr_state,
         crate_types,
         optimize: opt_level,
         debuginfo,

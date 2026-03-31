@@ -49,7 +49,6 @@ pub mod visibility;
 use intern::{Interned, Symbol};
 pub use rustc_abi as layout;
 use thin_vec::ThinVec;
-use triomphe::Arc;
 
 pub use crate::signatures::LocalFieldId;
 
@@ -86,14 +85,19 @@ use crate::{
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr_store::ExpressionStoreSourceMap,
-    hir::generics::{LocalLifetimeParamId, LocalTypeOrConstParamId},
+    hir::{
+        ExprId,
+        generics::{GenericParams, LocalLifetimeParamId, LocalTypeOrConstParamId},
+    },
     nameres::{
         LocalDefMap,
         assoc::{ImplItems, TraitItems},
         block_def_map, crate_def_map, crate_local_def_map,
         diagnostics::DefDiagnostics,
     },
-    signatures::{EnumVariants, InactiveEnumVariantCode, VariantFields},
+    signatures::{
+        ConstSignature, EnumVariants, InactiveEnumVariantCode, StaticSignature, VariantFields,
+    },
 };
 
 type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
@@ -255,14 +259,15 @@ impl_intern!(StructId, StructLoc, intern_struct, lookup_intern_struct);
 
 impl StructId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self.into())
+        VariantFields::of(db, self.into())
     }
 
     pub fn fields_with_source_map(
         self,
         db: &dyn DefDatabase,
-    ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>) {
-        VariantFields::query(db, self.into())
+    ) -> (&VariantFields, &ExpressionStoreSourceMap) {
+        let r = VariantFields::with_source_map(db, self.into());
+        (&r.0, &r.1)
     }
 }
 
@@ -271,14 +276,15 @@ impl_intern!(UnionId, UnionLoc, intern_union, lookup_intern_union);
 
 impl UnionId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self.into())
+        VariantFields::of(db, self.into())
     }
 
     pub fn fields_with_source_map(
         self,
         db: &dyn DefDatabase,
-    ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>) {
-        VariantFields::query(db, self.into())
+    ) -> (&VariantFields, &ExpressionStoreSourceMap) {
+        let r = VariantFields::with_source_map(db, self.into());
+        (&r.0, &r.1)
     }
 }
 
@@ -305,6 +311,19 @@ impl_intern!(ConstId, ConstLoc, intern_const, lookup_intern_const);
 
 pub type StaticLoc = AssocItemLoc<ast::Static>;
 impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
+
+/// An anonymous const expression that appears in a type position (e.g., array lengths,
+/// const generic arguments like `{ N + 1 }`). Unlike named constants, these don't have
+/// their own `Body` — their expressions live in the parent's signature `ExpressionStore`.
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+pub struct AnonConstLoc {
+    /// The owner store containing this expression.
+    pub owner: ExpressionStoreOwnerId,
+    /// The ExprId within the owner's ExpressionStore that is the root
+    /// of this anonymous const expression.
+    pub expr: ExprId,
+}
+impl_intern!(AnonConstId, AnonConstLoc, intern_anon_const, lookup_intern_anon_const);
 
 pub type TraitLoc = ItemLoc<ast::Trait>;
 impl_intern!(TraitId, TraitLoc, intern_trait, lookup_intern_trait);
@@ -377,14 +396,15 @@ impl_loc!(EnumVariantLoc, id: Variant, parent: EnumId);
 
 impl EnumVariantId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self.into())
+        VariantFields::of(db, self.into())
     }
 
     pub fn fields_with_source_map(
         self,
         db: &dyn DefDatabase,
-    ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>) {
-        VariantFields::query(db, self.into())
+    ) -> (&VariantFields, &ExpressionStoreSourceMap) {
+        let r = VariantFields::with_source_map(db, self.into());
+        (&r.0, &r.1)
     }
 }
 
@@ -553,15 +573,25 @@ pub struct TypeOrConstParamId {
 pub struct TypeParamId(TypeOrConstParamId);
 
 impl TypeParamId {
+    #[inline]
     pub fn parent(&self) -> GenericDefId {
         self.0.parent
     }
+
+    #[inline]
     pub fn local_id(&self) -> LocalTypeOrConstParamId {
         self.0.local_id
     }
-}
 
-impl TypeParamId {
+    #[inline]
+    pub fn trait_self(trait_: TraitId) -> TypeParamId {
+        TypeParamId::from_unchecked(TypeOrConstParamId {
+            parent: trait_.into(),
+            local_id: GenericParams::SELF_PARAM_ID_IN_SELF,
+        })
+    }
+
+    #[inline]
     /// Caller should check if this toc id really belongs to a type
     pub fn from_unchecked(it: TypeOrConstParamId) -> Self {
         Self(it)
@@ -696,46 +726,47 @@ impl From<DefWithBodyId> for ModuleDefId {
 pub enum GeneralConstId {
     ConstId(ConstId),
     StaticId(StaticId),
+    AnonConstId(AnonConstId),
 }
 
-impl_from!(ConstId, StaticId for GeneralConstId);
+impl_from!(ConstId, StaticId, AnonConstId for GeneralConstId);
 
 impl GeneralConstId {
-    pub fn generic_def(self, _db: &dyn DefDatabase) -> Option<GenericDefId> {
+    pub fn generic_def(self, db: &dyn DefDatabase) -> Option<GenericDefId> {
         match self {
             GeneralConstId::ConstId(it) => Some(it.into()),
             GeneralConstId::StaticId(it) => Some(it.into()),
+            GeneralConstId::AnonConstId(it) => Some(it.lookup(db).owner.generic_def(db)),
         }
     }
 
     pub fn name(self, db: &dyn DefDatabase) -> String {
         match self {
             GeneralConstId::StaticId(it) => {
-                db.static_signature(it).name.display(db, Edition::CURRENT).to_string()
+                StaticSignature::of(db, it).name.display(db, Edition::CURRENT).to_string()
             }
             GeneralConstId::ConstId(const_id) => {
-                db.const_signature(const_id).name.as_ref().map_or_else(
+                ConstSignature::of(db, const_id).name.as_ref().map_or_else(
                     || "_".to_owned(),
                     |name| name.display(db, Edition::CURRENT).to_string(),
                 )
             }
+            GeneralConstId::AnonConstId(_) => "{anon const}".to_owned(),
         }
     }
 }
 
-/// The defs which have a body (have root expressions for type inference).
+/// The defs which have a body.
 #[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum DefWithBodyId {
+    /// A function body.
     FunctionId(FunctionId),
+    /// A static item initializer.
     StaticId(StaticId),
+    /// A const item initializer
     ConstId(ConstId),
+    /// An enum variant discrimiant
     VariantId(EnumVariantId),
-    // /// All fields of a variant are inference roots
-    // VariantId(VariantId),
-    // /// The signature can contain inference roots in a bunch of places
-    // /// like const parameters or const arguments in paths
-    // This should likely be kept on its own with a separate query
-    // GenericDefId(GenericDefId),
 }
 impl_from!(FunctionId, ConstId, StaticId for DefWithBodyId);
 
@@ -803,6 +834,62 @@ impl_from!(
     TypeAliasId
     for GenericDefId
 );
+
+/// Owner of an expression store - either a body or a signature.
+/// This is used for queries that operate on expression stores generically,
+/// such as `expr_scopes`.
+// NOTE: This type cannot be `salsa::Supertype` as its variants are overlapping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord /* !salsa::Supertype */)]
+pub enum ExpressionStoreOwnerId {
+    Signature(GenericDefId),
+    /// A body, something with a root expression.
+    ///
+    /// An enum variant's body is considered its discriminant initializer.
+    Body(DefWithBodyId),
+    VariantFields(VariantId),
+}
+
+impl ExpressionStoreOwnerId {
+    // FIXME: Check callers of this, this method likely can be removed
+    pub fn as_def_with_body(self) -> Option<DefWithBodyId> {
+        if let Self::Body(v) = self { Some(v) } else { None }
+    }
+
+    pub fn generic_def(self, db: &dyn DefDatabase) -> GenericDefId {
+        match self {
+            ExpressionStoreOwnerId::Signature(generic_def_id) => generic_def_id,
+            ExpressionStoreOwnerId::Body(def_with_body_id) => match def_with_body_id {
+                DefWithBodyId::FunctionId(id) => GenericDefId::FunctionId(id),
+                DefWithBodyId::StaticId(id) => GenericDefId::StaticId(id),
+                DefWithBodyId::ConstId(id) => GenericDefId::ConstId(id),
+                DefWithBodyId::VariantId(it) => it.lookup(db).parent.into(),
+            },
+            ExpressionStoreOwnerId::VariantFields(variant_id) => match variant_id {
+                VariantId::EnumVariantId(it) => it.lookup(db).parent.into(),
+                VariantId::StructId(it) => it.into(),
+                VariantId::UnionId(it) => it.into(),
+            },
+        }
+    }
+}
+
+impl From<GenericDefId> for ExpressionStoreOwnerId {
+    fn from(id: GenericDefId) -> Self {
+        ExpressionStoreOwnerId::Signature(id)
+    }
+}
+
+impl From<DefWithBodyId> for ExpressionStoreOwnerId {
+    fn from(id: DefWithBodyId) -> Self {
+        ExpressionStoreOwnerId::Body(id)
+    }
+}
+
+impl From<VariantId> for ExpressionStoreOwnerId {
+    fn from(id: VariantId) -> Self {
+        ExpressionStoreOwnerId::VariantFields(id)
+    }
+}
 
 impl GenericDefId {
     pub fn file_id_and_params_of(
@@ -944,7 +1031,9 @@ impl From<VariantId> for AttrDefId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype, salsa::Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa_macros::Supertype, salsa::Update,
+)]
 pub enum VariantId {
     EnumVariantId(EnumVariantId),
     StructId(StructId),
@@ -954,14 +1043,15 @@ impl_from!(EnumVariantId, StructId, UnionId for VariantId);
 
 impl VariantId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
-        VariantFields::firewall(db, self)
+        VariantFields::of(db, self)
     }
 
     pub fn fields_with_source_map(
         self,
         db: &dyn DefDatabase,
-    ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>) {
-        VariantFields::query(db, self)
+    ) -> (&VariantFields, &ExpressionStoreSourceMap) {
+        let r = VariantFields::with_source_map(db, self);
+        (&r.0, &r.1)
     }
 
     pub fn file_id(self, db: &dyn DefDatabase) -> HirFileId {
@@ -1158,6 +1248,16 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::StaticId(it) => it.module(db),
             DefWithBodyId::ConstId(it) => it.module(db),
             DefWithBodyId::VariantId(it) => it.module(db),
+        }
+    }
+}
+
+impl HasModule for ExpressionStoreOwnerId {
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        match self {
+            ExpressionStoreOwnerId::Signature(def) => def.module(db),
+            ExpressionStoreOwnerId::Body(def) => def.module(db),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => variant_id.module(db),
         }
     }
 }

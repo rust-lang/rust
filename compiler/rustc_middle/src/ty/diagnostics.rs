@@ -526,12 +526,15 @@ pub fn suggest_constraining_type_params<'a>(
         //
         //   fn foo<T>(t: T) { ... }
         //          - help: consider restricting this type parameter with `T: Foo`
-        suggestions.push((
-            param.span.shrink_to_hi(),
-            post,
-            format!(": {constraint}"),
-            SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
-        ));
+        let span = param.span.shrink_to_hi();
+        if span.can_be_used_for_suggestions() {
+            suggestions.push((
+                span,
+                post,
+                format!(": {constraint}"),
+                SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
+            ));
+        }
     }
 
     // FIXME: remove the suggestions that are from derive, as the span is not correct
@@ -569,7 +572,7 @@ pub fn suggest_constraining_type_params<'a>(
         err.span_suggestion_verbose(span, msg, suggestion, applicability);
     } else if suggestions.len() > 1 {
         let post = if unstable_suggestion { " (some of them are unstable traits)" } else { "" };
-        err.multipart_suggestion_verbose(
+        err.multipart_suggestion(
             format!("consider restricting type parameters{post}"),
             suggestions.into_iter().map(|(span, _, suggestion, _)| (span, suggestion)).collect(),
             applicability,

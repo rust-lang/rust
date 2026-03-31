@@ -24,10 +24,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV RUST_CONFIGURE_ARGS \
- --build=x86_64-unknown-linux-gnu \
+ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu \
  --enable-sanitizers \
  --enable-profiler \
  --enable-compiler-docs \
- --set llvm.libzstd=true
-ENV SCRIPT python3 ../x.py --stage 2 test
+ --set llvm.libzstd=true"
+ENV SCRIPT="python3 ../x.py --stage 2 test"

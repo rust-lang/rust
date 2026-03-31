@@ -133,7 +133,8 @@ impl<'tcx> NewPermission {
         retag_kind: RetagKind,
         cx: &crate::MiriInterpCx<'tcx>,
     ) -> Option<Self> {
-        let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.typing_env());
+        let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.typing_env())
+            && pointee.is_unsafe_unpin(*cx.tcx, cx.typing_env());
         let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.typing_env());
         let is_protected = retag_kind == RetagKind::FnEntry;
 
@@ -522,6 +523,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // even if field retagging is not enabled. *shrug*)
                         self.walk_value(place)?;
                     }
+                    ty::Adt(adt, _) if adt.is_maybe_dangling() => {
+                        // Skip traversing for everything inside of `MaybeDangling`
+                    }
                     _ => {
                         // Not a reference/pointer/box. Recurse.
                         self.walk_value(place)?;
@@ -576,7 +580,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let protected = protected_tags.contains_key(&tag);
                 alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag, protected);
             }
-            AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead => {
+            AllocKind::Function
+            | AllocKind::VTable
+            | AllocKind::TypeId
+            | AllocKind::Dead
+            | AllocKind::VaList => {
                 // No tree borrows on these allocations.
             }
         }

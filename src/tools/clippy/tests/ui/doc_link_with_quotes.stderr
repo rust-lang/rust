@@ -1,5 +1,5 @@
 error: possible intra-doc link using quotes instead of backticks
-  --> tests/ui/doc_link_with_quotes.rs:7:12
+  --> tests/ui/doc_link_with_quotes.rs:5:12
    |
 LL | /// Calls ['bar'] uselessly
    |            ^^^^^
@@ -8,7 +8,7 @@ LL | /// Calls ['bar'] uselessly
    = help: to override `-D warnings` add `#[allow(clippy::doc_link_with_quotes)]`
 
 error: possible intra-doc link using quotes instead of backticks
-  --> tests/ui/doc_link_with_quotes.rs:13:12
+  --> tests/ui/doc_link_with_quotes.rs:11:12
    |
 LL | /// Calls ["bar"] uselessly
    |            ^^^^^

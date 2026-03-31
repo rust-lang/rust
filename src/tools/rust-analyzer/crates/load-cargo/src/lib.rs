@@ -26,10 +26,7 @@ use ide_db::{
 use itertools::Itertools;
 use proc_macro_api::{
     MacroDylib, ProcMacroClient,
-    bidirectional_protocol::{
-        msg::{SubRequest, SubResponse},
-        reject_subrequests,
-    },
+    bidirectional_protocol::msg::{ParentSpan, SubRequest, SubResponse},
 };
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::{Span, SpanAnchor, SyntaxContext};
@@ -45,6 +42,7 @@ pub struct LoadCargoConfig {
     pub load_out_dirs_from_check: bool,
     pub with_proc_macro_server: ProcMacroServerChoice,
     pub prefill_caches: bool,
+    pub num_worker_threads: usize,
     pub proc_macro_processes: usize,
 }
 
@@ -200,7 +198,7 @@ pub fn load_workspace_into_db(
     );
 
     if load_config.prefill_caches {
-        prime_caches::parallel_prime_caches(db, 1, &|_| ());
+        prime_caches::parallel_prime_caches(db, load_config.num_worker_threads, &|_| ());
     }
 
     Ok((vfs, proc_macro_server.and_then(Result::ok)))
@@ -446,7 +444,7 @@ pub fn load_proc_macro(
 ) -> ProcMacroLoadResult {
     let res: Result<Vec<_>, _> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf());
-        let vec = server.load_dylib(dylib, Some(&reject_subrequests)).map_err(|e| {
+        let vec = server.load_dylib(dylib).map_err(|e| {
             ProcMacroLoadingError::ProcMacroSrvError(format!("{e}").into_boxed_str())
         })?;
         if vec.is_empty() {
@@ -615,6 +613,91 @@ impl ProcMacroExpander for Expander {
 
                 Ok(SubResponse::ByteRangeResult { range: range.range.into() })
             }
+            SubRequest::SpanSource { file_id, ast_id, start, end, ctx } => {
+                let span = Span {
+                    range: TextRange::new(TextSize::from(start), TextSize::from(end)),
+                    anchor: SpanAnchor {
+                        file_id: span::EditionedFileId::from_raw(file_id),
+                        ast_id: span::ErasedFileAstId::from_raw(ast_id),
+                    },
+                    // SAFETY: We only receive spans from the server. If someone mess up the communication UB can happen,
+                    // but that will be their problem.
+                    ctx: unsafe { SyntaxContext::from_u32(ctx) },
+                };
+
+                let mut current_span = span;
+                let mut current_ctx = span.ctx;
+
+                while let Some(macro_call_id) = current_ctx.outer_expn(db) {
+                    let macro_call_loc = db.lookup_intern_macro_call(macro_call_id.into());
+
+                    let call_site_file = macro_call_loc.kind.file_id();
+
+                    let resolved = db.resolve_span(current_span);
+
+                    current_ctx = macro_call_loc.ctxt;
+                    current_span = Span {
+                        range: resolved.range,
+                        anchor: SpanAnchor {
+                            file_id: resolved.file_id.span_file_id(db),
+                            ast_id: span::ROOT_ERASED_FILE_AST_ID,
+                        },
+                        ctx: current_ctx,
+                    };
+
+                    if call_site_file.file_id().is_some() {
+                        break;
+                    }
+                }
+
+                let resolved = db.resolve_span(current_span);
+
+                Ok(SubResponse::SpanSourceResult {
+                    file_id: resolved.file_id.span_file_id(db).as_u32(),
+                    ast_id: span::ROOT_ERASED_FILE_AST_ID.into_raw(),
+                    start: u32::from(resolved.range.start()),
+                    end: u32::from(resolved.range.end()),
+                    ctx: current_span.ctx.into_u32(),
+                })
+            }
+            SubRequest::SpanParent { file_id, ast_id, start, end, ctx } => {
+                let span = Span {
+                    range: TextRange::new(TextSize::from(start), TextSize::from(end)),
+                    anchor: SpanAnchor {
+                        file_id: span::EditionedFileId::from_raw(file_id),
+                        ast_id: span::ErasedFileAstId::from_raw(ast_id),
+                    },
+                    // SAFETY: We only receive spans from the server. If someone mess up the communication UB can happen,
+                    // but that will be their problem.
+                    ctx: unsafe { SyntaxContext::from_u32(ctx) },
+                };
+
+                if let Some(macro_call_id) = span.ctx.outer_expn(db) {
+                    let macro_call_loc = db.lookup_intern_macro_call(macro_call_id.into());
+
+                    let call_site_file = macro_call_loc.kind.file_id();
+                    let call_site_ast_id = macro_call_loc.kind.erased_ast_id();
+
+                    if let Some(editioned_file_id) = call_site_file.file_id() {
+                        let range = db
+                            .ast_id_map(editioned_file_id.into())
+                            .get_erased(call_site_ast_id)
+                            .text_range();
+
+                        let parent_span = Some(ParentSpan {
+                            file_id: editioned_file_id.span_file_id(db).as_u32(),
+                            ast_id: span::ROOT_ERASED_FILE_AST_ID.into_raw(),
+                            start: u32::from(range.start()),
+                            end: u32::from(range.end()),
+                            ctx: macro_call_loc.ctxt.into_u32(),
+                        });
+
+                        return Ok(SubResponse::SpanParentResult { parent_span });
+                    }
+                }
+
+                Ok(SubResponse::SpanParentResult { parent_span: None })
+            }
         };
         match self.0.expand(
             subtree.view(),
@@ -662,16 +745,26 @@ mod tests {
 
     #[test]
     fn test_loading_rust_analyzer() {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
+        let cargo_toml_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("Cargo.toml");
+        let cargo_toml_path = AbsPathBuf::assert_utf8(cargo_toml_path);
+        let manifest = ProjectManifest::from_manifest_file(cargo_toml_path).unwrap();
+
         let cargo_config = CargoConfig { set_test: true, ..CargoConfig::default() };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::None,
             prefill_caches: false,
+            num_worker_threads: 1,
             proc_macro_processes: 1,
         };
+        let workspace = ProjectWorkspace::load(manifest, &cargo_config, &|_| {}).unwrap();
         let (db, _vfs, _proc_macro) =
-            load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {}).unwrap();
+            load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config).unwrap();
 
         let n_crates = db.all_crates().len();
         // RA has quite a few crates, but the exact count doesn't matter

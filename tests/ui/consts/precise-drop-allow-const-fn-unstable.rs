@@ -2,7 +2,7 @@
 //@ compile-flags: --crate-type=lib -Cinstrument-coverage  -Zno-profiler-runtime
 //@[allow] check-pass
 
-#![feature(staged_api, rustc_allow_const_fn_unstable)]
+#![feature(staged_api, rustc_attrs)]
 #![stable(feature = "rust_test", since = "1.0.0")]
 
 #[stable(feature = "rust_test", since = "1.0.0")]

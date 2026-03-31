@@ -1,7 +1,15 @@
-//@ only-x86_64
-//@ compile-flags: -C target-feature=+avx2
+//@ add-minicore
+//@ revisions: stable experimental_reg
+//@ compile-flags: --target x86_64-unknown-linux-gnu -C target-feature=+avx2,+avx512f
+//@ needs-llvm-components: x86
+#![cfg_attr(experimental_reg, feature(asm_experimental_reg))]
 
-use std::arch::asm;
+#![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
+
+extern crate minicore;
+use minicore::*;
 
 fn main() {
     let mut foo = 0;
@@ -14,9 +22,9 @@ fn main() {
         asm!("", in("foo") foo);
         //~^ ERROR invalid register `foo`: unknown register
         asm!("{:z}", in(reg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `z` for this register class
         asm!("{:r}", in(xmm_reg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `r` for this register class
         asm!("{:a}", const 0);
         //~^ ERROR asm template modifiers are not allowed for `const` arguments
         asm!("{:a}", sym main);
@@ -27,6 +35,10 @@ fn main() {
         //~^ ERROR invalid register `rsp`: the stack pointer cannot be used as an operand
         asm!("", in("ip") foo);
         //~^ ERROR invalid register `ip`: the instruction pointer cannot be used as an operand
+        asm!("", in("bl") foo);
+        //~^ ERROR cannot use register `bl`: rbx is used internally by LLVM and cannot be used as an operand for inline asm
+        asm!("", in("bh") foo);
+        //~^ ERROR cannot use register `bh`: rbx is used internally by LLVM and cannot be used as an operand for inline asm
 
         asm!("", in("st(2)") foo);
         //~^ ERROR register class `x87_reg` can only be used as a clobber, not as an input or output
@@ -66,5 +78,23 @@ fn main() {
         asm!("", in("xmm0") foo, out("ymm0") bar);
         //~^ ERROR register `ymm0` conflicts with register `xmm0`
         asm!("", in("xmm0") foo, lateout("ymm0") bar);
+
+        // Passing u128/i128 is currently experimental.
+        let mut xmmword = 0u128;
+
+        asm!("/* {:x} */", in(xmm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+        asm!("/* {:x} */", out(xmm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+
+        asm!("/* {:y} */", in(ymm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+        asm!("/* {:y} */", out(ymm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+
+        asm!("/* {:z} */", in(zmm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+        asm!("/* {:z} */", out(zmm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
     }
 }

@@ -2426,7 +2426,6 @@ pub const fn _mm256_setzero_si256() -> __m256i {
 #[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
-#[cfg_attr(test, assert_instr(vinsertf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_set_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {

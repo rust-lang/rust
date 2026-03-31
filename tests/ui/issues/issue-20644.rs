@@ -1,13 +1,9 @@
 //@ build-pass
 #![allow(dead_code)]
 #![allow(unused_imports)]
-#![allow(stable_features)]
 
 // A reduced version of the rustbook ice. The problem this encountered
 // had to do with codegen ignoring binders.
-
-
-#![feature(os)]
 
 use std::iter;
 use std::os;

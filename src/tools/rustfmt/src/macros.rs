@@ -226,8 +226,12 @@ fn rewrite_macro_inner(
         };
     }
     // Format well-known macros which cannot be parsed as a valid AST.
-    if macro_name == "lazy_static!" && !has_comment {
-        match format_lazy_static(context, shape, ts.clone(), mac.span()) {
+    if (macro_name == "lazy_static!"
+        || (context.config.style_edition() >= StyleEdition::Edition2027
+            && macro_name == "lazy_static::lazy_static!"))
+        && !has_comment
+    {
+        match format_lazy_static(context, shape, ts.clone(), mac.span(), &macro_name) {
             Ok(rw) => return Ok(rw),
             Err(err) => match err {
                 // We will move on to parsing macro args just like other macros
@@ -361,9 +365,7 @@ fn handle_vec_semi(
     };
 
     // Should we return MaxWidthError, Or Macro failure
-    let mac_shape = shape
-        .offset_left(macro_name.len())
-        .max_width_error(shape.width, span)?;
+    let mac_shape = shape.offset_left(macro_name.len(), span)?;
     // 8 = `vec![]` + `; ` or `vec!()` + `; `
     let total_overhead = 8;
     let nested_shape = mac_shape.block_indent(context.config.tab_spaces());
@@ -1297,9 +1299,7 @@ impl MacroBranch {
         let mut result = format_macro_args(
             context,
             self.args.clone(),
-            shape
-                .sub_width(prefix_width)
-                .max_width_error(shape.width, self.span)?,
+            shape.sub_width(prefix_width, self.span)?,
         )?;
 
         if multi_branch_style {
@@ -1404,12 +1404,20 @@ impl MacroBranch {
     }
 }
 
-/// Format `lazy_static!` from <https://crates.io/crates/lazy_static>.
+/// Format `lazy_static!` and `lazy_static::lazy_static!`
+/// from <https://crates.io/crates/lazy_static>.
 ///
 /// # Expected syntax
 ///
 /// ```text
 /// lazy_static! {
+///     [pub] static ref NAME_1: TYPE_1 = EXPR_1;
+///     [pub] static ref NAME_2: TYPE_2 = EXPR_2;
+///     ...
+///     [pub] static ref NAME_N: TYPE_N = EXPR_N;
+/// }
+///
+/// lazy_static::lazy_static! {
 ///     [pub] static ref NAME_1: TYPE_1 = EXPR_1;
 ///     [pub] static ref NAME_2: TYPE_2 = EXPR_2;
 ///     ...
@@ -1421,13 +1429,15 @@ fn format_lazy_static(
     shape: Shape,
     ts: TokenStream,
     span: Span,
+    macro_name: &str,
 ) -> RewriteResult {
     let mut result = String::with_capacity(1024);
     let nested_shape = shape
         .block_indent(context.config.tab_spaces())
         .with_max_width(context.config);
 
-    result.push_str("lazy_static! {");
+    result.push_str(macro_name);
+    result.push_str(" {");
     result.push_str(&nested_shape.indent.to_string_with_newline(context.config));
 
     let parsed_elems =
@@ -1448,9 +1458,7 @@ fn format_lazy_static(
             stmt,
             &*expr,
             &RhsAssignKind::Expr(&expr.kind, expr.span),
-            nested_shape
-                .sub_width(1)
-                .max_width_error(nested_shape.width, expr.span)?,
+            nested_shape.sub_width(1, expr.span)?,
         )?);
         result.push(';');
         if i != last {

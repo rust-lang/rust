@@ -14,9 +14,9 @@ To run a specific CI job locally, you can use the `citool` Rust crate:
 cargo run --manifest-path src/ci/citool/Cargo.toml run-local <job-name>
 ```
 
-For example, to run the `x86_64-gnu-llvm-20-1` job:
+For example, to run the `x86_64-gnu-llvm-21-1` job:
 ```
-cargo run --manifest-path src/ci/citool/Cargo.toml run-local x86_64-gnu-llvm-20-1
+cargo run --manifest-path src/ci/citool/Cargo.toml run-local x86_64-gnu-llvm-21-1
 ```
 
 The job will output artifacts in an `obj/<image-name>` dir at the root of a repository. Note
@@ -27,10 +27,10 @@ Docker image executed in the given CI job.
 while locally, to the `obj/<image-name>` directory. This is primarily to prevent
 strange linker errors when using multiple Docker images.
 
-For some Linux workflows (for example `x86_64-gnu-llvm-20-N`), the process is more involved. You will need to see which script is executed for the given workflow inside the [`jobs.yml`](../github-actions/jobs.yml) file and pass it through the `DOCKER_SCRIPT` environment variable. For example, to reproduce the `x86_64-gnu-llvm-20-3` workflow, you can run the following script:
+For some Linux workflows (for example `x86_64-gnu-llvm-21-N`), the process is more involved. You will need to see which script is executed for the given workflow inside the [`jobs.yml`](../github-actions/jobs.yml) file and pass it through the `DOCKER_SCRIPT` environment variable. For example, to reproduce the `x86_64-gnu-llvm-21-3` workflow, you can run the following script:
 
 ```
-DOCKER_SCRIPT=x86_64-gnu-llvm3.sh ./src/ci/docker/run.sh x86_64-gnu-llvm-20
+DOCKER_SCRIPT=x86_64-gnu-llvm3.sh ./src/ci/docker/run.sh x86_64-gnu-llvm-21
 ```
 
 ## Local Development
@@ -48,7 +48,7 @@ Refer to the [dev guide](https://rustc-dev-guide.rust-lang.org/tests/docker.html
 ## Docker Toolbox on Windows
 
 For Windows before Windows 10, the docker images can be run on Windows via
-[Docker Toolbox]. There are several preparation needs to be made before running
+[Docker Toolbox]. There are several preparations that need to be made before running
 a Docker image.
 
 1. Stop the virtual machine from the terminal with `docker-machine stop`
@@ -92,7 +92,7 @@ To run the image,
 A number of these images take quite a long time to compile as they're building
 whole gcc toolchains to do cross builds with. Much of this is relatively
 self-explanatory but some images use [crosstool-ng] which isn't quite as self
-explanatory. Below is a description of where these `*.defconfig` files come form,
+explanatory. Below is a description of where these `*.defconfig` files come from,
 how to generate them, and how the existing ones were generated.
 
 [crosstool-ng]: https://github.com/crosstool-ng/crosstool-ng
@@ -231,25 +231,9 @@ For targets: `armv7-unknown-linux-gnueabihf`
     libraries like jemalloc. See the mk/cfg/arm(v7)-unknown-linux-gnueabi{,hf}.mk
     file in Rust's source code.
 
-### `aarch64-linux-gnu.defconfig`
-
-For targets: `aarch64-unknown-linux-gnu`
-
-- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
-- Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
-- Target options > Target Architecture = arm
-- Target options > Bitness = 64-bit
-- Operating System > Target OS = linux
-- Operating System > Linux kernel version = 4.1.49
-- Binary utilities > Version of binutils = 2.29.1
-- C-library > glibc version = 2.17 -- aarch64 support was introduced in this version
-- C compiler > gcc version = 13.2.0
-- C compiler > C++ = ENABLE -- to cross compile LLVM
-
 ### `i586-linux-gnu.defconfig`
 
-For targets: `i586-unknown-linux-gnu`
+For targets: `i586-unknown-linux-gnu`, `i586-unknown-linux-musl` and `i686-unknown-linux-musl`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Target options > Target Architecture = x86
@@ -266,7 +250,7 @@ For targets: `i586-unknown-linux-gnu`
 (\*) Compressed debug is enabled by default for gas (assembly) on Linux/x86 targets,
      but that makes our `compiler_builtins` incompatible with binutils < 2.32.
 
-### `loongarch64-linux-gnu.defconfig`
+### `loongarch64-unknown-linux-gnu.defconfig`
 
 For targets: `loongarch64-unknown-linux-gnu`
 
@@ -277,12 +261,12 @@ For targets: `loongarch64-unknown-linux-gnu`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 5.19.16
-- Binary utilities > Version of binutils = 2.42
+- Binary utilities > Version of binutils = 2.45
 - C-library > glibc version = 2.36
-- C compiler > gcc version = 14.2.0
+- C compiler > gcc version = 15.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
-### `loongarch64-linux-musl.defconfig`
+### `loongarch64-unknown-linux-musl.defconfig`
 
 For targets: `loongarch64-unknown-linux-musl`
 
@@ -293,9 +277,9 @@ For targets: `loongarch64-unknown-linux-musl`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 5.19.16
-- Binary utilities > Version of binutils = 2.42
+- Binary utilities > Version of binutils = 2.45
 - C-library > musl version = 1.2.5
-- C compiler > gcc version = 14.2.0
+- C compiler > gcc version = 15.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `mips-linux-gnu.defconfig`
@@ -412,6 +396,56 @@ For targets: `powerpc64-unknown-linux-gnu`
 
 (+) These CPU options match the configuration of the toolchains in RHEL6.
 
+### `powerpc64-unknown-linux-musl.defconfig`
+
+For targets: `powerpc64-unknown-linux-musl`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Target options > Target Architecture = powerpc
+- Target options > Bitness = 64-bit
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 4.19
+- Binary utilities > Version of binutils = 2.42
+- C-library > musl version = 1.2.5
+- C compiler > gcc version = 14.2.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
+### `powerpc64le-unknown-linux-gnu.defconfig`
+
+For targets: `powerpc64le-unknown-linux-gnu`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Target options > Target Architecture = powerpc
+- Target options > Bitness = 64-bit
+- Target options > Endianness = Little endian
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 3.10
+- Binary utilities > Version of binutils = 2.42
+- C-library > glibc version = 2.17
+- C compiler > gcc version = 14.2.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
+### `powerpc64le-unknown-linux-musl.defconfig`
+
+For targets: `powerpc64le-unknown-linux-musl`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Target options > Target Architecture = powerpc
+- Target options > Bitness = 64-bit
+- Target options > Endianness = Little endian
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 4.19
+- Binary utilities > Version of binutils = 2.42
+- C-library > musl version = 1.2.5
+- C compiler > gcc version = 14.2.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
 ### `riscv64-unknown-linux-gnu.defconfig`
 
 For targets: `riscv64-unknown-linux-gnu`
@@ -423,7 +457,7 @@ For targets: `riscv64-unknown-linux-gnu`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 4.20.17
-- Binary utilities > Version of binutils = 2.36.1
+- Binary utilities > Version of binutils = 2.40
 - C-library > glibc version = 2.29
 - C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM

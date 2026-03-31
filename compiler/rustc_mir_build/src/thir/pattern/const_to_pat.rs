@@ -3,9 +3,8 @@ use core::ops::ControlFlow;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Diag;
+use rustc_errors::{Diag, msg};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -23,10 +22,10 @@ use tracing::{debug, instrument, trace};
 use super::PatCtxt;
 use crate::errors::{
     ConstPatternDependsOnGenericParameter, CouldNotEvalConstPattern, InvalidPattern, NaNPattern,
-    PointerPattern, TypeNotPartialEq, TypeNotStructural, UnionPattern, UnsizedPattern,
+    PointerPattern, SuggestEq, TypeNotPartialEq, TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
-impl<'tcx> PatCtxt<'tcx> {
+impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
     /// Converts a constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
@@ -62,7 +61,7 @@ struct ConstToPat<'tcx> {
 }
 
 impl<'tcx> ConstToPat<'tcx> {
-    fn new(pat_ctxt: &PatCtxt<'tcx>, id: hir::HirId, span: Span, c: ty::Const<'tcx>) -> Self {
+    fn new(pat_ctxt: &PatCtxt<'tcx, '_>, id: hir::HirId, span: Span, c: ty::Const<'tcx>) -> Self {
         trace!(?pat_ctxt.typeck_results.hir_owner);
         ConstToPat { tcx: pat_ctxt.tcx, typing_env: pat_ctxt.typing_env, span, id, c }
     }
@@ -75,17 +74,15 @@ impl<'tcx> ConstToPat<'tcx> {
     fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         if let ty::ConstKind::Unevaluated(uv) = self.c.kind() {
             let def_kind = self.tcx.def_kind(uv.def);
-            if let hir::def::DefKind::AssocConst = def_kind
+            if let hir::def::DefKind::AssocConst { .. } = def_kind
                 && let Some(def_id) = uv.def.as_local()
             {
                 // Include the container item in the output.
                 err.span_label(self.tcx.def_span(self.tcx.local_parent(def_id)), "");
             }
-            if let hir::def::DefKind::Const | hir::def::DefKind::AssocConst = def_kind {
-                err.span_label(
-                    self.tcx.def_span(uv.def),
-                    crate::fluent_generated::mir_build_const_defined_here,
-                );
+            if let hir::def::DefKind::Const { .. } | hir::def::DefKind::AssocConst { .. } = def_kind
+            {
+                err.span_label(self.tcx.def_span(uv.def), msg!("constant defined here"));
             }
         }
         Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()), extra: None })
@@ -120,7 +117,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // We've emitted an error on the original const, it would be redundant to complain
                 // on its use as well.
                 if let ty::ConstKind::Unevaluated(uv) = self.c.kind()
-                    && let hir::def::DefKind::Const | hir::def::DefKind::AssocConst =
+                    && let hir::def::DefKind::Const { .. } | hir::def::DefKind::AssocConst { .. } =
                         self.tcx.def_kind(uv.def)
                 {
                     err.downgrade_to_delayed_bug();
@@ -227,13 +224,93 @@ impl<'tcx> ConstToPat<'tcx> {
                         }
                         _ => (None, true),
                     };
+                let manual_partialeq_impl =
+                    manual_partialeq_impl_note || manual_partialeq_impl_span.is_some();
+                let is_local = adt_def.did().is_local();
                 let ty_def_span = tcx.def_span(adt_def.did());
+                let suggestion = if let Ok(name) = tcx.sess.source_map().span_to_snippet(self.span)
+                    && (is_local || manual_partialeq_impl)
+                {
+                    let mut hir_id = self.id;
+                    while let hir::Node::Pat(pat) = tcx.parent_hir_node(hir_id) {
+                        hir_id = pat.hir_id;
+                    }
+                    match tcx.parent_hir_node(hir_id) {
+                        hir::Node::Arm(hir::Arm { pat, guard: None, .. }) => {
+                            // Add an if condition to the match arm.
+                            Some(SuggestEq::AddIf {
+                                if_span: pat.span.shrink_to_hi(),
+                                pat_span: self.span,
+                                name,
+                                ty,
+                                manual_partialeq_impl,
+                            })
+                        }
+                        hir::Node::Arm(hir::Arm { guard: Some(guard), .. }) => {
+                            // Modify the the match arm if condition and add a check for equality.
+                            Some(SuggestEq::AddToIf {
+                                span: guard.span.shrink_to_hi(),
+                                pat_span: self.span,
+                                name,
+                                ty,
+                                manual_partialeq_impl,
+                            })
+                        }
+                        hir::Node::Expr(hir::Expr {
+                            kind: hir::ExprKind::Let(let_expr),
+                            span,
+                            ..
+                        }) => {
+                            if let_expr.pat.span == self.span {
+                                // `if let CONST = expr` -> `if CONST == expr`.
+                                Some(SuggestEq::ReplaceWithEq {
+                                    removal: span.until(self.span),
+                                    eq: self.span.between(let_expr.init.span),
+                                    ty,
+                                    manual_partialeq_impl,
+                                })
+                            } else if tcx.sess.edition().at_least_rust_2024() {
+                                // `if let Some(CONST) = expr` ->
+                                // `if let Some(binding) = expr && binding == CONST`.
+                                Some(SuggestEq::AddToLetChain {
+                                    span: span.shrink_to_hi(),
+                                    pat_span: self.span,
+                                    name,
+                                    ty,
+                                    manual_partialeq_impl,
+                                })
+                            } else {
+                                None
+                            }
+                        }
+                        hir::Node::LetStmt(let_stmt)
+                            if let Some(init) = let_stmt.init
+                                && let Some(els) = let_stmt.els
+                                && init.span.ctxt().is_root()
+                                && els.span.ctxt().is_root() =>
+                        {
+                            // `let PAT = expr else {` -> `if PAT == expr {`.
+                            Some(SuggestEq::ReplaceLetElseWithIf {
+                                if_span: let_stmt.span.until(let_stmt.pat.span),
+                                eq: let_stmt.pat.span.between(init.span),
+                                else_span: init.span.between(els.span),
+                                ty,
+                                manual_partialeq_impl,
+                            })
+                        }
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
                 let err = TypeNotStructural {
                     span,
                     ty,
                     ty_def_span,
                     manual_partialeq_impl_span,
                     manual_partialeq_impl_note,
+                    is_local,
+                    suggestion,
                 };
                 return self.mk_err(tcx.dcx().create_err(err), ty);
             }
@@ -491,8 +568,7 @@ fn type_has_partial_eq_impl<'tcx>(
     let mut structural_peq = false;
     let mut impl_def_id = None;
     for def_id in tcx.non_blanket_impls_for_ty(partial_eq_trait_id, ty) {
-        automatically_derived =
-            find_attr!(tcx.get_all_attrs(def_id), AttributeKind::AutomaticallyDerived(..));
+        automatically_derived = find_attr!(tcx, def_id, AutomaticallyDerived(..));
         impl_def_id = Some(def_id);
     }
     for _ in tcx.non_blanket_impls_for_ty(structural_partial_eq_trait_id, ty) {

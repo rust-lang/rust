@@ -4,10 +4,6 @@ use crate::{mem, ptr};
 
 /// Allows wrapped [references] and [boxes] to dangle.
 ///
-/// <section class="warning">
-/// This type is not properly implemented yet, and the documentation below is thus not accurate.
-/// </section>
-///
 /// That is, if a reference (or a `Box`) is wrapped in `MaybeDangling` (including when in a
 /// (nested) field of a compound type wrapped in `MaybeDangling`), it does not have to follow
 /// pointer aliasing rules or be dereferenceable.
@@ -73,6 +69,7 @@ use crate::{mem, ptr};
 #[repr(transparent)]
 #[rustc_pub_transparent]
 #[derive(Debug, Copy, Clone, Default)]
+#[lang = "maybe_dangling"]
 pub struct MaybeDangling<P: ?Sized>(P);
 
 impl<P: ?Sized> MaybeDangling<P> {

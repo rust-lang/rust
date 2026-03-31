@@ -58,7 +58,7 @@ pub fn load_raw_pointer<'a>(x: &*const i32) -> *const i32 {
 // CHECK-LABEL: @load_box
 #[no_mangle]
 pub fn load_box<'a>(x: Box<Box<i32>>) -> Box<i32> {
-    // CHECK: load ptr, ptr %{{.*}}, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_4_META]], !noundef !{{[0-9]+}}
+    // CHECK: load ptr, ptr %{{.*}}, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !noundef !{{[0-9]+}}
     *x
 }
 

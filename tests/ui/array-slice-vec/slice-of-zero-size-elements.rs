@@ -1,9 +1,5 @@
 //@ run-pass
-#![allow(stable_features)]
-
 //@ compile-flags: -C debug-assertions
-
-#![feature(iter_to_slice)]
 
 use std::slice;
 

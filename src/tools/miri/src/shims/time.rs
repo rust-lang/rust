@@ -401,11 +401,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let timeout_anchor = if flags == 0 {
-            // No flags set, the timespec should be interperted as a duration
+            // No flags set, the timespec should be interpreted as a duration
             // to sleep for
             TimeoutAnchor::Relative
         } else if flags == this.eval_libc_i32("TIMER_ABSTIME") {
-            // Only flag TIMER_ABSTIME set, the timespec should be interperted as
+            // Only flag TIMER_ABSTIME set, the timespec should be interpreted as
             // an absolute time.
             TimeoutAnchor::Absolute
         } else {

@@ -296,7 +296,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         MethodItem(m, _) => {
             ItemEnum::Function(from_clean_function(m, true, header.unwrap(), renderer))
         }
-        RequiredMethodItem(m) => {
+        RequiredMethodItem(m, _) => {
             ItemEnum::Function(from_clean_function(m, false, header.unwrap(), renderer))
         }
         ImplItem(i) => ItemEnum::Impl(i.into_json(renderer)),
@@ -353,6 +353,8 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             name: name.as_ref().unwrap().to_string(),
             rename: src.map(|x| x.to_string()),
         },
+        // All placeholder impl items should have been removed in the stripper passes.
+        PlaceholderImplItem => unreachable!(),
     }
 }
 
@@ -579,6 +581,8 @@ impl FromClean<clean::Type> for Type {
                 type_: Box::new(t.into_json(renderer)),
                 __pat_unstable_do_not_use: p.to_string(),
             },
+            // FIXME(FRTs): implement
+            clean::Type::FieldOf(..) => todo!(),
             ImplTrait(g) => Type::ImplTrait(g.into_json(renderer)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {
@@ -916,7 +920,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
     };
 
     vec![match kind {
-        AK::Deprecation { .. } => return Vec::new(), // Handled separately into Item::deprecation.
+        AK::Deprecated { .. } => return Vec::new(), // Handled separately into Item::deprecation.
         AK::DocComment { .. } => unreachable!("doc comments stripped out earlier"),
 
         AK::MacroExport { .. } => Attribute::MacroExport,
@@ -1039,10 +1043,10 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
             for attr_span in test_attrs {
                 // FIXME: This is ugly, remove when `test_attrs` has been ported to new attribute API.
                 if let Ok(snippet) = source_map.span_to_snippet(*attr_span) {
-                    ret.push(Attribute::Other(format!("#[doc(test(attr({snippet})))")));
+                    ret.push(Attribute::Other(format!("#[doc(test(attr({snippet})))]")));
                 }
             }
-            toggle_attr(&mut ret, "no_crate_inject", no_crate_inject);
+            toggle_attr(&mut ret, "test(no_crate_inject)", no_crate_inject);
             return ret;
         }
 

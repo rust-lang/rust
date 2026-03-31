@@ -1,42 +1,22 @@
+use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::ErrorGuaranteed;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser};
+use rustc_proc_macro as pm;
 use rustc_session::Session;
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::profiling::SpannedEventArgRecorder;
 use rustc_span::{LocalExpnId, Span};
-use {rustc_ast as ast, rustc_proc_macro as pm};
 
 use crate::base::{self, *};
 use crate::{errors, proc_macro_server};
 
-struct MessagePipe<T> {
-    tx: std::sync::mpsc::SyncSender<T>,
-    rx: std::sync::mpsc::Receiver<T>,
-}
-
-impl<T> pm::bridge::server::MessagePipe<T> for MessagePipe<T> {
-    fn new() -> (Self, Self) {
-        let (tx1, rx1) = std::sync::mpsc::sync_channel(1);
-        let (tx2, rx2) = std::sync::mpsc::sync_channel(1);
-        (MessagePipe { tx: tx1, rx: rx2 }, MessagePipe { tx: tx2, rx: rx1 })
-    }
-
-    fn send(&mut self, value: T) {
-        self.tx.send(value).unwrap();
-    }
-
-    fn recv(&mut self) -> Option<T> {
-        self.rx.recv().ok()
-    }
-}
-
 fn exec_strategy(sess: &Session) -> impl pm::bridge::server::ExecutionStrategy + 'static {
-    pm::bridge::server::MaybeCrossThread::<MessagePipe<_>>::new(
-        sess.opts.unstable_opts.proc_macro_execution_strategy
+    pm::bridge::server::MaybeCrossThread {
+        cross_thread: sess.opts.unstable_opts.proc_macro_execution_strategy
             == ProcMacroExecutionStrategy::CrossThread,
-    )
+    }
 }
 
 pub struct BangProcMacro {
@@ -126,11 +106,6 @@ impl MultiItemModifier for DeriveProcMacro {
         // (e.g. `fn foo() { #[derive(Debug)] struct Bar; }`)
         let is_stmt = matches!(item, Annotatable::Stmt(..));
 
-        // We used to have an alternative behaviour for crates that needed it.
-        // We had a lint for a long time, but now we just emit a hard error.
-        // Eventually we might remove the special case hard error check
-        // altogether. See #73345.
-        crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess.psess);
         let input = item.to_tokens();
 
         let invoc_id = ecx.current_expansion.id;

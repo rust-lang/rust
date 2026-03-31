@@ -9720,6 +9720,99 @@ fn test_hover_function_with_pat_param() {
 }
 
 #[test]
+fn test_hover_function_with_too_long_param() {
+    check(
+        r#"
+fn fn_$0(
+    attrs: impl IntoIterator<Item = ast::Attr>,
+    visibility: Option<ast::Visibility>,
+    fn_name: ast::Name,
+    type_params: Option<ast::GenericParamList>,
+    where_clause: Option<ast::WhereClause>,
+    params: ast::ParamList,
+    body: ast::BlockExpr,
+    ret_type: Option<ast::RetType>,
+    is_async: bool,
+    is_const: bool,
+    is_unsafe: bool,
+    is_gen: bool,
+) -> ast::Fn {}
+        "#,
+        expect![[r#"
+            *fn_*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn fn_(
+                attrs: impl IntoIterator<Item = ast::Attr>,
+                visibility: Option<ast::Visibility>,
+                fn_name: ast::Name,
+                type_params: Option<ast::GenericParamList>,
+                where_clause: Option<ast::WhereClause>,
+                params: ast::ParamList,
+                body: ast::BlockExpr,
+                ret_type: Option<ast::RetType>,
+                is_async: bool,
+                is_const: bool,
+                is_unsafe: bool,
+                is_gen: bool
+            ) -> ast::Fn
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+fn fn_$0(
+    &self,
+    attrs: impl IntoIterator<Item = ast::Attr>,
+    visibility: Option<ast::Visibility>,
+    fn_name: ast::Name,
+    type_params: Option<ast::GenericParamList>,
+    where_clause: Option<ast::WhereClause>,
+    params: ast::ParamList,
+    body: ast::BlockExpr,
+    ret_type: Option<ast::RetType>,
+    is_async: bool,
+    is_const: bool,
+    is_unsafe: bool,
+    is_gen: bool,
+    ...
+) -> ast::Fn {}
+        "#,
+        expect![[r#"
+            *fn_*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn fn_(
+                &self,
+                attrs: impl IntoIterator<Item = ast::Attr>,
+                visibility: Option<ast::Visibility>,
+                fn_name: ast::Name,
+                type_params: Option<ast::GenericParamList>,
+                where_clause: Option<ast::WhereClause>,
+                params: ast::ParamList,
+                body: ast::BlockExpr,
+                ret_type: Option<ast::RetType>,
+                is_async: bool,
+                is_const: bool,
+                is_unsafe: bool,
+                is_gen: bool,
+                ...
+            ) -> ast::Fn
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_path_inside_block_scope() {
     check(
         r#"

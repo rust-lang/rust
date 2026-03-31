@@ -26,15 +26,17 @@ pub(crate) fn expand_deriving_eq(
         additional_bounds: Vec::new(),
         supports_unions: true,
         methods: vec![MethodDef {
-            name: sym::assert_receiver_is_total_eq,
+            name: sym::assert_fields_are_eq,
             generics: Bounds::empty(),
             explicit_self: true,
             nonself_args: vec![],
             ret_ty: Unit,
             attributes: thin_vec![
+                // This method will never be called, so doing codegen etc. for it is unnecessary.
+                // We prevent this by adding `#[inline]`, which improves compile-time.
                 cx.attr_word(sym::inline, span),
                 cx.attr_nested_word(sym::doc, sym::hidden, span),
-                cx.attr_nested_word(sym::coverage, sym::off, span)
+                cx.attr_nested_word(sym::coverage, sym::off, span),
             ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {

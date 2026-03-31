@@ -106,9 +106,9 @@ warning: "stdcall" is not a supported ABI for the current target
 LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    |                   ^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
    = note: `#[warn(unsupported_calling_conventions)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: "stdcall" is not a supported ABI for the current target
@@ -117,9 +117,9 @@ warning: "stdcall" is not a supported ABI for the current target
 LL | extern "stdcall" {}
    | ^^^^^^^^^^^^^^^^^^^
    |
+   = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
 warning: "stdcall-unwind" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:92:1
@@ -127,9 +127,9 @@ warning: "stdcall-unwind" is not a supported ABI for the current target
 LL | extern "stdcall-unwind" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: if you need `extern "stdcall-unwind"` on win32 and `extern "C-unwind"` everywhere else, use `extern "system-unwind"`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: if you need `extern "stdcall-unwind"` on win32 and `extern "C-unwind"` everywhere else, use `extern "system-unwind"`
 
 warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:100:17
@@ -137,9 +137,9 @@ warning: "cdecl" is not a supported ABI for the current target
 LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    |                 ^^^^^^^^^^^^^^^^^^^
    |
+   = help: use `extern "C"` instead
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C"` instead
 
 warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:105:1
@@ -147,9 +147,9 @@ warning: "cdecl" is not a supported ABI for the current target
 LL | extern "cdecl" {}
    | ^^^^^^^^^^^^^^^^^
    |
+   = help: use `extern "C"` instead
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C"` instead
 
 warning: "cdecl-unwind" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:108:1
@@ -157,9 +157,9 @@ warning: "cdecl-unwind" is not a supported ABI for the current target
 LL | extern "cdecl-unwind" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: use `extern "C-unwind"` instead
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C-unwind"` instead
 
 warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:137:1
@@ -167,9 +167,9 @@ warning: "cdecl" is not a supported ABI for the current target
 LL | extern "cdecl" {}
    | ^^^^^^^^^^^^^^^^^
    |
+   = help: use `extern "C"` instead
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C"` instead
 
 warning: "stdcall" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:78:1
@@ -177,9 +177,9 @@ warning: "stdcall" is not a supported ABI for the current target
 LL | extern "stdcall" fn stdcall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
 warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:97:1
@@ -187,9 +187,9 @@ warning: "cdecl" is not a supported ABI for the current target
 LL | extern "cdecl" fn cdecl() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: use `extern "C"` instead
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C"` instead
 
 error: aborting due to 17 previous errors; 9 warnings emitted
 

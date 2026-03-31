@@ -689,6 +689,30 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Cell<U>> for Cell<T> {}
 
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
+impl<T, const N: usize> AsRef<[Cell<T>; N]> for Cell<[T; N]> {
+    #[inline]
+    fn as_ref(&self) -> &[Cell<T>; N] {
+        self.as_array_of_cells()
+    }
+}
+
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
+impl<T, const N: usize> AsRef<[Cell<T>]> for Cell<[T; N]> {
+    #[inline]
+    fn as_ref(&self) -> &[Cell<T>] {
+        &*self.as_array_of_cells()
+    }
+}
+
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
+impl<T> AsRef<[Cell<T>]> for Cell<[T]> {
+    #[inline]
+    fn as_ref(&self) -> &[Cell<T>] {
+        self.as_slice_of_cells()
+    }
+}
+
 impl<T> Cell<[T]> {
     /// Returns a `&[Cell<T>]` from a `&Cell<[T]>`
     ///
@@ -750,7 +774,6 @@ impl<T, const N: usize> Cell<[T; N]> {
 /// following is unsound:
 ///
 /// ```rust
-/// #![feature(cell_get_cloned)]
 /// # use std::cell::Cell;
 ///
 /// #[derive(Copy, Debug)]
@@ -2694,18 +2717,6 @@ fn assert_coerce_unsized(
     let _: Cell<&dyn Send> = c;
     let _: RefCell<&dyn Send> = d;
 }
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for UnsafeCell<T> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for SyncUnsafeCell<T> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for Cell<T> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for RefCell<T> {}
 
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<'b, T: ?Sized> PinCoerceUnsized for Ref<'b, T> {}

@@ -15,7 +15,6 @@ async fn baz<T>(_c: impl FnMut() -> T) where T: Future<Output=()> {
 fn foo(x: NotSync) -> impl Future + Send {
     //~^ ERROR `*mut ()` cannot be shared between threads safely
     async move {
-    //~^ ERROR `*mut ()` cannot be shared between threads safely
         baz(|| async {
             foo(x.clone());
         }).await;

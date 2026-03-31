@@ -7,7 +7,7 @@
 // ```
 
 use crate::mem::transmute;
-use super::types::*;
+use super::super::*;
 
 #[allow(improper_ctypes)]
 unsafe extern "unadjusted" {
@@ -980,7 +980,7 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.loongarch.lasx.xvssrln.w.d"]
     fn __lasx_xvssrln_w_d(a: __v4i64, b: __v4i64) -> __v8i32;
     #[link_name = "llvm.loongarch.lasx.xvorn.v"]
-    fn __lasx_xvorn_v(a: __v32i8, b: __v32i8) -> __v32i8;
+    fn __lasx_xvorn_v(a: __v32u8, b: __v32u8) -> __v32u8;
     #[link_name = "llvm.loongarch.lasx.xvldi"]
     fn __lasx_xvldi(a: i32) -> __v4i64;
     #[link_name = "llvm.loongarch.lasx.xvldx"]
@@ -1491,6 +1491,42 @@ unsafe extern "unadjusted" {
     fn __lasx_xvrepli_h(a: i32) -> __v16i16;
     #[link_name = "llvm.loongarch.lasx.xvrepli.w"]
     fn __lasx_xvrepli_w(a: i32) -> __v8i32;
+    #[link_name = "llvm.loongarch.lasx.cast.128.s"]
+    fn __lasx_cast_128_s(a: __v4f32) -> __v8f32;
+    #[link_name = "llvm.loongarch.lasx.cast.128.d"]
+    fn __lasx_cast_128_d(a: __v2f64) -> __v4f64;
+    #[link_name = "llvm.loongarch.lasx.cast.128"]
+    fn __lasx_cast_128(a: __v2i64) -> __v4i64;
+    #[link_name = "llvm.loongarch.lasx.concat.128.s"]
+    fn __lasx_concat_128_s(a: __v4f32, b: __v4f32) -> __v8f32;
+    #[link_name = "llvm.loongarch.lasx.concat.128.d"]
+    fn __lasx_concat_128_d(a: __v2f64, b: __v2f64) -> __v4f64;
+    #[link_name = "llvm.loongarch.lasx.concat.128"]
+    fn __lasx_concat_128(a: __v2i64, b: __v2i64) -> __v4i64;
+    #[link_name = "llvm.loongarch.lasx.extract.128.lo.s"]
+    fn __lasx_extract_128_lo_s(a: __v8f32) -> __v4f32;
+    #[link_name = "llvm.loongarch.lasx.extract.128.hi.s"]
+    fn __lasx_extract_128_hi_s(a: __v8f32) -> __v4f32;
+    #[link_name = "llvm.loongarch.lasx.extract.128.lo.d"]
+    fn __lasx_extract_128_lo_d(a: __v4f64) -> __v2f64;
+    #[link_name = "llvm.loongarch.lasx.extract.128.hi.d"]
+    fn __lasx_extract_128_hi_d(a: __v4f64) -> __v2f64;
+    #[link_name = "llvm.loongarch.lasx.extract.128.lo"]
+    fn __lasx_extract_128_lo(a: __v4i64) -> __v2i64;
+    #[link_name = "llvm.loongarch.lasx.extract.128.hi"]
+    fn __lasx_extract_128_hi(a: __v4i64) -> __v2i64;
+    #[link_name = "llvm.loongarch.lasx.insert.128.lo.s"]
+    fn __lasx_insert_128_lo_s(a: __v8f32, b: __v4f32) -> __v8f32;
+    #[link_name = "llvm.loongarch.lasx.insert.128.hi.s"]
+    fn __lasx_insert_128_hi_s(a: __v8f32, b: __v4f32) -> __v8f32;
+    #[link_name = "llvm.loongarch.lasx.insert.128.lo.d"]
+    fn __lasx_insert_128_lo_d(a: __v4f64, b: __v2f64) -> __v4f64;
+    #[link_name = "llvm.loongarch.lasx.insert.128.hi.d"]
+    fn __lasx_insert_128_hi_d(a: __v4f64, b: __v2f64) -> __v4f64;
+    #[link_name = "llvm.loongarch.lasx.insert.128.lo"]
+    fn __lasx_insert_128_lo(a: __v4i64, b: __v2i64) -> __v4i64;
+    #[link_name = "llvm.loongarch.lasx.insert.128.hi"]
+    fn __lasx_insert_128_hi(a: __v4i64, b: __v2i64) -> __v4i64;
 }
 
 #[inline]
@@ -7061,4 +7097,130 @@ pub fn lasx_xvrepli_h<const IMM_S10: i32>() -> m256i {
 pub fn lasx_xvrepli_w<const IMM_S10: i32>() -> m256i {
     static_assert_simm_bits!(IMM_S10, 10);
     unsafe { transmute(__lasx_xvrepli_w(IMM_S10)) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_cast_128_s(a: m128) -> m256 {
+    unsafe { transmute(__lasx_cast_128_s(transmute(a))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_cast_128_d(a: m128d) -> m256d {
+    unsafe { transmute(__lasx_cast_128_d(transmute(a))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_cast_128(a: m128i) -> m256i {
+    unsafe { transmute(__lasx_cast_128(transmute(a))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_concat_128_s(a: m128, b: m128) -> m256 {
+    unsafe { transmute(__lasx_concat_128_s(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_concat_128_d(a: m128d, b: m128d) -> m256d {
+    unsafe { transmute(__lasx_concat_128_d(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_concat_128(a: m128i, b: m128i) -> m256i {
+    unsafe { transmute(__lasx_concat_128(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_extract_128_lo_s(a: m256) -> m128 {
+    unsafe { transmute(__lasx_extract_128_lo_s(transmute(a))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_extract_128_hi_s(a: m256) -> m128 {
+    unsafe { transmute(__lasx_extract_128_hi_s(transmute(a))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_extract_128_lo_d(a: m256d) -> m128d {
+    unsafe { transmute(__lasx_extract_128_lo_d(transmute(a))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_extract_128_hi_d(a: m256d) -> m128d {
+    unsafe { transmute(__lasx_extract_128_hi_d(transmute(a))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_extract_128_lo(a: m256i) -> m128i {
+    unsafe { transmute(__lasx_extract_128_lo(transmute(a))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_extract_128_hi(a: m256i) -> m128i {
+    unsafe { transmute(__lasx_extract_128_hi(transmute(a))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_insert_128_lo_s(a: m256, b: m128) -> m256 {
+    unsafe { transmute(__lasx_insert_128_lo_s(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_insert_128_hi_s(a: m256, b: m128) -> m256 {
+    unsafe { transmute(__lasx_insert_128_hi_s(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_insert_128_lo_d(a: m256d, b: m128d) -> m256d {
+    unsafe { transmute(__lasx_insert_128_lo_d(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_insert_128_hi_d(a: m256d, b: m128d) -> m256d {
+    unsafe { transmute(__lasx_insert_128_hi_d(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_insert_128_lo(a: m256i, b: m128i) -> m256i {
+    unsafe { transmute(__lasx_insert_128_lo(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lasx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lasx_insert_128_hi(a: m256i, b: m128i) -> m256i {
+    unsafe { transmute(__lasx_insert_128_hi(transmute(a), transmute(b))) }
 }

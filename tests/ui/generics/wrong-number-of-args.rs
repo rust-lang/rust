@@ -127,7 +127,7 @@ mod r#trait {
     //~| HELP remove
 
     type D = Box<dyn GenericType>;
-    //~^ ERROR missing generics for trait `GenericType`
+    //~^ ERROR missing generics for trait `r#trait::GenericType`
     //~| HELP add missing
 
     type E = Box<dyn GenericType<String, usize>>;

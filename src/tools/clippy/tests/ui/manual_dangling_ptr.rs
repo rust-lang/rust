@@ -1,3 +1,4 @@
+#![feature(extern_types)]
 #![warn(clippy::manual_dangling_ptr)]
 use std::mem;
 
@@ -41,4 +42,15 @@ fn _msrv_1_84() {
     foo(4 as *const _, 4 as *mut _);
     //~^ manual_dangling_ptr
     //~| manual_dangling_ptr
+}
+
+fn issue16459() {
+    unsafe extern "C" {
+        type Extern;
+    }
+    let _ = unsafe { &mut *(1 as *mut Extern) };
+
+    struct Empty;
+    let _ = unsafe { &mut *(1 as *mut Empty) };
+    //~^ manual_dangling_ptr
 }

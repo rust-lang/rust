@@ -35,8 +35,21 @@ LL | |         }
 LL | |     }
    | |_____- returning this value requires that `*map` is borrowed for `'r`
 
+error[E0499]: cannot borrow `*map` as mutable more than once at a time
+  --> $DIR/nll-problem-case-3-issue-21906.rs:45:41
+   |
+LL | fn get_priority_mut_entry<'a, K, V>(
+   |                           -- lifetime `'a` defined here
+...
+LL |     match map.entry(key1) {
+   |           --- first mutable borrow occurs here
+LL |         Entry::Occupied(occupied) => Some(occupied.into_mut()),
+   |                                      ------------------------- returning this value requires that `*map` is borrowed for `'a`
+LL |         Entry::Vacant(_vacant) => match map.entry(key2) {
+   |                                         ^^^ second mutable borrow occurs here
+
 error[E0499]: cannot borrow `*self` as mutable more than once at a time
-  --> $DIR/nll-problem-case-3-issue-21906.rs:44:21
+  --> $DIR/nll-problem-case-3-issue-21906.rs:64:21
    |
 LL |     fn two(&mut self) -> &i32 {
    |            - let's call the lifetime of this reference `'1`
@@ -48,7 +61,7 @@ LL |                 return k;
    |                        - returning this value requires that `*self` is borrowed for `'1`
 
 error[E0502]: cannot borrow `x.data` as immutable because it is also borrowed as mutable
-  --> $DIR/nll-problem-case-3-issue-21906.rs:62:22
+  --> $DIR/nll-problem-case-3-issue-21906.rs:82:22
    |
 LL | fn foo(x: &mut Foo) -> Option<&mut i32> {
    |           - let's call the lifetime of this reference `'1`
@@ -61,7 +74,7 @@ LL |     println!("{:?}", x.data);
    |                      ^^^^^^ immutable borrow occurs here
 
 error[E0499]: cannot borrow `*vec` as mutable more than once at a time
-  --> $DIR/nll-problem-case-3-issue-21906.rs:77:9
+  --> $DIR/nll-problem-case-3-issue-21906.rs:97:9
    |
 LL | fn f(vec: &mut Vec<u8>) -> &u8 {
    |           - let's call the lifetime of this reference `'1`
@@ -75,7 +88,7 @@ LL |         vec.push(10);
    |         ^^^ second mutable borrow occurs here
 
 error[E0502]: cannot borrow `*vec` as immutable because it is also borrowed as mutable
-  --> $DIR/nll-problem-case-3-issue-21906.rs:78:9
+  --> $DIR/nll-problem-case-3-issue-21906.rs:98:9
    |
 LL | fn f(vec: &mut Vec<u8>) -> &u8 {
    |           - let's call the lifetime of this reference `'1`
@@ -88,7 +101,7 @@ LL |         n
 LL |         vec.last().unwrap()
    |         ^^^ immutable borrow occurs here
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0499, E0502.
 For more information about an error, try `rustc --explain E0499`.

@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![cfg_attr(feature = "nightly", allow(internal_features))]
-#![cfg_attr(feature = "nightly", feature(assert_matches))]
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
 // tidy-alphabetical-end
@@ -64,9 +63,9 @@ pub use canon_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 #[cfg(feature = "nightly")]
 pub use extern_abi::CVariadicStatus;
 pub use extern_abi::{ExternAbi, all_names};
+pub use layout::{FIRST_VARIANT, FieldIdx, LayoutCalculator, LayoutCalculatorError, VariantIdx};
 #[cfg(feature = "nightly")]
-pub use layout::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
-pub use layout::{LayoutCalculator, LayoutCalculatorError};
+pub use layout::{Layout, TyAbiInterface, TyAndLayout};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
@@ -1001,20 +1000,6 @@ pub enum AlignFromBytesError {
     TooLarge(u64),
 }
 
-impl AlignFromBytesError {
-    pub fn diag_ident(self) -> &'static str {
-        match self {
-            Self::NotPowerOfTwo(_) => "not_power_of_two",
-            Self::TooLarge(_) => "too_large",
-        }
-    }
-
-    pub fn align(self) -> u64 {
-        let (Self::NotPowerOfTwo(align) | Self::TooLarge(align)) = self;
-        align
-    }
-}
-
 impl fmt::Debug for AlignFromBytesError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
@@ -1024,8 +1009,8 @@ impl fmt::Debug for AlignFromBytesError {
 impl fmt::Display for AlignFromBytesError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AlignFromBytesError::NotPowerOfTwo(align) => write!(f, "`{align}` is not a power of 2"),
-            AlignFromBytesError::TooLarge(align) => write!(f, "`{align}` is too large"),
+            AlignFromBytesError::NotPowerOfTwo(align) => write!(f, "{align} is not a power of 2"),
+            AlignFromBytesError::TooLarge(align) => write!(f, "{align} is too large"),
         }
     }
 }
@@ -1035,6 +1020,19 @@ impl Align {
     pub const EIGHT: Align = Align { pow2: 3 };
     // LLVM has a maximal supported alignment of 2^29, we inherit that.
     pub const MAX: Align = Align { pow2: 29 };
+
+    /// Either `1 << (pointer_bits - 1)` or [`Align::MAX`], whichever is smaller.
+    #[inline]
+    pub fn max_for_target(tdl: &TargetDataLayout) -> Align {
+        let pointer_bits = tdl.pointer_size().bits();
+        if let Ok(pointer_bits) = u8::try_from(pointer_bits)
+            && pointer_bits <= Align::MAX.pow2
+        {
+            Align { pow2: pointer_bits - 1 }
+        } else {
+            Align::MAX
+        }
+    }
 
     #[inline]
     pub fn from_bits(bits: u64) -> Result<Align, AlignFromBytesError> {
@@ -1719,7 +1717,7 @@ impl AddressSpace {
 pub enum BackendRepr {
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
-    ScalableVector {
+    SimdScalableVector {
         element: Scalar,
         count: u64,
     },
@@ -1746,7 +1744,7 @@ impl BackendRepr {
             // fully implemented, scalable vectors will remain `Sized`, they just won't be
             // `const Sized` - whether `is_unsized` continues to return `false` at that point will
             // need to be revisited and will depend on what `is_unsized` is used for.
-            | BackendRepr::ScalableVector { .. }
+            | BackendRepr::SimdScalableVector { .. }
             | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => !sized,
         }
@@ -1789,7 +1787,7 @@ impl BackendRepr {
             // The align of a Vector can vary in surprising ways
             BackendRepr::SimdVector { .. }
             | BackendRepr::Memory { .. }
-            | BackendRepr::ScalableVector { .. } => None,
+            | BackendRepr::SimdScalableVector { .. } => None,
         }
     }
 
@@ -1813,7 +1811,7 @@ impl BackendRepr {
             // The size of a Vector can vary in surprising ways
             BackendRepr::SimdVector { .. }
             | BackendRepr::Memory { .. }
-            | BackendRepr::ScalableVector { .. } => None,
+            | BackendRepr::SimdScalableVector { .. } => None,
         }
     }
 
@@ -1828,8 +1826,8 @@ impl BackendRepr {
                 BackendRepr::SimdVector { element: element.to_union(), count }
             }
             BackendRepr::Memory { .. } => BackendRepr::Memory { sized: true },
-            BackendRepr::ScalableVector { element, count } => {
-                BackendRepr::ScalableVector { element: element.to_union(), count }
+            BackendRepr::SimdScalableVector { element, count } => {
+                BackendRepr::SimdScalableVector { element: element.to_union(), count }
             }
         }
     }
@@ -2073,7 +2071,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         match self.backend_repr {
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
-            | BackendRepr::ScalableVector { .. } => false,
+            | BackendRepr::SimdScalableVector { .. } => false,
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => true,
         }
     }
@@ -2132,21 +2130,22 @@ pub enum PointerKind {
 }
 
 /// Encodes extra information we have about a pointer.
+///
 /// Note that this information is advisory only, and backends are free to ignore it:
 /// if the information is wrong, that can cause UB, but if the information is absent,
 /// that must always be okay.
 #[derive(Copy, Clone, Debug)]
 pub struct PointeeInfo {
-    /// If this is `None`, then this is a raw pointer, so size and alignment are not guaranteed to
-    /// be reliable.
+    /// If this is `None`, then this is a raw pointer.
     pub safe: Option<PointerKind>,
-    /// If `safe` is `Some`, then the pointer is either null or dereferenceable for this many bytes.
+    /// If `size` is not zero, then the pointer is either null or dereferenceable for this many bytes
+    /// (independent of `safe`).
+    ///
     /// On a function argument, "dereferenceable" here means "dereferenceable for the entire duration
     /// of this function call", i.e. it is UB for the memory that this pointer points to be freed
     /// while this function is still running.
-    /// The size can be zero if the pointer is not dereferenceable.
     pub size: Size,
-    /// If `safe` is `Some`, then the pointer is aligned as indicated.
+    /// The pointer is guaranteed to be aligned this much (independent of `safe`).
     pub align: Align,
 }
 
@@ -2169,13 +2168,13 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
 
     /// Returns `true` if the size of the type is only known at runtime.
     pub fn is_runtime_sized(&self) -> bool {
-        matches!(self.backend_repr, BackendRepr::ScalableVector { .. })
+        matches!(self.backend_repr, BackendRepr::SimdScalableVector { .. })
     }
 
     /// Returns the elements count of a scalable vector.
     pub fn scalable_vector_element_count(&self) -> Option<u64> {
         match self.backend_repr {
-            BackendRepr::ScalableVector { count, .. } => Some(count),
+            BackendRepr::SimdScalableVector { count, .. } => Some(count),
             _ => None,
         }
     }
@@ -2188,7 +2187,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         match self.backend_repr {
             BackendRepr::Scalar(_)
             | BackendRepr::ScalarPair(..)
-            | BackendRepr::ScalableVector { .. }
+            | BackendRepr::SimdScalableVector { .. }
             | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
         }

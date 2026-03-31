@@ -710,7 +710,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef { val: operand.val, layout, move_annotation: None }
             }
             mir::Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
-            mir::Rvalue::ShallowInitBox(..) => bug!("`ShallowInitBox` in codegen"),
         }
     }
 

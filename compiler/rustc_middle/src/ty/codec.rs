@@ -13,17 +13,16 @@ use std::marker::{DiscriminantKind, PointeeSized};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::ty::Const;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Span, SpanDecoder, SpanEncoder};
+use rustc_span::{Span, SpanDecoder, SpanEncoder, Spanned};
 
 use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarKind, CanonicalVarKinds};
 use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
 use crate::mir::mono::MonoItem;
-use crate::mir::{self};
-use crate::traits;
 use crate::ty::{self, AdtDef, GenericArgsRef, Ty, TyCtxt};
+use crate::{mir, traits};
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -498,6 +497,7 @@ impl_decodable_via_ref! {
     &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
     &'tcx ty::List<ty::Pattern<'tcx>>,
     &'tcx ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>,
+    &'tcx ty::List<Const<'tcx>>,
 }
 
 #[macro_export]

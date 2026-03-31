@@ -24,6 +24,21 @@ LL | #![rustc_main]
    |
    = help: `#[rustc_main]` can only be applied to functions
 
+error: `repr` attribute cannot be used at crate level
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:16:1
+   |
+LL | #![repr()]
+   | ^^^^^^^^^^
+...
+LL | mod inline {
+   | ------------ the inner attribute doesn't annotate this item
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![repr()]
+LL + #[repr()]
+   |
+
 error: `#[path]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:20:1
    |
@@ -241,21 +256,6 @@ LL | #![export_name = "2200"]
 help: remove the `#[no_mangle]` attribute
    |
 LL - #![no_mangle]
-   |
-
-error: `repr` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:16:1
-   |
-LL | #![repr()]
-   | ^^^^^^^^^^
-...
-LL | mod inline {
-   |     ------ the inner attribute doesn't annotate this module
-   |
-help: perhaps you meant to use an outer attribute
-   |
-LL - #![repr()]
-LL + #[repr()]
    |
 
 error[E0517]: attribute should be applied to a struct, enum, or union

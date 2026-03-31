@@ -12,7 +12,7 @@ use itertools::Itertools;
 use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::syntax_editor::SyntaxEditor;
 use syntax::{
-    AstNode, NodeOrToken, SyntaxNode,
+    AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T,
     ast::{self, HasGenericParams, HasName},
 };
 
@@ -322,12 +322,42 @@ fn create_replacement(
         if let Some(old_lifetime) = ast::Lifetime::cast(syntax.clone()) {
             if let Some(new_lifetime) = lifetime_map.0.get(&old_lifetime.to_string()) {
                 if new_lifetime.text() == "'_" {
-                    removals.push(NodeOrToken::Node(syntax.clone()));
+                    // Check if this lifetime is inside a LifetimeArg (in angle brackets)
+                    if let Some(lifetime_arg) =
+                        old_lifetime.syntax().parent().and_then(ast::LifetimeArg::cast)
+                    {
+                        // Remove LifetimeArg and associated comma/whitespace
+                        let lifetime_arg_syntax = lifetime_arg.syntax();
+                        removals.push(NodeOrToken::Node(lifetime_arg_syntax.clone()));
 
-                    if let Some(ws) = syntax.next_sibling_or_token() {
-                        removals.push(ws.clone());
+                        // Remove comma and whitespace (look forward then backward)
+                        let comma_and_ws: Vec<_> = lifetime_arg_syntax
+                            .siblings_with_tokens(syntax::Direction::Next)
+                            .skip(1)
+                            .take_while(|it| it.as_token().is_some())
+                            .take_while_inclusive(|it| it.kind() == T![,])
+                            .collect();
+
+                        if comma_and_ws.iter().any(|it| it.kind() == T![,]) {
+                            removals.extend(comma_and_ws);
+                        } else {
+                            // No comma after, try before
+                            let comma_and_ws: Vec<_> = lifetime_arg_syntax
+                                .siblings_with_tokens(syntax::Direction::Prev)
+                                .skip(1)
+                                .take_while(|it| it.as_token().is_some())
+                                .take_while_inclusive(|it| it.kind() == T![,])
+                                .collect();
+                            removals.extend(comma_and_ws);
+                        }
+                        continue;
                     }
-
+                    removals.push(NodeOrToken::Node(syntax.clone()));
+                    if let Some(ws) = syntax.next_sibling_or_token()
+                        && ws.kind() == SyntaxKind::WHITESPACE
+                    {
+                        removals.push(ws);
+                    }
                     continue;
                 }
 
@@ -346,6 +376,34 @@ fn create_replacement(
             };
 
             replacements.push((syntax.clone(), new));
+        }
+    }
+
+    // Deduplicate removals to avoid intersecting changes
+    removals.sort_by_key(|n| n.text_range().start());
+    removals.dedup();
+
+    // Remove GenericArgList entirely if all its args are being removed (avoids empty angle brackets)
+    let generic_arg_lists_to_check: Vec<_> =
+        updated_concrete_type.descendants().filter_map(ast::GenericArgList::cast).collect();
+
+    for generic_arg_list in generic_arg_lists_to_check {
+        let will_be_empty = generic_arg_list.generic_args().all(|arg| match arg {
+            ast::GenericArg::LifetimeArg(lt_arg) => removals.iter().any(|removal| {
+                if let NodeOrToken::Node(node) = removal { node == lt_arg.syntax() } else { false }
+            }),
+            _ => false,
+        });
+
+        if will_be_empty && generic_arg_list.generic_args().next().is_some() {
+            removals.retain(|removal| {
+                if let NodeOrToken::Node(node) = removal {
+                    !node.ancestors().any(|anc| anc == *generic_arg_list.syntax())
+                } else {
+                    true
+                }
+            });
+            removals.push(NodeOrToken::Node(generic_arg_list.syntax().clone()));
         }
     }
 
@@ -941,6 +999,48 @@ impl<T, const C: usize> Tr<'static, u8> for Strukt<'_, T, C> {
             r#"
 trait Tr {
     fn new() -> Self$0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn inline_types_with_lifetime() {
+        check_assist(
+            inline_type_alias_uses,
+            r#"
+struct A<'a, 'b>(pub &'a mut &'b mut ());
+
+type $0T<'a, 'b> = A<'a, 'b>;
+
+fn foo(_: T) {}
+"#,
+            r#"
+struct A<'a, 'b>(pub &'a mut &'b mut ());
+
+
+
+fn foo(_: A) {}
+"#,
+        );
+    }
+
+    #[test]
+    fn mixed_lifetime_and_type_args() {
+        check_assist(
+            inline_type_alias,
+            r#"
+type Foo<'a, T> = Bar<'a, T>;
+struct Bar<'a, T>(&'a T);
+fn main() {
+    let a: $0Foo<u32>;
+}
+"#,
+            r#"
+type Foo<'a, T> = Bar<'a, T>;
+struct Bar<'a, T>(&'a T);
+fn main() {
+    let a: Bar<u32>;
 }
 "#,
         );

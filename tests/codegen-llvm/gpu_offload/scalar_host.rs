@@ -20,8 +20,6 @@
 // CHECK-NEXT: store double %_0.i, ptr %1, align 8
 // CHECK-NEXT: %2 = getelementptr inbounds nuw i8, ptr %.offload_ptrs, i64 8
 // CHECK-NEXT: store ptr %addr, ptr %2, align 8
-// CHECK-NEXT: %3 = getelementptr inbounds nuw i8, ptr %.offload_sizes, i64 8
-// CHECK-NEXT: store i64 4, ptr %3, align 8
 // CHECK-NEXT: call void @__tgt_target_data_begin_mapper
 
 #[unsafe(no_mangle)]

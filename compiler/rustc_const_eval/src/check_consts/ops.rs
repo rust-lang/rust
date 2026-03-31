@@ -2,7 +2,7 @@
 
 use hir::{ConstContext, LangItem};
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, MultiSpan, msg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -23,7 +23,7 @@ use rustc_trait_selection::traits::SelectionContext;
 use tracing::debug;
 
 use super::ConstCx;
-use crate::{errors, fluent_generated};
+use crate::errors;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
@@ -72,6 +72,27 @@ pub(crate) struct FnCallIndirect;
 impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         ccx.dcx().create_err(errors::UnallowedFnPointerCall { span, kind: ccx.const_kind() })
+    }
+}
+
+/// A c-variadic function call.
+#[derive(Debug)]
+pub(crate) struct FnCallCVariadic;
+impl<'tcx> NonConstOp<'tcx> for FnCallCVariadic {
+    fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
+        Status::Unstable {
+            gate: sym::const_c_variadic,
+            gate_already_checked: false,
+            safe_to_expose_on_stable: false,
+            is_function_call: true,
+        }
+    }
+
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        ccx.tcx.sess.create_feature_err(
+            errors::NonConstCVariadicCall { span, kind: ccx.const_kind() },
+            sym::const_c_variadic,
+        )
     }
 }
 
@@ -181,7 +202,9 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         );
 
         if let ConstContext::Static(_) = ccx.const_kind() {
-            err.note(fluent_generated::const_eval_lazy_lock);
+            err.note(msg!(
+                "consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`"
+            ));
         }
 
         err
@@ -242,6 +265,7 @@ fn build_error_for_const_call<'tcx>(
             }
         }
         CallKind::FnCall { fn_trait_id, self_ty } => {
+            let kind = ccx.const_kind();
             let note = match self_ty.kind() {
                 FnDef(def_id, ..) => {
                     let span = tcx.def_span(*def_id);
@@ -251,8 +275,8 @@ fn build_error_for_const_call<'tcx>(
 
                     Some(errors::NonConstClosureNote::FnDef { span })
                 }
-                FnPtr(..) => Some(errors::NonConstClosureNote::FnPtr),
-                Closure(..) => Some(errors::NonConstClosureNote::Closure),
+                FnPtr(..) => Some(errors::NonConstClosureNote::FnPtr { kind }),
+                Closure(..) => Some(errors::NonConstClosureNote::Closure { kind }),
                 _ => None,
             };
 
@@ -535,18 +559,6 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
         } else {
             ccx.dcx().create_err(errors::UnallowedOpInConstContext { span, msg })
         }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct HeapAllocation;
-impl<'tcx> NonConstOp<'tcx> for HeapAllocation {
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.dcx().create_err(errors::UnallowedHeapAllocations {
-            span,
-            kind: ccx.const_kind(),
-            teach: ccx.tcx.sess.teach(E0010),
-        })
     }
 }
 

@@ -5,13 +5,11 @@
 #![expect(incomplete_features)]
 
 trait X: Y<K = { Self::Q }> {
-    #[type_const]
-    const Q: usize;
+    type const Q: usize;
 }
 
 trait Y {
-    #[type_const]
-    const K: usize;
+    type const K: usize;
 }
 
 fn main() {

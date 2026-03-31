@@ -233,7 +233,7 @@ itself back on after some time).
 
 ### MSVC
 
-MSVC builds of Rust additionally requires an installation of:
+MSVC builds of Rust additionally require an installation of:
 
 - Visual Studio 2022 (or later) build tools so `rustc` can use its linker. Older
   Visual Studio versions such as 2019 *may* work but aren't actively tested.

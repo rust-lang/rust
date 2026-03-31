@@ -4,15 +4,13 @@
 #![expect(incomplete_features)]
 
 trait Tr {
-    #[type_const]
-    const SIZE: usize;
+    type const SIZE: usize;
 }
 
 struct T;
 
 impl Tr for T {
-    #[type_const]
-    const SIZE: usize;
+    type const SIZE: usize;
     //~^ ERROR associated constant in `impl` without body
 }
 

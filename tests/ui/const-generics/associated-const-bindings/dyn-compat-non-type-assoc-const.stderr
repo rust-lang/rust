@@ -11,16 +11,16 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
 LL | trait Trait {
    |       ----- this trait is not dyn compatible...
 LL |     const K: usize;
-   |           ^ ...because it contains associated const `K` that's not marked `#[type_const]`
+   |           ^ ...because it contains associated const `K` that's not defined as `type const`
    = help: consider moving `K` to another trait
 
-error: use of trait associated const without `#[type_const]`
+error: use of trait associated const not defined as `type const`
   --> $DIR/dyn-compat-non-type-assoc-const.rs:17:22
    |
 LL |     let _: dyn Trait<K = 0>;
    |                      ^^^^^
    |
-   = note: the declaration in the trait must be marked with `#[type_const]`
+   = note: the declaration in the trait must begin with `type const` not just `const` alone
 
 error[E0038]: the trait `Trait` is not dyn compatible
   --> $DIR/dyn-compat-non-type-assoc-const.rs:17:16
@@ -35,7 +35,7 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
 LL | trait Trait {
    |       ----- this trait is not dyn compatible...
 LL |     const K: usize;
-   |           ^ ...because it contains associated const `K` that's not marked `#[type_const]`
+   |           ^ ...because it contains associated const `K` that's not defined as `type const`
    = help: consider moving `K` to another trait
 
 error: aborting due to 3 previous errors

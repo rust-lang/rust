@@ -1,15 +1,17 @@
-use std::mem;
+use std::{fmt, mem};
 
-use rustc_errors::{Diag, DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg};
+use rustc_errors::{Diag, E0080};
 use rustc_middle::mir::AssertKind;
-use rustc_middle::mir::interpret::{AllocId, Provenance, ReportedErrorInfo, UndefinedBehaviorInfo};
+use rustc_middle::mir::interpret::{
+    AllocId, Provenance, ReportedErrorInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
+};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::ConstInt;
 use rustc_middle::ty::layout::LayoutError;
-use rustc_span::{Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use super::CompileTimeMachine;
-use crate::errors::{self, FrameNote, ReportErrorExt};
+use crate::errors::{self, FrameNote};
 use crate::interpret::{
     CtfeProvenance, ErrorHandled, Frame, InterpCx, InterpErrorInfo, InterpErrorKind,
     MachineStopType, Pointer, err_inval, err_machine_stop,
@@ -40,48 +42,48 @@ pub enum ConstEvalErrKind {
     ConstMakeGlobalWithOffset(Pointer<Option<CtfeProvenance>>),
 }
 
-impl MachineStopType for ConstEvalErrKind {
-    fn diagnostic_message(&self) -> DiagMessage {
+impl fmt::Display for ConstEvalErrKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use ConstEvalErrKind::*;
-
-        use crate::fluent_generated::*;
         match self {
-            ConstAccessesMutGlobal => const_eval_const_accesses_mut_global,
-            ModifiedGlobal => const_eval_modified_global,
-            Panic { .. } => const_eval_panic,
-            RecursiveStatic => const_eval_recursive_static,
-            AssertFailure(x) => x.diagnostic_message(),
-            WriteThroughImmutablePointer => const_eval_write_through_immutable_pointer,
-            ConstMakeGlobalPtrAlreadyMadeGlobal { .. } => {
-                const_eval_const_make_global_ptr_already_made_global
+            ConstAccessesMutGlobal => write!(f, "constant accesses mutable global memory"),
+            ModifiedGlobal => {
+                write!(f, "modifying a static's initial value from another static's initializer")
             }
-            ConstMakeGlobalPtrIsNonHeap(_) => const_eval_const_make_global_ptr_is_non_heap,
-            ConstMakeGlobalWithDanglingPtr(_) => const_eval_const_make_global_with_dangling_ptr,
-            ConstMakeGlobalWithOffset(_) => const_eval_const_make_global_with_offset,
-        }
-    }
-    fn add_args(self: Box<Self>, adder: &mut dyn FnMut(DiagArgName, DiagArgValue)) {
-        use ConstEvalErrKind::*;
-        match *self {
-            RecursiveStatic
-            | ConstAccessesMutGlobal
-            | ModifiedGlobal
-            | WriteThroughImmutablePointer => {}
-            AssertFailure(kind) => kind.add_args(adder),
-            Panic { msg, .. } => {
-                adder("msg".into(), msg.into_diag_arg(&mut None));
+            Panic { msg, .. } => write!(f, "evaluation panicked: {msg}"),
+            RecursiveStatic => {
+                write!(f, "encountered static that tried to access itself during initialization")
             }
-            ConstMakeGlobalPtrIsNonHeap(ptr)
-            | ConstMakeGlobalWithOffset(ptr)
-            | ConstMakeGlobalWithDanglingPtr(ptr) => {
-                adder("ptr".into(), format!("{ptr:?}").into_diag_arg(&mut None));
+            AssertFailure(x) => write!(f, "{x}"),
+            WriteThroughImmutablePointer => {
+                write!(
+                    f,
+                    "writing through a pointer that was derived from a shared (immutable) reference"
+                )
             }
             ConstMakeGlobalPtrAlreadyMadeGlobal(alloc) => {
-                adder("alloc".into(), alloc.into_diag_arg(&mut None));
+                write!(
+                    f,
+                    "attempting to call `const_make_global` twice on the same allocation {alloc}"
+                )
+            }
+            ConstMakeGlobalPtrIsNonHeap(ptr) => {
+                write!(
+                    f,
+                    "pointer passed to `const_make_global` does not point to a heap allocation: {ptr}"
+                )
+            }
+            ConstMakeGlobalWithDanglingPtr(ptr) => {
+                write!(f, "pointer passed to `const_make_global` is dangling: {ptr}")
+            }
+            ConstMakeGlobalWithOffset(ptr) => {
+                write!(f, "making {ptr} global which does not point to the beginning of an object")
             }
         }
     }
 }
+
+impl MachineStopType for ConstEvalErrKind {}
 
 /// The errors become [`InterpErrorKind::MachineStop`] when being raised.
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
@@ -94,7 +96,7 @@ pub fn get_span_and_frames<'tcx>(
     tcx: TyCtxtAt<'tcx>,
     stack: &[Frame<'tcx, impl Provenance, impl Sized>],
 ) -> (Span, Vec<errors::FrameNote>) {
-    let mut stacktrace = Frame::generate_stacktrace_from_stack(stack);
+    let mut stacktrace = Frame::generate_stacktrace_from_stack(stack, *tcx);
     // Filter out `requires_caller_location` frames.
     stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
     let span = stacktrace.last().map(|f| f.span).unwrap_or(tcx.span);
@@ -162,43 +164,43 @@ pub fn get_span_and_frames<'tcx>(
 /// This will use the `mk` function for adding more information to the error.
 /// You can use it to add a stacktrace of current execution according to
 /// `get_span_and_frames` or just give context on where the const eval error happened.
-pub(super) fn report<'tcx, C, F>(
+pub(super) fn report<'tcx>(
     ecx: &InterpCx<'tcx, CompileTimeMachine<'tcx>>,
     error: InterpErrorKind<'tcx>,
-    span: Span,
-    get_span_and_frames: C,
-    mk: F,
-) -> ErrorHandled
-where
-    C: FnOnce() -> (Span, Vec<FrameNote>),
-    F: FnOnce(&mut Diag<'_>, Span, Vec<FrameNote>),
-{
+    mk: impl FnOnce(&mut Diag<'_>, Span, Vec<FrameNote>),
+) -> ErrorHandled {
     let tcx = ecx.tcx.tcx;
     // Special handling for certain errors
     match error {
         // Don't emit a new diagnostic for these errors, they are already reported elsewhere or
         // should remain silent.
-        err_inval!(AlreadyReported(info)) => ErrorHandled::Reported(info, span),
+        err_inval!(AlreadyReported(info)) => ErrorHandled::Reported(info, DUMMY_SP),
         err_inval!(Layout(LayoutError::TooGeneric(_))) | err_inval!(TooGeneric) => {
-            ErrorHandled::TooGeneric(span)
+            ErrorHandled::TooGeneric(DUMMY_SP)
         }
         err_inval!(Layout(LayoutError::ReferencesError(guar))) => {
             // This can occur in infallible promoteds e.g. when a non-existent type or field is
             // encountered.
-            ErrorHandled::Reported(ReportedErrorInfo::allowed_in_infallible(guar), span)
+            ErrorHandled::Reported(ReportedErrorInfo::allowed_in_infallible(guar), DUMMY_SP)
         }
         // Report remaining errors.
         _ => {
-            let (our_span, frames) = get_span_and_frames();
-            let span = span.substitute_dummy(our_span);
-            let mut err = tcx.dcx().struct_span_err(our_span, error.diagnostic_message());
-            // We allow invalid programs in infallible promoteds since invalid layouts can occur
-            // anyway (e.g. due to size overflow). And we allow OOM as that can happen any time.
-            let allowed_in_infallible = matches!(
+            let (span, frames) = super::get_span_and_frames(ecx.tcx, ecx.stack());
+            let mut err = tcx.dcx().struct_span_err(span, error.to_string());
+            err.code(E0080);
+            if matches!(
                 error,
-                InterpErrorKind::ResourceExhaustion(_) | InterpErrorKind::InvalidProgram(_)
-            );
-
+                InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::ValidationError {
+                    ptr_bytes_warning: true,
+                    ..
+                }) | InterpErrorKind::Unsupported(
+                    UnsupportedOpInfo::ReadPointerAsInt(..)
+                        | UnsupportedOpInfo::ReadPartialPointer(..)
+                )
+            ) {
+                err.help("this code performed an operation that depends on the underlying bytes representing a pointer");
+                err.help("the absolute address of a pointer is not known at compile-time, so such operations are not supported");
+            }
             if let InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(
                 Some((alloc_id, _access)),
             )) = error
@@ -213,7 +215,12 @@ where
                 err.subdiagnostic(raw_bytes);
             }
 
-            error.add_args(&mut err);
+            // We allow invalid programs in infallible promoteds since invalid layouts can occur
+            // anyway (e.g. due to size overflow). And we allow OOM as that can happen any time.
+            let allowed_in_infallible = matches!(
+                error,
+                InterpErrorKind::ResourceExhaustion(_) | InterpErrorKind::InvalidProgram(_)
+            );
 
             mk(&mut err, span, frames);
             let g = err.emit();
@@ -236,7 +243,7 @@ pub(super) fn lint<'tcx, L>(
     lint: &'static rustc_session::lint::Lint,
     decorator: impl FnOnce(Vec<errors::FrameNote>) -> L,
 ) where
-    L: for<'a> rustc_errors::LintDiagnostic<'a, ()>,
+    L: for<'a> rustc_errors::Diagnostic<'a, ()>,
 {
     let (span, frames) = get_span_and_frames(tcx, &machine.stack);
 

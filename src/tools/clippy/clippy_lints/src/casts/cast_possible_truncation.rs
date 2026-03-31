@@ -117,7 +117,7 @@ pub(super) fn check(
                 return;
             }
 
-            format!("casting `{cast_from}` to `{cast_to}` may truncate the value{suffix}",)
+            format!("casting `{cast_from}` to `{cast_to}` may truncate the value{suffix}")
         },
 
         (ty::Adt(def, _), Some(to_nbits)) if def.is_enum() => {

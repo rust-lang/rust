@@ -163,12 +163,16 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.get_alloc_bytes_unchecked_raw(alloc_id)?
                     }
                 }
-                #[cfg(all(unix, feature = "native-lib"))]
+                #[cfg(all(feature = "native-lib", unix))]
                 AllocKind::Function => {
                     if let Some(GlobalAlloc::Function { instance, .. }) =
                         this.tcx.try_get_global_alloc(alloc_id)
                     {
-                        let fn_sig = this.tcx.fn_sig(instance.def_id()).skip_binder().skip_binder();
+                        let fn_sig = this.tcx.instantiate_bound_regions_with_erased(
+                            this.tcx
+                                .fn_sig(instance.def_id())
+                                .instantiate(*this.tcx, instance.args),
+                        );
                         let fn_ptr = crate::shims::native_lib::build_libffi_closure(this, fn_sig)?;
 
                         #[expect(
@@ -182,9 +186,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         dummy_alloc(params)
                     }
                 }
-                #[cfg(not(all(unix, feature = "native-lib")))]
+                #[cfg(not(all(feature = "native-lib", unix)))]
                 AllocKind::Function => dummy_alloc(params),
-                AllocKind::VTable => dummy_alloc(params),
+                AllocKind::VTable | AllocKind::VaList => dummy_alloc(params),
                 AllocKind::TypeId | AllocKind::Dead => unreachable!(),
             };
             // We don't have to expose this pointer yet, we do that in `prepare_for_native_call`.

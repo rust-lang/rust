@@ -32,7 +32,7 @@ There are three main thread states:
   waiting to be awoken.
 
 We sometimes refer to the final two states collectively as **inactive**.
-Threads begin as idle but transition to idle and finally sleeping when
+Threads begin as active but transition to idle and finally sleeping when
 they're unable to find work to do.
 
 ## Sleepy threads
@@ -160,7 +160,7 @@ not complete. It is possible -- if unlikely -- that enough activity occurs for
 Thread A to observe the same JEC value that it saw when getting sleepy. If the
 new work being published came from *inside* the thread-pool, then this race
 condition isn't too harmful. It means that we have fewer workers processing the
-work then we should, but we won't deadlock. This seems like an acceptable risk
+work than we should, but we won't deadlock. This seems like an acceptable risk
 given that this is unlikely in practice.
 
 However, if the work was posted as an *external* job, that is a problem. In that

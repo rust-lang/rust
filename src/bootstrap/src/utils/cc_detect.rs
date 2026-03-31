@@ -223,7 +223,7 @@ fn default_compiler(
             let root = if let Some(path) = build.wasi_sdk_path.as_ref() {
                 path
             } else {
-                if build.config.is_running_on_ci {
+                if build.config.is_running_on_ci() {
                     panic!("ERROR: WASI_SDK_PATH must be configured for a -wasi target on CI");
                 }
                 println!("WARNING: WASI_SDK_PATH not set, using default cc/cxx compiler");

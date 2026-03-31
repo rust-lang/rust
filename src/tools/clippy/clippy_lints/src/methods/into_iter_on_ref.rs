@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
             cx,
             INTO_ITER_ON_REF,
             method_span,
-            format!("this `.into_iter()` call is equivalent to `.{method_name}()` and will not consume the `{kind}`",),
+            format!("this `.into_iter()` call is equivalent to `.{method_name}()` and will not consume the `{kind}`"),
             "call directly",
             method_name.to_string(),
             Applicability::MachineApplicable,

@@ -1,65 +1,77 @@
+use std::any::Any;
 use std::path::PathBuf;
 
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::DiagCtxtHandle;
 use rustc_middle::dep_graph::WorkProduct;
+use rustc_session::{Session, config};
 
 use crate::back::lto::{SerializedModule, ThinModule};
-use crate::back::write::{CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter};
+use crate::back::write::{
+    CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn,
+};
 use crate::{CompiledModule, ModuleCodegen};
 
 pub trait WriteBackendMethods: Clone + 'static {
     type Module: Send + Sync;
     type TargetMachine;
-    type TargetMachineError;
     type ModuleBuffer: ModuleBufferMethods;
     type ThinData: Send + Sync;
-    type ThinBuffer: ThinBufferMethods;
 
+    fn thread_profiler() -> Box<dyn Any> {
+        Box::new(())
+    }
+    fn target_machine_factory(
+        &self,
+        sess: &Session,
+        opt_level: config::OptLevel,
+        target_features: &[String],
+    ) -> TargetMachineFactoryFn<Self>;
     /// Performs fat LTO by merging all modules into a single one, running autodiff
     /// if necessary and running any further optimizations
-    fn run_and_optimize_fat_lto(
-        cgcx: &CodegenContext<Self>,
+    fn optimize_and_codegen_fat_lto(
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
+        tm_factory: TargetMachineFactoryFn<Self>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-    ) -> ModuleCodegen<Self::Module>;
+    ) -> CompiledModule;
     /// Performs thin LTO by performing necessary global analysis and returning two
     /// lists, one of the modules that need optimization and another for modules that
     /// can simply be copied over from the incr. comp. cache.
     fn run_thin_lto(
-        cgcx: &CodegenContext<Self>,
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
         dcx: DiagCtxtHandle<'_>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
-        modules: Vec<(String, Self::ThinBuffer)>,
+        modules: Vec<(String, Self::ModuleBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>);
-    fn print_pass_timings(&self);
-    fn print_statistics(&self);
     fn optimize(
-        cgcx: &CodegenContext<Self>,
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     );
-    fn optimize_thin(
-        cgcx: &CodegenContext<Self>,
+    fn optimize_and_codegen_thin(
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
+        tm_factory: TargetMachineFactoryFn<Self>,
         thin: ThinModule<Self>,
-    ) -> ModuleCodegen<Self::Module>;
+    ) -> CompiledModule;
     fn codegen(
-        cgcx: &CodegenContext<Self>,
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> CompiledModule;
-    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer);
-    fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer);
-}
-
-pub trait ThinBufferMethods: Send + Sync {
-    fn data(&self) -> &[u8];
+    fn serialize_module(module: Self::Module, is_thin: bool) -> Self::ModuleBuffer;
 }
 
 pub trait ModuleBufferMethods: Send + Sync {

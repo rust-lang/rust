@@ -1,7 +1,7 @@
 trait Trait {
-    #[type_const]
-    //~^ ERROR experimental
-    const ASSOC: usize;
+    type const ASSOC: usize;
+    //~^ ERROR: associated `type const` are unstable [E0658]
+    //~| ERROR: `type const` syntax is experimental [E0658]
 }
 
 // FIXME(mgca): add suggestion for mgca to this error

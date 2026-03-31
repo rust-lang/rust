@@ -5,7 +5,6 @@ use std::ops::Bound;
 use rustc_ast::AsmMacro;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
@@ -18,7 +17,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::Level;
 use rustc_session::lint::builtin::{DEPRECATED_SAFE_2024, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol};
 
 use crate::builder::ExprCategory;
 use crate::errors::*;
@@ -98,30 +97,13 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             // from an edition before 2024.
             &UnsafeOpKind::CallToUnsafeFunction(Some(id))
                 if !span.at_least_rust_2024()
-                    && let Some(attr) = self.tcx.get_attr(id, sym::rustc_deprecated_safe_2024) =>
+                    && let Some(suggestion) = find_attr!(self.tcx, id, RustcDeprecatedSafe2024{suggestion} => suggestion) =>
             {
-                let suggestion = attr
-                    .meta_item_list()
-                    .unwrap_or_default()
-                    .into_iter()
-                    .find(|item| item.has_name(sym::audit_that))
-                    .map(|item| {
-                        item.value_str().expect(
-                            "`#[rustc_deprecated_safe_2024(audit_that)]` must have a string value",
-                        )
-                    });
-
                 let sm = self.tcx.sess.source_map();
-                let guarantee = suggestion
-                    .as_ref()
-                    .map(|suggestion| format!("that {}", suggestion))
-                    .unwrap_or_else(|| String::from("its unsafe preconditions"));
-                let suggestion = suggestion
-                    .and_then(|suggestion| {
-                        sm.indentation_before(span).map(|indent| {
-                            format!("{}// TODO: Audit that {}.\n", indent, suggestion) // ignore-tidy-todo
-                        })
-                    })
+                let guarantee = format!("that {}", suggestion);
+                let suggestion = sm
+                    .indentation_before(span)
+                    .map(|indent| format!("{}// FIXME: Audit that {}.\n", indent, suggestion))
                     .unwrap_or_default();
 
                 self.tcx.emit_node_span_lint(
@@ -131,12 +113,12 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     CallToDeprecatedSafeFnRequiresUnsafe {
                         span,
                         function: with_no_trimmed_paths!(self.tcx.def_path_str(id)),
-                        guarantee,
                         sub: CallToDeprecatedSafeFnRequiresUnsafeSub {
                             start_of_line_suggestion: suggestion,
                             start_of_line: sm.span_extend_to_line(span).shrink_to_lo(),
                             left: span.shrink_to_lo(),
                             right: span.shrink_to_hi(),
+                            guarantee,
                         },
                     },
                 );
@@ -333,6 +315,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 | PatKind::Range { .. }
                 | PatKind::Slice { .. }
                 | PatKind::Array { .. }
+                | PatKind::Guard { .. }
                 // Never constitutes a witness of uninhabitedness.
                 | PatKind::Never => {
                     self.requires_unsafe(pat.span, AccessToUnionField);
@@ -464,7 +447,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::LoopMatch { .. }
             | ExprKind::Let { .. }
             | ExprKind::Match { .. }
-            | ExprKind::Box { .. }
             | ExprKind::If { .. }
             | ExprKind::InlineAsm { .. }
             | ExprKind::LogicalOp { .. }
@@ -488,7 +470,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
                 let fn_ty = self.thir[fun].ty;
                 let sig = fn_ty.fn_sig(self.tcx);
-                let (callee_features, safe_target_features): (&[_], _) = match fn_ty.kind() {
+                let (callee_features, safe_target_features): (&[_], _) = match *fn_ty.kind() {
                     ty::FnDef(func_id, ..) => {
                         let cg_attrs = self.tcx.codegen_fn_attrs(func_id);
                         (&cg_attrs.target_features, cg_attrs.safe_target_features)
@@ -1162,7 +1144,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     // Closures and inline consts are handled by their owner, if it has a body
     assert!(!tcx.is_typeck_child(def.to_def_id()));
     // Also, don't safety check custom MIR
-    if find_attr!(tcx.get_all_attrs(def), AttributeKind::CustomMir(..) => ()).is_some() {
+    if find_attr!(tcx, def, CustomMir(..) => ()).is_some() {
         return;
     }
 

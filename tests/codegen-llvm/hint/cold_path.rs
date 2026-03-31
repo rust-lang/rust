@@ -1,6 +1,5 @@
 //@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
-#![feature(cold_path)]
 
 use std::hint::cold_path;
 

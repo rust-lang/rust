@@ -401,7 +401,7 @@ types! {
 }
 
 types! {
-    #![stable(feature = "stdarch_x86_avx512fp16", since = "CURRENT_RUSTC_VERSION")]
+    #![stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 
     /// 128-bit wide set of 8 `f16` types, x86-specific
     ///
@@ -768,9 +768,13 @@ mod avxneconvert;
 pub use self::avxneconvert::*;
 
 mod avx512fp16;
-#[stable(feature = "stdarch_x86_avx512fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub use self::avx512fp16::*;
 
 mod kl;
 #[stable(feature = "keylocker_x86", since = "1.89.0")]
 pub use self::kl::*;
+
+mod movrs;
+#[unstable(feature = "movrs_target_feature", issue = "137976")]
+pub use self::movrs::*;

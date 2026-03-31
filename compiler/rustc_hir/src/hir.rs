@@ -1,6 +1,7 @@
 // ignore-tidy-filelength
 use std::borrow::Cow;
 use std::fmt;
+use std::ops::Not;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::attr::AttributeExt;
@@ -22,9 +23,8 @@ use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Spanned;
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, Span, Symbol, kw, sym,
+    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, sym,
 };
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
@@ -237,7 +237,7 @@ pub enum LifetimeKind {
 
     /// Indicates an error during lowering (usually `'_` in wrong place)
     /// that was already reported.
-    Error,
+    Error(ErrorGuaranteed),
 
     /// User wrote an anonymous lifetime, either `'_` or nothing (which gets
     /// converted to `'_`). The semantics of this lifetime should be inferred
@@ -257,7 +257,7 @@ impl LifetimeKind {
             // -- but this is because, as far as the code in the compiler is
             // concerned -- `Fresh` variants act equivalently to "some fresh name".
             // They correspond to early-bound regions on an impl, in other words.
-            LifetimeKind::Error | LifetimeKind::Param(..) | LifetimeKind::Static => false,
+            LifetimeKind::Error(..) | LifetimeKind::Param(..) | LifetimeKind::Static => false,
         }
     }
 }
@@ -397,12 +397,7 @@ impl<'hir> PathSegment<'hir> {
     }
 
     pub fn args(&self) -> &GenericArgs<'hir> {
-        if let Some(ref args) = self.args {
-            args
-        } else {
-            const DUMMY: &GenericArgs<'_> = &GenericArgs::none();
-            DUMMY
-        }
+        if let Some(ref args) = self.args { args } else { GenericArgs::NONE }
     }
 }
 
@@ -520,7 +515,10 @@ pub enum ConstArgKind<'hir, Unambig = ()> {
     /// This variant is not always used to represent inference consts, sometimes
     /// [`GenericArg::Infer`] is used instead.
     Infer(Unambig),
-    Literal(LitKind),
+    Literal {
+        lit: LitKind,
+        negated: bool,
+    },
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -640,14 +638,12 @@ pub struct GenericArgs<'hir> {
 }
 
 impl<'hir> GenericArgs<'hir> {
-    pub const fn none() -> Self {
-        Self {
-            args: &[],
-            constraints: &[],
-            parenthesized: GenericArgsParentheses::No,
-            span_ext: DUMMY_SP,
-        }
-    }
+    pub const NONE: &'hir GenericArgs<'hir> = &GenericArgs {
+        args: &[],
+        constraints: &[],
+        parenthesized: GenericArgsParentheses::No,
+        span_ext: DUMMY_SP,
+    };
 
     /// Obtain the list of input types and the output type if the generic arguments are parenthesized.
     ///
@@ -857,6 +853,10 @@ impl<'hir> GenericParam<'hir> {
     pub fn is_elided_lifetime(&self) -> bool {
         matches!(self.kind, GenericParamKind::Lifetime { kind: LifetimeParamKind::Elided(_) })
     }
+
+    pub fn is_lifetime(&self) -> bool {
+        matches!(self.kind, GenericParamKind::Lifetime { .. })
+    }
 }
 
 /// Records where the generic parameter originated from.
@@ -1012,10 +1012,14 @@ impl<'hir> Generics<'hir> {
 
                 span_for_parentheses.map_or_else(
                     || {
-                        // We include bounds that come from a `#[derive(_)]` but point at the user's code,
-                        // as we use this method to get a span appropriate for suggestions.
+                        // We include bounds that come from a `#[derive(_)]` but point at the user's
+                        // code, as we use this method to get a span appropriate for suggestions.
                         let bs = bound.span();
-                        bs.can_be_used_for_suggestions().then(|| (bs.shrink_to_hi(), None))
+                        // We use `from_expansion` instead of `can_be_used_for_suggestions` because
+                        // the trait bound from imperfect derives do point at the type parameter,
+                        // but expanded to a where clause, so we want to ignore those. This is only
+                        // true for derive intrinsics.
+                        bs.from_expansion().not().then(|| (bs.shrink_to_hi(), None))
                     },
                     |span| Some((span.shrink_to_hi(), Some(span.shrink_to_lo()))),
                 )
@@ -1253,6 +1257,8 @@ pub struct HashIgnoredAttrId {
     pub attr_id: AttrId,
 }
 
+/// Many functions on this type have their documentation in the [`AttributeExt`] trait,
+/// since they defer their implementation directly to that trait.
 #[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Attribute {
     /// A parsed built-in attribute.
@@ -1370,7 +1376,7 @@ impl AttributeExt for Attribute {
             Attribute::Unparsed(u) => u.span,
             // FIXME: should not be needed anymore when all attrs are parsed
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) => cfgs[0].1,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
@@ -1412,7 +1418,7 @@ impl AttributeExt for Attribute {
     #[inline]
     fn deprecation_note(&self) -> Option<Ident> {
         match &self {
-            Attribute::Parsed(AttributeKind::Deprecation { deprecation, .. }) => deprecation.note,
+            Attribute::Parsed(AttributeKind::Deprecated { deprecation, .. }) => deprecation.note,
             _ => None,
         }
     }
@@ -1458,6 +1464,10 @@ impl AttributeExt for Attribute {
 
     fn is_doc_keyword_or_attribute(&self) -> bool {
         matches!(self, Attribute::Parsed(AttributeKind::Doc(d)) if d.attribute.is_some() || d.keyword.is_some())
+    }
+
+    fn is_rustc_doc_primitive(&self) -> bool {
+        matches!(self, Attribute::Parsed(AttributeKind::RustcDocPrimitive(..)))
     }
 }
 
@@ -1617,7 +1627,7 @@ pub struct OwnerInfo<'hir> {
     pub attrs: AttributeMap<'hir>,
     /// Map indicating what traits are in scope for places where this
     /// is relevant; generated by resolve.
-    pub trait_map: ItemLocalMap<Box<[TraitCandidate]>>,
+    pub trait_map: ItemLocalMap<&'hir [TraitCandidate<'hir>]>,
 
     /// Lints delayed during ast lowering to be emitted
     /// after hir has completely built
@@ -1650,19 +1660,6 @@ impl<'tcx> MaybeOwner<'tcx> {
     pub fn unwrap(self) -> &'tcx OwnerInfo<'tcx> {
         self.as_owner().unwrap_or_else(|| panic!("Not a HIR owner"))
     }
-}
-
-/// The top-level data structure that stores the entire contents of
-/// the crate currently being compiled.
-///
-/// For more details, see the [rustc dev guide].
-///
-/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
-#[derive(Debug)]
-pub struct Crate<'hir> {
-    pub owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
-    // Only present when incr. comp. is enabled.
-    pub opt_hir_hash: Option<Fingerprint>,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -1727,6 +1724,12 @@ impl<'hir> Block<'hir> {
         }
         block
     }
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct TyFieldPath {
+    pub variant: Option<Ident>,
+    pub field: Ident,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -1953,8 +1956,6 @@ pub struct PatExpr<'hir> {
 pub enum PatExprKind<'hir> {
     Lit {
         lit: Lit,
-        // FIXME: move this into `Lit` and handle negated literal expressions
-        // once instead of matching on unop neg expressions everywhere.
         negated: bool,
     },
     /// A path pattern for a unit struct/variant or a (maybe-associated) constant.
@@ -2642,7 +2643,9 @@ impl Expr<'_> {
             ExprKind::Struct(_, fields, init) => {
                 let init_side_effects = match init {
                     StructTailExpr::Base(init) => init.can_have_side_effects(),
-                    StructTailExpr::DefaultFields(_) | StructTailExpr::None => false,
+                    StructTailExpr::DefaultFields(_)
+                    | StructTailExpr::None
+                    | StructTailExpr::NoneWithError(_) => false,
                 };
                 fields.iter().map(|field| field.expr).any(|e| e.can_have_side_effects())
                     || init_side_effects
@@ -2934,6 +2937,12 @@ pub enum StructTailExpr<'hir> {
     /// fields' default values will be used to populate any fields not explicitly mentioned:
     /// `Foo { .. }`.
     DefaultFields(Span),
+    /// No trailing `..` was written, and also, a parse error occurred inside the struct braces.
+    ///
+    /// This struct should be treated similarly to as if it had an `..` in it,
+    /// in particular rather than reporting missing fields, because the parse error
+    /// makes which fields the struct was intended to have not fully known.
+    NoneWithError(ErrorGuaranteed),
 }
 
 /// Represents an optionally `Self`-qualified value/type path or associated extension.
@@ -3193,7 +3202,7 @@ impl<'hir> TraitItem<'hir> {
 
     expect_methods_self_kind! {
         expect_const, (&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
-            TraitItemKind::Const(ty, rhs), (ty, *rhs);
+            TraitItemKind::Const(ty, rhs, _), (ty, *rhs);
 
         expect_fn, (&FnSig<'hir>, &TraitFn<'hir>),
             TraitItemKind::Fn(ty, trfn), (ty, trfn);
@@ -3213,11 +3222,32 @@ pub enum TraitFn<'hir> {
     Provided(BodyId),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
+pub enum IsTypeConst {
+    No,
+    Yes,
+}
+
+impl From<bool> for IsTypeConst {
+    fn from(value: bool) -> Self {
+        if value { Self::Yes } else { Self::No }
+    }
+}
+
+impl From<IsTypeConst> for bool {
+    fn from(value: IsTypeConst) -> Self {
+        matches!(value, IsTypeConst::Yes)
+    }
+}
+
 /// Represents a trait method or associated constant or type
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TraitItemKind<'hir> {
+    // FIXME(mgca) eventually want to move the option that is around `ConstItemRhs<'hir>`
+    // into `ConstItemRhs`, much like `ast::ConstItemRhsKind`, but for now mark whether
+    // this node is a TypeConst with a flag.
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
-    Const(&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
+    Const(&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>, IsTypeConst),
     /// An associated function with an optional body.
     Fn(FnSig<'hir>, TraitFn<'hir>),
     /// An associated type with (possibly empty) bounds and optional concrete
@@ -3722,10 +3752,27 @@ pub enum OpaqueTyOrigin<D> {
     },
 }
 
+// Ids of parent (or child) path segment that contains user-specified args
 #[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
-pub enum InferDelegationKind {
+pub struct DelegationGenerics {
+    pub parent_args_segment_id: Option<HirId>,
+    pub child_args_segment_id: Option<HirId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
+pub enum InferDelegationSig<'hir> {
     Input(usize),
-    Output,
+    // Place generics info here, as we always specify output type for delegations.
+    Output(&'hir DelegationGenerics),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
+pub enum InferDelegation<'hir> {
+    /// Infer the type of this `DefId` through `tcx.type_of(def_id).instantiate_identity()`,
+    /// used for const types propagation.
+    DefId(DefId),
+    /// Used during signature inheritance, `DefId` corresponds to the signature function.
+    Sig(DefId, InferDelegationSig<'hir>),
 }
 
 /// The various kinds of types recognized by the compiler.
@@ -3737,7 +3784,7 @@ pub enum InferDelegationKind {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TyKind<'hir, Unambig = ()> {
     /// Actual type should be inherited from `DefId` signature
-    InferDelegation(DefId, InferDelegationKind),
+    InferDelegation(InferDelegation<'hir>),
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
@@ -3773,6 +3820,10 @@ pub enum TyKind<'hir, Unambig = ()> {
     Err(rustc_span::ErrorGuaranteed),
     /// Pattern types (`pattern_type!(u32 is 1..)`)
     Pat(&'hir Ty<'hir>, &'hir TyPat<'hir>),
+    /// Field representing type (`field_of!(Struct, field)`).
+    ///
+    /// The optional ident is the variant when an enum is passed `field_of!(Enum, Variant.field)`.
+    FieldOf(&'hir Ty<'hir>, &'hir TyFieldPath),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     ///
@@ -3884,10 +3935,21 @@ pub struct FnDecl<'hir> {
 impl<'hir> FnDecl<'hir> {
     pub fn opt_delegation_sig_id(&self) -> Option<DefId> {
         if let FnRetTy::Return(ty) = self.output
-            && let TyKind::InferDelegation(sig_id, _) = ty.kind
+            && let TyKind::InferDelegation(InferDelegation::Sig(sig_id, _)) = ty.kind
         {
             return Some(sig_id);
         }
+        None
+    }
+
+    pub fn opt_delegation_generics(&self) -> Option<&'hir DelegationGenerics> {
+        if let FnRetTy::Return(ty) = self.output
+            && let TyKind::InferDelegation(InferDelegation::Sig(_, kind)) = ty.kind
+            && let InferDelegationSig::Output(generics) = kind
+        {
+            return Some(generics);
+        }
+
         None
     }
 }
@@ -4611,10 +4673,10 @@ pub struct Upvar {
 // The TraitCandidate's import_ids is empty if the trait is defined in the same module, and
 // has length > 0 if the trait is found through an chain of imports, starting with the
 // import/use statement in the scope where the trait is used.
-#[derive(Debug, Clone, HashStable_Generic)]
-pub struct TraitCandidate {
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct TraitCandidate<'hir> {
     pub def_id: DefId,
-    pub import_ids: SmallVec<[LocalDefId; 1]>,
+    pub import_ids: &'hir [LocalDefId],
     // Indicates whether this trait candidate is ambiguously glob imported
     // in it's scope. Related to the AMBIGUOUS_GLOB_IMPORTED_TRAITS lint.
     // If this is set to true and the trait is used as a result of method lookup, this
@@ -4680,7 +4742,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::TraitItem(TraitItem {
                 kind:
                     TraitItemKind::Fn(_, TraitFn::Provided(body))
-                    | TraitItemKind::Const(_, Some(ConstItemRhs::Body(body))),
+                    | TraitItemKind::Const(_, Some(ConstItemRhs::Body(body)), _),
                 ..
             })
             | OwnerNode::ImplItem(ImplItem {
@@ -4907,7 +4969,7 @@ impl<'hir> Node<'hir> {
                 _ => None,
             },
             Node::TraitItem(it) => match it.kind {
-                TraitItemKind::Const(ty, _) => Some(ty),
+                TraitItemKind::Const(ty, _, _) => Some(ty),
                 TraitItemKind::Type(_, ty) => ty,
                 _ => None,
             },
@@ -4950,7 +5012,7 @@ impl<'hir> Node<'hir> {
             | Node::TraitItem(TraitItem {
                 owner_id,
                 kind:
-                    TraitItemKind::Const(.., Some(ConstItemRhs::Body(body)))
+                    TraitItemKind::Const(_, Some(ConstItemRhs::Body(body)), _)
                     | TraitItemKind::Fn(_, TraitFn::Provided(body)),
                 ..
             })

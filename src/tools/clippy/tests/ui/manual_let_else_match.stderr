@@ -171,5 +171,15 @@ LL | |         None => unreachable!("can't happen"),
 LL | |     };
    | |______^ help: consider writing: `let Some(Issue9939b { earthquake: erosion, hurricane: _x }) = issue else { unreachable!("can't happen") };`
 
-error: aborting due to 17 previous errors
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:263:9
+   |
+LL | /         let first_arg = match a {
+LL | |
+LL | |             A { a, .. } => a,
+LL | |             _ => return,
+LL | |         };
+   | |__________^ help: consider writing: `let A { a: first_arg, .. } = a else { return };`
+
+error: aborting due to 18 previous errors
 

@@ -51,8 +51,6 @@ pub(crate) enum GenericConstantTooComplexSub {
     YieldNotSupported(#[primary_span] Span),
     #[label("loops and loop control flow are not supported in generic constants")]
     LoopNotSupported(#[primary_span] Span),
-    #[label("allocations are not allowed in generic constants")]
-    BoxNotSupported(#[primary_span] Span),
     #[label("unsupported binary operation in generic constants")]
     BinaryNotSupported(#[primary_span] Span),
     #[label(".use is not allowed in generic constants")]

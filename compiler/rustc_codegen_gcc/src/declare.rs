@@ -94,7 +94,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         #[cfg(feature = "master")] callconv: Option<FnAttribute<'gcc>>,
         #[cfg(not(feature = "master"))] callconv: Option<()>,
     ) -> Function<'gcc> {
-        // TODO(antoyo): use the fn_type parameter.
+        // FIXME(antoyo): use the fn_type parameter.
         let const_string = self.context.new_type::<u8>().make_pointer().make_pointer();
         let return_type = self.type_i32();
         let variadic = false;
@@ -142,7 +142,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn get_declared_value(&self, name: &str) -> Option<RValue<'gcc>> {
-        // TODO(antoyo): use a different field than globals, because this seems to return a function?
+        // FIXME(antoyo): use a different field than globals, because this seems to return a function?
         self.globals.borrow().get(name).cloned()
     }
 }
@@ -151,7 +151,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-#[expect(clippy::let_and_return)]
 fn declare_raw_fn<'gcc>(
     cx: &CodegenCx<'gcc, '_>,
     name: &str,
@@ -167,7 +166,7 @@ fn declare_raw_fn<'gcc>(
         let params: Vec<_> = param_types
             .iter()
             .enumerate()
-            .map(|(index, param)| cx.context.new_parameter(None, *param, format!("param{}", index))) // TODO(antoyo): set name.
+            .map(|(index, param)| cx.context.new_parameter(None, *param, format!("param{}", index))) // FIXME(antoyo): set name.
             .collect();
         #[cfg(not(feature = "master"))]
         let name = &mangle_name(name);
@@ -195,7 +194,7 @@ fn declare_raw_fn<'gcc>(
                 .enumerate()
                 .map(|(index, param)| {
                     cx.context.new_parameter(None, *param, format!("param{}", index))
-                }) // TODO(antoyo): set name.
+                }) // FIXME(antoyo): set name.
                 .collect();
             let gcc_func = cx.context.new_function(
                 None,
@@ -229,11 +228,11 @@ fn declare_raw_fn<'gcc>(
         func
     };
 
-    // TODO(antoyo): set function calling convention.
-    // TODO(antoyo): set unnamed address.
-    // TODO(antoyo): set no red zone function attribute.
-    // TODO(antoyo): set attributes for optimisation.
-    // TODO(antoyo): set attributes for non lazy bind.
+    // FIXME(antoyo): set function calling convention.
+    // FIXME(antoyo): set unnamed address.
+    // FIXME(antoyo): set no red zone function attribute.
+    // FIXME(antoyo): set attributes for optimisation.
+    // FIXME(antoyo): set attributes for non lazy bind.
 
     // FIXME(antoyo): invalid cast.
     func

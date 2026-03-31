@@ -56,7 +56,4 @@ fn check_msrv(x: Option<u32>) {
     _ = x.as_ref().map_or(&[][..], std::slice::from_ref);
 }
 
-fn main() {
-    check(Some(1));
-    check_msrv(Some(175));
-}
+fn main() {}

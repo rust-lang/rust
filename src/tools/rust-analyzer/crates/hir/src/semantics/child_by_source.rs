@@ -18,8 +18,10 @@ use hir_def::{
         DynMap,
         keys::{self, Key},
     },
+    expr_store::Body,
     hir::generics::GenericParams,
     item_scope::ItemScope,
+    signatures::{EnumSignature, ImplSignature, TraitSignature},
     src::{HasChildSource, HasSource},
 };
 
@@ -49,7 +51,7 @@ impl ChildBySource for TraitId {
         data.items.iter().for_each(|&(_, item)| {
             add_assoc_item(db, res, file_id, item);
         });
-        let (_, source_map) = db.trait_signature_with_source_map(*self);
+        let (_, source_map) = TraitSignature::with_source_map(db, *self);
         source_map.expansions().filter(|(ast, _)| ast.file_id == file_id).for_each(
             |(ast, &exp_id)| {
                 res[keys::MACRO_CALL].insert(ast.value, exp_id);
@@ -74,7 +76,7 @@ impl ChildBySource for ImplId {
         data.items.iter().for_each(|&(_, item)| {
             add_assoc_item(db, res, file_id, item);
         });
-        let (_, source_map) = db.impl_signature_with_source_map(*self);
+        let (_, source_map) = ImplSignature::with_source_map(db, *self);
         source_map.expansions().filter(|(ast, _)| ast.file_id == file_id).for_each(
             |(ast, &exp_id)| {
                 res[keys::MACRO_CALL].insert(ast.value, exp_id);
@@ -93,7 +95,6 @@ impl ChildBySource for ModuleId {
 
 impl ChildBySource for ItemScope {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let krate = file_id.krate(db);
         self.declarations().for_each(|item| add_module_def(db, res, file_id, item));
         self.impls().for_each(|imp| insert_item_loc(db, res, file_id, imp, keys::IMPL));
         self.extern_blocks().for_each(|extern_block| {
@@ -123,6 +124,8 @@ impl ChildBySource for ItemScope {
             |(ast_id, calls)| {
                 let adt = ast_id.to_node(db);
                 calls.for_each(|(attr_id, call_id, calls)| {
+                    // FIXME: Is this the right crate?
+                    let krate = call_id.lookup(db).krate;
                     // FIXME: Fix cfg_attr handling.
                     let (attr, _, _, _) = attr_id.find_attr_range_with_source(db, krate, &adt);
                     res[keys::DERIVE_MACRO_CALL]
@@ -203,7 +206,7 @@ impl ChildBySource for EnumId {
         self.enum_variants(db).variants.iter().for_each(|&(variant, _, _)| {
             res[keys::ENUM_VARIANT].insert(ast_id_map.get(variant.lookup(db).id.value), variant);
         });
-        let (_, source_map) = db.enum_signature_with_source_map(*self);
+        let (_, source_map) = EnumSignature::with_source_map(db, *self);
         source_map
             .expansions()
             .filter(|(ast, _)| ast.file_id == file_id)
@@ -213,7 +216,7 @@ impl ChildBySource for EnumId {
 
 impl ChildBySource for DefWithBodyId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let (body, sm) = db.body_with_source_map(*self);
+        let (body, sm) = Body::with_source_map(db, *self);
         if let &DefWithBodyId::VariantId(v) = self {
             VariantId::EnumVariantId(v).child_by_source_to(db, res, file_id)
         }
@@ -238,8 +241,7 @@ impl ChildBySource for GenericDefId {
             return;
         }
 
-        let (generic_params, _, source_map) =
-            GenericParams::generic_params_and_store_and_source_map(db, *self);
+        let (generic_params, _, source_map) = GenericParams::with_source_map(db, *self);
         let mut toc_idx_iter = generic_params.iter_type_or_consts().map(|(idx, _)| idx);
         let lts_idx_iter = generic_params.iter_lt().map(|(idx, _)| idx);
 

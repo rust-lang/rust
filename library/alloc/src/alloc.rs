@@ -5,6 +5,7 @@
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 pub use core::alloc::*;
+use core::mem::Alignment;
 use core::ptr::{self, NonNull};
 use core::{cmp, hint};
 
@@ -18,19 +19,24 @@ unsafe extern "Rust" {
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
     #[rustc_allocator_zeroed_variant = "__rust_alloc_zeroed"]
-    fn __rust_alloc(size: usize, align: usize) -> *mut u8;
+    fn __rust_alloc(size: usize, align: Alignment) -> *mut u8;
     #[rustc_deallocator]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
-    fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
+    fn __rust_dealloc(ptr: NonNull<u8>, size: usize, align: Alignment);
     #[rustc_reallocator]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
-    fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
+    fn __rust_realloc(
+        ptr: NonNull<u8>,
+        old_size: usize,
+        align: Alignment,
+        new_size: usize,
+    ) -> *mut u8;
     #[rustc_allocator_zeroed]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
-    fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
+    fn __rust_alloc_zeroed(size: usize, align: Alignment) -> *mut u8;
 
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
@@ -92,7 +98,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
         // stable code until it is actually stabilized.
         __rust_no_alloc_shim_is_unstable_v2();
 
-        __rust_alloc(layout.size(), layout.align())
+        __rust_alloc(layout.size(), layout.alignment())
     }
 }
 
@@ -112,7 +118,14 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
-    unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
+    unsafe { dealloc_nonnull(NonNull::new_unchecked(ptr), layout) }
+}
+
+/// Same as [`dealloc`] but when you already have a non-null pointer
+#[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+unsafe fn dealloc_nonnull(ptr: NonNull<u8>, layout: Layout) {
+    unsafe { __rust_dealloc(ptr, layout.size(), layout.alignment()) }
 }
 
 /// Reallocates memory with the global allocator.
@@ -132,7 +145,14 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-    unsafe { __rust_realloc(ptr, layout.size(), layout.align(), new_size) }
+    unsafe { realloc_nonnull(NonNull::new_unchecked(ptr), layout, new_size) }
+}
+
+/// Same as [`realloc`] but when you already have a non-null pointer
+#[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+unsafe fn realloc_nonnull(ptr: NonNull<u8>, layout: Layout, new_size: usize) -> *mut u8 {
+    unsafe { __rust_realloc(ptr, layout.size(), layout.alignment(), new_size) }
 }
 
 /// Allocates zero-initialized memory with the global allocator.
@@ -175,7 +195,7 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
         // stable code until it is actually stabilized.
         __rust_no_alloc_shim_is_unstable_v2();
 
-        __rust_alloc_zeroed(layout.size(), layout.align())
+        __rust_alloc_zeroed(layout.size(), layout.alignment())
     }
 }
 
@@ -206,7 +226,7 @@ impl Global {
             //   allocation than requested.
             // * Other conditions must be upheld by the caller, as per `Allocator::deallocate()`'s
             //   safety documentation.
-            unsafe { dealloc(ptr.as_ptr(), layout) }
+            unsafe { dealloc_nonnull(ptr, layout) }
         }
     }
 
@@ -236,7 +256,7 @@ impl Global {
                 // `realloc` probably checks for `new_size >= old_layout.size()` or something similar.
                 hint::assert_unchecked(new_size >= old_layout.size());
 
-                let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
+                let raw_ptr = realloc_nonnull(ptr, old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 if zeroed {
                     raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
@@ -285,7 +305,7 @@ impl Global {
                 // `realloc` probably checks for `new_size <= old_layout.size()` or something similar.
                 hint::assert_unchecked(new_size <= old_layout.size());
 
-                let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
+                let raw_ptr = realloc_nonnull(ptr, old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 Ok(NonNull::slice_from_raw_parts(ptr, new_size))
             },
@@ -476,19 +496,6 @@ unsafe impl const Allocator for Global {
     ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: all conditions must be upheld by the caller
         unsafe { self.shrink_impl(ptr, old_layout, new_layout) }
-    }
-}
-
-/// The allocator for `Box`.
-#[cfg(not(no_global_oom_handling))]
-#[lang = "exchange_malloc"]
-#[inline]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
-    let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
-    match Global.allocate(layout) {
-        Ok(ptr) => ptr.as_mut_ptr(),
-        Err(_) => handle_alloc_error(layout),
     }
 }
 

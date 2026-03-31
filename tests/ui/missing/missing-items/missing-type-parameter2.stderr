@@ -1,39 +1,30 @@
-error[E0425]: cannot find type `N` in this scope
+error[E0425]: cannot find const `N` in this scope
   --> $DIR/missing-type-parameter2.rs:3:8
    |
 LL | struct X<const N: u8>();
-   | ------------------------ similarly named struct `X` defined here
+   |          ----------- corresponding const parameter on the type defined here
 LL |
 LL | impl X<N> {}
-   |        ^
+   |        ^ not found in this scope
    |
-help: a struct with a similar name exists
+help: you might have meant to introduce a const parameter `N` on the impl
    |
-LL - impl X<N> {}
-LL + impl X<X> {}
-   |
-help: you might be missing a type parameter
-   |
-LL | impl<N> X<N> {}
-   |     +++
+LL | impl<const N: u8> X<N> {}
+   |     +++++++++++++
 
-error[E0425]: cannot find type `N` in this scope
+error[E0425]: cannot find const `N` in this scope
   --> $DIR/missing-type-parameter2.rs:6:28
    |
+LL | struct X<const N: u8>();
+   |          ----------- corresponding const parameter on the type defined here
+...
 LL | impl<T, const A: u8 = 2> X<N> {}
-   |      -                     ^
-   |      |
-   |      similarly named type parameter `T` defined here
+   |                            ^ not found in this scope
    |
-help: a type parameter with a similar name exists
+help: you might have meant to introduce a const parameter `N` on the impl
    |
-LL - impl<T, const A: u8 = 2> X<N> {}
-LL + impl<T, const A: u8 = 2> X<T> {}
-   |
-help: you might be missing a type parameter
-   |
-LL | impl<T, const A: u8 = 2, N> X<N> {}
-   |                        +++
+LL | impl<T, const A: u8 = 2, const N: u8> X<N> {}
+   |                        +++++++++++++
 
 error[E0425]: cannot find type `T` in this scope
   --> $DIR/missing-type-parameter2.rs:11:20

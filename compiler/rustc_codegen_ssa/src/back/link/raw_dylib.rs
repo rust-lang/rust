@@ -9,7 +9,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hashes::Hash128;
 use rustc_hir::attrs::NativeLibKind;
 use rustc_session::Session;
-use rustc_session::cstore::DllImport;
+use rustc_session::cstore::{DllImport, DllImportSymbolType};
 use rustc_span::Symbol;
 use rustc_target::spec::Arch;
 
@@ -95,14 +95,14 @@ pub(super) fn create_raw_dylib_dll_import_libs<'a>(
                                     true,
                                 )
                             }),
-                            is_data: !import.is_fn,
+                            is_data: import.symbol_type != DllImportSymbolType::Function,
                         }
                     } else {
                         ImportLibraryItem {
                             name: import.name.to_string(),
                             ordinal: import.ordinal(),
                             symbol_name: None,
-                            is_data: !import.is_fn,
+                            is_data: import.symbol_type != DllImportSymbolType::Function,
                         }
                     }
                 })
@@ -271,10 +271,10 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
                 vers.push((version_name, dynstr));
                 id
             };
-            syms.push((name, dynstr, Some(ver)));
+            syms.push((name, dynstr, Some(ver), symbol.symbol_type, symbol.size));
         } else {
             let dynstr = stub.add_dynamic_string(symbol_name.as_bytes());
-            syms.push((symbol_name, dynstr, None));
+            syms.push((symbol_name, dynstr, None, symbol.symbol_type, symbol.size));
         }
     }
 
@@ -296,6 +296,8 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     stub.reserve_shstrtab_section_index();
     let text_section_name = stub.add_section_name(".text".as_bytes());
     let text_section = stub.reserve_section_index();
+    let data_section_name = stub.add_section_name(".data".as_bytes());
+    let data_section = stub.reserve_section_index();
     stub.reserve_dynsym_section_index();
     stub.reserve_dynstr_section_index();
     if !vers.is_empty() {
@@ -375,7 +377,7 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     // Section headers
     stub.write_null_section_header();
     stub.write_shstrtab_section_header();
-    // Create a dummy .text section for our dummy symbols.
+    // Create a dummy .text section for our dummy non-data symbols.
     stub.write_section_header(&write::SectionHeader {
         name: Some(text_section_name),
         sh_type: elf::SHT_PROGBITS,
@@ -385,7 +387,20 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
         sh_size: 0,
         sh_link: 0,
         sh_info: 0,
-        sh_addralign: 1,
+        sh_addralign: 16,
+        sh_entsize: 0,
+    });
+    // And also a dummy .data section for our dummy data symbols.
+    stub.write_section_header(&write::SectionHeader {
+        name: Some(data_section_name),
+        sh_type: elf::SHT_PROGBITS,
+        sh_flags: (elf::SHF_WRITE | elf::SHF_ALLOC) as u64,
+        sh_addr: 0,
+        sh_offset: 0,
+        sh_size: 0,
+        sh_link: 0,
+        sh_info: 0,
+        sh_addralign: 16,
         sh_entsize: 0,
     });
     stub.write_dynsym_section_header(0, 1);
@@ -398,16 +413,28 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
 
     // .dynsym
     stub.write_null_dynamic_symbol();
-    for (_name, dynstr, _ver) in syms.iter().copied() {
+    // Linkers like LLD require at least somewhat reasonable symbol values rather than zero,
+    // otherwise all the symbols might get put at the same address. Thus we increment the value
+    // every time we write a symbol.
+    let mut st_value = 0;
+    for (_name, dynstr, _ver, symbol_type, size) in syms.iter().copied() {
+        let sym_type = match symbol_type {
+            DllImportSymbolType::Function => elf::STT_FUNC,
+            DllImportSymbolType::Static => elf::STT_OBJECT,
+            DllImportSymbolType::ThreadLocal => elf::STT_TLS,
+        };
+        let section =
+            if symbol_type == DllImportSymbolType::Static { data_section } else { text_section };
         stub.write_dynamic_symbol(&write::Sym {
             name: Some(dynstr),
-            st_info: (elf::STB_GLOBAL << 4) | elf::STT_NOTYPE,
+            st_info: (elf::STB_GLOBAL << 4) | sym_type,
             st_other: elf::STV_DEFAULT,
-            section: Some(text_section),
+            section: Some(section),
             st_shndx: 0, // ignored by object in favor of the `section` field
-            st_value: 0,
-            st_size: 0,
+            st_value,
+            st_size: size.bytes(),
         });
+        st_value += 8;
     }
 
     // .dynstr
@@ -417,7 +444,7 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     if !vers.is_empty() {
         // .gnu_version
         stub.write_null_gnu_versym();
-        for (_name, _dynstr, ver) in syms.iter().copied() {
+        for (_name, _dynstr, ver, _symbol_type, _size) in syms.iter().copied() {
             stub.write_gnu_versym(if let Some(ver) = ver {
                 assert!((2 + ver as u16) < elf::VERSYM_HIDDEN);
                 elf::VERSYM_HIDDEN | (2 + ver as u16)

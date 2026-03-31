@@ -37,13 +37,13 @@ bypassing LSP machinery.
 When filing issues, it is useful (but not necessary) to try to minimize
 examples. An ideal bug reproduction looks like this:
 
-```shell
-$ git clone https://github.com/username/repo.git && cd repo && git switch --detach commit-hash
-$ rust-analyzer --version
+```bash
+git clone https://github.com/username/repo.git && cd repo && git switch --detach commit-hash
+rust-analyzer --version
 rust-analyzer dd12184e4 2021-05-08 dev
-$ rust-analyzer analysis-stats .
-💀 💀 💀
+rust-analyzer analysis-stats .
 ```
+💀 💀 💀
 
 It is especially useful when the `repo` doesn’t use external crates or
 the standard library.

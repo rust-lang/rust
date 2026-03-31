@@ -145,7 +145,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 _ => false,
             },
             Node::TraitItem(trait_method) => match trait_method.kind {
-                hir::TraitItemKind::Const(_, ref default) => default.is_some(),
+                hir::TraitItemKind::Const(_, ref default, _) => default.is_some(),
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
                 | hir::TraitItemKind::Type(..) => false,
@@ -209,7 +209,7 @@ impl<'tcx> ReachableContext<'tcx> {
                             self.visit_nested_body(body);
                         }
                     }
-                    // For #[type_const] we want to evaluate the RHS.
+                    // For `type const` we want to evaluate the RHS.
                     hir::ItemKind::Const(_, _, _, init @ hir::ConstItemRhs::TypeConst(_)) => {
                         self.visit_const_item_rhs(init);
                     }
@@ -258,11 +258,11 @@ impl<'tcx> ReachableContext<'tcx> {
             }
             Node::TraitItem(trait_method) => {
                 match trait_method.kind {
-                    hir::TraitItemKind::Const(_, None)
+                    hir::TraitItemKind::Const(_, None, _)
                     | hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_)) => {
                         // Keep going, nothing to get exported
                     }
-                    hir::TraitItemKind::Const(_, Some(rhs)) => self.visit_const_item_rhs(rhs),
+                    hir::TraitItemKind::Const(_, Some(rhs), _) => self.visit_const_item_rhs(rhs),
                     hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) => {
                         self.visit_nested_body(body_id);
                     }
@@ -360,7 +360,7 @@ impl<'tcx> ReachableContext<'tcx> {
             }
             // Reachable constants and reachable statics can have their contents inlined
             // into other crates. Mark them as reachable and recurse into their body.
-            DefKind::Const | DefKind::AssocConst | DefKind::Static { .. } => {
+            DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::Static { .. } => {
                 self.worklist.push(def_id);
             }
             _ => {

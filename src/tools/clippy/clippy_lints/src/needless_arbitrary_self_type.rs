@@ -117,7 +117,7 @@ impl EarlyLintPass for NeedlessArbitrarySelfType {
                     if !add.is_empty() {
                         sugg.push((p.span.shrink_to_lo(), add));
                     }
-                    diag.multipart_suggestion_verbose("remove the type", sugg, applicability);
+                    diag.multipart_suggestion("remove the type", sugg, applicability);
                 },
             );
         }

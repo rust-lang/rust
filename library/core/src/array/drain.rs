@@ -31,7 +31,6 @@ impl<'l, 'f, T, U, const N: usize, F: FnMut(T) -> U> Drain<'l, 'f, T, N, F> {
 }
 
 /// See [`Drain::new`]; this is our fake iterator.
-#[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
 #[unstable(feature = "array_try_map", issue = "79711")]
 pub(super) struct Drain<'l, 'f, T, const N: usize, F> {
     // FIXME(const-hack): This is essentially a slice::IterMut<'static>, replace when possible.

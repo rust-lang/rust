@@ -4,14 +4,14 @@ error: `impl Sized` will capture more lifetimes than possibly intended in editio
 LL | fn named<'a>(x: &'a i32) -> impl Sized { *x }
    |                             ^^^^^^^^^^
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:7:10
    |
 LL | fn named<'a>(x: &'a i32) -> impl Sized { *x }
    |          ^^
    = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: the lint level is defined here
   --> $DIR/overcaptures-2024.rs:5:9
    |
@@ -28,14 +28,14 @@ error: `impl Sized` will capture more lifetimes than possibly intended in editio
 LL | fn implicit(x: &i32) -> impl Sized { *x }
    |                         ^^^^^^^^^^
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:11:16
    |
 LL | fn implicit(x: &i32) -> impl Sized { *x }
    |                ^
    = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn implicit(x: &i32) -> impl Sized + use<> { *x }
@@ -47,14 +47,14 @@ error: `impl Sized + '_` will capture more lifetimes than possibly intended in e
 LL |     fn hello(&self, x: &i32) -> impl Sized + '_ { self }
    |                                 ^^^^^^^^^^^^^^^
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:17:24
    |
 LL |     fn hello(&self, x: &i32) -> impl Sized + '_ { self }
    |                        ^
    = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL |     fn hello(&self, x: &i32) -> impl Sized + '_ + use<'_> { self }
@@ -66,14 +66,14 @@ error: `impl Sized` will capture more lifetimes than possibly intended in editio
 LL | fn hrtb() -> impl for<'a> Higher<'a, Output = impl Sized> {}
    |                                               ^^^^^^^^^^
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:29:23
    |
 LL | fn hrtb() -> impl for<'a> Higher<'a, Output = impl Sized> {}
    |                       ^^
    = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn hrtb() -> impl for<'a> Higher<'a, Output = impl Sized + use<>> {}
@@ -85,8 +85,6 @@ error: `impl Sized` will capture more lifetimes than possibly intended in editio
 LL | fn apit(_: &impl Sized) -> impl Sized {}
    |                            ^^^^^^^^^^
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:33:12
    |
@@ -98,6 +96,8 @@ note: you could use a `use<...>` bound to explicitly specify captures, but argum
    |
 LL | fn apit(_: &impl Sized) -> impl Sized {}
    |             ^^^^^^^^^^
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL - fn apit(_: &impl Sized) -> impl Sized {}
@@ -110,8 +110,6 @@ error: `impl Sized` will capture more lifetimes than possibly intended in editio
 LL | fn apit2<U>(_: &impl Sized, _: U) -> impl Sized {}
    |                                      ^^^^^^^^^^
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:37:16
    |
@@ -123,6 +121,8 @@ note: you could use a `use<...>` bound to explicitly specify captures, but argum
    |
 LL | fn apit2<U>(_: &impl Sized, _: U) -> impl Sized {}
    |                 ^^^^^^^^^^
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL - fn apit2<U>(_: &impl Sized, _: U) -> impl Sized {}
@@ -135,14 +135,14 @@ error: `impl Sized` will capture more lifetimes than possibly intended in editio
 LL | async fn async_fn<'a>(x: &'a ()) -> impl Sized {}
    |                                     ^^^^^^^^^^
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:41:19
    |
 LL | async fn async_fn<'a>(x: &'a ()) -> impl Sized {}
    |                   ^^
    = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | async fn async_fn<'a>(x: &'a ()) -> impl Sized + use<> {}
@@ -154,14 +154,14 @@ error: `impl Clone` will capture more lifetimes than possibly intended in editio
 LL | pub fn parens(x: &i32) -> &impl Clone { x }
    |                            ^^^^^^^^^^
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:45:18
    |
 LL | pub fn parens(x: &i32) -> &impl Clone { x }
    |                  ^
    = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | pub fn parens(x: &i32) -> &(impl Clone + use<>) { x }

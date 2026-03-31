@@ -1,4 +1,83 @@
-[autolabel."pr-not-reviewed"]
+# This file's format is documented at
+# https://forge.rust-lang.org/triagebot/pr-assignment.html#configuration
+
+# ------------------------------------------------------------------------------
+# Labels
+# ------------------------------------------------------------------------------
+
+[relabel]
+allow-unauthenticated = [
+    "needs-triage",
+    "S-*",
+    "C-*",
+]
+
+# ------------------------------------------------------------------------------
+# General autolabels
+# ------------------------------------------------------------------------------
+
+[autolabel."needs-triage"]
+new_issue = true
+exclude_labels = [
+    "C-tracking-issue",
+]
+
+# By default, we will tag merged PRs with `release-notes`; they can be removed
+# manually if we determine that a PR does not need relnotes.
+[autolabel."release-notes"]
+pr_merged = true
+
+[autolabel."A-CI"]
+trigger_files = [
+    ".github/workflows",
+    "check_diff",
+    "ci",
+]
+
+[autolabel."A-meta"]
+trigger_files = [
+    "triagebot.toml",
+]
+
+# ------------------------------------------------------------------------------
+# PR review
+# ------------------------------------------------------------------------------
+
+[autolabel."S-waiting-on-review"]
 new_pr = true
+
+[autolabel."S-waiting-on-author"]
+new_draft = true
+
+[review-submitted]
+# This label is added when a "request changes" review is submitted.
+reviewed_label = "S-waiting-on-author"
+# These labels are removed when a "request changes" review is submitted.
+review_labels = ["S-waiting-on-review"]
+
+[review-requested]
+# Those labels are removed when PR author requests a review from an assignee
+remove_labels = ["S-waiting-on-author"]
+# Those labels are added when PR author requests a review from an assignee
+add_labels = ["S-waiting-on-review"]
+
+# Enable comments linking to triagebot range-diff when a PR is rebased
+# onto a different base commit.
+# Documentation at: https://forge.rust-lang.org/triagebot/range-diff.html
+[range-diff]
+
+# Adds at the end of a review body a link to view the changes that happened
+# since the review.
+# Documentation at: https://forge.rust-lang.org/triagebot/review-changes-since.html
+[review-changes-since]
+
+# Allow reviewers and authors to easily flip between {`S-waiting-on-review`,
+# `S-waiting-on-author`, `S-blocked`}.
+# Documentation at: <https://forge.rust-lang.org/triagebot/shortcuts.html>
+[shortcut]
+
+# ------------------------------------------------------------------------------
+# PR assignments
+# ------------------------------------------------------------------------------
 
 [assign]

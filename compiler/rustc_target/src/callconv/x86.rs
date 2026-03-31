@@ -103,7 +103,7 @@ where
                         }
                         false
                     }
-                    BackendRepr::ScalableVector { .. } => {
+                    BackendRepr::SimdScalableVector { .. } => {
                         panic!("scalable vectors are unsupported")
                     }
                 }

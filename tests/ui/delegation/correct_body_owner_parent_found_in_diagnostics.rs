@@ -7,7 +7,7 @@ pub struct InvariantRef<'a, T: ?Sized>(&'a T, PhantomData<&'a mut &'a T>);
 
 impl<'a> InvariantRef<'a, ()> {
     pub const NEW: Self = InvariantRef::new(&());
-    //~^ ERROR: no function or associated item named `new` found
+    //~^ ERROR: no associated function or constant named `new` found
 }
 
 trait Trait {

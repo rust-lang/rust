@@ -32,6 +32,7 @@ declare_clippy_lint! {
     style,
     "empty else branch"
 }
+
 declare_lint_pass!(NeedlessElse => [NEEDLESS_ELSE]);
 
 impl EarlyLintPass for NeedlessElse {

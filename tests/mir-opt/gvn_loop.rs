@@ -1,5 +1,5 @@
 //@ test-mir-pass: GVN
-//@ compile-flags: -Zdump-mir-exclude-alloc-bytes
+//@ compile-flags: -Zdump-mir-exclude-alloc-bytes -Zmir-enable-passes=+ReferencePropagation
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics, rustc_attrs)]

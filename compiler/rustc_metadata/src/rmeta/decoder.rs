@@ -1223,7 +1223,7 @@ impl<'a> CrateMetadataRef<'a> {
             .root
             .stripped_cfg_items
             .decode((self, tcx))
-            .map(|item| item.map_mod_id(|index| DefId { krate: cnum, index }));
+            .map(|item| item.map_scope_id(|index| DefId { krate: cnum, index }));
         tcx.arena.alloc_from_iter(item_names)
     }
 
@@ -1298,10 +1298,6 @@ impl<'a> CrateMetadataRef<'a> {
         }
     }
 
-    fn is_ctfe_mir_available(self, tcx: TyCtxt<'_>, id: DefIndex) -> bool {
-        self.root.tables.mir_for_ctfe.get((self, tcx), id).is_some()
-    }
-
     fn is_item_mir_available(self, tcx: TyCtxt<'_>, id: DefIndex) -> bool {
         self.root.tables.optimized_mir.get((self, tcx), id).is_some()
     }
@@ -1333,7 +1329,9 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn get_associated_item(self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
         let kind = match self.def_kind(tcx, id) {
-            DefKind::AssocConst => ty::AssocKind::Const { name: self.item_name(id) },
+            DefKind::AssocConst { is_type_const } => {
+                ty::AssocKind::Const { name: self.item_name(id), is_type_const }
+            }
             DefKind::AssocFn => ty::AssocKind::Fn {
                 name: self.item_name(id),
                 has_self: self.get_fn_has_self_parameter(tcx, id),

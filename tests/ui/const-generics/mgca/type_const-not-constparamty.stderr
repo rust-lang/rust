@@ -1,20 +1,8 @@
 error[E0741]: `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
-  --> $DIR/type_const-not-constparamty.rs:9:13
+  --> $DIR/type_const-not-constparamty.rs:8:18
    |
-LL | const FREE: S = const { S };
-   |             ^
-   |
-help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
-   |
-LL + #[derive(ConstParamTy, PartialEq, Eq)]
-LL | struct S;
-   |
-
-error[E0741]: `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
-  --> $DIR/type_const-not-constparamty.rs:22:14
-   |
-LL |     const N: S = const { S };
-   |              ^
+LL | type const FREE: S = const { S };
+   |                  ^
    |
 help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
    |
@@ -23,10 +11,22 @@ LL | struct S;
    |
 
 error[E0741]: `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
-  --> $DIR/type_const-not-constparamty.rs:14:14
+  --> $DIR/type_const-not-constparamty.rs:19:19
    |
-LL |     const N: S;
-   |              ^
+LL |     type const N: S = const { S };
+   |                   ^
+   |
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | struct S;
+   |
+
+error[E0741]: `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/type_const-not-constparamty.rs:12:19
+   |
+LL |     type const N: S;
+   |                   ^
    |
 help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
    |

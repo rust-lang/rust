@@ -23,6 +23,7 @@
     mips_target_feature,
     powerpc_target_feature,
     loongarch_target_feature,
+    hexagon_target_feature,
     wasm_target_feature,
     abi_unadjusted,
     rtm_target_feature,
@@ -38,7 +39,8 @@
     const_trait_impl,
     const_cmp,
     const_eval_select,
-    maybe_uninit_as_bytes
+    maybe_uninit_as_bytes,
+    movrs_target_feature
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]
 #![deny(clippy::missing_inline_in_public_items)]

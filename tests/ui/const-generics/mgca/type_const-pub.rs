@@ -5,8 +5,7 @@
 #![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 
-#[type_const]
-pub const TYPE_CONST : usize = 1;
+pub type const TYPE_CONST : usize = 1;
 fn main() {
     print!("{}", TYPE_CONST)
 }

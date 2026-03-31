@@ -3,9 +3,9 @@ use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
 use rustc_ast::Recovered;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic, SuggestionStyle};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic, SuggestionStyle, msg};
 use rustc_hir::{self as hir, HirIdSet};
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::significant_drop_order::{
     extract_component_with_significant_dtor, ty_dtor_span,
@@ -302,14 +302,16 @@ impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
     }
 }
 
-#[derive(LintDiagnostic)]
-#[diag(lint_if_let_rescope)]
+#[derive(Diagnostic)]
+#[diag("`if let` assigns a shorter lifetime since Edition 2024")]
 struct IfLetRescopeLint {
     #[subdiagnostic]
     destructors: Vec<DestructorLabel>,
-    #[label]
+    #[label(
+        "this value has a significant drop implementation which may observe a major change in drop order and requires your discretion"
+    )]
     significant_droppers: Vec<Span>,
-    #[help]
+    #[help("the value is now dropped here in Edition 2024")]
     lifetime_ends: Vec<Span>,
     #[subdiagnostic]
     rewrite: Option<IfLetRescopeRewrite>,
@@ -352,7 +354,8 @@ impl Subdiagnostic for IfLetRescopeRewrite {
                 .chain(repeat_n('}', closing_brackets.count))
                 .collect(),
         ));
-        let msg = diag.eagerly_translate(crate::fluent_generated::lint_suggestion);
+        let msg =
+            msg!("a `match` with a single arm can preserve the drop order up to Edition 2021");
         diag.multipart_suggestion_with_style(
             msg,
             suggestions,
@@ -363,7 +366,12 @@ impl Subdiagnostic for IfLetRescopeRewrite {
 }
 
 #[derive(Subdiagnostic)]
-#[note(lint_if_let_dtor)]
+#[note(
+    "{$dtor_kind ->
+        [dyn] value may invoke a custom destructor because it contains a trait object
+        *[concrete] value invokes this custom destructor
+    }"
+)]
 struct DestructorLabel {
     #[primary_span]
     span: Span,

@@ -1,5 +1,4 @@
-use rustc_errors::MultiSpan;
-use rustc_hir::attrs::AttributeKind;
+use rustc_errors::{MultiSpan, msg};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, TyKind, find_attr};
@@ -9,7 +8,7 @@ use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::{ExpnKind, Span, kw};
 
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
-use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `non_local_definitions` lint checks for `impl` blocks and `#[macro_export]`
@@ -79,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
 
         // Per RFC we (currently) ignore anon-const (`const _: Ty = ...`) in top-level module.
         if self.body_depth == 1
-            && parent_def_kind == DefKind::Const
+            && matches!(parent_def_kind, DefKind::Const { .. })
             && parent_opt_item_name == Some(kw::Underscore)
         {
             return;
@@ -160,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // for impl, otherwise the item-def and impl-def won't have the same parent.
                 let outermost_impl_parent = peel_parent_while(cx.tcx, parent, |tcx, did| {
                     tcx.def_kind(did) == DefKind::Mod
-                        || (tcx.def_kind(did) == DefKind::Const
+                        || (matches!(tcx.def_kind(did), DefKind::Const { .. })
                             && tcx.opt_item_name(did) == Some(kw::Underscore))
                 });
 
@@ -180,20 +179,22 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // Get the span of the parent const item ident (if it's a not a const anon).
                 //
                 // Used to suggest changing the const item to a const anon.
-                let span_for_const_anon_suggestion = if parent_def_kind == DefKind::Const
-                    && parent_opt_item_name != Some(kw::Underscore)
-                    && let Some(parent) = parent.as_local()
-                    && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
-                    && let ItemKind::Const(ident, _, ty, _) = item.kind
-                    && let TyKind::Tup(&[]) = ty.kind
-                {
-                    Some(ident.span)
-                } else {
-                    None
-                };
+                let span_for_const_anon_suggestion =
+                    if matches!(parent_def_kind, DefKind::Const { .. })
+                        && parent_opt_item_name != Some(kw::Underscore)
+                        && let Some(parent) = parent.as_local()
+                        && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
+                        && let ItemKind::Const(ident, _, ty, _) = item.kind
+                        && let TyKind::Tup(&[]) = ty.kind
+                    {
+                        Some(ident.span)
+                    } else {
+                        None
+                    };
 
-                let const_anon = matches!(parent_def_kind, DefKind::Const | DefKind::Static { .. })
-                    .then_some(span_for_const_anon_suggestion);
+                let const_anon =
+                    matches!(parent_def_kind, DefKind::Const { .. } | DefKind::Static { .. })
+                        .then_some(span_for_const_anon_suggestion);
 
                 let impl_span = item.span.shrink_to_lo().to(impl_.self_ty.span);
                 let mut ms = MultiSpan::from_span(impl_span);
@@ -210,7 +211,12 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 if !doctest {
                     ms.push_span_label(
                         cx.tcx.def_span(parent),
-                        fluent::lint_non_local_definitions_impl_move_help,
+                        msg!(
+                            "move the `impl` block outside of this {$body_kind_descr} {$depth ->
+                                [one] `{$body_name}`
+                                *[other] `{$body_name}` and up {$depth} bodies
+                            }"
+                        ),
                     );
                 }
 
@@ -238,10 +244,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 )
             }
             ItemKind::Macro(_, _macro, _kinds)
-                if find_attr!(
-                    cx.tcx.get_all_attrs(item.owner_id.def_id),
-                    AttributeKind::MacroExport { .. }
-                ) =>
+                if find_attr!(cx.tcx, item.owner_id.def_id, MacroExport { .. }) =>
             {
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,
@@ -314,7 +317,7 @@ fn did_has_local_parent(
 
     peel_parent_while(tcx, parent_did, |tcx, did| {
         tcx.def_kind(did) == DefKind::Mod
-            || (tcx.def_kind(did) == DefKind::Const
+            || (matches!(tcx.def_kind(did), DefKind::Const { .. })
                 && tcx.opt_item_name(did) == Some(kw::Underscore))
     })
     .map(|parent_did| parent_did == impl_parent || Some(parent_did) == outermost_impl_parent)

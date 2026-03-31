@@ -1,5 +1,11 @@
 #![warn(clippy::iter_kv_map)]
-#![allow(unused_mut, clippy::redundant_clone, clippy::suspicious_map, clippy::map_identity)]
+#![allow(
+    unused_mut,
+    clippy::redundant_clone,
+    clippy::redundant_closure,
+    clippy::suspicious_map,
+    clippy::map_identity
+)]
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -193,5 +199,35 @@ fn issue14595() {
 fn issue16340() {
     let hm: HashMap<&str, &str> = HashMap::new();
     let _ = hm.keys().map(|key| vec![key]);
+    //~^ iter_kv_map
+}
+
+fn issue16515() {
+    let hash_map: HashMap<u32, u32> = HashMap::new();
+    hash_map.keys().flat_map(|k| Some(*k));
+    //~^ iter_kv_map
+
+    hash_map.values().flat_map(|v| Some(*v));
+    //~^ iter_kv_map
+
+    hash_map.keys().filter_map(|k| (k > &0).then_some(1));
+    //~^ iter_kv_map
+
+    hash_map.values().filter_map(|v| (v > &0).then_some(1));
+    //~^ iter_kv_map
+
+    hash_map.into_keys().flat_map(|k| Some(k));
+    //~^ iter_kv_map
+
+    let hash_map: HashMap<u32, u32> = HashMap::new();
+    hash_map.into_values().flat_map(|v| Some(v));
+    //~^ iter_kv_map
+
+    let hash_map: HashMap<u32, u32> = HashMap::new();
+    hash_map.into_keys().filter_map(|k| (k > 0).then_some(1));
+    //~^ iter_kv_map
+
+    let hash_map: HashMap<u32, u32> = HashMap::new();
+    hash_map.into_values().filter_map(|v| (v > 0).then_some(1));
     //~^ iter_kv_map
 }

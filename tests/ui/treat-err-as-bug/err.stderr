@@ -5,7 +5,7 @@ LL | pub static C: u32 = 0 - 1;
    |                     ^^^^^ evaluation of `C` failed here
 
 
-error: the compiler unexpectedly panicked. this is a bug.
+error: the compiler unexpectedly panicked. This is a bug
 
 query stack during panic:
 #0 [eval_static_initializer] evaluating initializer of static `C`

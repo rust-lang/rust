@@ -830,7 +830,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr_field, fields);
             match optional_base {
                 StructTailExpr::Base(base) => try_visit!(visitor.visit_expr(base)),
-                StructTailExpr::None | StructTailExpr::DefaultFields(_) => {}
+                StructTailExpr::None
+                | StructTailExpr::NoneWithError(_)
+                | StructTailExpr::DefaultFields(_) => {}
             }
         }
         ExprKind::Tup(subexpressions) => {
@@ -1047,6 +1049,11 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
             try_visit!(visitor.visit_ty_unambig(ty));
             try_visit!(visitor.visit_pattern_type_pattern(pat));
         }
+        TyKind::FieldOf(ty, TyFieldPath { variant, field }) => {
+            try_visit!(visitor.visit_ty_unambig(ty));
+            visit_opt!(visitor, visit_ident, *variant);
+            try_visit!(visitor.visit_ident(*field));
+        }
     }
     V::Result::output()
 }
@@ -1110,7 +1117,7 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
         ConstArgKind::Path(qpath) => visitor.visit_qpath(qpath, *hir_id, qpath.span()),
         ConstArgKind::Anon(anon) => visitor.visit_anon_const(*anon),
         ConstArgKind::Error(_) => V::Result::output(), // errors and spans are not important
-        ConstArgKind::Literal(..) => V::Result::output(), // FIXME(mcga)
+        ConstArgKind::Literal { .. } => V::Result::output(), // FIXME(mcga)
     }
 }
 
@@ -1271,7 +1278,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_defaultness(&defaultness));
     try_visit!(visitor.visit_id(hir_id));
     match *kind {
-        TraitItemKind::Const(ref ty, default) => {
+        TraitItemKind::Const(ref ty, default, _) => {
             try_visit!(visitor.visit_ty_unambig(ty));
             visit_opt!(visitor, visit_const_item_rhs, default);
         }

@@ -8,7 +8,7 @@ use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, InlineAttr};
+use rustc_hir::attrs::InlineAttr;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingMode, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
@@ -19,6 +19,39 @@ use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
 use std::iter;
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for functions taking arguments by value, where
+    /// the argument type is `Copy` and large enough to be worth considering
+    /// passing by reference. Does not trigger if the function is being exported,
+    /// because that might induce API breakage, if the parameter is declared as mutable,
+    /// or if the argument is a `self`.
+    ///
+    /// ### Why is this bad?
+    /// Arguments passed by value might result in an unnecessary
+    /// shallow copy, taking up more space in the stack and requiring a call to
+    /// `memcpy`, which can be expensive.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[derive(Clone, Copy)]
+    /// struct TooLarge([u8; 2048]);
+    ///
+    /// fn foo(v: TooLarge) {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # #[derive(Clone, Copy)]
+    /// # struct TooLarge([u8; 2048]);
+    /// fn foo(v: &TooLarge) {}
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub LARGE_TYPES_PASSED_BY_VALUE,
+    pedantic,
+    "functions taking large arguments by value"
+}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -68,38 +101,10 @@ declare_clippy_lint! {
     "functions taking small copyable arguments by reference"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for functions taking arguments by value, where
-    /// the argument type is `Copy` and large enough to be worth considering
-    /// passing by reference. Does not trigger if the function is being exported,
-    /// because that might induce API breakage, if the parameter is declared as mutable,
-    /// or if the argument is a `self`.
-    ///
-    /// ### Why is this bad?
-    /// Arguments passed by value might result in an unnecessary
-    /// shallow copy, taking up more space in the stack and requiring a call to
-    /// `memcpy`, which can be expensive.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[derive(Clone, Copy)]
-    /// struct TooLarge([u8; 2048]);
-    ///
-    /// fn foo(v: TooLarge) {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # #[derive(Clone, Copy)]
-    /// # struct TooLarge([u8; 2048]);
-    /// fn foo(v: &TooLarge) {}
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub LARGE_TYPES_PASSED_BY_VALUE,
-    pedantic,
-    "functions taking large arguments by value"
-}
+impl_lint_pass!(PassByRefOrValue => [
+    LARGE_TYPES_PASSED_BY_VALUE,
+    TRIVIALLY_COPY_PASS_BY_REF,
+]);
 
 pub struct PassByRefOrValue {
     ref_min_size: u64,
@@ -237,8 +242,6 @@ impl PassByRefOrValue {
     }
 }
 
-impl_lint_pass!(PassByRefOrValue => [TRIVIALLY_COPY_PASS_BY_REF, LARGE_TYPES_PASSED_BY_VALUE]);
-
 impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         if item.span.from_expansion() {
@@ -270,7 +273,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                     return;
                 }
                 let attrs = cx.tcx.hir_attrs(hir_id);
-                if find_attr!(attrs, AttributeKind::Inline(InlineAttr::Always, _)) {
+                if find_attr!(attrs, Inline(InlineAttr::Always, _)) {
                     return;
                 }
 

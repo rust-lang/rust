@@ -1,0 +1,14 @@
+error: the constant `A` is not of type `(u32, u32)`
+  --> $DIR/array-with-wrong-tuple-type.rs:14:21
+   |
+LL |     takes_tuple::<{ [A] }>();
+   |                     ^^^ expected `(u32, u32)`, found `A`
+
+error: the constant `A` is not of type `(u32, (u32, u32))`
+  --> $DIR/array-with-wrong-tuple-type.rs:16:28
+   |
+LL |     takes_nested_tuple::<{ [A] }>();
+   |                            ^^^ expected `(u32, (u32, u32))`, found `A`
+
+error: aborting due to 2 previous errors
+

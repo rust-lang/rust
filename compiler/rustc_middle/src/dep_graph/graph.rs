@@ -1,0 +1,1507 @@
+use std::assert_matches;
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
+
+use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::outline;
+use rustc_data_structures::profiling::QueryInvocationId;
+use rustc_data_structures::sharded::{self, ShardedHashMap};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::{AtomicU64, Lock, is_dyn_thread_safe};
+use rustc_data_structures::unord::UnordMap;
+use rustc_errors::DiagInner;
+use rustc_index::IndexVec;
+use rustc_macros::{Decodable, Encodable};
+use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
+use rustc_session::Session;
+use rustc_span::Symbol;
+use tracing::instrument;
+#[cfg(debug_assertions)]
+use {super::debug::EdgeFilter, std::env};
+
+use super::retained::RetainedDepGraph;
+use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
+use super::{DepKind, DepNode, WorkProductId, read_deps, with_deps};
+use crate::dep_graph::edges::EdgesVec;
+use crate::ich::StableHashingContext;
+use crate::ty::TyCtxt;
+use crate::verify_ich::incremental_verify_ich;
+
+/// Tracks 'side effects' for a particular query.
+/// This struct is saved to disk along with the query result,
+/// and loaded from disk if we mark the query as green.
+/// This allows us to 'replay' changes to global state
+/// that would otherwise only occur if we actually
+/// executed the query method.
+///
+/// Each side effect gets an unique dep node index which is added
+/// as a dependency of the query which had the effect.
+#[derive(Debug, Encodable, Decodable)]
+pub enum QuerySideEffect {
+    /// Stores a diagnostic emitted during query execution.
+    /// This diagnostic will be re-emitted if we mark
+    /// the query as green, as that query will have the side
+    /// effect dep node as a dependency.
+    Diagnostic(DiagInner),
+    /// Records the feature used during query execution.
+    /// This feature will be inserted into `sess.used_features`
+    /// if we mark the query as green, as that query will have
+    /// the side effect dep node as a dependency.
+    CheckFeature { symbol: Symbol },
+}
+#[derive(Clone)]
+pub struct DepGraph {
+    data: Option<Arc<DepGraphData>>,
+
+    /// This field is used for assigning DepNodeIndices when running in
+    /// non-incremental mode. Even in non-incremental mode we make sure that
+    /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
+    /// ID is used for self-profiling.
+    virtual_dep_node_index: Arc<AtomicU32>,
+}
+
+rustc_index::newtype_index! {
+    pub struct DepNodeIndex {}
+}
+
+// We store a large collection of these in `prev_index_to_index` during
+// non-full incremental builds, and want to ensure that the element size
+// doesn't inadvertently increase.
+rustc_data_structures::static_assert_size!(Option<DepNodeIndex>, 4);
+
+impl DepNodeIndex {
+    const SINGLETON_ZERO_DEPS_ANON_NODE: DepNodeIndex = DepNodeIndex::ZERO;
+    pub const FOREVER_RED_NODE: DepNodeIndex = DepNodeIndex::from_u32(1);
+}
+
+impl From<DepNodeIndex> for QueryInvocationId {
+    #[inline(always)]
+    fn from(dep_node_index: DepNodeIndex) -> Self {
+        QueryInvocationId(dep_node_index.as_u32())
+    }
+}
+
+pub(crate) struct MarkFrame<'a> {
+    index: SerializedDepNodeIndex,
+    parent: Option<&'a MarkFrame<'a>>,
+}
+
+#[derive(Debug)]
+pub(super) enum DepNodeColor {
+    Green(DepNodeIndex),
+    Red,
+    Unknown,
+}
+
+pub struct DepGraphData {
+    /// The new encoding of the dependency graph, optimized for red/green
+    /// tracking. The `current` field is the dependency graph of only the
+    /// current compilation session: We don't merge the previous dep-graph into
+    /// current one anymore, but we do reference shared data to save space.
+    current: CurrentDepGraph,
+
+    /// The dep-graph from the previous compilation session. It contains all
+    /// nodes and edges as well as all fingerprints of nodes that have them.
+    previous: Arc<SerializedDepGraph>,
+
+    colors: DepNodeColorMap,
+
+    /// When we load, there may be `.o` files, cached MIR, or other such
+    /// things available to us. If we find that they are not dirty, we
+    /// load the path to the file storing those work-products here into
+    /// this map. We can later look for and extract that data.
+    previous_work_products: WorkProductMap,
+
+    dep_node_debug: Lock<FxHashMap<DepNode, String>>,
+
+    /// Used by incremental compilation tests to assert that
+    /// a particular query result was decoded from disk
+    /// (not just marked green)
+    debug_loaded_from_disk: Lock<FxHashSet<DepNode>>,
+}
+
+pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Fingerprint
+where
+    R: for<'a> HashStable<StableHashingContext<'a>>,
+{
+    let mut stable_hasher = StableHasher::new();
+    result.hash_stable(hcx, &mut stable_hasher);
+    stable_hasher.finish()
+}
+
+impl DepGraph {
+    pub fn new(
+        session: &Session,
+        prev_graph: Arc<SerializedDepGraph>,
+        prev_work_products: WorkProductMap,
+        encoder: FileEncoder,
+    ) -> DepGraph {
+        let prev_graph_node_count = prev_graph.node_count();
+
+        let current =
+            CurrentDepGraph::new(session, prev_graph_node_count, encoder, Arc::clone(&prev_graph));
+
+        let colors = DepNodeColorMap::new(prev_graph_node_count);
+
+        // Instantiate a node with zero dependencies only once for anonymous queries.
+        let _green_node_index = current.alloc_new_node(
+            DepNode { kind: DepKind::AnonZeroDeps, key_fingerprint: current.anon_id_seed.into() },
+            EdgesVec::new(),
+            Fingerprint::ZERO,
+        );
+        assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_ZERO_DEPS_ANON_NODE);
+
+        // Create a single always-red node, with no dependencies of its own.
+        // Other nodes can use the always-red node as a fake dependency, to
+        // ensure that their dependency list will never be all-green.
+        let red_node_index = current.alloc_new_node(
+            DepNode { kind: DepKind::Red, key_fingerprint: Fingerprint::ZERO.into() },
+            EdgesVec::new(),
+            Fingerprint::ZERO,
+        );
+        assert_eq!(red_node_index, DepNodeIndex::FOREVER_RED_NODE);
+        if prev_graph_node_count > 0 {
+            let prev_index =
+                const { SerializedDepNodeIndex::from_u32(DepNodeIndex::FOREVER_RED_NODE.as_u32()) };
+            let result = colors.try_set_color(prev_index, DesiredColor::Red);
+            assert_matches!(result, TrySetColorResult::Success);
+        }
+
+        DepGraph {
+            data: Some(Arc::new(DepGraphData {
+                previous_work_products: prev_work_products,
+                dep_node_debug: Default::default(),
+                current,
+                previous: prev_graph,
+                colors,
+                debug_loaded_from_disk: Default::default(),
+            })),
+            virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
+        }
+    }
+
+    pub fn new_disabled() -> DepGraph {
+        DepGraph { data: None, virtual_dep_node_index: Arc::new(AtomicU32::new(0)) }
+    }
+
+    #[inline]
+    pub fn data(&self) -> Option<&DepGraphData> {
+        self.data.as_deref()
+    }
+
+    /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.
+    #[inline]
+    pub fn is_fully_enabled(&self) -> bool {
+        self.data.is_some()
+    }
+
+    pub fn with_retained_dep_graph(&self, f: impl Fn(&RetainedDepGraph)) {
+        if let Some(data) = &self.data {
+            data.current.encoder.with_retained_dep_graph(f)
+        }
+    }
+
+    pub fn assert_ignored(&self) {
+        if let Some(..) = self.data {
+            read_deps(|task_deps| {
+                assert_matches!(
+                    task_deps,
+                    TaskDepsRef::Ignore,
+                    "expected no task dependency tracking"
+                );
+            })
+        }
+    }
+
+    pub fn with_ignore<OP, R>(&self, op: OP) -> R
+    where
+        OP: FnOnce() -> R,
+    {
+        with_deps(TaskDepsRef::Ignore, op)
+    }
+
+    /// Used to wrap the deserialization of a query result from disk,
+    /// This method enforces that no new `DepNodes` are created during
+    /// query result deserialization.
+    ///
+    /// Enforcing this makes the query dep graph simpler - all nodes
+    /// must be created during the query execution, and should be
+    /// created from inside the 'body' of a query (the implementation
+    /// provided by a particular compiler crate).
+    ///
+    /// Consider the case of three queries `A`, `B`, and `C`, where
+    /// `A` invokes `B` and `B` invokes `C`:
+    ///
+    /// `A -> B -> C`
+    ///
+    /// Suppose that decoding the result of query `B` required re-computing
+    /// the query `C`. If we did not create a fresh `TaskDeps` when
+    /// decoding `B`, we would still be using the `TaskDeps` for query `A`
+    /// (if we needed to re-execute `A`). This would cause us to create
+    /// a new edge `A -> C`. If this edge did not previously
+    /// exist in the `DepGraph`, then we could end up with a different
+    /// `DepGraph` at the end of compilation, even if there were no
+    /// meaningful changes to the overall program (e.g. a newline was added).
+    /// In addition, this edge might cause a subsequent compilation run
+    /// to try to force `C` before marking other necessary nodes green. If
+    /// `C` did not exist in the new compilation session, then we could
+    /// get an ICE. Normally, we would have tried (and failed) to mark
+    /// some other query green (e.g. `item_children`) which was used
+    /// to obtain `C`, which would prevent us from ever trying to force
+    /// a nonexistent `D`.
+    ///
+    /// It might be possible to enforce that all `DepNode`s read during
+    /// deserialization already exist in the previous `DepGraph`. In
+    /// the above example, we would invoke `D` during the deserialization
+    /// of `B`. Since we correctly create a new `TaskDeps` from the decoding
+    /// of `B`, this would result in an edge `B -> D`. If that edge already
+    /// existed (with the same `DepPathHash`es), then it should be correct
+    /// to allow the invocation of the query to proceed during deserialization
+    /// of a query result. We would merely assert that the dep-graph fragment
+    /// that would have been added by invoking `C` while decoding `B`
+    /// is equivalent to the dep-graph fragment that we already instantiated for B
+    /// (at the point where we successfully marked B as green).
+    ///
+    /// However, this would require additional complexity
+    /// in the query infrastructure, and is not currently needed by the
+    /// decoding of any query results. Should the need arise in the future,
+    /// we should consider extending the query system with this functionality.
+    pub fn with_query_deserialization<OP, R>(&self, op: OP) -> R
+    where
+        OP: FnOnce() -> R,
+    {
+        with_deps(TaskDepsRef::Forbid, op)
+    }
+
+    #[inline(always)]
+    pub fn with_task<'tcx, A: Debug, R>(
+        &self,
+        dep_node: DepNode,
+        tcx: TyCtxt<'tcx>,
+        task_arg: A,
+        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
+        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+    ) -> (R, DepNodeIndex) {
+        match self.data() {
+            Some(data) => data.with_task(dep_node, tcx, task_arg, task_fn, hash_result),
+            None => (task_fn(tcx, task_arg), self.next_virtual_depnode_index()),
+        }
+    }
+
+    pub fn with_anon_task<'tcx, OP, R>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        dep_kind: DepKind,
+        op: OP,
+    ) -> (R, DepNodeIndex)
+    where
+        OP: FnOnce() -> R,
+    {
+        match self.data() {
+            Some(data) => {
+                let (result, index) = data.with_anon_task_inner(tcx, dep_kind, op);
+                self.read_index(index);
+                (result, index)
+            }
+            None => (op(), self.next_virtual_depnode_index()),
+        }
+    }
+}
+
+impl DepGraphData {
+    /// Starts a new dep-graph task. Dep-graph tasks are specified
+    /// using a free function (`task`) and **not** a closure -- this
+    /// is intentional because we want to exercise tight control over
+    /// what state they have access to. In particular, we want to
+    /// prevent implicit 'leaks' of tracked state into the task (which
+    /// could then be read without generating correct edges in the
+    /// dep-graph -- see the [rustc dev guide] for more details on
+    /// the dep-graph).
+    ///
+    /// Therefore, the task function takes a `TyCtxt`, plus exactly one
+    /// additional argument, `task_arg`. The additional argument type can be
+    /// `()` if no argument is needed, or a tuple if multiple arguments are
+    /// needed.
+    ///
+    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
+    #[inline(always)]
+    pub fn with_task<'tcx, A: Debug, R>(
+        &self,
+        dep_node: DepNode,
+        tcx: TyCtxt<'tcx>,
+        task_arg: A,
+        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
+        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+    ) -> (R, DepNodeIndex) {
+        // If the following assertion triggers, it can have two reasons:
+        // 1. Something is wrong with DepNode creation, either here or
+        //    in `DepGraph::try_mark_green()`.
+        // 2. Two distinct query keys get mapped to the same `DepNode`
+        //    (see for example #48923).
+        self.assert_dep_node_not_yet_allocated_in_current_session(tcx.sess, &dep_node, || {
+            format!(
+                "forcing query with already existing `DepNode`\n\
+                 - query-key: {task_arg:?}\n\
+                 - dep-node: {dep_node:?}"
+            )
+        });
+
+        let with_deps = |task_deps| with_deps(task_deps, || task_fn(tcx, task_arg));
+        let (result, edges) = if tcx.is_eval_always(dep_node.kind) {
+            (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
+        } else {
+            let task_deps = Lock::new(TaskDeps::new(
+                #[cfg(debug_assertions)]
+                Some(dep_node),
+                0,
+            ));
+            (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
+        };
+
+        let dep_node_index =
+            self.hash_result_and_alloc_node(tcx, dep_node, edges, &result, hash_result);
+
+        (result, dep_node_index)
+    }
+
+    /// Executes something within an "anonymous" task, that is, a task the
+    /// `DepNode` of which is determined by the list of inputs it read from.
+    ///
+    /// NOTE: this does not actually count as a read of the DepNode here.
+    /// Using the result of this task without reading the DepNode will result
+    /// in untracked dependencies which may lead to ICEs as nodes are
+    /// incorrectly marked green.
+    ///
+    /// FIXME: This could perhaps return a `WithDepNode` to ensure that the
+    /// user of this function actually performs the read.
+    fn with_anon_task_inner<'tcx, OP, R>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        dep_kind: DepKind,
+        op: OP,
+    ) -> (R, DepNodeIndex)
+    where
+        OP: FnOnce() -> R,
+    {
+        debug_assert!(!tcx.is_eval_always(dep_kind));
+
+        // Large numbers of reads are common enough here that pre-sizing `read_set`
+        // to 128 actually helps perf on some benchmarks.
+        let task_deps = Lock::new(TaskDeps::new(
+            #[cfg(debug_assertions)]
+            None,
+            128,
+        ));
+        let result = with_deps(TaskDepsRef::Allow(&task_deps), op);
+        let task_deps = task_deps.into_inner();
+        let reads = task_deps.reads;
+
+        let dep_node_index = match reads.len() {
+            0 => {
+                // Because the dep-node id of anon nodes is computed from the sets of its
+                // dependencies we already know what the ID of this dependency-less node is
+                // going to be (i.e. equal to the precomputed
+                // `SINGLETON_DEPENDENCYLESS_ANON_NODE`). As a consequence we can skip creating
+                // a `StableHasher` and sending the node through interning.
+                DepNodeIndex::SINGLETON_ZERO_DEPS_ANON_NODE
+            }
+            1 => {
+                // When there is only one dependency, don't bother creating a node.
+                reads[0]
+            }
+            _ => {
+                // The dep node indices are hashed here instead of hashing the dep nodes of the
+                // dependencies. These indices may refer to different nodes per session, but this isn't
+                // a problem here because we that ensure the final dep node hash is per session only by
+                // combining it with the per session random number `anon_id_seed`. This hash only need
+                // to map the dependencies to a single value on a per session basis.
+                let mut hasher = StableHasher::new();
+                reads.hash(&mut hasher);
+
+                let target_dep_node = DepNode {
+                    kind: dep_kind,
+                    // Fingerprint::combine() is faster than sending Fingerprint
+                    // through the StableHasher (at least as long as StableHasher
+                    // is so slow).
+                    key_fingerprint: self.current.anon_id_seed.combine(hasher.finish()).into(),
+                };
+
+                // The DepNodes generated by the process above are not unique. 2 queries could
+                // have exactly the same dependencies. However, deserialization does not handle
+                // duplicated nodes, so we do the deduplication here directly.
+                //
+                // As anonymous nodes are a small quantity compared to the full dep-graph, the
+                // memory impact of this `anon_node_to_index` map remains tolerable, and helps
+                // us avoid useless growth of the graph with almost-equivalent nodes.
+                self.current.anon_node_to_index.get_or_insert_with(target_dep_node, || {
+                    self.current.alloc_new_node(target_dep_node, reads, Fingerprint::ZERO)
+                })
+            }
+        };
+
+        (result, dep_node_index)
+    }
+
+    /// Intern the new `DepNode` with the dependencies up-to-now.
+    fn hash_result_and_alloc_node<'tcx, R>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        node: DepNode,
+        edges: EdgesVec,
+        result: &R,
+        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+    ) -> DepNodeIndex {
+        let hashing_timer = tcx.prof.incr_result_hashing();
+        let current_fingerprint = hash_result.map(|hash_result| {
+            tcx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result))
+        });
+        let dep_node_index = self.alloc_and_color_node(node, edges, current_fingerprint);
+        hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
+        dep_node_index
+    }
+}
+
+impl DepGraph {
+    #[inline]
+    pub fn read_index(&self, dep_node_index: DepNodeIndex) {
+        if let Some(ref data) = self.data {
+            read_deps(|task_deps| {
+                let mut task_deps = match task_deps {
+                    TaskDepsRef::Allow(deps) => deps.lock(),
+                    TaskDepsRef::EvalAlways => {
+                        // We don't need to record dependencies of eval_always
+                        // queries. They are re-evaluated unconditionally anyway.
+                        return;
+                    }
+                    TaskDepsRef::Ignore => return,
+                    TaskDepsRef::Forbid => {
+                        // Reading is forbidden in this context. ICE with a useful error message.
+                        panic_on_forbidden_read(data, dep_node_index)
+                    }
+                };
+                let task_deps = &mut *task_deps;
+
+                if cfg!(debug_assertions) {
+                    data.current.total_read_count.fetch_add(1, Ordering::Relaxed);
+                }
+
+                // Has `dep_node_index` been seen before? Use either a linear scan or a hashset
+                // lookup to determine this. See `TaskDeps::read_set` for details.
+                let new_read = if task_deps.reads.len() <= TaskDeps::LINEAR_SCAN_MAX {
+                    !task_deps.reads.contains(&dep_node_index)
+                } else {
+                    task_deps.read_set.insert(dep_node_index)
+                };
+                if new_read {
+                    task_deps.reads.push(dep_node_index);
+                    if task_deps.reads.len() == TaskDeps::LINEAR_SCAN_MAX + 1 {
+                        // Fill `read_set` with what we have so far. Future lookups will use it.
+                        task_deps.read_set.extend(task_deps.reads.iter().copied());
+                    }
+
+                    #[cfg(debug_assertions)]
+                    {
+                        if let Some(target) = task_deps.node
+                            && let Some(ref forbidden_edge) = data.current.forbidden_edge
+                        {
+                            let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
+                            if forbidden_edge.test(&src, &target) {
+                                panic!("forbidden edge {:?} -> {:?} created", src, target)
+                            }
+                        }
+                    }
+                } else if cfg!(debug_assertions) {
+                    data.current.total_duplicate_read_count.fetch_add(1, Ordering::Relaxed);
+                }
+            })
+        }
+    }
+
+    /// This encodes a side effect by creating a node with an unique index and associating
+    /// it with the node, for use in the next session.
+    #[inline]
+    pub fn record_diagnostic<'tcx>(&self, tcx: TyCtxt<'tcx>, diagnostic: &DiagInner) {
+        if let Some(ref data) = self.data {
+            read_deps(|task_deps| match task_deps {
+                TaskDepsRef::EvalAlways | TaskDepsRef::Ignore => return,
+                TaskDepsRef::Forbid | TaskDepsRef::Allow(..) => {
+                    let dep_node_index = data
+                        .encode_side_effect(tcx, QuerySideEffect::Diagnostic(diagnostic.clone()));
+                    self.read_index(dep_node_index);
+                }
+            })
+        }
+    }
+    /// This forces a side effect node green by running its side effect. `prev_index` would
+    /// refer to a node created used `encode_side_effect` in the previous session.
+    #[inline]
+    pub fn force_side_effect<'tcx>(&self, tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) {
+        if let Some(ref data) = self.data {
+            data.force_side_effect(tcx, prev_index);
+        }
+    }
+
+    #[inline]
+    pub fn encode_side_effect<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        side_effect: QuerySideEffect,
+    ) -> DepNodeIndex {
+        if let Some(ref data) = self.data {
+            data.encode_side_effect(tcx, side_effect)
+        } else {
+            self.next_virtual_depnode_index()
+        }
+    }
+
+    /// Create a node when we force-feed a value into the query cache.
+    /// This is used to remove cycles during type-checking const generic parameters.
+    ///
+    /// As usual in the query system, we consider the current state of the calling query
+    /// only depends on the list of dependencies up to now. As a consequence, the value
+    /// that this query gives us can only depend on those dependencies too. Therefore,
+    /// it is sound to use the current dependency set for the created node.
+    ///
+    /// During replay, the order of the nodes is relevant in the dependency graph.
+    /// So the unchanged replay will mark the caller query before trying to mark this one.
+    /// If there is a change to report, the caller query will be re-executed before this one.
+    ///
+    /// FIXME: If the code is changed enough for this node to be marked before requiring the
+    /// caller's node, we suppose that those changes will be enough to mark this node red and
+    /// force a recomputation using the "normal" way.
+    pub fn with_feed_task<'tcx, R>(
+        &self,
+        node: DepNode,
+        tcx: TyCtxt<'tcx>,
+        result: &R,
+        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+        format_value_fn: fn(&R) -> String,
+    ) -> DepNodeIndex {
+        if let Some(data) = self.data.as_ref() {
+            // The caller query has more dependencies than the node we are creating. We may
+            // encounter a case where this created node is marked as green, but the caller query is
+            // subsequently marked as red or recomputed. In this case, we will end up feeding a
+            // value to an existing node.
+            //
+            // For sanity, we still check that the loaded stable hash and the new one match.
+            if let Some(prev_index) = data.previous.node_to_index_opt(&node) {
+                let dep_node_index = data.colors.current(prev_index);
+                if let Some(dep_node_index) = dep_node_index {
+                    incremental_verify_ich(
+                        tcx,
+                        data,
+                        result,
+                        prev_index,
+                        hash_result,
+                        format_value_fn,
+                    );
+
+                    #[cfg(debug_assertions)]
+                    if hash_result.is_some() {
+                        data.current.record_edge(
+                            dep_node_index,
+                            node,
+                            data.prev_value_fingerprint_of(prev_index),
+                        );
+                    }
+
+                    return dep_node_index;
+                }
+            }
+
+            let mut edges = EdgesVec::new();
+            read_deps(|task_deps| match task_deps {
+                TaskDepsRef::Allow(deps) => edges.extend(deps.lock().reads.iter().copied()),
+                TaskDepsRef::EvalAlways => {
+                    edges.push(DepNodeIndex::FOREVER_RED_NODE);
+                }
+                TaskDepsRef::Ignore => {}
+                TaskDepsRef::Forbid => {
+                    panic!("Cannot summarize when dependencies are not recorded.")
+                }
+            });
+
+            data.hash_result_and_alloc_node(tcx, node, edges, result, hash_result)
+        } else {
+            // Incremental compilation is turned off. We just execute the task
+            // without tracking. We still provide a dep-node index that uniquely
+            // identifies the task so that we have a cheap way of referring to
+            // the query for self-profiling.
+            self.next_virtual_depnode_index()
+        }
+    }
+}
+
+impl DepGraphData {
+    fn assert_dep_node_not_yet_allocated_in_current_session<S: std::fmt::Display>(
+        &self,
+        sess: &Session,
+        dep_node: &DepNode,
+        msg: impl FnOnce() -> S,
+    ) {
+        if let Some(prev_index) = self.previous.node_to_index_opt(dep_node) {
+            let color = self.colors.get(prev_index);
+            let ok = match color {
+                DepNodeColor::Unknown => true,
+                DepNodeColor::Red => false,
+                DepNodeColor::Green(..) => sess.threads() > 1, // Other threads may mark this green
+            };
+            if !ok {
+                panic!("{}", msg())
+            }
+        } else if let Some(nodes_in_current_session) = &self.current.nodes_in_current_session {
+            outline(|| {
+                let seen = nodes_in_current_session.lock().contains_key(dep_node);
+                assert!(!seen, "{}", msg());
+            });
+        }
+    }
+
+    fn node_color(&self, dep_node: &DepNode) -> DepNodeColor {
+        if let Some(prev_index) = self.previous.node_to_index_opt(dep_node) {
+            self.colors.get(prev_index)
+        } else {
+            // This is a node that did not exist in the previous compilation session.
+            DepNodeColor::Unknown
+        }
+    }
+
+    /// Returns true if the given node has been marked as green during the
+    /// current compilation session. Used in various assertions
+    #[inline]
+    pub fn is_index_green(&self, prev_index: SerializedDepNodeIndex) -> bool {
+        matches!(self.colors.get(prev_index), DepNodeColor::Green(_))
+    }
+
+    #[inline]
+    pub fn prev_value_fingerprint_of(&self, prev_index: SerializedDepNodeIndex) -> Fingerprint {
+        self.previous.value_fingerprint_for_index(prev_index)
+    }
+
+    #[inline]
+    pub(crate) fn prev_node_of(&self, prev_index: SerializedDepNodeIndex) -> &DepNode {
+        self.previous.index_to_node(prev_index)
+    }
+
+    pub fn mark_debug_loaded_from_disk(&self, dep_node: DepNode) {
+        self.debug_loaded_from_disk.lock().insert(dep_node);
+    }
+
+    /// This encodes a side effect by creating a node with an unique index and associating
+    /// it with the node, for use in the next session.
+    #[inline]
+    fn encode_side_effect<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        side_effect: QuerySideEffect,
+    ) -> DepNodeIndex {
+        // Use `send_new` so we get an unique index, even though the dep node is not.
+        let dep_node_index = self.current.encoder.send_new(
+            DepNode {
+                kind: DepKind::SideEffect,
+                key_fingerprint: PackedFingerprint::from(Fingerprint::ZERO),
+            },
+            Fingerprint::ZERO,
+            // We want the side effect node to always be red so it will be forced and run the
+            // side effect.
+            std::iter::once(DepNodeIndex::FOREVER_RED_NODE).collect(),
+        );
+        tcx.query_system.side_effects.borrow_mut().insert(dep_node_index, side_effect);
+        dep_node_index
+    }
+
+    /// This forces a side effect node green by running its side effect. `prev_index` would
+    /// refer to a node created used `encode_side_effect` in the previous session.
+    #[inline]
+    fn force_side_effect<'tcx>(&self, tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) {
+        with_deps(TaskDepsRef::Ignore, || {
+            let side_effect = tcx
+                .query_system
+                .on_disk_cache
+                .as_ref()
+                .unwrap()
+                .load_side_effect(tcx, prev_index)
+                .unwrap();
+
+            // Use `send_and_color` as `promote_node_and_deps_to_current` expects all
+            // green dependencies. `send_and_color` will also prevent multiple nodes
+            // being encoded for concurrent calls.
+            let dep_node_index = self.current.encoder.send_and_color(
+                prev_index,
+                &self.colors,
+                DepNode {
+                    kind: DepKind::SideEffect,
+                    key_fingerprint: PackedFingerprint::from(Fingerprint::ZERO),
+                },
+                Fingerprint::ZERO,
+                std::iter::once(DepNodeIndex::FOREVER_RED_NODE).collect(),
+                true,
+            );
+
+            match &side_effect {
+                QuerySideEffect::Diagnostic(diagnostic) => {
+                    tcx.dcx().emit_diagnostic(diagnostic.clone());
+                }
+                QuerySideEffect::CheckFeature { symbol } => {
+                    tcx.sess.used_features.lock().insert(*symbol, dep_node_index.as_u32());
+                }
+            }
+
+            // This will just overwrite the same value for concurrent calls.
+            tcx.query_system.side_effects.borrow_mut().insert(dep_node_index, side_effect);
+        })
+    }
+
+    fn alloc_and_color_node(
+        &self,
+        key: DepNode,
+        edges: EdgesVec,
+        value_fingerprint: Option<Fingerprint>,
+    ) -> DepNodeIndex {
+        if let Some(prev_index) = self.previous.node_to_index_opt(&key) {
+            // Determine the color and index of the new `DepNode`.
+            let is_green = if let Some(value_fingerprint) = value_fingerprint {
+                if value_fingerprint == self.previous.value_fingerprint_for_index(prev_index) {
+                    // This is a green node: it existed in the previous compilation,
+                    // its query was re-executed, and it has the same result as before.
+                    true
+                } else {
+                    // This is a red node: it existed in the previous compilation, its query
+                    // was re-executed, but it has a different result from before.
+                    false
+                }
+            } else {
+                // This is a red node, effectively: it existed in the previous compilation
+                // session, its query was re-executed, but it doesn't compute a result hash
+                // (i.e. it represents a `no_hash` query), so we have no way of determining
+                // whether or not the result was the same as before.
+                false
+            };
+
+            let value_fingerprint = value_fingerprint.unwrap_or(Fingerprint::ZERO);
+
+            let dep_node_index = self.current.encoder.send_and_color(
+                prev_index,
+                &self.colors,
+                key,
+                value_fingerprint,
+                edges,
+                is_green,
+            );
+
+            self.current.record_node(dep_node_index, key, value_fingerprint);
+
+            dep_node_index
+        } else {
+            self.current.alloc_new_node(key, edges, value_fingerprint.unwrap_or(Fingerprint::ZERO))
+        }
+    }
+
+    fn promote_node_and_deps_to_current(
+        &self,
+        prev_index: SerializedDepNodeIndex,
+    ) -> Option<DepNodeIndex> {
+        self.current.debug_assert_not_in_new_nodes(&self.previous, prev_index);
+
+        let dep_node_index = self.current.encoder.send_promoted(prev_index, &self.colors);
+
+        #[cfg(debug_assertions)]
+        if let Some(dep_node_index) = dep_node_index {
+            self.current.record_edge(
+                dep_node_index,
+                *self.previous.index_to_node(prev_index),
+                self.previous.value_fingerprint_for_index(prev_index),
+            );
+        }
+
+        dep_node_index
+    }
+}
+
+impl DepGraph {
+    /// Checks whether a previous work product exists for `v` and, if
+    /// so, return the path that leads to it. Used to skip doing work.
+    pub fn previous_work_product(&self, v: &WorkProductId) -> Option<WorkProduct> {
+        self.data.as_ref().and_then(|data| data.previous_work_products.get(v).cloned())
+    }
+
+    /// Access the map of work-products created during the cached run. Only
+    /// used during saving of the dep-graph.
+    pub fn previous_work_products(&self) -> &WorkProductMap {
+        &self.data.as_ref().unwrap().previous_work_products
+    }
+
+    pub fn debug_was_loaded_from_disk(&self, dep_node: DepNode) -> bool {
+        self.data.as_ref().unwrap().debug_loaded_from_disk.lock().contains(&dep_node)
+    }
+
+    pub fn debug_dep_kind_was_loaded_from_disk(&self, dep_kind: DepKind) -> bool {
+        // We only check if we have a dep node corresponding to the given dep kind.
+        #[allow(rustc::potential_query_instability)]
+        self.data
+            .as_ref()
+            .unwrap()
+            .debug_loaded_from_disk
+            .lock()
+            .iter()
+            .any(|node| node.kind == dep_kind)
+    }
+
+    #[cfg(debug_assertions)]
+    #[inline(always)]
+    pub(crate) fn register_dep_node_debug_str<F>(&self, dep_node: DepNode, debug_str_gen: F)
+    where
+        F: FnOnce() -> String,
+    {
+        // Early queries (e.g., `-Z query-dep-graph` on empty crates) can reach here
+        // before the graph is initialized. Return early to prevent an ICE.
+        let data = match &self.data {
+            Some(d) => d,
+            None => return,
+        };
+        let dep_node_debug = &data.dep_node_debug;
+
+        if dep_node_debug.borrow().contains_key(&dep_node) {
+            return;
+        }
+        let debug_str = self.with_ignore(debug_str_gen);
+        dep_node_debug.borrow_mut().insert(dep_node, debug_str);
+    }
+
+    pub(crate) fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
+        self.data.as_ref()?.dep_node_debug.borrow().get(&dep_node).cloned()
+    }
+
+    fn node_color(&self, dep_node: &DepNode) -> DepNodeColor {
+        if let Some(ref data) = self.data {
+            return data.node_color(dep_node);
+        }
+
+        DepNodeColor::Unknown
+    }
+
+    pub fn try_mark_green<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        dep_node: &DepNode,
+    ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
+        self.data()?.try_mark_green(tcx, dep_node)
+    }
+}
+
+impl DepGraphData {
+    /// Try to mark a node index for the node dep_node.
+    ///
+    /// A node will have an index, when it's already been marked green, or when we can mark it
+    /// green. This function will mark the current task as a reader of the specified node, when
+    /// a node index can be found for that node.
+    pub fn try_mark_green<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        dep_node: &DepNode,
+    ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
+        debug_assert!(!tcx.is_eval_always(dep_node.kind));
+
+        // Return None if the dep node didn't exist in the previous session
+        let prev_index = self.previous.node_to_index_opt(dep_node)?;
+
+        debug_assert_eq!(self.previous.index_to_node(prev_index), dep_node);
+
+        match self.colors.get(prev_index) {
+            DepNodeColor::Green(dep_node_index) => Some((prev_index, dep_node_index)),
+            DepNodeColor::Red => None,
+            DepNodeColor::Unknown => {
+                // This DepNode and the corresponding query invocation existed
+                // in the previous compilation session too, so we can try to
+                // mark it as green by recursively marking all of its
+                // dependencies green.
+                self.try_mark_previous_green(tcx, prev_index, None)
+                    .map(|dep_node_index| (prev_index, dep_node_index))
+            }
+        }
+    }
+
+    /// Try to mark a dep-node which existed in the previous compilation session as green.
+    #[instrument(skip(self, tcx, prev_dep_node_index, frame), level = "debug")]
+    fn try_mark_previous_green<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        prev_dep_node_index: SerializedDepNodeIndex,
+        frame: Option<&MarkFrame<'_>>,
+    ) -> Option<DepNodeIndex> {
+        let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
+
+        // We never try to mark eval_always nodes as green
+        debug_assert!(!tcx.is_eval_always(self.previous.index_to_node(prev_dep_node_index).kind));
+
+        for parent_dep_node_index in self.previous.edge_targets_from(prev_dep_node_index) {
+            match self.colors.get(parent_dep_node_index) {
+                // This dependency has been marked as green before, we are still ok and can
+                // continue checking the remaining dependencies.
+                DepNodeColor::Green(_) => continue,
+
+                // This dependency's result is different to the previous compilation session. We
+                // cannot mark this dep_node as green, so stop checking.
+                DepNodeColor::Red => return None,
+
+                // We still need to determine this dependency's colour.
+                DepNodeColor::Unknown => {}
+            }
+
+            let parent_dep_node = self.previous.index_to_node(parent_dep_node_index);
+
+            // If this dependency isn't eval_always, try to mark it green recursively.
+            if !tcx.is_eval_always(parent_dep_node.kind)
+                && self.try_mark_previous_green(tcx, parent_dep_node_index, Some(&frame)).is_some()
+            {
+                continue;
+            }
+
+            // We failed to mark it green, so we try to force the query.
+            if !tcx.try_force_from_dep_node(*parent_dep_node, parent_dep_node_index, &frame) {
+                return None;
+            }
+
+            match self.colors.get(parent_dep_node_index) {
+                DepNodeColor::Green(_) => continue,
+                DepNodeColor::Red => return None,
+                DepNodeColor::Unknown => {}
+            }
+
+            if tcx.dcx().has_errors_or_delayed_bugs().is_none() {
+                panic!("try_mark_previous_green() - forcing failed to set a color");
+            }
+
+            // If the query we just forced has resulted in some kind of compilation error, we
+            // cannot rely on the dep-node color having been properly updated. This means that the
+            // query system has reached an invalid state. We let the compiler continue (by
+            // returning `None`) so it can emit error messages and wind down, but rely on the fact
+            // that this invalid state will not be persisted to the incremental compilation cache
+            // because of compilation errors being present.
+            return None;
+        }
+
+        // If we got here without hitting a `return` that means that all
+        // dependencies of this DepNode could be marked as green. Therefore we
+        // can also mark this DepNode as green.
+
+        // There may be multiple threads trying to mark the same dep node green concurrently.
+
+        // We allocating an entry for the node in the current dependency graph and
+        // adding all the appropriate edges imported from the previous graph.
+        //
+        // `no_hash` nodes may fail this promotion due to already being conservatively colored red.
+        let dep_node_index = self.promote_node_and_deps_to_current(prev_dep_node_index)?;
+
+        // ... and finally storing a "Green" entry in the color map.
+        // Multiple threads can all write the same color here.
+
+        Some(dep_node_index)
+    }
+}
+
+impl DepGraph {
+    /// Returns true if the given node has been marked as red during the
+    /// current compilation session. Used in various assertions
+    pub fn is_red(&self, dep_node: &DepNode) -> bool {
+        matches!(self.node_color(dep_node), DepNodeColor::Red)
+    }
+
+    /// Returns true if the given node has been marked as green during the
+    /// current compilation session. Used in various assertions
+    pub fn is_green(&self, dep_node: &DepNode) -> bool {
+        matches!(self.node_color(dep_node), DepNodeColor::Green(_))
+    }
+
+    pub fn assert_dep_node_not_yet_allocated_in_current_session<S: std::fmt::Display>(
+        &self,
+        sess: &Session,
+        dep_node: &DepNode,
+        msg: impl FnOnce() -> S,
+    ) {
+        if let Some(data) = &self.data {
+            data.assert_dep_node_not_yet_allocated_in_current_session(sess, dep_node, msg)
+        }
+    }
+
+    /// This method loads all on-disk cacheable query results into memory, so
+    /// they can be written out to the new cache file again. Most query results
+    /// will already be in memory but in the case where we marked something as
+    /// green but then did not need the value, that value will never have been
+    /// loaded from disk.
+    ///
+    /// This method will only load queries that will end up in the disk cache.
+    /// Other queries will not be executed.
+    pub fn exec_cache_promotions<'tcx>(&self, tcx: TyCtxt<'tcx>) {
+        let _prof_timer = tcx.prof.generic_activity("incr_comp_query_cache_promotion");
+
+        let data = self.data.as_ref().unwrap();
+        for prev_index in data.colors.values.indices() {
+            match data.colors.get(prev_index) {
+                DepNodeColor::Green(_) => {
+                    let dep_node = data.previous.index_to_node(prev_index);
+                    if let Some(promote_fn) =
+                        tcx.dep_kind_vtable(dep_node.kind).promote_from_disk_fn
+                    {
+                        promote_fn(tcx, *dep_node)
+                    };
+                }
+                DepNodeColor::Unknown | DepNodeColor::Red => {
+                    // We can skip red nodes because a node can only be marked
+                    // as red if the query result was recomputed and thus is
+                    // already in memory.
+                }
+            }
+        }
+    }
+
+    pub(crate) fn finish_encoding(&self) -> FileEncodeResult {
+        if let Some(data) = &self.data { data.current.encoder.finish(&data.current) } else { Ok(0) }
+    }
+
+    pub fn next_virtual_depnode_index(&self) -> DepNodeIndex {
+        debug_assert!(self.data.is_none());
+        let index = self.virtual_dep_node_index.fetch_add(1, Ordering::Relaxed);
+        DepNodeIndex::from_u32(index)
+    }
+}
+
+/// A "work product" is an intermediate result that we save into the
+/// incremental directory for later re-use. The primary example are
+/// the object files that we save for each partition at code
+/// generation time.
+///
+/// Each work product is associated with a dep-node, representing the
+/// process that produced the work-product. If that dep-node is found
+/// to be dirty when we load up, then we will delete the work-product
+/// at load time. If the work-product is found to be clean, then we
+/// will keep a record in the `previous_work_products` list.
+///
+/// In addition, work products have an associated hash. This hash is
+/// an extra hash that can be used to decide if the work-product from
+/// a previous compilation can be re-used (in addition to the dirty
+/// edges check).
+///
+/// As the primary example, consider the object files we generate for
+/// each partition. In the first run, we create partitions based on
+/// the symbols that need to be compiled. For each partition P, we
+/// hash the symbols in P and create a `WorkProduct` record associated
+/// with `DepNode::CodegenUnit(P)`; the hash is the set of symbols
+/// in P.
+///
+/// The next time we compile, if the `DepNode::CodegenUnit(P)` is
+/// judged to be clean (which means none of the things we read to
+/// generate the partition were found to be dirty), it will be loaded
+/// into previous work products. We will then regenerate the set of
+/// symbols in the partition P and hash them (note that new symbols
+/// may be added -- for example, new monomorphizations -- even if
+/// nothing in P changed!). We will compare that hash against the
+/// previous hash. If it matches up, we can reuse the object file.
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct WorkProduct {
+    pub cgu_name: String,
+    /// Saved files associated with this CGU. In each key/value pair, the value is the path to the
+    /// saved file and the key is some identifier for the type of file being saved.
+    ///
+    /// By convention, file extensions are currently used as identifiers, i.e. the key "o" maps to
+    /// the object file's path, and "dwo" to the dwarf object file's path.
+    pub saved_files: UnordMap<String, String>,
+}
+
+pub type WorkProductMap = UnordMap<WorkProductId, WorkProduct>;
+
+// Index type for `DepNodeData`'s edges.
+rustc_index::newtype_index! {
+    struct EdgeIndex {}
+}
+
+/// `CurrentDepGraph` stores the dependency graph for the current session. It
+/// will be populated as we run queries or tasks. We never remove nodes from the
+/// graph: they are only added.
+///
+/// The nodes in it are identified by a `DepNodeIndex`. We avoid keeping the nodes
+/// in memory. This is important, because these graph structures are some of the
+/// largest in the compiler.
+///
+/// For this reason, we avoid storing `DepNode`s more than once as map
+/// keys. The `anon_node_to_index` map only contains nodes of anonymous queries not in the previous
+/// graph, and we map nodes in the previous graph to indices via a two-step
+/// mapping. `SerializedDepGraph` maps from `DepNode` to `SerializedDepNodeIndex`,
+/// and the `prev_index_to_index` vector (which is more compact and faster than
+/// using a map) maps from `SerializedDepNodeIndex` to `DepNodeIndex`.
+///
+/// This struct uses three locks internally. The `data`, `anon_node_to_index`,
+/// and `prev_index_to_index` fields are locked separately. Operations that take
+/// a `DepNodeIndex` typically just access the `data` field.
+///
+/// We only need to manipulate at most two locks simultaneously:
+/// `anon_node_to_index` and `data`, or `prev_index_to_index` and `data`. When
+/// manipulating both, we acquire `anon_node_to_index` or `prev_index_to_index`
+/// first, and `data` second.
+pub(super) struct CurrentDepGraph {
+    encoder: GraphEncoder,
+    anon_node_to_index: ShardedHashMap<DepNode, DepNodeIndex>,
+
+    /// This is used to verify that value fingerprints do not change between the
+    /// creation of a node and its recomputation.
+    #[cfg(debug_assertions)]
+    value_fingerprints: Lock<IndexVec<DepNodeIndex, Option<Fingerprint>>>,
+
+    /// Used to trap when a specific edge is added to the graph.
+    /// This is used for debug purposes and is only active with `debug_assertions`.
+    #[cfg(debug_assertions)]
+    forbidden_edge: Option<EdgeFilter>,
+
+    /// Used to verify the absence of hash collisions among DepNodes.
+    /// This field is only `Some` if the `-Z incremental_verify_ich` option is present
+    /// or if `debug_assertions` are enabled.
+    ///
+    /// The map contains all DepNodes that have been allocated in the current session so far.
+    nodes_in_current_session: Option<Lock<FxHashMap<DepNode, DepNodeIndex>>>,
+
+    /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
+    /// their edges. This has the beneficial side-effect that multiple anonymous
+    /// nodes can be coalesced into one without changing the semantics of the
+    /// dependency graph. However, the merging of nodes can lead to a subtle
+    /// problem during red-green marking: The color of an anonymous node from
+    /// the current session might "shadow" the color of the node with the same
+    /// ID from the previous session. In order to side-step this problem, we make
+    /// sure that anonymous `NodeId`s allocated in different sessions don't overlap.
+    /// This is implemented by mixing a session-key into the ID fingerprint of
+    /// each anon node. The session-key is a hash of the number of previous sessions.
+    anon_id_seed: Fingerprint,
+
+    /// These are simple counters that are for profiling and
+    /// debugging and only active with `debug_assertions`.
+    pub(super) total_read_count: AtomicU64,
+    pub(super) total_duplicate_read_count: AtomicU64,
+}
+
+impl CurrentDepGraph {
+    fn new(
+        session: &Session,
+        prev_graph_node_count: usize,
+        encoder: FileEncoder,
+        previous: Arc<SerializedDepGraph>,
+    ) -> Self {
+        let mut stable_hasher = StableHasher::new();
+        previous.session_count().hash(&mut stable_hasher);
+        let anon_id_seed = stable_hasher.finish();
+
+        #[cfg(debug_assertions)]
+        let forbidden_edge = match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
+            Ok(s) => match EdgeFilter::new(&s) {
+                Ok(f) => Some(f),
+                Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
+            },
+            Err(_) => None,
+        };
+
+        let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
+
+        let new_node_dbg =
+            session.opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions);
+
+        CurrentDepGraph {
+            encoder: GraphEncoder::new(session, encoder, prev_graph_node_count, previous),
+            anon_node_to_index: ShardedHashMap::with_capacity(
+                // FIXME: The count estimate is off as anon nodes are only a portion of the nodes.
+                new_node_count_estimate / sharded::shards(),
+            ),
+            anon_id_seed,
+            #[cfg(debug_assertions)]
+            forbidden_edge,
+            #[cfg(debug_assertions)]
+            value_fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
+            nodes_in_current_session: new_node_dbg.then(|| {
+                Lock::new(FxHashMap::with_capacity_and_hasher(
+                    new_node_count_estimate,
+                    Default::default(),
+                ))
+            }),
+            total_read_count: AtomicU64::new(0),
+            total_duplicate_read_count: AtomicU64::new(0),
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    fn record_edge(
+        &self,
+        dep_node_index: DepNodeIndex,
+        key: DepNode,
+        value_fingerprint: Fingerprint,
+    ) {
+        if let Some(forbidden_edge) = &self.forbidden_edge {
+            forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
+        }
+        let prior_value_fingerprint = *self
+            .value_fingerprints
+            .lock()
+            .get_or_insert_with(dep_node_index, || value_fingerprint);
+        assert_eq!(prior_value_fingerprint, value_fingerprint, "Unstable fingerprints for {key:?}");
+    }
+
+    #[inline(always)]
+    fn record_node(
+        &self,
+        dep_node_index: DepNodeIndex,
+        key: DepNode,
+        _value_fingerprint: Fingerprint,
+    ) {
+        #[cfg(debug_assertions)]
+        self.record_edge(dep_node_index, key, _value_fingerprint);
+
+        if let Some(ref nodes_in_current_session) = self.nodes_in_current_session {
+            outline(|| {
+                if nodes_in_current_session.lock().insert(key, dep_node_index).is_some() {
+                    panic!("Found duplicate dep-node {key:?}");
+                }
+            });
+        }
+    }
+
+    /// Writes the node to the current dep-graph and allocates a `DepNodeIndex` for it.
+    /// Assumes that this is a node that has no equivalent in the previous dep-graph.
+    #[inline(always)]
+    fn alloc_new_node(
+        &self,
+        key: DepNode,
+        edges: EdgesVec,
+        value_fingerprint: Fingerprint,
+    ) -> DepNodeIndex {
+        let dep_node_index = self.encoder.send_new(key, value_fingerprint, edges);
+
+        self.record_node(dep_node_index, key, value_fingerprint);
+
+        dep_node_index
+    }
+
+    #[inline]
+    fn debug_assert_not_in_new_nodes(
+        &self,
+        prev_graph: &SerializedDepGraph,
+        prev_index: SerializedDepNodeIndex,
+    ) {
+        if !is_dyn_thread_safe()
+            && let Some(ref nodes_in_current_session) = self.nodes_in_current_session
+        {
+            debug_assert!(
+                !nodes_in_current_session
+                    .lock()
+                    .contains_key(&prev_graph.index_to_node(prev_index)),
+                "node from previous graph present in new node collection"
+            );
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum TaskDepsRef<'a> {
+    /// New dependencies can be added to the
+    /// `TaskDeps`. This is used when executing a 'normal' query
+    /// (no `eval_always` modifier)
+    Allow(&'a Lock<TaskDeps>),
+    /// This is used when executing an `eval_always` query. We don't
+    /// need to track dependencies for a query that's always
+    /// re-executed -- but we need to know that this is an `eval_always`
+    /// query in order to emit dependencies to `DepNodeIndex::FOREVER_RED_NODE`
+    /// when directly feeding other queries.
+    EvalAlways,
+    /// New dependencies are ignored. This is also used for `dep_graph.with_ignore`.
+    Ignore,
+    /// Any attempt to add new dependencies will cause a panic.
+    /// This is used when decoding a query result from disk,
+    /// to ensure that the decoding process doesn't itself
+    /// require the execution of any queries.
+    Forbid,
+}
+
+#[derive(Debug)]
+pub struct TaskDeps {
+    #[cfg(debug_assertions)]
+    node: Option<DepNode>,
+
+    /// A vector of `DepNodeIndex`, basically.
+    reads: EdgesVec,
+
+    /// When adding new edges to `reads` in `DepGraph::read_index` we need to determine if the edge
+    /// has been seen before. If the number of elements in `reads` is small, we just do a linear
+    /// scan. If the number is higher, a hashset has better perf. This field is that hashset. It's
+    /// only used if the number of elements in `reads` exceeds `LINEAR_SCAN_MAX`.
+    read_set: FxHashSet<DepNodeIndex>,
+}
+
+impl TaskDeps {
+    /// See `TaskDeps::read_set` above.
+    const LINEAR_SCAN_MAX: usize = 16;
+
+    #[inline]
+    fn new(#[cfg(debug_assertions)] node: Option<DepNode>, read_set_capacity: usize) -> Self {
+        TaskDeps {
+            #[cfg(debug_assertions)]
+            node,
+            reads: EdgesVec::new(),
+            read_set: FxHashSet::with_capacity_and_hasher(read_set_capacity, Default::default()),
+        }
+    }
+}
+
+// A data structure that stores Option<DepNodeColor> values as a contiguous
+// array, using one u32 per entry.
+pub(super) struct DepNodeColorMap {
+    values: IndexVec<SerializedDepNodeIndex, AtomicU32>,
+}
+
+// All values below `COMPRESSED_RED` are green.
+const COMPRESSED_RED: u32 = u32::MAX - 1;
+const COMPRESSED_UNKNOWN: u32 = u32::MAX;
+
+impl DepNodeColorMap {
+    fn new(size: usize) -> DepNodeColorMap {
+        debug_assert!(COMPRESSED_RED > DepNodeIndex::MAX_AS_U32);
+        DepNodeColorMap { values: (0..size).map(|_| AtomicU32::new(COMPRESSED_UNKNOWN)).collect() }
+    }
+
+    #[inline]
+    pub(super) fn current(&self, index: SerializedDepNodeIndex) -> Option<DepNodeIndex> {
+        let value = self.values[index].load(Ordering::Relaxed);
+        if value <= DepNodeIndex::MAX_AS_U32 { Some(DepNodeIndex::from_u32(value)) } else { None }
+    }
+
+    /// Atomically sets the color of a previous-session dep node to either green
+    /// or red, if it has not already been colored.
+    ///
+    /// If the node already has a color, the new color is ignored, and the
+    /// return value indicates the existing color.
+    #[inline(always)]
+    pub(super) fn try_set_color(
+        &self,
+        prev_index: SerializedDepNodeIndex,
+        color: DesiredColor,
+    ) -> TrySetColorResult {
+        match self.values[prev_index].compare_exchange(
+            COMPRESSED_UNKNOWN,
+            match color {
+                DesiredColor::Red => COMPRESSED_RED,
+                DesiredColor::Green { index } => index.as_u32(),
+            },
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        ) {
+            Ok(_) => TrySetColorResult::Success,
+            Err(COMPRESSED_RED) => TrySetColorResult::AlreadyRed,
+            Err(index) => TrySetColorResult::AlreadyGreen { index: DepNodeIndex::from_u32(index) },
+        }
+    }
+
+    #[inline]
+    pub(super) fn get(&self, index: SerializedDepNodeIndex) -> DepNodeColor {
+        let value = self.values[index].load(Ordering::Acquire);
+        // Green is by far the most common case. Check for that first so we can succeed with a
+        // single comparison.
+        if value < COMPRESSED_RED {
+            DepNodeColor::Green(DepNodeIndex::from_u32(value))
+        } else if value == COMPRESSED_RED {
+            DepNodeColor::Red
+        } else {
+            debug_assert_eq!(value, COMPRESSED_UNKNOWN);
+            DepNodeColor::Unknown
+        }
+    }
+}
+
+/// The color that [`DepNodeColorMap::try_set_color`] should try to apply to a node.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum DesiredColor {
+    /// Try to mark the node red.
+    Red,
+    /// Try to mark the node green, associating it with a current-session node index.
+    Green { index: DepNodeIndex },
+}
+
+/// Return value of [`DepNodeColorMap::try_set_color`], indicating success or failure,
+/// and (on failure) what the existing color is.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum TrySetColorResult {
+    /// The [`DesiredColor`] was freshly applied to the node.
+    Success,
+    /// Coloring failed because the node was already marked red.
+    AlreadyRed,
+    /// Coloring failed because the node was already marked green,
+    /// and corresponds to node `index` in the current-session dep graph.
+    AlreadyGreen { index: DepNodeIndex },
+}
+
+#[inline(never)]
+#[cold]
+pub(crate) fn print_markframe_trace(graph: &DepGraph, frame: &MarkFrame<'_>) {
+    let data = graph.data.as_ref().unwrap();
+
+    eprintln!("there was a panic while trying to force a dep node");
+    eprintln!("try_mark_green dep node stack:");
+
+    let mut i = 0;
+    let mut current = Some(frame);
+    while let Some(frame) = current {
+        let node = data.previous.index_to_node(frame.index);
+        eprintln!("#{i} {node:?}");
+        current = frame.parent;
+        i += 1;
+    }
+
+    eprintln!("end of try_mark_green dep node stack");
+}
+
+#[cold]
+#[inline(never)]
+fn panic_on_forbidden_read(data: &DepGraphData, dep_node_index: DepNodeIndex) -> ! {
+    // We have to do an expensive reverse-lookup of the DepNode that
+    // corresponds to `dep_node_index`, but that's OK since we are about
+    // to ICE anyway.
+    let mut dep_node = None;
+
+    // First try to find the dep node among those that already existed in the
+    // previous session and has been marked green
+    for prev_index in data.colors.values.indices() {
+        if data.colors.current(prev_index) == Some(dep_node_index) {
+            dep_node = Some(*data.previous.index_to_node(prev_index));
+            break;
+        }
+    }
+
+    if dep_node.is_none()
+        && let Some(nodes) = &data.current.nodes_in_current_session
+    {
+        // Try to find it among the nodes allocated so far in this session
+        // This is OK, there's only ever one node result possible so this is deterministic.
+        #[allow(rustc::potential_query_instability)]
+        if let Some((node, _)) = nodes.lock().iter().find(|&(_, index)| *index == dep_node_index) {
+            dep_node = Some(*node);
+        }
+    }
+
+    let dep_node = dep_node.map_or_else(
+        || format!("with index {:?}", dep_node_index),
+        |dep_node| format!("`{:?}`", dep_node),
+    );
+
+    panic!(
+        "Error: trying to record dependency on DepNode {dep_node} in a \
+         context that does not allow it (e.g. during query deserialization). \
+         The most common case of recording a dependency on a DepNode `foo` is \
+         when the corresponding query `foo` is invoked. Invoking queries is not \
+         allowed as part of loading something from the incremental on-disk cache. \
+         See <https://github.com/rust-lang/rust/pull/91919>."
+    )
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    /// Return whether this kind always require evaluation.
+    #[inline(always)]
+    fn is_eval_always(self, kind: DepKind) -> bool {
+        self.dep_kind_vtable(kind).is_eval_always
+    }
+}

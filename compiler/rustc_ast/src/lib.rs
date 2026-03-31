@@ -8,7 +8,6 @@
 #![doc(test(attr(deny(warnings), allow(internal_features))))]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
-#![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(macro_metavar_expr)]
 #![recursion_limit = "256"]

@@ -7,7 +7,7 @@ pub(crate) fn target() -> Target {
         llvm_target,
         metadata: TargetMetadata {
             description: Some("ARM64 Apple tvOS Simulator".into()),
-            tier: Some(3),
+            tier: Some(2),
             host_tools: Some(false),
             std: Some(true),
         },

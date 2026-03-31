@@ -210,6 +210,11 @@ fn own_existential_vtable_entries_iter(
         debug!("own_existential_vtable_entry: trait_method={:?}", trait_method);
         let def_id = trait_method.def_id;
 
+        // Final methods should not be included in the vtable.
+        if trait_method.defaultness(tcx).is_final() {
+            return None;
+        }
+
         // Some methods cannot be called on an object; skip those.
         if !is_vtable_safe_method(tcx, trait_def_id, trait_method) {
             debug!("own_existential_vtable_entry: not vtable safe");
@@ -434,7 +439,16 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
         }
     };
 
-    prepare_vtable_segments(tcx, source_principal, vtable_segment_callback).unwrap()
+    prepare_vtable_segments(tcx, source_principal, vtable_segment_callback).unwrap_or_else(|| {
+        // This can happen if the trait hierarchy is malformed (e.g., due to
+        // missing generics on a supertrait bound). There should already be an error
+        // emitted for this, so we just delay the ICE.
+        tcx.dcx().delayed_bug(format!(
+            "could not find the supertrait vtable slot for `{}` -> `{}`",
+            source, target
+        ));
+        None
+    })
 }
 
 pub(super) fn provide(providers: &mut Providers) {

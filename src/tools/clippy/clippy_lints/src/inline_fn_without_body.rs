@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::DiagExt;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{TraitFn, TraitItem, TraitItemKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -35,7 +34,7 @@ impl<'tcx> LateLintPass<'tcx> for InlineFnWithoutBody {
             && let Some(attr_span) = find_attr!(cx
                     .tcx
                     .hir_attrs(item.hir_id()),
-                    AttributeKind::Inline(_, span) => *span
+                    Inline(_, span) => *span
             )
         {
             span_lint_and_then(

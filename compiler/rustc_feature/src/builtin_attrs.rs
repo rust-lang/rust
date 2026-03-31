@@ -473,11 +473,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ),
         FutureWarnFollowing, EncodeCrossCrate::No,
     ),
-    // FIXME(Centril): This can be used on stable but shouldn't.
-    ungated!(
-        reexport_test_harness_main, CrateLevel, template!(NameValueStr: "name"), ErrorFollowing,
-        EncodeCrossCrate::No,
-    ),
 
     // Macros:
     ungated!(
@@ -778,7 +773,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         DuplicatesOk, EncodeCrossCrate::No, effective_target_features, experimental!(force_target_feature)
     ),
     gated!(
-        sanitize, Normal, template!(List: &[r#"address = "on|off""#, r#"kernel_address = "on|off""#, r#"cfi = "on|off""#, r#"hwaddress = "on|off""#, r#"kcfi = "on|off""#, r#"memory = "on|off""#, r#"memtag = "on|off""#, r#"shadow_call_stack = "on|off""#, r#"thread = "on|off""#]), ErrorPreceding,
+        sanitize, Normal, template!(List: &[r#"address = "on|off""#, r#"kernel_address = "on|off""#, r#"cfi = "on|off""#, r#"hwaddress = "on|off""#, r#"kernel_hwaddress = "on|off""#, r#"kcfi = "on|off""#, r#"memory = "on|off""#, r#"memtag = "on|off""#, r#"shadow_call_stack = "on|off""#, r#"thread = "on|off""#]), ErrorPreceding,
         EncodeCrossCrate::No, sanitize, experimental!(sanitize),
     ),
     gated!(
@@ -831,6 +826,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, custom_test_frameworks,
         "custom test frameworks are an unstable feature",
     ),
+
+    gated!(
+        reexport_test_harness_main, CrateLevel, template!(NameValueStr: "name"), ErrorFollowing,
+        EncodeCrossCrate::No, custom_test_frameworks,
+        "custom test frameworks are an unstable feature",
+    ),
+
     // RFC #1268
     gated!(
         marker, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
@@ -862,13 +864,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         register_tool, CrateLevel, template!(List: &["tool1, tool2, ..."]), DuplicatesOk,
         EncodeCrossCrate::No, experimental!(register_tool),
     ),
-
-    // lang-team MCP 147
-    gated!(
-        deprecated_safe, Normal, template!(List: &[r#"since = "version", note = "...""#]), ErrorFollowing,
-        EncodeCrossCrate::Yes, experimental!(deprecated_safe),
-    ),
-
     // `#[cfi_encoding = ""]`
     gated!(
         cfi_encoding, Normal, template!(NameValueStr: "encoding"), ErrorPreceding,
@@ -886,13 +881,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(
         patchable_function_entry, Normal, template!(List: &["prefix_nops = m, entry_nops = n"]), ErrorPreceding,
         EncodeCrossCrate::Yes, experimental!(patchable_function_entry)
-    ),
-
-    // Probably temporary component of min_generic_const_args.
-    // `#[type_const] const ASSOC: usize;`
-    gated!(
-        type_const, Normal, template!(Word), ErrorFollowing,
-        EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
     ),
 
     // The `#[loop_match]` and `#[const_continue]` attributes are part of the
@@ -1222,7 +1210,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_intrinsic_const_stable_indirect, Normal,
         template!(Word), WarnFollowing, EncodeCrossCrate::No,  "this is an internal implementation detail",
     ),
-    gated!(
+    rustc_attr!(
         rustc_allow_const_fn_unstable, Normal,
         template!(Word, List: &["feat1, feat2, ..."]), DuplicatesOk, EncodeCrossCrate::No,
         "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
@@ -1344,7 +1332,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         safety: AttributeSafety::Normal,
         template: template!(NameValueStr: "name"),
         duplicates: ErrorFollowing,
-        gate: Gated{
+        gate: Gated {
             feature: sym::rustc_attrs,
             message: "use of an internal attribute",
             check: Features::rustc_attrs,
@@ -1433,7 +1421,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(TEST, rustc_effective_visibility, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
     rustc_attr!(
-        TEST, rustc_outlives, Normal, template!(Word),
+        TEST, rustc_dump_inferred_outlives, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
@@ -1453,11 +1441,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::Yes
     ),
     rustc_attr!(
-        TEST, rustc_variance, Normal, template!(Word),
+        TEST, rustc_dump_variances, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_variance_of_opaques, Normal, template!(Word),
+        TEST, rustc_dump_variances_of_opaques, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
@@ -1545,7 +1533,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_object_lifetime_default, Normal, template!(Word),
+        TEST, rustc_dump_object_lifetime_defaults, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
@@ -1599,6 +1587,7 @@ pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool 
     match sym {
         sym::on_unimplemented | sym::do_not_recommend => true,
         sym::on_const => features.diagnostic_on_const(),
+        sym::on_move => features.diagnostic_on_move(),
         _ => false,
     }
 }

@@ -9,13 +9,13 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    #[type_const]
-    const Y: i32;
+    type const Y: i32;
 }
 
 struct Hold<T: ?Sized>(T);
 
 trait Bound = Trait<Y = { Hold::<Self> }>;
+//~^ ERROR the constant `Hold::<Self>` is not of type `i32`
 
 fn main() {
     let _: dyn Bound; //~ ERROR associated constant binding in trait object type mentions `Self`

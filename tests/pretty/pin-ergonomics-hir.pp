@@ -2,10 +2,10 @@
 //@ pretty-mode:hir
 //@ pp-exact:pin-ergonomics-hir.pp
 
-#![feature(pin_ergonomics)]
 #![allow(dead_code, incomplete_features)]
+#![attr = Feature([pin_ergonomics#0])]
 extern crate std;
-#[prelude_import]
+#[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
 
 use std::pin::Pin;

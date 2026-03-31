@@ -9,7 +9,7 @@ use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, RustcVersion};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt, UintTy};
 use rustc_session::impl_lint_pass;
 use rustc_span::Symbol;
 
@@ -76,13 +76,14 @@ impl LateLintPass<'_> for DurationSuboptimalUnits {
                 .typeck_results()
                 .node_type(func_ty.hir_id)
                 .is_diag_item(cx, sym::Duration)
+            && matches!(cx.typeck_results().expr_ty_adjusted(arg).kind(), ty::Uint(UintTy::U64))
             // We intentionally don't want to evaluate referenced constants, as we don't want to
             // recommend a literal value over using constants:
             //
             // let dur = Duration::from_secs(SIXTY);
             //           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Duration::from_mins(1)`
             && let Some(Constant::Int(value)) = ConstEvalCtxt::new(cx).eval_local(arg, expr.span.ctxt())
-            && let value = u64::try_from(value).expect("All Duration::from_<time-unit> constructors take a u64")
+            && let Ok(value) = u64::try_from(value) // Cannot fail
             // There is no need to promote e.g. 0 seconds to 0 hours
             && value != 0
             && let Some((promoted_constructor, promoted_value)) = self.promote(cx, func_name.ident.name, value)
@@ -97,7 +98,7 @@ impl LateLintPass<'_> for DurationSuboptimalUnits {
                         (func_name.ident.span, promoted_constructor.to_string()),
                         (arg.span, promoted_value.to_string()),
                     ];
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         format!("try using {promoted_constructor}"),
                         suggestions,
                         Applicability::MachineApplicable,

@@ -11,11 +11,10 @@
 //! MIR.
 
 use std::cell::Cell;
-use std::{cmp, iter, mem};
+use std::{assert_matches, cmp, iter, mem};
 
 use either::{Left, Right};
 use rustc_const_eval::check_consts::{ConstCx, qualifs};
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -24,8 +23,7 @@ use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Vis
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_span::Span;
-use rustc_span::source_map::Spanned;
+use rustc_span::{Span, Spanned};
 use tracing::{debug, instrument};
 
 /// A `MirPass` for promotion.
@@ -448,8 +446,6 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::Cast(_, operand, _) => {
                 self.validate_operand(operand)?;
             }
-
-            Rvalue::ShallowInitBox(_, _) => return Err(Unpromotable),
 
             Rvalue::UnaryOp(op, operand) => {
                 match op {

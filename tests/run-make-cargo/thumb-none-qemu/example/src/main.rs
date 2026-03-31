@@ -4,7 +4,8 @@ use core::fmt::Write;
 
 use cortex_m::asm;
 use cortex_m_rt::entry;
-use {cortex_m_semihosting as semihosting, panic_halt as _};
+use cortex_m_semihosting as semihosting;
+use panic_halt as _;
 
 #[entry]
 fn main() -> ! {

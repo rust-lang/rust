@@ -706,7 +706,7 @@ macro_rules! tool_check_step {
             const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.paths(&[ $path, $( $alt_path ),* ])
+                run.path($path) $( .path( $alt_path ) )*
             }
 
             fn is_default_step(_builder: &Builder<'_>) -> bool {

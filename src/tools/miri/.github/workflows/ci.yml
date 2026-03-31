@@ -58,7 +58,7 @@ jobs:
     env:
       HOST_TARGET: ${{ matrix.host_target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: install multiarch
         if: ${{ matrix.multiarch != '' }}
         run: |
@@ -105,7 +105,7 @@ jobs:
     name: style checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/workflows/setup
 
       - name: rustfmt
@@ -121,7 +121,7 @@ jobs:
     name: bootstrap build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # Deliberately skipping `./.github/workflows/setup` as we do our own setup
       - name: Add cache for cargo
         id: cache
@@ -156,7 +156,7 @@ jobs:
     name: coverage report
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/workflows/setup
       - name: coverage
         run: ./miri test --coverage
@@ -191,7 +191,7 @@ jobs:
         pull-requests: write
     if: ${{ github.event_name == 'schedule' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 256 # get a bit more of the history
       - name: install josh-sync

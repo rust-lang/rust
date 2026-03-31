@@ -49,7 +49,7 @@ pub fn is_closure_or_blk_with_modif(expr: &ast::Expr) -> bool {
                 block_expr.modifier(),
                 Some(
                     ast::BlockModifier::Async(_)
-                        | ast::BlockModifier::Try(_)
+                        | ast::BlockModifier::Try { .. }
                         | ast::BlockModifier::Const(_)
                 )
             )
@@ -148,7 +148,7 @@ pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
                                 block_expr.modifier(),
                                 Some(
                                     ast::BlockModifier::Async(_)
-                                        | ast::BlockModifier::Try(_)
+                                        | ast::BlockModifier::Try { .. }
                                         | ast::BlockModifier::Const(_)
                                 )
                             )
@@ -291,7 +291,7 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
             match b.modifier() {
                 Some(
                     ast::BlockModifier::Async(_)
-                    | ast::BlockModifier::Try(_)
+                    | ast::BlockModifier::Try { .. }
                     | ast::BlockModifier::Const(_),
                 ) => return cb(expr),
 

@@ -365,9 +365,27 @@ pub enum RunnableKind {
     /// May include {test_id} which will get the test clicked on by the user.
     TestOne,
 
+    /// Run tests matching a pattern (in RA, usually a path::to::module::of::tests)
+    /// May include {label} which will get the label from the `build` section of a crate.
+    /// May include {test_pattern} which will get the test module clicked on by the user.
+    TestMod,
+
+    /// Run a single doctest
+    /// May include {label} which will get the label from the `build` section of a crate.
+    /// May include {test_id} which will get the doctest clicked on by the user.
+    DocTestOne,
+
+    /// Run a single benchmark
+    /// May include {label} which will get the label from the `build` section of a crate.
+    /// May include {bench_id} which will get the benchmark clicked on by the user.
+    BenchOne,
+
     /// Template for checking a target, emitting rustc JSON diagnostics.
     /// May include {label} which will get the label from the `build` section of a crate.
     Flycheck,
+
+    /// For forwards-compatibility, i.e. old rust-analyzer binary with newer workspace discovery tools
+    Unknown,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -380,6 +398,8 @@ pub struct ProjectJsonData {
     crates: Vec<CrateData>,
     #[serde(default)]
     runnables: Vec<RunnableData>,
+    //
+    // New fields should be Option or #[serde(default)]. This applies to most of this datastructure.
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Default)]
@@ -391,7 +411,6 @@ struct CrateData {
     display_name: Option<String>,
     root_module: Utf8PathBuf,
     edition: EditionData,
-    #[serde(default)]
     version: Option<semver::Version>,
     deps: Vec<Dep>,
     #[serde(default)]
@@ -408,11 +427,8 @@ struct CrateData {
     source: Option<CrateSource>,
     #[serde(default)]
     is_proc_macro: bool,
-    #[serde(default)]
     repository: Option<String>,
-    #[serde(default)]
     build: Option<BuildData>,
-    #[serde(default)]
     proc_macro_cwd: Option<Utf8PathBuf>,
 }
 
@@ -457,32 +473,40 @@ enum EditionData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct BuildData {
+struct BuildData {
     label: String,
     build_file: Utf8PathBuf,
     target_kind: TargetKindData,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RunnableData {
-    pub program: String,
-    pub args: Vec<String>,
-    pub cwd: Utf8PathBuf,
-    pub kind: RunnableKindData,
+struct RunnableData {
+    program: String,
+    args: Vec<String>,
+    cwd: Utf8PathBuf,
+    kind: RunnableKindData,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum RunnableKindData {
+enum RunnableKindData {
     Flycheck,
     Check,
     Run,
     TestOne,
+    TestMod,
+    DocTestOne,
+    BenchOne,
+
+    /// For forwards-compatibility, i.e. old rust-analyzer binary with newer workspace discovery tools
+    #[allow(unused)]
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum TargetKindData {
+enum TargetKindData {
     Bin,
     /// Any kind of Cargo lib crate-type (dylib, rlib, proc-macro, ...).
     Lib,
@@ -545,7 +569,11 @@ impl From<RunnableKindData> for RunnableKind {
             RunnableKindData::Check => RunnableKind::Check,
             RunnableKindData::Run => RunnableKind::Run,
             RunnableKindData::TestOne => RunnableKind::TestOne,
+            RunnableKindData::TestMod => RunnableKind::TestMod,
+            RunnableKindData::DocTestOne => RunnableKind::DocTestOne,
+            RunnableKindData::BenchOne => RunnableKind::BenchOne,
             RunnableKindData::Flycheck => RunnableKind::Flycheck,
+            RunnableKindData::Unknown => RunnableKind::Unknown,
         }
     }
 }

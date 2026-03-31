@@ -131,9 +131,17 @@ impl LivenessValues {
         }
     }
 
-    /// Returns whether `region` is marked live at the given `location`.
+    /// Returns whether `region` is marked live at the given
+    /// [`location`][rustc_middle::mir::Location].
     pub(crate) fn is_live_at(&self, region: RegionVid, location: Location) -> bool {
         let point = self.location_map.point_from_location(location);
+        self.is_live_at_point(region, point)
+    }
+
+    /// Returns whether `region` is marked live at the given
+    /// [`point`][rustc_mir_dataflow::points::PointIndex].
+    #[inline]
+    pub(crate) fn is_live_at_point(&self, region: RegionVid, point: PointIndex) -> bool {
         if let Some(points) = &self.points {
             points.row(region).is_some_and(|r| r.contains(point))
         } else {

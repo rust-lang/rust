@@ -34,8 +34,4 @@ fn issue_15247() {
     //~^ expect_used
 }
 
-fn main() {
-    expect_option();
-    expect_result();
-    issue_15247();
-}
+fn main() {}

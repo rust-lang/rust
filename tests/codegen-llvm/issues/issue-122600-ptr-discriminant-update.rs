@@ -26,7 +26,7 @@ pub unsafe fn update(s: *mut State) {
     // CHECK-NOT: 75{{3|4}}
 
     // old: %[[TAG:.+]] = load i8, ptr %s, align 1
-    // old-NEXT: trunc nuw i8 %[[TAG]] to i1
+    // old-NEXT: and i8 %[[TAG]], 1
 
     // CHECK-NOT: load
     // CHECK-NOT: store

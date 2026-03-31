@@ -42,7 +42,7 @@ impl<B: WriteBackendMethods> ThinModule<B> {
 
 pub struct ThinShared<B: WriteBackendMethods> {
     pub data: B::ThinData,
-    pub thin_buffers: Vec<B::ThinBuffer>,
+    pub thin_buffers: Vec<B::ModuleBuffer>,
     pub serialized_modules: Vec<SerializedModule<B::ModuleBuffer>>,
     pub module_names: Vec<CString>,
 }
@@ -127,10 +127,7 @@ pub(super) fn exported_symbols_for_lto(
     symbols_below_threshold
 }
 
-pub(super) fn check_lto_allowed<B: WriteBackendMethods>(
-    cgcx: &CodegenContext<B>,
-    dcx: DiagCtxtHandle<'_>,
-) {
+pub(super) fn check_lto_allowed(cgcx: &CodegenContext, dcx: DiagCtxtHandle<'_>) {
     if cgcx.lto == Lto::ThinLocal {
         // Crate local LTO is always allowed
         return;

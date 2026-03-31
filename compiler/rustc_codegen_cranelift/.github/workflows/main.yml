@@ -19,12 +19,22 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
+  todo_check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Check todo
+      run: ./y.sh check-todo
+
   rustfmt:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Avoid installing rustc-dev
       run: |
@@ -78,14 +88,14 @@ jobs:
               TARGET_TRIPLE: x86_64-pc-windows-gnu
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: CPU features
       if: matrix.os == 'ubuntu-latest'
       run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
@@ -127,7 +137,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: CPU features
       run: cat /proc/cpuinfo
@@ -149,13 +159,13 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: CPU features
       run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-x86_64-unknown-linux-gnu-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
@@ -201,10 +211,10 @@ jobs:
               TARGET_TRIPLE: x86_64-pc-windows-gnu
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-dist-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
@@ -223,7 +233,7 @@ jobs:
       run: tar cvfJ cg_clif.tar.xz dist
 
     - name: Upload prebuilt cg_clif
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: cg_clif-${{ matrix.env.TARGET_TRIPLE }}
         path: cg_clif.tar.xz
@@ -232,7 +242,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: ${{ github.ref == 'refs/heads/main' }}
-    needs: [rustfmt, test, bench, dist]
+    needs: [todo_check, rustfmt, test, bench, dist]
 
     permissions:
       contents: write # for creating the dev tag and release
@@ -242,7 +252,7 @@ jobs:
       cancel-in-progress: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download all built artifacts
         uses: actions/download-artifact@v4

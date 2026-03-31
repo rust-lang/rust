@@ -3,10 +3,8 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
-#![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
@@ -56,8 +54,6 @@ pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
 pub mod util;
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);

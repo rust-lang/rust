@@ -15,15 +15,13 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    #[type_const]
-    const N: usize;
+    type const N: usize;
 
     fn process(&self, _: [u8; Self::N]) -> [u8; Self::N];
 }
 
 impl Trait for u8 {
-    #[type_const]
-    const N: usize = 2;
+    type const N: usize = 2;
 
     fn process(&self, [x, y]: [u8; Self::N]) -> [u8; Self::N] {
         [self * x, self + y]
@@ -31,8 +29,7 @@ impl Trait for u8 {
 }
 
 impl<const N: usize> Trait for [u8; N] {
-    #[type_const]
-    const N: usize = N;
+    type const N: usize = N;
 
     fn process(&self, other: [u8; Self::N]) -> [u8; Self::N] {
         let mut result = [0; _];

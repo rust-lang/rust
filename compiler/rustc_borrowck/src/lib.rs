@@ -2,11 +2,9 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(default_field_values)]
 #![feature(file_buffered)]
-#![feature(if_let_guard)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
@@ -27,7 +25,6 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::LintDiagnostic;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
@@ -63,10 +60,10 @@ use crate::diagnostics::{
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
+use crate::polonius::PoloniusContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
-use crate::polonius::{PoloniusContext, PoloniusDiagnosticsContext};
 use crate::prefixes::PrefixSet;
 use crate::region_infer::RegionInferenceContext;
 use crate::region_infer::opaque_types::DeferredOpaqueTypeError;
@@ -99,8 +96,6 @@ mod used_muts;
 /// A public API provided for the Rust compiler consumers.
 pub mod consumers;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
 /// Associate some local constants with the `'tcx` lifetime
 struct TyCtxtConsts<'tcx>(PhantomData<&'tcx ()>);
 
@@ -122,6 +117,11 @@ fn mir_borrowck(
     assert!(!tcx.is_typeck_child(def.to_def_id()));
     let (input_body, _) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
+
+    // We should eagerly check stalled coroutine obligations from HIR typeck.
+    // Not doing so leads to silent normalization failures later, which will
+    // fail to register opaque types in the next solver.
+    tcx.ensure_result().check_coroutine_obligations(def)?;
 
     let input_body: &Body<'_> = &input_body.borrow();
     if let Some(guar) = input_body.tainted_by_errors {
@@ -421,7 +421,7 @@ fn borrowck_check_region_constraints<'tcx>(
         polonius_output,
         opt_closure_req,
         nll_errors,
-        polonius_diagnostics,
+        polonius_context,
     } = nll::compute_regions(
         root_cx,
         &infcx,
@@ -445,7 +445,7 @@ fn borrowck_check_region_constraints<'tcx>(
         &regioncx,
         &opt_closure_req,
         &borrow_set,
-        polonius_diagnostics.as_ref(),
+        polonius_context.as_ref(),
     );
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
@@ -487,7 +487,7 @@ fn borrowck_check_region_constraints<'tcx>(
             polonius_output: None,
             move_errors: Vec::new(),
             diags_buffer,
-            polonius_diagnostics: polonius_diagnostics.as_ref(),
+            polonius_context: polonius_context.as_ref(),
         };
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
@@ -526,7 +526,7 @@ fn borrowck_check_region_constraints<'tcx>(
         move_errors: Vec::new(),
         diags_buffer,
         polonius_output: polonius_output.as_deref(),
-        polonius_diagnostics: polonius_diagnostics.as_ref(),
+        polonius_context: polonius_context.as_ref(),
     };
 
     // Compute and report region errors, if any.
@@ -712,7 +712,7 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
     }
 }
 
-struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
+pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     root_cx: &'a mut BorrowCheckRootCtxt<'tcx>,
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
     body: &'a Body<'tcx>,
@@ -776,7 +776,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<&'a PoloniusOutput>,
     /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics.
-    polonius_diagnostics: Option<&'a PoloniusDiagnosticsContext>,
+    polonius_context: Option<&'a PoloniusContext>,
 }
 
 // Check that:
@@ -1207,6 +1207,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 "access_place: suppressing error place_span=`{:?}` kind=`{:?}`",
                 place_span, kind
             );
+
+            // If the place is being mutated, then mark it as such anyway in order to suppress the
+            // `unused_mut` lint, which is likely incorrect once the access place error has been
+            // resolved.
+            if rw == ReadOrWrite::Write(WriteKind::Mutate)
+                && let Ok(root_place) =
+                    self.is_mutable(place_span.0.as_ref(), is_local_mutation_allowed)
+            {
+                self.add_used_mut(root_place, state);
+            }
+
             return;
         }
 
@@ -1414,13 +1425,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     borrow,
                     Some((WriteKind::StorageDeadOrDrop, place)),
                 );
-                this.infcx.tcx.node_span_lint(
+                this.infcx.tcx.emit_node_span_lint(
                     TAIL_EXPR_DROP_ORDER,
                     CRATE_HIR_ID,
                     borrowed,
-                    |diag| {
-                        session_diagnostics::TailExprDropOrder { borrowed }.decorate_lint(diag);
-                        explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
+                    session_diagnostics::TailExprDropOrder {
+                        borrowed,
+                        callback: |diag| {
+                            explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
+                        },
                     },
                 );
                 // We may stop at the first case
@@ -1530,8 +1543,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             Rvalue::Use(operand)
             | Rvalue::Repeat(operand, _)
             | Rvalue::UnaryOp(_ /*un_op*/, operand)
-            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
-            | Rvalue::ShallowInitBox(operand, _ /*ty*/) => {
+            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/) => {
                 self.consume_operand(location, (operand, span), state)
             }
 

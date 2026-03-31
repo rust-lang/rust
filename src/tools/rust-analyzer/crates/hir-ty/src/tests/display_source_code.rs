@@ -111,7 +111,7 @@ fn test(
     b;
   //^ impl Foo
     c;
-  //^ &impl Foo + ?Sized
+  //^ &(impl Foo + ?Sized)
     d;
   //^ S<impl Foo>
     ref_any;
@@ -192,7 +192,7 @@ fn test(
     b;
   //^ fn(impl Foo) -> impl Foo
     c;
-} //^ fn(&impl Foo + ?Sized) -> &impl Foo + ?Sized
+} //^ fn(&(impl Foo + ?Sized)) -> &(impl Foo + ?Sized)
 "#,
     );
 }

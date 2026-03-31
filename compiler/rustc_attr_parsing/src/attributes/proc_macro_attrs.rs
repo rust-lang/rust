@@ -1,3 +1,6 @@
+use rustc_hir::lints::AttributeLintKind;
+use rustc_session::lint::builtin::AMBIGUOUS_DERIVE_HELPERS;
+
 use super::prelude::*;
 
 const PROC_MACRO_ALLOWED_TARGETS: AllowedTargets =
@@ -22,7 +25,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroAttributeParser {
 pub(crate) struct ProcMacroDeriveParser;
 impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
     const PATH: &[Symbol] = &[sym::proc_macro_derive];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(
@@ -43,7 +45,6 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
 pub(crate) struct RustcBuiltinMacroParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcBuiltinMacroParser {
     const PATH: &[Symbol] = &[sym::rustc_builtin_macro];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const TEMPLATE: AttributeTemplate =
@@ -125,6 +126,13 @@ fn parse_derive_like<S: Stage>(
             if !ident.name.can_be_raw() {
                 cx.expected_identifier(ident.span);
                 return None;
+            }
+            if rustc_feature::is_builtin_attr_name(ident.name) {
+                cx.emit_lint(
+                    AMBIGUOUS_DERIVE_HELPERS,
+                    AttributeLintKind::AmbiguousDeriveHelpers,
+                    ident.span,
+                );
             }
             attributes.push(ident.name);
         }

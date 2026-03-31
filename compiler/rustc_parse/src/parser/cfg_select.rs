@@ -7,14 +7,19 @@ use crate::exp;
 use crate::parser::{AttrWrapper, ForceCollect, Parser, Restrictions, Trailing, UsePreAttrPos};
 
 impl<'a> Parser<'a> {
-    /// Parses a `TokenTree` consisting either of `{ /* ... */ }` (and strip the braces) or an
-    /// expression followed by a comma (and strip the comma).
+    /// Parses a `TokenTree` consisting either of `{ /* ... */ }` optionally followed by a comma
+    /// (and strip the braces and the optional comma) or an expression followed by a comma
+    /// (and strip the comma).
     pub fn parse_delimited_token_tree(&mut self) -> PResult<'a, TokenStream> {
         if self.token == token::OpenBrace {
             // Strip the outer '{' and '}'.
             match self.parse_token_tree() {
-                TokenTree::Token(..) => unreachable!("because of the expect above"),
-                TokenTree::Delimited(.., tts) => return Ok(tts),
+                TokenTree::Token(..) => unreachable!("because the current token is a '{{'"),
+                TokenTree::Delimited(.., tts) => {
+                    // Optionally end with a comma.
+                    let _ = self.eat(exp!(Comma));
+                    return Ok(tts);
+                }
             }
         }
         let expr = self.collect_tokens(None, AttrWrapper::empty(), ForceCollect::Yes, |p, _| {

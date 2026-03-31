@@ -15,7 +15,6 @@ use std::{fs, path};
 
 use rustc_data_structures::sync::{IntoDynSyncSend, MappedReadGuard, ReadGuard, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
-use rustc_macros::{Decodable, Encodable};
 use tracing::{debug, instrument, trace};
 
 use crate::*;
@@ -72,20 +71,6 @@ mod monotonic {
     }
 
     impl<T> !DerefMut for MonotonicVec<T> {}
-}
-
-#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable_Generic)]
-pub struct Spanned<T> {
-    pub node: T,
-    pub span: Span,
-}
-
-pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
-    Spanned { node: t, span: sp }
-}
-
-pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
-    respan(DUMMY_SP, t)
 }
 
 // _____________________________________________________________________________

@@ -991,7 +991,21 @@ pub const fn _mm256_hadd_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vphaddsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hadds_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(phaddsw(a.as_i16x16(), b.as_i16x16())) }
+    let a = a.as_i16x16();
+    let b = b.as_i16x16();
+    unsafe {
+        let even: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [0, 2, 4, 6, 16, 18, 20, 22, 8, 10, 12, 14, 24, 26, 28, 30]
+        );
+        let odd: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [1, 3, 5, 7, 17, 19, 21, 23, 9, 11, 13, 15, 25, 27, 29, 31]
+        );
+        simd_saturating_add(even, odd).as_m256i()
+    }
 }
 
 /// Horizontally subtract adjacent pairs of 16-bit integers in `a` and `b`.
@@ -1047,7 +1061,21 @@ pub const fn _mm256_hsub_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vphsubsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hsubs_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(phsubsw(a.as_i16x16(), b.as_i16x16())) }
+    let a = a.as_i16x16();
+    let b = b.as_i16x16();
+    unsafe {
+        let even: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [0, 2, 4, 6, 16, 18, 20, 22, 8, 10, 12, 14, 24, 26, 28, 30]
+        );
+        let odd: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [1, 3, 5, 7, 17, 19, 21, 23, 9, 11, 13, 15, 25, 27, 29, 31]
+        );
+        simd_saturating_sub(even, odd).as_m256i()
+    }
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
@@ -2287,7 +2315,7 @@ pub const fn _mm256_or_si256(a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(simd_or(a.as_i32x8(), b.as_i32x8())) }
 }
 
-/// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
+/// Converts packed signed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using signed saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi16)
@@ -2295,11 +2323,33 @@ pub const fn _mm256_or_si256(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(packsswb(a.as_i16x16(), b.as_i16x16())) }
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
+    unsafe {
+        let max = simd_splat(i8::MAX as i16);
+        let min = simd_splat(i8::MIN as i16);
+
+        let clamped_a = simd_imax(simd_imin(a.as_i16x16(), max), min)
+            .as_m256i()
+            .as_i8x32();
+        let clamped_b = simd_imax(simd_imin(b.as_i16x16(), max), min)
+            .as_m256i()
+            .as_i8x32();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 32] = [
+            00, 02, 04, 06, 08, 10, 12, 14, // a-lo i16 to i8 conversions
+            32, 34, 36, 38, 40, 42, 44, 46, // b-lo
+            16, 18, 20, 22, 24, 26, 28, 30, // a-hi
+            48, 50, 52, 54, 56, 58, 60, 62, // b-hi
+        ];
+        let result: i8x32 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m256i()
+    }
 }
 
-/// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers
+/// Converts packed signed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using signed saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi32)
@@ -2307,11 +2357,33 @@ pub fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackssdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(packssdw(a.as_i32x8(), b.as_i32x8())) }
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
+    unsafe {
+        let max = simd_splat(i16::MAX as i32);
+        let min = simd_splat(i16::MIN as i32);
+
+        let clamped_a = simd_imax(simd_imin(a.as_i32x8(), max), min)
+            .as_m256i()
+            .as_i16x16();
+        let clamped_b = simd_imax(simd_imin(b.as_i32x8(), max), min)
+            .as_m256i()
+            .as_i16x16();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 16] = [
+            00, 02, 04, 06, // a-lo i32 to i16 conversions
+            16, 18, 20, 22, // b-lo
+            08, 10, 12, 14, // a-hi
+            24, 26, 28, 30, // b-hi
+        ];
+        let result: i16x16 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m256i()
+    }
 }
 
-/// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
+/// Converts packed signed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using unsigned saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi16)
@@ -2319,11 +2391,33 @@ pub fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(packuswb(a.as_i16x16(), b.as_i16x16())) }
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
+    unsafe {
+        let max = simd_splat(u8::MAX as i16);
+        let min = simd_splat(u8::MIN as i16);
+
+        let clamped_a = simd_imax(simd_imin(a.as_i16x16(), max), min)
+            .as_m256i()
+            .as_i8x32();
+        let clamped_b = simd_imax(simd_imin(b.as_i16x16(), max), min)
+            .as_m256i()
+            .as_i8x32();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 32] = [
+            00, 02, 04, 06, 08, 10, 12, 14, // a-lo i16 to u8 conversions
+            32, 34, 36, 38, 40, 42, 44, 46, // b-lo
+            16, 18, 20, 22, 24, 26, 28, 30, // a-hi
+            48, 50, 52, 54, 56, 58, 60, 62, // b-hi
+        ];
+        let result: i8x32 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m256i()
+    }
 }
 
-/// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers
+/// Converts packed signed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using unsigned saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi32)
@@ -2331,8 +2425,30 @@ pub fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_packus_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(packusdw(a.as_i32x8(), b.as_i32x8())) }
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_packus_epi32(a: __m256i, b: __m256i) -> __m256i {
+    unsafe {
+        let max = simd_splat(u16::MAX as i32);
+        let min = simd_splat(u16::MIN as i32);
+
+        let clamped_a = simd_imax(simd_imin(a.as_i32x8(), max), min)
+            .as_m256i()
+            .as_i16x16();
+        let clamped_b = simd_imax(simd_imin(b.as_i32x8(), max), min)
+            .as_m256i()
+            .as_i16x16();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 16] = [
+            00, 02, 04, 06, // a-lo i32 to u16 conversions
+            16, 18, 20, 22, // b-lo
+            08, 10, 12, 14, // a-hi
+            24, 26, 28, 30, // b-hi
+        ];
+        let result: i16x16 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m256i()
+    }
 }
 
 /// Permutes packed 32-bit integers from `a` according to the content of `b`.
@@ -3791,10 +3907,6 @@ pub const fn _mm256_extract_epi16<const INDEX: i32>(a: __m256i) -> i32 {
 
 #[allow(improper_ctypes)]
 unsafe extern "C" {
-    #[link_name = "llvm.x86.avx2.phadd.sw"]
-    fn phaddsw(a: i16x16, b: i16x16) -> i16x16;
-    #[link_name = "llvm.x86.avx2.phsub.sw"]
-    fn phsubsw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.pmadd.wd"]
     fn pmaddwd(a: i16x16, b: i16x16) -> i32x8;
     #[link_name = "llvm.x86.avx2.pmadd.ub.sw"]
@@ -3803,14 +3915,6 @@ unsafe extern "C" {
     fn mpsadbw(a: u8x32, b: u8x32, imm8: i8) -> u16x16;
     #[link_name = "llvm.x86.avx2.pmul.hr.sw"]
     fn pmulhrsw(a: i16x16, b: i16x16) -> i16x16;
-    #[link_name = "llvm.x86.avx2.packsswb"]
-    fn packsswb(a: i16x16, b: i16x16) -> i8x32;
-    #[link_name = "llvm.x86.avx2.packssdw"]
-    fn packssdw(a: i32x8, b: i32x8) -> i16x16;
-    #[link_name = "llvm.x86.avx2.packuswb"]
-    fn packuswb(a: i16x16, b: i16x16) -> u8x32;
-    #[link_name = "llvm.x86.avx2.packusdw"]
-    fn packusdw(a: i32x8, b: i32x8) -> u16x16;
     #[link_name = "llvm.x86.avx2.psad.bw"]
     fn psadbw(a: u8x32, b: u8x32) -> u64x4;
     #[link_name = "llvm.x86.avx2.psign.b"]
@@ -4653,6 +4757,26 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
+    #[target_feature(enable = "avx2")]
+    #[cfg_attr(test, assert_instr(vpmaddwd))]
+    unsafe fn test_mm256_madd_epi16_mul_one(v: __m256i) -> __m256i {
+        // This is a trick used in the adler32 algorithm to get a widening addition. The
+        // multiplication by 1 is trivial, but must not be optimized out because then the vpmaddwd
+        // instruction is no longer selected. The assert_instr verifies that this is the case.
+        let one_v = _mm256_set1_epi16(1);
+        _mm256_madd_epi16(v, one_v)
+    }
+
+    #[target_feature(enable = "avx2")]
+    #[cfg_attr(test, assert_instr(vpmaddwd))]
+    unsafe fn test_mm256_madd_epi16_shl(v: __m256i) -> __m256i {
+        // This is a trick used in the base64 algorithm to get a widening addition. Instead of a
+        // multiplication, a vector shl is used. In LLVM 22 that breaks the pattern recognition
+        // for the automatic optimization to vpmaddwd.
+        let shift_value = _mm256_set1_epi32(12i32);
+        _mm256_madd_epi16(v, shift_value)
+    }
+
     #[simd_test(enable = "avx2")]
     const fn test_mm256_inserti128_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
@@ -4944,7 +5068,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    fn test_mm256_packs_epi16() {
+    const fn test_mm256_packs_epi16() {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);
         let r = _mm256_packs_epi16(a, b);
@@ -4960,7 +5084,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    fn test_mm256_packs_epi32() {
+    const fn test_mm256_packs_epi32() {
         let a = _mm256_set1_epi32(2);
         let b = _mm256_set1_epi32(4);
         let r = _mm256_packs_epi32(a, b);
@@ -4970,7 +5094,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    fn test_mm256_packus_epi16() {
+    const fn test_mm256_packus_epi16() {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);
         let r = _mm256_packus_epi16(a, b);
@@ -4986,7 +5110,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    fn test_mm256_packus_epi32() {
+    const fn test_mm256_packus_epi32() {
         let a = _mm256_set1_epi32(2);
         let b = _mm256_set1_epi32(4);
         let r = _mm256_packus_epi32(a, b);

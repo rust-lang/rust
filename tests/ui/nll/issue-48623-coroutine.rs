@@ -2,7 +2,7 @@
 #![allow(path_statements)]
 #![allow(dead_code)]
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines)]
 
 struct WithDrop;
 

@@ -46,4 +46,8 @@ public:
   }
 };
 
+struct LLVMRustBuffer {
+  std::string data;
+};
+
 #endif // INCLUDED_RUSTC_LLVM_LLVMWRAPPER_H

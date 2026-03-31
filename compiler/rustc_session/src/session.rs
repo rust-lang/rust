@@ -2,7 +2,7 @@ use std::any::Any;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
 use rand::{RngCore, rng};
@@ -16,10 +16,9 @@ use rustc_errors::codes::*;
 use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, stderr_destination};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
-use rustc_errors::translation::Translator;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
-    TerminalUrl, fallback_fluent_bundle,
+    TerminalUrl,
 };
 use rustc_hir::limit::Limit;
 use rustc_macros::HashStable_Generic;
@@ -144,6 +143,12 @@ pub struct Session {
     /// None signifies that this is not tracked.
     pub using_internal_features: &'static AtomicBool,
 
+    /// Environment variables accessed during the build and their values when they exist.
+    pub env_depinfo: Lock<FxIndexSet<(Symbol, Option<Symbol>)>>,
+
+    /// File paths accessed during the build.
+    pub file_depinfo: Lock<FxIndexSet<Symbol>>,
+
     target_filesearch: FileSearch,
     host_filesearch: FileSearch,
 
@@ -158,6 +163,20 @@ pub struct Session {
     /// The names of intrinsics that the current codegen backend replaces
     /// with its own implementations.
     pub replaced_intrinsics: FxHashSet<Symbol>,
+
+    /// Does the codegen backend support ThinLTO?
+    pub thin_lto_supported: bool,
+
+    /// Global per-session counter for MIR optimization pass applications.
+    ///
+    /// Used by `-Zmir-opt-bisect-limit` to assign an index to each
+    /// optimization-pass execution candidate during this compilation.
+    pub mir_opt_bisect_eval_count: AtomicUsize,
+
+    /// Enabled features that are used in the current compilation.
+    ///
+    /// The value is the `DepNodeIndex` of the node encodes the used feature.
+    pub used_features: Lock<FxHashMap<Symbol, u32>>,
 }
 
 #[derive(Clone, Copy)]
@@ -514,9 +533,12 @@ impl Session {
     pub fn emit_lifetime_markers(&self) -> bool {
         self.opts.optimize != config::OptLevel::No
         // AddressSanitizer and KernelAddressSanitizer uses lifetimes to detect use after scope bugs.
+        //
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
-        // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
-        || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
+        //
+        // HWAddressSanitizer and KernelHWAddressSanitizer will use lifetimes to detect use after
+        // scope bugs in the future.
+        || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
     }
 
     pub fn diagnostic_width(&self) -> usize {
@@ -606,8 +628,17 @@ impl Session {
             }
             config::LtoCli::Thin => {
                 // The user explicitly asked for ThinLTO
+                if !self.thin_lto_supported {
+                    // Backend doesn't support ThinLTO, fallback to fat LTO.
+                    self.dcx().emit_warn(errors::ThinLtoNotSupportedByBackend);
+                    return config::Lto::Fat;
+                }
                 return config::Lto::Thin;
             }
+        }
+
+        if !self.thin_lto_supported {
+            return config::Lto::No;
         }
 
         // Ok at this point the target doesn't require anything and the user
@@ -896,11 +927,7 @@ impl Session {
 
 // JUSTIFICATION: part of session construction
 #[allow(rustc::bad_opt_access)]
-fn default_emitter(
-    sopts: &config::Options,
-    source_map: Arc<SourceMap>,
-    translator: Translator,
-) -> Box<DynEmitter> {
+fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<DynEmitter> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
     let track_diagnostics = sopts.unstable_opts.track_diagnostics;
     let terminal_url = match sopts.unstable_opts.terminal_urls {
@@ -922,21 +949,17 @@ fn default_emitter(
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
             HumanReadableErrorType { short, unicode } => {
-                let emitter =
-                    AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
-                        .sm(source_map)
-                        .short_message(short)
-                        .diagnostic_width(sopts.diagnostic_width)
-                        .macro_backtrace(macro_backtrace)
-                        .track_diagnostics(track_diagnostics)
-                        .terminal_url(terminal_url)
-                        .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                        .ignored_directories_in_source_blocks(
-                            sopts
-                                .unstable_opts
-                                .ignore_directory_in_diagnostics_source_blocks
-                                .clone(),
-                        );
+                let emitter = AnnotateSnippetEmitter::new(stderr_destination(color_config))
+                    .sm(source_map)
+                    .short_message(short)
+                    .diagnostic_width(sopts.diagnostic_width)
+                    .macro_backtrace(macro_backtrace)
+                    .track_diagnostics(track_diagnostics)
+                    .terminal_url(terminal_url)
+                    .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
+                    .ignored_directories_in_source_blocks(
+                        sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
+                    );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         },
@@ -944,7 +967,6 @@ fn default_emitter(
             JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 source_map,
-                translator,
                 pretty,
                 json_rendered,
                 color_config,
@@ -966,9 +988,6 @@ fn default_emitter(
 pub fn build_session(
     sopts: config::Options,
     io: CompilerIO,
-    fluent_bundle: Option<Arc<rustc_errors::FluentBundle>>,
-    registry: rustc_errors::registry::Registry,
-    fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     target: Target,
     cfg_version: &'static str,
@@ -986,19 +1005,11 @@ pub fn build_session(
     let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
-    let translator = Translator {
-        fluent_bundle,
-        fallback_fluent_bundle: fallback_fluent_bundle(
-            fluent_resources,
-            sopts.unstable_opts.translate_directionality_markers,
-        ),
-    };
     let source_map = rustc_span::source_map::get_source_map().unwrap();
-    let emitter = default_emitter(&sopts, Arc::clone(&source_map), translator);
+    let emitter = default_emitter(&sopts, Arc::clone(&source_map));
 
-    let mut dcx = DiagCtxt::new(emitter)
-        .with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings))
-        .with_registry(registry);
+    let mut dcx =
+        DiagCtxt::new(emitter).with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
     if let Some(ice_file) = ice_file {
         dcx = dcx.with_ice_file(ice_file);
     }
@@ -1093,10 +1104,15 @@ pub fn build_session(
         unstable_target_features: Default::default(),
         cfg_version,
         using_internal_features,
+        env_depinfo: Default::default(),
+        file_depinfo: Default::default(),
         target_filesearch,
         host_filesearch,
         invocation_temp,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
+        thin_lto_supported: true,                  // filled by `run_compiler`
+        mir_opt_bisect_eval_count: AtomicUsize::new(0),
+        used_features: Lock::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1348,13 +1364,9 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if sess.opts.cg.soft_float {
-        if sess.target.arch == Arch::Arm {
-            sess.dcx().emit_warn(errors::SoftFloatDeprecated);
-        } else {
-            // All `use_softfp` does is the equivalent of `-mfloat-abi` in GCC/clang, which only exists on ARM targets.
-            // We document this flag to only affect `*eabihf` targets, so let's show a warning for all other targets.
-            sess.dcx().emit_warn(errors::SoftFloatIgnored);
+    if sess.opts.unstable_opts.packed_stack {
+        if sess.target.arch != Arch::S390x {
+            sess.dcx().emit_err(errors::UnsupportedPackedStack);
         }
     }
 }
@@ -1430,14 +1442,10 @@ impl EarlyDiagCtxt {
 }
 
 fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
-    // FIXME(#100717): early errors aren't translated at the moment, so this is fine, but it will
-    // need to reference every crate that might emit an early error for translation to work.
-    let translator =
-        Translator::with_fallback_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
             HumanReadableErrorType { short, unicode } => Box::new(
-                AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
+                AnnotateSnippetEmitter::new(stderr_destination(color_config))
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
                     .short_message(short),
             ),
@@ -1446,7 +1454,6 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
             Box::new(JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 Some(Arc::new(SourceMap::new(FilePathMapping::empty()))),
-                translator,
                 pretty,
                 json_rendered,
                 color_config,

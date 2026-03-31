@@ -2,13 +2,11 @@
 #![expect(incomplete_features)]
 
 trait Foo {
-    #[type_const]
-    const ASSOC<const N: u32>: u32;
+    type const ASSOC<const N: u32>: u32;
 }
 
 impl Foo for () {
-    #[type_const]
-    const ASSOC<const N: u32>: u32 = N;
+    type const ASSOC<const N: u32>: u32 = N;
 }
 
 fn bar<const N: u64, T: Foo<ASSOC<N> = { N }>>() {}

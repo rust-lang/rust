@@ -8,7 +8,7 @@
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ ignore-backends: gcc
 
-#![feature(panic_unwind)]
+#![cfg_attr(cfail1, feature(panic_unwind))]
 
 // Turn the panic_unwind crate from an explicit into an implicit query:
 #[cfg(cfail1)]

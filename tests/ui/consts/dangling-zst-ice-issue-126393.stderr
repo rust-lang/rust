@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value: encountered a dangling reference (use-after-free)
+error[E0080]: constructing invalid value of type &Wrapper: encountered a dangling reference (use-after-free)
   --> $DIR/dangling-zst-ice-issue-126393.rs:7:1
    |
 LL | pub static MAGIC_FFI_REF: &'static Wrapper = unsafe {

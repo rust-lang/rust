@@ -4,8 +4,7 @@
 #![feature(min_generic_const_args)]
 
 trait Trait {
-    #[type_const]
-    const F: fn();
+    type const F: fn();
     //~^ ERROR using function pointers as const generic parameters is forbidden
 }
 

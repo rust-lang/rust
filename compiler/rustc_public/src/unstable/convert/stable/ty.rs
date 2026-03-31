@@ -1054,7 +1054,7 @@ impl<'tcx> Stable<'tcx> for ty::AssocKind {
     ) -> Self::T {
         use crate::ty::{AssocKind, AssocTypeData};
         match *self {
-            ty::AssocKind::Const { name } => AssocKind::Const { name: name.to_string() },
+            ty::AssocKind::Const { name, .. } => AssocKind::Const { name: name.to_string() },
             ty::AssocKind::Fn { name, has_self } => {
                 AssocKind::Fn { name: name.to_string(), has_self }
             }
@@ -1137,5 +1137,27 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::util::Discr<'tcx> {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         crate::ty::Discr { val: self.val, ty: self.ty.stable(tables, cx) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_middle::ty::VtblEntry<'tcx> {
+    type T = crate::ty::VtblEntry;
+
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        use crate::ty::VtblEntry;
+        match self {
+            ty::VtblEntry::MetadataDropInPlace => VtblEntry::MetadataDropInPlace,
+            ty::VtblEntry::MetadataSize => VtblEntry::MetadataSize,
+            ty::VtblEntry::MetadataAlign => VtblEntry::MetadataAlign,
+            ty::VtblEntry::Vacant => VtblEntry::Vacant,
+            ty::VtblEntry::Method(instance) => VtblEntry::Method(instance.stable(tables, cx)),
+            ty::VtblEntry::TraitVPtr(trait_ref) => {
+                VtblEntry::TraitVPtr(trait_ref.stable(tables, cx))
+            }
+        }
     }
 }

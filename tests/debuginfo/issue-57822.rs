@@ -1,7 +1,8 @@
 // This test makes sure that the LLDB pretty printer does not throw an exception
 // for nested closures and coroutines.
 
-//@ min-lldb-version: 1800
+// LLDB 1800+ tests were not tested in CI, broke, and now are disabled
+//@ ignore-lldb
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc

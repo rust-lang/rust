@@ -1,4 +1,5 @@
 //! Test that we properly error when there is a pointer fragment in the final value.
+//@ ignore-s390x different alignment on s390x make the test fail
 
 use std::{mem::{self, MaybeUninit}, ptr};
 

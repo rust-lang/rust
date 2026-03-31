@@ -3,16 +3,16 @@
 //@ pp-exact:hir-delegation.pp
 
 #![allow(incomplete_features)]
-#![feature(fn_delegation)]
+#![attr = Feature([fn_delegation#0])]
 extern crate std;
-#[prelude_import]
+#[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
 
 fn b<C>(e: C) { }
 
 trait G {
     #[attr = Inline(Hint)]
-    fn b(arg0: _) -> _ { b({ }) }
+    fn b<C>(arg0: _) -> _ { b::<C>({ }) }
 }
 
 mod m {

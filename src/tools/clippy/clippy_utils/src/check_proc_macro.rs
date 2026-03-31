@@ -21,10 +21,10 @@ use rustc_ast::ast::{
 use rustc_ast::token::CommentKind;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, FnRetTy, HirId, Impl,
-    ImplItem, ImplItemImplKind, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path,
-    QPath, Safety, TraitImplHeader, TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData,
-    YieldSource,
+    Block, BlockCheckMode, Body, BoundConstness, BoundPolarity, Closure, Destination, Expr, ExprKind, FieldDef,
+    FnHeader, FnRetTy, HirId, Impl, ImplItem, ImplItemImplKind, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource,
+    MatchSource, MutTy, Node, Path, PolyTraitRef, QPath, Safety, TraitBoundModifiers, TraitImplHeader, TraitItem,
+    TraitItemKind, TraitRef, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -45,6 +45,8 @@ pub enum Pat {
     Sym(Symbol),
     /// Any decimal or hexadecimal digit depending on the location.
     Num,
+    /// An attribute.
+    Attr(Symbol),
 }
 
 /// Checks if the start and the end of the span's text matches the patterns. This will return false
@@ -65,12 +67,20 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
             Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => start_str.starts_with(sym.as_str()),
             Pat::Num => start_str.as_bytes().first().is_some_and(u8::is_ascii_digit),
+            Pat::Attr(sym) => {
+                let start_str = start_str
+                    .strip_prefix("#[")
+                    .or_else(|| start_str.strip_prefix("#!["))
+                    .unwrap_or(start_str);
+                start_str.trim_start().starts_with(sym.as_str())
+            },
         } && match end_pat {
             Pat::Str(text) => end_str.ends_with(text),
             Pat::MultiStr(texts) => texts.iter().any(|s| end_str.ends_with(s)),
             Pat::OwnedMultiStr(texts) => texts.iter().any(|s| end_str.ends_with(s)),
             Pat::Sym(sym) => end_str.ends_with(sym.as_str()),
             Pat::Num => end_str.as_bytes().last().is_some_and(u8::is_ascii_hexdigit),
+            Pat::Attr(_) => false,
         })
     })
 }
@@ -350,18 +360,7 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
         AttrKind::Normal(..) => {
             if let Some(name) = attr.name() {
                 // NOTE: This will likely have false positives, like `allow = 1`
-                let ident_string = name.to_string();
-                if attr.style == AttrStyle::Outer {
-                    (
-                        Pat::OwnedMultiStr(vec!["#[".to_owned() + &ident_string, ident_string]),
-                        Pat::Str(""),
-                    )
-                } else {
-                    (
-                        Pat::OwnedMultiStr(vec!["#![".to_owned() + &ident_string, ident_string]),
-                        Pat::Str(""),
-                    )
-                }
+                (Pat::Attr(name), Pat::Str(""))
             } else {
                 (Pat::Str("#"), Pat::Str("]"))
             }
@@ -532,6 +531,7 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
 
         // experimental
         | TyKind::Pat(..)
+        | TyKind::FieldOf(..)
 
         // unused
         | TyKind::CVarArgs
@@ -540,6 +540,44 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
         | TyKind::Dummy
         | TyKind::Err(_) => (Pat::Str(""), Pat::Str("")),
     }
+}
+
+// NOTE: can't `impl WithSearchPat for TraitRef`, because `TraitRef` doesn't have a `span` field
+// (nor a method)
+fn trait_ref_search_pat(trait_ref: &TraitRef<'_>) -> (Pat, Pat) {
+    path_search_pat(trait_ref.path)
+}
+
+fn poly_trait_ref_search_pat(poly_trait_ref: &PolyTraitRef<'_>) -> (Pat, Pat) {
+    // NOTE: unfortunately we can't use `bound_generic_params` to see whether the pattern starts with
+    // `for<..>`, because if it's empty, we could have either `for<>` (nothing bound), or
+    // no `for` at all
+    let PolyTraitRef {
+        modifiers: TraitBoundModifiers { constness, polarity },
+        trait_ref,
+        ..
+    } = poly_trait_ref;
+
+    let trait_ref_search_pat = trait_ref_search_pat(trait_ref);
+
+    #[expect(
+        clippy::unnecessary_lazy_evaluations,
+        reason = "the closure in `or_else` has `match polarity`, which isn't free"
+    )]
+    let start = match constness {
+        BoundConstness::Never => None,
+        BoundConstness::Maybe(_) => Some(Pat::Str("[const]")),
+        BoundConstness::Always(_) => Some(Pat::Str("const")),
+    }
+    .or_else(|| match polarity {
+        BoundPolarity::Negative(_) => Some(Pat::Str("!")),
+        BoundPolarity::Maybe(_) => Some(Pat::Str("?")),
+        BoundPolarity::Positive => None,
+    })
+    .unwrap_or(trait_ref_search_pat.0);
+    let end = trait_ref_search_pat.1;
+
+    (start, end)
 }
 
 fn ident_search_pat(ident: Ident) -> (Pat, Pat) {
@@ -574,6 +612,7 @@ impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ty<'_>) => ty_search_pat(se
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ident) => ident_search_pat(*self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Lit) => lit_search_pat(&self.node));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Path<'_>) => path_search_pat(self));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: PolyTraitRef<'_>) => poly_trait_ref_search_pat(self));
 
 impl_with_search_pat!((_cx: EarlyContext<'tcx>, self: Attribute) => attr_search_pat(self));
 impl_with_search_pat!((_cx: EarlyContext<'tcx>, self: ast::Ty) => ast_ty_search_pat(self));

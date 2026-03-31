@@ -6,8 +6,7 @@ use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::{self, AssocTag, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Ident, Span, Spanned, sym};
 use tracing::{debug, trace};
 
 use crate::errors::LargeAssignmentsLint;
@@ -190,7 +189,7 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
 }
 
 fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
-    for impl_def_id in tcx.inherent_impls(def_id) {
+    for &impl_def_id in tcx.inherent_impls(def_id) {
         if let Some(new) = tcx.associated_items(impl_def_id).find_by_ident_and_kind(
             tcx,
             fn_ident,

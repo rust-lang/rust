@@ -11,9 +11,11 @@ your `$PATH`.
 On Linux to install the `rust-analyzer` binary into `~/.local/bin`,
 these commands should work:
 
-    $ mkdir -p ~/.local/bin
-    $ curl -L https://github.com/rust-lang/rust-analyzer/releases/latest/download/rust-analyzer-x86_64-unknown-linux-gnu.gz | gunzip -c - > ~/.local/bin/rust-analyzer
-    $ chmod +x ~/.local/bin/rust-analyzer
+```bash
+mkdir -p ~/.local/bin
+curl -L https://github.com/rust-lang/rust-analyzer/releases/latest/download/rust-analyzer-x86_64-unknown-linux-gnu.gz | gunzip -c - > ~/.local/bin/rust-analyzer
+chmod +x ~/.local/bin/rust-analyzer
+```
 
 Make sure that `~/.local/bin` is listed in the `$PATH` variable and use
 the appropriate URL if you’re not on a `x86-64` system.
@@ -24,8 +26,10 @@ or `/usr/local/bin` will work just as well.
 Alternatively, you can install it from source using the command below.
 You’ll need the latest stable version of the Rust toolchain.
 
-    $ git clone https://github.com/rust-lang/rust-analyzer.git && cd rust-analyzer
-    $ cargo xtask install --server
+```bash
+git clone https://github.com/rust-lang/rust-analyzer.git && cd rust-analyzer
+cargo xtask install --server
+```
 
 If your editor can’t find the binary even though the binary is on your
 `$PATH`, the likely explanation is that it doesn’t see the same `$PATH`
@@ -38,7 +42,9 @@ the environment should help.
 
 `rust-analyzer` is available in `rustup`:
 
-    $ rustup component add rust-analyzer
+```bash
+rustup component add rust-analyzer
+```
 
 ### Arch Linux
 
@@ -53,7 +59,9 @@ User Repository):
 
 Install it with pacman, for example:
 
-    $ pacman -S rust-analyzer
+```bash
+pacman -S rust-analyzer
+```
 
 ### Gentoo Linux
 
@@ -64,7 +72,9 @@ Install it with pacman, for example:
 The `rust-analyzer` binary can be installed via
 [Homebrew](https://brew.sh/).
 
-    $ brew install rust-analyzer
+```bash
+brew install rust-analyzer
+```
 
 ### Windows
 

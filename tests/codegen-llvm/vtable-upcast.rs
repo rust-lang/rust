@@ -56,7 +56,7 @@ pub fn upcast_diamond_to_a(x: &dyn Diamond) -> &dyn A {
 }
 
 // CHECK-LABEL: upcast_diamond_to_b
-// CHECK-SAME: (ptr align {{[0-9]+}} [[DATA_PTR:%.+]], ptr align {{[0-9]+}} [[VTABLE_PTR:%.+]])
+// CHECK-SAME: (ptr [[DATA_PTR:%.+]], ptr align {{[0-9]+}} [[VTABLE_PTR:%.+]])
 #[no_mangle]
 pub fn upcast_diamond_to_b(x: &dyn Diamond) -> &dyn B {
     // Requires adjustment, since it's a non-first supertrait.

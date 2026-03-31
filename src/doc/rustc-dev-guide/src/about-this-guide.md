@@ -10,7 +10,7 @@ There are several parts to this guide:
    about building, debugging, profiling, etc.
 1. [Contributing to Rust][p2]:
    Contains information that should be useful no matter how you are contributing,
-   about procedures for contribution, using git and Github, stabilizing features, etc.
+   about procedures for contribution, using git and GitHub, stabilizing features, etc.
 1. [Bootstrapping][p3]:
    Describes how the Rust compiler builds itself using previous versions, including
    an introduction to the bootstrap process and debugging methods.

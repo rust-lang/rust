@@ -2,29 +2,29 @@ use std::borrow::{Borrow, Cow};
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_abi::{Align, Size};
+use rustc_abi::{Align, FIRST_VARIANT, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
+use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem, find_attr};
 use rustc_middle::mir::AssertMessage;
-use rustc_middle::mir::interpret::{Pointer, ReportedErrorInfo};
+use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, mir};
+use rustc_middle::ty::{self, FieldInfo, Ty, TyCtxt};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
 use tracing::debug;
 
 use super::error::*;
 use crate::errors::{LongRunning, LongRunningWarn};
-use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, RangeSet, Scalar,
-    compile_time_machine, err_inval, interp_ok, throw_exhaust, throw_inval, throw_ub,
-    throw_ub_custom, throw_unsup, throw_unsup_format,
+    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, Scalar,
+    compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok, throw_exhaust,
+    throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
+    type_implements_dyn_trait,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -235,7 +235,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
         if self.tcx.is_lang_item(def_id, LangItem::PanicDisplay)
             || self.tcx.is_lang_item(def_id, LangItem::BeginPanic)
         {
-            let args = self.copy_fn_args(args);
+            let args = Self::copy_fn_args(args);
             // &str or &&str
             assert!(args.len() == 1);
 
@@ -440,7 +440,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // sensitive check here. But we can at least rule out functions that are not const at
             // all. That said, we have to allow calling functions inside a `const trait`. These
             // *are* const-checked!
-            if !ecx.tcx.is_const_fn(def) || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check) {
+            if !ecx.tcx.is_const_fn(def) || find_attr!(ecx.tcx, def, RustcDoNotConstCheck) {
                 // We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
                 throw_unsup_format!("calling non-const function `{}`", instance)
@@ -488,12 +488,9 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let align = match Align::from_bytes(align) {
                     Ok(a) => a,
-                    Err(err) => throw_ub_custom!(
-                        fluent::const_eval_invalid_align_details,
-                        name = "const_allocate",
-                        err_kind = err.diag_ident(),
-                        align = err.align()
-                    ),
+                    Err(err) => {
+                        throw_ub_format!("invalid align passed to `const_allocate`: {err}")
+                    }
                 };
 
                 let ptr = ecx.allocate_ptr(
@@ -512,12 +509,9 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let size = Size::from_bytes(size);
                 let align = match Align::from_bytes(align) {
                     Ok(a) => a,
-                    Err(err) => throw_ub_custom!(
-                        fluent::const_eval_invalid_align_details,
-                        name = "const_deallocate",
-                        err_kind = err.diag_ident(),
-                        align = err.align()
-                    ),
+                    Err(err) => {
+                        throw_ub_format!("invalid align passed to `const_deallocate`: {err}")
+                    }
                 };
 
                 // If an allocation is created in an another const,
@@ -586,9 +580,46 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 }
             }
 
+            sym::type_id_vtable => {
+                let tp_ty = ecx.read_type_id(&args[0])?;
+                let result_ty = ecx.read_type_id(&args[1])?;
+
+                let (implements_trait, preds) = type_implements_dyn_trait(ecx, tp_ty, result_ty)?;
+
+                if implements_trait {
+                    let vtable_ptr = ecx.get_vtable_ptr(tp_ty, preds)?;
+                    // Writing a non-null pointer into an `Option<NonNull>` will automatically make it `Some`.
+                    ecx.write_pointer(vtable_ptr, dest)?;
+                } else {
+                    // Write `None`
+                    ecx.write_discriminant(FIRST_VARIANT, dest)?;
+                }
+            }
+
             sym::type_of => {
                 let ty = ecx.read_type_id(&args[0])?;
                 ecx.write_type_info(ty, dest)?;
+            }
+
+            sym::field_offset => {
+                let frt_ty = instance.args.type_at(0);
+                ensure_monomorphic_enough(ecx.tcx.tcx, frt_ty)?;
+
+                let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
+                    && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                {
+                    (base, variant_idx, field_idx)
+                } else {
+                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
+                };
+                let layout = ecx.layout_of(ty)?;
+                let cx = ty::layout::LayoutCx::new(ecx.tcx.tcx, ecx.typing_env());
+
+                let layout = layout.for_variant(&cx, variant);
+                let offset = layout.fields.offset(field.index()).bytes();
+
+                ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
             }
 
             _ => {

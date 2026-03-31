@@ -1,5 +1,5 @@
+use core::cmp;
 use core::cmp::Ordering::{self, *};
-use core::cmp::{self};
 
 #[test]
 fn test_int_totalord() {

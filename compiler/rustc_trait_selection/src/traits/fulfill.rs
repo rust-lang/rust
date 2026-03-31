@@ -349,7 +349,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
         &mut self,
         pending_obligation: &mut PendingPredicateObligation<'tcx>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
-        pending_obligation.stalled_on.truncate(0);
+        pending_obligation.stalled_on.clear();
 
         let obligation = &mut pending_obligation.obligation;
 
@@ -685,7 +685,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         use rustc_hir::def::DefKind;
                         match (c1.kind(), c2.kind()) {
                             (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
-                                if a.def == b.def && tcx.def_kind(a.def) == DefKind::AssocConst =>
+                                if a.def == b.def
+                                    && matches!(
+                                        tcx.def_kind(a.def),
+                                        DefKind::AssocConst { .. }
+                                    ) =>
                             {
                                 if let Ok(new_obligations) = infcx
                                     .at(&obligation.cause, obligation.param_env)

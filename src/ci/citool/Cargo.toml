@@ -9,6 +9,7 @@ askama = "0.15.4"
 clap = { version = "4.5", features = ["derive"] }
 csv = "1"
 diff = "0.1"
+flate2 = { version = "1.1.9", default-features = false, features = ["zlib-rs"] } # For feature flag only
 glob-match = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"

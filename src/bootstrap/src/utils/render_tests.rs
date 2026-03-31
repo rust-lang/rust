@@ -179,7 +179,7 @@ impl<'a> Renderer<'a> {
 
         if self.builder.config.verbose_tests {
             self.render_test_outcome_verbose(outcome, test);
-        } else if self.builder.config.is_running_on_ci {
+        } else if self.builder.config.is_running_on_ci() {
             self.render_test_outcome_ci(outcome, test);
         } else {
             self.render_test_outcome_terse(outcome, test);

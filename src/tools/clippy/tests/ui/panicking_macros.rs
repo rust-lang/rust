@@ -126,15 +126,4 @@ fn debug_assert_msg() {
     debug_assert_ne!(true, false, "test");
 }
 
-fn main() {
-    panic();
-    panic_const();
-    todo();
-    unimplemented();
-    unreachable();
-    core_versions();
-    assert();
-    assert_msg();
-    debug_assert();
-    debug_assert_msg();
-}
+fn main() {}

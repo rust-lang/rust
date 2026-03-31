@@ -82,7 +82,7 @@ pub(super) fn check<'tcx>(
                                 ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt, msrv),
                                 // immutable bindings that are initialized with constant
                                 ExprKind::Path(ref path) => {
-                                    if let Res::Def(DefKind::Const, ..) = cx.qpath_res(path, init.hir_id) {
+                                    if let Res::Def(DefKind::Const { .. }, ..) = cx.qpath_res(path, init.hir_id) {
                                         emit_lint(cx, vec, pushed_item, ctxt, msrv);
                                     }
                                 },
@@ -91,7 +91,7 @@ pub(super) fn check<'tcx>(
                         }
                     },
                     // constant
-                    Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item, ctxt, msrv),
+                    Res::Def(DefKind::Const { .. }, ..) => emit_lint(cx, vec, pushed_item, ctxt, msrv),
                     _ => {},
                 }
             },

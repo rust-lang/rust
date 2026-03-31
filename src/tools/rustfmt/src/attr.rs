@@ -56,23 +56,22 @@ fn argument_shape(
     shape: Shape,
     context: &RewriteContext<'_>,
 ) -> Option<Shape> {
-    match context.config.indent_style() {
+    let shape = match context.config.indent_style() {
         IndentStyle::Block => {
             if combine {
-                shape.offset_left(left)
+                shape.offset_left_opt(left)?
             } else {
-                Some(
-                    shape
-                        .block_indent(context.config.tab_spaces())
-                        .with_max_width(context.config),
-                )
+                shape
+                    .block_indent(context.config.tab_spaces())
+                    .with_max_width(context.config)
             }
         }
         IndentStyle::Visual => shape
             .visual_indent(0)
-            .shrink_left(left)
-            .and_then(|s| s.sub_width(right)),
-    }
+            .shrink_left_opt(left)?
+            .sub_width_opt(right)?,
+    };
+    Some(shape)
 }
 
 fn format_derive(
@@ -127,8 +126,8 @@ fn format_derive(
         context,
     )?;
     let one_line_shape = shape
-        .offset_left("[derive()]".len() + prefix.len())?
-        .sub_width("()]".len())?;
+        .offset_left_opt("[derive()]".len() + prefix.len())?
+        .sub_width_opt("()]".len())?;
     let one_line_budget = one_line_shape.width;
 
     let tactic = definitive_tactic(
@@ -295,7 +294,7 @@ impl Rewrite for ast::MetaItem {
                     &path,
                     list.iter(),
                     // 1 = "]"
-                    shape.sub_width(1).max_width_error(shape.width, self.span)?,
+                    shape.sub_width(1, self.span)?,
                     self.span,
                     context.config.attr_fn_like_width(),
                     Some(if has_trailing_comma {
@@ -308,9 +307,7 @@ impl Rewrite for ast::MetaItem {
             ast::MetaItemKind::NameValue(ref lit) => {
                 let path = rewrite_path(context, PathContext::Type, &None, &self.path, shape)?;
                 // 3 = ` = `
-                let lit_shape = shape
-                    .shrink_left(path.len() + 3)
-                    .max_width_error(shape.width, self.span)?;
+                let lit_shape = shape.shrink_left(path.len() + 3, self.span)?;
                 // `rewrite_literal` returns `None` when `lit` exceeds max
                 // width. Since a literal is basically unformattable unless it
                 // is a string literal (and only if `format_strings` is set),
@@ -367,9 +364,7 @@ impl Rewrite for ast::Attribute {
                 }
 
                 // 1 = `[`
-                let shape = shape
-                    .offset_left(prefix.len() + 1)
-                    .max_width_error(shape.width, self.span)?;
+                let shape = shape.offset_left(prefix.len() + 1, self.span)?;
                 Ok(meta.rewrite_result(context, shape).map_or_else(
                     |_| snippet.to_owned(),
                     |rw| match &self.kind {

@@ -1,6 +1,7 @@
 use std::num::NonZero;
 
 use rustc_errors::ErrorGuaranteed;
+use rustc_feature::ACCEPTED_LANG_FEATURES;
 use rustc_hir::target::GenericParamKind;
 use rustc_hir::{
     DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
@@ -9,7 +10,7 @@ use rustc_hir::{
 
 use super::prelude::*;
 use super::util::parse_version;
-use crate::session_diagnostics::{self};
+use crate::session_diagnostics;
 
 macro_rules! reject_outside_std {
     ($cx: ident) => {
@@ -177,15 +178,15 @@ impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
     }
 }
 
-pub(crate) struct ConstStabilityIndirectParser;
-impl<S: Stage> NoArgsAttributeParser<S> for ConstStabilityIndirectParser {
+pub(crate) struct RustcConstStableIndirectParser;
+impl<S: Stage> NoArgsAttributeParser<S> for RustcConstStableIndirectParser {
     const PATH: &[Symbol] = &[sym::rustc_const_stable_indirect];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcConstStabilityIndirect;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcConstStableIndirect;
 }
 
 #[derive(Default)]
@@ -244,7 +245,20 @@ impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
             this.promotable = true;
         }),
     ];
-    const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Use), // FIXME I don't think this does anything?
+        Allow(Target::Const),
+        Allow(Target::AssocConst),
+        Allow(Target::Trait),
+        Allow(Target::Static),
+        Allow(Target::Crate),
+    ]);
 
     fn finalize(mut self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.promotable {
@@ -353,7 +367,7 @@ pub(crate) fn parse_stability<S: Stage>(
     }
 }
 
-// Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
+/// Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
 /// attribute, and return the feature name and its stability information.
 pub(crate) fn parse_unstability<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
@@ -363,7 +377,6 @@ pub(crate) fn parse_unstability<S: Stage>(
     let mut reason = None;
     let mut issue = None;
     let mut issue_num = None;
-    let mut is_soft = false;
     let mut implied_by = None;
     let mut old_name = None;
 
@@ -410,12 +423,6 @@ pub(crate) fn parse_unstability<S: Stage>(
                     },
                 };
             }
-            Some(sym::soft) => {
-                if let Err(span) = args.no_args() {
-                    cx.emit_err(session_diagnostics::SoftNoArgs { span });
-                }
-                is_soft = true;
-            }
             Some(sym::implied_by) => {
                 insert_value_into_option_or_error(cx, &param, &mut implied_by, word.unwrap())?
             }
@@ -425,14 +432,7 @@ pub(crate) fn parse_unstability<S: Stage>(
             _ => {
                 cx.expected_specific_argument(
                     param.span(),
-                    &[
-                        sym::feature,
-                        sym::reason,
-                        sym::issue,
-                        sym::soft,
-                        sym::implied_by,
-                        sym::old_name,
-                    ],
+                    &[sym::feature, sym::reason, sym::issue, sym::implied_by, sym::old_name],
                 );
                 return None;
             }
@@ -452,10 +452,19 @@ pub(crate) fn parse_unstability<S: Stage>(
 
     match (feature, issue) {
         (Ok(feature), Ok(_)) => {
+            // Stable *language* features shouldn't be used as unstable library features.
+            // (Not doing this for stable library features is checked by tidy.)
+            if ACCEPTED_LANG_FEATURES.iter().any(|f| f.name == feature) {
+                cx.emit_err(session_diagnostics::UnstableAttrForAlreadyStableFeature {
+                    attr_span: cx.attr_span,
+                    item_span: cx.target_span,
+                });
+                return None;
+            }
+
             let level = StabilityLevel::Unstable {
                 reason: UnstableReason::from_opt_reason(reason),
                 issue: issue_num,
-                is_soft,
                 implied_by,
                 old_name,
             };

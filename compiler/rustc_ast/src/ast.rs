@@ -30,8 +30,9 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 pub use rustc_span::AttrId;
-use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, respan, sym,
+};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::attr::data_structures::CfgEntry;
@@ -119,8 +120,8 @@ impl PartialEq<&[Symbol]> for Path {
     }
 }
 
-impl<CTX: rustc_span::HashStableContext> HashStable<CTX> for Path {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+impl<Hcx: rustc_span::HashStableContext> HashStable<Hcx> for Path {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
             segment.ident.hash_stable(hcx, hasher);
@@ -656,11 +657,7 @@ impl Pat {
             // A tuple pattern `(P0, .., Pn)` can be reparsed as `(T0, .., Tn)`
             // assuming `T0` to `Tn` are all syntactically valid as types.
             PatKind::Tuple(pats) => {
-                let mut tys = ThinVec::with_capacity(pats.len());
-                // FIXME(#48994) - could just be collected into an Option<Vec>
-                for pat in pats {
-                    tys.push(pat.to_ty()?);
-                }
+                let tys = pats.iter().map(|pat| pat.to_ty()).collect::<Option<ThinVec<_>>>()?;
                 TyKind::Tup(tys)
             }
             _ => return None,
@@ -941,7 +938,7 @@ pub enum PatKind {
     Never,
 
     /// A guard pattern (e.g., `x if guard(x)`).
-    Guard(Box<Pat>, Box<Expr>),
+    Guard(Box<Pat>, Box<Guard>),
 
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(Box<Pat>),
@@ -1349,7 +1346,7 @@ pub struct Arm {
     /// Match arm pattern, e.g. `10` in `match foo { 10 => {}, _ => {} }`.
     pub pat: Box<Pat>,
     /// Match arm guard, e.g. `n > 10` in `match foo { n if n > 10 => {}, _ => {} }`.
-    pub guard: Option<Box<Expr>>,
+    pub guard: Option<Box<Guard>>,
     /// Match arm body. Omitted if the pattern is a never pattern.
     pub body: Option<Box<Expr>>,
     pub span: Span,
@@ -1728,6 +1725,12 @@ pub enum StructRest {
     Rest(Span),
     /// No trailing `..` or expression.
     None,
+    /// No trailing `..` or expression, and also, a parse error occurred inside the struct braces.
+    ///
+    /// This struct should be treated similarly to as if it had an `..` in it,
+    /// in particular rather than reporting missing fields, because the parse error
+    /// makes which fields the struct was intended to have not fully known.
+    NoneWithError(ErrorGuaranteed),
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -2557,6 +2560,11 @@ pub enum TyKind {
     /// Pattern types like `pattern_type!(u32 is 1..=)`, which is the same as `NonZero<u32>`,
     /// just as part of the type system.
     Pat(Box<Ty>, Box<TyPat>),
+    /// A `field_of` expression (e.g., `builtin # field_of(Struct, field)`).
+    ///
+    /// Usually not written directly in user code but indirectly via the macro
+    /// `core::field::field_of!(...)`.
+    FieldOf(Box<Ty>, Option<Ident>, Ident),
     /// Sometimes we need a dummy value when no error has occurred.
     Dummy,
     /// Placeholder for a kind that has failed to be defined.
@@ -3135,8 +3143,16 @@ pub enum Const {
 /// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
 pub enum Defaultness {
+    /// Item is unmarked. Implicitly determined based off of position.
+    /// For impls, this is `final`; for traits, this is `default`.
+    ///
+    /// If you're expanding an item in a built-in macro or parsing an item
+    /// by hand, you probably want to use this.
+    Implicit,
+    /// `default`
     Default(Span),
-    Final,
+    /// `final`; per RFC 3678, only trait items may be *explicitly* marked final.
+    Final(Span),
 }
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
@@ -3538,6 +3554,19 @@ impl VisibilityKind {
     }
 }
 
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct ImplRestriction {
+    pub kind: RestrictionKind,
+    pub span: Span,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum RestrictionKind {
+    Unrestricted,
+    Restricted { path: Box<Path>, id: NodeId, shorthand: bool },
+}
+
 /// Field definition in a struct, variant or union.
 ///
 /// E.g., `bar: usize` as in `struct Foo { bar: usize }`.
@@ -3737,6 +3766,7 @@ pub struct Trait {
     pub constness: Const,
     pub safety: Safety,
     pub is_auto: IsAuto,
+    pub impl_restriction: ImplRestriction,
     pub ident: Ident,
     pub generics: Generics,
     #[visitable(extra = BoundKind::SuperTraits)]
@@ -3873,26 +3903,43 @@ pub struct ConstItem {
     pub ident: Ident,
     pub generics: Generics,
     pub ty: Box<Ty>,
-    pub rhs: Option<ConstItemRhs>,
+    pub rhs_kind: ConstItemRhsKind,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub enum ConstItemRhs {
-    TypeConst(AnonConst),
-    Body(Box<Expr>),
+pub enum ConstItemRhsKind {
+    Body { rhs: Option<Box<Expr>> },
+    TypeConst { rhs: Option<AnonConst> },
 }
 
-impl ConstItemRhs {
-    pub fn span(&self) -> Span {
-        self.expr().span
+impl ConstItemRhsKind {
+    pub fn new_body(rhs: Box<Expr>) -> Self {
+        Self::Body { rhs: Some(rhs) }
     }
 
-    pub fn expr(&self) -> &Expr {
+    pub fn span(&self) -> Option<Span> {
+        Some(self.expr()?.span)
+    }
+
+    pub fn expr(&self) -> Option<&Expr> {
         match self {
-            ConstItemRhs::TypeConst(anon_const) => &anon_const.value,
-            ConstItemRhs::Body(expr) => expr,
+            Self::Body { rhs: Some(body) } => Some(&body),
+            Self::TypeConst { rhs: Some(anon) } => Some(&anon.value),
+            _ => None,
         }
+    }
+
+    pub fn has_expr(&self) -> bool {
+        match self {
+            Self::Body { rhs: Some(_) } => true,
+            Self::TypeConst { rhs: Some(_) } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_type_const(&self) -> bool {
+        matches!(self, &Self::TypeConst { .. })
     }
 }
 
@@ -3905,6 +3952,18 @@ pub struct ConstBlockItem {
 
 impl ConstBlockItem {
     pub const IDENT: Ident = Ident { name: kw::Underscore, span: DUMMY_SP };
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct Guard {
+    pub cond: Expr,
+    pub span_with_leading_if: Span,
+}
+
+impl Guard {
+    pub fn span(&self) -> Span {
+        self.cond.span
+    }
 }
 
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.
@@ -4127,7 +4186,7 @@ impl AssocItemKind {
             | Self::Fn(box Fn { defaultness, .. })
             | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
             Self::MacCall(..) | Self::Delegation(..) | Self::DelegationMac(..) => {
-                Defaultness::Final
+                Defaultness::Implicit
             }
         }
     }
@@ -4190,9 +4249,7 @@ impl ForeignItemKind {
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
         match foreign_item_kind {
-            ForeignItemKind::Static(box static_foreign_item) => {
-                ItemKind::Static(Box::new(static_foreign_item))
-            }
+            ForeignItemKind::Static(static_foreign_item) => ItemKind::Static(static_foreign_item),
             ForeignItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             ForeignItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             ForeignItemKind::MacCall(a) => ItemKind::MacCall(a),
@@ -4205,7 +4262,7 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 
     fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
         Ok(match item_kind {
-            ItemKind::Static(box static_item) => ForeignItemKind::Static(Box::new(static_item)),
+            ItemKind::Static(static_item) => ForeignItemKind::Static(static_item),
             ItemKind::Fn(fn_kind) => ForeignItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_alias_kind) => ForeignItemKind::TyAlias(ty_alias_kind),
             ItemKind::MacCall(a) => ForeignItemKind::MacCall(a),

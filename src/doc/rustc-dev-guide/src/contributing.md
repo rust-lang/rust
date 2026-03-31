@@ -324,7 +324,7 @@ When you resolve them, you should use `@rustbot` to mark it as `S-waiting-on-rev
 GitHub allows [closing issues using keywords][closing-keywords].
 This feature should be used to keep the issue tracker tidy.
 However, it is generally preferred
-to put the "closes #123" text in the PR description rather than the issue commit;
+to put the "closes #123" text in the PR description rather than the commit message;
 particularly during rebasing, citing the issue number in the commit can "spam"
 the issue in question.
 

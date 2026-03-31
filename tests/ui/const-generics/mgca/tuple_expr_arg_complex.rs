@@ -2,8 +2,7 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    #[type_const]
-    const ASSOC: usize;
+    type const ASSOC: usize;
 }
 
 fn takes_tuple<const A: (u32, u32)>() {}

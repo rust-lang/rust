@@ -192,8 +192,6 @@ unused_lifetimes = "warn"
 unreachable_pub = "warn"
 
 [workspace.lints.clippy]
-# FIXME Remove the tidy test once the lint table is stable
-
 ## lint groups
 complexity = { level = "warn", priority = -1 }
 correctness = { level = "deny", priority = -1 }

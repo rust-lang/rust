@@ -189,8 +189,7 @@ trait Tra3 {
 trait Trait {
     type Gat<T>;
 
-    #[type_const]
-    const ASSOC: i32;
+    type const ASSOC: i32;
 
     fn foo() -> impl Sized;
 }
@@ -198,8 +197,7 @@ trait Trait {
 impl Trait for () {
     type Gat<T> = ();
 
-    #[type_const]
-    const ASSOC: i32 = 3;
+    type const ASSOC: i32 = 3;
 
     fn foo() {}
 }

@@ -1,6 +1,6 @@
 // Test that when a trait impl changes, fns whose body uses that trait
 // must also be recompiled.
-
+//@ ignore-parallel-frontend dep graph
 //@ incremental
 //@ compile-flags: -Z query-dep-graph
 
@@ -26,7 +26,7 @@ mod x {
 mod y {
     use crate::Foo;
 
-    #[rustc_then_this_would_need(typeck)] //~ ERROR OK
+    #[rustc_then_this_would_need(typeck_root)] //~ ERROR OK
     pub fn use_char_assoc() {
         // Careful here: in the representation, <char as Foo>::T gets
         // normalized away, so at a certain point we had no edge to

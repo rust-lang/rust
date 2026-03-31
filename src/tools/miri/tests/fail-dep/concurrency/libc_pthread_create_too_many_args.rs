@@ -5,6 +5,7 @@
 use std::{mem, ptr};
 
 extern "C" fn thread_start(_null: *mut libc::c_void, _x: i32) -> *mut libc::c_void {
+    //~^ERROR: calling a function with fewer arguments than it requires
     panic!()
 }
 
@@ -16,7 +17,6 @@ fn main() {
             mem::transmute(thread_start);
         assert_eq!(
             libc::pthread_create(&mut native, ptr::null(), thread_start, ptr::null_mut()),
-            //~^ERROR: calling a function with fewer arguments than it requires
             0
         );
         assert_eq!(libc::pthread_join(native, ptr::null_mut()), 0);

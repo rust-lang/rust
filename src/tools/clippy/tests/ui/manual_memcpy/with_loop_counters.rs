@@ -1,5 +1,6 @@
 #![warn(clippy::needless_range_loop, clippy::manual_memcpy)]
-//@no-rustfix
+#![allow(clippy::redundant_slicing, clippy::identity_op)]
+
 pub fn manual_copy_with_counters(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     let mut count = 0;
     for i in 3..src.len() {

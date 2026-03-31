@@ -2,20 +2,27 @@ error: called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly 
   --> tests/ui/double_ended_iterator_last.rs:5:5
    |
 LL |     s.split(' ').last()
-   |     ^^^^^^^^^^^^^------
-   |                  |
-   |                  help: try: `next_back()`
+   |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::double-ended-iterator-last` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::double_ended_iterator_last)]`
+help: try
+   |
+LL -     s.split(' ').last()
+LL +     s.split(' ').next_back()
+   |
 
 error: called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly iterate the entire iterator
   --> tests/ui/double_ended_iterator_last.rs:22:13
    |
 LL |     let _ = DeIterator.last();
-   |             ^^^^^^^^^^^------
-   |                        |
-   |                        help: try: `next_back()`
+   |             ^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = DeIterator.last();
+LL +     let _ = DeIterator.next_back();
+   |
 
 error: called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly iterate the entire iterator
   --> tests/ui/double_ended_iterator_last.rs:114:36

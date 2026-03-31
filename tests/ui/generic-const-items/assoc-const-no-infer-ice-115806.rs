@@ -1,6 +1,7 @@
 // ICE: assertion failed: !value.has_infer()
 // issue: rust-lang/rust#115806
-#![feature(min_generic_const_args, unsized_const_params)]
+#![feature(adt_const_params, min_generic_const_args, unsized_const_params)]
+#![feature(associated_type_defaults)]
 #![allow(incomplete_features)]
 
 pub struct NoPin;
@@ -8,8 +9,7 @@ pub struct NoPin;
 impl<TA> Pins<TA> for NoPin {}
 
 pub trait PinA<PER> {
-    #[type_const]
-    const A: &'static () = const { &() };
+    type const A: &'static () = const { &() };
 }
 
 pub trait Pins<USART> {}

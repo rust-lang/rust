@@ -49,7 +49,7 @@ pub fn __crc32d(crc: u32, data: u64) -> u32 {
 #[inline(always)]
 #[target_feature(enable = "jsconv")]
 #[cfg_attr(test, assert_instr(fjcvtzs))]
-#[stable(feature = "stdarch_aarch64_jscvt", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_aarch64_jscvt", since = "1.95.0")]
 pub fn __jcvt(a: f64) -> i32 {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -1565,7 +1565,7 @@ pub fn vceqh_f16(a: f16, b: f16) -> u16 {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcmeq))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vceqz_f16(a: float16x4_t) -> uint16x4_t {
     let b: f16x4 = f16x4::new(0.0, 0.0, 0.0, 0.0);
@@ -1576,7 +1576,7 @@ pub fn vceqz_f16(a: float16x4_t) -> uint16x4_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcmeq))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vceqzq_f16(a: float16x8_t) -> uint16x8_t {
     let b: f16x8 = f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
@@ -4092,7 +4092,7 @@ pub fn vcmlaq_rot90_laneq_f32<const LANE: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_f32)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_f32<const LANE1: i32, const LANE2: i32>(
@@ -4113,7 +4113,7 @@ pub fn vcopy_lane_f32<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_s8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
@@ -4137,7 +4137,7 @@ pub fn vcopy_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b: int8x8_
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_s16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_s16<const LANE1: i32, const LANE2: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
@@ -4157,7 +4157,7 @@ pub fn vcopy_lane_s16<const LANE1: i32, const LANE2: i32>(a: int16x4_t, b: int16
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_s32)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_s32<const LANE1: i32, const LANE2: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
@@ -4175,7 +4175,7 @@ pub fn vcopy_lane_s32<const LANE1: i32, const LANE2: i32>(a: int32x2_t, b: int32
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_u8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_u8<const LANE1: i32, const LANE2: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
@@ -4199,7 +4199,7 @@ pub fn vcopy_lane_u8<const LANE1: i32, const LANE2: i32>(a: uint8x8_t, b: uint8x
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_u16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_u16<const LANE1: i32, const LANE2: i32>(
@@ -4222,7 +4222,7 @@ pub fn vcopy_lane_u16<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_u32)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_u32<const LANE1: i32, const LANE2: i32>(
@@ -4243,7 +4243,7 @@ pub fn vcopy_lane_u32<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_p8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_p8<const LANE1: i32, const LANE2: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
@@ -4267,7 +4267,7 @@ pub fn vcopy_lane_p8<const LANE1: i32, const LANE2: i32>(a: poly8x8_t, b: poly8x
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_p16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_p16<const LANE1: i32, const LANE2: i32>(
@@ -4290,7 +4290,7 @@ pub fn vcopy_lane_p16<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_f32)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_f32<const LANE1: i32, const LANE2: i32>(
@@ -4312,7 +4312,7 @@ pub fn vcopy_laneq_f32<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_s8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b: int8x16_t) -> int8x8_t {
@@ -4338,7 +4338,7 @@ pub fn vcopy_laneq_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b: int8x1
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_s16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_s16<const LANE1: i32, const LANE2: i32>(
@@ -4362,7 +4362,7 @@ pub fn vcopy_laneq_s16<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_s32)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_s32<const LANE1: i32, const LANE2: i32>(
@@ -4384,7 +4384,7 @@ pub fn vcopy_laneq_s32<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_u8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_u8<const LANE1: i32, const LANE2: i32>(
@@ -4413,7 +4413,7 @@ pub fn vcopy_laneq_u8<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_u16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_u16<const LANE1: i32, const LANE2: i32>(
@@ -4437,7 +4437,7 @@ pub fn vcopy_laneq_u16<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_u32)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_u32<const LANE1: i32, const LANE2: i32>(
@@ -4459,7 +4459,7 @@ pub fn vcopy_laneq_u32<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_p8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_p8<const LANE1: i32, const LANE2: i32>(
@@ -4488,7 +4488,7 @@ pub fn vcopy_laneq_p8<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_p16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_p16<const LANE1: i32, const LANE2: i32>(
@@ -4624,7 +4624,7 @@ pub fn vcopyq_lane_p64<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_s8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x16_t, b: int8x8_t) -> int8x16_t {
@@ -4994,7 +4994,7 @@ pub fn vcopyq_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x16_t, b: int8x
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_s16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_lane_s16<const LANE1: i32, const LANE2: i32>(
@@ -5022,7 +5022,7 @@ pub fn vcopyq_lane_s16<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_s32)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_lane_s32<const LANE1: i32, const LANE2: i32>(
@@ -5046,7 +5046,7 @@ pub fn vcopyq_lane_s32<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_u8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_lane_u8<const LANE1: i32, const LANE2: i32>(
@@ -5419,7 +5419,7 @@ pub fn vcopyq_lane_u8<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_u16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_lane_u16<const LANE1: i32, const LANE2: i32>(
@@ -5447,7 +5447,7 @@ pub fn vcopyq_lane_u16<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_u32)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_lane_u32<const LANE1: i32, const LANE2: i32>(
@@ -5471,7 +5471,7 @@ pub fn vcopyq_lane_u32<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_p8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_lane_p8<const LANE1: i32, const LANE2: i32>(
@@ -5844,7 +5844,7 @@ pub fn vcopyq_lane_p8<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_p16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_lane_p16<const LANE1: i32, const LANE2: i32>(
@@ -5872,7 +5872,7 @@ pub fn vcopyq_lane_p16<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_f32)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_f32<const LANE1: i32, const LANE2: i32>(
@@ -5895,7 +5895,7 @@ pub fn vcopyq_laneq_f32<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_f64)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_f64<const LANE1: i32, const LANE2: i32>(
@@ -5916,7 +5916,7 @@ pub fn vcopyq_laneq_f64<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_s8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_s8<const LANE1: i32, const LANE2: i32>(
@@ -6287,7 +6287,7 @@ pub fn vcopyq_laneq_s8<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_s16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_s16<const LANE1: i32, const LANE2: i32>(
@@ -6314,7 +6314,7 @@ pub fn vcopyq_laneq_s16<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_s32)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_s32<const LANE1: i32, const LANE2: i32>(
@@ -6337,7 +6337,7 @@ pub fn vcopyq_laneq_s32<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_s64)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_s64<const LANE1: i32, const LANE2: i32>(
@@ -6358,7 +6358,7 @@ pub fn vcopyq_laneq_s64<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_u8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_u8<const LANE1: i32, const LANE2: i32>(
@@ -6729,7 +6729,7 @@ pub fn vcopyq_laneq_u8<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_u16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_u16<const LANE1: i32, const LANE2: i32>(
@@ -6756,7 +6756,7 @@ pub fn vcopyq_laneq_u16<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_u32)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_u32<const LANE1: i32, const LANE2: i32>(
@@ -6779,7 +6779,7 @@ pub fn vcopyq_laneq_u32<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_u64)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_u64<const LANE1: i32, const LANE2: i32>(
@@ -6800,7 +6800,7 @@ pub fn vcopyq_laneq_u64<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_p8)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_p8<const LANE1: i32, const LANE2: i32>(
@@ -7171,7 +7171,7 @@ pub fn vcopyq_laneq_p8<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_p16)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_p16<const LANE1: i32, const LANE2: i32>(
@@ -7198,7 +7198,7 @@ pub fn vcopyq_laneq_p16<const LANE1: i32, const LANE2: i32>(
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_p64)"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 0))]
 #[rustc_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopyq_laneq_p64<const LANE1: i32, const LANE2: i32>(
@@ -7283,7 +7283,7 @@ pub fn vcvtq_f64_u64(a: uint64x2_t) -> float64x2_t {
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtn2))]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_high_f16_f32(a: float16x4_t, b: float32x4_t) -> float16x8_t {
     vcombine_f16(a, vcvt_f16_f32(b))
@@ -7293,7 +7293,7 @@ pub fn vcvt_high_f16_f32(a: float16x4_t, b: float32x4_t) -> float16x8_t {
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtl2))]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_high_f32_f16(a: float16x8_t) -> float32x4_t {
     vcvt_f32_f16(vget_high_f16(a))
@@ -7532,7 +7532,7 @@ pub fn vcvtq_u64_f64(a: float64x2_t) -> uint64x2_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtas))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvta_s16_f16(a: float16x4_t) -> int16x4_t {
     unsafe extern "unadjusted" {
@@ -7549,7 +7549,7 @@ pub fn vcvta_s16_f16(a: float16x4_t) -> int16x4_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtas))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtaq_s16_f16(a: float16x8_t) -> int16x8_t {
     unsafe extern "unadjusted" {
@@ -7630,7 +7630,7 @@ pub fn vcvtaq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtau))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvta_u16_f16(a: float16x4_t) -> uint16x4_t {
     unsafe extern "unadjusted" {
@@ -7647,7 +7647,7 @@ pub fn vcvta_u16_f16(a: float16x4_t) -> uint16x4_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtau))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtaq_u16_f16(a: float16x8_t) -> uint16x8_t {
     unsafe extern "unadjusted" {
@@ -8218,7 +8218,7 @@ pub fn vcvth_u64_f16(a: f16) -> u64 {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtms))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtm_s16_f16(a: float16x4_t) -> int16x4_t {
     unsafe extern "unadjusted" {
@@ -8235,7 +8235,7 @@ pub fn vcvtm_s16_f16(a: float16x4_t) -> int16x4_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtms))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtmq_s16_f16(a: float16x8_t) -> int16x8_t {
     unsafe extern "unadjusted" {
@@ -8316,7 +8316,7 @@ pub fn vcvtmq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtmu))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtm_u16_f16(a: float16x4_t) -> uint16x4_t {
     unsafe extern "unadjusted" {
@@ -8333,7 +8333,7 @@ pub fn vcvtm_u16_f16(a: float16x4_t) -> uint16x4_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtmu))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtmq_u16_f16(a: float16x8_t) -> uint16x8_t {
     unsafe extern "unadjusted" {
@@ -8566,7 +8566,7 @@ pub fn vcvtmd_u64_f64(a: f64) -> u64 {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtns))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtn_s16_f16(a: float16x4_t) -> int16x4_t {
     unsafe extern "unadjusted" {
@@ -8583,7 +8583,7 @@ pub fn vcvtn_s16_f16(a: float16x4_t) -> int16x4_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtns))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtnq_s16_f16(a: float16x8_t) -> int16x8_t {
     unsafe extern "unadjusted" {
@@ -8664,7 +8664,7 @@ pub fn vcvtnq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtnu))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtn_u16_f16(a: float16x4_t) -> uint16x4_t {
     unsafe extern "unadjusted" {
@@ -8681,7 +8681,7 @@ pub fn vcvtn_u16_f16(a: float16x4_t) -> uint16x4_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtnu))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtnq_u16_f16(a: float16x8_t) -> uint16x8_t {
     unsafe extern "unadjusted" {
@@ -8914,7 +8914,7 @@ pub fn vcvtnd_u64_f64(a: f64) -> u64 {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtps))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtp_s16_f16(a: float16x4_t) -> int16x4_t {
     unsafe extern "unadjusted" {
@@ -8931,7 +8931,7 @@ pub fn vcvtp_s16_f16(a: float16x4_t) -> int16x4_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtps))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtpq_s16_f16(a: float16x8_t) -> int16x8_t {
     unsafe extern "unadjusted" {
@@ -9012,7 +9012,7 @@ pub fn vcvtpq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtpu))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtp_u16_f16(a: float16x4_t) -> uint16x4_t {
     unsafe extern "unadjusted" {
@@ -9029,7 +9029,7 @@ pub fn vcvtp_u16_f16(a: float16x4_t) -> uint16x4_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fcvtpu))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtpq_u16_f16(a: float16x8_t) -> uint16x8_t {
     unsafe extern "unadjusted" {
@@ -9493,7 +9493,7 @@ pub fn vcvtxd_f32_f64(a: f64) -> f32 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdiv_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fdiv))]
 pub fn vdiv_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -9503,7 +9503,7 @@ pub fn vdiv_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdivq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fdiv))]
 pub fn vdivq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -10108,7 +10108,7 @@ pub fn vfma_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(fmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfma_lane_f16<const LANE: i32>(
     a: float16x4_t,
@@ -10124,7 +10124,7 @@ pub fn vfma_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfma_laneq_f16<const LANE: i32>(
     a: float16x4_t,
@@ -10140,7 +10140,7 @@ pub fn vfma_laneq_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmaq_lane_f16<const LANE: i32>(
     a: float16x8_t,
@@ -10156,7 +10156,7 @@ pub fn vfmaq_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmaq_laneq_f16<const LANE: i32>(
     a: float16x8_t,
@@ -10434,7 +10434,7 @@ pub fn vfmad_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlal2))]
 pub fn vfmlal_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
@@ -10452,7 +10452,7 @@ pub fn vfmlal_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float3
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlal2))]
 pub fn vfmlalq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
@@ -10472,7 +10472,7 @@ pub fn vfmlalq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlal_lane_high_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10489,7 +10489,7 @@ pub fn vfmlal_lane_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlal_laneq_high_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10506,7 +10506,7 @@ pub fn vfmlal_laneq_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlalq_lane_high_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10523,7 +10523,7 @@ pub fn vfmlalq_lane_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlalq_laneq_high_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10540,7 +10540,7 @@ pub fn vfmlalq_laneq_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlal_lane_low_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10557,7 +10557,7 @@ pub fn vfmlal_lane_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlal_laneq_low_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10574,7 +10574,7 @@ pub fn vfmlal_laneq_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlalq_lane_low_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10591,7 +10591,7 @@ pub fn vfmlalq_lane_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlalq_laneq_low_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10606,7 +10606,7 @@ pub fn vfmlalq_laneq_low_f16<const LANE: i32>(
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlal))]
 pub fn vfmlal_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
@@ -10624,7 +10624,7 @@ pub fn vfmlal_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlal))]
 pub fn vfmlalq_low_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
@@ -10642,7 +10642,7 @@ pub fn vfmlalq_low_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float3
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlsl2))]
 pub fn vfmlsl_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
@@ -10660,7 +10660,7 @@ pub fn vfmlsl_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float3
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlsl2))]
 pub fn vfmlslq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
@@ -10680,7 +10680,7 @@ pub fn vfmlslq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlsl_lane_high_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10697,7 +10697,7 @@ pub fn vfmlsl_lane_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlsl_laneq_high_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10714,7 +10714,7 @@ pub fn vfmlsl_laneq_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlslq_lane_high_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10731,7 +10731,7 @@ pub fn vfmlslq_lane_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlslq_laneq_high_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10748,7 +10748,7 @@ pub fn vfmlslq_laneq_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlsl_lane_low_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10765,7 +10765,7 @@ pub fn vfmlsl_lane_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlsl_laneq_low_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10782,7 +10782,7 @@ pub fn vfmlsl_laneq_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlslq_lane_low_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10799,7 +10799,7 @@ pub fn vfmlslq_lane_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlslq_laneq_low_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10814,7 +10814,7 @@ pub fn vfmlslq_laneq_low_f16<const LANE: i32>(
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlsl))]
 pub fn vfmlsl_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
@@ -10832,7 +10832,7 @@ pub fn vfmlsl_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlsl))]
 pub fn vfmlslq_low_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
@@ -10863,7 +10863,7 @@ pub fn vfms_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(fmls, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfms_lane_f16<const LANE: i32>(
     a: float16x4_t,
@@ -10879,7 +10879,7 @@ pub fn vfms_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmls, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfms_laneq_f16<const LANE: i32>(
     a: float16x4_t,
@@ -10895,7 +10895,7 @@ pub fn vfms_laneq_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmls, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmsq_lane_f16<const LANE: i32>(
     a: float16x8_t,
@@ -10911,7 +10911,7 @@ pub fn vfmsq_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmls, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmsq_laneq_f16<const LANE: i32>(
     a: float16x8_t,
@@ -11488,16 +11488,9 @@ pub unsafe fn vld1q_p64(ptr: *const p64) -> poly64x2_t {
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld1))]
-pub unsafe fn vld1_f64_x2(a: *const f64) -> float64x1x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld1x2.v1f64.p0"
-        )]
-        fn _vld1_f64_x2(a: *const f64) -> float64x1x2_t;
-    }
-    _vld1_f64_x2(a)
+#[cfg_attr(test, assert_instr(ld))]
+pub unsafe fn vld1_f64_x2(ptr: *const f64) -> float64x1x2_t {
+    crate::ptr::read_unaligned(ptr.cast())
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f64_x3)"]
@@ -11506,16 +11499,9 @@ pub unsafe fn vld1_f64_x2(a: *const f64) -> float64x1x2_t {
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld1))]
-pub unsafe fn vld1_f64_x3(a: *const f64) -> float64x1x3_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld1x3.v1f64.p0"
-        )]
-        fn _vld1_f64_x3(a: *const f64) -> float64x1x3_t;
-    }
-    _vld1_f64_x3(a)
+#[cfg_attr(test, assert_instr(ld))]
+pub unsafe fn vld1_f64_x3(ptr: *const f64) -> float64x1x3_t {
+    crate::ptr::read_unaligned(ptr.cast())
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f64_x4)"]
@@ -11524,16 +11510,9 @@ pub unsafe fn vld1_f64_x3(a: *const f64) -> float64x1x3_t {
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld1))]
-pub unsafe fn vld1_f64_x4(a: *const f64) -> float64x1x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld1x4.v1f64.p0"
-        )]
-        fn _vld1_f64_x4(a: *const f64) -> float64x1x4_t;
-    }
-    _vld1_f64_x4(a)
+#[cfg_attr(test, assert_instr(ld))]
+pub unsafe fn vld1_f64_x4(ptr: *const f64) -> float64x1x4_t {
+    crate::ptr::read_unaligned(ptr.cast())
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f64_x2)"]
@@ -11542,16 +11521,9 @@ pub unsafe fn vld1_f64_x4(a: *const f64) -> float64x1x4_t {
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld1))]
-pub unsafe fn vld1q_f64_x2(a: *const f64) -> float64x2x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld1x2.v2f64.p0"
-        )]
-        fn _vld1q_f64_x2(a: *const f64) -> float64x2x2_t;
-    }
-    _vld1q_f64_x2(a)
+#[cfg_attr(test, assert_instr(ld))]
+pub unsafe fn vld1q_f64_x2(ptr: *const f64) -> float64x2x2_t {
+    crate::ptr::read_unaligned(ptr.cast())
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f64_x3)"]
@@ -11560,16 +11532,9 @@ pub unsafe fn vld1q_f64_x2(a: *const f64) -> float64x2x2_t {
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld1))]
-pub unsafe fn vld1q_f64_x3(a: *const f64) -> float64x2x3_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld1x3.v2f64.p0"
-        )]
-        fn _vld1q_f64_x3(a: *const f64) -> float64x2x3_t;
-    }
-    _vld1q_f64_x3(a)
+#[cfg_attr(test, assert_instr(ld))]
+pub unsafe fn vld1q_f64_x3(ptr: *const f64) -> float64x2x3_t {
+    crate::ptr::read_unaligned(ptr.cast())
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f64_x4)"]
@@ -11578,16 +11543,9 @@ pub unsafe fn vld1q_f64_x3(a: *const f64) -> float64x2x3_t {
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld1))]
-pub unsafe fn vld1q_f64_x4(a: *const f64) -> float64x2x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld1x4.v2f64.p0"
-        )]
-        fn _vld1q_f64_x4(a: *const f64) -> float64x2x4_t;
-    }
-    _vld1q_f64_x4(a)
+#[cfg_attr(test, assert_instr(ld))]
+pub unsafe fn vld1q_f64_x4(ptr: *const f64) -> float64x2x4_t {
+    crate::ptr::read_unaligned(ptr.cast())
 }
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_f64)"]
@@ -11652,14 +11610,7 @@ pub unsafe fn vld2q_dup_s64(a: *const i64) -> int64x2x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vld2_f64(a: *const f64) -> float64x1x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld2.v1f64.p0"
-        )]
-        fn _vld2_f64(ptr: *const float64x1_t) -> float64x1x2_t;
-    }
-    _vld2_f64(a as _)
+    crate::ptr::read_unaligned(a.cast())
 }
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_f64)"]
@@ -11962,27 +11913,11 @@ pub unsafe fn vld2q_p64(a: *const p64) -> poly64x2x2_t {
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2))]
 pub unsafe fn vld2q_u64(a: *const u64) -> uint64x2x2_t {
     transmute(vld2q_s64(transmute(a)))
-}
-#[doc = "Load multiple 2-element structures to two registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_u64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld2))]
-pub unsafe fn vld2q_u64(a: *const u64) -> uint64x2x2_t {
-    let mut ret_val: uint64x2x2_t = transmute(vld2q_s64(transmute(a)));
-    ret_val.0 = unsafe { simd_shuffle!(ret_val.0, ret_val.0, [1, 0]) };
-    ret_val.1 = unsafe { simd_shuffle!(ret_val.1, ret_val.1, [1, 0]) };
-    ret_val
 }
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_f64)"]
@@ -12047,14 +11982,7 @@ pub unsafe fn vld3q_dup_s64(a: *const i64) -> int64x2x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vld3_f64(a: *const f64) -> float64x1x3_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld3.v1f64.p0"
-        )]
-        fn _vld3_f64(ptr: *const float64x1_t) -> float64x1x3_t;
-    }
-    _vld3_f64(a as _)
+    crate::ptr::read_unaligned(a.cast())
 }
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_f64)"]
@@ -12389,28 +12317,11 @@ pub unsafe fn vld3q_p64(a: *const p64) -> poly64x2x3_t {
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3))]
 pub unsafe fn vld3q_u64(a: *const u64) -> uint64x2x3_t {
     transmute(vld3q_s64(transmute(a)))
-}
-#[doc = "Load multiple 3-element structures to three registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_u64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld3))]
-pub unsafe fn vld3q_u64(a: *const u64) -> uint64x2x3_t {
-    let mut ret_val: uint64x2x3_t = transmute(vld3q_s64(transmute(a)));
-    ret_val.0 = unsafe { simd_shuffle!(ret_val.0, ret_val.0, [1, 0]) };
-    ret_val.1 = unsafe { simd_shuffle!(ret_val.1, ret_val.1, [1, 0]) };
-    ret_val.2 = unsafe { simd_shuffle!(ret_val.2, ret_val.2, [1, 0]) };
-    ret_val
 }
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_f64)"]
@@ -12475,14 +12386,7 @@ pub unsafe fn vld4q_dup_s64(a: *const i64) -> int64x2x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vld4_f64(a: *const f64) -> float64x1x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld4.v1f64.p0"
-        )]
-        fn _vld4_f64(ptr: *const float64x1_t) -> float64x1x4_t;
-    }
-    _vld4_f64(a as _)
+    crate::ptr::read_unaligned(a.cast())
 }
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_f64)"]
@@ -12825,29 +12729,11 @@ pub unsafe fn vld4q_p64(a: *const p64) -> poly64x2x4_t {
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld4))]
 pub unsafe fn vld4q_u64(a: *const u64) -> uint64x2x4_t {
     transmute(vld4q_s64(transmute(a)))
-}
-#[doc = "Load multiple 4-element structures to four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_u64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld4))]
-pub unsafe fn vld4q_u64(a: *const u64) -> uint64x2x4_t {
-    let mut ret_val: uint64x2x4_t = transmute(vld4q_s64(transmute(a)));
-    ret_val.0 = unsafe { simd_shuffle!(ret_val.0, ret_val.0, [1, 0]) };
-    ret_val.1 = unsafe { simd_shuffle!(ret_val.1, ret_val.1, [1, 0]) };
-    ret_val.2 = unsafe { simd_shuffle!(ret_val.2, ret_val.2, [1, 0]) };
-    ret_val.3 = unsafe { simd_shuffle!(ret_val.3, ret_val.3, [1, 0]) };
-    ret_val
 }
 #[doc = "Load-acquire RCpc one single-element structure to one lane of one register"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vldap1_lane_s64)"]
@@ -12858,6 +12744,7 @@ pub unsafe fn vld4q_u64(a: *const u64) -> uint64x2x4_t {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub unsafe fn vldap1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) -> int64x1_t {
     static_assert!(LANE == 0);
     let atomic_src = crate::sync::atomic::AtomicI64::from_ptr(ptr as *mut i64);
@@ -12876,6 +12763,7 @@ pub unsafe fn vldap1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) 
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub unsafe fn vldap1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     let atomic_src = crate::sync::atomic::AtomicI64::from_ptr(ptr as *mut i64);
@@ -12894,6 +12782,7 @@ pub unsafe fn vldap1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t)
 #[target_feature(enable = "neon,rcpc3")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub unsafe fn vldap1q_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     transmute(vldap1q_lane_s64::<LANE>(ptr as *mut i64, transmute(src)))
@@ -12907,6 +12796,7 @@ pub unsafe fn vldap1q_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x2_
 #[target_feature(enable = "neon,rcpc3")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub unsafe fn vldap1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t) -> uint64x1_t {
     static_assert!(LANE == 0);
     transmute(vldap1_lane_s64::<LANE>(ptr as *mut i64, transmute(src)))
@@ -12920,6 +12810,7 @@ pub unsafe fn vldap1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t)
 #[target_feature(enable = "neon,rcpc3")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub unsafe fn vldap1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     transmute(vldap1q_lane_s64::<LANE>(ptr as *mut i64, transmute(src)))
@@ -12933,6 +12824,7 @@ pub unsafe fn vldap1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t
 #[target_feature(enable = "neon,rcpc3")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub unsafe fn vldap1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -> poly64x1_t {
     static_assert!(LANE == 0);
     transmute(vldap1_lane_s64::<LANE>(ptr as *mut i64, transmute(src)))
@@ -12946,6 +12838,7 @@ pub unsafe fn vldap1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t)
 #[target_feature(enable = "neon,rcpc3")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub unsafe fn vldap1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t) -> poly64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     transmute(vldap1q_lane_s64::<LANE>(ptr as *mut i64, transmute(src)))
@@ -13639,7 +13532,14 @@ pub fn vmaxh_f16(a: f16, b: f16) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmaxnm))]
 pub fn vmaxnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
-    unsafe { simd_fmax(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnm.v1f64"
+        )]
+        fn _vmaxnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t;
+    }
+    unsafe { _vmaxnm_f64(a, b) }
 }
 #[doc = "Floating-point Maximum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmq_f64)"]
@@ -13648,7 +13548,14 @@ pub fn vmaxnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmaxnm))]
 pub fn vmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    unsafe { simd_fmax(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnm.v2f64"
+        )]
+        fn _vmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t;
+    }
+    unsafe { _vmaxnmq_f64(a, b) }
 }
 #[doc = "Floating-point Maximum Number"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmh_f16)"]
@@ -13658,7 +13565,14 @@ pub fn vmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxnm))]
 pub fn vmaxnmh_f16(a: f16, b: f16) -> f16 {
-    f16::max(a, b)
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnm.f16"
+        )]
+        fn _vmaxnmh_f16(a: f16, b: f16) -> f16;
+    }
+    unsafe { _vmaxnmh_f16(a, b) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmv_f16)"]
@@ -13668,7 +13582,14 @@ pub fn vmaxnmh_f16(a: f16, b: f16) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxnmv))]
 pub fn vmaxnmv_f16(a: float16x4_t) -> f16 {
-    unsafe { simd_reduce_max(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f16.v4f16"
+        )]
+        fn _vmaxnmv_f16(a: float16x4_t) -> f16;
+    }
+    unsafe { _vmaxnmv_f16(a) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmvq_f16)"]
@@ -13678,7 +13599,14 @@ pub fn vmaxnmv_f16(a: float16x4_t) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxnmv))]
 pub fn vmaxnmvq_f16(a: float16x8_t) -> f16 {
-    unsafe { simd_reduce_max(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f16.v8f16"
+        )]
+        fn _vmaxnmvq_f16(a: float16x8_t) -> f16;
+    }
+    unsafe { _vmaxnmvq_f16(a) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmv_f32)"]
@@ -13687,7 +13615,14 @@ pub fn vmaxnmvq_f16(a: float16x8_t) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
 pub fn vmaxnmv_f32(a: float32x2_t) -> f32 {
-    unsafe { simd_reduce_max(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f32.v2f32"
+        )]
+        fn _vmaxnmv_f32(a: float32x2_t) -> f32;
+    }
+    unsafe { _vmaxnmv_f32(a) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmvq_f64)"]
@@ -13696,7 +13631,14 @@ pub fn vmaxnmv_f32(a: float32x2_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
 pub fn vmaxnmvq_f64(a: float64x2_t) -> f64 {
-    unsafe { simd_reduce_max(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f64.v2f64"
+        )]
+        fn _vmaxnmvq_f64(a: float64x2_t) -> f64;
+    }
+    unsafe { _vmaxnmvq_f64(a) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmvq_f32)"]
@@ -13705,7 +13647,14 @@ pub fn vmaxnmvq_f64(a: float64x2_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmaxnmv))]
 pub fn vmaxnmvq_f32(a: float32x4_t) -> f32 {
-    unsafe { simd_reduce_max(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f32.v4f32"
+        )]
+        fn _vmaxnmvq_f32(a: float32x4_t) -> f32;
+    }
+    unsafe { _vmaxnmvq_f32(a) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxv_f16)"]
@@ -13953,7 +13902,14 @@ pub fn vminh_f16(a: f16, b: f16) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fminnm))]
 pub fn vminnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
-    unsafe { simd_fmin(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnm.v1f64"
+        )]
+        fn _vminnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t;
+    }
+    unsafe { _vminnm_f64(a, b) }
 }
 #[doc = "Floating-point Minimum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmq_f64)"]
@@ -13962,7 +13918,14 @@ pub fn vminnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fminnm))]
 pub fn vminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    unsafe { simd_fmin(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnm.v2f64"
+        )]
+        fn _vminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t;
+    }
+    unsafe { _vminnmq_f64(a, b) }
 }
 #[doc = "Floating-point Minimum Number"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmh_f16)"]
@@ -13972,7 +13935,14 @@ pub fn vminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminnm))]
 pub fn vminnmh_f16(a: f16, b: f16) -> f16 {
-    f16::min(a, b)
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnm.f16"
+        )]
+        fn _vminnmh_f16(a: f16, b: f16) -> f16;
+    }
+    unsafe { _vminnmh_f16(a, b) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmv_f16)"]
@@ -13982,7 +13952,14 @@ pub fn vminnmh_f16(a: f16, b: f16) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminnmv))]
 pub fn vminnmv_f16(a: float16x4_t) -> f16 {
-    unsafe { simd_reduce_min(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f16.v4f16"
+        )]
+        fn _vminnmv_f16(a: float16x4_t) -> f16;
+    }
+    unsafe { _vminnmv_f16(a) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmvq_f16)"]
@@ -13992,7 +13969,14 @@ pub fn vminnmv_f16(a: float16x4_t) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminnmv))]
 pub fn vminnmvq_f16(a: float16x8_t) -> f16 {
-    unsafe { simd_reduce_min(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f16.v8f16"
+        )]
+        fn _vminnmvq_f16(a: float16x8_t) -> f16;
+    }
+    unsafe { _vminnmvq_f16(a) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmv_f32)"]
@@ -14001,7 +13985,14 @@ pub fn vminnmvq_f16(a: float16x8_t) -> f16 {
 #[cfg_attr(test, assert_instr(fminnmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vminnmv_f32(a: float32x2_t) -> f32 {
-    unsafe { simd_reduce_min(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f32.v2f32"
+        )]
+        fn _vminnmv_f32(a: float32x2_t) -> f32;
+    }
+    unsafe { _vminnmv_f32(a) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmvq_f64)"]
@@ -14010,7 +14001,14 @@ pub fn vminnmv_f32(a: float32x2_t) -> f32 {
 #[cfg_attr(test, assert_instr(fminnmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vminnmvq_f64(a: float64x2_t) -> f64 {
-    unsafe { simd_reduce_min(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f64.v2f64"
+        )]
+        fn _vminnmvq_f64(a: float64x2_t) -> f64;
+    }
+    unsafe { _vminnmvq_f64(a) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmvq_f32)"]
@@ -14019,7 +14017,14 @@ pub fn vminnmvq_f64(a: float64x2_t) -> f64 {
 #[cfg_attr(test, assert_instr(fminnmv))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vminnmvq_f32(a: float32x4_t) -> f32 {
-    unsafe { simd_reduce_min(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f32.v4f32"
+        )]
+        fn _vminnmvq_f32(a: float32x4_t) -> f32;
+    }
+    unsafe { _vminnmvq_f32(a) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminv_f16)"]
@@ -14238,26 +14243,7 @@ pub fn vmlaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlal_high_s16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlal_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_s16)"]
@@ -14272,26 +14258,7 @@ pub fn vmlal_high_laneq_s16<const LANE: i32>(
     c: int16x8_t,
 ) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmlal_high_s16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlal_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_lane_s32)"]
@@ -14302,13 +14269,7 @@ pub fn vmlal_high_laneq_s16<const LANE: i32>(
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmlal_high_s32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlal_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_s32)"]
@@ -14323,13 +14284,7 @@ pub fn vmlal_high_laneq_s32<const LANE: i32>(
     c: int32x4_t,
 ) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlal_high_s32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlal_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_lane_u16)"]
@@ -14344,26 +14299,7 @@ pub fn vmlal_high_lane_u16<const LANE: i32>(
     c: uint16x4_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlal_high_u16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlal_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_u16)"]
@@ -14378,26 +14314,7 @@ pub fn vmlal_high_laneq_u16<const LANE: i32>(
     c: uint16x8_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmlal_high_u16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlal_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_lane_u32)"]
@@ -14412,13 +14329,7 @@ pub fn vmlal_high_lane_u32<const LANE: i32>(
     c: uint32x2_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmlal_high_u32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlal_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_u32)"]
@@ -14433,13 +14344,7 @@ pub fn vmlal_high_laneq_u32<const LANE: i32>(
     c: uint32x4_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlal_high_u32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlal_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_n_s16)"]
@@ -14582,26 +14487,7 @@ pub fn vmlsq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlsl_high_s16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlsl_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_s16)"]
@@ -14616,26 +14502,7 @@ pub fn vmlsl_high_laneq_s16<const LANE: i32>(
     c: int16x8_t,
 ) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmlsl_high_s16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlsl_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_lane_s32)"]
@@ -14646,13 +14513,7 @@ pub fn vmlsl_high_laneq_s16<const LANE: i32>(
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmlsl_high_s32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlsl_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_s32)"]
@@ -14667,13 +14528,7 @@ pub fn vmlsl_high_laneq_s32<const LANE: i32>(
     c: int32x4_t,
 ) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlsl_high_s32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlsl_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_lane_u16)"]
@@ -14688,26 +14543,7 @@ pub fn vmlsl_high_lane_u16<const LANE: i32>(
     c: uint16x4_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlsl_high_u16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlsl_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_u16)"]
@@ -14722,26 +14558,7 @@ pub fn vmlsl_high_laneq_u16<const LANE: i32>(
     c: uint16x8_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmlsl_high_u16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlsl_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_lane_u32)"]
@@ -14756,13 +14573,7 @@ pub fn vmlsl_high_lane_u32<const LANE: i32>(
     c: uint32x2_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmlsl_high_u32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlsl_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_u32)"]
@@ -14777,13 +14588,7 @@ pub fn vmlsl_high_laneq_u32<const LANE: i32>(
     c: uint32x4_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlsl_high_u32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlsl_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_n_s16)"]
@@ -15078,16 +14883,11 @@ pub fn vmul_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) -> float64
 #[cfg_attr(test, assert_instr(fmul, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmul_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        simd_mul(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_f16)"]
@@ -15095,29 +14895,11 @@ pub fn vmul_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float1
 #[cfg_attr(test, assert_instr(fmul, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        simd_mul(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_f64)"]
@@ -15211,25 +14993,7 @@ pub fn vmulh_laneq_f16<const LANE: i32>(a: f16, b: float16x8_t) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmull_high_s16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmull_high_s16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_s16)"]
@@ -15240,25 +15004,7 @@ pub fn vmull_high_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int32
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmull_high_s16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmull_high_s16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_lane_s32)"]
@@ -15269,12 +15015,7 @@ pub fn vmull_high_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int3
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmull_high_s32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmull_high_s32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_s32)"]
@@ -15285,12 +15026,7 @@ pub fn vmull_high_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int64
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmull_high_s32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmull_high_s32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_lane_u16)"]
@@ -15301,25 +15037,7 @@ pub fn vmull_high_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int6
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmull_high_u16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmull_high_u16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_u16)"]
@@ -15330,25 +15048,7 @@ pub fn vmull_high_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> uin
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmull_high_u16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmull_high_u16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_lane_u32)"]
@@ -15359,12 +15059,7 @@ pub fn vmull_high_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> ui
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmull_high_u32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmull_high_u32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_u32)"]
@@ -15375,12 +15070,7 @@ pub fn vmull_high_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> uin
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmull_high_u32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmull_high_u32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_n_s16)"]
@@ -15543,7 +15233,7 @@ pub fn vmull_p64(a: p64, b: p64) -> p128 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -> float64x2_t {
     static_assert!(LANE == 0);
-    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_f64)"]
@@ -15554,7 +15244,7 @@ pub fn vmulq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -> float6
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmuls_lane_f32)"]
@@ -15602,7 +15292,7 @@ pub fn vmuld_laneq_f64<const LANE: i32>(a: f64, b: float64x2_t) -> f64 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmulx))]
 pub fn vmulx_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -15619,7 +15309,7 @@ pub fn vmulx_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmulx))]
 pub fn vmulxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -15702,16 +15392,11 @@ pub fn vmulxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulx_lane_f16<const LANE: i32>(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmulx_f16(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmulx_f16(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_laneq_f16)"]
@@ -15719,16 +15404,11 @@ pub fn vmulx_lane_f16<const LANE: i32>(a: float16x4_t, b: float16x4_t) -> float1
 #[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulx_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmulx_f16(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmulx_f16(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_lane_f16)"]
@@ -15736,29 +15416,11 @@ pub fn vmulx_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float
 #[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulxq_lane_f16<const LANE: i32>(a: float16x8_t, b: float16x4_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmulxq_f16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmulxq_f16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_laneq_f16)"]
@@ -15766,29 +15428,11 @@ pub fn vmulxq_lane_f16<const LANE: i32>(a: float16x8_t, b: float16x4_t) -> float
 #[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulxq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmulxq_f16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmulxq_f16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_lane_f32)"]
@@ -15799,7 +15443,7 @@ pub fn vmulxq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> floa
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulx_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmulx_f32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { vmulx_f32(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_laneq_f32)"]
@@ -15810,7 +15454,7 @@ pub fn vmulx_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> float3
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulx_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmulx_f32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { vmulx_f32(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_lane_f32)"]
@@ -15821,12 +15465,7 @@ pub fn vmulx_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) -> float
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmulxq_f32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmulxq_f32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_laneq_f32)"]
@@ -15837,12 +15476,7 @@ pub fn vmulxq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) -> float
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmulxq_f32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmulxq_f32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_laneq_f64)"]
@@ -15853,7 +15487,7 @@ pub fn vmulxq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -> floa
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmulxq_f64(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { vmulxq_f64(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_lane_f64)"]
@@ -16023,7 +15657,7 @@ pub fn vmulxh_laneq_f16<const LANE: i32>(a: f16, b: float16x8_t) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -> float64x2_t {
     static_assert!(LANE == 0);
-    unsafe { vmulxq_f64(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { vmulxq_f64(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vneg_f64)"]
@@ -16128,18 +15762,15 @@ pub fn vpaddd_u64(a: uint64x2_t) -> u64 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(faddp))]
 pub fn vpaddq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.faddp.v8f16"
-        )]
-        fn _vpaddq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    unsafe {
+        let even = simd_shuffle!(a, b, crate::core_arch::macros::even::<8>());
+        let odd = simd_shuffle!(a, b, crate::core_arch::macros::odd::<8>());
+        simd_add(even, odd)
     }
-    unsafe { _vpaddq_f16(a, b) }
 }
 #[doc = "Floating-point add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_f32)"]
@@ -16148,14 +15779,11 @@ pub fn vpaddq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(faddp))]
 pub fn vpaddq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.faddp.v4f32"
-        )]
-        fn _vpaddq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t;
+    unsafe {
+        let even = simd_shuffle!(a, b, crate::core_arch::macros::even::<4>());
+        let odd = simd_shuffle!(a, b, crate::core_arch::macros::odd::<4>());
+        simd_add(even, odd)
     }
-    unsafe { _vpaddq_f32(a, b) }
 }
 #[doc = "Floating-point add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_f64)"]
@@ -16164,14 +15792,11 @@ pub fn vpaddq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(faddp))]
 pub fn vpaddq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.faddp.v2f64"
-        )]
-        fn _vpaddq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t;
+    unsafe {
+        let even = simd_shuffle!(a, b, crate::core_arch::macros::even::<2>());
+        let odd = simd_shuffle!(a, b, crate::core_arch::macros::odd::<2>());
+        simd_add(even, odd)
     }
-    unsafe { _vpaddq_f64(a, b) }
 }
 #[doc = "Add Pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_s8)"]
@@ -16180,14 +15805,11 @@ pub fn vpaddq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vpaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.addp.v16i8"
-        )]
-        fn _vpaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+    unsafe {
+        let even = simd_shuffle!(a, b, crate::core_arch::macros::even::<16>());
+        let odd = simd_shuffle!(a, b, crate::core_arch::macros::odd::<16>());
+        simd_add(even, odd)
     }
-    unsafe { _vpaddq_s8(a, b) }
 }
 #[doc = "Add Pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_s16)"]
@@ -16196,14 +15818,11 @@ pub fn vpaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vpaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.addp.v8i16"
-        )]
-        fn _vpaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t;
+    unsafe {
+        let even = simd_shuffle!(a, b, crate::core_arch::macros::even::<8>());
+        let odd = simd_shuffle!(a, b, crate::core_arch::macros::odd::<8>());
+        simd_add(even, odd)
     }
-    unsafe { _vpaddq_s16(a, b) }
 }
 #[doc = "Add Pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_s32)"]
@@ -16212,14 +15831,11 @@ pub fn vpaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vpaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.addp.v4i32"
-        )]
-        fn _vpaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+    unsafe {
+        let even = simd_shuffle!(a, b, crate::core_arch::macros::even::<4>());
+        let odd = simd_shuffle!(a, b, crate::core_arch::macros::odd::<4>());
+        simd_add(even, odd)
     }
-    unsafe { _vpaddq_s32(a, b) }
 }
 #[doc = "Add Pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_s64)"]
@@ -16228,126 +15844,69 @@ pub fn vpaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vpaddq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.addp.v2i64"
-        )]
-        fn _vpaddq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t;
-    }
-    unsafe { _vpaddq_s64(a, b) }
-}
-#[doc = "Add Pairwise"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "little")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(addp))]
-pub fn vpaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    unsafe { transmute(vpaddq_s8(transmute(a), transmute(b))) }
-}
-#[doc = "Add Pairwise"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(addp))]
-pub fn vpaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    let a: uint8x16_t =
-        unsafe { simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    let b: uint8x16_t =
-        unsafe { simd_shuffle!(b, b, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
-        let ret_val: uint8x16_t = transmute(vpaddq_s8(transmute(a), transmute(b)));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
+        let even = simd_shuffle!(a, b, crate::core_arch::macros::even::<2>());
+        let odd = simd_shuffle!(a, b, crate::core_arch::macros::odd::<2>());
+        simd_add(even, odd)
+    }
+}
+#[doc = "Add Pairwise"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_u8)"]
+#[inline(always)]
+#[target_feature(enable = "neon")]
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[cfg_attr(test, assert_instr(addp))]
+pub fn vpaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    unsafe {
+        let even = simd_shuffle!(a, b, crate::core_arch::macros::even::<16>());
+        let odd = simd_shuffle!(a, b, crate::core_arch::macros::odd::<16>());
+        simd_add(even, odd)
     }
 }
 #[doc = "Add Pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_u16)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vpaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    unsafe { transmute(vpaddq_s16(transmute(a), transmute(b))) }
-}
-#[doc = "Add Pairwise"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_u16)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(addp))]
-pub fn vpaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    let a: uint16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let b: uint16x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
-        let ret_val: uint16x8_t = transmute(vpaddq_s16(transmute(a), transmute(b)));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
+        let even = simd_shuffle!(a, b, crate::core_arch::macros::even::<8>());
+        let odd = simd_shuffle!(a, b, crate::core_arch::macros::odd::<8>());
+        simd_add(even, odd)
     }
 }
 #[doc = "Add Pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_u32)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vpaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    unsafe { transmute(vpaddq_s32(transmute(a), transmute(b))) }
-}
-#[doc = "Add Pairwise"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_u32)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(addp))]
-pub fn vpaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    let a: uint32x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
-    let b: uint32x4_t = unsafe { simd_shuffle!(b, b, [3, 2, 1, 0]) };
     unsafe {
-        let ret_val: uint32x4_t = transmute(vpaddq_s32(transmute(a), transmute(b)));
-        simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+        let even = simd_shuffle!(a, b, crate::core_arch::macros::even::<4>());
+        let odd = simd_shuffle!(a, b, crate::core_arch::macros::odd::<4>());
+        simd_add(even, odd)
     }
 }
 #[doc = "Add Pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_u64)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vpaddq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
-    unsafe { transmute(vpaddq_s64(transmute(a), transmute(b))) }
-}
-#[doc = "Add Pairwise"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_u64)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(addp))]
-pub fn vpaddq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
-    let a: uint64x2_t = unsafe { simd_shuffle!(a, a, [1, 0]) };
-    let b: uint64x2_t = unsafe { simd_shuffle!(b, b, [1, 0]) };
     unsafe {
-        let ret_val: uint64x2_t = transmute(vpaddq_s64(transmute(a), transmute(b)));
-        simd_shuffle!(ret_val, ret_val, [1, 0])
+        let even = simd_shuffle!(a, b, crate::core_arch::macros::even::<2>());
+        let odd = simd_shuffle!(a, b, crate::core_arch::macros::odd::<2>());
+        simd_add(even, odd)
     }
 }
 #[doc = "Floating-point add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmax_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxp))]
 pub fn vpmax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -16364,7 +15923,7 @@ pub fn vpmax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxp))]
 pub fn vpmaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -16381,7 +15940,7 @@ pub fn vpmaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxnm_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
 pub fn vpmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -16398,7 +15957,7 @@ pub fn vpmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxnmq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
 pub fn vpmaxnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -16655,7 +16214,7 @@ pub fn vpmaxs_f32(a: float32x2_t) -> f32 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmin_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminp))]
 pub fn vpmin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -16672,7 +16231,7 @@ pub fn vpmin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminp))]
 pub fn vpminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -16689,7 +16248,7 @@ pub fn vpminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminnm_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminnmp))]
 pub fn vpminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -16706,7 +16265,7 @@ pub fn vpminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminnmq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminnmp))]
 pub fn vpminnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -18098,8 +17657,7 @@ pub fn vqnegd_s64(a: i64) -> i64 {
 pub fn vqrdmlah_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int16x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlah_s16(a, b, c)
     }
 }
@@ -18113,7 +17671,7 @@ pub fn vqrdmlah_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4
 pub fn vqrdmlah_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
+        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
         vqrdmlah_s32(a, b, c)
     }
 }
@@ -18127,8 +17685,7 @@ pub fn vqrdmlah_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2
 pub fn vqrdmlah_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe {
-        let c: int16x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlah_s16(a, b, c)
     }
 }
@@ -18142,7 +17699,7 @@ pub fn vqrdmlah_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x
 pub fn vqrdmlah_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
+        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
         vqrdmlah_s32(a, b, c)
     }
 }
@@ -18156,20 +17713,7 @@ pub fn vqrdmlah_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x
 pub fn vqrdmlahq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32
-            ]
-        );
+        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
         vqrdmlahq_s16(a, b, c)
     }
 }
@@ -18183,8 +17727,7 @@ pub fn vqrdmlahq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x
 pub fn vqrdmlahq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlahq_s32(a, b, c)
     }
 }
@@ -18198,20 +17741,7 @@ pub fn vqrdmlahq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x
 pub fn vqrdmlahq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe {
-        let c: int16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32
-            ]
-        );
+        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
         vqrdmlahq_s16(a, b, c)
     }
 }
@@ -18225,8 +17755,7 @@ pub fn vqrdmlahq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16
 pub fn vqrdmlahq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlahq_s32(a, b, c)
     }
 }
@@ -18372,8 +17901,7 @@ pub fn vqrdmlahs_s32(a: i32, b: i32, c: i32) -> i32 {
 pub fn vqrdmlsh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int16x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlsh_s16(a, b, c)
     }
 }
@@ -18387,7 +17915,7 @@ pub fn vqrdmlsh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4
 pub fn vqrdmlsh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
+        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
         vqrdmlsh_s32(a, b, c)
     }
 }
@@ -18401,8 +17929,7 @@ pub fn vqrdmlsh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2
 pub fn vqrdmlsh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe {
-        let c: int16x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlsh_s16(a, b, c)
     }
 }
@@ -18416,7 +17943,7 @@ pub fn vqrdmlsh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x
 pub fn vqrdmlsh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
+        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
         vqrdmlsh_s32(a, b, c)
     }
 }
@@ -18430,20 +17957,7 @@ pub fn vqrdmlsh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x
 pub fn vqrdmlshq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32
-            ]
-        );
+        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
         vqrdmlshq_s16(a, b, c)
     }
 }
@@ -18457,8 +17971,7 @@ pub fn vqrdmlshq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x
 pub fn vqrdmlshq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlshq_s32(a, b, c)
     }
 }
@@ -18472,20 +17985,7 @@ pub fn vqrdmlshq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x
 pub fn vqrdmlshq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe {
-        let c: int16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32
-            ]
-        );
+        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
         vqrdmlshq_s16(a, b, c)
     }
 }
@@ -18499,8 +17999,7 @@ pub fn vqrdmlshq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16
 pub fn vqrdmlshq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlshq_s32(a, b, c)
     }
 }
@@ -19732,7 +19231,6 @@ pub fn vqtbl2q_s8(a: int8x16x2_t, b: uint8x16_t) -> int8x16_t {
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl2_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -19740,38 +19238,8 @@ pub fn vqtbl2_u8(a: uint8x16x2_t, b: uint8x8_t) -> uint8x8_t {
     unsafe { transmute(vqtbl2(transmute(a.0), transmute(a.1), b)) }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl2_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl2_u8(a: uint8x16x2_t, b: uint8x8_t) -> uint8x8_t {
-    let mut a: uint8x16x2_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x8_t = transmute(vqtbl2(transmute(a.0), transmute(a.1), b));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl2q_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -19779,43 +19247,8 @@ pub fn vqtbl2q_u8(a: uint8x16x2_t, b: uint8x16_t) -> uint8x16_t {
     unsafe { transmute(vqtbl2q(transmute(a.0), transmute(a.1), b)) }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl2q_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl2q_u8(a: uint8x16x2_t, b: uint8x16_t) -> uint8x16_t {
-    let mut a: uint8x16x2_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x16_t =
-        unsafe { simd_shuffle!(b, b, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x16_t = transmute(vqtbl2q(transmute(a.0), transmute(a.1), b));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl2_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -19823,77 +19256,13 @@ pub fn vqtbl2_p8(a: poly8x16x2_t, b: uint8x8_t) -> poly8x8_t {
     unsafe { transmute(vqtbl2(transmute(a.0), transmute(a.1), b)) }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl2_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl2_p8(a: poly8x16x2_t, b: uint8x8_t) -> poly8x8_t {
-    let mut a: poly8x16x2_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x8_t = transmute(vqtbl2(transmute(a.0), transmute(a.1), b));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl2q_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqtbl2q_p8(a: poly8x16x2_t, b: uint8x16_t) -> poly8x16_t {
     unsafe { transmute(vqtbl2q(transmute(a.0), transmute(a.1), b)) }
-}
-#[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl2q_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl2q_p8(a: poly8x16x2_t, b: uint8x16_t) -> poly8x16_t {
-    let mut a: poly8x16x2_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x16_t =
-        unsafe { simd_shuffle!(b, b, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x16_t = transmute(vqtbl2q(transmute(a.0), transmute(a.1), b));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    }
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl3)"]
@@ -19948,7 +19317,6 @@ pub fn vqtbl3q_s8(a: int8x16x3_t, b: uint8x16_t) -> int8x16_t {
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl3_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -19956,46 +19324,8 @@ pub fn vqtbl3_u8(a: uint8x16x3_t, b: uint8x8_t) -> uint8x8_t {
     unsafe { transmute(vqtbl3(transmute(a.0), transmute(a.1), transmute(a.2), b)) }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl3_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl3_u8(a: uint8x16x3_t, b: uint8x8_t) -> uint8x8_t {
-    let mut a: uint8x16x3_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.2 = unsafe {
-        simd_shuffle!(
-            a.2,
-            a.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x8_t =
-            transmute(vqtbl3(transmute(a.0), transmute(a.1), transmute(a.2), b));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl3q_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20003,51 +19333,8 @@ pub fn vqtbl3q_u8(a: uint8x16x3_t, b: uint8x16_t) -> uint8x16_t {
     unsafe { transmute(vqtbl3q(transmute(a.0), transmute(a.1), transmute(a.2), b)) }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl3q_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl3q_u8(a: uint8x16x3_t, b: uint8x16_t) -> uint8x16_t {
-    let mut a: uint8x16x3_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.2 = unsafe {
-        simd_shuffle!(
-            a.2,
-            a.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x16_t =
-        unsafe { simd_shuffle!(b, b, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x16_t =
-            transmute(vqtbl3q(transmute(a.0), transmute(a.1), transmute(a.2), b));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl3_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20055,93 +19342,13 @@ pub fn vqtbl3_p8(a: poly8x16x3_t, b: uint8x8_t) -> poly8x8_t {
     unsafe { transmute(vqtbl3(transmute(a.0), transmute(a.1), transmute(a.2), b)) }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl3_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl3_p8(a: poly8x16x3_t, b: uint8x8_t) -> poly8x8_t {
-    let mut a: poly8x16x3_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.2 = unsafe {
-        simd_shuffle!(
-            a.2,
-            a.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x8_t =
-            transmute(vqtbl3(transmute(a.0), transmute(a.1), transmute(a.2), b));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl3q_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqtbl3q_p8(a: poly8x16x3_t, b: uint8x16_t) -> poly8x16_t {
     unsafe { transmute(vqtbl3q(transmute(a.0), transmute(a.1), transmute(a.2), b)) }
-}
-#[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl3q_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl3q_p8(a: poly8x16x3_t, b: uint8x16_t) -> poly8x16_t {
-    let mut a: poly8x16x3_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.2 = unsafe {
-        simd_shuffle!(
-            a.2,
-            a.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x16_t =
-        unsafe { simd_shuffle!(b, b, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x16_t =
-            transmute(vqtbl3q(transmute(a.0), transmute(a.1), transmute(a.2), b));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    }
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4)"]
@@ -20208,7 +19415,6 @@ pub fn vqtbl4q_s8(a: int8x16x4_t, b: uint8x16_t) -> int8x16_t {
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20224,58 +19430,8 @@ pub fn vqtbl4_u8(a: uint8x16x4_t, b: uint8x8_t) -> uint8x8_t {
     }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl4_u8(a: uint8x16x4_t, b: uint8x8_t) -> uint8x8_t {
-    let mut a: uint8x16x4_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.2 = unsafe {
-        simd_shuffle!(
-            a.2,
-            a.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.3 = unsafe {
-        simd_shuffle!(
-            a.3,
-            a.3,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x8_t = transmute(vqtbl4(
-            transmute(a.0),
-            transmute(a.1),
-            transmute(a.2),
-            transmute(a.3),
-            b,
-        ));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4q_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20291,63 +19447,8 @@ pub fn vqtbl4q_u8(a: uint8x16x4_t, b: uint8x16_t) -> uint8x16_t {
     }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4q_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl4q_u8(a: uint8x16x4_t, b: uint8x16_t) -> uint8x16_t {
-    let mut a: uint8x16x4_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.2 = unsafe {
-        simd_shuffle!(
-            a.2,
-            a.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.3 = unsafe {
-        simd_shuffle!(
-            a.3,
-            a.3,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x16_t =
-        unsafe { simd_shuffle!(b, b, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x16_t = transmute(vqtbl4q(
-            transmute(a.0),
-            transmute(a.1),
-            transmute(a.2),
-            transmute(a.3),
-            b,
-        ));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20363,58 +19464,8 @@ pub fn vqtbl4_p8(a: poly8x16x4_t, b: uint8x8_t) -> poly8x8_t {
     }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl4_p8(a: poly8x16x4_t, b: uint8x8_t) -> poly8x8_t {
-    let mut a: poly8x16x4_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.2 = unsafe {
-        simd_shuffle!(
-            a.2,
-            a.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.3 = unsafe {
-        simd_shuffle!(
-            a.3,
-            a.3,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x8_t = transmute(vqtbl4(
-            transmute(a.0),
-            transmute(a.1),
-            transmute(a.2),
-            transmute(a.3),
-            b,
-        ));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4q_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20427,60 +19478,6 @@ pub fn vqtbl4q_p8(a: poly8x16x4_t, b: uint8x16_t) -> poly8x16_t {
             transmute(a.3),
             b,
         ))
-    }
-}
-#[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4q_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbl4q_p8(a: poly8x16x4_t, b: uint8x16_t) -> poly8x16_t {
-    let mut a: poly8x16x4_t = a;
-    a.0 = unsafe {
-        simd_shuffle!(
-            a.0,
-            a.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.1 = unsafe {
-        simd_shuffle!(
-            a.1,
-            a.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.2 = unsafe {
-        simd_shuffle!(
-            a.2,
-            a.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    a.3 = unsafe {
-        simd_shuffle!(
-            a.3,
-            a.3,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let b: uint8x16_t =
-        unsafe { simd_shuffle!(b, b, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x16_t = transmute(vqtbl4q(
-            transmute(a.0),
-            transmute(a.1),
-            transmute(a.2),
-            transmute(a.3),
-            b,
-        ));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
     }
 }
 #[doc = "Extended table look-up"]
@@ -20622,7 +19619,6 @@ pub fn vqtbx2q_s8(a: int8x16_t, b: int8x16x2_t, c: uint8x16_t) -> int8x16_t {
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx2_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20630,39 +19626,8 @@ pub fn vqtbx2_u8(a: uint8x8_t, b: uint8x16x2_t, c: uint8x8_t) -> uint8x8_t {
     unsafe { transmute(vqtbx2(transmute(a), transmute(b.0), transmute(b.1), c)) }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx2_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx2_u8(a: uint8x8_t, b: uint8x16x2_t, c: uint8x8_t) -> uint8x8_t {
-    let mut b: uint8x16x2_t = b;
-    let a: uint8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x8_t = transmute(vqtbx2(transmute(a), transmute(b.0), transmute(b.1), c));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx2q_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20670,46 +19635,8 @@ pub fn vqtbx2q_u8(a: uint8x16_t, b: uint8x16x2_t, c: uint8x16_t) -> uint8x16_t {
     unsafe { transmute(vqtbx2q(transmute(a), transmute(b.0), transmute(b.1), c)) }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx2q_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx2q_u8(a: uint8x16_t, b: uint8x16x2_t, c: uint8x16_t) -> uint8x16_t {
-    let mut b: uint8x16x2_t = b;
-    let a: uint8x16_t =
-        unsafe { simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x16_t =
-        unsafe { simd_shuffle!(c, c, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x16_t =
-            transmute(vqtbx2q(transmute(a), transmute(b.0), transmute(b.1), c));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx2_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20717,81 +19644,13 @@ pub fn vqtbx2_p8(a: poly8x8_t, b: poly8x16x2_t, c: uint8x8_t) -> poly8x8_t {
     unsafe { transmute(vqtbx2(transmute(a), transmute(b.0), transmute(b.1), c)) }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx2_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx2_p8(a: poly8x8_t, b: poly8x16x2_t, c: uint8x8_t) -> poly8x8_t {
-    let mut b: poly8x16x2_t = b;
-    let a: poly8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x8_t = transmute(vqtbx2(transmute(a), transmute(b.0), transmute(b.1), c));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx2q_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqtbx2q_p8(a: poly8x16_t, b: poly8x16x2_t, c: uint8x16_t) -> poly8x16_t {
     unsafe { transmute(vqtbx2q(transmute(a), transmute(b.0), transmute(b.1), c)) }
-}
-#[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx2q_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx2q_p8(a: poly8x16_t, b: poly8x16x2_t, c: uint8x16_t) -> poly8x16_t {
-    let mut b: poly8x16x2_t = b;
-    let a: poly8x16_t =
-        unsafe { simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x16_t =
-        unsafe { simd_shuffle!(c, c, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x16_t =
-            transmute(vqtbx2q(transmute(a), transmute(b.0), transmute(b.1), c));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    }
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx3)"]
@@ -20853,7 +19712,6 @@ pub fn vqtbx3q_s8(a: int8x16_t, b: int8x16x3_t, c: uint8x16_t) -> int8x16_t {
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx3_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20869,52 +19727,8 @@ pub fn vqtbx3_u8(a: uint8x8_t, b: uint8x16x3_t, c: uint8x8_t) -> uint8x8_t {
     }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx3_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx3_u8(a: uint8x8_t, b: uint8x16x3_t, c: uint8x8_t) -> uint8x8_t {
-    let mut b: uint8x16x3_t = b;
-    let a: uint8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.2 = unsafe {
-        simd_shuffle!(
-            b.2,
-            b.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x8_t = transmute(vqtbx3(
-            transmute(a),
-            transmute(b.0),
-            transmute(b.1),
-            transmute(b.2),
-            c,
-        ));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx3q_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20930,58 +19744,8 @@ pub fn vqtbx3q_u8(a: uint8x16_t, b: uint8x16x3_t, c: uint8x16_t) -> uint8x16_t {
     }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx3q_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx3q_u8(a: uint8x16_t, b: uint8x16x3_t, c: uint8x16_t) -> uint8x16_t {
-    let mut b: uint8x16x3_t = b;
-    let a: uint8x16_t =
-        unsafe { simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.2 = unsafe {
-        simd_shuffle!(
-            b.2,
-            b.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x16_t =
-        unsafe { simd_shuffle!(c, c, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x16_t = transmute(vqtbx3q(
-            transmute(a),
-            transmute(b.0),
-            transmute(b.1),
-            transmute(b.2),
-            c,
-        ));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx3_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -20997,52 +19761,8 @@ pub fn vqtbx3_p8(a: poly8x8_t, b: poly8x16x3_t, c: uint8x8_t) -> poly8x8_t {
     }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx3_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx3_p8(a: poly8x8_t, b: poly8x16x3_t, c: uint8x8_t) -> poly8x8_t {
-    let mut b: poly8x16x3_t = b;
-    let a: poly8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.2 = unsafe {
-        simd_shuffle!(
-            b.2,
-            b.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x8_t = transmute(vqtbx3(
-            transmute(a),
-            transmute(b.0),
-            transmute(b.1),
-            transmute(b.2),
-            c,
-        ));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx3q_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -21055,55 +19775,6 @@ pub fn vqtbx3q_p8(a: poly8x16_t, b: poly8x16x3_t, c: uint8x16_t) -> poly8x16_t {
             transmute(b.2),
             c,
         ))
-    }
-}
-#[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx3q_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx3q_p8(a: poly8x16_t, b: poly8x16x3_t, c: uint8x16_t) -> poly8x16_t {
-    let mut b: poly8x16x3_t = b;
-    let a: poly8x16_t =
-        unsafe { simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.2 = unsafe {
-        simd_shuffle!(
-            b.2,
-            b.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x16_t =
-        unsafe { simd_shuffle!(c, c, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x16_t = transmute(vqtbx3q(
-            transmute(a),
-            transmute(b.0),
-            transmute(b.1),
-            transmute(b.2),
-            c,
-        ));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
     }
 }
 #[doc = "Extended table look-up"]
@@ -21187,7 +19858,6 @@ pub fn vqtbx4q_s8(a: int8x16_t, b: int8x16x4_t, c: uint8x16_t) -> int8x16_t {
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx4_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -21204,60 +19874,8 @@ pub fn vqtbx4_u8(a: uint8x8_t, b: uint8x16x4_t, c: uint8x8_t) -> uint8x8_t {
     }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx4_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx4_u8(a: uint8x8_t, b: uint8x16x4_t, c: uint8x8_t) -> uint8x8_t {
-    let mut b: uint8x16x4_t = b;
-    let a: uint8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.2 = unsafe {
-        simd_shuffle!(
-            b.2,
-            b.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.3 = unsafe {
-        simd_shuffle!(
-            b.3,
-            b.3,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x8_t = transmute(vqtbx4(
-            transmute(a),
-            transmute(b.0),
-            transmute(b.1),
-            transmute(b.2),
-            transmute(b.3),
-            c,
-        ));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx4q_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -21274,66 +19892,8 @@ pub fn vqtbx4q_u8(a: uint8x16_t, b: uint8x16x4_t, c: uint8x16_t) -> uint8x16_t {
     }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx4q_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx4q_u8(a: uint8x16_t, b: uint8x16x4_t, c: uint8x16_t) -> uint8x16_t {
-    let mut b: uint8x16x4_t = b;
-    let a: uint8x16_t =
-        unsafe { simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.2 = unsafe {
-        simd_shuffle!(
-            b.2,
-            b.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.3 = unsafe {
-        simd_shuffle!(
-            b.3,
-            b.3,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x16_t =
-        unsafe { simd_shuffle!(c, c, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x16_t = transmute(vqtbx4q(
-            transmute(a),
-            transmute(b.0),
-            transmute(b.1),
-            transmute(b.2),
-            transmute(b.3),
-            c,
-        ));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx4_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -21350,60 +19910,8 @@ pub fn vqtbx4_p8(a: poly8x8_t, b: poly8x16x4_t, c: uint8x8_t) -> poly8x8_t {
     }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx4_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx4_p8(a: poly8x8_t, b: poly8x16x4_t, c: uint8x8_t) -> poly8x8_t {
-    let mut b: poly8x16x4_t = b;
-    let a: poly8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.2 = unsafe {
-        simd_shuffle!(
-            b.2,
-            b.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.3 = unsafe {
-        simd_shuffle!(
-            b.3,
-            b.3,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x8_t = transmute(vqtbx4(
-            transmute(a),
-            transmute(b.0),
-            transmute(b.1),
-            transmute(b.2),
-            transmute(b.3),
-            c,
-        ));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx4q_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -21417,63 +19925,6 @@ pub fn vqtbx4q_p8(a: poly8x16_t, b: poly8x16x4_t, c: uint8x16_t) -> poly8x16_t {
             transmute(b.3),
             c,
         ))
-    }
-}
-#[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx4q_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vqtbx4q_p8(a: poly8x16_t, b: poly8x16x4_t, c: uint8x16_t) -> poly8x16_t {
-    let mut b: poly8x16x4_t = b;
-    let a: poly8x16_t =
-        unsafe { simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe {
-        simd_shuffle!(
-            b.0,
-            b.0,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.1 = unsafe {
-        simd_shuffle!(
-            b.1,
-            b.1,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.2 = unsafe {
-        simd_shuffle!(
-            b.2,
-            b.2,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    b.3 = unsafe {
-        simd_shuffle!(
-            b.3,
-            b.3,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    };
-    let c: uint8x16_t =
-        unsafe { simd_shuffle!(c, c, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x16_t = transmute(vqtbx4q(
-            transmute(a),
-            transmute(b.0),
-            transmute(b.1),
-            transmute(b.2),
-            transmute(b.3),
-            c,
-        ));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
     }
 }
 #[doc = "Rotate and exclusive OR"]
@@ -21832,7 +20283,7 @@ pub fn vrecpxh_f16(a: f16) -> f16 {
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
@@ -21843,7 +20294,7 @@ pub fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
@@ -21855,7 +20306,7 @@ pub fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
@@ -21866,7 +20317,7 @@ pub fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
@@ -21881,7 +20332,7 @@ pub fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
@@ -21892,7 +20343,7 @@ pub fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
@@ -21906,7 +20357,7 @@ pub fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpretq_f16_f64(a: float64x2_t) -> float16x8_t {
@@ -21917,7 +20368,7 @@ pub fn vreinterpretq_f16_f64(a: float64x2_t) -> float16x8_t {
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpretq_f16_f64(a: float64x2_t) -> float16x8_t {
@@ -23496,7 +21947,7 @@ pub fn vrnd64z_f64(a: float64x1_t) -> float64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrnd_f16(a: float16x4_t) -> float16x4_t {
@@ -23506,7 +21957,7 @@ pub fn vrnd_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrndq_f16(a: float16x8_t) -> float16x8_t {
@@ -23552,7 +22003,7 @@ pub fn vrndq_f64(a: float64x2_t) -> float64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnda_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrnda_f16(a: float16x4_t) -> float16x4_t {
@@ -23562,7 +22013,7 @@ pub fn vrnda_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndaq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrndaq_f16(a: float16x8_t) -> float16x8_t {
@@ -23628,7 +22079,7 @@ pub fn vrndh_f16(a: f16) -> f16 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndi_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frinti))]
 pub fn vrndi_f16(a: float16x4_t) -> float16x4_t {
@@ -23645,7 +22096,7 @@ pub fn vrndi_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndiq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frinti))]
 pub fn vrndiq_f16(a: float16x8_t) -> float16x8_t {
@@ -23743,7 +22194,7 @@ pub fn vrndih_f16(a: f16) -> f16 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndm_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndm_f16(a: float16x4_t) -> float16x4_t {
@@ -23753,7 +22204,7 @@ pub fn vrndm_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndmq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndmq_f16(a: float16x8_t) -> float16x8_t {
@@ -23874,7 +22325,7 @@ pub fn vrndns_f32(a: f32) -> f32 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndp_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndp_f16(a: float16x4_t) -> float16x4_t {
@@ -23884,7 +22335,7 @@ pub fn vrndp_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndpq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndpq_f16(a: float16x8_t) -> float16x8_t {
@@ -23940,7 +22391,7 @@ pub fn vrndph_f16(a: f16) -> f16 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndx_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndx_f16(a: float16x4_t) -> float16x4_t {
@@ -23950,7 +22401,7 @@ pub fn vrndx_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndxq_f16(a: float16x8_t) -> float16x8_t {
@@ -25453,7 +23904,7 @@ pub fn vsqadds_u32(a: u32, b: i32) -> u32 {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fsqrt))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vsqrt_f16(a: float16x4_t) -> float16x4_t {
     unsafe { simd_fsqrt(a) }
@@ -25463,7 +23914,7 @@ pub fn vsqrt_f16(a: float16x4_t) -> float16x4_t {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(fsqrt))]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vsqrtq_f16(a: float16x8_t) -> float16x8_t {
     unsafe { simd_fsqrt(a) }
@@ -25523,14 +23974,7 @@ pub fn vsqrth_f16(a: f16) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsri_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.vsri.v8i8"
-        )]
-        fn _vsri_n_s8(a: int8x8_t, b: int8x8_t, n: i32) -> int8x8_t;
-    }
-    unsafe { _vsri_n_s8(a, b, N) }
+    unsafe { super::shift_right_and_insert!(u8, 8, N, a, b) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_s8)"]
@@ -25541,14 +23985,7 @@ pub fn vsri_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsriq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.vsri.v16i8"
-        )]
-        fn _vsriq_n_s8(a: int8x16_t, b: int8x16_t, n: i32) -> int8x16_t;
-    }
-    unsafe { _vsriq_n_s8(a, b, N) }
+    unsafe { super::shift_right_and_insert!(u8, 16, N, a, b) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_s16)"]
@@ -25559,14 +23996,7 @@ pub fn vsriq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsri_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.vsri.v4i16"
-        )]
-        fn _vsri_n_s16(a: int16x4_t, b: int16x4_t, n: i32) -> int16x4_t;
-    }
-    unsafe { _vsri_n_s16(a, b, N) }
+    unsafe { super::shift_right_and_insert!(u16, 4, N, a, b) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_s16)"]
@@ -25577,14 +24007,7 @@ pub fn vsri_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsriq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.vsri.v8i16"
-        )]
-        fn _vsriq_n_s16(a: int16x8_t, b: int16x8_t, n: i32) -> int16x8_t;
-    }
-    unsafe { _vsriq_n_s16(a, b, N) }
+    unsafe { super::shift_right_and_insert!(u16, 8, N, a, b) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_s32)"]
@@ -25595,14 +24018,7 @@ pub fn vsriq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsri_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.vsri.v2i32"
-        )]
-        fn _vsri_n_s32(a: int32x2_t, b: int32x2_t, n: i32) -> int32x2_t;
-    }
-    unsafe { _vsri_n_s32(a, b, N) }
+    unsafe { super::shift_right_and_insert!(u32, 2, N, a, b) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_s32)"]
@@ -25613,14 +24029,7 @@ pub fn vsri_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsriq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.vsri.v4i32"
-        )]
-        fn _vsriq_n_s32(a: int32x4_t, b: int32x4_t, n: i32) -> int32x4_t;
-    }
-    unsafe { _vsriq_n_s32(a, b, N) }
+    unsafe { super::shift_right_and_insert!(u32, 4, N, a, b) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_s64)"]
@@ -25631,14 +24040,7 @@ pub fn vsriq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsri_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     static_assert!(N >= 1 && N <= 64);
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.vsri.v1i64"
-        )]
-        fn _vsri_n_s64(a: int64x1_t, b: int64x1_t, n: i32) -> int64x1_t;
-    }
-    unsafe { _vsri_n_s64(a, b, N) }
+    unsafe { super::shift_right_and_insert!(u64, 1, N, a, b) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_s64)"]
@@ -25649,14 +24051,7 @@ pub fn vsri_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsriq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     static_assert!(N >= 1 && N <= 64);
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.vsri.v2i64"
-        )]
-        fn _vsriq_n_s64(a: int64x2_t, b: int64x2_t, n: i32) -> int64x2_t;
-    }
-    unsafe { _vsriq_n_s64(a, b, N) }
+    unsafe { super::shift_right_and_insert!(u64, 2, N, a, b) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_u8)"]
@@ -25818,7 +24213,7 @@ pub fn vsriq_n_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sri, N = 2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(bfxil, N = 2))]
 pub fn vsrid_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
     static_assert!(N >= 1 && N <= 64);
     unsafe { transmute(vsri_n_s64::<N>(transmute(a), transmute(b))) }
@@ -25829,7 +24224,7 @@ pub fn vsrid_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sri, N = 2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(bfxil, N = 2))]
 pub fn vsrid_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
     static_assert!(N >= 1 && N <= 64);
     unsafe { transmute(vsri_n_u64::<N>(transmute(a), transmute(b))) }
@@ -26325,16 +24720,9 @@ pub unsafe fn vst1q_lane_f64<const LANE: i32>(a: *mut f64, b: float64x2_t) {
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(st1))]
+#[cfg_attr(test, assert_instr(stp))]
 pub unsafe fn vst2_f64(a: *mut f64, b: float64x1x2_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st2.v1f64.p0"
-        )]
-        fn _vst2_f64(a: float64x1_t, b: float64x1_t, ptr: *mut i8);
-    }
-    _vst2_f64(b.0, b.1, a as _)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_f64)"]
@@ -26411,14 +24799,7 @@ pub unsafe fn vst2_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st2))]
 pub unsafe fn vst2q_f64(a: *mut f64, b: float64x2x2_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st2.v2f64.p0"
-        )]
-        fn _vst2q_f64(a: float64x2_t, b: float64x2_t, ptr: *mut i8);
-    }
-    _vst2q_f64(b.0, b.1, a as _)
+    crate::core_arch::macros::interleaving_store!(f64, 2, 2, a, b)
 }
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s64)"]
@@ -26429,14 +24810,7 @@ pub unsafe fn vst2q_f64(a: *mut f64, b: float64x2x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st2))]
 pub unsafe fn vst2q_s64(a: *mut i64, b: int64x2x2_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st2.v2i64.p0"
-        )]
-        fn _vst2q_s64(a: int64x2_t, b: int64x2_t, ptr: *mut i8);
-    }
-    _vst2q_s64(b.0, b.1, a as _)
+    crate::core_arch::macros::interleaving_store!(i64, 2, 2, a, b)
 }
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_f64)"]
@@ -26581,14 +24955,7 @@ pub unsafe fn vst2q_u64(a: *mut u64, b: uint64x2x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vst3_f64(a: *mut f64, b: float64x1x3_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st3.v1f64.p0"
-        )]
-        fn _vst3_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t, ptr: *mut i8);
-    }
-    _vst3_f64(b.0, b.1, b.2, a as _)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_f64)"]
@@ -26665,14 +25032,7 @@ pub unsafe fn vst3_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st3))]
 pub unsafe fn vst3q_f64(a: *mut f64, b: float64x2x3_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st3.v2f64.p0"
-        )]
-        fn _vst3q_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t, ptr: *mut i8);
-    }
-    _vst3q_f64(b.0, b.1, b.2, a as _)
+    crate::core_arch::macros::interleaving_store!(f64, 2, 3, a, b)
 }
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s64)"]
@@ -26683,14 +25043,7 @@ pub unsafe fn vst3q_f64(a: *mut f64, b: float64x2x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st3))]
 pub unsafe fn vst3q_s64(a: *mut i64, b: int64x2x3_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st3.v2i64.p0"
-        )]
-        fn _vst3q_s64(a: int64x2_t, b: int64x2_t, c: int64x2_t, ptr: *mut i8);
-    }
-    _vst3q_s64(b.0, b.1, b.2, a as _)
+    crate::core_arch::macros::interleaving_store!(i64, 2, 3, a, b)
 }
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_f64)"]
@@ -26835,14 +25188,7 @@ pub unsafe fn vst3q_u64(a: *mut u64, b: uint64x2x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vst4_f64(a: *mut f64, b: float64x1x4_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st4.v1f64.p0"
-        )]
-        fn _vst4_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t, d: float64x1_t, ptr: *mut i8);
-    }
-    _vst4_f64(b.0, b.1, b.2, b.3, a as _)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_f64)"]
@@ -26933,14 +25279,7 @@ pub unsafe fn vst4_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st4))]
 pub unsafe fn vst4q_f64(a: *mut f64, b: float64x2x4_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st4.v2f64.p0"
-        )]
-        fn _vst4q_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t, d: float64x2_t, ptr: *mut i8);
-    }
-    _vst4q_f64(b.0, b.1, b.2, b.3, a as _)
+    crate::core_arch::macros::interleaving_store!(f64, 2, 4, a, b)
 }
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s64)"]
@@ -26951,14 +25290,7 @@ pub unsafe fn vst4q_f64(a: *mut f64, b: float64x2x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st4))]
 pub unsafe fn vst4q_s64(a: *mut i64, b: int64x2x4_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st4.v2i64.p0"
-        )]
-        fn _vst4q_s64(a: int64x2_t, b: int64x2_t, c: int64x2_t, d: int64x2_t, ptr: *mut i8);
-    }
-    _vst4q_s64(b.0, b.1, b.2, b.3, a as _)
+    crate::core_arch::macros::interleaving_store!(i64, 2, 4, a, b)
 }
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_f64)"]
@@ -27122,6 +25454,7 @@ pub unsafe fn vst4q_u64(a: *mut u64, b: uint64x2x4_t) {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub fn vstl1_lane_f64<const LANE: i32>(ptr: *mut f64, val: float64x1_t) {
     static_assert!(LANE == 0);
     unsafe { vstl1_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
@@ -27133,6 +25466,7 @@ pub fn vstl1_lane_f64<const LANE: i32>(ptr: *mut f64, val: float64x1_t) {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub fn vstl1q_lane_f64<const LANE: i32>(ptr: *mut f64, val: float64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     unsafe { vstl1q_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
@@ -27144,6 +25478,7 @@ pub fn vstl1q_lane_f64<const LANE: i32>(ptr: *mut f64, val: float64x2_t) {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub fn vstl1_lane_u64<const LANE: i32>(ptr: *mut u64, val: uint64x1_t) {
     static_assert!(LANE == 0);
     unsafe { vstl1_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
@@ -27155,6 +25490,7 @@ pub fn vstl1_lane_u64<const LANE: i32>(ptr: *mut u64, val: uint64x1_t) {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub fn vstl1q_lane_u64<const LANE: i32>(ptr: *mut u64, val: uint64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     unsafe { vstl1q_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
@@ -27166,6 +25502,7 @@ pub fn vstl1q_lane_u64<const LANE: i32>(ptr: *mut u64, val: uint64x2_t) {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub fn vstl1_lane_p64<const LANE: i32>(ptr: *mut p64, val: poly64x1_t) {
     static_assert!(LANE == 0);
     unsafe { vstl1_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
@@ -27177,6 +25514,7 @@ pub fn vstl1_lane_p64<const LANE: i32>(ptr: *mut p64, val: poly64x1_t) {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub fn vstl1q_lane_p64<const LANE: i32>(ptr: *mut p64, val: poly64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     unsafe { vstl1q_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
@@ -27188,6 +25526,7 @@ pub fn vstl1q_lane_p64<const LANE: i32>(ptr: *mut p64, val: poly64x2_t) {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub fn vstl1_lane_s64<const LANE: i32>(ptr: *mut i64, val: int64x1_t) {
     static_assert!(LANE == 0);
     let atomic_dst = ptr as *mut crate::sync::atomic::AtomicI64;
@@ -27203,6 +25542,7 @@ pub fn vstl1_lane_s64<const LANE: i32>(ptr: *mut i64, val: int64x1_t) {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+#[cfg(target_has_atomic = "64")]
 pub fn vstl1q_lane_s64<const LANE: i32>(ptr: *mut i64, val: int64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     let atomic_dst = ptr as *mut crate::sync::atomic::AtomicI64;
@@ -27462,7 +25802,6 @@ pub fn vtbl2_s8(a: int8x8x2_t, b: int8x8_t) -> int8x8_t {
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl2_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -27470,48 +25809,13 @@ pub fn vtbl2_u8(a: uint8x8x2_t, b: uint8x8_t) -> uint8x8_t {
     unsafe { transmute(vqtbl1(transmute(vcombine_u8(a.0, a.1)), b)) }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl2_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbl2_u8(a: uint8x8x2_t, b: uint8x8_t) -> uint8x8_t {
-    let mut a: uint8x8x2_t = a;
-    a.0 = unsafe { simd_shuffle!(a.0, a.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.1 = unsafe { simd_shuffle!(a.1, a.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x8_t = transmute(vqtbl1(transmute(vcombine_u8(a.0, a.1)), b));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl2_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vtbl2_p8(a: poly8x8x2_t, b: uint8x8_t) -> poly8x8_t {
     unsafe { transmute(vqtbl1(transmute(vcombine_p8(a.0, a.1)), b)) }
-}
-#[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl2_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbl2_p8(a: poly8x8x2_t, b: uint8x8_t) -> poly8x8_t {
-    let mut a: poly8x8x2_t = a;
-    a.0 = unsafe { simd_shuffle!(a.0, a.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.1 = unsafe { simd_shuffle!(a.1, a.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x8_t = transmute(vqtbl1(transmute(vcombine_p8(a.0, a.1)), b));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl3_s8)"]
@@ -27529,7 +25833,6 @@ pub fn vtbl3_s8(a: int8x8x3_t, b: int8x8_t) -> int8x8_t {
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl3_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -27541,31 +25844,8 @@ pub fn vtbl3_u8(a: uint8x8x3_t, b: uint8x8_t) -> uint8x8_t {
     unsafe { transmute(vqtbl2(transmute(x.0), transmute(x.1), b)) }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl3_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbl3_u8(a: uint8x8x3_t, b: uint8x8_t) -> uint8x8_t {
-    let mut a: uint8x8x3_t = a;
-    a.0 = unsafe { simd_shuffle!(a.0, a.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.1 = unsafe { simd_shuffle!(a.1, a.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.2 = unsafe { simd_shuffle!(a.2, a.2, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let x = uint8x16x2_t(
-        vcombine_u8(a.0, a.1),
-        vcombine_u8(a.2, unsafe { crate::mem::zeroed() }),
-    );
-    unsafe {
-        let ret_val: uint8x8_t = transmute(vqtbl2(transmute(x.0), transmute(x.1), b));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl3_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -27575,28 +25855,6 @@ pub fn vtbl3_p8(a: poly8x8x3_t, b: uint8x8_t) -> poly8x8_t {
         vcombine_p8(a.2, unsafe { crate::mem::zeroed() }),
     );
     unsafe { transmute(vqtbl2(transmute(x.0), transmute(x.1), b)) }
-}
-#[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl3_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbl3_p8(a: poly8x8x3_t, b: uint8x8_t) -> poly8x8_t {
-    let mut a: poly8x8x3_t = a;
-    a.0 = unsafe { simd_shuffle!(a.0, a.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.1 = unsafe { simd_shuffle!(a.1, a.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.2 = unsafe { simd_shuffle!(a.2, a.2, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let x = poly8x16x2_t(
-        vcombine_p8(a.0, a.1),
-        vcombine_p8(a.2, unsafe { crate::mem::zeroed() }),
-    );
-    unsafe {
-        let ret_val: poly8x8_t = transmute(vqtbl2(transmute(x.0), transmute(x.1), b));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl4_s8)"]
@@ -27611,7 +25869,6 @@ pub fn vtbl4_s8(a: int8x8x4_t, b: int8x8_t) -> int8x8_t {
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl4_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -27620,55 +25877,14 @@ pub fn vtbl4_u8(a: uint8x8x4_t, b: uint8x8_t) -> uint8x8_t {
     unsafe { transmute(vqtbl2(transmute(x.0), transmute(x.1), b)) }
 }
 #[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl4_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbl4_u8(a: uint8x8x4_t, b: uint8x8_t) -> uint8x8_t {
-    let mut a: uint8x8x4_t = a;
-    a.0 = unsafe { simd_shuffle!(a.0, a.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.1 = unsafe { simd_shuffle!(a.1, a.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.2 = unsafe { simd_shuffle!(a.2, a.2, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.3 = unsafe { simd_shuffle!(a.3, a.3, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let x = uint8x16x2_t(vcombine_u8(a.0, a.1), vcombine_u8(a.2, a.3));
-    unsafe {
-        let ret_val: uint8x8_t = transmute(vqtbl2(transmute(x.0), transmute(x.1), b));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl4_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vtbl4_p8(a: poly8x8x4_t, b: uint8x8_t) -> poly8x8_t {
     let x = poly8x16x2_t(vcombine_p8(a.0, a.1), vcombine_p8(a.2, a.3));
     unsafe { transmute(vqtbl2(transmute(x.0), transmute(x.1), b)) }
-}
-#[doc = "Table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl4_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbl))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbl4_p8(a: poly8x8x4_t, b: uint8x8_t) -> poly8x8_t {
-    let mut a: poly8x8x4_t = a;
-    a.0 = unsafe { simd_shuffle!(a.0, a.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.1 = unsafe { simd_shuffle!(a.1, a.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.2 = unsafe { simd_shuffle!(a.2, a.2, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    a.3 = unsafe { simd_shuffle!(a.3, a.3, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let b: uint8x8_t = unsafe { simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let x = poly8x16x2_t(vcombine_p8(a.0, a.1), vcombine_p8(a.2, a.3));
-    unsafe {
-        let ret_val: poly8x8_t = transmute(vqtbl2(transmute(x.0), transmute(x.1), b));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx1_s8)"]
@@ -27739,7 +25955,6 @@ pub fn vtbx2_s8(a: int8x8_t, b: int8x8x2_t, c: int8x8_t) -> int8x8_t {
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx2_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -27747,52 +25962,13 @@ pub fn vtbx2_u8(a: uint8x8_t, b: uint8x8x2_t, c: uint8x8_t) -> uint8x8_t {
     unsafe { transmute(vqtbx1(transmute(a), transmute(vcombine_u8(b.0, b.1)), c)) }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx2_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbx2_u8(a: uint8x8_t, b: uint8x8x2_t, c: uint8x8_t) -> uint8x8_t {
-    let mut b: uint8x8x2_t = b;
-    let a: uint8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe { simd_shuffle!(b.0, b.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.1 = unsafe { simd_shuffle!(b.1, b.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x8_t =
-            transmute(vqtbx1(transmute(a), transmute(vcombine_u8(b.0, b.1)), c));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx2_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vtbx2_p8(a: poly8x8_t, b: poly8x8x2_t, c: uint8x8_t) -> poly8x8_t {
     unsafe { transmute(vqtbx1(transmute(a), transmute(vcombine_p8(b.0, b.1)), c)) }
-}
-#[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx2_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbx2_p8(a: poly8x8_t, b: poly8x8x2_t, c: uint8x8_t) -> poly8x8_t {
-    let mut b: poly8x8x2_t = b;
-    let a: poly8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe { simd_shuffle!(b.0, b.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.1 = unsafe { simd_shuffle!(b.1, b.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x8_t =
-            transmute(vqtbx1(transmute(a), transmute(vcombine_p8(b.0, b.1)), c));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx3_s8)"]
@@ -27821,7 +25997,6 @@ pub fn vtbx3_s8(a: int8x8_t, b: int8x8x3_t, c: int8x8_t) -> int8x8_t {
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx3_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -27839,36 +26014,8 @@ pub fn vtbx3_u8(a: uint8x8_t, b: uint8x8x3_t, c: uint8x8_t) -> uint8x8_t {
     }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx3_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbx3_u8(a: uint8x8_t, b: uint8x8x3_t, c: uint8x8_t) -> uint8x8_t {
-    let mut b: uint8x8x3_t = b;
-    let a: uint8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe { simd_shuffle!(b.0, b.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.1 = unsafe { simd_shuffle!(b.1, b.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.2 = unsafe { simd_shuffle!(b.2, b.2, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let x = uint8x16x2_t(
-        vcombine_u8(b.0, b.1),
-        vcombine_u8(b.2, unsafe { crate::mem::zeroed() }),
-    );
-    unsafe {
-        let ret_val: uint8x8_t = transmute(simd_select(
-            simd_lt::<uint8x8_t, int8x8_t>(transmute(c), transmute(u8x8::splat(24))),
-            transmute(vqtbx2(transmute(a), transmute(x.0), transmute(x.1), c)),
-            a,
-        ));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx3_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -27883,33 +26030,6 @@ pub fn vtbx3_p8(a: poly8x8_t, b: poly8x8x3_t, c: uint8x8_t) -> poly8x8_t {
             transmute(vqtbx2(transmute(a), transmute(x.0), transmute(x.1), c)),
             a,
         ))
-    }
-}
-#[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx3_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbx3_p8(a: poly8x8_t, b: poly8x8x3_t, c: uint8x8_t) -> poly8x8_t {
-    let mut b: poly8x8x3_t = b;
-    let a: poly8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe { simd_shuffle!(b.0, b.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.1 = unsafe { simd_shuffle!(b.1, b.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.2 = unsafe { simd_shuffle!(b.2, b.2, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let x = poly8x16x2_t(
-        vcombine_p8(b.0, b.1),
-        vcombine_p8(b.2, unsafe { crate::mem::zeroed() }),
-    );
-    unsafe {
-        let ret_val: poly8x8_t = transmute(simd_select(
-            simd_lt::<poly8x8_t, int8x8_t>(transmute(c), transmute(u8x8::splat(24))),
-            transmute(vqtbx2(transmute(a), transmute(x.0), transmute(x.1), c)),
-            a,
-        ));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
     }
 }
 #[doc = "Extended table look-up"]
@@ -27931,7 +26051,6 @@ pub fn vtbx4_s8(a: int8x8_t, b: int8x8x4_t, c: int8x8_t) -> int8x8_t {
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx4_u8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -27946,34 +26065,8 @@ pub fn vtbx4_u8(a: uint8x8_t, b: uint8x8x4_t, c: uint8x8_t) -> uint8x8_t {
     }
 }
 #[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx4_u8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbx4_u8(a: uint8x8_t, b: uint8x8x4_t, c: uint8x8_t) -> uint8x8_t {
-    let mut b: uint8x8x4_t = b;
-    let a: uint8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe { simd_shuffle!(b.0, b.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.1 = unsafe { simd_shuffle!(b.1, b.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.2 = unsafe { simd_shuffle!(b.2, b.2, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.3 = unsafe { simd_shuffle!(b.3, b.3, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: uint8x8_t = transmute(vqtbx2(
-            transmute(a),
-            transmute(vcombine_u8(b.0, b.1)),
-            transmute(vcombine_u8(b.2, b.3)),
-            c,
-        ));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx4_p8)"]
 #[inline(always)]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -27985,38 +26078,13 @@ pub fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t {
             transmute(vcombine_p8(b.2, b.3)),
             c,
         ))
-    }
-}
-#[doc = "Extended table look-up"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx4_p8)"]
-#[inline(always)]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(tbx))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t {
-    let mut b: poly8x8x4_t = b;
-    let a: poly8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.0 = unsafe { simd_shuffle!(b.0, b.0, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.1 = unsafe { simd_shuffle!(b.1, b.1, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.2 = unsafe { simd_shuffle!(b.2, b.2, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    b.3 = unsafe { simd_shuffle!(b.3, b.3, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    let c: uint8x8_t = unsafe { simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]) };
-    unsafe {
-        let ret_val: poly8x8_t = transmute(vqtbx2(
-            transmute(a),
-            transmute(vcombine_p8(b.0, b.1)),
-            transmute(vcombine_p8(b.2, b.3)),
-            c,
-        ));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
     }
 }
 #[doc = "Transpose vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 pub fn vtrn1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -28026,7 +26094,7 @@ pub fn vtrn1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 pub fn vtrn1q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -28252,7 +26320,7 @@ pub fn vtrn1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 pub fn vtrn2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -28262,7 +26330,7 @@ pub fn vtrn2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 pub fn vtrn2q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -28762,7 +26830,7 @@ pub fn vuqadds_s32(a: i32, b: u32) -> i32 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 pub fn vuzp1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -28772,7 +26840,7 @@ pub fn vuzp1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 pub fn vuzp1q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -28998,7 +27066,7 @@ pub fn vuzp1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 pub fn vuzp2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -29008,7 +27076,7 @@ pub fn vuzp2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 pub fn vuzp2q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -29252,7 +27320,7 @@ pub fn vxarq_u64<const IMM6: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 pub fn vzip1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -29262,7 +27330,7 @@ pub fn vzip1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 pub fn vzip1q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -29488,7 +27556,7 @@ pub fn vzip1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 pub fn vzip2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -29498,7 +27566,7 @@ pub fn vzip2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
-#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 pub fn vzip2q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {

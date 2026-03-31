@@ -12,13 +12,12 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions, msg,
     pluralize,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::used_keywords;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanSnippetError, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanSnippetError, Spanned, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, trace};
 
@@ -35,16 +34,16 @@ use crate::errors::{
     ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, GenericParamsWithoutAngleBrackets,
     GenericParamsWithoutAngleBracketsSugg, HelpIdentifierStartsWithNumber, HelpUseLatestEdition,
     InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse,
-    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
-    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt,
-    SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator, TernaryOperatorSuggestion,
-    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    MisspelledKw, PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg,
+    SelfParamNotFirst, StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg,
+    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
+    TernaryOperatorSuggestion, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
     UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
+use crate::exp;
 use crate::parser::FnContext;
 use crate::parser::attr::InnerAttrPolicy;
 use crate::parser::item::IsDotDotDot;
-use crate::{exp, fluent_generated as fluent};
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
@@ -212,22 +211,6 @@ impl std::fmt::Display for UnaryFixity {
     }
 }
 
-#[derive(Debug, rustc_macros::Subdiagnostic)]
-#[suggestion(
-    parse_misspelled_kw,
-    applicability = "machine-applicable",
-    code = "{similar_kw}",
-    style = "verbose"
-)]
-struct MisspelledKw {
-    // We use a String here because `Symbol::into_diag_arg` calls `Symbol::to_ident_string`, which
-    // prefix the keyword with a `r#` because it aims to print the symbol as an identifier.
-    similar_kw: String,
-    #[primary_span]
-    span: Span,
-    is_incorrect_case: bool,
-}
-
 /// Checks if the given `lookup` identifier is similar to any keyword symbol in `candidates`.
 ///
 /// This is a specialized version of [`Symbol::find_similar`] that constructs an error when a
@@ -252,7 +235,7 @@ impl MultiSugg {
     }
 
     fn emit_verbose(self, err: &mut Diag<'_>) {
-        err.multipart_suggestion_verbose(self.msg, self.patches, self.applicability);
+        err.multipart_suggestion(self.msg, self.patches, self.applicability);
     }
 }
 
@@ -405,7 +388,7 @@ impl<'a> Parser<'a> {
                                 && let Ok(snippet) =
                                     self.psess.source_map().span_to_snippet(generic.span)
                             {
-                                err.multipart_suggestion_verbose(
+                                err.multipart_suggestion(
                                         format!("place the generic parameter name after the {ident_name} name"),
                                         vec![
                                             (self.token.span.shrink_to_hi(), snippet),
@@ -663,7 +646,7 @@ impl<'a> Parser<'a> {
         // positive for a `cr#` that wasn't intended to start a c-string literal, but identifying
         // that in the parser requires unbounded lookahead, so we only add a hint to the existing
         // error rather than replacing it entirely.
-        if ((self.prev_token == TokenKind::Ident(sym::c, IdentIsRaw::No)
+        if ((self.prev_token == TokenKind::Ident(sym::character('c'), IdentIsRaw::No)
             && matches!(&self.token.kind, TokenKind::Literal(token::Lit { kind: token::Str, .. })))
             || (self.prev_token == TokenKind::Ident(sym::cr, IdentIsRaw::No)
                 && matches!(
@@ -1072,7 +1055,7 @@ impl<'a> Parser<'a> {
                 // and recover.
                 self.eat_to_tokens(&[exp!(CloseParen), exp!(Comma)]);
 
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "you might have meant to open the body of the closure",
                     vec![
                         (prev.span.shrink_to_hi(), " {".to_string()),
@@ -1085,7 +1068,7 @@ impl<'a> Parser<'a> {
             _ if token.kind != token::OpenBrace => {
                 // We don't have a heuristic to correctly identify where the block
                 // should be closed.
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "you might have meant to open the body of the closure",
                     vec![(prev.span.shrink_to_hi(), " {".to_string())],
                     Applicability::HasPlaceholders,
@@ -1288,7 +1271,7 @@ impl<'a> Parser<'a> {
                         // We made sense of it. Improve the error message.
                         e.span_suggestion_verbose(
                             binop.span.shrink_to_lo(),
-                            fluent::parse_sugg_turbofish_syntax,
+                            msg!("use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments"),
                             "::",
                             Applicability::MaybeIncorrect,
                         );
@@ -3039,27 +3022,53 @@ impl<'a> Parser<'a> {
         long_kind: &TokenKind,
         short_kind: &TokenKind,
     ) -> bool {
-        (0..3).all(|i| self.look_ahead(i, |tok| tok == long_kind))
-            && self.look_ahead(3, |tok| tok == short_kind)
+        if long_kind == short_kind {
+            // For conflict marker chars like `%` and `\`.
+            (0..7).all(|i| self.look_ahead(i, |tok| tok == long_kind))
+        } else {
+            // For conflict marker chars like `<` and `|`.
+            (0..3).all(|i| self.look_ahead(i, |tok| tok == long_kind))
+                && self.look_ahead(3, |tok| tok == short_kind || tok == long_kind)
+        }
     }
 
-    fn conflict_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> Option<Span> {
+    fn conflict_marker(
+        &mut self,
+        long_kind: &TokenKind,
+        short_kind: &TokenKind,
+        expected: Option<usize>,
+    ) -> Option<(Span, usize)> {
         if self.is_vcs_conflict_marker(long_kind, short_kind) {
             let lo = self.token.span;
-            for _ in 0..4 {
-                self.bump();
+            if self.psess.source_map().span_to_margin(lo) != Some(0) {
+                return None;
             }
-            return Some(lo.to(self.prev_token.span));
+            let mut len = 0;
+            while self.token.kind == *long_kind || self.token.kind == *short_kind {
+                if self.token.kind.break_two_token_op(1).is_some() {
+                    len += 2;
+                } else {
+                    len += 1;
+                }
+                self.bump();
+                if expected == Some(len) {
+                    break;
+                }
+            }
+            if expected.is_some() && expected != Some(len) {
+                return None;
+            }
+            return Some((lo.to(self.prev_token.span), len));
         }
         None
     }
 
     pub(super) fn recover_vcs_conflict_marker(&mut self) {
         // <<<<<<<
-        let Some(start) = self.conflict_marker(&TokenKind::Shl, &TokenKind::Lt) else {
+        let Some((start, len)) = self.conflict_marker(&TokenKind::Shl, &TokenKind::Lt, None) else {
             return;
         };
-        let mut spans = Vec::with_capacity(3);
+        let mut spans = Vec::with_capacity(2);
         spans.push(start);
         // |||||||
         let mut middlediff3 = None;
@@ -3071,13 +3080,19 @@ impl<'a> Parser<'a> {
             if self.token == TokenKind::Eof {
                 break;
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::Or) {
+            if let Some((span, _)) =
+                self.conflict_marker(&TokenKind::OrOr, &TokenKind::Or, Some(len))
+            {
                 middlediff3 = Some(span);
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq) {
+            if let Some((span, _)) =
+                self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq, Some(len))
+            {
                 middle = Some(span);
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::Shr, &TokenKind::Gt) {
+            if let Some((span, _)) =
+                self.conflict_marker(&TokenKind::Shr, &TokenKind::Gt, Some(len))
+            {
                 spans.push(span);
                 end = Some(span);
                 break;

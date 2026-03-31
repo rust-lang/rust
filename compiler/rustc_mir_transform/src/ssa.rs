@@ -25,7 +25,7 @@ pub(super) struct SsaLocals {
     assignment_order: Vec<Local>,
     /// Copy equivalence classes between locals. See `copy_classes` for documentation.
     copy_classes: IndexVec<Local, Local>,
-    /// Number of "direct" uses of each local, ie. uses that are not dereferences.
+    /// Number of "direct" uses of each local, i.e. uses that are not dereferences.
     /// We ignore non-uses (Storage statements, debuginfo).
     direct_uses: IndexVec<Local, u32>,
     /// Set of SSA locals that are immutably borrowed.
@@ -314,7 +314,7 @@ fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
             continue;
         }
 
-        // We visit in `assignment_order`, ie. reverse post-order, so `rhs` has been
+        // We visit in `assignment_order`, i.e. reverse post-order, so `rhs` has been
         // visited before `local`, and we just have to copy the representing local.
         let head = copies[rhs];
 

@@ -4,13 +4,11 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    #[type_const]
-    const N: usize;
+    type const N: usize;
 }
 
 impl Trait for () {
-    #[type_const]
-    const N: usize = 1;
+    type const N: usize = 1;
 }
 
 fn main() {

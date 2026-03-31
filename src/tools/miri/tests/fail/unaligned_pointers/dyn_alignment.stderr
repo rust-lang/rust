@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered an unaligned reference (required ALIGN byte alignment but found ALIGN)
+error: Undefined Behavior: constructing invalid value of type &dyn std::fmt::Debug: encountered an unaligned reference (required ALIGN byte alignment but found ALIGN)
   --> tests/fail/unaligned_pointers/dyn_alignment.rs:LL:CC
    |
 LL |         let _ptr = &*ptr;

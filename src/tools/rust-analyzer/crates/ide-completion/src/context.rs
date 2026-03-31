@@ -288,7 +288,7 @@ pub(crate) struct PatternContext {
     pub(crate) record_pat: Option<ast::RecordPat>,
     pub(crate) impl_or_trait: Option<Either<ast::Impl, ast::Trait>>,
     /// List of missing variants in a match expr
-    pub(crate) missing_variants: Vec<hir::Variant>,
+    pub(crate) missing_variants: Vec<hir::EnumVariant>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -527,7 +527,7 @@ impl CompletionContext<'_> {
                 hir::ModuleDef::Module(it) => self.is_visible(it),
                 hir::ModuleDef::Function(it) => self.is_visible(it),
                 hir::ModuleDef::Adt(it) => self.is_visible(it),
-                hir::ModuleDef::Variant(it) => self.is_visible(it),
+                hir::ModuleDef::EnumVariant(it) => self.is_visible(it),
                 hir::ModuleDef::Const(it) => self.is_visible(it),
                 hir::ModuleDef::Static(it) => self.is_visible(it),
                 hir::ModuleDef::Trait(it) => self.is_visible(it),
@@ -821,7 +821,10 @@ impl<'db> CompletionContext<'db> {
             CompleteSemicolon::DoNotComplete
         } else if let Some(term_node) =
             sema.token_ancestors_with_macros(token.clone()).find(|node| {
-                matches!(node.kind(), BLOCK_EXPR | MATCH_ARM | CLOSURE_EXPR | ARG_LIST | PAREN_EXPR)
+                matches!(
+                    node.kind(),
+                    BLOCK_EXPR | MATCH_ARM | CLOSURE_EXPR | ARG_LIST | PAREN_EXPR | ARRAY_EXPR
+                )
             })
         {
             let next_token = iter::successors(token.next_token(), |it| it.next_token())

@@ -49,8 +49,9 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
             SyntaxElement::Node(n) => n,
             SyntaxElement::Token(t) => t.parent()?,
         };
-        let mut selected_nodes =
-            parent_node.children().filter(|it| selection_range.contains_range(it.text_range()));
+        let mut selected_nodes = parent_node.children().filter(|it| {
+            selection_range.intersect(it.text_range()).is_some_and(|it| !it.is_empty())
+        });
 
         let first_selected = selected_nodes.next()?;
         let edits = match_ast! {
@@ -673,6 +674,25 @@ $0use std::fmt::Result;
 use std::fmt::Error;
 use {std::fmt::{Debug, Display, Write}};
 use std::fmt::Result;
+",
+        );
+    }
+
+    #[test]
+    fn merge_partial_selection_uses() {
+        cov_mark::check!(merge_with_selected_use_item_neighbors);
+        check_assist(
+            merge_imports,
+            r"
+use std::fmt::Error;
+$0use std::fmt::Display;
+use std::fmt::Debug;
+use std::fmt::Write;
+use$0 std::fmt::Result;
+",
+            r"
+use std::fmt::Error;
+use std::fmt::{Debug, Display, Result, Write};
 ",
         );
     }

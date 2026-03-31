@@ -1,4 +1,5 @@
 //@ compile-flags: --test
+//@ reference: attributes.testing.should_panic.syntax
 
 #[test]
 #[should_panic = "foo"]

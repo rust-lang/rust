@@ -24,13 +24,25 @@ fn all_copy(v: &AllCopy) -> AllCopy {
     AllCopy { a, b, c }
 }
 
+// EMIT_MIR gvn_copy_aggregate.all_copy_mut.GVN.diff
+fn all_copy_mut(mut_v: &mut AllCopy) -> AllCopy {
+    // CHECK-LABEL: fn all_copy_mut(
+    // CHECK: = AllCopy { {{.*}} };
+    // CHECK-NOT: _0 = copy ({{.*}});
+    let v = &*mut_v;
+    let a = v.a;
+    let b = v.b;
+    let c = v.c;
+    mut_v.a = 0;
+    AllCopy { a, b, c }
+}
+
+// Nested references may be modified.
 // EMIT_MIR gvn_copy_aggregate.all_copy_2.GVN.diff
 fn all_copy_2(v: &&AllCopy) -> AllCopy {
     // CHECK-LABEL: fn all_copy_2(
     // CHECK: bb0: {
-    // CHECK-NOT: = AllCopy { {{.*}} };
-    // CHECK: [[V1:_.*]] = copy (*_1);
-    // CHECK: _0 = copy (*[[V1]]);
+    // CHECK: _0 = AllCopy { {{.*}} };
     let a = v.a;
     let b = v.b;
     let c = v.c;
@@ -258,4 +270,32 @@ fn remove_storage_dead_from_index(f: fn() -> usize, v: [SameType; 5]) -> SameTyp
             Return()
         }
     }
+}
+
+pub struct Single(u8);
+
+// EMIT_MIR gvn_copy_aggregate.deref_nonssa.GVN.diff
+fn deref_nonssa() -> Single {
+    // CHECK-LABEL: fn deref_nonssa(
+    // CHECK: _0 = Single(copy {{.*}});
+    let mut a = Single(0);
+    let b = &a;
+    let c = (*b).0;
+    a = Single(1);
+    // GVN shouldn't replace `Single(c)` with `*b`.
+    Single(c)
+}
+
+pub struct SingleRef<'a>(&'a Single);
+
+// EMIT_MIR gvn_copy_aggregate.deref_nonssa_2.GVN.diff
+pub fn deref_nonssa_2() -> Single {
+    // CHECK-LABEL: fn deref_nonssa_2(
+    // CHECK: _0 = Single(copy {{.*}});
+    let mut a = Single(0);
+    let r = SingleRef(&a);
+    let b = r.0;
+    let c = (*b).0;
+    a = Single(1);
+    Single(c)
 }

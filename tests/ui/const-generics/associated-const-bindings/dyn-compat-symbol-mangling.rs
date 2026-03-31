@@ -15,8 +15,7 @@
 #![crate_name = "sym"]
 
 trait Trait {
-    #[type_const]
-    const N: usize;
+    type const N: usize;
 }
 
 #[rustc_symbol_name]

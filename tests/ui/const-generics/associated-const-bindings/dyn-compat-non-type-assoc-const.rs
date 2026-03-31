@@ -7,7 +7,7 @@
 
 trait Trait {
     const K: usize;
-    //~^ NOTE it contains associated const `K` that's not marked `#[type_const]`
+    //~^ NOTE it contains associated const `K` that's not defined as `type const`
 }
 
 fn main() {
@@ -16,5 +16,5 @@ fn main() {
     // Check that specifying the non-type assoc const doesn't "magically make it work".
     let _: dyn Trait<K = 0>;
     //~^ ERROR the trait `Trait` is not dyn compatible
-    //~| ERROR use of trait associated const without `#[type_const]`
+    //~| ERROR use of trait associated const not defined as `type const`
 }

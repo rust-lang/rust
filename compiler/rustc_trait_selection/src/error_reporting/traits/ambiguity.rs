@@ -11,6 +11,7 @@ use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::{
     Obligation, ObligationCause, ObligationCauseCode, PolyTraitObligation, PredicateObligation,
 };
+use rustc_middle::ty::print::PrintPolyTraitPredicateExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _};
 use rustc_session::parse::feature_err_unstable_feature_bound;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
@@ -185,9 +186,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return e;
                 }
 
-                if let Err(guar) = self.tcx.ensure_ok().coherent_trait(trait_pred.def_id()) {
-                    // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
-                    // other `Foo` impls are incoherent.
+                if let Err(guar) = self.tcx.ensure_result().coherent_trait(trait_pred.def_id()) {
+                    // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for
+                    // Foo` in case other `Foo` impls are incoherent.
                     return guar;
                 }
 
@@ -245,12 +246,37 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .find(|s| s.has_non_region_infer());
 
                 let mut err = if let Some(term) = term {
-                    self.emit_inference_failure_err(
+                    let candidates: Vec<_> = self
+                        .tcx
+                        .all_impls(trait_pred.def_id())
+                        .filter_map(|def_id| {
+                            let imp = self.tcx.impl_trait_header(def_id);
+                            if imp.polarity != ty::ImplPolarity::Positive
+                                || !self.tcx.is_user_visible_dep(def_id.krate)
+                            {
+                                return None;
+                            }
+                            let imp = imp.trait_ref.skip_binder();
+                            if imp
+                                .with_replaced_self_ty(self.tcx, trait_pred.skip_binder().self_ty())
+                                == trait_pred.skip_binder().trait_ref
+                            {
+                                Some(imp.self_ty())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    self.emit_inference_failure_err_with_type_hint(
                         obligation.cause.body_id,
                         span,
                         term,
                         TypeAnnotationNeeded::E0283,
                         true,
+                        match &candidates[..] {
+                            [candidate] => Some(*candidate),
+                            _ => None,
+                        },
                     )
                 } else {
                     struct_span_code_err!(
@@ -306,8 +332,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err.cancel();
                         return e;
                     }
-                    let pred = self.tcx.short_string(predicate, &mut err.long_ty_path());
-                    err.note(format!("cannot satisfy `{pred}`"));
+                    if let Some(clause) = predicate.as_trait_clause()
+                        && let ty::Infer(_) = clause.self_ty().skip_binder().kind()
+                    {
+                        let tr = self.tcx.short_string(
+                            clause.print_modifiers_and_trait_path(),
+                            &mut err.long_ty_path(),
+                        );
+                        err.note(format!("the type must implement `{tr}`"));
+                    } else {
+                        let pred = self.tcx.short_string(predicate, &mut err.long_ty_path());
+                        err.note(format!("cannot satisfy `{pred}`"));
+                    }
                     let impl_candidates =
                         self.find_similar_impl_candidates(predicate.as_trait_clause().unwrap());
                     if impl_candidates.len() < 40 {
@@ -362,7 +398,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && self.tcx.trait_of_assoc(*item_id) == Some(*trait_id)
                         && let None = self.tainted_by_errors()
                     {
-                        let assoc_item = self.tcx.associated_item(item_id);
+                        let assoc_item = self.tcx.associated_item(*item_id);
                         let (verb, noun) = match assoc_item.kind {
                             ty::AssocKind::Const { .. } => ("refer to the", "constant"),
                             ty::AssocKind::Fn { .. } => ("call", "function"),
@@ -394,7 +430,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         let trait_impls = self.tcx.trait_impls_of(data.trait_ref.def_id);
 
-                        if let Some(impl_def_id) =
+                        if let Some(&impl_def_id) =
                             trait_impls.non_blanket_impls().values().flatten().next()
                         {
                             let non_blanket_impl_count =
@@ -418,7 +454,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         .non_blanket_impls()
                                         .values()
                                         .flatten()
-                                        .map(|id| {
+                                        .map(|&id| {
                                             format!(
                                                 "{}",
                                                 self.tcx.type_of(id).instantiate_identity()
@@ -522,7 +558,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 if let Err(guar) = self
                     .tcx
-                    .ensure_ok()
+                    .ensure_result()
                     .coherent_trait(self.tcx.parent(data.projection_term.def_id))
                 {
                     // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
@@ -710,7 +746,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             predicate
         );
         let post = if post.len() > 1 || (post.len() == 1 && post[0].contains('\n')) {
-            format!(":\n{}", post.iter().map(|p| format!("- {p}")).collect::<Vec<_>>().join("\n"),)
+            format!(":\n{}", post.iter().map(|p| format!("- {p}")).collect::<Vec<_>>().join("\n"))
         } else if post.len() == 1 {
             format!(": `{}`", post[0])
         } else {
@@ -722,7 +758,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err.note(format!("cannot satisfy `{predicate}`"));
             }
             (0, _, 1) => {
-                err.note(format!("{} in the `{}` crate{}", msg, crates[0], post,));
+                err.note(format!("{msg} in the `{}` crate{post}", crates[0]));
             }
             (0, _, _) => {
                 err.note(format!(
@@ -739,7 +775,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (_, 1, 1) => {
                 let span: MultiSpan = spans.into();
                 err.span_note(span, msg);
-                err.note(format!("and another `impl` found in the `{}` crate{}", crates[0], post,));
+                err.note(format!("and another `impl` found in the `{}` crate{post}", crates[0]));
             }
             _ => {
                 let span: MultiSpan = spans.into();

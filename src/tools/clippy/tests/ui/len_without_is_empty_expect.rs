@@ -1,4 +1,3 @@
-//@no-rustfix
 #![allow(clippy::len_without_is_empty)]
 
 // Check that the lint expectation is fulfilled even if the lint is allowed at the type level.

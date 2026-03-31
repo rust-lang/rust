@@ -20,3 +20,12 @@ fn main() {
     //~^ unchecked_time_subtraction
     //~| unchecked_time_subtraction
 }
+
+fn issue16499() {
+    let _ = Duration::from_millis(1) - Duration::from_millis(2);
+    //~^ unchecked_time_subtraction
+    let _ = Duration::from_millis(1) - Duration::from_mins(2);
+    //~^ unchecked_time_subtraction
+    let _ = Duration::from_nanos(1) - Duration::from_secs(1);
+    //~^ unchecked_time_subtraction
+}

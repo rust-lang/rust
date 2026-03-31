@@ -942,14 +942,81 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // FIXME(#27579) RFC also considers adding trait
                 // obligations that don't refer to Self and
                 // checking those
-                if let Some(principal) = data.principal_def_id() {
+                if let Some(principal) = data.principal() {
+                    let principal_def_id = principal.skip_binder().def_id;
                     self.out.push(traits::Obligation::with_depth(
                         tcx,
                         self.cause(ObligationCauseCode::WellFormed(None)),
                         self.recursion_depth,
                         self.param_env,
-                        ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
+                        ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal_def_id)),
                     ));
+
+                    // For the most part we don't add wf predicates corresponding to
+                    // the trait ref's generic arguments which allows code like this
+                    // to compile:
+                    // ```rust
+                    // trait Trait<T: Sized> {}
+                    // fn foo(_: &dyn Trait<[u32]>) {}
+                    // ```
+                    //
+                    // However, we sometimes incidentally check that const arguments
+                    // have the correct type as a side effect of the anon const
+                    // desugaring. To make this "consistent" for users we explicitly
+                    // check `ConstArgHasType` clauses so that const args that don't
+                    // go through an anon const still have their types checked.
+                    //
+                    // See also: https://rustc-dev-guide.rust-lang.org/const-generics.html
+                    let args = principal.skip_binder().with_self_ty(self.tcx(), t).args;
+                    let obligations =
+                        self.nominal_obligations(principal_def_id, args).into_iter().filter(|o| {
+                            let kind = o.predicate.kind().skip_binder();
+                            match kind {
+                                ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(
+                                    ct,
+                                    _,
+                                )) if matches!(ct.kind(), ty::ConstKind::Param(..)) => {
+                                    // ConstArgHasType clauses are not higher kinded. Assert as
+                                    // such so we can fix this up if that ever changes.
+                                    assert!(o.predicate.kind().bound_vars().is_empty());
+                                    // In stable rust, variables from the trait object binder
+                                    // cannot be referenced by a ConstArgHasType clause. However,
+                                    // under `generic_const_parameter_types`, it can. Ignore those
+                                    // predicates for now, to not have HKT-ConstArgHasTypes.
+                                    !kind.has_escaping_bound_vars()
+                                }
+                                _ => false,
+                            }
+                        });
+                    self.out.extend(obligations);
+                }
+
+                if !t.has_escaping_bound_vars() {
+                    for projection in data.projection_bounds() {
+                        let pred_binder = projection
+                            .with_self_ty(tcx, t)
+                            .map_bound(|p| {
+                                p.term.as_const().map(|ct| {
+                                    let assoc_const_ty = tcx
+                                        .type_of(p.projection_term.def_id)
+                                        .instantiate(tcx, p.projection_term.args);
+                                    ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(
+                                        ct,
+                                        assoc_const_ty,
+                                    ))
+                                })
+                            })
+                            .transpose();
+                        if let Some(pred_binder) = pred_binder {
+                            self.out.push(traits::Obligation::with_depth(
+                                tcx,
+                                self.cause(ObligationCauseCode::WellFormed(None)),
+                                self.recursion_depth,
+                                self.param_env,
+                                pred_binder,
+                            ));
+                        }
+                    }
                 }
             }
 
@@ -988,19 +1055,22 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
         match c.kind() {
             ty::ConstKind::Unevaluated(uv) => {
                 if !c.has_escaping_bound_vars() {
-                    let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
-                        ty::ClauseKind::ConstEvaluatable(c),
-                    ));
-                    let cause = self.cause(ObligationCauseCode::WellFormed(None));
-                    self.out.push(traits::Obligation::with_depth(
-                        tcx,
-                        cause,
-                        self.recursion_depth,
-                        self.param_env,
-                        predicate,
-                    ));
+                    // Skip type consts as mGCA doesn't support evaluatable clauses
+                    if !tcx.is_type_const(uv.def) {
+                        let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
+                            ty::ClauseKind::ConstEvaluatable(c),
+                        ));
+                        let cause = self.cause(ObligationCauseCode::WellFormed(None));
+                        self.out.push(traits::Obligation::with_depth(
+                            tcx,
+                            cause,
+                            self.recursion_depth,
+                            self.param_env,
+                            predicate,
+                        ));
+                    }
 
-                    if tcx.def_kind(uv.def) == DefKind::AssocConst
+                    if matches!(tcx.def_kind(uv.def), DefKind::AssocConst { .. })
                         && tcx.def_kind(tcx.parent(uv.def)) == (DefKind::Impl { of_trait: false })
                     {
                         self.add_wf_preds_for_inherent_projection(uv.into());
@@ -1093,6 +1163,23 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                                     )
                                 },
                             ));
+                        }
+                        ty::Array(elem_ty, _len) => {
+                            let elem_vals = val.to_branch();
+                            let cause = self.cause(ObligationCauseCode::WellFormed(None));
+
+                            self.out.extend(elem_vals.iter().map(|&elem_val| {
+                                let predicate = ty::PredicateKind::Clause(
+                                    ty::ClauseKind::ConstArgHasType(elem_val, *elem_ty),
+                                );
+                                traits::Obligation::with_depth(
+                                    tcx,
+                                    cause.clone(),
+                                    self.recursion_depth,
+                                    self.param_env,
+                                    predicate,
+                                )
+                            }));
                         }
                         _ => {}
                     }

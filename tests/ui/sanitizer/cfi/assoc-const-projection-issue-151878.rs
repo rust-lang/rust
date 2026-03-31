@@ -4,12 +4,11 @@
 //@ build-pass
 //@ no-prefer-dynamic
 
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, associated_type_defaults)]
 #![expect(incomplete_features)]
 
 trait Trait {
-    #[type_const]
-    const N: usize = 0;
+    type const N: usize = 0;
     fn process(&self, _: [u8; Self::N]) {}
 }
 

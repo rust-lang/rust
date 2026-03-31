@@ -1,9 +1,9 @@
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir};
-use rustc_macros::LintDiagnostic;
+use rustc_macros::Diagnostic;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::sym;
@@ -216,7 +216,7 @@ fn check_ptr_transmute_in_const<'tcx>(
     dst: Ty<'tcx>,
 ) {
     if matches!(const_context, Some(hir::ConstContext::ConstFn))
-        || matches!(cx.tcx.def_kind(body_owner_def_id), DefKind::AssocConst)
+        || matches!(cx.tcx.def_kind(body_owner_def_id), DefKind::AssocConst { .. })
     {
         if src.is_raw_ptr() && dst.is_integral() {
             cx.tcx.emit_node_span_lint(
@@ -357,20 +357,31 @@ fn check_unnecessary_transmute<'tcx>(
         _ => return,
     };
 
-    cx.tcx.node_span_lint(UNNECESSARY_TRANSMUTES, expr.hir_id, expr.span, |diag| {
-        diag.primary_message("unnecessary transmute");
-        if let Some(sugg) = sugg {
-            diag.multipart_suggestion("replace this with", sugg, Applicability::MachineApplicable);
-        }
-        if let Some(help) = help {
-            diag.help(help);
-        }
-    });
+    cx.tcx.emit_node_span_lint(
+        UNNECESSARY_TRANSMUTES,
+        expr.hir_id,
+        expr.span,
+        rustc_errors::DiagDecorator(|diag| {
+            diag.primary_message("unnecessary transmute");
+            if let Some(sugg) = sugg {
+                diag.multipart_suggestion(
+                    "replace this with",
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
+            }
+            if let Some(help) = help {
+                diag.help(help);
+            }
+        }),
+    );
 }
 
-#[derive(LintDiagnostic)]
-#[diag(lint_undefined_transmute)]
-#[note]
-#[note(lint_note2)]
-#[help]
+#[derive(Diagnostic)]
+#[diag("pointers cannot be transmuted to integers during const eval")]
+#[note("at compile-time, pointers do not have an integer value")]
+#[note(
+    "avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior"
+)]
+#[help("for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html")]
 pub(crate) struct UndefinedTransmuteLint;

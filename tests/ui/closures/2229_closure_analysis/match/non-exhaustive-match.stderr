@@ -16,7 +16,7 @@ LL |     let _b = || { match l1 { L1::A => (), L1::B => todo!() } };
    |                                         ++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: type `E1` is non-empty
-  --> $DIR/non-exhaustive-match.rs:39:25
+  --> $DIR/non-exhaustive-match.rs:33:25
    |
 LL |     let _d = || { match e1 {} };
    |                         ^^
@@ -35,7 +35,7 @@ LL ~     } };
    |
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/non-exhaustive-match.rs:41:25
+  --> $DIR/non-exhaustive-match.rs:35:25
    |
 LL |     let _e = || { match e2 { E2::A => (), E2::B => () } };
    |                         ^^ pattern `_` not covered
@@ -52,6 +52,19 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |     let _e = || { match e2 { E2::A => (), E2::B => (), _ => todo!() } };
    |                                                      ++++++++++++++
 
+error[E0505]: cannot move out of `l2` because it is borrowed
+  --> $DIR/non-exhaustive-match.rs:42:22
+   |
+LL |     let _c = || { match l2 { L2::C => (), _ => () }  };
+   |              --         -- borrow occurs due to use in closure
+   |              |
+   |              borrow of `l2` occurs here
+LL |     let mut mut_l2 = l2;
+   |                      ^^ move out of `l2` occurs here
+LL |
+LL |     _c();
+   |     -- borrow later used here
+
 error[E0505]: cannot move out of `e3` because it is borrowed
   --> $DIR/non-exhaustive-match.rs:48:22
    |
@@ -65,7 +78,7 @@ LL |
 LL |     _g();
    |     -- borrow later used here
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0004, E0505.
 For more information about an error, try `rustc --explain E0004`.

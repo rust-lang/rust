@@ -1,6 +1,6 @@
 use core::clone::TrivialClone;
 use core::iter::TrustedLen;
-use core::slice::{self};
+use core::slice;
 
 use super::{IntoIter, Vec};
 use crate::alloc::Allocator;

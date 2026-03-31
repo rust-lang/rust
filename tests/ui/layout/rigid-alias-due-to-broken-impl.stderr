@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `Assoc`
+  --> $DIR/rigid-alias-due-to-broken-impl.rs:14:1
+   |
+LL |     type Assoc;
+   |     ---------- `Assoc` from trait
+...
+LL | impl Foo for str {}
+   | ^^^^^^^^^^^^^^^^ missing `Assoc` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

@@ -14,7 +14,7 @@
 use crate::convert::FloatToInt;
 use crate::num::FpCategory;
 #[cfg(not(test))]
-use crate::num::libm;
+use crate::num::imp::libm;
 use crate::panic::const_assert;
 use crate::{intrinsics, mem};
 
@@ -142,7 +142,10 @@ pub mod consts {
     pub const LN_10: f16 = 2.30258509299404568401799145468436421_f16;
 }
 
-#[doc(test(attr(feature(cfg_target_has_reliable_f16_f128), allow(internal_features))))]
+#[doc(test(attr(
+    feature(cfg_target_has_reliable_f16_f128),
+    allow(internal_features, unused_features)
+)))]
 impl f16 {
     /// The radix or base of the internal representation of `f16`.
     #[unstable(feature = "f16", issue = "116909")]
@@ -265,6 +268,70 @@ impl f16 {
     /// Negative infinity (−∞).
     #[unstable(feature = "f16", issue = "116909")]
     pub const NEG_INFINITY: f16 = -1.0_f16 / 0.0_f16;
+
+    /// Maximum integer that can be represented exactly in an [`f16`] value,
+    /// with no other integer converting to the same floating point value.
+    ///
+    /// For an integer `x` which satisfies `MIN_EXACT_INTEGER <= x <= MAX_EXACT_INTEGER`,
+    /// there is a "one-to-one" mapping between [`i16`] and [`f16`] values.
+    /// `MAX_EXACT_INTEGER + 1` also converts losslessly to [`f16`] and back to
+    /// [`i16`], but `MAX_EXACT_INTEGER + 2` converts to the same [`f16`] value
+    /// (and back to `MAX_EXACT_INTEGER + 1` as an integer) so there is not a
+    /// "one-to-one" mapping.
+    ///
+    /// [`MAX_EXACT_INTEGER`]: f16::MAX_EXACT_INTEGER
+    /// [`MIN_EXACT_INTEGER`]: f16::MIN_EXACT_INTEGER
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_exact_integer_constants)]
+    /// # // FIXME(#152635): Float rounding on `i586` does not adhere to IEEE 754
+    /// # #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))] {
+    /// # #[cfg(target_has_reliable_f16)] {
+    /// let max_exact_int = f16::MAX_EXACT_INTEGER;
+    /// assert_eq!(max_exact_int, max_exact_int as f16 as i16);
+    /// assert_eq!(max_exact_int + 1, (max_exact_int + 1) as f16 as i16);
+    /// assert_ne!(max_exact_int + 2, (max_exact_int + 2) as f16 as i16);
+    ///
+    /// // Beyond `f16::MAX_EXACT_INTEGER`, multiple integers can map to one float value
+    /// assert_eq!((max_exact_int + 1) as f16, (max_exact_int + 2) as f16);
+    /// # }}
+    /// ```
+    // #[unstable(feature = "f16", issue = "116909")]
+    #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
+    pub const MAX_EXACT_INTEGER: i16 = (1 << Self::MANTISSA_DIGITS) - 1;
+
+    /// Minimum integer that can be represented exactly in an [`f16`] value,
+    /// with no other integer converting to the same floating point value.
+    ///
+    /// For an integer `x` which satisfies `MIN_EXACT_INTEGER <= x <= MAX_EXACT_INTEGER`,
+    /// there is a "one-to-one" mapping between [`i16`] and [`f16`] values.
+    /// `MAX_EXACT_INTEGER + 1` also converts losslessly to [`f16`] and back to
+    /// [`i16`], but `MAX_EXACT_INTEGER + 2` converts to the same [`f16`] value
+    /// (and back to `MAX_EXACT_INTEGER + 1` as an integer) so there is not a
+    /// "one-to-one" mapping.
+    ///
+    /// This constant is equivalent to `-MAX_EXACT_INTEGER`.
+    ///
+    /// [`MAX_EXACT_INTEGER`]: f16::MAX_EXACT_INTEGER
+    /// [`MIN_EXACT_INTEGER`]: f16::MIN_EXACT_INTEGER
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_exact_integer_constants)]
+    /// # // FIXME(#152635): Float rounding on `i586` does not adhere to IEEE 754
+    /// # #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))] {
+    /// # #[cfg(target_has_reliable_f16)] {
+    /// let min_exact_int = f16::MIN_EXACT_INTEGER;
+    /// assert_eq!(min_exact_int, min_exact_int as f16 as i16);
+    /// assert_eq!(min_exact_int - 1, (min_exact_int - 1) as f16 as i16);
+    /// assert_ne!(min_exact_int - 2, (min_exact_int - 2) as f16 as i16);
+    ///
+    /// // Below `f16::MIN_EXACT_INTEGER`, multiple integers can map to one float value
+    /// assert_eq!((min_exact_int - 1) as f16, (min_exact_int - 2) as f16);
+    /// # }}
+    /// ```
+    // #[unstable(feature = "f16", issue = "116909")]
+    #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
+    pub const MIN_EXACT_INTEGER: i16 = -Self::MAX_EXACT_INTEGER;
 
     /// Sign bit
     pub(crate) const SIGN_MASK: u16 = 0x8000;
@@ -717,7 +784,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn max(self, other: f16) -> f16 {
-        intrinsics::maxnumf16(self, other)
+        intrinsics::maximum_number_nsz_f16(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -748,7 +815,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn min(self, other: f16) -> f16 {
-        intrinsics::minnumf16(self, other)
+        intrinsics::minimum_number_nsz_f16(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -1326,7 +1393,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn abs(self) -> Self {
-        intrinsics::fabsf16(self)
+        intrinsics::fabs(self)
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -1454,7 +1521,11 @@ impl f16 {
 // Functions in this module fall into `core_float_math`
 // #[unstable(feature = "core_float_math", issue = "137578")]
 #[cfg(not(test))]
-#[doc(test(attr(feature(cfg_target_has_reliable_f16_f128), expect(internal_features))))]
+#[doc(test(attr(
+    feature(cfg_target_has_reliable_f16_f128),
+    expect(internal_features),
+    allow(unused_features)
+)))]
 impl f16 {
     /// Returns the largest integer less than or equal to `self`.
     ///

@@ -13,7 +13,8 @@
     clippy::uninlined_format_args,
     clippy::useless_vec,
     clippy::unnecessary_map_on_constructor,
-    clippy::needless_lifetimes
+    clippy::needless_lifetimes,
+    clippy::unnecessary_option_map_or_else
 )]
 
 use std::path::{Path, PathBuf};
@@ -642,4 +643,22 @@ where
     T: 'a,
 {
     maybe.map(|x| visitor(x));
+}
+
+trait Issue16360: Sized {
+    fn method(&self);
+
+    fn ice_machine(array: [Self; 1]) {
+        array.iter().for_each(|item| item.method());
+        //~^ redundant_closure_for_method_calls
+    }
+}
+
+fn issue16641() {
+    use std::cell::LazyCell;
+
+    let closure = LazyCell::new(|| |x: usize| println!("{x}"));
+
+    (0..10).flat_map(|x| (0..10).map(|y| closure(y))).count();
+    //~^ redundant_closure
 }

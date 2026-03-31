@@ -13,7 +13,7 @@ LL |     let _: &[i8] = data.into();
              `[T; 6]` implements `From<(T, T, T, T, T, T)>`
              `[T; 7]` implements `From<(T, T, T, T, T, T, T)>`
              `[T; 8]` implements `From<(T, T, T, T, T, T, T, T)>`
-           and 6 others
+           and 7 others
    = note: required for `&[u8]` to implement `Into<&[i8]>`
 
 error: aborting due to 1 previous error

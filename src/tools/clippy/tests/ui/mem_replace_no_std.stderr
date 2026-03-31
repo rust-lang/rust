@@ -29,19 +29,19 @@ LL |     let _ = mem::replace(&mut slice, &[]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `core::mem::take(&mut slice)`
 
 error: replacing an `Option` with `None`
-  --> tests/ui/mem_replace_no_std.rs:80:13
+  --> tests/ui/mem_replace_no_std.rs:76:13
    |
 LL |     let _ = mem::replace(&mut f.0, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `f.0.take()`
 
 error: replacing an `Option` with `None`
-  --> tests/ui/mem_replace_no_std.rs:82:13
+  --> tests/ui/mem_replace_no_std.rs:78:13
    |
 LL |     let _ = mem::replace(&mut *f, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `(*f).take()`
 
 error: replacing an `Option` with `None`
-  --> tests/ui/mem_replace_no_std.rs:84:13
+  --> tests/ui/mem_replace_no_std.rs:80:13
    |
 LL |     let _ = mem::replace(&mut b.opt, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `b.opt.take()`

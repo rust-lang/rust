@@ -1,6 +1,7 @@
 //! Deeply normalize types using the old trait solver.
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_errors::msg;
 use rustc_hir::def::DefKind;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
@@ -294,7 +295,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                 self.cause.span,
                 false,
                 |diag| {
-                    diag.note(crate::fluent_generated::trait_selection_ty_alias_overflow);
+                    diag.note(msg!("in case this is a recursive type alias, consider using a struct, enum, or union instead"));
                 },
             );
         }
@@ -452,10 +453,10 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         // been emitted earlier in compilation.
         //
         // That's because we can only end up with an Unevaluated ty::Const for a const item
-        // if it was marked with `#[type_const]`. Using this attribute without the mgca
+        // if it was marked with `type const`. Using this attribute without the mgca
         // feature gate causes a parse error.
         let ct = match tcx.def_kind(uv.def) {
-            DefKind::AssocConst => match tcx.def_kind(tcx.parent(uv.def)) {
+            DefKind::AssocConst { .. } => match tcx.def_kind(tcx.parent(uv.def)) {
                 DefKind::Trait => self.normalize_trait_projection(uv.into()).expect_const(),
                 DefKind::Impl { of_trait: false } => {
                     self.normalize_inherent_projection(uv.into()).expect_const()
@@ -465,7 +466,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     kind
                 ),
             },
-            DefKind::Const => self.normalize_free_alias(uv.into()).expect_const(),
+            DefKind::Const { .. } => self.normalize_free_alias(uv.into()).expect_const(),
             DefKind::AnonConst => {
                 let ct = ct.super_fold_with(self);
                 super::with_replaced_escaping_bound_vars(

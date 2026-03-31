@@ -42,11 +42,11 @@ declare_clippy_lint! {
     "struct field prefixed with underscore and marked public"
 }
 
+impl_lint_pass!(PubUnderscoreFields => [PUB_UNDERSCORE_FIELDS]);
+
 pub struct PubUnderscoreFields {
     behavior: PubUnderscoreFieldsBehaviour,
 }
-impl_lint_pass!(PubUnderscoreFields => [PUB_UNDERSCORE_FIELDS]);
-
 impl PubUnderscoreFields {
     pub fn new(conf: &'static Conf) -> Self {
         Self {

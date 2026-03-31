@@ -8,8 +8,11 @@ LL |         if String::from("a") == "a".try_into().unwrap() {}
    |
    = note: multiple `impl`s satisfying `String: PartialEq<_>` found in the following crates: `alloc`, `std`:
            - impl PartialEq for String;
+           - impl PartialEq<ByteStr> for String;
+           - impl PartialEq<ByteString> for String;
            - impl PartialEq<Path> for String;
            - impl PartialEq<PathBuf> for String;
+           - impl PartialEq<str> for String;
 help: try using a fully qualified path to specify the expected types
    |
 LL -         if String::from("a") == "a".try_into().unwrap() {}

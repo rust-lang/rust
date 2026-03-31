@@ -10,9 +10,9 @@ use std::{cell::LazyCell, cmp::Reverse};
 use base_db::{RootQueryDb, SourceDatabase};
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, DefWithBody, EditionedFileId, FileRange, FileRangeWrapper, HasAttrs,
-    HasContainer, HasSource, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer,
-    ModuleSource, PathResolution, Semantics, Visibility,
+    Adt, AsAssocItem, DefWithBody, EditionedFileId, ExpressionStoreOwner, FileRange,
+    FileRangeWrapper, HasAttrs, HasContainer, HasSource, InFile, InFileWrapper, InRealFile,
+    InlineAsmOperand, ItemContainer, ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
@@ -169,7 +169,7 @@ impl SearchScope {
             entries.extend(
                 source_root
                     .iter()
-                    .map(|id| (EditionedFileId::new(db, id, crate_data.edition, krate), None)),
+                    .map(|id| (EditionedFileId::new(db, id, crate_data.edition), None)),
             );
         }
         SearchScope { entries }
@@ -183,9 +183,11 @@ impl SearchScope {
 
             let source_root = db.file_source_root(root_file).source_root_id(db);
             let source_root = db.source_root(source_root).source_root(db);
-            entries.extend(source_root.iter().map(|id| {
-                (EditionedFileId::new(db, id, rev_dep.edition(db), rev_dep.into()), None)
-            }));
+            entries.extend(
+                source_root
+                    .iter()
+                    .map(|id| (EditionedFileId::new(db, id, rev_dep.edition(db)), None)),
+            );
         }
         SearchScope { entries }
     }
@@ -199,7 +201,7 @@ impl SearchScope {
         SearchScope {
             entries: source_root
                 .iter()
-                .map(|id| (EditionedFileId::new(db, id, of.edition(db), of.into()), None))
+                .map(|id| (EditionedFileId::new(db, id, of.edition(db)), None))
                 .collect(),
         }
     }
@@ -308,10 +310,26 @@ impl Definition {
 
         if let Definition::Local(var) = self {
             let def = match var.parent(db) {
-                DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                ExpressionStoreOwner::Body(def) => match def {
+                    DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::EnumVariant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::Signature(def) => match def {
+                    hir::GenericDef::Function(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Adt(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Trait(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::TypeAlias(it) => {
+                        it.source(db).map(|src| src.syntax().cloned())
+                    }
+                    hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::VariantFields(it) => {
+                    it.source(db).map(|src| src.syntax().cloned())
+                }
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -323,10 +341,26 @@ impl Definition {
 
         if let Definition::InlineAsmOperand(op) = self {
             let def = match op.parent(db) {
-                DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                ExpressionStoreOwner::Body(def) => match def {
+                    DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::EnumVariant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::Signature(def) => match def {
+                    hir::GenericDef::Function(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Adt(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Trait(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::TypeAlias(it) => {
+                        it.source(db).map(|src| src.syntax().cloned())
+                    }
+                    hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::VariantFields(it) => {
+                    it.source(db).map(|src| src.syntax().cloned())
+                }
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -1370,7 +1404,7 @@ fn is_name_ref_in_import(name_ref: &ast::NameRef) -> bool {
 }
 
 fn is_name_ref_in_test(sema: &Semantics<'_, RootDatabase>, name_ref: &ast::NameRef) -> bool {
-    name_ref.syntax().ancestors().any(|node| match ast::Fn::cast(node) {
+    sema.ancestors_with_macros(name_ref.syntax().clone()).any(|node| match ast::Fn::cast(node) {
         Some(it) => sema.to_def(&it).is_some_and(|func| func.is_test(sema.db)),
         None => false,
     })

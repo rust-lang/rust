@@ -68,7 +68,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Used to implement the _mm_sign_epi{8,16,32} functions.
             // Negates elements from `left` when the corresponding element in
             // `right` is negative. If an element from `right` is zero, zero
-            // is writen to the corresponding output element.
+            // is written to the corresponding output element.
             // Basically, we multiply `left` with `right.signum()`.
             "psign.b.128" | "psign.w.128" | "psign.d.128" => {
                 let [left, right] =

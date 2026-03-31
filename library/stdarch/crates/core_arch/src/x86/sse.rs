@@ -208,7 +208,7 @@ pub fn _mm_min_ss(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(minps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_min_ps(a: __m128, b: __m128) -> __m128 {
-    // See the `test_mm_min_ps` test why this can't be implemented using `simd_fmin`.
+    // See the `test_mm_min_ps` test why this can't be implemented using `simd_minimum_number_nsz`.
     unsafe { minps(a, b) }
 }
 
@@ -234,7 +234,7 @@ pub fn _mm_max_ss(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(maxps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_max_ps(a: __m128, b: __m128) -> __m128 {
-    // See the `test_mm_min_ps` test why this can't be implemented using `simd_fmax`.
+    // See the `test_mm_min_ps` test why this can't be implemented using `simd_maximum_number_nsz`.
     unsafe { maxps(a, b) }
 }
 
@@ -968,7 +968,7 @@ pub const fn _mm_set_ps1(a: f32) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_set_ps)
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(test, assert_instr(unpcklps))]
+// This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
@@ -2227,11 +2227,11 @@ mod tests {
         let r = _mm_min_ps(a, b);
         assert_eq_m128(r, _mm_setr_ps(-100.0, 5.0, 0.0, -10.0));
 
-        // `_mm_min_ps` can **not** be implemented using the `simd_min` rust intrinsic. `simd_min`
-        // is lowered by the llvm codegen backend to `llvm.minnum.v*` llvm intrinsic. This intrinsic
-        // doesn't specify how -0.0 is handled. Unfortunately it happens to behave different from
-        // the `minps` x86 instruction on x86. The `llvm.minnum.v*` llvm intrinsic equals
-        // `r1` to `a` and `r2` to `b`.
+        // `_mm_min_ps` can **not** be implemented using the `simd_minimum_number_nsz` rust
+        // intrinsic. That intrinsic is lowered by the llvm codegen backend to `llvm.minimumnum.v*`
+        // llvm intrinsic with the `nsz` attribute. The `nsz` attribute means -0.0 is handled
+        // non-deterministically. The `minps` x86 instruction however has a deterministic semantics
+        // for signed zeros.
         let a = _mm_setr_ps(-0.0, 0.0, 0.0, 0.0);
         let b = _mm_setr_ps(0.0, 0.0, 0.0, 0.0);
         let r1 = _mm_min_ps(a, b).as_f32x4().to_bits();
@@ -2816,14 +2816,32 @@ mod tests {
         let aa = &[3.0f32, 12.0, 23.0, NAN];
         let bb = &[3.0f32, 47.5, 1.5, NAN];
 
-        let ee = &[1i32, 0, 1, 0];
+        let ee = &[0i32, 0, 1, 0];
 
         for i in 0..4 {
             let a = _mm_setr_ps(aa[i], 1.0, 2.0, 3.0);
             let b = _mm_setr_ps(bb[i], 0.0, 2.0, 4.0);
 
-            let r = _mm_comige_ss(a, b);
+            let r = _mm_comigt_ss(a, b);
 
+            assert_eq!(
+                ee[i], r,
+                "_mm_comigt_ss({:?}, {:?}) = {}, expected: {} (i={})",
+                a, b, r, ee[i], i
+            );
+        }
+    }
+
+    #[simd_test(enable = "sse")]
+    fn test_mm_comige_ss() {
+        let aa = &[3.0f32, 23.0, 12.0, NAN];
+        let bb = &[3.0f32, 1.5, 47.5, NAN];
+        let ee = &[1i32, 1, 0, 0];
+
+        for i in 0..4 {
+            let a = _mm_setr_ps(aa[i], 1.0, 2.0, 3.0);
+            let b = _mm_setr_ps(bb[i], 0.0, 2.0, 4.0);
+            let r = _mm_comige_ss(a, b);
             assert_eq!(
                 ee[i], r,
                 "_mm_comige_ss({:?}, {:?}) = {}, expected: {} (i={})",

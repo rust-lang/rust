@@ -56,7 +56,7 @@ You can also include extensions within extensions recursively.
 **Note:** In the `include` field, the overriding logic follows a right-to-left order.
 For example,
 in `include = ["a.toml", "b.toml"]`, extension `b.toml` overrides `a.toml`.
-Also, parent extensions always overrides the inner ones.
+Also, parent extensions always override the inner ones.
 
 ## Configuring `rust-analyzer` for `rustc`
 
@@ -426,7 +426,7 @@ You can then use that rust2 folder as a separate workspace for modifying and bui
 
 Several nix configurations are defined in `src/tools/nix-dev-shell`.
 
-If you're using direnv, you can create a symbol link to `src/tools/nix-dev-shell/envrc-flake` or `src/tools/nix-dev-shell/envrc-shell`
+If you're using direnv, you can create a symbolic link to `src/tools/nix-dev-shell/envrc-flake` or `src/tools/nix-dev-shell/envrc-shell`
 
 ```bash
 ln -s ./src/tools/nix-dev-shell/envrc-flake ./.envrc # Use flake
@@ -435,6 +435,15 @@ or
 ```bash
 ln -s ./src/tools/nix-dev-shell/envrc-shell ./.envrc # Use nix-shell
 ```
+
+If you're using the flake, make sure to also update it with the following command:
+
+```
+nix flake update --flake ./src/tools/nix-dev-shell
+```
+
+The shell creates a command named `x` that runs the `./x.py` script with all dependencies
+set up correctly.
 
 ### Note
 

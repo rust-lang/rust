@@ -1,5 +1,7 @@
-//@ compile-flags: --crate-type lib -O -C debug-assertions=yes
+#![allow(unused_macros)]
+//@ compile-flags: --crate-type lib
 //@ dont-require-annotations: NOTE
+//@ run-rustfix
 
 // Regression test for issue 118786
 

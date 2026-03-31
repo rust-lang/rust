@@ -53,7 +53,7 @@ If you wish to build a custom sysroot, pass the path of your sysroot source to `
 
 ### How to use [mem-trace](https://github.com/antoyo/mem-trace)
 
-`rustc` needs to be built without `jemalloc` so that `mem-trace` can overload `malloc` since `jemalloc` is linked statically, so a `LD_PRELOAD`-ed library won't a chance to intercept the calls to `malloc`.
+`rustc` needs to be built without `jemalloc` so that `mem-trace` can overload `malloc` since `jemalloc` is linked statically, so a `LD_PRELOAD`-ed library won't have a chance to intercept the calls to `malloc`.
 
 ### How to generate GIMPLE
 

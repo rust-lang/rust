@@ -67,7 +67,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )
     }
 
-    /// Returns `true` if we were succssful, `false` if we would block.
+    /// Returns `true` if we were successful, `false` if we would block.
     fn init_once_try_begin(
         &mut self,
         init_once_ref: &InitOnceRef,

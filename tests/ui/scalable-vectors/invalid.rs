@@ -1,4 +1,5 @@
 //@ edition: 2024
+//@ only-aarch64
 #![allow(internal_features, unused_imports, unused_macros)]
 #![feature(extern_types)]
 #![feature(gen_blocks)]

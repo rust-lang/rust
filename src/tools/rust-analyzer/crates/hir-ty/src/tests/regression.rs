@@ -2645,3 +2645,199 @@ where
         "#,
     );
 }
+
+#[test]
+fn issue_21560() {
+    check_no_mismatches(
+        r#"
+mod bindings {
+    use super::*;
+    pub type HRESULT = i32;
+}
+use bindings::*;
+
+
+mod error {
+    use super::*;
+    pub fn nonzero_hresult(hr: HRESULT) -> crate::HRESULT {
+        hr
+    }
+}
+pub use error::*;
+
+mod hresult {
+    use super::*;
+    pub struct HRESULT(pub i32);
+}
+pub use hresult::HRESULT;
+
+        "#,
+    );
+}
+
+#[test]
+fn regression_21577() {
+    check_no_mismatches(
+        r#"
+pub trait FilterT<F: FilterT<F, V = Self::V> = Self> {
+    type V;
+
+    fn foo() {}
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_21605() {
+    check_infer(
+        r#"
+//- minicore: fn, coerce_unsized, dispatch_from_dyn, iterator, iterators
+pub struct Filter<'a, 'b, T>
+where
+    T: 'b,
+    'a: 'b,
+{
+    filter_fn: dyn Fn(&'a T) -> bool,
+    t: Option<T>,
+    b: &'b (),
+}
+
+impl<'a, 'b, T> Filter<'a, 'b, T>
+where
+    T: 'b,
+    'a: 'b,
+{
+    pub fn new(filter_fn: dyn Fn(&T) -> bool) -> Self {
+        Self {
+            filter_fn: filter_fn,
+            t: None,
+            b: &(),
+        }
+    }
+}
+
+pub trait FilterExt<T> {
+    type Output;
+    fn filter(&self, filter: &Filter<T>) -> Self::Output;
+}
+
+impl<const N: usize, T> FilterExt<T> for [T; N]
+where
+    T: IntoIterator,
+{
+    type Output = T;
+    fn filter(&self, filter: &Filter<T>) -> Self::Output {
+        let _ = self.into_iter().filter(filter.filter_fn);
+        loop {}
+    }
+}
+"#,
+        expect![[r#"
+            214..223 'filter_fn': dyn Fn(&'? T) -> bool + 'static
+            253..360 '{     ...     }': Filter<'a, 'b, T>
+            263..354 'Self {...     }': Filter<'a, 'b, T>
+            293..302 'filter_fn': dyn Fn(&'? T) -> bool + 'static
+            319..323 'None': Option<T>
+            340..343 '&()': &'? ()
+            341..343 '()': ()
+            421..425 'self': &'? Self
+            427..433 'filter': &'? Filter<'?, '?, T>
+            580..584 'self': &'? [T; N]
+            586..592 'filter': &'? Filter<'?, '?, T>
+            622..704 '{     ...     }': T
+            636..637 '_': Filter<Iter<'?, T>, dyn Fn(&'? T) -> bool + '?>
+            640..644 'self': &'? [T; N]
+            640..656 'self.i...iter()': Iter<'?, T>
+            640..681 'self.i...er_fn)': Filter<Iter<'?, T>, dyn Fn(&'? T) -> bool + '?>
+            664..670 'filter': &'? Filter<'?, '?, T>
+            664..680 'filter...ter_fn': dyn Fn(&'? T) -> bool + 'static
+            691..698 'loop {}': !
+            696..698 '{}': ()
+            512..513 'N': usize
+        "#]],
+    );
+}
+
+#[test]
+fn extern_fns_cannot_have_param_patterns() {
+    check_no_mismatches(
+        r#"
+pub(crate) struct Builder<'a>(&'a ());
+
+unsafe extern "C"  {
+    pub(crate) fn foo<'a>(Builder: &Builder<'a>);
+}
+    "#,
+    );
+}
+
+#[test]
+fn infinitely_sized_type() {
+    check_infer(
+        r#"
+//- minicore: sized
+
+pub struct Recursive {
+    pub content: Recursive,
+}
+
+fn is_sized<T: Sized>() {}
+
+fn foo() {
+    is_sized::<Recursive>();
+}
+    "#,
+        expect![[r#"
+            79..81 '{}': ()
+            92..124 '{     ...>(); }': ()
+            98..119 'is_siz...rsive>': fn is_sized<Recursive>()
+            98..121 'is_siz...ive>()': ()
+        "#]],
+    );
+}
+
+#[test]
+fn regression_21742() {
+    check_no_mismatches(
+        r#"
+pub trait IntoIterator {
+    type Item;
+}
+
+pub trait Collection: IntoIterator<Item = <Self as Collection>::Item> {
+    type Item;
+    fn contains(&self, item: &<Self as Collection>::Item);
+}
+
+fn contains_0<S: Collection<Item = i32>>(points: &S) {
+    points.contains(&0)
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_21773() {
+    check_no_mismatches(
+        r#"
+trait Neg {
+    type Output;
+}
+
+trait Abs: Neg {
+    fn abs(&self) -> Self::Output;
+}
+
+trait SelfAbs: Abs + Neg
+where
+    Self::Output: Neg<Output = Self::Output> + Abs,
+{
+}
+
+fn wrapped_abs<T: SelfAbs<Output = T>>(v: T) -> T {
+    v.abs()
+}
+    "#,
+    );
+}

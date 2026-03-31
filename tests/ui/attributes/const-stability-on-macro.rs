@@ -2,13 +2,13 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[rustc_const_stable(feature = "foo", since = "3.3.3")]
-//~^ ERROR macros cannot have const stability attributes
+//~^ ERROR attribute cannot be used on macro defs
 macro_rules! foo {
     () => {};
 }
 
-#[rustc_const_unstable(feature = "bar", issue="none")]
-//~^ ERROR macros cannot have const stability attributes
+#[rustc_const_unstable(feature = "bar", issue = "none")]
+//~^ ERROR attribute cannot be used on macro defs
 macro_rules! bar {
     () => {};
 }

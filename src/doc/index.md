@@ -194,9 +194,8 @@ resources maintained by the [Embedded Working Group] useful.
 
 #### The Embedded Rust Book
 
-[The Embedded Rust Book] is targeted at developers familiar with embedded
-development and familiar with Rust, but have not used Rust for embedded
-development.
+[The Embedded Rust Book] is targeted at developers who are familiar with embedded
+development and Rust, but who have not used Rust for embedded development.
 
 [The Embedded Rust Book]: embedded-book/index.html
 [Rust project]: https://www.rust-lang.org

@@ -1,0 +1,14 @@
+error[E0428]: the name `Foo` is defined multiple times
+  --> $DIR/eii-declaration-conflicts-with-constructor.rs:8:1
+   |
+LL | struct Foo(i32);
+   | ---------------- previous definition of the value `Foo` here
+...
+LL | pub fn Foo(x: u64) {}
+   | ^^^^^^^^^^^^^^^^^^ `Foo` redefined here
+   |
+   = note: `Foo` must be defined only once in the value namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0428`.

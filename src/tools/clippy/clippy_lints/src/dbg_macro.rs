@@ -1,14 +1,14 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_in_test;
 use clippy_utils::macros::{MacroCall, macro_backtrace};
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{is_in_test, sym};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, Closure, ClosureKind, CoroutineKind, Expr, ExprKind, LetStmt, LocalSource, Node, Stmt, StmtKind};
+use rustc_hir::{Closure, ClosureKind, CoroutineKind, Expr, ExprKind, LetStmt, LocalSource, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, SyntaxContext, sym};
+use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -33,6 +33,8 @@ declare_clippy_lint! {
     "`dbg!` macro is intended as a debugging tool"
 }
 
+impl_lint_pass!(DbgMacro => [DBG_MACRO]);
+
 pub struct DbgMacro {
     allow_dbg_in_tests: bool,
     /// Tracks the `dbg!` macro callsites that are already checked.
@@ -40,8 +42,6 @@ pub struct DbgMacro {
     /// Tracks the previous `SyntaxContext`, to avoid walking the same context chain.
     prev_ctxt: SyntaxContext,
 }
-
-impl_lint_pass!(DbgMacro => [DBG_MACRO]);
 
 impl DbgMacro {
     pub fn new(conf: &'static Conf) -> Self {
@@ -75,45 +75,46 @@ impl LateLintPass<'_> for DbgMacro {
                 "the `dbg!` macro is intended as a debugging tool",
                 |diag| {
                     let mut applicability = Applicability::MachineApplicable;
-                    let (sugg_span, suggestion) =
-                        match is_async_move_desugar(expr).unwrap_or(expr).peel_drop_temps().kind {
-                            // dbg!()
-                            ExprKind::Block(..) => {
-                                // If the `dbg!` macro is a "free" statement and not contained within other expressions,
-                                // remove the whole statement.
-                                if let Node::Stmt(_) = cx.tcx.parent_hir_node(expr.hir_id)
-                                    && let Some(semi_span) =
-                                        cx.sess().source_map().mac_call_stmt_semi_span(macro_call.span)
-                                {
-                                    (macro_call.span.to(semi_span), String::new())
-                                } else {
-                                    (macro_call.span, String::from("()"))
-                                }
-                            },
-                            ExprKind::Match(first, arms, _) => {
-                                let vals = collect_vals(first, arms);
-                                let suggestion = match vals.as_slice() {
-                                    // dbg!(1) => 1
-                                    &[val] => {
-                                        snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability)
-                                            .to_string()
-                                    }
-                                    // dbg!(2, 3) => (2, 3)
-                                    &[first, .., last] => {
-                                        let snippet = snippet_with_applicability(
-                                            cx,
-                                            first.span.source_callsite().to(last.span.source_callsite()),
-                                            "..",
-                                            &mut applicability,
-                                        );
-                                        format!("({snippet})")
-                                    }
-                                    _ => unreachable!(),
-                                };
-                                (macro_call.span, suggestion)
-                            },
-                            _ => unreachable!(),
-                        };
+                    let (sugg_span, suggestion) = match is_async_move_desugar(expr)
+                        .unwrap_or(expr)
+                        .peel_drop_temps()
+                        .kind
+                    {
+                        // dbg!()
+                        ExprKind::Block(..) => {
+                            // If the `dbg!` macro is a "free" statement and not contained within other expressions,
+                            // remove the whole statement.
+                            if let Node::Stmt(_) = cx.tcx.parent_hir_node(expr.hir_id)
+                                && let Some(semi_span) = cx.sess().source_map().mac_call_stmt_semi_span(macro_call.span)
+                            {
+                                (macro_call.span.to(semi_span), String::new())
+                            } else {
+                                (macro_call.span, String::from("()"))
+                            }
+                        },
+                        ExprKind::Match(args, _, _) => {
+                            let suggestion = match args.kind {
+                                // dbg!(1) => 1
+                                ExprKind::Tup([val]) => {
+                                    snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability)
+                                        .to_string()
+                                },
+                                // dbg!(2, 3) => (2, 3)
+                                ExprKind::Tup([first, .., last]) => {
+                                    let snippet = snippet_with_applicability(
+                                        cx,
+                                        first.span.source_callsite().to(last.span.source_callsite()),
+                                        "..",
+                                        &mut applicability,
+                                    );
+                                    format!("({snippet})")
+                                },
+                                _ => unreachable!(),
+                            };
+                            (macro_call.span, suggestion)
+                        },
+                        _ => unreachable!(),
+                    };
 
                     diag.span_suggestion(
                         sugg_span,
@@ -162,34 +163,4 @@ fn is_async_move_desugar<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx
 
 fn first_dbg_macro_in_expansion(cx: &LateContext<'_>, span: Span) -> Option<MacroCall> {
     macro_backtrace(span).find(|mc| cx.tcx.is_diagnostic_item(sym::dbg_macro, mc.def_id))
-}
-
-/// Extracts all value expressions from the `match`-tree generated by `dbg!`.
-/// 
-/// E.g. from
-/// ```rust, ignore
-/// match 1 {
-///     tmp_1 => match 2 {
-///         tmp_2 => {
-///             /* printing */
-///             (tmp_1, tmp_2)
-///         }
-///     }
-/// }
-/// ```
-/// this extracts `1` and `2`.
-fn collect_vals<'hir>(first: &'hir Expr<'hir>, mut arms: &'hir [Arm<'hir>]) -> Vec<&'hir Expr<'hir>> {
-    let mut vals = vec![first];
-    loop {
-        let [arm] = arms else { unreachable!("dbg! macro expansion only has single-arm matches") };
-
-        match is_async_move_desugar(arm.body).unwrap_or(arm.body).peel_drop_temps().kind {
-            ExprKind::Block(..) => return vals,
-            ExprKind::Match(val, a, _) => {
-                vals.push(val);
-                arms = a;
-            }
-            _ => unreachable!("dbg! macro expansion only results in block or match expressions"),
-        }
-    }
 }

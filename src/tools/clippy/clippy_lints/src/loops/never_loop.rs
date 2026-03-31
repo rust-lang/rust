@@ -6,6 +6,7 @@ use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{contains_return, sym};
+use rustc_ast::BinOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Closure, Destination, Expr, ExprKind, HirId, InlineAsm, InlineAsmOperand, Node, Pat, Stmt, StmtKind,
@@ -55,7 +56,7 @@ pub(super) fn check<'tcx>(
                     )];
                     // Make sure to clear up the diverging sites when we remove a loopp.
                     suggestions.extend(break_spans.iter().map(|span| (*span, String::new())));
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         "if you need the first element of the iterator, try writing",
                         suggestions,
                         app,
@@ -305,6 +306,9 @@ fn never_loop_expr<'tcx>(
             }
         },
         ExprKind::Call(e, es) => never_loop_expr_all(cx, once(e).chain(es.iter()), local_labels, main_loop_id),
+        ExprKind::Binary(op, e1, _) if matches!(op.node, BinOpKind::And | BinOpKind::Or) => {
+            never_loop_expr(cx, e1, local_labels, main_loop_id)
+        },
         ExprKind::Binary(_, e1, e2)
         | ExprKind::Assign(e1, e2, _)
         | ExprKind::AssignOp(_, e1, e2)

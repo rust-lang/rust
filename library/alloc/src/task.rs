@@ -87,6 +87,7 @@ use crate::sync::Arc;
 /// ```
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "wake_trait", since = "1.51.0")]
+#[rustc_diagnostic_item = "Wake"]
 pub trait Wake {
     /// Wake this task.
     #[stable(feature = "wake_trait", since = "1.51.0")]

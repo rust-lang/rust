@@ -1,11 +1,14 @@
 # Feature gates
 
-This chapter is intended to provide basic help for adding, removing, and
-modifying feature gates.
+This chapter is intended to provide basic help for adding, removing, and modifying feature gates.
+
+For how rustc enforces and checks feature gates in the compiler pipeline,
+see [Feature Gate Checking][feature-gate-check].
 
 Note that this is specific to *language* feature gates; *library* feature gates use [a different
 mechanism][libs-gate].
 
+[feature-gate-check]: ./feature-gate-check.md
 [libs-gate]: ./stability.md
 
 ## Adding a feature gate
@@ -63,9 +66,8 @@ to follow when [removing a feature gate][removing]):
     Some("renamed to `$new_feature_name`"))
    ```
 
-3. Add a feature gate declaration with the new name to
-   `rustc_feature/src/unstable.rs`. It should look very similar to the old
-   declaration:
+3. Add a feature gate declaration with the new name to `rustc_feature/src/unstable.rs`.
+   It should look very similar to the old declaration:
 
    ```rust,ignore
    /// description of feature
@@ -75,9 +77,8 @@ to follow when [removing a feature gate][removing]):
 
 ## Stabilizing a feature
 
-See ["Updating the feature-gate listing"] in the "Stabilizing Features" chapter
-for instructions. There are additional steps you will need to take beyond just
-updating the declaration!
+See ["Updating the feature-gate listing"] in the "Stabilizing Features" chapter for instructions.
+There are additional steps you will need to take beyond just updating the declaration!
 
 
 ["Stability in code"]: ./implementing-new-features.md#stability-in-code

@@ -451,6 +451,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.SetFilePointerEx(file, distance_to_move, new_file_pointer, move_method)?;
                 this.write_scalar(res, dest)?;
             }
+            "MoveFileExW" => {
+                let [existing_name, new_name, flags] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(*const _, *const _, u32) -> winapi::BOOL),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let res = this.MoveFileExW(existing_name, new_name, flags)?;
+                this.write_scalar(res, dest)?;
+            }
 
             // Allocation
             "HeapAlloc" => {
@@ -1199,7 +1209,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "`_Unwind_RaiseException` is not supported on non-MinGW Windows",
                     );
                 }
-                // This function looks and behaves excatly like miri_start_unwind.
+                // This function looks and behaves exactly like miri_start_unwind.
                 let [payload] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*mut _) -> unwind::libunwind::_Unwind_Reason_Code),
                     link_name,

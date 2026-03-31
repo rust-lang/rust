@@ -4,8 +4,7 @@
 #![allow(incomplete_features)]
 
 pub trait Trait {
-    #[type_const]
-    const ASSOC: usize;
+    type const ASSOC: usize;
 }
 
 pub fn foo<

@@ -1,4 +1,4 @@
-use rustc_hir::attrs::{AttributeKind, CoverageAttrKind};
+use rustc_hir::attrs::CoverageAttrKind;
 use rustc_hir::find_attr;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -49,9 +49,7 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// Query implementation for `coverage_attr_on`.
 fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // Check for a `#[coverage(..)]` attribute on this def.
-    if let Some(kind) =
-        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Coverage(_sp, kind) => kind)
-    {
+    if let Some(kind) = find_attr!(tcx, def_id, Coverage(_sp, kind) => kind) {
         match kind {
             CoverageAttrKind::On => return true,
             CoverageAttrKind::Off => return false,

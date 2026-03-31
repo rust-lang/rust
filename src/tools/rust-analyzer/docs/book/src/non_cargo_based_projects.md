@@ -135,7 +135,7 @@ interface Crate {
     cfg_groups?: string[];
     /// The set of cfgs activated for a given crate, like
     /// `["unix", "feature=\"foo\"", "feature=\"bar\""]`.
-    cfg: string[];
+    cfg?: string[];
     /// Target tuple for this Crate.
     ///
     /// Used when running `rustc --print cfg`
@@ -143,7 +143,7 @@ interface Crate {
     target?: string;
     /// Environment variables, used for
     /// the `env!` macro
-    env: { [key: string]: string; };
+    env?: { [key: string]: string; };
     /// Extra crate-level attributes applied to this crate.
     ///
     /// rust-analyzer will behave as if these attributes
@@ -155,7 +155,8 @@ interface Crate {
     crate_attrs?: string[];
 
     /// Whether the crate is a proc-macro crate.
-    is_proc_macro: boolean;
+    /// Defaults to `false` if unspecified.
+    is_proc_macro?: boolean;
     /// For proc-macro crates, path to compiled
     /// proc-macro (.so file).
     proc_macro_dylib_path?: string;

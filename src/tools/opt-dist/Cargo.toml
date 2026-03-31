@@ -10,10 +10,10 @@ log = "0.4"
 anyhow = "1"
 humantime = "2"
 humansize = "2"
-sysinfo = { version = "0.38.0", default-features = false, features = ["disk"] }
+sysinfo = { version = "0.38.4", default-features = false, features = ["disk"] }
 fs_extra = "1"
 camino = "1"
-tar = "0.4"
+tar = "0.4.45"
 xz = { version = "0.1", package = "xz2" }
 serde_json = "1"
 glob = "0.3"

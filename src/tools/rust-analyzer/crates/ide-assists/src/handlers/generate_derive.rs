@@ -1,7 +1,7 @@
 use syntax::{
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     T,
-    ast::{self, AstNode, HasAttrs, edit::IndentLevel, make},
+    ast::{self, AstNode, HasAttrs, edit::IndentLevel, syntax_factory::SyntaxFactory},
     syntax_editor::{Element, Position},
 };
 
@@ -42,13 +42,15 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     };
 
     acc.add(AssistId::generate("generate_derive"), "Add `#[derive]`", target, |edit| {
+        let make = SyntaxFactory::without_mappings();
+
         match derive_attr {
             None => {
-                let derive = make::attr_outer(make::meta_token_tree(
-                    make::ext::ident_path("derive"),
-                    make::token_tree(T!['('], vec![]).clone_for_update(),
-                ))
-                .clone_for_update();
+                let derive =
+                    make.attr_outer(make.meta_token_tree(
+                        make.ident_path("derive"),
+                        make.token_tree(T!['('], vec![]),
+                    ));
 
                 let mut editor = edit.make_editor(nominal.syntax());
                 let indent = IndentLevel::from_node(nominal.syntax());
@@ -57,11 +59,12 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
                     .children_with_tokens()
                     .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
                     .map_or(Position::first_child_of(nominal.syntax()), Position::before);
+
                 editor.insert_all(
                     after_attrs_and_comments,
                     vec![
                         derive.syntax().syntax_element(),
-                        make::tokens::whitespace(&format!("\n{indent}")).syntax_element(),
+                        make.whitespace(&format!("\n{indent}")).syntax_element(),
                     ],
                 );
 
@@ -72,7 +75,9 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
                     .expect("failed to get token tree out of Meta")
                     .r_paren_token()
                     .expect("make::attr_outer was expected to have a R_PAREN");
+
                 let tabstop_before = edit.make_tabstop_before(cap);
+
                 editor.add_annotation(delimiter, tabstop_before);
                 edit.add_file_edits(ctx.vfs_file_id(), editor);
             }

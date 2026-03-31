@@ -5,14 +5,11 @@
 //! paths etc in all kinds of annoying scenarios.
 
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::find_attr;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{GenericArgs, Instance, TyCtxt};
-use rustc_span::{Symbol, sym};
 
 use crate::errors::{Kind, TestOutput};
-
-const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;
-const DEF_PATH: Symbol = sym::rustc_def_path;
 
 pub fn report_symbol_names(tcx: TyCtxt<'_>) {
     // if the `rustc_attrs` feature is not enabled, then the
@@ -54,7 +51,8 @@ impl SymbolNamesTest<'_> {
         // The formatting of `tag({})` is chosen so that tests can elect
         // to test the entirety of the string, if they choose, or else just
         // some subset.
-        for attr in tcx.get_attrs(def_id, SYMBOL_NAME) {
+
+        if let Some(attr_span) = find_attr!(tcx, def_id, RustcSymbolName(span) => span) {
             let def_id = def_id.to_def_id();
             let instance = Instance::new_raw(
                 def_id,
@@ -62,27 +60,30 @@ impl SymbolNamesTest<'_> {
             );
             let mangled = tcx.symbol_name(instance);
             tcx.dcx().emit_err(TestOutput {
-                span: attr.span(),
+                span: *attr_span,
                 kind: Kind::SymbolName,
                 content: format!("{mangled}"),
             });
             if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
                 tcx.dcx().emit_err(TestOutput {
-                    span: attr.span(),
+                    span: *attr_span,
                     kind: Kind::Demangling,
                     content: format!("{demangling}"),
                 });
                 tcx.dcx().emit_err(TestOutput {
-                    span: attr.span(),
+                    span: *attr_span,
                     kind: Kind::DemanglingAlt,
                     content: format!("{demangling:#}"),
                 });
             }
         }
 
-        for attr in tcx.get_attrs(def_id, DEF_PATH) {
+        if let Some(attr_span) = find_attr!(
+            tcx, def_id,
+            RustcDefPath(span) => span
+        ) {
             tcx.dcx().emit_err(TestOutput {
-                span: attr.span(),
+                span: *attr_span,
                 kind: Kind::DefPath,
                 content: with_no_trimmed_paths!(tcx.def_path_str(def_id)),
             });

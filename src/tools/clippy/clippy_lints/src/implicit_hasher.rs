@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                 ),
                 (
                     target.span(),
-                    format!("{}<{}, S>", target.type_name(), target.type_arguments(),),
+                    format!("{}<{}, S>", target.type_name(), target.type_arguments()),
                 ),
             ];
             suggestions.extend(vis.suggestions);
@@ -352,7 +352,7 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
                     );
                     self.suggestions.insert(
                         e.span,
-                        format!("{container_name}::with_capacity_and_hasher({arg_snippet}, Default::default())",),
+                        format!("{container_name}::with_capacity_and_hasher({arg_snippet}, Default::default())"),
                     );
                 },
                 _ => {},

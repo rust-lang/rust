@@ -132,3 +132,19 @@ pub fn previous_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxTo
     }
     None
 }
+
+pub fn next_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {
+    let mut token = match e.into() {
+        SyntaxElement::Node(n) => n.last_token()?,
+        SyntaxElement::Token(t) => t,
+    }
+    .next_token();
+    while let Some(inner) = token {
+        if !inner.kind().is_trivia() {
+            return Some(inner);
+        } else {
+            token = inner.next_token();
+        }
+    }
+    None
+}

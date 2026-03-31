@@ -45,12 +45,12 @@ The default configuration (see below in the [Quick start](#quick-start) section)
    ./y.sh test --release
    ```
 
-If don't need to test GCC patches you wrote in our GCC fork, then the default configuration should
+If you don't need to test GCC patches you wrote in our GCC fork, then the default configuration should
 be all you need. You can update the `rustc_codegen_gcc` without worrying about GCC.
 
 ### Building with your own GCC version
 
-If you wrote a patch for GCC and want to test it without this backend, you will need
+If you wrote a patch for GCC and want to test it with this backend, you will need
 to do a few more things.
 
 To build it (most of these instructions come from [here](https://gcc.gnu.org/onlinedocs/jit/internals/index.html), so don't hesitate to take a look there if you encounter an issue):
@@ -127,7 +127,7 @@ You have to run these commands, in the corresponding order:
 $ ./y.sh prepare
 $ ./y.sh build --sysroot
 ```
-To check if all is  working correctly, run:
+To check if all is working correctly, run:
 
  ```bash
 $ ./y.sh cargo build --manifest-path tests/hello-world/Cargo.toml

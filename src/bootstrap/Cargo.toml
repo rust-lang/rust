@@ -50,14 +50,14 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 sha2 = "0.10"
-tar = { version = "0.4.44", default-features = false }
+tar = { version = "0.4.45", default-features = false }
 termcolor = "1.4"
 toml = "0.5"
 walkdir = "2.4"
 xz2 = "0.1"
 
 # Dependencies needed by the build-metrics feature
-sysinfo = { version = "0.38.0", default-features = false, optional = true, features = ["system"] }
+sysinfo = { version = "0.38.4", default-features = false, optional = true, features = ["system"] }
 
 # Dependencies needed by the `tracing` feature
 chrono = { version = "0.4", default-features = false, optional = true, features = ["now", "std"] }

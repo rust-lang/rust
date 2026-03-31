@@ -15,8 +15,7 @@ use rustc_errors::{Applicability, Diag};
 use rustc_hir::{Block, Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Spanned, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -65,6 +64,7 @@ declare_clippy_lint! {
     restriction,
     "indexing into a slice multiple times without an `assert`"
 }
+
 declare_lint_pass!(MissingAssertsForIndexing => [MISSING_ASSERTS_FOR_INDEXING]);
 
 fn report_lint<F>(cx: &LateContext<'_>, index_spans: Vec<Span>, msg: &'static str, f: F)
@@ -364,15 +364,15 @@ fn report_indexes(cx: &LateContext<'_>, map: UnindexMap<u64, Vec<IndexEntry<'_>>
                         // `v.len() < 5` and `v.len() <= 5` does nothing in terms of bounds checks.
                         // The user probably meant `v.len() > 5`
                         LengthComparison::LengthLessThanInt | LengthComparison::LengthLessThanOrEqualInt => {
-                            Some(format!("assert!({slice_str}.len() > {highest_index})",))
+                            Some(format!("assert!({slice_str}.len() > {highest_index})"))
                         },
                         // `5 < v.len()` == `v.len() > 5`
                         LengthComparison::IntLessThanLength if asserted_len < highest_index => {
-                            Some(format!("assert!({slice_str}.len() > {highest_index})",))
+                            Some(format!("assert!({slice_str}.len() > {highest_index})"))
                         },
                         // `5 <= v.len() == `v.len() >= 5`
                         LengthComparison::IntLessThanOrEqualLength if asserted_len <= highest_index => {
-                            Some(format!("assert!({slice_str}.len() > {highest_index})",))
+                            Some(format!("assert!({slice_str}.len() > {highest_index})"))
                         },
                         // `highest_index` here is rather a length, so we need to add 1 to it
                         LengthComparison::LengthEqualInt if asserted_len < highest_index + 1 => match macro_call {

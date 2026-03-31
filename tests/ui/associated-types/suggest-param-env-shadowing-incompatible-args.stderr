@@ -1,0 +1,20 @@
+error: defaults for generic parameters are not allowed here
+  --> $DIR/suggest-param-env-shadowing-incompatible-args.rs:8:16
+   |
+LL |     type Assoc<T = u8> = T;
+   |                ^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-param-env-shadowing-incompatible-args.rs:14:9
+   |
+LL |     fn foo() -> Self::Assoc {
+   |                 ----------- expected `<() as Foo>::Assoc` because of return type
+LL |         []
+   |         ^^ expected `u8`, found `[_; 0]`
+   |
+   = note: expected type `u8`
+             found array `[_; 0]`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

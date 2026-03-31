@@ -13,7 +13,7 @@ fn main() {
 
     let z: AtomicU32 = 1;
     //~^ ERROR mismatched types
-    //~| HELP call `Into::into` on this expression to convert `{integer}` into `AtomicU32`
+    //~| HELP call `Into::into` on this expression to convert `{integer}` into `Atomic<u32>`
 }
 
 struct A;

@@ -7,7 +7,7 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
-use rustc_type_ir::{self as ty, Interner, NormalizesTo, PredicateKind, Upcast as _};
+use rustc_type_ir::{self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Upcast as _};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
@@ -125,7 +125,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn self_ty(self) -> I::Ty {
+    fn self_ty(self) -> ty::Ty<I> {
         self.self_ty()
     }
 
@@ -133,7 +133,7 @@ where
         self.alias.trait_ref(cx)
     }
 
-    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
+    fn with_replaced_self_ty(self, cx: I, self_ty: ty::Ty<I>) -> Self {
         self.with_replaced_self_ty(cx, self_ty)
     }
 
@@ -949,6 +949,29 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
         unreachable!("`BikeshedGuaranteedNoDrop` does not have an associated type: {:?}", goal)
+    }
+
+    fn consider_builtin_field_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        let self_ty = goal.predicate.self_ty();
+        let ty::Adt(def, args) = self_ty.kind() else {
+            return Err(NoSolution);
+        };
+        let Some(FieldInfo { base, ty, .. }) = def.field_representing_type_info(ecx.cx(), args)
+        else {
+            return Err(NoSolution);
+        };
+        let ty = match ecx.cx().as_lang_item(goal.predicate.def_id()) {
+            Some(SolverLangItem::FieldBase) => base,
+            Some(SolverLangItem::FieldType) => ty,
+            _ => panic!("unexpected associated type {:?} in `Field`", goal.predicate),
+        };
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            ecx.instantiate_normalizes_to_term(goal, ty.into());
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 }
 

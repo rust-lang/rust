@@ -34,7 +34,7 @@ LL -     let _ = Into::<()>.into;
 LL +     let _ = Into::<()>::into;
    |
 
-error[E0423]: expected value, found trait `std::iter::Iterator`
+error[E0423]: expected value, found trait `::std::iter::Iterator`
   --> $DIR/issue-100365.rs:17:9
    |
 LL |         ::std::iter::Iterator
@@ -45,7 +45,7 @@ LL |     Trait!().map(std::convert::identity); // no `help` here!
    |
    = note: this error originates in the macro `Trait` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0423]: expected value, found trait `std::iter::Iterator`
+error[E0423]: expected value, found trait `::std::iter::Iterator`
   --> $DIR/issue-100365.rs:17:9
    |
 LL |         ::std::iter::Iterator

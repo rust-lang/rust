@@ -32,10 +32,10 @@ fn generic<const N: usize>() {
 
 const NON_TYPE_CONST: usize = const { 1 };
 
-#[type_const]
-//~^ ERROR: the `#[type_const]` attribute is an experimental feature
-const TYPE_CONST: usize = const { 1 };
-//~^ ERROR: unbraced const blocks as const args are experimental
+
+type const TYPE_CONST: usize = const { 1 };
+//~^ ERROR: `type const` syntax is experimental [E0658]
+//~| ERROR: top-level `type const` are unstable [E0658]
 
 static STATIC: usize = const { 1 };
 

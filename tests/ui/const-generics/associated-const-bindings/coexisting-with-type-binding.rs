@@ -5,20 +5,18 @@
 
 //@ check-pass
 
-#![feature(min_generic_const_args, unsized_const_params)]
+#![feature(adt_const_params, min_generic_const_args, unsized_const_params)]
 #![allow(incomplete_features)]
 
 trait Trait: SuperTrait {
     type N;
     type Q;
 
-    #[type_const]
-    const N: usize;
+    type const N: usize;
 }
 
 trait SuperTrait {
-    #[type_const]
-    const Q: &'static str;
+    type const Q: &'static str;
 }
 
 fn take0(_: impl Trait<N = 0, N = ()>) {}

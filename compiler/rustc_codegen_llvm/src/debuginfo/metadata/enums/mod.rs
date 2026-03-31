@@ -21,8 +21,8 @@ use crate::debuginfo::metadata::{
     file_metadata_from_def_id, type_di_node, unknown_file_metadata,
 };
 use crate::debuginfo::utils::{DIB, create_DIArray, get_namespace_for_item};
+use crate::llvm;
 use crate::llvm::debuginfo::{DIFlags, DIType};
-use crate::llvm::{self};
 
 mod cpp_like;
 mod native;

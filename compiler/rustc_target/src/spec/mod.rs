@@ -1005,8 +1005,8 @@ crate::target_spec_enum! {
     pub enum RustcAbi {
         /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
         X86Sse2 = "x86-sse2",
-        /// On x86-32/64 only: do not use any FPU or SIMD registers for the ABI.
-        X86Softfloat = "x86-softfloat",
+        /// On x86-32/64, aarch64, and S390x: do not use any FPU or SIMD registers for the ABI.
+        Softfloat = "softfloat", "x86-softfloat",
     }
 
     parse_error_type = "rustc abi";
@@ -1082,7 +1082,7 @@ crate::target_spec_enum! {
 }
 
 crate::target_spec_enum! {
-    #[derive(Default)]
+    #[derive(Default, Encodable, Decodable)]
     pub enum SplitDebuginfo {
         /// Split debug-information is disabled, meaning that on supported platforms
         /// you can find all debug information in the executable itself. This is
@@ -1175,9 +1175,10 @@ bitflags::bitflags! {
         const SHADOWCALLSTACK = 1 << 7;
         const KCFI    = 1 << 8;
         const KERNELADDRESS = 1 << 9;
-        const SAFESTACK = 1 << 10;
-        const DATAFLOW = 1 << 11;
-        const REALTIME = 1 << 12;
+        const KERNELHWADDRESS = 1 << 10;
+        const SAFESTACK = 1 << 11;
+        const DATAFLOW = 1 << 12;
+        const REALTIME = 1 << 13;
     }
 }
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
@@ -1191,24 +1192,32 @@ impl SanitizerSet {
         (SanitizerSet::ADDRESS, SanitizerSet::HWADDRESS),
         (SanitizerSet::ADDRESS, SanitizerSet::MEMTAG),
         (SanitizerSet::ADDRESS, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::ADDRESS, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::ADDRESS, SanitizerSet::SAFESTACK),
         (SanitizerSet::LEAK, SanitizerSet::MEMORY),
         (SanitizerSet::LEAK, SanitizerSet::THREAD),
         (SanitizerSet::LEAK, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::LEAK, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::LEAK, SanitizerSet::SAFESTACK),
         (SanitizerSet::MEMORY, SanitizerSet::THREAD),
         (SanitizerSet::MEMORY, SanitizerSet::HWADDRESS),
         (SanitizerSet::MEMORY, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::MEMORY, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::MEMORY, SanitizerSet::SAFESTACK),
         (SanitizerSet::THREAD, SanitizerSet::HWADDRESS),
         (SanitizerSet::THREAD, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::THREAD, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::THREAD, SanitizerSet::SAFESTACK),
         (SanitizerSet::HWADDRESS, SanitizerSet::MEMTAG),
         (SanitizerSet::HWADDRESS, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::HWADDRESS, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::HWADDRESS, SanitizerSet::SAFESTACK),
         (SanitizerSet::CFI, SanitizerSet::KCFI),
         (SanitizerSet::MEMTAG, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::MEMTAG, SanitizerSet::KERNELHWADDRESS),
+        (SanitizerSet::KERNELADDRESS, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::KERNELADDRESS, SanitizerSet::SAFESTACK),
+        (SanitizerSet::KERNELHWADDRESS, SanitizerSet::SAFESTACK),
     ];
 
     /// Return sanitizer's name
@@ -1221,6 +1230,7 @@ impl SanitizerSet {
             SanitizerSet::DATAFLOW => "dataflow",
             SanitizerSet::KCFI => "kcfi",
             SanitizerSet::KERNELADDRESS => "kernel-address",
+            SanitizerSet::KERNELHWADDRESS => "kernel-hwaddress",
             SanitizerSet::LEAK => "leak",
             SanitizerSet::MEMORY => "memory",
             SanitizerSet::MEMTAG => "memtag",
@@ -1266,6 +1276,7 @@ impl FromStr for SanitizerSet {
             "dataflow" => SanitizerSet::DATAFLOW,
             "kcfi" => SanitizerSet::KCFI,
             "kernel-address" => SanitizerSet::KERNELADDRESS,
+            "kernel-hwaddress" => SanitizerSet::KERNELHWADDRESS,
             "leak" => SanitizerSet::LEAK,
             "memory" => SanitizerSet::MEMORY,
             "memtag" => SanitizerSet::MEMTAG,
@@ -1460,6 +1471,7 @@ supported_targets! {
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-musl", powerpc64le_unknown_linux_musl),
     ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
+    ("s390x-unknown-none-softfloat", s390x_unknown_none_softfloat),
     ("s390x-unknown-linux-musl", s390x_unknown_linux_musl),
     ("sparc-unknown-linux-gnu", sparc_unknown_linux_gnu),
     ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
@@ -1814,6 +1826,8 @@ supported_targets! {
     ("x86_64-pc-cygwin", x86_64_pc_cygwin),
 
     ("x86_64-unknown-linux-gnuasan", x86_64_unknown_linux_gnuasan),
+    ("x86_64-unknown-linux-gnumsan", x86_64_unknown_linux_gnumsan),
+    ("x86_64-unknown-linux-gnutsan", x86_64_unknown_linux_gnutsan),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1955,6 +1969,19 @@ impl Arch {
             | X86_64 | Xtensa => true,
         }
     }
+
+    /// Whether `#[rustc_scalable_vector]` is supported for a target architecture
+    pub fn supports_scalable_vectors(&self) -> bool {
+        use Arch::*;
+
+        match self {
+            AArch64 | RiscV32 | RiscV64 => true,
+            AmdGpu | Arm | Arm64EC | Avr | Bpf | CSky | Hexagon | LoongArch32 | LoongArch64
+            | M68k | Mips | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC
+            | PowerPC64 | S390x | Sparc | Sparc64 | SpirV | Wasm32 | Wasm64 | X86 | X86_64
+            | Xtensa | Other(_) => false,
+        }
+    }
 }
 
 crate::target_spec_enum! {
@@ -2051,7 +2078,10 @@ impl Env {
 }
 
 crate::target_spec_enum! {
-    pub enum Abi {
+    /// An enum representing possible values for `cfg(target_abi)`.
+    /// This field is not forwarded to LLVM so it does not by itself affect codegen.
+    /// See the `cfg_abi` field of [`TargetOptions`] for more details.
+    pub enum CfgAbi {
         Abi64 = "abi64",
         AbiV2 = "abiv2",
         AbiV2Hf = "abiv2hf",
@@ -2076,10 +2106,38 @@ crate::target_spec_enum! {
     other_variant = Other;
 }
 
-impl Abi {
+impl CfgAbi {
     pub fn desc_symbol(&self) -> Symbol {
         Symbol::intern(self.desc())
     }
+}
+
+crate::target_spec_enum! {
+    /// An enum representing possible values for the `llvm_abiname` field of [`TargetOptions`].
+    /// This field is used by LLVM on some targets to control which ABI to use.
+    pub enum LlvmAbi {
+        // RISC-V and LoongArch
+        Ilp32 = "ilp32",
+        Ilp32f = "ilp32f",
+        Ilp32d = "ilp32d",
+        Ilp32e = "ilp32e",
+        Ilp32s = "ilp32s",
+        Lp64 = "lp64",
+        Lp64f = "lp64f",
+        Lp64d = "lp64d",
+        Lp64e = "lp64e",
+        Lp64s = "lp64s",
+        // MIPS
+        O32 = "o32",
+        N32 = "n32",
+        N64 = "n64",
+        // PowerPC
+        ElfV1 = "elfv1",
+        ElfV2 = "elfv2",
+
+        Unspecified = "",
+    }
+    other_variant = Other;
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
@@ -2207,11 +2265,18 @@ pub struct TargetOptions {
     pub os: Os,
     /// Environment name to use for conditional compilation (`target_env`). Defaults to [`Env::Unspecified`].
     pub env: Env,
-    /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
-    /// or `"eabihf"`. Defaults to [`Abi::Unspecified`].
-    /// This field is *not* forwarded directly to LLVM; its primary purpose is `cfg(target_abi)`.
-    /// However, parts of the backend do check this field for specific values to enable special behavior.
-    pub abi: Abi,
+    /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance,
+    /// `"eabi"` or `"eabihf"`. Defaults to [`CfgAbi::Unspecified`].
+    /// The only purpose of this field is to control `cfg(target_abi)`. This does not control the
+    /// calling convention used by this target! The actual calling convention is controlled by
+    /// `llvm_abiname`, `llvm_floatabi`, and `rustc_abi`.
+    ///
+    /// In a target spec, this field generally *informs* the user about what the ABI is, but you
+    /// have to also set up other parts of the target spec to ensure that this information is
+    /// correct. In the rest of the compiler, do not check this field if what you actually need to
+    /// know about is the calling convention. Most targets have an open-ended set of values for this
+    /// field.
+    pub cfg_abi: CfgAbi,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
     #[rustc_lint_opt_deny_field_access(
         "use `Target::is_like_*` instead of this field; see https://github.com/rust-lang/rust/issues/100343 for rationale"
@@ -2521,7 +2586,7 @@ pub struct TargetOptions {
 
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
     /// and the `-target-abi` flag in llc. In the LLVM API this is `MCOptions.ABIName`.
-    pub llvm_abiname: StaticCow<str>,
+    pub llvm_abiname: LlvmAbi,
 
     /// Control the float ABI to use, for architectures that support it. The only architecture we
     /// currently use this for is ARM. Corresponds to the `-float-abi` flag in llc. In the LLVM API
@@ -2534,7 +2599,6 @@ pub struct TargetOptions {
     /// Picks a specific ABI for this target. This is *not* just for "Rust" ABI functions,
     /// it can also affect "C" ABI functions; the point is that this flag is interpreted by
     /// rustc and not forwarded to LLVM.
-    /// So far, this is only used on x86.
     pub rustc_abi: Option<RustcAbi>,
 
     /// Whether or not RelaxElfRelocation flag will be passed to the linker
@@ -2723,7 +2787,7 @@ impl Default for TargetOptions {
             c_int_width: 32,
             os: Os::None,
             env: Env::Unspecified,
-            abi: Abi::Unspecified,
+            cfg_abi: CfgAbi::Unspecified,
             vendor: "unknown".into(),
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
@@ -2819,7 +2883,7 @@ impl Default for TargetOptions {
             merge_functions: MergeFunctions::Aliases,
             mcount: "mcount".into(),
             llvm_mcount_intrinsic: None,
-            llvm_abiname: "".into(),
+            llvm_abiname: LlvmAbi::Unspecified,
             llvm_floatabi: None,
             rustc_abi: None,
             relax_elf_relocations: false,
@@ -3167,48 +3231,331 @@ impl Target {
             );
         }
 
-        // Check that RISC-V targets always specify which ABI they use,
-        // and that ARM targets specify their float ABI.
+        // Ensure built-in targets don't use the `Other` variants.
+        if kind == TargetKind::Builtin {
+            check!(
+                !matches!(self.arch, Arch::Other(_)),
+                "`Arch::Other` is only meant for JSON targets"
+            );
+            check!(!matches!(self.os, Os::Other(_)), "`Os::Other` is only meant for JSON targets");
+            check!(
+                !matches!(self.env, Env::Other(_)),
+                "`Env::Other` is only meant for JSON targets"
+            );
+            check!(
+                !matches!(self.cfg_abi, CfgAbi::Other(_)),
+                "`CfgAbi::Other` is only meant for JSON targets"
+            );
+            check!(
+                !matches!(self.llvm_abiname, LlvmAbi::Other(_)),
+                "`LlvmAbi::Other` is only meant for JSON targets"
+            );
+        }
+
+        // Check ABI flag consistency, for the architectures where we have proper ABI treatment.
+        // To ensure targets are trated consistently, please consult with the team before allowing
+        // new cases.
         match self.arch {
-            Arch::RiscV32 => {
+            Arch::X86 => {
+                check!(
+                    self.llvm_abiname == LlvmAbi::Unspecified,
+                    "`llvm_abiname` is unused on x86-32"
+                );
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on x86-32");
                 check_matches!(
-                    &*self.llvm_abiname,
-                    "ilp32" | "ilp32f" | "ilp32d" | "ilp32e",
-                    "invalid RISC-V ABI name: {}",
+                    (&self.rustc_abi, &self.cfg_abi),
+                    // FIXME: we do not currently set a target_abi for softfloat targets here,
+                    // but we probably should, so we already allow it.
+                    (
+                        Some(RustcAbi::Softfloat),
+                        CfgAbi::SoftFloat | CfgAbi::Unspecified | CfgAbi::Other(_)
+                    ) | (
+                        Some(RustcAbi::X86Sse2) | None,
+                        CfgAbi::Uwp
+                            | CfgAbi::Llvm
+                            | CfgAbi::Sim
+                            | CfgAbi::Unspecified
+                            | CfgAbi::Other(_)
+                    ),
+                    "invalid x86-32 Rust-specific ABI and `cfg(target_abi)` combination:\n\
+                    Rust-specific ABI: {:?}\n\
+                    cfg(target_abi): {}",
+                    self.rustc_abi,
+                    self.cfg_abi,
+                );
+            }
+            Arch::X86_64 => {
+                check!(
+                    self.llvm_abiname == LlvmAbi::Unspecified,
+                    "`llvm_abiname` is unused on x86-64"
+                );
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on x86-64");
+                // FIXME: we do not currently set a target_abi for softfloat targets here, but we
+                // probably should, so we already allow it.
+                // FIXME: Ensure that target_abi = "x32" correlates with actually using that ABI.
+                // Do any of the others need a similar check?
+                check_matches!(
+                    (&self.rustc_abi, &self.cfg_abi),
+                    (
+                        Some(RustcAbi::Softfloat),
+                        CfgAbi::SoftFloat | CfgAbi::Unspecified | CfgAbi::Other(_)
+                    ) | (
+                        None,
+                        CfgAbi::X32
+                            | CfgAbi::Llvm
+                            | CfgAbi::Fortanix
+                            | CfgAbi::Uwp
+                            | CfgAbi::MacAbi
+                            | CfgAbi::Sim
+                            | CfgAbi::Unspecified
+                            | CfgAbi::Other(_)
+                    ),
+                    "invalid x86-64 Rust-specific ABI and `cfg(target_abi)` combination:\n\
+                    Rust-specific ABI: {:?}\n\
+                    cfg(target_abi): {}",
+                    self.rustc_abi,
+                    self.cfg_abi,
+                );
+            }
+            Arch::RiscV32 => {
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on RISC-V");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on RISC-V");
+                check_matches!(
+                    (&self.llvm_abiname, &self.cfg_abi),
+                    (LlvmAbi::Ilp32, CfgAbi::Unspecified | CfgAbi::Other(_))
+                        | (LlvmAbi::Ilp32f, CfgAbi::Unspecified | CfgAbi::Other(_))
+                        | (LlvmAbi::Ilp32d, CfgAbi::Unspecified | CfgAbi::Other(_))
+                        | (LlvmAbi::Ilp32e, CfgAbi::Ilp32e),
+                    "invalid RISC-V ABI name and `cfg(target_abi)` combination:\n\
+                     ABI name: {}\n\
+                     cfg(target_abi): {}",
                     self.llvm_abiname,
+                    self.cfg_abi,
                 );
             }
             Arch::RiscV64 => {
                 // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on RISC-V");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on RISC-V");
                 check_matches!(
-                    &*self.llvm_abiname,
-                    "lp64" | "lp64f" | "lp64d" | "lp64e",
-                    "invalid RISC-V ABI name: {}",
+                    (&self.llvm_abiname, &self.cfg_abi),
+                    (LlvmAbi::Lp64, CfgAbi::Unspecified | CfgAbi::Other(_))
+                        | (LlvmAbi::Lp64f, CfgAbi::Unspecified | CfgAbi::Other(_))
+                        | (LlvmAbi::Lp64d, CfgAbi::Unspecified | CfgAbi::Other(_))
+                        | (LlvmAbi::Lp64e, CfgAbi::Unspecified | CfgAbi::Other(_)),
+                    "invalid RISC-V ABI name and `cfg(target_abi)` combination:\n\
+                     ABI name: {}\n\
+                     cfg(target_abi): {}",
                     self.llvm_abiname,
+                    self.cfg_abi,
                 );
             }
             Arch::Arm => {
                 check!(
-                    self.llvm_floatabi.is_some(),
-                    "ARM targets must set `llvm-floatabi` to `hard` or `soft`",
+                    self.llvm_abiname == LlvmAbi::Unspecified,
+                    "`llvm_abiname` is unused on ARM"
+                );
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on ARM");
+                check_matches!(
+                    (&self.llvm_floatabi, &self.cfg_abi),
+                    (
+                        Some(FloatAbi::Hard),
+                        CfgAbi::EabiHf | CfgAbi::Uwp | CfgAbi::Unspecified | CfgAbi::Other(_)
+                    ) | (Some(FloatAbi::Soft), CfgAbi::Eabi),
+                    "Invalid combination of float ABI and `cfg(target_abi)` for ARM target\n\
+                     float ABI: {:?}\n\
+                     cfg(target_abi): {}",
+                    self.llvm_floatabi,
+                    self.cfg_abi,
                 )
             }
-            _ => {}
-        }
-
-        // Check consistency of Rust ABI declaration.
-        if let Some(rust_abi) = self.rustc_abi {
-            match rust_abi {
-                RustcAbi::X86Sse2 => check_matches!(
-                    self.arch,
-                    Arch::X86,
-                    "`x86-sse2` ABI is only valid for x86-32 targets"
-                ),
-                RustcAbi::X86Softfloat => check_matches!(
-                    self.arch,
-                    Arch::X86 | Arch::X86_64,
-                    "`x86-softfloat` ABI is only valid for x86 targets"
-                ),
+            Arch::AArch64 => {
+                check!(
+                    self.llvm_abiname == LlvmAbi::Unspecified,
+                    "`llvm_abiname` is unused on aarch64"
+                );
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on aarch64");
+                // FIXME: Ensure that target_abi = "ilp32" correlates with actually using that ABI.
+                // Do any of the others need a similar check?
+                check_matches!(
+                    (&self.rustc_abi, &self.cfg_abi),
+                    (Some(RustcAbi::Softfloat), CfgAbi::SoftFloat)
+                        | (
+                            None,
+                            CfgAbi::Ilp32
+                                | CfgAbi::Llvm
+                                | CfgAbi::MacAbi
+                                | CfgAbi::Sim
+                                | CfgAbi::Uwp
+                                | CfgAbi::Unspecified
+                                | CfgAbi::Other(_)
+                        ),
+                    "invalid aarch64 Rust-specific ABI and `cfg(target_abi)` combination:\n\
+                    Rust-specific ABI: {:?}\n\
+                    cfg(target_abi): {}",
+                    self.rustc_abi,
+                    self.cfg_abi,
+                );
+            }
+            Arch::PowerPC => {
+                check!(
+                    self.llvm_abiname == LlvmAbi::Unspecified,
+                    "`llvm_abiname` is unused on PowerPC"
+                );
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on PowerPC");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on PowerPC");
+                // FIXME: Check that `target_abi` matches the actually configured ABI (with or
+                // without SPE).
+                check_matches!(
+                    self.cfg_abi,
+                    CfgAbi::Spe | CfgAbi::Unspecified | CfgAbi::Other(_),
+                    "invalid `target_abi` for PowerPC"
+                );
+            }
+            Arch::PowerPC64 => {
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on PowerPC64");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on PowerPC64");
+                // PowerPC64 targets that are not AIX must set their ABI to either ELFv1 or ELFv2
+                if self.os == Os::Aix {
+                    // FIXME: Check that `target_abi` matches the actually configured ABI
+                    // (vec-default vs vec-ext).
+                    check_matches!(
+                        (&self.llvm_abiname, &self.cfg_abi),
+                        (LlvmAbi::Unspecified, CfgAbi::VecDefault | CfgAbi::VecExtAbi),
+                        "invalid PowerPC64 AIX ABI name and `cfg(target_abi)` combination:\n\
+                        ABI name: {}\n\
+                        cfg(target_abi): {}",
+                        self.llvm_abiname,
+                        self.cfg_abi,
+                    );
+                } else if self.endian == Endian::Big {
+                    check_matches!(
+                        (&self.llvm_abiname, &self.cfg_abi),
+                        (LlvmAbi::ElfV1, CfgAbi::ElfV1) | (LlvmAbi::ElfV2, CfgAbi::ElfV2),
+                        "invalid PowerPC64 big-endian ABI name and `cfg(target_abi)` combination:\n\
+                        ABI name: {}\n\
+                        cfg(target_abi): {}",
+                        self.llvm_abiname,
+                        self.cfg_abi,
+                    );
+                } else {
+                    check_matches!(
+                        (&self.llvm_abiname, &self.cfg_abi),
+                        (LlvmAbi::ElfV2, CfgAbi::ElfV2),
+                        "invalid PowerPC64 little-endian ABI name and `cfg(target_abi)` combination:\n\
+                        ABI name: {}\n\
+                        cfg(target_abi): {}",
+                        self.llvm_abiname,
+                        self.cfg_abi,
+                    );
+                }
+            }
+            Arch::S390x => {
+                check!(
+                    self.llvm_abiname == LlvmAbi::Unspecified,
+                    "`llvm_abiname` is unused on s390x"
+                );
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on s390x");
+                check_matches!(
+                    (&self.rustc_abi, &self.cfg_abi),
+                    (Some(RustcAbi::Softfloat), CfgAbi::SoftFloat)
+                        | (None, CfgAbi::Unspecified | CfgAbi::Other(_)),
+                    "invalid s390x Rust-specific ABI and `cfg(target_abi)` combination:\n\
+                    Rust-specific ABI: {:?}\n\
+                    cfg(target_abi): {}",
+                    self.rustc_abi,
+                    self.cfg_abi,
+                );
+            }
+            Arch::LoongArch32 => {
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on LoongArch");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on LoongArch");
+                check_matches!(
+                    (&self.llvm_abiname, &self.cfg_abi),
+                    (LlvmAbi::Ilp32s, CfgAbi::SoftFloat)
+                        | (LlvmAbi::Ilp32f, CfgAbi::Unspecified | CfgAbi::Other(_))
+                        | (LlvmAbi::Ilp32d, CfgAbi::Unspecified | CfgAbi::Other(_)),
+                    "invalid LoongArch ABI name and `cfg(target_abi)` combination:\n\
+                     ABI name: {}\n\
+                     cfg(target_abi): {}",
+                    self.llvm_abiname,
+                    self.cfg_abi,
+                );
+            }
+            Arch::LoongArch64 => {
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on LoongArch");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on LoongArch");
+                check_matches!(
+                    (&self.llvm_abiname, &self.cfg_abi),
+                    (LlvmAbi::Lp64s, CfgAbi::SoftFloat)
+                        | (LlvmAbi::Lp64f, CfgAbi::Unspecified | CfgAbi::Other(_))
+                        | (LlvmAbi::Lp64d, CfgAbi::Unspecified | CfgAbi::Other(_)),
+                    "invalid LoongArch ABI name and `cfg(target_abi)` combination:\n\
+                     ABI name: {}\n\
+                     cfg(target_abi): {}",
+                    self.llvm_abiname,
+                    self.cfg_abi,
+                );
+            }
+            Arch::Mips | Arch::Mips32r6 => {
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on MIPS");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on MIPS");
+                check_matches!(
+                    (&self.llvm_abiname, &self.cfg_abi),
+                    (LlvmAbi::O32, CfgAbi::Unspecified | CfgAbi::Other(_)),
+                    "invalid MIPS ABI name and `cfg(target_abi)` combination:\n\
+                     ABI name: {}\n\
+                     cfg(target_abi): {}",
+                    self.llvm_abiname,
+                    self.cfg_abi,
+                );
+            }
+            Arch::Mips64 | Arch::Mips64r6 => {
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on MIPS");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on MIPS");
+                check_matches!(
+                    (&self.llvm_abiname, &self.cfg_abi),
+                    // No in-tree targets use "n32" but at least for now we let out-of-tree targets
+                    // experiment with that.
+                    (LlvmAbi::N64, CfgAbi::Abi64)
+                        | (LlvmAbi::N32, CfgAbi::Unspecified | CfgAbi::Other(_)),
+                    "invalid MIPS ABI name and `cfg(target_abi)` combination:\n\
+                     ABI name: {}\n\
+                     cfg(target_abi): {}",
+                    self.llvm_abiname,
+                    self.cfg_abi,
+                );
+            }
+            Arch::CSky => {
+                check!(
+                    self.llvm_abiname == LlvmAbi::Unspecified,
+                    "`llvm_abiname` is unused on CSky"
+                );
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on CSky");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on CSky");
+                // FIXME: Check that `target_abi` matches the actually configured ABI (v2 vs v2hf).
+                check_matches!(
+                    self.cfg_abi,
+                    CfgAbi::AbiV2 | CfgAbi::AbiV2Hf,
+                    "invalid `target_abi` for CSky"
+                );
+            }
+            ref arch => {
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on {arch}");
+                // Ensure consistency among built-in targets, but give JSON targets the opportunity
+                // to experiment with these.
+                if kind == TargetKind::Builtin {
+                    check!(
+                        self.llvm_abiname == LlvmAbi::Unspecified,
+                        "`llvm_abiname` is unused on {arch}"
+                    );
+                    check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on {arch}");
+                    check_matches!(
+                        self.cfg_abi,
+                        CfgAbi::Unspecified | CfgAbi::Other(_),
+                        "`target_abi` is unused on {arch}"
+                    );
+                }
             }
         }
 
@@ -3268,7 +3615,8 @@ impl Target {
         let recycled_target =
             Target::from_json(&serde_json::to_string(&self.to_json()).unwrap()).map(|(j, _)| j);
         self.update_to_cli();
-        self.check_consistency(TargetKind::Builtin).unwrap();
+        self.check_consistency(TargetKind::Builtin)
+            .unwrap_or_else(|err| panic!("Target consistency check failed:\n{err}"));
         assert_eq!(recycled_target, Ok(self));
     }
 
@@ -3419,7 +3767,7 @@ impl Target {
                 // it using a custom target specification. N32
                 // is an ILP32 ABI like the Aarch64_Ilp32
                 // and X86_64_X32 cases above and below this one.
-                if self.options.llvm_abiname.as_ref() == "n32" {
+                if self.options.llvm_abiname == LlvmAbi::N32 {
                     Architecture::Mips64_N32
                 } else {
                     Architecture::Mips64

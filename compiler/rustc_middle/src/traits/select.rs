@@ -5,17 +5,20 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TypeVisitable};
-use rustc_query_system::cache::Cache;
 use rustc_type_ir::solve::AliasBoundKind;
 
 use self::EvaluationResult::*;
 use super::{SelectionError, SelectionResult};
+use crate::traits::cache::WithDepNodeCache;
 use crate::ty;
 
-pub type SelectionCache<'tcx, ENV> =
-    Cache<(ENV, ty::TraitPredicate<'tcx>), SelectionResult<'tcx, SelectionCandidate<'tcx>>>;
+pub type SelectionCache<'tcx, ENV> = WithDepNodeCache<
+    (ENV, ty::TraitPredicate<'tcx>),
+    SelectionResult<'tcx, SelectionCandidate<'tcx>>,
+>;
 
-pub type EvaluationCache<'tcx, ENV> = Cache<(ENV, ty::PolyTraitPredicate<'tcx>), EvaluationResult>;
+pub type EvaluationCache<'tcx, ENV> =
+    WithDepNodeCache<(ENV, ty::PolyTraitPredicate<'tcx>), EvaluationResult>;
 
 /// The selection process begins by considering all impls, where
 /// clauses, and so forth that might resolve an obligation. Sometimes
@@ -159,9 +162,6 @@ pub enum SelectionCandidate<'tcx> {
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int) -> int`)
     FnPointerCandidate,
-
-    /// Builtin impl of the `PointerLike` trait.
-    PointerLikeCandidate,
 
     TraitAliasCandidate,
 

@@ -10,8 +10,7 @@ pub enum ParseMode {
     Raw,
 }
 pub trait Parse {
-    #[type_const]
-    const PARSE_MODE: ParseMode;
+    type const PARSE_MODE: ParseMode;
 }
 pub trait RenderRaw {}
 

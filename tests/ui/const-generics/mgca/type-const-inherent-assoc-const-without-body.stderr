@@ -1,10 +1,10 @@
 error: associated constant in `impl` without body
-  --> $DIR/type-const-inherent-assoc-const-without-body.rs:8:5
+  --> $DIR/type-const-inherent-assoc-const-without-body.rs:7:5
    |
-LL |     const SIZE: usize;
-   |     ^^^^^^^^^^^^^^^^^-
-   |                      |
-   |                      help: provide a definition for the constant: `= <expr>;`
+LL |     type const SIZE: usize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^-
+   |                           |
+   |                           help: provide a definition for the constant: `= <expr>;`
 
 error[E0425]: cannot find type `S` in this scope
   --> $DIR/type-const-inherent-assoc-const-without-body.rs:6:6

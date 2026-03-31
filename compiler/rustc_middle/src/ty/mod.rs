@@ -16,7 +16,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::num::NonZero;
 use std::ptr::NonNull;
-use std::{fmt, iter, str};
+use std::{assert_matches, fmt, iter, str};
 
 pub use adt::*;
 pub use assoc::*;
@@ -26,18 +26,18 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{
     Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
 };
-use rustc_ast::AttrVec;
+use rustc_ast as ast;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
-use rustc_hir::attrs::{AttributeKind, StrippedCfgItem};
+use rustc_hir as hir;
+use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::{LangItem, attrs as attr, find_attr};
@@ -47,11 +47,12 @@ use rustc_macros::{
     BlobDecodable, Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable,
     TypeVisitable, extension,
 };
-use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
+use rustc_session::config::OptLevel;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
+use rustc_target::callconv::FnAbi;
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 #[allow(
@@ -67,7 +68,6 @@ pub use rustc_type_ir::*;
 use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::{debug, instrument, trace};
 pub use vtable::*;
-use {rustc_ast as ast, rustc_hir as hir};
 
 pub use self::closure::{
     BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
@@ -76,14 +76,15 @@ pub use self::closure::{
     place_to_string_for_capture,
 };
 pub use self::consts::{
-    AnonConstKind, AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr,
-    ExprKind, ScalarInt, SimdAlign, UnevaluatedConst, ValTree, ValTreeKindExt, Value,
+    AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr, ExprKind,
+    LitToConstInput, ScalarInt, SimdAlign, UnevaluatedConst, ValTree, ValTreeKindExt, Value,
+    const_lit_matches_ty,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed, tls,
 };
 pub use self::fold::*;
-pub use self::instance::{Instance, InstanceKind, ReifyReason, UnusedGenericParams};
+pub use self::instance::{Instance, InstanceKind, ReifyReason};
 pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
 pub use self::pattern::{Pattern, PatternKind};
@@ -111,15 +112,16 @@ pub use self::typeck_results::{
     Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
+use crate::ich::StableHashingContext;
 use crate::metadata::{AmbigModChild, ModChild};
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, SourceInfo};
-use crate::query::{IntoQueryParam, Providers};
+use crate::query::{IntoQueryKey, Providers};
 use crate::ty;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::layout::LayoutError;
+use crate::ty::layout::{FnAbiError, LayoutError};
 use crate::ty::util::Discr;
 use crate::ty::walk::TypeWalker;
 
@@ -195,7 +197,7 @@ pub struct ResolverGlobalCtxt {
 /// Resolutions that should only be used for lowering.
 /// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
-pub struct ResolverAstLowering {
+pub struct ResolverAstLowering<'tcx> {
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
@@ -211,50 +213,22 @@ pub struct ResolverAstLowering {
 
     pub node_id_to_def_id: NodeMap<LocalDefId>,
 
-    pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
+    pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]>,
     /// List functions and methods for which lifetime elision was successful.
     pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
 
-    /// Information about functions signatures for delegation items expansion
-    pub delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
     // Information about delegations which is used when handling recursive delegations
     pub delegation_infos: LocalDefIdMap<DelegationInfo>,
 }
-
-bitflags::bitflags! {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-    pub struct DelegationFnSigAttrs: u8 {
-        const TARGET_FEATURE = 1 << 0;
-        const MUST_USE = 1 << 1;
-    }
-}
-
-pub const DELEGATION_INHERIT_ATTRS_START: DelegationFnSigAttrs = DelegationFnSigAttrs::MUST_USE;
 
 #[derive(Debug)]
 pub struct DelegationInfo {
     // NodeId (either delegation.id or item_id in case of a trait impl) for signature resolution,
     // for details see https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914
     pub resolution_node: ast::NodeId,
-    pub attrs: DelegationAttrs,
-}
-
-#[derive(Debug)]
-pub struct DelegationAttrs {
-    pub flags: DelegationFnSigAttrs,
-    pub to_inherit: AttrVec,
-}
-
-#[derive(Debug)]
-pub struct DelegationFnSig {
-    pub header: ast::FnHeader,
-    pub param_count: usize,
-    pub has_self: bool,
-    pub c_variadic: bool,
-    pub attrs: DelegationAttrs,
 }
 
 #[derive(Clone, Copy, Debug, HashStable)]
@@ -1028,12 +1002,14 @@ impl<'tcx> TypingEnv<'tcx> {
     /// converted to use proper canonical inputs instead.
     pub fn non_body_analysis(
         tcx: TyCtxt<'tcx>,
-        def_id: impl IntoQueryParam<DefId>,
+        def_id: impl IntoQueryKey<DefId>,
     ) -> TypingEnv<'tcx> {
+        let def_id = def_id.into_query_key();
         TypingEnv { typing_mode: TypingMode::non_body_analysis(), param_env: tcx.param_env(def_id) }
     }
 
-    pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryParam<DefId>) -> TypingEnv<'tcx> {
+    pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
+        let def_id = def_id.into_query_key();
         tcx.typing_env_normalized_for_post_analysis(def_id)
     }
 
@@ -1441,10 +1417,7 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        let attributes = self.get_all_attrs(did);
-        let elt = find_attr!(
-            attributes,
-            AttributeKind::RustcScalableVector { element_count, .. } => element_count
+        let elt = find_attr!(self, did, RustcScalableVector { element_count, .. } => element_count
         )
         .map(|elt| match elt {
             Some(n) => ScalableElt::ElementCount(*n),
@@ -1453,7 +1426,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if elt.is_some() {
             flags.insert(ReprFlags::IS_SCALABLE);
         }
-        if let Some(reprs) = find_attr!(attributes, AttributeKind::Repr { reprs, .. } => reprs) {
+        if let Some(reprs) = find_attr!(self, did, Repr { reprs, .. } => reprs) {
             for (r, _) in reprs {
                 flags.insert(match *r {
                     attr::ReprRust => ReprFlags::empty(),
@@ -1513,7 +1486,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         // See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
-        if find_attr!(attributes, AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)) {
+        if find_attr!(self, did, RustcPassIndirectlyInNonRusticAbis(..)) {
             flags.insert(ReprFlags::PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS);
         }
 
@@ -1528,8 +1501,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.
-    pub fn opt_item_name(self, def_id: impl IntoQueryParam<DefId>) -> Option<Symbol> {
-        let def_id = def_id.into_query_param();
+    pub fn opt_item_name(self, def_id: impl IntoQueryKey<DefId>) -> Option<Symbol> {
+        let def_id = def_id.into_query_key();
         if let Some(cnum) = def_id.as_crate_root() {
             Some(self.crate_name(cnum))
         } else {
@@ -1549,8 +1522,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// [`opt_item_name`] instead.
     ///
     /// [`opt_item_name`]: Self::opt_item_name
-    pub fn item_name(self, id: impl IntoQueryParam<DefId>) -> Symbol {
-        let id = id.into_query_param();
+    pub fn item_name(self, id: impl IntoQueryKey<DefId>) -> Symbol {
+        let id = id.into_query_key();
         self.opt_item_name(id).unwrap_or_else(|| {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })
@@ -1559,8 +1532,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Look up the name and span of a definition.
     ///
     /// See [`item_name`][Self::item_name] for more information.
-    pub fn opt_item_ident(self, def_id: impl IntoQueryParam<DefId>) -> Option<Ident> {
-        let def_id = def_id.into_query_param();
+    pub fn opt_item_ident(self, def_id: impl IntoQueryKey<DefId>) -> Option<Ident> {
+        let def_id = def_id.into_query_key();
         let def = self.opt_item_name(def_id)?;
         let span = self
             .def_ident_span(def_id)
@@ -1571,15 +1544,17 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Look up the name and span of a definition.
     ///
     /// See [`item_name`][Self::item_name] for more information.
-    pub fn item_ident(self, def_id: impl IntoQueryParam<DefId>) -> Ident {
-        let def_id = def_id.into_query_param();
+    pub fn item_ident(self, def_id: impl IntoQueryKey<DefId>) -> Ident {
+        let def_id = def_id.into_query_key();
         self.opt_item_ident(def_id).unwrap_or_else(|| {
             bug!("item_ident: no name for {:?}", self.def_path(def_id));
         })
     }
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
-        if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
+        if let DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy =
+            self.def_kind(def_id)
+        {
             Some(self.associated_item(def_id))
         } else {
             None
@@ -1681,9 +1656,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 let def_kind = self.def_kind(def);
                 debug!("returned from def_kind: {:?}", def_kind);
                 match def_kind {
-                    DefKind::Const
+                    DefKind::Const { .. }
                     | DefKind::Static { .. }
-                    | DefKind::AssocConst
+                    | DefKind::AssocConst { .. }
                     | DefKind::Ctor(..)
                     | DefKind::AnonConst
                     | DefKind::InlineConst => self.mir_for_ctfe(def),
@@ -1710,11 +1685,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Gets all attributes with the given name.
+    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
     pub fn get_attrs(
         self,
         did: impl Into<DefId>,
         attr: Symbol,
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
+        #[allow(deprecated)]
         self.get_all_attrs(did).iter().filter(move |a: &&hir::Attribute| a.has_name(attr))
     }
 
@@ -1722,6 +1699,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// To see if an item has a specific attribute, you should use
     /// [`rustc_hir::find_attr!`] so you can use matching.
+    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
     pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [hir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
@@ -1744,17 +1722,21 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
     pub fn get_attr(self, did: impl Into<DefId>, attr: Symbol) -> Option<&'tcx hir::Attribute> {
         if cfg!(debug_assertions) && !rustc_feature::is_valid_for_get_attr(attr) {
             let did: DefId = did.into();
             bug!("get_attr: unexpected called with DefId `{:?}`, attr `{:?}`", did, attr);
         } else {
+            #[allow(deprecated)]
             self.get_attrs(did, attr).next()
         }
     }
 
     /// Determines whether an item is annotated with an attribute.
+    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
     pub fn has_attr(self, did: impl Into<DefId>, attr: Symbol) -> bool {
+        #[allow(deprecated)]
         self.get_attrs(did, attr).next().is_some()
     }
 
@@ -1893,8 +1875,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns the trait item that is implemented by the given item `DefId`.
-    pub fn trait_item_of(self, def_id: impl IntoQueryParam<DefId>) -> Option<DefId> {
-        self.opt_associated_item(def_id.into_query_param())?.trait_item_def_id()
+    pub fn trait_item_of(self, def_id: impl IntoQueryKey<DefId>) -> Option<DefId> {
+        let def_id = def_id.into_query_key();
+        self.opt_associated_item(def_id)?.trait_item_def_id()
     }
 
     /// If the given `DefId` is an associated item of a trait,
@@ -1906,8 +1889,8 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn impl_is_of_trait(self, def_id: impl IntoQueryParam<DefId>) -> bool {
-        let def_id = def_id.into_query_param();
+    pub fn impl_is_of_trait(self, def_id: impl IntoQueryKey<DefId>) -> bool {
+        let def_id = def_id.into_query_key();
         let DefKind::Impl { of_trait } = self.def_kind(def_id) else {
             panic!("expected Impl for {def_id:?}");
         };
@@ -1941,15 +1924,17 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
+    pub fn impl_polarity(self, def_id: impl IntoQueryKey<DefId>) -> ty::ImplPolarity {
+        let def_id = def_id.into_query_key();
         self.impl_trait_header(def_id).polarity
     }
 
     /// Given an `impl_id`, return the trait it implements.
     pub fn impl_trait_ref(
         self,
-        def_id: impl IntoQueryParam<DefId>,
+        def_id: impl IntoQueryKey<DefId>,
     ) -> ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>> {
+        let def_id = def_id.into_query_key();
         self.impl_trait_header(def_id).trait_ref
     }
 
@@ -1957,21 +1942,22 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `None` if it is an inherent impl.
     pub fn impl_opt_trait_ref(
         self,
-        def_id: impl IntoQueryParam<DefId>,
+        def_id: impl IntoQueryKey<DefId>,
     ) -> Option<ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>> {
-        let def_id = def_id.into_query_param();
+        let def_id = def_id.into_query_key();
         self.impl_is_of_trait(def_id).then(|| self.impl_trait_ref(def_id))
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
-    pub fn impl_trait_id(self, def_id: impl IntoQueryParam<DefId>) -> DefId {
+    pub fn impl_trait_id(self, def_id: impl IntoQueryKey<DefId>) -> DefId {
+        let def_id = def_id.into_query_key();
         self.impl_trait_ref(def_id).skip_binder().def_id
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
     /// Returns `None` if it is an inherent impl.
-    pub fn impl_opt_trait_id(self, def_id: impl IntoQueryParam<DefId>) -> Option<DefId> {
-        let def_id = def_id.into_query_param();
+    pub fn impl_opt_trait_id(self, def_id: impl IntoQueryKey<DefId>) -> Option<DefId> {
+        let def_id = def_id.into_query_key();
         self.impl_is_of_trait(def_id).then(|| self.impl_trait_id(def_id))
     }
 
@@ -1986,10 +1972,7 @@ impl<'tcx> TyCtxt<'tcx> {
             && let Some(def_id) = def_id.as_local()
             && let outer = self.def_span(def_id).ctxt().outer_expn_data()
             && matches!(outer.kind, ExpnKind::Macro(MacroKind::Derive, _))
-            && find_attr!(
-                self.get_all_attrs(outer.macro_def_id.unwrap()),
-                AttributeKind::RustcBuiltinMacro { .. }
-            )
+            && find_attr!(self, outer.macro_def_id.unwrap(), RustcBuiltinMacro { .. })
         {
             true
         } else {
@@ -1999,7 +1982,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Check if the given `DefId` is `#\[automatically_derived\]`.
     pub fn is_automatically_derived(self, def_id: DefId) -> bool {
-        find_attr!(self.get_all_attrs(def_id), AttributeKind::AutomaticallyDerived(..))
+        find_attr!(self, def_id, AutomaticallyDerived(..))
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`
@@ -2112,11 +2095,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // FIXME(const_trait_impl): ATPITs could be conditionally const?
                 hir::OpaqueTyOrigin::TyAlias { .. } => false,
             },
-            DefKind::Closure => {
-                // Closures and RPITs will eventually have const conditions
-                // for `[const]` bounds.
-                false
-            }
+            DefKind::Closure => self.constness(def_id) == hir::Constness::Const,
             DefKind::Ctor(_, CtorKind::Const)
             | DefKind::Mod
             | DefKind::Struct
@@ -2126,10 +2105,10 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::TyAlias
             | DefKind::ForeignTy
             | DefKind::TyParam
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::ConstParam
             | DefKind::Static { .. }
-            | DefKind::AssocConst
+            | DefKind::AssocConst { .. }
             | DefKind::Macro(_)
             | DefKind::ExternCrate
             | DefKind::Use
@@ -2162,6 +2141,64 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         !self.associated_types_for_impl_traits_in_associated_fn(trait_item_def_id).is_empty()
+    }
+
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for direct calls*
+    /// to an `fn`. Indirectly-passed parameters in the returned ABI will include applicable
+    /// codegen optimization attributes, including `ReadOnly` and `CapturesNone` -- deduction of
+    /// which requires inspection of function bodies that can lead to cycles when performed during
+    /// typeck. During typeck, you should therefore use instead the unoptimized ABI returned by
+    /// `fn_abi_of_instance_no_deduced_attrs`.
+    ///
+    /// For performance reasons, you should prefer to call this inherent method rather than invoke
+    /// the `fn_abi_of_instance_raw` query: it delegates to that query if necessary, but where
+    /// possible delegates instead to the `fn_abi_of_instance_no_deduced_attrs` query (thus avoiding
+    /// unnecessary query system overhead).
+    ///
+    /// * that includes virtual calls, which are represented by "direct calls" to an
+    ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    #[inline]
+    pub fn fn_abi_of_instance(
+        self,
+        query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
+    ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
+        // Only deduce attrs in full, optimized builds. Otherwise, avoid the query system overhead
+        // of ever invoking the `fn_abi_of_instance_raw` query.
+        if self.sess.opts.optimize != OptLevel::No && self.sess.opts.incremental.is_none() {
+            self.fn_abi_of_instance_raw(query)
+        } else {
+            self.fn_abi_of_instance_no_deduced_attrs(query)
+        }
+    }
+}
+
+// `HasAttrs` impls: allow `find_attr!(tcx, id, ...)` to work with both DefId-like types and HirId.
+
+impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for DefId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+        if let Some(did) = self.as_local() {
+            tcx.hir_attrs(tcx.local_def_id_to_hir_id(did))
+        } else {
+            tcx.attrs_for_def(self)
+        }
+    }
+}
+
+impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for LocalDefId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+        tcx.hir_attrs(tcx.local_def_id_to_hir_id(self))
+    }
+}
+
+impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::OwnerId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+        hir::attrs::HasAttrs::get_attrs(self.def_id, tcx)
+    }
+}
+
+impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::HirId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+        tcx.hir_attrs(self)
     }
 }
 

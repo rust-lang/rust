@@ -1,8 +1,6 @@
 #![warn(clippy::filter_next)]
 //@no-rustfix
-fn main() {
-    issue10029();
-}
+fn main() {}
 
 pub fn issue10029() {
     let iter = (0..10);

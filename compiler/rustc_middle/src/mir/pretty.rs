@@ -157,13 +157,13 @@ impl<'dis, 'de, 'tcx> MirDumper<'dis, 'de, 'tcx> {
     /// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
     ///   or `typeck` and `bar` both appear in the name.
     pub fn dump_mir(&self, body: &Body<'tcx>) {
-        let _: io::Result<()> = try {
+        let _ = try {
             let mut file = self.create_dump_file("mir", body)?;
             self.dump_mir_to_writer(body, &mut file)?;
         };
 
         if self.tcx().sess.opts.unstable_opts.dump_mir_graphviz {
-            let _: io::Result<()> = try {
+            let _ = try {
                 let mut file = self.create_dump_file("dot", body)?;
                 write_mir_fn_graphviz(self.tcx(), body, false, &mut file)?;
             };
@@ -623,7 +623,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     };
     match (kind, body.source.promoted) {
         (_, Some(_)) => write!(w, "const ")?, // promoteds are the closest to consts
-        (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
+        (DefKind::Const { .. } | DefKind::AssocConst { .. }, _) => write!(w, "const ")?,
         (DefKind::Static { safety: _, mutability: hir::Mutability::Not, nested: false }, _) => {
             write!(w, "static ")?
         }
@@ -802,10 +802,10 @@ impl<'de, 'tcx> MirWriter<'de, 'tcx> {
     }
 }
 
-impl Debug for Statement<'_> {
+impl Debug for StatementKind<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
-        match self.kind {
+        match *self {
             Assign(box (ref place, ref rv)) => write!(fmt, "{place:?} = {rv:?}"),
             FakeRead(box (ref cause, ref place)) => {
                 write!(fmt, "FakeRead({cause:?}, {place:?})")
@@ -842,6 +842,11 @@ impl Debug for Statement<'_> {
                 write!(fmt, "BackwardIncompatibleDropHint({place:?})")
             }
         }
+    }
+}
+impl Debug for Statement<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        self.kind.fmt(fmt)
     }
 }
 
@@ -913,6 +918,11 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
                 write!(fmt, "]")
             }
         }
+    }
+}
+impl Debug for Terminator<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        self.kind.fmt(fmt)
     }
 }
 
@@ -1235,10 +1245,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         fmt_tuple(fmt, "")
                     }
                 }
-            }
-
-            ShallowInitBox(ref place, ref ty) => {
-                with_no_trimmed_paths!(write!(fmt, "ShallowInitBox({place:?}, {ty})"))
             }
 
             WrapUnsafeBinder(ref op, ty) => {

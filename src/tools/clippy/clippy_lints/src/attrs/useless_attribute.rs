@@ -31,6 +31,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
                                     | sym::dead_code
                                     | sym::deprecated
                                     | sym::deprecated_in_future
+                                    | sym::exported_private_dependencies
                                     | sym::hidden_glob_reexports
                                     | sym::unreachable_pub
                                     | sym::unused

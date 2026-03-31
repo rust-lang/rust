@@ -1,13 +1,12 @@
 use foo::bar::{
     self,
-//~^ ERROR `self` import can only appear once in an import list
     Bar,
     self
 //~^ ERROR the name `bar` is defined multiple times
 };
 
 use {self};
-//~^ ERROR `self` import can only appear in an import list with a non-empty prefix
+//~^ ERROR imports need to be explicitly named
 
 mod foo {
     pub mod bar {

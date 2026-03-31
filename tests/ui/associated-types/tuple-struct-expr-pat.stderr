@@ -2,17 +2,27 @@ error[E0575]: expected method or associated constant, found associated type `Tra
   --> $DIR/tuple-struct-expr-pat.rs:10:36
    |
 LL |     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^-- help: use struct expression instead: `{}`
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: can't use a type alias as a constructor
+help: use struct expression instead
+   |
+LL -     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
+LL +     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc {};
+   |
 
 error[E0575]: expected tuple struct or tuple variant, found associated type `Trait::Assoc`
   --> $DIR/tuple-struct-expr-pat.rs:10:9
    |
 LL |     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
-   |         ^^^^^^^^^^^^^^^^^^^^^^-- help: use struct pattern instead: `{}`
+   |         ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: can't use a type alias as tuple pattern
+help: use struct pattern instead
+   |
+LL -     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
+LL +     let <T<0> as Trait>::Assoc {} = <T<0> as Trait>::Assoc();
+   |
 
 error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
   --> $DIR/tuple-struct-expr-pat.rs:13:38

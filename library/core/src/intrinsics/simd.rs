@@ -62,6 +62,7 @@ pub const unsafe fn simd_splat<T, U>(value: U) -> T;
 /// Adds two simd vectors elementwise.
 ///
 /// `T` must be a vector of integers or floats.
+/// For integers, wrapping arithmetic is used.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_add<T>(x: T, y: T) -> T;
@@ -69,6 +70,7 @@ pub const unsafe fn simd_add<T>(x: T, y: T) -> T;
 /// Subtracts `rhs` from `lhs` elementwise.
 ///
 /// `T` must be a vector of integers or floats.
+/// For integers, wrapping arithmetic is used.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_sub<T>(lhs: T, rhs: T) -> T;
@@ -76,6 +78,7 @@ pub const unsafe fn simd_sub<T>(lhs: T, rhs: T) -> T;
 /// Multiplies two simd vectors elementwise.
 ///
 /// `T` must be a vector of integers or floats.
+/// For integers, wrapping arithmetic is used.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_mul<T>(x: T, y: T) -> T;
@@ -162,6 +165,18 @@ pub const unsafe fn simd_funnel_shl<T>(a: T, b: T, shift: T) -> T;
 #[rustc_nounwind]
 pub const unsafe fn simd_funnel_shr<T>(a: T, b: T, shift: T) -> T;
 
+/// Compute the carry-less product.
+///
+/// This is similar to long multiplication except that the carry is discarded.
+///
+/// This operation can be used to model multiplication in `GF(2)[X]`, the polynomial
+/// ring over `GF(2)`.
+///
+/// `T` must be a vector of integers.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn simd_carryless_mul<T>(a: T, b: T) -> T;
+
 /// "And"s vectors elementwise.
 ///
 /// `T` must be a vector of integers.
@@ -221,8 +236,7 @@ pub const unsafe fn simd_as<T, U>(x: T) -> U;
 /// Negates a vector elementwise.
 ///
 /// `T` must be a vector of integers or floats.
-///
-/// Rust panics for `-<int>::Min` due to overflow, but it is not UB with this intrinsic.
+/// For integers, wrapping arithmetic is used.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_neg<T>(x: T) -> T;
@@ -238,19 +252,27 @@ pub const unsafe fn simd_fabs<T>(x: T) -> T;
 ///
 /// `T` must be a vector of floating-point primitive types.
 ///
-/// Follows IEEE-754 `minNum` semantics.
+/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular, for each vector lane:
+/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
+/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
+/// and `-0.0`), either input may be returned non-deterministically.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn simd_fmin<T>(x: T, y: T) -> T;
+pub const unsafe fn simd_minimum_number_nsz<T>(x: T, y: T) -> T;
 
 /// Returns the maximum of two vectors, elementwise.
 ///
 /// `T` must be a vector of floating-point primitive types.
 ///
-/// Follows IEEE-754 `maxNum` semantics.
+/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
+/// zeros deterministically. In particular, for each vector lane:
+/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
+/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
+/// and `-0.0`), either input may be returned non-deterministically.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn simd_fmax<T>(x: T, y: T) -> T;
+pub const unsafe fn simd_maximum_number_nsz<T>(x: T, y: T) -> T;
 
 /// Tests elementwise equality of two vectors.
 ///

@@ -8,8 +8,8 @@
 struct Foo;
 
 trait Trait {
-    #[type_const]
-    const ASSOC: u32;
+
+    type const ASSOC: u32;
 }
 
 fn foo<const N: Foo>() {}

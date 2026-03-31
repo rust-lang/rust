@@ -576,15 +576,21 @@ impl OsString {
 
     /// Truncate the `OsString` to the specified length.
     ///
+    /// If `new_len` is greater than the string's current length, this has no
+    /// effect.
+    ///
     /// # Panics
+    ///
     /// Panics if `len` does not lie on a valid `OsStr` boundary
     /// (as described in [`OsStr::slice_encoded_bytes`]).
     #[inline]
     #[unstable(feature = "os_string_truncate", issue = "133262")]
     pub fn truncate(&mut self, len: usize) {
-        self.as_os_str().inner.check_public_boundary(len);
-        // SAFETY: The length was just checked to be at a valid boundary.
-        unsafe { self.inner.truncate_unchecked(len) };
+        if len <= self.len() {
+            self.as_os_str().inner.check_public_boundary(len);
+            // SAFETY: The length was just checked to be at a valid boundary.
+            unsafe { self.inner.truncate_unchecked(len) };
+        }
     }
 
     /// Provides plumbing to `Vec::extend_from_slice` without giving full
@@ -1565,7 +1571,7 @@ impl Ord for OsStr {
 macro_rules! impl_cmp {
     ($lhs:ty, $rhs: ty) => {
         #[stable(feature = "cmp_os_str", since = "1.8.0")]
-        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+        impl PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 <OsStr as PartialEq>::eq(self, other)
@@ -1573,7 +1579,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "cmp_os_str", since = "1.8.0")]
-        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+        impl PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
                 <OsStr as PartialEq>::eq(self, other)
@@ -1581,7 +1587,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "cmp_os_str", since = "1.8.0")]
-        impl<'a, 'b> PartialOrd<$rhs> for $lhs {
+        impl PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
                 <OsStr as PartialOrd>::partial_cmp(self, other)
@@ -1589,7 +1595,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "cmp_os_str", since = "1.8.0")]
-        impl<'a, 'b> PartialOrd<$lhs> for $rhs {
+        impl PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
                 <OsStr as PartialOrd>::partial_cmp(self, other)
@@ -1599,10 +1605,10 @@ macro_rules! impl_cmp {
 }
 
 impl_cmp!(OsString, OsStr);
-impl_cmp!(OsString, &'a OsStr);
-impl_cmp!(Cow<'a, OsStr>, OsStr);
-impl_cmp!(Cow<'a, OsStr>, &'b OsStr);
-impl_cmp!(Cow<'a, OsStr>, OsString);
+impl_cmp!(OsString, &OsStr);
+impl_cmp!(Cow<'_, OsStr>, OsStr);
+impl_cmp!(Cow<'_, OsStr>, &OsStr);
+impl_cmp!(Cow<'_, OsStr>, OsString);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for OsStr {

@@ -81,6 +81,8 @@ LL |     let s = 0 as *const T;
    |             -    ^^^^^^^^ creating a `*const T` requires both an address and type-specific metadata
    |             |
    |             consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
+   |
+   = note: the type parameter `T` is not known to be `Sized`, so this pointer may be wide
 
 error: aborting due to 11 previous errors
 

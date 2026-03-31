@@ -2,15 +2,16 @@ use fluent_bundle::FluentResource;
 use fluent_syntax::ast::{Expression, InlineExpression, Pattern, PatternElement};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::Path;
-use synstructure::{Structure, VariantInfo};
+use syn::ext::IdentExt;
+use synstructure::VariantInfo;
 
 use crate::diagnostics::error::span_err;
 
 #[derive(Clone)]
-pub(crate) enum Message {
-    Slug(Path),
-    Inline(Span, String),
+pub(crate) struct Message {
+    pub attr_span: Span,
+    pub message_span: Span,
+    pub value: String,
 }
 
 impl Message {
@@ -18,121 +19,156 @@ impl Message {
     /// The passed `variant` is used to check whether all variables in the message are used.
     /// For subdiagnostics, we cannot check this.
     pub(crate) fn diag_message(&self, variant: Option<&VariantInfo<'_>>) -> TokenStream {
-        match self {
-            Message::Slug(slug) => {
-                quote! { crate::fluent_generated::#slug }
-            }
-            Message::Inline(message_span, message) => {
-                if let Some(variant) = variant {
-                    verify_fluent_message(*message_span, &message, variant);
-                }
-                quote! { rustc_errors::DiagMessage::Inline(std::borrow::Cow::Borrowed(#message)) }
-            }
-        }
+        let message = &self.value;
+        self.verify(variant);
+        quote! { rustc_errors::DiagMessage::Inline(std::borrow::Cow::Borrowed(#message)) }
     }
 
-    /// Generates a `#[test]` that verifies that all referenced variables
-    /// exist on this structure.
-    pub(crate) fn generate_test(&self, structure: &Structure<'_>) -> TokenStream {
-        match self {
-            Message::Slug(slug) => {
-                // FIXME: We can't identify variables in a subdiagnostic
-                for field in structure.variants().iter().flat_map(|v| v.ast().fields.iter()) {
-                    for attr_name in field.attrs.iter().filter_map(|at| at.path().get_ident()) {
-                        if attr_name == "subdiagnostic" {
-                            return quote!();
-                        }
-                    }
-                }
-                use std::sync::atomic::{AtomicUsize, Ordering};
-                // We need to make sure that the same diagnostic slug can be used multiple times without
-                // causing an error, so just have a global counter here.
-                static COUNTER: AtomicUsize = AtomicUsize::new(0);
-                let slug = slug.get_ident().unwrap();
-                let ident = quote::format_ident!(
-                    "verify_{slug}_{}",
-                    COUNTER.fetch_add(1, Ordering::Relaxed)
-                );
-                let ref_slug = quote::format_ident!("{slug}_refs");
-                let struct_name = &structure.ast().ident;
-                let variables: Vec<_> = structure
-                    .variants()
-                    .iter()
-                    .flat_map(|v| {
-                        v.ast()
-                            .fields
-                            .iter()
-                            .filter_map(|f| f.ident.as_ref().map(|i| i.to_string()))
-                    })
-                    .collect();
-                // tidy errors on `#[test]` outside of test files, so we use `#[test ]` to work around this
-                quote! {
-                    #[cfg(test)]
-                    #[test ]
-                    fn #ident() {
-                        let variables = [#(#variables),*];
-                        for vref in crate::fluent_generated::#ref_slug {
-                            assert!(variables.contains(vref), "{}: variable `{vref}` not found ({})", stringify!(#struct_name), stringify!(#slug));
-                        }
-                    }
-                }
-            }
-            Message::Inline(..) => {
-                // We don't generate a test for inline diagnostics, we can verify these at compile-time!
-                // This verification is done in the `diag_message` function above
-                quote! {}
-            }
-        }
+    fn verify(&self, variant: Option<&VariantInfo<'_>>) {
+        verify_variables_used(self.message_span, &self.value, variant);
+        verify_message_style(self.message_span, &self.value);
+        verify_message_formatting(self.attr_span, self.message_span, &self.value);
     }
 }
 
-fn verify_fluent_message(msg_span: Span, message: &str, variant: &VariantInfo<'_>) {
+fn verify_variables_used(msg_span: Span, message_str: &str, variant: Option<&VariantInfo<'_>>) {
     // Parse the fluent message
     const GENERATED_MSG_ID: &str = "generated_msg";
-    let resource = FluentResource::try_new(format!("{GENERATED_MSG_ID} = {message}\n")).unwrap();
+    let resource =
+        FluentResource::try_new(format!("{GENERATED_MSG_ID} = {message_str}\n")).unwrap();
     assert_eq!(resource.entries().count(), 1);
     let Some(fluent_syntax::ast::Entry::Message(message)) = resource.get_entry(0) else {
         panic!("Did not parse into a message")
     };
 
     // Check if all variables are used
-    let fields: Vec<String> = variant
-        .bindings()
-        .iter()
-        .flat_map(|b| b.ast().ident.as_ref())
-        .map(|id| id.to_string())
-        .collect();
-    for variable in variable_references(&message) {
-        if !fields.iter().any(|f| f == variable) {
-            span_err(msg_span.unwrap(), format!("Variable `{variable}` not found in diagnostic "))
+    if let Some(variant) = variant {
+        let fields: Vec<String> = variant
+            .bindings()
+            .iter()
+            .flat_map(|b| b.ast().ident.as_ref())
+            .map(|id| id.unraw().to_string())
+            .collect();
+        for variable in variable_references(&message) {
+            if !fields.iter().any(|f| f == variable) {
+                span_err(
+                    msg_span.unwrap(),
+                    format!("Variable `{variable}` not found in diagnostic "),
+                )
                 .help(format!("Available fields: {:?}", fields.join(", ")))
                 .emit();
+            }
         }
-        // assert!(, );
     }
 }
 
 fn variable_references<'a>(msg: &fluent_syntax::ast::Message<&'a str>) -> Vec<&'a str> {
     let mut refs = vec![];
+
     if let Some(Pattern { elements }) = &msg.value {
         for elt in elements {
-            if let PatternElement::Placeable {
-                expression: Expression::Inline(InlineExpression::VariableReference { id }),
-            } = elt
-            {
-                refs.push(id.name);
-            }
+            traverse_pattern(elt, &mut refs);
         }
     }
     for attr in &msg.attributes {
         for elt in &attr.value.elements {
-            if let PatternElement::Placeable {
-                expression: Expression::Inline(InlineExpression::VariableReference { id }),
-            } = elt
-            {
-                refs.push(id.name);
+            traverse_pattern(elt, &mut refs);
+        }
+    }
+
+    fn traverse_pattern<'a>(elem: &PatternElement<&'a str>, refs: &mut Vec<&'a str>) {
+        match elem {
+            PatternElement::TextElement { .. } => {}
+            PatternElement::Placeable { expression } => traverse_expression(expression, refs),
+        }
+    }
+    fn traverse_expression<'a>(expr: &Expression<&'a str>, refs: &mut Vec<&'a str>) {
+        match expr {
+            Expression::Select { selector, variants } => {
+                traverse_inline_expr(selector, refs);
+                for variant in variants {
+                    for pattern in &variant.value.elements {
+                        traverse_pattern(pattern, refs);
+                    }
+                }
+            }
+            Expression::Inline(expr) => {
+                traverse_inline_expr(expr, refs);
             }
         }
     }
+    fn traverse_inline_expr<'a>(elem: &InlineExpression<&'a str>, refs: &mut Vec<&'a str>) {
+        match elem {
+            InlineExpression::VariableReference { id } => refs.push(id.name),
+            _ => {}
+        }
+    }
+
     refs
+}
+
+const ALLOWED_CAPITALIZED_WORDS: &[&str] = &[
+    // tidy-alphabetical-start
+    "ABI",
+    "ABIs",
+    "ADT",
+    "C-variadic",
+    "CGU-reuse",
+    "Cargo",
+    "Ferris",
+    "GCC",
+    "MIR",
+    "NaNs",
+    "OK",
+    "Rust",
+    "ThinLTO",
+    "Unicode",
+    "VS",
+    // tidy-alphabetical-end
+];
+
+/// See: https://rustc-dev-guide.rust-lang.org/diagnostics.html#diagnostic-output-style-guide
+fn verify_message_style(msg_span: Span, message: &str) {
+    // Verify that message starts with lowercase char
+    let Some(first_word) = message.split_whitespace().next() else {
+        span_err(msg_span.unwrap(), "message must not be empty").emit();
+        return;
+    };
+    let first_char = first_word.chars().next().expect("Word is not empty");
+    if first_char.is_uppercase() && !ALLOWED_CAPITALIZED_WORDS.contains(&first_word) {
+        span_err(msg_span.unwrap(), "message `{value}` starts with an uppercase letter. Fix it or add it to `ALLOWED_CAPITALIZED_WORDS`").emit();
+        return;
+    }
+
+    // Verify that message does not end in `.`
+    if message.ends_with(".") && !message.ends_with("...") {
+        span_err(msg_span.unwrap(), "message `{value}` ends with a period").emit();
+        return;
+    }
+}
+
+/// Verifies that the message is properly indented into the code
+fn verify_message_formatting(attr_span: Span, msg_span: Span, message: &str) {
+    // Find the indent at the start of the message (`column()` is one-indexed)
+    let start = attr_span.unwrap().column() - 1;
+
+    for line in message.lines().skip(1) {
+        if line.is_empty() {
+            continue;
+        }
+        let indent = line.chars().take_while(|c| *c == ' ').count();
+        if indent < start {
+            span_err(
+                msg_span.unwrap(),
+                format!("message is not properly indented. {indent} < {start}"),
+            )
+            .emit();
+            return;
+        }
+        if indent % 4 != 0 {
+            span_err(msg_span.unwrap(), "message is not indented with a multiple of 4 spaces")
+                .emit();
+            return;
+        }
+    }
 }

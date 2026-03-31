@@ -12,13 +12,14 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_mir_dataflow::impls::always_storage_live_locals;
 use rustc_span::Span;
+use rustc_target::callconv::ArgAbi;
 use tracing::field::Empty;
 use tracing::{info_span, instrument, trace};
 
 use super::{
-    AllocId, CtfeProvenance, Immediate, InterpCx, InterpResult, Machine, MemPlace, MemPlaceMeta,
-    MemoryKind, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar, from_known_layout,
-    interp_ok, throw_ub, throw_unsup,
+    AllocId, CtfeProvenance, FnArg, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace,
+    MemPlaceMeta, MemoryKind, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar,
+    from_known_layout, interp_ok, throw_ub, throw_unsup,
 };
 use crate::{enter_trace_span, errors};
 
@@ -80,7 +81,7 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     /// and its layout in the caller. This place is to be interpreted relative to the
     /// *caller's* stack frame. We use a `PlaceTy` instead of an `MPlaceTy` since this
     /// avoids having to move *all* return places into Miri's memory.
-    pub return_place: PlaceTy<'tcx, Prov>,
+    return_place: PlaceTy<'tcx, Prov>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
@@ -90,6 +91,10 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     ///
     /// Do *not* access this directly; always go through the machine hook!
     pub locals: IndexVec<mir::Local, LocalState<'tcx, Prov>>,
+
+    /// The complete variable argument list of this frame. Its elements must be dropped when the
+    /// frame is popped.
+    pub(super) va_list: Vec<MPlaceTy<'tcx, Prov>>,
 
     /// The span of the `tracing` crate is stored here.
     /// When the guard is dropped, the span is exited. This gives us
@@ -120,19 +125,6 @@ pub enum ReturnContinuation {
     /// wants them leaked to intern what they need (and just throw away
     /// the entire `ecx` when it is done).
     Stop { cleanup: bool },
-}
-
-/// Return type of [`InterpCx::pop_stack_frame_raw`].
-pub struct StackPopInfo<'tcx, Prov: Provenance> {
-    /// Additional information about the action to be performed when returning from the popped
-    /// stack frame.
-    pub return_action: ReturnAction,
-
-    /// [`return_cont`](Frame::return_cont) of the popped stack frame.
-    pub return_cont: ReturnContinuation,
-
-    /// [`return_place`](Frame::return_place) of the popped stack frame.
-    pub return_place: PlaceTy<'tcx, Prov>,
 }
 
 /// State of a local variable including a memoized layout
@@ -259,6 +251,7 @@ impl<'tcx, Prov: Provenance> Frame<'tcx, Prov> {
             return_cont: self.return_cont,
             return_place: self.return_place,
             locals: self.locals,
+            va_list: self.va_list,
             loc: self.loc,
             extra,
             tracing_span: self.tracing_span,
@@ -284,6 +277,14 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
 
     pub fn instance(&self) -> ty::Instance<'tcx> {
         self.instance
+    }
+
+    pub fn return_place(&self) -> &PlaceTy<'tcx, Prov> {
+        &self.return_place
+    }
+
+    pub fn return_cont(&self) -> ReturnContinuation {
+        self.return_cont
     }
 
     /// Return the `SourceInfo` of the current instruction.
@@ -320,12 +321,15 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
     }
 
     #[must_use]
-    pub fn generate_stacktrace_from_stack(stack: &[Self]) -> Vec<FrameInfo<'tcx>> {
+    pub fn generate_stacktrace_from_stack(
+        stack: &[Self],
+        tcx: TyCtxt<'tcx>,
+    ) -> Vec<FrameInfo<'tcx>> {
         let mut frames = Vec::new();
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
         // more than just panics.
         for frame in stack.iter().rev() {
-            let span = match frame.loc {
+            let mut span = match frame.loc {
                 Left(loc) => {
                     // If the stacktrace passes through MIR-inlined source scopes, add them.
                     let mir::SourceInfo { mut span, scope } = *frame.body.source_info(loc);
@@ -339,6 +343,10 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
                 }
                 Right(span) => span,
             };
+            if span.is_dummy() {
+                // Some statements lack a proper span; point at the function instead.
+                span = tcx.def_span(frame.instance.def_id());
+            }
             frames.push(FrameInfo { span, instance: frame.instance });
         }
         trace!("generate stacktrace: {:#?}", frames);
@@ -373,10 +381,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let locals = IndexVec::from_elem(dead_local, &body.local_decls);
         let pre_frame = Frame {
             body,
-            loc: Right(body.span), // Span used for errors caused during preamble.
+            loc: Right(self.tcx.def_span(body.source.def_id())), // Span used for errors caused during preamble.
             return_cont,
             return_place: return_place.clone(),
             locals,
+            va_list: vec![],
             instance,
             tracing_span: SpanGuard::new(),
             extra: (),
@@ -399,7 +408,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Finish things up.
         M::after_stack_push(self)?;
-        self.frame_mut().loc = Left(mir::Location::START);
         // `tracing_separate_thread` is used to instruct the tracing_chrome [tracing::Layer] in Miri
         // to put the "frame" span on a separate trace thread/line than other spans, to make the
         // visualization in <https://ui.perfetto.dev> easier to interpret. It is set to a value of
@@ -410,35 +418,26 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
-    /// Low-level helper that pops a stack frame from the stack and returns some information about
-    /// it.
-    ///
-    /// This also deallocates locals, if necessary.
-    /// `copy_ret_val` gets called after the frame has been taken from the stack but before the locals have been deallocated.
-    ///
-    /// [`M::before_stack_pop`] and [`M::after_stack_pop`] are called by this function
-    /// automatically.
-    ///
-    /// The high-level version of this is `return_from_current_stack_frame`.
-    ///
-    /// [`M::before_stack_pop`]: Machine::before_stack_pop
-    /// [`M::after_stack_pop`]: Machine::after_stack_pop
+    /// Low-level helper that pops a stack frame from the stack without any cleanup.
+    /// This invokes `before_stack_pop`.
+    /// After calling this function, you need to deal with the return value, and then
+    /// invoke `cleanup_stack_frame`.
     pub(super) fn pop_stack_frame_raw(
         &mut self,
-        unwinding: bool,
-        copy_ret_val: impl FnOnce(&mut Self, &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx, StackPopInfo<'tcx, M::Provenance>> {
+    ) -> InterpResult<'tcx, Frame<'tcx, M::Provenance, M::FrameExtra>> {
         M::before_stack_pop(self)?;
         let frame =
             self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
+        interp_ok(frame)
+    }
 
-        // Copy return value (unless we are unwinding).
-        if !unwinding {
-            copy_ret_val(self, &frame.return_place)?;
-        }
-
+    /// Deallocate local variables in the stack frame, and invoke `after_stack_pop`.
+    pub(super) fn cleanup_stack_frame(
+        &mut self,
+        unwinding: bool,
+        frame: Frame<'tcx, M::Provenance, M::FrameExtra>,
+    ) -> InterpResult<'tcx, ReturnAction> {
         let return_cont = frame.return_cont;
-        let return_place = frame.return_place.clone();
 
         // Cleanup: deallocate locals.
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
@@ -448,27 +447,29 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             ReturnContinuation::Stop { cleanup, .. } => cleanup,
         };
 
-        let return_action = if cleanup {
-            // We need to take the locals out, since we need to mutate while iterating.
+        if cleanup {
             for local in &frame.locals {
                 self.deallocate_local(local.value)?;
             }
 
+            // Deallocate any c-variadic arguments.
+            self.deallocate_varargs(&frame.va_list)?;
+
             // Call the machine hook, which determines the next steps.
             let return_action = M::after_stack_pop(self, frame, unwinding)?;
             assert_ne!(return_action, ReturnAction::NoCleanup);
-            return_action
+            interp_ok(return_action)
         } else {
             // We also skip the machine hook when there's no cleanup. This not a real "pop" anyway.
-            ReturnAction::NoCleanup
-        };
-
-        interp_ok(StackPopInfo { return_action, return_cont, return_place })
+            interp_ok(ReturnAction::NoCleanup)
+        }
     }
 
-    /// In the current stack frame, mark all locals as live that are not arguments and don't have
-    /// `Storage*` annotations (this includes the return place).
-    pub(crate) fn storage_live_for_always_live_locals(&mut self) -> InterpResult<'tcx> {
+    /// Call this after `push_stack_frame_raw` and when all the other setup that needs to be done
+    /// is completed.
+    pub(crate) fn push_stack_frame_done(&mut self) -> InterpResult<'tcx> {
+        // Mark all locals as live that are not arguments and don't have `Storage*` annotations
+        // (this includes the return place, but not the arguments).
         self.storage_live(mir::RETURN_PLACE)?;
 
         let body = self.body();
@@ -478,6 +479,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.storage_live(local)?;
             }
         }
+
+        // Get ready to execute the first instruction in the stack frame.
+        self.frame_mut().loc = Left(mir::Location::START);
+
         interp_ok(())
     }
 
@@ -623,6 +628,58 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Layouts of locals are requested a lot, so we cache them.
         state.layout.set(Some(layout));
         interp_ok(layout)
+    }
+}
+
+impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
+    /// Consume the arguments provided by the iterator and store them as a list
+    /// of variadic arguments. Return a list of the places that hold those arguments.
+    pub(crate) fn allocate_varargs<I, J>(
+        &mut self,
+        caller_args: I,
+        mut callee_abis: J,
+    ) -> InterpResult<'tcx, Vec<MPlaceTy<'tcx, M::Provenance>>>
+    where
+        I: Iterator<Item = (&'a FnArg<'tcx, M::Provenance>, &'a ArgAbi<'tcx, Ty<'tcx>>)>,
+        J: Iterator<Item = (usize, &'a ArgAbi<'tcx, Ty<'tcx>>)>,
+    {
+        // Consume the remaining arguments and store them in fresh allocations.
+        let mut varargs = Vec::new();
+        for (fn_arg, caller_abi) in caller_args {
+            // The callee ABI is entirely computed based on which arguments the caller has
+            // provided so it should not be possible to get a mismatch here.
+            let (_idx, callee_abi) = callee_abis.next().unwrap();
+            assert!(self.check_argument_compat(caller_abi, callee_abi)?);
+            // FIXME: do we have to worry about in-place argument passing?
+            let op = fn_arg.copy_fn_arg();
+            let mplace = self.allocate(op.layout, MemoryKind::Stack)?;
+            self.copy_op(&op, &mplace)?;
+
+            varargs.push(mplace);
+        }
+        assert!(callee_abis.next().is_none());
+
+        interp_ok(varargs)
+    }
+
+    /// Deallocate the variadic arguments in the list (that must have been created with `allocate_varargs`).
+    fn deallocate_varargs(
+        &mut self,
+        varargs: &[MPlaceTy<'tcx, M::Provenance>],
+    ) -> InterpResult<'tcx> {
+        for vararg in varargs {
+            let ptr = vararg.ptr();
+
+            trace!(
+                "deallocating vararg {:?}: {:?}",
+                vararg,
+                // Locals always have a `alloc_id` (they are never the result of a int2ptr).
+                self.dump_alloc(ptr.provenance.unwrap().get_alloc_id().unwrap())
+            );
+            self.deallocate_ptr(ptr, None, MemoryKind::Stack)?;
+        }
+
+        interp_ok(())
     }
 }
 

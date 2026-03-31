@@ -2175,7 +2175,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// *x -= 1;
     /// assert_eq!(d.front(), Some(&7));
     /// ```
-    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "push_mut", since = "1.95.0")]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::push_front` instead"]
     pub fn push_front_mut(&mut self, value: T) -> &mut T {
         if self.is_full() {
@@ -2218,7 +2218,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// *x += 1;
     /// assert_eq!(d.back(), Some(&10));
     /// ```
-    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "push_mut", since = "1.95.0")]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::push_back` instead"]
     pub fn push_back_mut(&mut self, value: T) -> &mut T {
         if self.is_full() {
@@ -2425,7 +2425,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// *x += 7;
     /// assert_eq!(vec_deque, &[1, 12, 2, 3]);
     /// ```
-    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "push_mut", since = "1.95.0")]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::insert` instead"]
     pub fn insert_mut(&mut self, index: usize, value: T) -> &mut T {
         assert!(index <= self.len(), "index out of bounds");

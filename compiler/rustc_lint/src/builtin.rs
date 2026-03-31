@@ -22,14 +22,13 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::{Applicability, LintDiagnostic};
+use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
-use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
+use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
 use rustc_middle::bug;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
@@ -40,13 +39,12 @@ pub use rustc_session::lint::builtin::*;
 use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Spanned, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
+use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self};
 
 use crate::errors::BuiltinEllipsisInclusiveRangePatterns;
 use crate::lints::{
@@ -59,12 +57,9 @@ use crate::lints::{
     BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
     BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
     BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
-    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
+    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
 };
-use crate::{
-    EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
-    fluent_generated as fluent,
-};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
 declare_lint! {
     /// The `while_true` lint detects `while true { }`.
     ///
@@ -239,7 +234,7 @@ impl UnsafeCode {
         &self,
         cx: &EarlyContext<'_>,
         span: Span,
-        decorate: impl for<'a> LintDiagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a, ()>,
     ) {
         // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {
@@ -983,15 +978,14 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
         match it.kind {
             hir::ItemKind::Fn { .. } => {
-                if let Some(attr_span) =
-                    find_attr!(attrs, AttributeKind::ExportName {span, ..} => *span)
-                        .or_else(|| find_attr!(attrs, AttributeKind::NoMangle(span) => *span))
+                if let Some(attr_span) = find_attr!(attrs, ExportName {span, ..} => *span)
+                    .or_else(|| find_attr!(attrs, NoMangle(span) => *span))
                 {
                     self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
             }
             hir::ItemKind::Const(ident, generics, ..) => {
-                if find_attr!(attrs, AttributeKind::NoMangle(..)) {
+                if find_attr!(attrs, NoMangle(..)) {
                     let suggestion =
                         if generics.params.is_empty() && generics.where_clause_span.is_empty() {
                             // account for "pub const" (#45562)
@@ -1017,9 +1011,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
         match it.kind {
             hir::ImplItemKind::Fn { .. } => {
-                if let Some(attr_span) =
-                    find_attr!(attrs, AttributeKind::ExportName {span, ..} => *span)
-                        .or_else(|| find_attr!(attrs, AttributeKind::NoMangle(span) => *span))
+                if let Some(attr_span) = find_attr!(attrs, ExportName {span, ..} => *span)
+                    .or_else(|| find_attr!(attrs, NoMangle(span) => *span))
                 {
                     self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
@@ -1125,12 +1118,10 @@ declare_lint_pass!(
 );
 
 impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
-    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &hir::Attribute) {
-        if attr.has_name(sym::feature)
-            && let Some(items) = attr.meta_item_list()
-        {
-            for item in items {
-                cx.emit_span_lint(UNSTABLE_FEATURES, item.span(), BuiltinUnstableFeatures);
+    fn check_attributes(&mut self, cx: &LateContext<'_>, attrs: &[hir::Attribute]) {
+        if let Some(features) = find_attr!(attrs, Feature(features, _) => features) {
+            for feature in features {
+                cx.emit_span_lint(UNSTABLE_FEATURES, feature.span, BuiltinUnstableFeatures);
             }
         }
     }
@@ -1181,7 +1172,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         if fn_kind.asyncness().is_async()
             && !cx.tcx.features().async_fn_track_caller()
             // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr_span) = find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::TrackCaller(span) => *span)
+            && let Some(attr_span) = find_attr!(cx.tcx, def_id, TrackCaller(span) => *span)
         {
             cx.emit_span_lint(
                 UNGATED_ASYNC_FN_TRACK_CALLER,
@@ -2250,10 +2241,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     EXPLICIT_OUTLIVES_REQUIREMENTS,
                     lint_spans.clone(),
                     BuiltinExplicitOutlives {
-                        count: bound_count,
                         suggestion: BuiltinExplicitOutlivesSuggestion {
                             spans: lint_spans,
                             applicability,
+                            count: bound_count,
                         },
                     },
                 );
@@ -2328,8 +2319,9 @@ impl EarlyLintPass for IncompleteInternalFeatures {
                 if features.incomplete(name) {
                     let note = rustc_feature::find_feature_issue(name, GateIssue::Language)
                         .map(|n| BuiltinFeatureIssueNote { n });
-                    let help =
-                        HAS_MIN_FEATURES.contains(&name).then_some(BuiltinIncompleteFeaturesHelp);
+                    let help = HAS_MIN_FEATURES
+                        .contains(&name)
+                        .then_some(BuiltinIncompleteFeaturesHelp { name });
 
                     cx.emit_span_lint(
                         INCOMPLETE_FEATURES,
@@ -2655,8 +2647,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             let conjured_ty = cx.typeck_results().expr_ty(expr);
             if let Some(err) = with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init)) {
                 let msg = match init {
-                    InitKind::Zeroed => fluent::lint_builtin_unpermitted_type_init_zeroed,
-                    InitKind::Uninit => fluent::lint_builtin_unpermitted_type_init_uninit,
+                    InitKind::Zeroed => {
+                        msg!("the type `{$ty}` does not permit zero-initialization")
+                    }
+                    InitKind::Uninit => {
+                        msg!("the type `{$ty}` does not permit being left uninitialized")
+                    }
                 };
                 let sub = BuiltinUnpermittedTypeInitSub { err };
                 cx.emit_span_lint(
@@ -3184,6 +3180,65 @@ impl EarlyLintPass for SpecialModuleName {
                     _ => continue,
                 }
             }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `internal_eq_trait_method_impls` lint detects manual
+    /// implementations of `Eq::assert_receiver_is_total_eq`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[derive(PartialEq)]
+    /// pub struct Foo;
+    ///
+    /// impl Eq for Foo {
+    ///     fn assert_receiver_is_total_eq(&self) {}
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This method existed so that `#[derive(Eq)]` could check that all
+    /// fields of a type implement `Eq`. Other users were never supposed
+    /// to implement it and it was hidden from documentation.
+    ///
+    /// Unfortunately, it was not explicitly marked as unstable and some
+    /// people have now mistakenly assumed they had to implement this method.
+    ///
+    /// As the method is never called by the standard library, you can safely
+    /// remove any implementations of the method and just write `impl Eq for Foo {}`.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard
+    /// error in the future. See [issue #152336] for more details.
+    ///
+    /// [issue #152336]: https://github.com/rust-lang/rust/issues/152336
+    pub INTERNAL_EQ_TRAIT_METHOD_IMPLS,
+    Warn,
+    "manual implementation of the internal `Eq::assert_receiver_is_total_eq` method",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #152336),
+        report_in_deps: false,
+    };
+}
+
+declare_lint_pass!(InternalEqTraitMethodImpls => [INTERNAL_EQ_TRAIT_METHOD_IMPLS]);
+
+impl<'tcx> LateLintPass<'tcx> for InternalEqTraitMethodImpls {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx rustc_hir::ImplItem<'tcx>) {
+        if let ImplItemImplKind::Trait { defaultness: _, trait_item_def_id: Ok(trait_item_def_id) } =
+            item.impl_kind
+            && cx.tcx.is_diagnostic_item(sym::assert_receiver_is_total_eq, trait_item_def_id)
+        {
+            cx.emit_span_lint(
+                INTERNAL_EQ_TRAIT_METHOD_IMPLS,
+                item.span,
+                EqInternalMethodImplemented,
+            );
         }
     }
 }

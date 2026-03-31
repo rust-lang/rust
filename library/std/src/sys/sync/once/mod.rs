@@ -12,7 +12,7 @@ cfg_select! {
         all(target_os = "windows", not(target_vendor="win7")),
         target_os = "linux",
         target_os = "android",
-        all(target_arch = "wasm32", target_feature = "atomics"),
+        all(target_family = "wasm", target_feature = "atomics"),
         target_os = "freebsd",
         target_os = "motor",
         target_os = "openbsd",

@@ -92,7 +92,7 @@ fn update_rustfmt_version(build: &Builder<'_>) {
 fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, String> {
     // In CI `get_git_modified_files` returns something different to normal environment.
     // This shouldn't be called in CI anyway.
-    assert!(!build.config.is_running_on_ci);
+    assert!(!build.config.is_running_on_ci());
 
     if !verify_rustfmt_version(build) {
         return Ok(None);
@@ -142,7 +142,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
     // `--all` is specified or we are in CI. We check all files in CI to avoid bugs in
     // `get_modified_rs_files` letting regressions slip through; we also care about CI time less
     // since this is still very fast compared to building the compiler.
-    let all = all || build.config.is_running_on_ci;
+    let all = all || build.config.is_running_on_ci();
 
     let mut builder = ignore::types::TypesBuilder::new();
     builder.add_defaults();

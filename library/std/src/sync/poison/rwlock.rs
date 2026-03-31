@@ -56,24 +56,36 @@ use crate::sys::sync as sys;
 /// # Examples
 ///
 /// ```
-/// use std::sync::RwLock;
+/// use std::sync::{Arc, RwLock};
+/// use std::thread;
+/// use std::time::Duration;
 ///
-/// let lock = RwLock::new(5);
+/// let data = Arc::new(RwLock::new(5));
 ///
-/// // many reader locks can be held at once
-/// {
-///     let r1 = lock.read().unwrap();
-///     let r2 = lock.read().unwrap();
-///     assert_eq!(*r1, 5);
-///     assert_eq!(*r2, 5);
-/// } // read locks are dropped at this point
+/// // Multiple readers can access in parallel.
+/// for i in 0..3 {
+///     let lock_clone = Arc::clone(&data);
 ///
-/// // only one write lock may be held, however
-/// {
-///     let mut w = lock.write().unwrap();
-///     *w += 1;
-///     assert_eq!(*w, 6);
-/// } // write lock is dropped here
+///     thread::spawn(move || {
+///         let value = lock_clone.read().unwrap();
+///
+///         println!("Reader {}: Read value {}, now holding lock...", i, *value);
+///
+///         // Simulating a long read operation
+///         thread::sleep(Duration::from_secs(1));
+///
+///         println!("Reader {}: Dropping lock.", i);
+///         // Read lock unlocked when going out of scope.
+///     });
+/// }
+///
+/// thread::sleep(Duration::from_millis(100));  // Wait for readers to start
+///
+/// // While all readers can proceed, a call to .write() has to wait for
+//  // current active reader locks.
+/// let mut writable_data = data.write().unwrap();
+/// println!("Writer proceeds...");
+/// *writable_data += 1;
 /// ```
 ///
 /// [`Mutex`]: super::Mutex
@@ -370,7 +382,8 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// # Panics
     ///
-    /// This function might panic when called if the lock is already held by the current thread.
+    /// This function might panic when called if the lock is already held by the current thread
+    /// in read or write mode.
     ///
     /// # Examples
     ///
@@ -467,7 +480,8 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// # Panics
     ///
-    /// This function might panic when called if the lock is already held by the current thread.
+    /// This function might panic when called if the lock is already held by the current thread
+    /// in read or write mode.
     ///
     /// # Examples
     ///

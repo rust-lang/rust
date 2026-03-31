@@ -5,7 +5,7 @@
     min_generic_const_args,
     adt_const_params,
     generic_const_parameter_types,
-    unsized_const_params,
+    const_param_ty_trait,
 )]
 #![expect(incomplete_features)]
 
@@ -16,8 +16,7 @@ struct Foo<T> {
     field: T,
 }
 
-#[type_const]
-const WRAP<T: ConstParamTy_, const N: T>: Foo<T> = { Foo::<T> {
+type const WRAP<T: ConstParamTy_, const N: T>: Foo<T> = { Foo::<T> {
     field: N,
 } };
 

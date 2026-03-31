@@ -19,8 +19,16 @@ pub enum TryEnum {
 impl TryEnum {
     const ALL: [TryEnum; 2] = [TryEnum::Option, TryEnum::Result];
 
-    /// Returns `Some(..)` if the provided type is an enum that implements `std::ops::Try`.
+    /// Returns `Some(..)` if the provided `ty.strip_references()` is an enum that implements `std::ops::Try`.
     pub fn from_ty(sema: &Semantics<'_, RootDatabase>, ty: &hir::Type<'_>) -> Option<TryEnum> {
+        Self::from_ty_without_strip(sema, &ty.strip_references())
+    }
+
+    /// Returns `Some(..)` if the provided type is an enum that implements `std::ops::Try`.
+    pub fn from_ty_without_strip(
+        sema: &Semantics<'_, RootDatabase>,
+        ty: &hir::Type<'_>,
+    ) -> Option<TryEnum> {
         let enum_ = match ty.as_adt() {
             Some(hir::Adt::Enum(it)) => it,
             _ => return None,

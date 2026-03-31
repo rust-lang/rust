@@ -47,7 +47,7 @@ pub(crate) fn expand(
 
     // Generate anonymous constant serving as container for the allocator methods.
     let const_ty = ecx.ty(ty_span, TyKind::Tup(ThinVec::new()));
-    let const_body = ast::ConstItemRhs::Body(ecx.expr_block(ecx.block(span, stmts)));
+    let const_body = ast::ConstItemRhsKind::new_body(ecx.expr_block(ecx.block(span, stmts)));
     let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
     let const_item = if is_stmt {
         Annotatable::Stmt(Box::new(ecx.stmt_item(span, const_item)))
@@ -77,7 +77,7 @@ impl AllocFnFactory<'_, '_> {
         let sig = FnSig { decl, header, span: self.span };
         let body = Some(self.cx.block_expr(result));
         let kind = ItemKind::Fn(Box::new(Fn {
-            defaultness: ast::Defaultness::Final,
+            defaultness: ast::Defaultness::Implicit,
             sig,
             ident: Ident::from_str_and_span(&global_fn_name(method.name), self.span),
             generics: Generics::default(),
@@ -128,11 +128,15 @@ impl AllocFnFactory<'_, '_> {
 
                 let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
                 let ty_usize = self.cx.ty_path(usize);
-                args.push(self.cx.param(self.span, size, ty_usize.clone()));
-                args.push(self.cx.param(self.span, align, ty_usize));
+                args.push(self.cx.param(self.span, size, ty_usize));
+                let ty_align = self.ptr_alignment();
+                args.push(self.cx.param(self.span, align, ty_align));
 
-                let layout_new =
-                    self.cx.std_path(&[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
+                let layout_new = self.cx.std_path(&[
+                    sym::alloc,
+                    sym::Layout,
+                    sym::from_size_alignment_unchecked,
+                ]);
                 let layout_new = self.cx.expr_path(self.cx.path(self.span, layout_new));
                 let size = self.cx.expr_ident(self.span, size);
                 let align = self.cx.expr_ident(self.span, align);
@@ -173,6 +177,12 @@ impl AllocFnFactory<'_, '_> {
     fn usize(&self) -> Box<Ty> {
         let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
         self.cx.ty_path(usize)
+    }
+
+    fn ptr_alignment(&self) -> Box<Ty> {
+        let path = self.cx.std_path(&[sym::mem, sym::Alignment]);
+        let path = self.cx.path(self.span, path);
+        self.cx.ty_path(path)
     }
 
     fn ptr_u8(&self) -> Box<Ty> {

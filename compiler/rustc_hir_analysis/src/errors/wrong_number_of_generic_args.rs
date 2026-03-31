@@ -1026,7 +1026,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     .collect::<Vec<_>>();
 
                 if !suggestions.is_empty() {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "replace the generic bound{s} with the associated type{s}",
                             s = pluralize!(unbound_types.len())

@@ -50,6 +50,8 @@ declare_clippy_lint! {
     "Finds if-else that could be written using either `bool::then` or `bool::then_some`"
 }
 
+impl_lint_pass!(IfThenSomeElseNone => [IF_THEN_SOME_ELSE_NONE]);
+
 pub struct IfThenSomeElseNone {
     msrv: Msrv,
 }
@@ -59,8 +61,6 @@ impl IfThenSomeElseNone {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(IfThenSomeElseNone => [IF_THEN_SOME_ELSE_NONE]);
 
 impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {

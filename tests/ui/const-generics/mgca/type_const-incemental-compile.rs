@@ -6,6 +6,5 @@
 #![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 
-#[type_const]
-const TYPE_CONST: usize = 0;
+type const TYPE_CONST: usize = 0;
 fn main() {}

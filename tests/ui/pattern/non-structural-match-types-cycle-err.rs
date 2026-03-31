@@ -1,5 +1,5 @@
 //@ edition:2021
-
+//@ ignore-parallel-frontend query cycle
 struct AnyOption<T>(T);
 impl<T> AnyOption<T> {
     const NONE: Option<T> = None;

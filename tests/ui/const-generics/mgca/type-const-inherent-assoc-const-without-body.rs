@@ -4,8 +4,7 @@
 #![expect(incomplete_features)]
 
 impl S { //~ ERROR cannot find type `S` in this scope
-    #[type_const]
-    const SIZE: usize;
+    type const SIZE: usize;
     //~^ ERROR associated constant in `impl` without body
 }
 

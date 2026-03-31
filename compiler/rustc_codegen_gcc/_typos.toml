@@ -6,4 +6,4 @@ seh = "seh"
 typ = "typ"
 
 [files]
-extend-exclude = ["src/intrinsic/archs.rs"]
+extend-exclude = ["src/intrinsic/archs.rs", "src/intrinsic/old_archs.rs"]

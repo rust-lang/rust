@@ -1,5 +1,3 @@
-pub mod os;
-
 #[expect(dead_code)]
 #[path = "../unsupported/common.rs"]
 mod unsupported_common;

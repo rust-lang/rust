@@ -218,3 +218,38 @@ macro_rules! impl_funnel_shifts {
 impl_funnel_shifts! {
     u8, u16, u32, u64, u128, usize
 }
+
+#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+pub const trait CarrylessMul: Copy + 'static {
+    /// See [`super::carryless_mul`]; we just need the trait indirection to handle
+    /// different types since calling intrinsics with generics doesn't work.
+    fn carryless_mul(self, rhs: Self) -> Self;
+}
+
+macro_rules! impl_carryless_mul{
+    ($($type:ident),*) => {$(
+        #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+        impl const CarrylessMul for $type {
+            #[inline]
+            fn carryless_mul(self, rhs: Self) -> Self {
+                let mut result = 0;
+                let mut i = 0;
+
+                while i < $type::BITS {
+                    // If the i-th bit in rhs is set.
+                    if (rhs >> i) & 1 != 0 {
+                        // Then xor the result with `self` shifted to the left by i positions.
+                        result ^= self << i;
+                    }
+                    i += 1;
+                }
+
+                result
+            }
+        }
+    )*};
+}
+
+impl_carryless_mul! {
+    u8, u16, u32, u64, u128, usize
+}

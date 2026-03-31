@@ -4,6 +4,5 @@
 pub fn accept(_: impl Trait<K = 0>) {}
 
 pub trait Trait {
-    #[type_const]
-    const K: i32;
+    type const K: i32;
 }

@@ -2,7 +2,7 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    Applicability, Diag, E0309, E0310, E0311, E0803, Subdiagnostic, struct_span_code_err,
+    Applicability, Diag, E0309, E0310, E0311, E0803, Subdiagnostic, msg, struct_span_code_err,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -14,7 +14,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _, Upcast as _,
 };
-use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, kw};
+use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, kw, sym};
 use tracing::{debug, instrument};
 
 use super::ObligationCauseAsDiagArg;
@@ -25,7 +25,6 @@ use crate::errors::{
     self, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
     RefLongerThanData, RegionOriginNote, WhereClauseSuggestions, note_and_explain,
 };
-use crate::fluent_generated as fluent;
 use crate::infer::region_constraints::GenericKind;
 use crate::infer::{
     BoundRegionConversionTime, InferCtxt, RegionResolutionError, RegionVariableOrigin,
@@ -228,18 +227,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 expected_found: self.values_str(trace.values, &trace.cause, err.long_ty_path()),
             }
             .add_to_diag(err),
-            SubregionOrigin::Reborrow(span) => {
-                RegionOriginNote::Plain { span, msg: fluent::trait_selection_reborrow }
-                    .add_to_diag(err)
+            SubregionOrigin::Reborrow(span) => RegionOriginNote::Plain {
+                span,
+                msg: msg!("...so that reference does not outlive borrowed content"),
             }
+            .add_to_diag(err),
             SubregionOrigin::RelateObjectBound(span) => {
-                RegionOriginNote::Plain { span, msg: fluent::trait_selection_relate_object_bound }
-                    .add_to_diag(err);
+                RegionOriginNote::Plain {
+                    span,
+                    msg: msg!("...so that it can be closed over into an object"),
+                }
+                .add_to_diag(err);
             }
             SubregionOrigin::ReferenceOutlivesReferent(ty, span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: fluent::trait_selection_reference_outlives_referent,
+                    msg: msg!("...so that the reference type `{$name}` does not outlive the data it points at"),
                     name: &self.ty_to_string(ty),
                     continues: false,
                 }
@@ -248,7 +251,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SubregionOrigin::RelateParamBound(span, ty, opt_span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: fluent::trait_selection_relate_param_bound,
+                    msg: msg!(
+                        "...so that the type `{$name}` will meet its required lifetime bounds{$continues ->
+                            [true] ...
+                            *[false] {\"\"}
+                        }"
+                    ),
                     name: &self.ty_to_string(ty),
                     continues: opt_span.is_some(),
                 }
@@ -256,7 +264,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let Some(span) = opt_span {
                     RegionOriginNote::Plain {
                         span,
-                        msg: fluent::trait_selection_relate_param_bound_2,
+                        msg: msg!("...that is required by this bound"),
                     }
                     .add_to_diag(err);
                 }
@@ -264,14 +272,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SubregionOrigin::RelateRegionParamBound(span, _) => {
                 RegionOriginNote::Plain {
                     span,
-                    msg: fluent::trait_selection_relate_region_param_bound,
+                    msg: msg!("...so that the declared lifetime parameter bounds are satisfied"),
                 }
                 .add_to_diag(err);
             }
             SubregionOrigin::CompareImplItemObligation { span, .. } => {
                 RegionOriginNote::Plain {
                     span,
-                    msg: fluent::trait_selection_compare_impl_item_obligation,
+                    msg: msg!(
+                        "...so that the definition in impl matches the definition from the trait"
+                    ),
                 }
                 .add_to_diag(err);
             }
@@ -279,11 +289,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.note_region_origin(err, parent);
             }
             SubregionOrigin::AscribeUserTypeProvePredicate(span) => {
-                RegionOriginNote::Plain {
-                    span,
-                    msg: fluent::trait_selection_ascribe_user_type_prove_predicate,
-                }
-                .add_to_diag(err);
+                RegionOriginNote::Plain { span, msg: msg!("...so that the where clause holds") }
+                    .add_to_diag(err);
             }
         }
     }
@@ -856,7 +863,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             if !suggs.is_empty() {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     msg,
                     suggs,
                     Applicability::MaybeIncorrect, // Issue #41966
@@ -1009,7 +1016,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some((sup_expected, sup_found)) =
                 self.values_str(sup_trace.values, &sup_trace.cause, err.long_ty_path())
             && let Some((sub_expected, sub_found)) =
-                self.values_str(sub_trace.values, &sup_trace.cause, err.long_ty_path())
+                self.values_str(sub_trace.values, &sub_trace.cause, err.long_ty_path())
             && sub_expected == sup_expected
             && sub_found == sup_found
         {
@@ -1424,9 +1431,9 @@ fn suggest_precise_capturing<'tcx>(
             });
         } else {
             let mut next_fresh_param = || {
-                ["T", "U", "V", "W", "X", "Y", "A", "B", "C"]
+                ['T', 'U', 'V', 'W', 'X', 'Y', 'A', 'B', 'C']
                     .into_iter()
-                    .map(Symbol::intern)
+                    .map(sym::character)
                     .chain((0..).map(|i| Symbol::intern(&format!("T{i}"))))
                     .find(|s| captured_non_lifetimes.insert(*s))
                     .unwrap()

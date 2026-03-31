@@ -131,7 +131,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                 .collect::<Vec<_>>()
                 .into(),
         );
-        Ok(match &self.body[pattern] {
+        Ok(match &self.store[pattern] {
             Pat::Missing => return Err(MirLowerError::IncompletePattern),
             Pat::Wild => (current, current_else),
             Pat::Tuple { args, ellipsis } => {
@@ -322,7 +322,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                 }
                 if let &Some(slice) = slice
                     && mode != MatchingMode::Check
-                    && let Pat::Bind { id, subpat: _ } = self.body[slice]
+                    && let Pat::Bind { id, subpat: _ } = self.store[slice]
                 {
                     let next_place = cond_place.project(
                         ProjectionElem::Subslice {
@@ -363,9 +363,14 @@ impl<'db> MirLowerCtx<'_, 'db> {
                 )?,
                 None => {
                     let unresolved_name = || {
-                        MirLowerError::unresolved_path(self.db, p, self.display_target(), self.body)
+                        MirLowerError::unresolved_path(
+                            self.db,
+                            p,
+                            self.display_target(),
+                            self.store,
+                        )
                     };
-                    let hygiene = self.body.pat_path_hygiene(pattern);
+                    let hygiene = self.store.pat_path_hygiene(pattern);
                     let pr = self
                         .resolver
                         .resolve_path_in_value_ns(self.db, p, hygiene)
@@ -373,7 +378,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
 
                     if let (
                         MatchingMode::Assign,
-                        ResolveValueResult::ValueNs(ValueNs::LocalBinding(binding), _),
+                        ResolveValueResult::ValueNs(ValueNs::LocalBinding(binding)),
                     ) = (mode, &pr)
                     {
                         let local = self.binding_local(*binding)?;
@@ -398,7 +403,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                         {
                             break 'b (c, x.1);
                         }
-                        if let ResolveValueResult::ValueNs(ValueNs::ConstId(c), _) = pr {
+                        if let ResolveValueResult::ValueNs(ValueNs::ConstId(c)) = pr {
                             break 'b (c, GenericArgs::empty(self.interner()));
                         }
                         not_supported!("path in pattern position that is not const or variant")
@@ -432,7 +437,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                     (next, Some(else_target))
                 }
             },
-            Pat::Lit(l) => match &self.body[*l] {
+            Pat::Lit(l) => match &self.store[*l] {
                 Expr::Literal(l) => {
                     if mode == MatchingMode::Check {
                         let c = self.lower_literal_to_operand(self.infer.pat_ty(pattern), l)?;

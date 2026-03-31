@@ -1,12 +1,11 @@
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
+use rustc_hir::{RustcVersion, VERSION_PLACEHOLDER};
 
 use super::prelude::*;
 use super::util::parse_version;
 use crate::session_diagnostics::{
     DeprecatedItemSuggestion, InvalidSince, MissingNote, MissingSince,
 };
-
-pub(crate) struct DeprecationParser;
 
 fn get<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
@@ -32,9 +31,9 @@ fn get<S: Stage>(
     }
 }
 
-impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
+pub(crate) struct DeprecatedParser;
+impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
     const PATH: &[Symbol] = &[sym::deprecated];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
@@ -143,6 +142,8 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
                 DeprecatedSince::Future
             } else if !is_rustc {
                 DeprecatedSince::NonStandard(since)
+            } else if since.as_str() == VERSION_PLACEHOLDER {
+                DeprecatedSince::RustcVersion(RustcVersion::CURRENT)
             } else if let Some(version) = parse_version(since) {
                 DeprecatedSince::RustcVersion(version)
             } else {
@@ -161,7 +162,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
             return None;
         }
 
-        Some(AttributeKind::Deprecation {
+        Some(AttributeKind::Deprecated {
             deprecation: Deprecation { since, note, suggestion },
             span: cx.attr_span,
         })

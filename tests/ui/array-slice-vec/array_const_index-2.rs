@@ -1,8 +1,5 @@
 //@ run-pass
 #![allow(dead_code)]
-#![allow(stable_features)]
-
-#![feature(const_indexing)]
 
 fn main() {
     const ARR: [i32; 6] = [42, 43, 44, 45, 46, 47];

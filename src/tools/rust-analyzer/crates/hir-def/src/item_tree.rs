@@ -44,6 +44,7 @@ use std::{
 };
 
 use ast::{AstNode, StructKind};
+use base_db::Crate;
 use cfg::CfgOptions;
 use hir_expand::{
     ExpandTo, HirFileId,
@@ -121,21 +122,23 @@ fn lower_extra_crate_attrs<'a>(
 }
 
 #[salsa_macros::tracked(returns(deref))]
-pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
+pub(crate) fn file_item_tree_query(
+    db: &dyn DefDatabase,
+    file_id: HirFileId,
+    krate: Crate,
+) -> Arc<ItemTree> {
     let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
     static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
 
-    let ctx = lower::Ctx::new(db, file_id);
+    let ctx = lower::Ctx::new(db, file_id, krate);
     let syntax = db.parse_or_expand(file_id);
     let mut item_tree = match_ast! {
         match syntax {
             ast::SourceFile(file) => {
-                let krate = file_id.krate(db);
                 let root_file_id = krate.root_file_id(db);
                 let extra_top_attrs = (file_id == root_file_id).then(|| {
                     parse_extra_crate_attrs(db, krate).map(|crate_attrs| {
-                        let file_id = root_file_id.editioned_file_id(db);
-                        lower_extra_crate_attrs(db, crate_attrs, file_id, &|| ctx.cfg_options())
+                        lower_extra_crate_attrs(db, crate_attrs, root_file_id.span_file_id(db), &|| ctx.cfg_options())
                     })
                 }).flatten();
                 let top_attrs = match extra_top_attrs {
@@ -189,41 +192,22 @@ pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> 
     }
 }
 
-#[salsa_macros::tracked(returns(deref))]
-pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
+#[salsa_macros::tracked(returns(ref))]
+pub(crate) fn block_item_tree_query(
+    db: &dyn DefDatabase,
+    block: BlockId,
+    krate: Crate,
+) -> ItemTree {
     let _p = tracing::info_span!("block_item_tree_query", ?block).entered();
-    static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
-
     let loc = block.lookup(db);
     let block = loc.ast_id.to_node(db);
 
-    let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
+    let ctx = lower::Ctx::new(db, loc.ast_id.file_id, krate);
     let mut item_tree = ctx.lower_block(&block);
-    let ItemTree { top_level, top_attrs, attrs, vis, big_data, small_data } = &item_tree;
-    if small_data.is_empty()
-        && big_data.is_empty()
-        && top_level.is_empty()
-        && attrs.is_empty()
-        && top_attrs.is_empty()
-        && vis.arena.is_empty()
-    {
-        EMPTY
-            .get_or_init(|| {
-                Arc::new(ItemTree {
-                    top_level: Box::new([]),
-                    attrs: FxHashMap::default(),
-                    small_data: FxHashMap::default(),
-                    big_data: FxHashMap::default(),
-                    top_attrs: AttrsOrCfg::empty(),
-                    vis: ItemVisibilities { arena: ThinVec::new() },
-                })
-            })
-            .clone()
-    } else {
-        item_tree.shrink_to_fit();
-        Arc::new(item_tree)
-    }
+    item_tree.shrink_to_fit();
+    item_tree
 }
+
 /// The item tree of a source file.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
@@ -356,10 +340,10 @@ impl TreeId {
         Self { file, block }
     }
 
-    pub(crate) fn item_tree<'db>(&self, db: &'db dyn DefDatabase) -> &'db ItemTree {
+    pub(crate) fn item_tree<'db>(&self, db: &'db dyn DefDatabase, krate: Crate) -> &'db ItemTree {
         match self.block {
-            Some(block) => block_item_tree_query(db, block),
-            None => file_item_tree_query(db, self.file),
+            Some(block) => block_item_tree_query(db, block, krate),
+            None => file_item_tree_query(db, self.file, krate),
         }
     }
 

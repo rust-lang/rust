@@ -21,16 +21,18 @@ fn main() {
     let f = [0; -4_isize];
     //~^ ERROR mismatched types
     //~| NOTE expected `usize`, found `isize`
-    let f = [0_usize; -1_isize];
+    //~| NOTE `-4_isize` cannot fit into type `usize`
+    let g = [0_usize; -1_isize];
     //~^ ERROR mismatched types
     //~| NOTE expected `usize`, found `isize`
-    let f = [0; 4u8];
+    //~| NOTE `-1_isize` cannot fit into type `usize`
+    let h = [0; 4u8];
     //~^ ERROR mismatched types
     //~| NOTE expected `usize`, found `u8`
-    struct G {
-        g: (),
+    struct I {
+        i: (),
     }
-    let g = [0; G { g: () }];
+    let i = [0; I { i: () }];
     //~^ ERROR mismatched types
-    //~| NOTE expected `usize`, found `G`
+    //~| NOTE expected `usize`, found `I`
 }

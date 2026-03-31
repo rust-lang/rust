@@ -32,8 +32,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Spanned, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -42,8 +41,8 @@ use tracing::{debug, instrument, trace};
 use crate::borrow_set::BorrowSet;
 use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::diagnostics::UniverseInfo;
+use crate::polonius::PoloniusContext;
 use crate::polonius::legacy::{PoloniusFacts, PoloniusLocationTable};
-use crate::polonius::{PoloniusContext, PoloniusLivenessContext};
 use crate::region_infer::TypeTest;
 use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices};
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
@@ -139,8 +138,8 @@ pub(crate) fn type_check<'tcx>(
 
     debug!(?normalized_inputs_and_output);
 
-    let polonius_liveness = if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
-        Some(PoloniusLivenessContext::default())
+    let polonius_context = if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
+        Some(PoloniusContext::default())
     } else {
         None
     };
@@ -162,7 +161,7 @@ pub(crate) fn type_check<'tcx>(
         borrow_set,
         constraints: &mut constraints,
         deferred_closure_requirements: &mut deferred_closure_requirements,
-        polonius_liveness,
+        polonius_context,
     };
 
     typeck.check_user_type_annotations();
@@ -172,14 +171,7 @@ pub(crate) fn type_check<'tcx>(
 
     liveness::generate(&mut typeck, &location_map, move_data);
 
-    // We're done with typeck, we can finalize the polonius liveness context for region inference.
-    let polonius_context = typeck.polonius_liveness.take().map(|liveness_context| {
-        PoloniusContext::create_from_liveness(
-            liveness_context,
-            infcx.num_region_vars(),
-            typeck.constraints.liveness_constraints.points(),
-        )
-    });
+    let polonius_context = typeck.polonius_context;
 
     // In case type check encountered an error region, we suppress unhelpful extra
     // errors in by clearing out all outlives bounds that we may end up checking.
@@ -238,7 +230,7 @@ struct TypeChecker<'a, 'tcx> {
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     deferred_closure_requirements: &'a mut DeferredClosureRequirements<'tcx>,
     /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
-    polonius_liveness: Option<PoloniusLivenessContext>,
+    polonius_context: Option<PoloniusContext>,
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -380,10 +372,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn body(&self) -> &Body<'tcx> {
         self.body
-    }
-
-    fn unsized_feature_enabled(&self) -> bool {
-        self.tcx().features().unsized_fn_params()
     }
 
     /// Equate the inferred type and the annotated type for user type annotations
@@ -668,7 +656,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
 
-                if !self.unsized_feature_enabled() {
+                if !self.tcx().features().unsized_fn_params() {
                     let trait_ref = ty::TraitRef::new(
                         tcx,
                         tcx.require_lang_item(LangItem::Sized, self.last_span),
@@ -944,9 +932,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
 
-        // When `unsized_fn_params` is enabled, only function calls
-        // and nullary ops are checked in `check_call_dest`.
-        if !self.unsized_feature_enabled() {
+        // When `unsized_fn_params` is enabled, this is checked in `check_call_dest`,
+        // and `hir_typeck` still forces all non-argument locals to be sized (i.e., we don't
+        // fully re-check what was already checked on HIR).
+        if !self.tcx().features().unsized_fn_params() {
             match self.body.local_kind(local) {
                 LocalKind::ReturnPointer | LocalKind::Arg => {
                     // return values of normal functions are required to be
@@ -1011,17 +1000,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
 
-            Rvalue::ShallowInitBox(_operand, ty) => {
-                let trait_ref =
-                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, span), [*ty]);
-
-                self.prove_trait_ref(
-                    trait_ref,
-                    location.to_locations(),
-                    ConstraintCategory::SizedBound,
-                );
-            }
-
             Rvalue::Cast(cast_kind, op, ty) => {
                 match *cast_kind {
                     CastKind::PointerCoercion(
@@ -1031,12 +1009,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         let src_ty = op.ty(self.body, tcx);
                         let mut src_sig = src_ty.fn_sig(tcx);
-                        if let ty::FnDef(def_id, _) = src_ty.kind()
+                        if let ty::FnDef(def_id, _) = *src_ty.kind()
                             && let ty::FnPtr(_, target_hdr) = *ty.kind()
                             && tcx.codegen_fn_attrs(def_id).safe_target_features
                             && target_hdr.safety.is_safe()
                             && let Some(safe_sig) = tcx.adjust_target_feature_sig(
-                                *def_id,
+                                def_id,
                                 src_sig,
                                 self.body.source.def_id(),
                             )
@@ -1972,8 +1950,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             // When `unsized_fn_params` is not enabled,
-            // this check is done at `check_local`.
-            if self.unsized_feature_enabled() {
+            // this check is done at `visit_local_decl`.
+            if self.tcx().features().unsized_fn_params() {
                 let span = term.source_info.span;
                 self.ensure_place_sized(dest_ty, span);
             }
@@ -2238,7 +2216,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::Ref(..)
             | Rvalue::RawPtr(..)
             | Rvalue::Cast(..)
-            | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)

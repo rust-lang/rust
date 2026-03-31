@@ -8,11 +8,13 @@ path = "lib.rs"
 
 [features]
 default = ["rustc-hash"]
+rkyv_0_8 = ["dep:rkyv"]
 
 [dependencies]
 serde = "1.0"
 serde_derive = "1.0"
 rustc-hash = { version = "2.0", optional = true }
+rkyv = { version = "0.8", optional = true }
 
 [dev-dependencies]
 serde_json = "1.0"

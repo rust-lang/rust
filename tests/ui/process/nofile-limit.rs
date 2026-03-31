@@ -11,6 +11,9 @@
 
 #![feature(exit_status_error)]
 #![feature(rustc_private)]
+// on aarch64, "Using 'getaddrinfo' in statically linked applications requires at runtime the shared
+// libraries from the glibc version used for linking"
+#![allow(linker_messages)]
 extern crate libc;
 
 use std::os::unix::process::CommandExt;

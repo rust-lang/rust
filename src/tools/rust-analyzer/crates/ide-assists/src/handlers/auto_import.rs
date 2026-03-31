@@ -155,6 +155,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                             &scope,
                             mod_path_to_ast(&import_path, edition),
                             &ctx.config.insert_use,
+                            edition,
                         );
                     },
                 );
@@ -267,7 +268,7 @@ pub(crate) fn relevance_score(
                         hir::Adt::Union(it) => it.ty(ctx.db()),
                         hir::Adt::Enum(it) => it.ty(ctx.db()),
                     }),
-                    hir::ModuleDef::Variant(variant) => Some(variant.constructor_ty(ctx.db())),
+                    hir::ModuleDef::EnumVariant(variant) => Some(variant.constructor_ty(ctx.db())),
                     hir::ModuleDef::Const(it) => Some(it.ty(ctx.db())),
                     hir::ModuleDef::Static(it) => Some(it.ty(ctx.db())),
                     hir::ModuleDef::TypeAlias(it) => Some(it.ty(ctx.db())),
@@ -351,7 +352,7 @@ mod tests {
         let config = TEST_CONFIG;
         let ctx = AssistContext::new(sema, &config, frange);
         let mut acc = Assists::new(&ctx, AssistResolveStrategy::All);
-        auto_import(&mut acc, &ctx);
+        hir::attach_db(&db, || auto_import(&mut acc, &ctx));
         let assists = acc.finish();
 
         let labels = assists.iter().map(|assist| assist.label.to_string()).collect::<Vec<_>>();
@@ -1895,5 +1896,36 @@ mod m {
 fn foo(_: S) {}
 "#,
         );
+    }
+
+    #[test]
+    fn with_after_segments() {
+        let before = r#"
+mod foo {
+    pub mod wanted {
+        pub fn abc() {}
+    }
+}
+
+mod bar {
+    pub mod wanted {}
+}
+
+mod baz {
+    pub fn wanted() {}
+}
+
+mod quux {
+    pub struct wanted;
+}
+impl quux::wanted {
+    fn abc() {}
+}
+
+fn f() {
+    wanted$0::abc;
+}
+        "#;
+        check_auto_import_order(before, &["Import `foo::wanted`", "Import `quux::wanted`"]);
     }
 }

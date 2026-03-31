@@ -1,3 +1,4 @@
+//@ reference: expr.arith-logic.behavior
 // Test that binary operators consume their arguments
 
 use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitXor, BitOr, Shl, Shr};

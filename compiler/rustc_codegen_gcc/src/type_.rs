@@ -13,7 +13,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, ty};
 
 use crate::common::TypeReflection;
-use crate::context::CodegenCx;
+use crate::context::{CodegenCx, new_array_type};
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -66,7 +66,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn type_ptr_to_ext(&self, ty: Type<'gcc>, _address_space: AddressSpace) -> Type<'gcc> {
-        // TODO(antoyo): use address_space, perhaps with TYPE_ADDR_SPACE?
+        // FIXME(antoyo): use address_space, perhaps with TYPE_ADDR_SPACE?
         ty.make_pointer()
     }
 
@@ -110,7 +110,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             .iter()
             .enumerate()
             .map(|(index, field)| {
-                self.context.new_field(None, *field, format!("field{}_TODO", index))
+                self.context.new_field(None, *field, format!("field{}_FIXME", index))
             })
             .collect();
         let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
@@ -213,7 +213,7 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         } else if typ == self.type_void() {
             TypeKind::Void
         } else {
-            // TODO(antoyo): support other types.
+            // FIXME(antoyo): support other types.
             unimplemented!();
         }
     }
@@ -239,7 +239,7 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         } else if typ == self.type_void() {
             TypeKind::Void
         } else {
-            // TODO(antoyo): support other types.
+            // FIXME(antoyo): support other types.
             unimplemented!();
         }
     }
@@ -288,7 +288,7 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         } else {
             panic!("Cannot get width of float type {:?}", typ);
         }
-        // TODO(antoyo): support other sizes.
+        // FIXME(antoyo): support other sizes.
     }
 
     fn int_width(&self, typ: Type<'gcc>) -> u64 {
@@ -311,7 +311,7 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
             len = 0;
         }
 
-        self.context.new_array_type(None, ty, len)
+        new_array_type(self.context, None, ty, len)
     }
 }
 

@@ -3,7 +3,7 @@ use rustc_span::def_id::DefPathHash;
 
 use crate::HashIgnoredAttrId;
 use crate::hir::{
-    AttributeMap, BodyId, Crate, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
+    AttributeMap, BodyId, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
 };
 use crate::hir_id::ItemLocalId;
 use crate::lints::DelayedLints;
@@ -11,9 +11,7 @@ use crate::lints::DelayedLints;
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in `rustc_middle`.
-pub trait HashStableContext: rustc_ast::HashStableContext + rustc_abi::HashStableContext {
-    fn hash_attr_id(&mut self, id: &HashIgnoredAttrId, hasher: &mut StableHasher);
-}
+pub trait HashStableContext: rustc_ast::HashStableContext + rustc_abi::HashStableContext {}
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for BodyId {
     type KeyType = (DefPathHash, ItemLocalId);
@@ -96,15 +94,8 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap
     }
 }
 
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Crate<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let Crate { owners: _, opt_hir_hash } = self;
-        opt_hir_hash.unwrap().hash_stable(hcx, hasher)
-    }
-}
-
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for HashIgnoredAttrId {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_attr_id(self, hasher)
+    fn hash_stable(&self, _hcx: &mut HirCtx, _hasher: &mut StableHasher) {
+        /* we don't hash HashIgnoredAttrId, we ignore them */
     }
 }

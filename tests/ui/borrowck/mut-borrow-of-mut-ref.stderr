@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `b` as mutable, as it is not declared as mutable
-  --> $DIR/mut-borrow-of-mut-ref.rs:4:10
+  --> $DIR/mut-borrow-of-mut-ref.rs:5:10
    |
 LL | pub fn f(b: &mut i32) {
    |          ^ not mutable
@@ -11,7 +11,7 @@ LL |     g(&mut &mut b);
    |            ------ cannot borrow as mutable
    |
 note: the binding is already a mutable borrow
-  --> $DIR/mut-borrow-of-mut-ref.rs:4:13
+  --> $DIR/mut-borrow-of-mut-ref.rs:5:13
    |
 LL | pub fn f(b: &mut i32) {
    |             ^^^^^^^^
@@ -23,11 +23,6 @@ help: if there is only one mutable reborrow, remove the `&mut`
    |
 LL -     h(&mut b);
 LL +     h(b);
-   |
-help: if there is only one mutable reborrow, remove the `&mut`
-   |
-LL -     g(&mut &mut b);
-LL +     g(&mut b);
    |
 
 error[E0596]: cannot borrow `b` as mutable, as it is not declared as mutable
@@ -45,14 +40,9 @@ help: consider making the binding mutable if you need to reborrow multiple times
    |
 LL | pub fn g(mut b: &mut i32) {
    |          +++
-help: if there is only one mutable reborrow, remove the `&mut`
-   |
-LL -     h(&mut &mut b);
-LL +     h(&mut b);
-   |
 
 error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
-  --> $DIR/mut-borrow-of-mut-ref.rs:36:5
+  --> $DIR/mut-borrow-of-mut-ref.rs:35:5
    |
 LL |     f.bar();
    |     ^ cannot borrow as mutable

@@ -4,6 +4,7 @@ use std::ops::Deref;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable_Generic;
 
+use crate::layout::{FieldIdx, VariantIdx};
 use crate::{
     AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
     PointeeInfo, Primitive, Size, Variants,
@@ -11,60 +12,6 @@ use crate::{
 
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
 
-rustc_index::newtype_index! {
-    /// The *source-order* index of a field in a variant.
-    ///
-    /// This is how most code after type checking refers to fields, rather than
-    /// using names (as names have hygiene complications and more complex lookup).
-    ///
-    /// Particularly for `repr(Rust)` types, this may not be the same as *layout* order.
-    /// (It is for `repr(C)` `struct`s, however.)
-    ///
-    /// For example, in the following types,
-    /// ```rust
-    /// # enum Never {}
-    /// # #[repr(u16)]
-    /// enum Demo1 {
-    ///    Variant0 { a: Never, b: i32 } = 100,
-    ///    Variant1 { c: u8, d: u64 } = 10,
-    /// }
-    /// struct Demo2 { e: u8, f: u16, g: u8 }
-    /// ```
-    /// `b` is `FieldIdx(1)` in `VariantIdx(0)`,
-    /// `d` is `FieldIdx(1)` in `VariantIdx(1)`, and
-    /// `f` is `FieldIdx(1)` in `VariantIdx(0)`.
-    #[derive(HashStable_Generic)]
-    #[encodable]
-    #[orderable]
-    pub struct FieldIdx {}
-}
-
-impl FieldIdx {
-    /// The second field, at index 1.
-    ///
-    /// For use alongside [`FieldIdx::ZERO`], particularly with scalar pairs.
-    pub const ONE: FieldIdx = FieldIdx::from_u32(1);
-}
-
-rustc_index::newtype_index! {
-    /// The *source-order* index of a variant in a type.
-    ///
-    /// For enums, these are always `0..variant_count`, regardless of any
-    /// custom discriminants that may have been defined, and including any
-    /// variants that may end up uninhabited due to field types.  (Some of the
-    /// variants may not be present in a monomorphized ABI [`Variants`], but
-    /// those skipped variants are always counted when determining the *index*.)
-    ///
-    /// `struct`s, `tuples`, and `unions`s are considered to have a single variant
-    /// with variant index zero, aka [`FIRST_VARIANT`].
-    #[derive(HashStable_Generic)]
-    #[encodable]
-    #[orderable]
-    pub struct VariantIdx {
-        /// Equivalent to `VariantIdx(0)`.
-        const FIRST_VARIANT = 0;
-    }
-}
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 #[rustc_pass_by_value]
 pub struct Layout<'a>(pub Interned<'a, LayoutData<FieldIdx, VariantIdx>>);
@@ -290,7 +237,19 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// function call isn't allowed (a.k.a. `va_list`).
     ///
     /// This function handles transparent types automatically.
-    pub fn pass_indirectly_in_non_rustic_abis<C>(mut self, cx: &C) -> bool
+    pub fn pass_indirectly_in_non_rustic_abis<C>(self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let base = self.peel_transparent_wrappers(cx);
+        Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(base)
+    }
+
+    /// Recursively peel away transparent wrappers, returning the inner value.
+    ///
+    /// The return value is not `repr(transparent)` and/or does
+    /// not have a non-1zst field.
+    pub fn peel_transparent_wrappers<C>(mut self, cx: &C) -> Self
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
@@ -300,7 +259,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             self = field;
         }
 
-        Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(self)
+        self
     }
 
     /// Finds the one field that is not a 1-ZST.

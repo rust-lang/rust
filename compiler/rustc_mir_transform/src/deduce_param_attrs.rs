@@ -121,17 +121,29 @@ impl<'tcx> Visitor<'tcx> for DeduceParamAttrs {
         // `f` passes. Note that function arguments are the only situation in which this problem can
         // arise: every other use of `move` in MIR doesn't actually write to the value it moves
         // from.
-        if let TerminatorKind::Call { ref args, .. } = terminator.kind {
-            for arg in args {
-                if let Operand::Move(place) = arg.node
-                    && !place.is_indirect_first_projection()
-                    && let Some(i) = self.as_param(place.local)
-                {
-                    self.usage[i] |= UsageSummary::MUTATE;
-                    self.usage[i] |= UsageSummary::CAPTURE;
+        match terminator.kind {
+            TerminatorKind::Call { ref args, .. } => {
+                for arg in args {
+                    if let Operand::Move(place) = arg.node
+                        && !place.is_indirect_first_projection()
+                        && let Some(i) = self.as_param(place.local)
+                    {
+                        self.usage[i] |= UsageSummary::MUTATE;
+                        self.usage[i] |= UsageSummary::CAPTURE;
+                    }
                 }
             }
-        };
+
+            // Like a call, but more conservative because the backend may introduce writes to an
+            // argument if the argument is passed as `PassMode::Indirect { on_stack: false, ... }`.
+            TerminatorKind::TailCall { .. } => {
+                for usage in self.usage.iter_mut() {
+                    *usage |= UsageSummary::MUTATE;
+                    *usage |= UsageSummary::CAPTURE;
+                }
+            }
+            _ => {}
+        }
 
         self.super_terminator(terminator, location);
     }

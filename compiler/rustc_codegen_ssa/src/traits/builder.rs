@@ -1,7 +1,7 @@
+use std::assert_matches;
 use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
-use rustc_data_structures::assert_matches;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
@@ -50,10 +50,10 @@ pub trait BuilderMethods<'a, 'tcx>:
     type CodegenCx: CodegenMethods<
             'tcx,
             Value = Self::Value,
-            Metadata = Self::Metadata,
             Function = Self::Function,
             BasicBlock = Self::BasicBlock,
             Type = Self::Type,
+            FunctionSignature = Self::FunctionSignature,
             Funclet = Self::Funclet,
             DIScope = Self::DIScope,
             DILocation = Self::DILocation,
@@ -125,7 +125,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn invoke(
         &mut self,
-        llty: Self::Type,
+        llty: Self::FunctionSignature,
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Self::Value,
@@ -552,12 +552,12 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn set_personality_fn(&mut self, personality: Self::Function);
 
-    // These are used by everyone except msvc
+    // These are used by everyone except msvc and wasm EH
     fn cleanup_landing_pad(&mut self, pers_fn: Self::Function) -> (Self::Value, Self::Value);
     fn filter_landing_pad(&mut self, pers_fn: Self::Function);
     fn resume(&mut self, exn0: Self::Value, exn1: Self::Value);
 
-    // These are used only by msvc
+    // These are used by msvc and wasm EH
     fn cleanup_pad(&mut self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Funclet;
     fn cleanup_ret(&mut self, funclet: &Self::Funclet, unwind: Option<Self::BasicBlock>);
     fn catch_pad(&mut self, parent: Self::Value, args: &[Self::Value]) -> Self::Funclet;
@@ -567,6 +567,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         unwind: Option<Self::BasicBlock>,
         handlers: &[Self::BasicBlock],
     ) -> Self::Value;
+    fn get_funclet_cleanuppad(&self, funclet: &Self::Funclet) -> Self::Value;
 
     fn atomic_cmpxchg(
         &mut self,
@@ -622,7 +623,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// assuming the function does not explicitly pass the destination as a pointer in `args`.
     fn call(
         &mut self,
-        llty: Self::Type,
+        llty: Self::FunctionSignature,
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         fn_val: Self::Value,
@@ -633,7 +634,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn tail_call(
         &mut self,
-        llty: Self::Type,
+        llty: Self::FunctionSignature,
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: Self::Value,

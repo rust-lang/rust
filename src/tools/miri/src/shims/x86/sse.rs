@@ -24,8 +24,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sse.").unwrap();
         // All these intrinsics operate on 128-bit (f32x4) SIMD vectors unless stated otherwise.
-        // Many intrinsic names are sufixed with "ps" (packed single) or "ss" (scalar single),
-        // where single means single precision floating point (f32). "ps" means thet the operation
+        // Many intrinsic names are suffixed with "ps" (packed single) or "ss" (scalar single),
+        // where single means single precision floating point (f32). "ps" means that the operation
         // is performed on each element of the vector, while "ss" means that the operation is
         // performed only on the first element, copying the remaining elements from the input
         // vector (for binary operations, from the left-hand side).

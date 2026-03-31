@@ -103,5 +103,53 @@ error: `x` is never smaller than `i32::MIN - 0` and has therefore no effect
 LL |     let _ = x.min(i32::MIN - 0);
    |             ^^^^^^^^^^^^^^^^^^^ help: try: `i32::MIN - 0`
 
-error: aborting due to 17 previous errors
+error: `n` is never smaller than `0` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:83:13
+   |
+LL |     let _ = n.min(0);
+   |             ^^^^^^^^ help: try: `0`
+
+error: `n` is never smaller than `0usize` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:86:13
+   |
+LL |     let _ = n.min(0usize);
+   |             ^^^^^^^^^^^^^ help: try: `0usize`
+
+error: `(0usize)` is never greater than `n` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:89:13
+   |
+LL |     let _ = (0usize).min(n);
+   |             ^^^^^^^^^^^^^^^ help: try: `(0usize)`
+
+error: `n` is never smaller than `usize::MIN` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:92:13
+   |
+LL |     let _ = n.min(usize::MIN);
+   |             ^^^^^^^^^^^^^^^^^ help: try: `usize::MIN`
+
+error: `n` is never greater than `usize::MAX` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:95:13
+   |
+LL |     let _ = n.max(usize::MAX);
+   |             ^^^^^^^^^^^^^^^^^ help: try: `usize::MAX`
+
+error: `(usize::MAX)` is never smaller than `n` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:98:13
+   |
+LL |     let _ = (usize::MAX).max(n);
+   |             ^^^^^^^^^^^^^^^^^^^ help: try: `(usize::MAX)`
+
+error: `n` is never greater than `!0usize` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:101:13
+   |
+LL |     let _ = n.max(!0usize);
+   |             ^^^^^^^^^^^^^^ help: try: `!0usize`
+
+error: `n` is never smaller than `0` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:104:13
+   |
+LL |     let _ = n.max(0);
+   |             ^^^^^^^^ help: try: `n`
+
+error: aborting due to 25 previous errors
 

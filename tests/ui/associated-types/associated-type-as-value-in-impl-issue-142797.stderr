@@ -1,0 +1,9 @@
+error[E0599]: no associated function or constant named `SomeType` found for type `bool` in the current scope
+  --> $DIR/associated-type-as-value-in-impl-issue-142797.rs:16:24
+   |
+LL |         let ss = Self::SomeType;
+   |                        ^^^^^^^^ associated function or constant not found in `bool`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

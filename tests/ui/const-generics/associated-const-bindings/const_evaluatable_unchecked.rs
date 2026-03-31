@@ -4,12 +4,11 @@
 //
 // issue: <https://github.com/rust-lang/rust/issues/108220>
 //@ check-pass
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, associated_type_defaults)]
 #![allow(incomplete_features)]
 
 pub trait TraitA<T> {
-    #[type_const]
-    const K: u8 = 0;
+    type const K: u8 = 0;
 }
 pub trait TraitB<T> {}
 

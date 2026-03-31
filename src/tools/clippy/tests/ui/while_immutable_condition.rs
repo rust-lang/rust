@@ -226,16 +226,4 @@ fn immutable_condition_false_positive(mut n: u64) -> u32 {
     count
 }
 
-fn main() {
-    immutable_condition();
-    unused_var();
-    used_immutable();
-    internally_mutable();
-    immutable_condition_false_positive(5);
-
-    let mut c = Counter { count: 0 };
-    c.inc_n(5);
-    c.print_n(2);
-
-    while_loop_with_break_and_return();
-}
+fn main() {}

@@ -22,11 +22,13 @@ mod u64;
 mod u8;
 
 mod bignum;
+mod carryless_mul;
 mod const_from;
 mod dec2flt;
+mod float_ieee754_flt2dec_dec2flt;
 mod float_iter_sum_identity;
+mod floats;
 mod flt2dec;
-mod ieee754;
 mod int_log;
 mod int_sqrt;
 mod midpoint;
@@ -34,6 +36,8 @@ mod nan;
 mod niche_types;
 mod ops;
 mod wrapping;
+
+use floats::{assert_biteq, float_test};
 
 /// Adds the attribute to all items in the block.
 macro_rules! cfg_block {

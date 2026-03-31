@@ -12,8 +12,9 @@ use smallvec::SmallVec;
 use crate::consumers::BorrowckConsumer;
 use crate::nll::compute_closure_requirements_modulo_opaques;
 use crate::region_infer::opaque_types::{
-    apply_definition_site_hidden_types, clone_and_resolve_opaque_types,
+    UnexpectedHiddenRegion, apply_definition_site_hidden_types, clone_and_resolve_opaque_types,
     compute_definition_site_hidden_types, detect_opaque_types_added_while_handling_opaque_types,
+    handle_unconstrained_hidden_type_errors,
 };
 use crate::type_check::{Locations, constraint_conversion};
 use crate::{
@@ -26,7 +27,12 @@ use crate::{
 pub(super) struct BorrowCheckRootCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     root_def_id: LocalDefId,
+    /// This contains fully resolved hidden types or `ty::Error`.
     hidden_types: FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
+    /// This contains unconstrained regions in hidden types.
+    /// Only used for deferred error reporting. See
+    /// [`crate::region_infer::opaque_types::handle_unconstrained_hidden_type_errors`]
+    unconstrained_hidden_type_errors: Vec<UnexpectedHiddenRegion<'tcx>>,
     /// The region constraints computed by [borrowck_collect_region_constraints]. This uses
     /// an [FxIndexMap] to guarantee that iterating over it visits nested bodies before
     /// their parents.
@@ -49,6 +55,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
             tcx,
             root_def_id,
             hidden_types: Default::default(),
+            unconstrained_hidden_type_errors: Default::default(),
             collect_region_constraints_results: Default::default(),
             propagated_borrowck_results: Default::default(),
             tainted_by_errors: None,
@@ -84,22 +91,31 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
 
     fn handle_opaque_type_uses(&mut self) {
         let mut per_body_info = Vec::new();
-        for input in self.collect_region_constraints_results.values_mut() {
+        for (def_id, input) in &mut self.collect_region_constraints_results {
             let (num_entries, opaque_types) = clone_and_resolve_opaque_types(
                 &input.infcx,
                 &input.universal_region_relations,
                 &mut input.constraints,
             );
             input.deferred_opaque_type_errors = compute_definition_site_hidden_types(
+                *def_id,
                 &input.infcx,
                 &input.universal_region_relations,
                 &input.constraints,
                 Rc::clone(&input.location_map),
                 &mut self.hidden_types,
+                &mut self.unconstrained_hidden_type_errors,
                 &opaque_types,
             );
             per_body_info.push((num_entries, opaque_types));
         }
+
+        handle_unconstrained_hidden_type_errors(
+            self.tcx,
+            &mut self.hidden_types,
+            &mut self.unconstrained_hidden_type_errors,
+            &mut self.collect_region_constraints_results,
+        );
 
         for (input, (opaque_types_storage_num_entries, opaque_types)) in
             self.collect_region_constraints_results.values_mut().zip(per_body_info)

@@ -477,7 +477,6 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_diagnostic_item = "slice_into_vec"]
     pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
         unsafe {
             let len = self.len();

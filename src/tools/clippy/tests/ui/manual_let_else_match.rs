@@ -1,4 +1,4 @@
-#![allow(unused_braces, unused_variables, dead_code)]
+#![allow(unused_braces, unused_variables, dead_code, irrefutable_let_patterns)]
 #![allow(
     clippy::collapsible_else_if,
     clippy::let_unit_value,
@@ -249,4 +249,21 @@ fn issue9939b() {
         None => unreachable!("can't happen"),
     };
     assert!(erosion);
+}
+
+mod issue16433 {
+    // https://github.com/rust-lang/rust-clippy/issues/16433
+    struct A {
+        a: u32,
+        b: u32,
+    }
+
+    fn foo() {
+        let a = A { a: 1, b: 1 };
+        let first_arg = match a {
+            //~^ manual_let_else
+            A { a, .. } => a,
+            _ => return,
+        };
+    }
 }

@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::HasSession;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{higher, is_else_clause, is_in_const_context, span_contains_comment};
 use rustc_ast::LitKind;
@@ -43,6 +42,7 @@ declare_clippy_lint! {
     pedantic,
     "using if to convert bool to int"
 }
+
 declare_lint_pass!(BoolToIntWithIf => [BOOL_TO_INT_WITH_IF]);
 
 impl<'tcx> LateLintPass<'tcx> for BoolToIntWithIf {
@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for BoolToIntWithIf {
             && !is_in_const_context(cx)
         {
             let ty = cx.typeck_results().expr_ty(then);
-            let mut applicability = if span_contains_comment(cx.sess().source_map(), expr.span) {
+            let mut applicability = if span_contains_comment(cx, expr.span) {
                 Applicability::MaybeIncorrect
             } else {
                 Applicability::MachineApplicable

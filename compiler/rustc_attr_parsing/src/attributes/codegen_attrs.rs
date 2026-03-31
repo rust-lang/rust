@@ -12,7 +12,6 @@ pub(crate) struct OptimizeParser;
 
 impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     const PATH: &[Symbol] = &[sym::optimize];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -68,7 +67,6 @@ pub(crate) struct CoverageParser;
 
 impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
     const PATH: &[Symbol] = &[sym::coverage];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -119,7 +117,6 @@ pub(crate) struct ExportNameParser;
 
 impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Static),
@@ -153,11 +150,10 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     }
 }
 
-pub(crate) struct ObjcClassParser;
+pub(crate) struct RustcObjcClassParser;
 
-impl<S: Stage> SingleAttributeParser<S> for ObjcClassParser {
+impl<S: Stage> SingleAttributeParser<S> for RustcObjcClassParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_class];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
@@ -169,7 +165,7 @@ impl<S: Stage> SingleAttributeParser<S> for ObjcClassParser {
             return None;
         };
         let Some(classname) = nv.value_as_str() else {
-            // `#[rustc_objc_class = ...]` is expected to be used as an implementatioin detail
+            // `#[rustc_objc_class = ...]` is expected to be used as an implementation detail
             // inside a standard library macro, but `cx.expected_string_literal` exposes too much.
             // Use a custom error message instead.
             cx.emit_err(ObjcClassExpectedStringLiteral { span: nv.value_span });
@@ -185,11 +181,10 @@ impl<S: Stage> SingleAttributeParser<S> for ObjcClassParser {
     }
 }
 
-pub(crate) struct ObjcSelectorParser;
+pub(crate) struct RustcObjcSelectorParser;
 
-impl<S: Stage> SingleAttributeParser<S> for ObjcSelectorParser {
+impl<S: Stage> SingleAttributeParser<S> for RustcObjcSelectorParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_selector];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
@@ -201,7 +196,7 @@ impl<S: Stage> SingleAttributeParser<S> for ObjcSelectorParser {
             return None;
         };
         let Some(methname) = nv.value_as_str() else {
-            // `#[rustc_objc_selector = ...]` is expected to be used as an implementatioin detail
+            // `#[rustc_objc_selector = ...]` is expected to be used as an implementation detail
             // inside a standard library macro, but `cx.expected_string_literal` exposes too much.
             // Use a custom error message instead.
             cx.emit_err(ObjcSelectorExpectedStringLiteral { span: nv.value_span });
@@ -587,6 +582,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
         r#"kernel_address = "on|off""#,
         r#"cfi = "on|off""#,
         r#"hwaddress = "on|off""#,
+        r#"kernel_hwaddress = "on|off""#,
         r#"kcfi = "on|off""#,
         r#"memory = "on|off""#,
         r#"memtag = "on|off""#,
@@ -595,7 +591,6 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
         r#"realtime = "nonblocking|blocking|caller""#,
     ]);
 
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
@@ -654,7 +649,9 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
                 Some(sym::memtag) => apply(SanitizerSet::MEMTAG),
                 Some(sym::shadow_call_stack) => apply(SanitizerSet::SHADOWCALLSTACK),
                 Some(sym::thread) => apply(SanitizerSet::THREAD),
-                Some(sym::hwaddress) => apply(SanitizerSet::HWADDRESS),
+                Some(sym::hwaddress) | Some(sym::kernel_hwaddress) => {
+                    apply(SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
+                }
                 Some(sym::realtime) => match value.value_as_str() {
                     Some(sym::nonblocking) => rtsan = Some(RtsanSetting::Nonblocking),
                     Some(sym::blocking) => rtsan = Some(RtsanSetting::Blocking),
@@ -671,6 +668,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
                         item.path().span(),
                         &[
                             sym::address,
+                            sym::kernel_address,
                             sym::cfi,
                             sym::kcfi,
                             sym::memory,
@@ -678,6 +676,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
                             sym::shadow_call_stack,
                             sym::thread,
                             sym::hwaddress,
+                            sym::kernel_hwaddress,
                             sym::realtime,
                         ],
                     );
@@ -709,13 +708,13 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPassIndirectlyInNonRusticAbisPa
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPassIndirectlyInNonRusticAbis;
 }
 
-pub(crate) struct EiiForeignItemParser;
+pub(crate) struct RustcEiiForeignItemParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for EiiForeignItemParser {
+impl<S: Stage> NoArgsAttributeParser<S> for RustcEiiForeignItemParser {
     const PATH: &[Symbol] = &[sym::rustc_eii_foreign_item];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::EiiForeignItem;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEiiForeignItem;
 }
 
 pub(crate) struct PatchableFunctionEntryParser;
@@ -723,7 +722,6 @@ pub(crate) struct PatchableFunctionEntryParser;
 impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
     const PATH: &[Symbol] = &[sym::patchable_function_entry];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["prefix_nops = m, entry_nops = n"]);
 

@@ -49,7 +49,9 @@ Alternatively, download a VSIX corresponding to your platform from the
 Install the extension with the `Extensions: Install from VSIX` command
 within VS Code, or from the command line via:
 
-    $ code --install-extension /path/to/rust-analyzer.vsix
+```bash
+code --install-extension /path/to/rust-analyzer.vsix
+```
 
 If you are running an unsupported platform, you can install
 `rust-analyzer-no-server.vsix` and compile or obtain a server binary.
@@ -64,8 +66,10 @@ example:
 
 Both the server and the Code plugin can be installed from source:
 
-    $ git clone https://github.com/rust-lang/rust-analyzer.git && cd rust-analyzer
-    $ cargo xtask install
+```bash
+git clone https://github.com/rust-lang/rust-analyzer.git && cd rust-analyzer
+cargo xtask install
+```
 
 You’ll need Cargo, nodejs (matching a supported version of VS Code) and
 npm for this.
@@ -76,7 +80,9 @@ Remote, instead you’ll need to install the `.vsix` manually.
 If you’re not using Code, you can compile and install only the LSP
 server:
 
-    $ cargo xtask install --server
+```bash
+cargo xtask install --server
+```
 
 Make sure that `.cargo/bin` is in `$PATH` and precedes paths where
 `rust-analyzer` may also be installed. Specifically, `rustup` includes a
@@ -92,12 +98,12 @@ some directories, `/usr/bin` will always be mounted under
 system-wide installation of Rust, or any other libraries you might want
 to link to. Some compilers and libraries can be acquired as Flatpak
 SDKs, such as `org.freedesktop.Sdk.Extension.rust-stable` or
-`org.freedesktop.Sdk.Extension.llvm15`.
+`org.freedesktop.Sdk.Extension.llvm21`.
 
 If you use a Flatpak SDK for Rust, it must be in your `PATH`:
 
- * install the SDK extensions with `flatpak install org.freedesktop.Sdk.Extension.{llvm15,rust-stable}//23.08`
- * enable SDK extensions in the editor with the environment variable `FLATPAK_ENABLE_SDK_EXT=llvm15,rust-stable` (this can be done using flatseal or `flatpak override`)
+ * install the SDK extensions with `flatpak install org.freedesktop.Sdk.Extension.{llvm21,rust-stable}//25.08`
+ * enable SDK extensions in the editor with the environment variable `FLATPAK_ENABLE_SDK_EXT=llvm21,rust-stable` (this can be done using flatseal or `flatpak override`)
 
 If you want to use Flatpak in combination with `rustup`, the following
 steps might help:
@@ -118,4 +124,3 @@ steps might help:
 
 A C compiler should already be available via `org.freedesktop.Sdk`. Any
 other tools or libraries you will need to acquire from Flatpak.
-

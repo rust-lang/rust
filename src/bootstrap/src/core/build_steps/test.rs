@@ -41,7 +41,7 @@ use crate::utils::helpers::{
     linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, PathSet, envify};
+use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envify};
 
 mod compiletest;
 
@@ -174,7 +174,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         );
         run_cargo_test(cargo, &[], &[], "linkchecker self tests", bootstrap_host, builder);
 
-        if builder.doc_tests == DocTests::No {
+        if !builder.test_target.runs_doctests() {
             return;
         }
 
@@ -741,7 +741,13 @@ impl Step for Miri {
 
         // Run it again for mir-opt-level 4 to catch some miscompilations.
         if builder.config.test_args().is_empty() {
-            cargo.env("MIRIFLAGS", "-O -Zmir-opt-level=4 -Cdebug-assertions=yes");
+            cargo.env(
+                "MIRIFLAGS",
+                format!(
+                    "{} -O -Zmir-opt-level=4 -Cdebug-assertions=yes",
+                    env::var("MIRIFLAGS").unwrap_or_default()
+                ),
+            );
             // Optimizations can change backtraces
             cargo.env("MIRI_SKIP_UI_CHECKS", "1");
             // `MIRI_SKIP_UI_CHECKS` and `RUSTC_BLESS` are incompatible
@@ -805,17 +811,30 @@ impl Step for CargoMiri {
             &[],
         );
 
+        // If we are testing stage 2+ cargo miri, make sure that it works with the in-tree cargo.
+        // We want to do this *somewhere* to ensure that Miri + nightly cargo actually works.
+        if stage >= 2 {
+            let built_cargo = builder
+                .ensure(tool::Cargo::from_build_compiler(
+                    // Build stage 1 cargo here, we don't need it to be built in any special way,
+                    // just that it is built from in-tree sources.
+                    builder.compiler(0, builder.host_target),
+                    builder.host_target,
+                ))
+                .tool_path;
+            cargo.env("CARGO", built_cargo);
+        }
+
         // We're not using `prepare_cargo_test` so we have to do this ourselves.
         // (We're not using that as the test-cargo-miri crate is not known to bootstrap.)
-        match builder.doc_tests {
-            DocTests::Yes => {}
-            DocTests::No => {
-                cargo.args(["--lib", "--bins", "--examples", "--tests", "--benches"]);
+        match builder.test_target {
+            TestTarget::AllTargets => {
+                cargo.args(["--lib", "--bins", "--examples", "--tests", "--benches"])
             }
-            DocTests::Only => {
-                cargo.arg("--doc");
-            }
-        }
+            TestTarget::Default => &mut cargo,
+            TestTarget::DocOnly => cargo.arg("--doc"),
+            TestTarget::Tests => cargo.arg("--tests"),
+        };
         cargo.arg("--").args(builder.config.test_args());
 
         // Finally, run everything.
@@ -1193,7 +1212,7 @@ impl Step for RustdocGUI {
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
         builder.config.nodejs.is_some()
-            && builder.doc_tests != DocTests::Only
+            && builder.test_target != TestTarget::DocOnly
             && get_browser_ui_test_version(builder).is_some()
     }
 
@@ -1283,7 +1302,7 @@ impl Step for Tidy {
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
-        builder.doc_tests != DocTests::Only
+        builder.test_target != TestTarget::DocOnly
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1319,6 +1338,9 @@ impl Step for Tidy {
         }
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
+        }
+        if builder.config.is_running_on_ci() {
+            cmd.arg("--ci=true");
         }
         if let Some(s) =
             builder.config.cmd.extra_checks().or(builder.config.tidy_extra_checks.as_deref())
@@ -1839,7 +1861,7 @@ impl Step for Compiletest {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        if builder.doc_tests == DocTests::Only {
+        if builder.test_target == TestTarget::DocOnly {
             return;
         }
 
@@ -2183,6 +2205,9 @@ Please disable assertions with `rust.debug-assertions = false`.
         }
         for flag in targetflags {
             cmd.arg("--target-rustcflags").arg(flag);
+        }
+        if target.is_synthetic() {
+            cmd.arg("--target-rustcflags").arg("-Zunstable-options");
         }
 
         cmd.arg("--python").arg(
@@ -2954,15 +2979,12 @@ fn prepare_cargo_test(
         cargo.arg("--message-format=json");
     }
 
-    match builder.doc_tests {
-        DocTests::Only => {
-            cargo.arg("--doc");
-        }
-        DocTests::No => {
-            cargo.args(["--bins", "--examples", "--tests", "--benches"]);
-        }
-        DocTests::Yes => {}
-    }
+    match builder.test_target {
+        TestTarget::AllTargets => cargo.args(["--bins", "--examples", "--tests", "--benches"]),
+        TestTarget::Default => &mut cargo,
+        TestTarget::DocOnly => cargo.arg("--doc"),
+        TestTarget::Tests => cargo.arg("--tests"),
+    };
 
     for krate in crates {
         cargo.arg("-p").arg(krate);
@@ -3088,6 +3110,17 @@ impl Step for Crate {
             // does not set this directly, but relies on the rustc wrapper to set it, and we are not using
             // the wrapper -- hence we have to set it ourselves.
             cargo.rustflag("-Zforce-unstable-if-unmarked");
+            // Miri is told to invoke the libtest runner and bootstrap sets unstable flags
+            // for that runner. That only works when RUSTC_BOOTSTRAP is set. Bootstrap sets
+            // that flag but Miri by default does not forward the host environment to the test.
+            // Here we set up MIRIFLAGS to forward that env var.
+            cargo.env(
+                "MIRIFLAGS",
+                format!(
+                    "{} -Zmiri-env-forward=RUSTC_BOOTSTRAP",
+                    env::var("MIRIFLAGS").unwrap_or_default()
+                ),
+            );
             cargo
         } else {
             // Also prepare a sysroot for the target.
@@ -3156,7 +3189,7 @@ impl Step for CrateRustdoc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["src/librustdoc", "src/tools/rustdoc"])
+        run.path("src/librustdoc").path("src/tools/rustdoc")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3282,7 +3315,7 @@ impl Step for CrateRustdocJsonTypes {
             builder.kind,
             "src/rustdoc-json-types",
             SourceType::InTree,
-            &[],
+            &["rkyv_0_8".to_owned()],
         );
 
         // FIXME: this looks very wrong, libtest doesn't accept `-C` arguments and the quotes are fishy.
@@ -3413,6 +3446,8 @@ fn distcheck_plain_source_tarball(builder: &Builder<'_>, plain_src_dir: &Path) {
     command("./configure")
         .arg("--set")
         .arg("rust.omit-git-hash=false")
+        .arg("--set")
+        .arg("rust.remap-debuginfo=false")
         .args(&configure_args)
         .arg("--enable-vendor")
         .current_dir(plain_src_dir)
@@ -3497,7 +3532,7 @@ impl Step for BootstrapPy {
         // Bootstrap tests might not be perfectly self-contained and can depend
         // on the environment, so only run them by default in CI, not locally.
         // See `test::Bootstrap::should_run`.
-        builder.config.is_running_on_ci
+        builder.config.is_running_on_ci()
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3536,7 +3571,7 @@ impl Step for Bootstrap {
         // Bootstrap tests might not be perfectly self-contained and can depend on the external
         // environment, submodules that are checked out, etc.
         // Therefore we only run them by default on CI.
-        builder.config.is_running_on_ci
+        builder.config.is_running_on_ci()
     }
 
     /// Tests the build system itself.
@@ -3817,7 +3852,7 @@ impl Step for CodegenCranelift {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["compiler/rustc_codegen_cranelift"])
+        run.path("compiler/rustc_codegen_cranelift")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3829,7 +3864,7 @@ impl Step for CodegenCranelift {
         let host = run.build_triple();
         let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, host);
 
-        if builder.doc_tests == DocTests::Only {
+        if builder.test_target == TestTarget::DocOnly {
             return;
         }
 
@@ -3938,7 +3973,7 @@ impl Step for CodegenGCC {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["compiler/rustc_codegen_gcc"])
+        run.path("compiler/rustc_codegen_gcc")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3950,7 +3985,7 @@ impl Step for CodegenGCC {
         let host = run.build_triple();
         let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, host);
 
-        if builder.doc_tests == DocTests::Only {
+        if builder.test_target == TestTarget::DocOnly {
             return;
         }
 

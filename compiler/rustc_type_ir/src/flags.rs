@@ -1,6 +1,6 @@
 use crate::inherent::*;
 use crate::visit::Flags;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, Ty};
 
 bitflags::bitflags! {
     /// Flags that we track on types. These flags are propagated upwards
@@ -430,7 +430,7 @@ impl<I: Interner> FlagComputation<I> {
         }
     }
 
-    fn add_ty(&mut self, ty: I::Ty) {
+    fn add_ty(&mut self, ty: Ty<I>) {
         self.add_flags(ty.flags());
         self.add_exclusive_binder(ty.outer_exclusive_binder());
     }
@@ -482,8 +482,8 @@ impl<I: Interner> FlagComputation<I> {
                 match cv.valtree().kind() {
                     ty::ValTreeKind::Leaf(_) => (),
                     ty::ValTreeKind::Branch(cts) => {
-                        for ct in cts {
-                            self.add_const(*ct);
+                        for ct in cts.iter() {
+                            self.add_const(ct);
                         }
                     }
                 }

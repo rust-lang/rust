@@ -690,7 +690,6 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 0).saturating_add(Duration::new(0, 1)), Duration::new(0, 1));
@@ -801,7 +800,6 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 500_000_001).saturating_mul(2), Duration::new(1, 2));

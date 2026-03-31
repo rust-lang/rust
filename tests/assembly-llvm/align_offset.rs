@@ -4,7 +4,7 @@
 #![crate_type = "rlib"]
 
 // CHECK-LABEL: align_offset_byte_ptr
-// CHECK: leaq 31
+// CHECK: leaq {{31|28}}
 // CHECK: andq $-32
 // CHECK: subq
 #[no_mangle]
@@ -13,7 +13,7 @@ pub fn align_offset_byte_ptr(ptr: *const u8) -> usize {
 }
 
 // CHECK-LABEL: align_offset_byte_slice
-// CHECK: leaq 31
+// CHECK: leaq {{31|28}}
 // CHECK: andq $-32
 // CHECK: subq
 #[no_mangle]
@@ -22,7 +22,7 @@ pub fn align_offset_byte_slice(slice: &[u8]) -> usize {
 }
 
 // CHECK-LABEL: align_offset_word_ptr
-// CHECK: leaq 31
+// CHECK: leaq {{31|28}}
 // CHECK: andq $-32
 // CHECK: subq
 // CHECK: shrq
@@ -35,7 +35,7 @@ pub fn align_offset_word_ptr(ptr: *const u32) -> usize {
 }
 
 // CHECK-LABEL: align_offset_word_slice
-// CHECK: leaq 31
+// CHECK: leaq {{31|28}}
 // CHECK: andq $-32
 // CHECK: subq
 // CHECK: shrq

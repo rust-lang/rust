@@ -337,6 +337,7 @@ docker \
   --env DEPLOY \
   --env DEPLOY_ALT \
   --env CI \
+  --env GIT_DISCOVERY_ACROSS_FILESYSTEM=1 \
   --env GITHUB_ACTIONS \
   --env GITHUB_REF \
   --env GITHUB_STEP_SUMMARY="/checkout/obj/${SUMMARY_FILE}" \
@@ -359,11 +360,11 @@ docker \
   rust-ci \
   "${command[@]}"
 
-if isCI; then
-    cat $objdir/${SUMMARY_FILE} >> "${GITHUB_STEP_SUMMARY}"
-fi
-
 if [ -f /.dockerenv ]; then
   rm -rf $objdir
   docker cp checkout:/checkout/obj $objdir
+fi
+
+if isCI; then
+    cat $objdir/${SUMMARY_FILE} >> "${GITHUB_STEP_SUMMARY}"
 fi

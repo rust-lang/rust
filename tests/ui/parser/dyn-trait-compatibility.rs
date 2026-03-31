@@ -3,7 +3,7 @@
 type A0 = dyn;
 //~^ ERROR cannot find type `dyn` in this scope
 type A1 = dyn::dyn;
-//~^ ERROR use of unresolved module or unlinked crate `dyn`
+//~^ ERROR cannot find module or crate `dyn` in this scope
 type A2 = dyn<dyn, dyn>;
 //~^ ERROR cannot find type `dyn` in this scope
 //~| ERROR cannot find type `dyn` in this scope

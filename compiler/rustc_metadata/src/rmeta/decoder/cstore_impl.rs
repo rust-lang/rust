@@ -147,8 +147,8 @@ macro_rules! provide_one {
             // External query providers call `crate_hash` in order to register a dependency
             // on the crate metadata. The exception is `crate_hash` itself, which obviously
             // doesn't need to do this (and can't, as it would cause a query cycle).
-            use rustc_middle::dep_graph::dep_kinds;
-            if dep_kinds::$name != dep_kinds::crate_hash && $tcx.dep_graph.is_fully_enabled() {
+            use rustc_middle::dep_graph::DepKind;
+            if DepKind::$name != DepKind::crate_hash && $tcx.dep_graph.is_fully_enabled() {
                 $tcx.ensure_ok().crate_hash($def_id.krate);
             }
 
@@ -324,7 +324,6 @@ provide! { tcx, def_id, other, cdata,
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     attrs_for_def => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(tcx, def_id.index)) }
     is_mir_available => { cdata.is_item_mir_available(tcx, def_id.index) }
-    is_ctfe_mir_available => { cdata.is_ctfe_mir_available(tcx, def_id.index) }
     cross_crate_inlinable => { table_direct }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
@@ -383,7 +382,7 @@ provide! { tcx, def_id, other, cdata,
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
     crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
 
-    dep_kind => { cdata.dep_kind }
+    crate_dep_kind => { cdata.dep_kind }
     module_children => {
         tcx.arena.alloc_from_iter(cdata.get_module_children(tcx, def_id.index))
     }

@@ -386,7 +386,7 @@ impl MacroCallKind {
 impl HirFileId {
     pub fn edition(self, db: &dyn ExpandDatabase) -> Edition {
         match self {
-            HirFileId::FileId(file_id) => file_id.editioned_file_id(db).edition(),
+            HirFileId::FileId(file_id) => file_id.edition(db),
             HirFileId::MacroFile(m) => db.lookup_intern_macro_call(m).def.edition,
         }
     }
@@ -1116,14 +1116,6 @@ impl HirFileId {
         match self {
             HirFileId::FileId(it) => Some(it),
             HirFileId::MacroFile(_) => None,
-        }
-    }
-
-    #[inline]
-    pub fn krate(self, db: &dyn ExpandDatabase) -> Crate {
-        match self {
-            HirFileId::FileId(it) => it.krate(db),
-            HirFileId::MacroFile(it) => it.loc(db).krate,
         }
     }
 }

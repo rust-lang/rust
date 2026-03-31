@@ -1,7 +1,7 @@
 use ide_db::{famous_defs::FamousDefs, traits::resolve_target_trait};
 use syntax::{
     AstNode, SyntaxElement, SyntaxNode, T,
-    ast::{self, edit::AstNodeEdit, edit_in_place::Indent, syntax_factory::SyntaxFactory},
+    ast::{self, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
     syntax_editor::{Element, Position, SyntaxEditor},
 };
 
@@ -46,7 +46,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?;
-    let indent = Indent::indent_level(&impl_def);
+    let indent = impl_def.indent_level();
 
     let ast::Type::PathType(path) = impl_def.trait_()? else {
         return None;
@@ -78,7 +78,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
 
             let new_impl = ast::Impl::cast(new_root.clone()).unwrap();
 
-            Indent::indent(&new_impl, indent);
+            let new_impl = new_impl.indent(indent);
 
             let mut editor = edit.make_editor(impl_def.syntax());
             editor.insert_all(

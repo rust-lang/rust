@@ -5,7 +5,7 @@ LL |     [(); loop {}].field;
    |          ^^^^^^^
    |
    = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
-           If your compilation actually takes a long time, you can safely allow the lint.
+           If your compilation actually takes a long time, you can safely allow the lint
 help: the constant being evaluated
   --> $DIR/field-access-after-const-eval-fail-in-ty.rs:4:10
    |

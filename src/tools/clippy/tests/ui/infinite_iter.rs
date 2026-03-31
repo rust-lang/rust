@@ -87,10 +87,7 @@ fn potential_infinite_iters() {
     repeat(42).take_while(|x| *x == 42).next();
 }
 
-fn main() {
-    infinite_iters();
-    potential_infinite_iters();
-}
+fn main() {}
 
 mod finite_collect {
     use std::collections::HashSet;

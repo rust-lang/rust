@@ -386,8 +386,9 @@ impl<'tcx> Context<'tcx> {
                     let e = ExternalCrate { crate_num: cnum };
                     (e.name(self.tcx()), e.src_root(self.tcx()))
                 }
-                ExternalLocation::Remote(ref s) => {
-                    root = s.to_string();
+                ExternalLocation::Remote { ref url, .. } => {
+                    // FIXME: relative extern URLs are not depth-adjusted for source pages
+                    root = url.to_string();
                     let e = ExternalCrate { crate_num: cnum };
                     (e.name(self.tcx()), e.src_root(self.tcx()))
                 }

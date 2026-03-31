@@ -2,11 +2,11 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet_opt;
+use clippy_utils::sym;
 use rustc_ast::{AttrArgs, AttrItemKind, AttrKind, Attribute, LitKind};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -38,6 +38,8 @@ declare_clippy_lint! {
     "including a large file"
 }
 
+impl_lint_pass!(LargeIncludeFile => [LARGE_INCLUDE_FILE]);
+
 pub struct LargeIncludeFile {
     max_file_size: u64,
 }
@@ -49,8 +51,6 @@ impl LargeIncludeFile {
         }
     }
 }
-
-impl_lint_pass!(LargeIncludeFile => [LARGE_INCLUDE_FILE]);
 
 impl LateLintPass<'_> for LargeIncludeFile {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {

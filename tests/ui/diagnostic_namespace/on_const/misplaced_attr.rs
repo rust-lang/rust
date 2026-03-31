@@ -1,4 +1,4 @@
-#![feature(const_trait_impl, const_cmp)]
+#![feature(const_trait_impl, const_cmp, diagnostic_on_const)]
 #![deny(misplaced_diagnostic_attributes)]
 
 #[diagnostic::on_const(message = "tadaa", note = "boing")]

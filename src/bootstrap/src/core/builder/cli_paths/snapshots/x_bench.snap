@@ -44,7 +44,6 @@ expression: bench
     - Set({bench::compiler/rustc_errors})
     - Set({bench::compiler/rustc_expand})
     - Set({bench::compiler/rustc_feature})
-    - Set({bench::compiler/rustc_fluent_macro})
     - Set({bench::compiler/rustc_fs_util})
     - Set({bench::compiler/rustc_graphviz})
     - Set({bench::compiler/rustc_hashes})
@@ -80,7 +79,6 @@ expression: bench
     - Set({bench::compiler/rustc_public})
     - Set({bench::compiler/rustc_public_bridge})
     - Set({bench::compiler/rustc_query_impl})
-    - Set({bench::compiler/rustc_query_system})
     - Set({bench::compiler/rustc_resolve})
     - Set({bench::compiler/rustc_sanitizers})
     - Set({bench::compiler/rustc_serialize})
@@ -98,4 +96,5 @@ expression: bench
     - Set({bench::compiler/rustc_windows_rc})
 [Bench] test::CrateRustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({bench::src/librustdoc, bench::src/tools/rustdoc})
+    - Set({bench::src/librustdoc})
+    - Set({bench::src/tools/rustdoc})

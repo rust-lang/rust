@@ -186,6 +186,7 @@ others at:
 * [`arm`]
 * [`aarch64`]
 * [`amdgpu`]
+* [`hexagon`]
 * [`riscv32`]
 * [`riscv64`]
 * [`mips`]
@@ -203,6 +204,7 @@ others at:
 [`arm`]: ../../core/arch/arm/index.html
 [`aarch64`]: ../../core/arch/aarch64/index.html
 [`amdgpu`]: ../../core/arch/amdgpu/index.html
+[`hexagon`]: ../../core/arch/hexagon/index.html
 [`riscv32`]: ../../core/arch/riscv32/index.html
 [`riscv64`]: ../../core/arch/riscv64/index.html
 [`mips`]: ../../core/arch/mips/index.html

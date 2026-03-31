@@ -6,14 +6,12 @@
 pub struct A;
 
 pub trait Array {
-    #[type_const]
-    const LEN: usize;
+    type const LEN: usize;
     fn arr() -> [u8; Self::LEN];
 }
 
 impl Array for A {
-    #[type_const]
-    const LEN: usize = 4;
+    type const LEN: usize = 4;
 
     #[allow(unused_braces)]
     fn arr() -> [u8; const { Self::LEN }] {

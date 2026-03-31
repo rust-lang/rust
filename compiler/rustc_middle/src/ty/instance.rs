@@ -1,16 +1,14 @@
-use std::fmt;
+use std::{assert_matches, fmt};
 
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_index::bit_set::FiniteBitSet;
-use rustc_macros::{Decodable, Encodable, HashStable, Lift, TyDecodable, TyEncodable};
+use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable};
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 use crate::error;
@@ -286,15 +284,6 @@ impl<'tcx> InstanceKind<'tcx> {
         }
     }
 
-    #[inline]
-    pub fn get_attrs(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        tcx.get_attrs(self.def_id(), attr)
-    }
-
     /// Returns `true` if the LLVM version of this instance is unconditionally
     /// marked with `inline`. This implies that a copy of this instance is
     /// generated in every codegen unit.
@@ -517,8 +506,8 @@ impl<'tcx> Instance<'tcx> {
             tcx.def_kind(def_id),
             DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::Const
-                | DefKind::AssocConst
+                | DefKind::Const { .. }
+                | DefKind::AssocConst { .. }
                 | DefKind::AnonConst
                 | DefKind::InlineConst
                 | DefKind::Static { .. }
@@ -949,52 +938,5 @@ fn needs_fn_once_adapter_shim(
             Ok(true)
         }
         (ty::ClosureKind::FnMut | ty::ClosureKind::FnOnce, _) => Err(()),
-    }
-}
-
-// Set bits represent unused generic parameters.
-// An empty set indicates that all parameters are used.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Decodable, Encodable, HashStable)]
-pub struct UnusedGenericParams(FiniteBitSet<u32>);
-
-impl Default for UnusedGenericParams {
-    fn default() -> Self {
-        UnusedGenericParams::new_all_used()
-    }
-}
-
-impl UnusedGenericParams {
-    pub fn new_all_unused(amount: u32) -> Self {
-        let mut bitset = FiniteBitSet::new_empty();
-        bitset.set_range(0..amount);
-        Self(bitset)
-    }
-
-    pub fn new_all_used() -> Self {
-        Self(FiniteBitSet::new_empty())
-    }
-
-    pub fn mark_used(&mut self, idx: u32) {
-        self.0.clear(idx);
-    }
-
-    pub fn is_unused(&self, idx: u32) -> bool {
-        self.0.contains(idx).unwrap_or(false)
-    }
-
-    pub fn is_used(&self, idx: u32) -> bool {
-        !self.is_unused(idx)
-    }
-
-    pub fn all_used(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    pub fn bits(&self) -> u32 {
-        self.0.0
-    }
-
-    pub fn from_bits(bits: u32) -> UnusedGenericParams {
-        UnusedGenericParams(FiniteBitSet(bits))
     }
 }

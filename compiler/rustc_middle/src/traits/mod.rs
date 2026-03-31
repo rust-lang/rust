@@ -2,6 +2,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
+pub mod cache;
 pub mod query;
 pub mod select;
 pub mod solve;
@@ -632,10 +633,6 @@ pub enum SelectionError<'tcx> {
     NotConstEvaluatable(NotConstEvaluatable),
     /// Exceeded the recursion depth during type projection.
     Overflow(OverflowError),
-    /// Computing an opaque type's hidden type caused an error (e.g. a cycle error).
-    /// We can thus not know whether the hidden type implements an auto trait, so
-    /// we should not presume anything about it.
-    OpaqueTypeAutoTraitLeakageUnknown(DefId),
     /// Error for a `ConstArgHasType` goal
     ConstArgHasWrongType { ct: ty::Const<'tcx>, ct_ty: Ty<'tcx>, expected_ty: Ty<'tcx> },
 }
@@ -844,7 +841,7 @@ impl DynCompatibilityViolation {
                 format!("it contains generic associated const `{name}`").into()
             }
             Self::AssocConst(name, AssocConstViolation::NonType, _) => {
-                format!("it contains associated const `{name}` that's not marked `#[type_const]`")
+                format!("it contains associated const `{name}` that's not defined as `type const`")
                     .into()
             }
             Self::AssocConst(name, AssocConstViolation::TypeReferencesSelf, _) => format!(
@@ -998,7 +995,7 @@ pub enum AssocConstViolation {
     /// Has own generic parameters (GAC).
     Generic,
 
-    /// Isn't marked `#[type_const]`.
+    /// Isn't defined as `type const`.
     NonType,
 
     /// Its type mentions the `Self` type parameter.

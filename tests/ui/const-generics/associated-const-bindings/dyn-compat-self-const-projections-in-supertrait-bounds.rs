@@ -9,8 +9,7 @@
 
 trait Trait: SuperTrait<{ Self::N }> {
 //~^ NOTE it uses `Self` as a type parameter
-    #[type_const]
-    const N: usize;
+    type const N: usize;
 }
 
 trait SuperTrait<const N: usize> {}

@@ -14,7 +14,9 @@ mod tests;
 use std::ops::ControlFlow;
 
 use either::Either;
-use hir::{DefWithBody, EditionedFileId, InFile, InRealFile, MacroKind, Name, Semantics};
+use hir::{
+    DefWithBody, EditionedFileId, ExpressionStoreOwner, InFile, InRealFile, MacroKind, Semantics,
+};
 use ide_db::{FxHashMap, FxHashSet, MiniCore, Ranker, RootDatabase, SymbolKind};
 use syntax::{
     AstNode, AstToken, NodeOrToken,
@@ -256,9 +258,8 @@ fn traverse(
     let mut inside_attribute = false;
 
     // FIXME: accommodate range highlighting
-    let mut body_stack: Vec<Option<DefWithBody>> = vec![];
-    let mut per_body_cache: FxHashMap<DefWithBody, (FxHashSet<_>, FxHashMap<Name, u32>)> =
-        FxHashMap::default();
+    let mut body_stack: Vec<Option<ExpressionStoreOwner>> = vec![];
+    let mut per_body_cache: FxHashMap<ExpressionStoreOwner, FxHashSet<_>> = FxHashMap::default();
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
@@ -289,19 +290,18 @@ fn traverse(
                 inside_attribute = false
             }
             Enter(NodeOrToken::Node(node)) => {
+                // FIXME: ExpressionStore signatures and variant fields
+                // Maybe we can re-use child container stuff here
                 if let Some(item) = <Either<ast::Item, ast::Variant>>::cast(node.clone()) {
                     match item {
                         Either::Left(item) => {
                             match &item {
-                                ast::Item::Fn(it) => {
-                                    body_stack.push(sema.to_def(it).map(Into::into))
-                                }
-                                ast::Item::Const(it) => {
-                                    body_stack.push(sema.to_def(it).map(Into::into))
-                                }
-                                ast::Item::Static(it) => {
-                                    body_stack.push(sema.to_def(it).map(Into::into))
-                                }
+                                ast::Item::Fn(it) => body_stack
+                                    .push(sema.to_def(it).map(DefWithBody::from).map(Into::into)),
+                                ast::Item::Const(it) => body_stack
+                                    .push(sema.to_def(it).map(DefWithBody::from).map(Into::into)),
+                                ast::Item::Static(it) => body_stack
+                                    .push(sema.to_def(it).map(DefWithBody::from).map(Into::into)),
                                 _ => (),
                             }
 
@@ -330,7 +330,9 @@ fn traverse(
                                 }
                             }
                         }
-                        Either::Right(it) => body_stack.push(sema.to_def(&it).map(Into::into)),
+                        Either::Right(it) => {
+                            body_stack.push(sema.to_def(&it).map(DefWithBody::from).map(Into::into))
+                        }
                     }
                 }
             }
@@ -393,11 +395,11 @@ fn traverse(
                 let descended = descend_token(sema, InRealFile::new(file_id, token));
                 let body = match &descended.value {
                     NodeOrToken::Node(n) => {
-                        sema.body_for(InFile::new(descended.file_id, n.syntax()))
+                        sema.store_owner_for(InFile::new(descended.file_id, n.syntax()))
                     }
-                    NodeOrToken::Token(t) => {
-                        t.parent().and_then(|it| sema.body_for(InFile::new(descended.file_id, &it)))
-                    }
+                    NodeOrToken::Token(t) => t
+                        .parent()
+                        .and_then(|it| sema.store_owner_for(InFile::new(descended.file_id, &it))),
                 };
                 (descended, body)
             }
@@ -422,14 +424,11 @@ fn traverse(
         }
 
         let edition = descended_element.file_id.edition(sema.db);
-        let (unsafe_ops, bindings_shadow_count) = match current_body {
-            Some(current_body) => {
-                let (ops, bindings) = per_body_cache
-                    .entry(current_body)
-                    .or_insert_with(|| (sema.get_unsafe_ops(current_body), Default::default()));
-                (&*ops, Some(bindings))
-            }
-            None => (&empty, None),
+        let unsafe_ops = match current_body {
+            Some(current_body) => per_body_cache
+                .entry(current_body)
+                .or_insert_with(|| sema.get_unsafe_ops(current_body)),
+            None => &empty,
         };
         let is_unsafe_node =
             |node| unsafe_ops.contains(&InFile::new(descended_element.file_id, node));
@@ -438,7 +437,6 @@ fn traverse(
                 let hl = highlight::name_like(
                     sema,
                     krate,
-                    bindings_shadow_count,
                     &is_unsafe_node,
                     config.syntactic_name_ref_highlighting,
                     name_like,

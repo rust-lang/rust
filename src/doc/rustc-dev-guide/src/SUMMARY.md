@@ -124,7 +124,7 @@
     - [`#[test]` implementation](./test-implementation.md)
     - [Panic implementation](./panic-implementation.md)
     - [AST validation](./ast-validation.md)
-    - [Feature gate checking](./feature-gate-ck.md)
+    - [Feature gate checking](./feature-gate-check.md)
     - [Lang Items](./lang-items.md)
 - [The HIR (High-level IR)](./hir.md)
     - [Lowering AST to HIR](./hir/lowering.md)

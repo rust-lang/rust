@@ -43,7 +43,20 @@ mod uefi_env {
     pub(crate) fn unset(key: &OsStr) -> io::Result<()> {
         let mut key_ptr = helpers::os_string_to_raw(key)
             .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "invalid key"))?;
-        unsafe { set_raw(key_ptr.as_mut_ptr(), crate::ptr::null_mut()) }
+        let r = unsafe { set_raw(key_ptr.as_mut_ptr(), crate::ptr::null_mut()) };
+
+        // The UEFI Shell spec only lists `EFI_SUCCESS` as a possible return value for
+        // `SetEnv`, but the edk2 implementation can return errors. Allow most of these
+        // errors to bubble up to the caller, but ignore `NotFound` errors; deleting a
+        // nonexistent variable is not listed as an error condition of
+        // `std::env::remove_var`.
+        if let Err(err) = &r
+            && err.kind() == io::ErrorKind::NotFound
+        {
+            Ok(())
+        } else {
+            r
+        }
     }
 
     pub(crate) fn get_all() -> io::Result<Vec<(OsString, OsString)>> {

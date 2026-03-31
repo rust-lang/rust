@@ -46,13 +46,6 @@ enum Exceptions {
     /// | -------------- | ----- |
     /// | Markdown table | A-ok  |
     MarkdownTable,
-    /// Here is a snippet.
-    //~^ doc_paragraphs_missing_punctuation
-    ///
-    /// ```
-    /// // Code blocks are no issues.
-    /// ```
-    CodeBlock,
 }
 
 // Check the lint can be expected on a whole enum at once.
@@ -128,6 +121,24 @@ enum OrderedLists {
     Dot,
     /// 42) A list item
     Paren,
+}
+
+/// Some elements do not have to be introduced by an independent clause.
+enum NotIndependentClause {
+    /// Lists are allowed to be introduced by a clause that is not independent: this usually
+    /// requires that
+    ///
+    /// - items end with a comma or a semicolon, which is not enforced;
+    /// - the last item end with a period, which is also not enforced.
+    List,
+    /// For instance, the function
+    ///
+    /// ```
+    /// fn answer() {}
+    /// ```
+    ///
+    /// returns the Answer to the Ultimate Question of Life, the Universe, and Everything.
+    CodeBlock,
 }
 
 /// Doc comments with trailing blank lines are supported.

@@ -2,7 +2,7 @@
 //@ needs-unwind
 //@ compile-flags: -O -C debug_assertions=yes
 
-#![feature(new_range_api)]
+#![feature(new_range_remainder)]
 
 use std::panic;
 

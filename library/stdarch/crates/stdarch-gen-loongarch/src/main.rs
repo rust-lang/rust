@@ -157,7 +157,7 @@ fn gen_bind(in_file: String, ext_name: &str) -> io::Result<()> {
 // ```
 
 use crate::mem::transmute;
-use super::types::*;
+use super::super::*;
 "#
     ));
 
@@ -1550,6 +1550,10 @@ fn gen_test_body(
             if out_t.to_lowercase() == "void" {
                 format!(
                     "    printf(\"\\n    {current_name}{as_params};\\n    assert_eq!(r, transmute(o));\\n\"{as_args});"
+                )
+            } else if current_name.starts_with("lasx_cast_128") {
+                format!(
+                    "    printf(\"\\n    assert_eq!(r.as_array()[0..2], transmute::<_, i64x4>({current_name}{as_params}).as_array()[0..2]);\\n\"{as_args});"
                 )
             } else {
                 format!(

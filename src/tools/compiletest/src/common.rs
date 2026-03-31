@@ -168,6 +168,7 @@ pub enum Sanitizer {
     Dataflow,
     Kcfi,
     KernelAddress,
+    KernelHwaddress,
     Leak,
     Memory,
     Memtag,
@@ -721,9 +722,17 @@ pub struct Config {
     ///
     /// This is forwarded from bootstrap's `jobs` configuration.
     pub jobs: u32,
+
+    /// Number of parallel threads to use for the frontend when building test artifacts.
+    pub parallel_frontend_threads: u32,
+    /// Number of times to execute each test.
+    pub iteration_count: u32,
 }
 
 impl Config {
+    pub const DEFAULT_PARALLEL_FRONTEND_THREADS: u32 = 1;
+    pub const DEFAULT_ITERATION_COUNT: u32 = 1;
+
     /// FIXME: this run scheme is... confusing.
     pub fn run_enabled(&self) -> bool {
         self.run.unwrap_or_else(|| {
@@ -833,6 +842,17 @@ impl Config {
             || matches!(self.target_cfg().arch.as_str(), "wasm32" | "wasm64")
             || self.target_cfg().os == "emscripten";
         !unsupported_target
+    }
+
+    /// Whether the parallel frontend is enabled,
+    /// which is the case when `parallel_frontend_threads` is not set to `1`.
+    ///
+    /// - `0` means auto-detect: use the number of available hardware threads on the host.
+    ///   But we treat it as the parallel frontend being enabled in this case.
+    /// - `1` means single-threaded (parallel frontend disabled).
+    /// - `>1` means an explicitly configured thread count.
+    pub fn parallel_frontend_enabled(&self) -> bool {
+        self.parallel_frontend_threads != 1
     }
 }
 
@@ -949,7 +969,9 @@ impl TargetCfgs {
         // actually be changed with `-C` flags.
         for config in query_rustc_output(
             config,
-            &["--print=cfg", "--target", &config.target],
+            // `-Zunstable-options` is necessary when compiletest is running with custom targets
+            // (such as synthetic targets used to bless mir-opt tests).
+            &["-Zunstable-options", "--print=cfg", "--target", &config.target],
             Default::default(),
         )
         .trim()

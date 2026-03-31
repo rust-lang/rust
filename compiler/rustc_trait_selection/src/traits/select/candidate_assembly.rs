@@ -12,14 +12,18 @@ use hir::LangItem;
 use hir::def_id::DefId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
-use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
+use rustc_infer::traits::{Obligation, PolyTraitObligation, PredicateObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, SizedTraitKind, Ty, TypeVisitableExt, TypingMode, elaborate};
+use rustc_middle::ty::{
+    self, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt, TypingMode, elaborate,
+};
 use rustc_middle::{bug, span_bug};
+use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
 use super::{SelectionCandidateSet, SelectionContext, TraitObligationStack};
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::util;
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
@@ -127,6 +131,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation,
                         &mut candidates,
                     );
+                }
+                Some(LangItem::Field) => {
+                    self.assemble_candidates_for_field_trait(obligation, &mut candidates);
                 }
                 _ => {
                     // We re-match here for traits that can have both builtin impls and user written impls.
@@ -312,7 +319,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `async`/`gen` constructs get lowered to a special kind of coroutine that
             // should *not* `impl Coroutine`.
             ty::Coroutine(did, ..) if self.tcx().is_general_coroutine(*did) => {
-                debug!(?self_ty, ?obligation, "assemble_coroutine_candidates",);
+                debug!(?self_ty, ?obligation, "assemble_coroutine_candidates");
 
                 candidates.vec.push(CoroutineCandidate);
             }
@@ -334,7 +341,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // async constructs get lowered to a special kind of coroutine that
             // should directly `impl Future`.
             if self.tcx().coroutine_is_async(*did) {
-                debug!(?self_ty, ?obligation, "assemble_future_candidates",);
+                debug!(?self_ty, ?obligation, "assemble_future_candidates");
 
                 candidates.vec.push(FutureCandidate);
             }
@@ -352,7 +359,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if let ty::Coroutine(did, ..) = self_ty.kind()
             && self.tcx().coroutine_is_gen(*did)
         {
-            debug!(?self_ty, ?obligation, "assemble_iterator_candidates",);
+            debug!(?self_ty, ?obligation, "assemble_iterator_candidates");
 
             candidates.vec.push(IteratorCandidate);
         }
@@ -378,7 +385,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // gen constructs get lowered to a special kind of coroutine that
             // should directly `impl AsyncIterator`.
             if self.tcx().coroutine_is_async_gen(did) {
-                debug!(?self_ty, ?obligation, "assemble_iterator_candidates",);
+                debug!(?self_ty, ?obligation, "assemble_iterator_candidates");
 
                 // Can only confirm this candidate if we have constrained
                 // the `Yield` type to at least `Poll<Option<?0>>`..
@@ -1437,6 +1444,54 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 candidates.ambiguous = true;
             }
+        }
+    }
+
+    fn assemble_candidates_for_field_trait(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        if let ty::Adt(def, args) = obligation.predicate.self_ty().skip_binder().kind()
+            && let Some(FieldInfo { base, ty, .. }) =
+                def.field_representing_type_info(self.tcx(), args)
+            // NOTE: these bounds have to be kept in sync with the definition of the `Field` trait
+            // in `library/core/src/field.rs` as well as the new trait solver `fn
+            // consider_builtin_field_candidate` in
+            // `compiler/rustc_next_trait_solver/src/solve/trait_goals.rs`.
+            && match self.infcx.evaluate_obligation(&PredicateObligation::new(
+                self.tcx(),
+                obligation.cause.clone(),
+                obligation.param_env,
+                TraitRef::new(
+                    self.tcx(),
+                    self.tcx().require_lang_item(LangItem::Sized, DUMMY_SP),
+                    [base],
+                ),
+            )) {
+                Ok(res) if res.must_apply_modulo_regions() => true,
+                _ => false,
+            }
+            && match self.infcx.evaluate_obligation(&PredicateObligation::new(
+                self.tcx(),
+                obligation.cause.clone(),
+                obligation.param_env,
+                TraitRef::new(
+                    self.tcx(),
+                    self.tcx().require_lang_item(LangItem::Sized, DUMMY_SP),
+                    [ty],
+                ),
+            )) {
+                Ok(res) if res.must_apply_modulo_regions() => true,
+                _ => false,
+            }
+            && match base.kind() {
+                ty::Adt(def, _) => def.is_struct() && !def.repr().packed(),
+                ty::Tuple(..) => true,
+                _ => false,
+            }
+        {
+            candidates.vec.push(BuiltinCandidate);
         }
     }
 }

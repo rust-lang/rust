@@ -49,6 +49,4 @@ fn test(x: u8) {
     //~^ erasing_op
 }
 
-fn main() {
-    test(0)
-}
+fn main() {}

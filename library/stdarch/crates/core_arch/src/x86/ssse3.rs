@@ -188,7 +188,13 @@ pub const fn _mm_hadd_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(phaddsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_hadds_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(phaddsw128(a.as_i16x8(), b.as_i16x8())) }
+    let a = a.as_i16x8();
+    let b = b.as_i16x8();
+    unsafe {
+        let even: i16x8 = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
+        let odd: i16x8 = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
+        simd_saturating_add(even, odd).as_m128i()
+    }
 }
 
 /// Horizontally adds the adjacent pairs of values contained in 2 packed
@@ -240,7 +246,13 @@ pub const fn _mm_hsub_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(phsubsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_hsubs_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(phsubsw128(a.as_i16x8(), b.as_i16x8())) }
+    let a = a.as_i16x8();
+    let b = b.as_i16x8();
+    unsafe {
+        let even: i16x8 = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
+        let odd: i16x8 = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
+        simd_saturating_sub(even, odd).as_m128i()
+    }
 }
 
 /// Horizontally subtract the adjacent pairs of values contained in 2
@@ -336,12 +348,6 @@ pub fn _mm_sign_epi32(a: __m128i, b: __m128i) -> __m128i {
 unsafe extern "C" {
     #[link_name = "llvm.x86.ssse3.pshuf.b.128"]
     fn pshufb128(a: u8x16, b: u8x16) -> u8x16;
-
-    #[link_name = "llvm.x86.ssse3.phadd.sw.128"]
-    fn phaddsw128(a: i16x8, b: i16x8) -> i16x8;
-
-    #[link_name = "llvm.x86.ssse3.phsub.sw.128"]
-    fn phsubsw128(a: i16x8, b: i16x8) -> i16x8;
 
     #[link_name = "llvm.x86.ssse3.pmadd.ub.sw.128"]
     fn pmaddubsw128(a: u8x16, b: i8x16) -> i16x8;

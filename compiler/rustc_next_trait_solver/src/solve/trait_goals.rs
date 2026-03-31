@@ -8,7 +8,7 @@ use rustc_type_ir::solve::{
     AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
+    self as ty, FieldInfo, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
     TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument, trace};
@@ -29,7 +29,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn self_ty(self) -> I::Ty {
+    fn self_ty(self) -> ty::Ty<I> {
         self.self_ty()
     }
 
@@ -37,7 +37,7 @@ where
         self.trait_ref
     }
 
-    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
+    fn with_replaced_self_ty(self, cx: I, self_ty: ty::Ty<I>) -> Self {
         self.with_replaced_self_ty(cx, self_ty)
     }
 
@@ -687,6 +687,9 @@ where
     ///
     /// because these impls overlap, and I'd rather not build a coherence hack for
     /// this harmless overlap.
+    ///
+    /// This trait is indirectly exposed on stable, so do *not* extend the set of types that
+    /// implement the trait without FCP!
     fn consider_builtin_bikeshed_guaranteed_no_drop_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -841,6 +844,54 @@ where
             }
         })
     }
+
+    fn consider_builtin_field_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
+            return Err(NoSolution);
+        }
+        if let ty::Adt(def, args) = goal.predicate.self_ty().kind()
+            && let Some(FieldInfo { base, ty, .. }) =
+                def.field_representing_type_info(ecx.cx(), args)
+            && {
+                let sized_trait = ecx.cx().require_trait_lang_item(SolverTraitLangItem::Sized);
+                // FIXME: add better support for builtin impls of traits that check for the bounds
+                // on the trait definition in std.
+
+                // NOTE: these bounds have to be kept in sync with the definition of the `Field`
+                // trait in `library/core/src/field.rs` as well as the old trait solver `fn
+                // assemble_candidates_for_field_trait` in
+                // `compiler/rustc_trait_selection/src/traits/select/candidate_assembly.rs`.
+                ecx.add_goal(
+                    GoalSource::ImplWhereBound,
+                    Goal {
+                        param_env: goal.param_env,
+                        predicate: TraitRef::new(ecx.cx(), sized_trait, [base]).upcast(ecx.cx()),
+                    },
+                );
+                ecx.add_goal(
+                    GoalSource::ImplWhereBound,
+                    Goal {
+                        param_env: goal.param_env,
+                        predicate: TraitRef::new(ecx.cx(), sized_trait, [ty]).upcast(ecx.cx()),
+                    },
+                );
+                ecx.try_evaluate_added_goals()? == Certainty::Yes
+            }
+            && match base.kind() {
+                ty::Adt(def, _) => def.is_struct() && !def.is_packed(),
+                ty::Tuple(..) => true,
+                _ => false,
+            }
+        {
+            ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
+        } else {
+            Err(NoSolution)
+        }
+    }
 }
 
 /// Small helper function to change the `def_id` of a trait predicate - this is not normally
@@ -878,7 +929,7 @@ where
     /// ```
     fn consider_builtin_dyn_upcast_candidates(
         &mut self,
-        goal: Goal<I, (I::Ty, I::Ty)>,
+        goal: Goal<I, (ty::Ty<I>, ty::Ty<I>)>,
         a_data: I::BoundExistentialPredicates,
         a_region: I::Region,
         b_data: I::BoundExistentialPredicates,
@@ -926,7 +977,7 @@ where
 
     fn consider_builtin_unsize_to_dyn_candidate(
         &mut self,
-        goal: Goal<I, (I::Ty, I::Ty)>,
+        goal: Goal<I, (ty::Ty<I>, ty::Ty<I>)>,
         b_data: I::BoundExistentialPredicates,
         b_region: I::Region,
     ) -> Result<Candidate<I>, NoSolution> {
@@ -967,7 +1018,7 @@ where
 
     fn consider_builtin_upcast_to_principal(
         &mut self,
-        goal: Goal<I, (I::Ty, I::Ty)>,
+        goal: Goal<I, (ty::Ty<I>, ty::Ty<I>)>,
         source: CandidateSource<I>,
         a_data: I::BoundExistentialPredicates,
         a_region: I::Region,
@@ -1081,9 +1132,9 @@ where
     /// `#[rustc_deny_explicit_impl]` in this case.
     fn consider_builtin_array_unsize(
         &mut self,
-        goal: Goal<I, (I::Ty, I::Ty)>,
-        a_elem_ty: I::Ty,
-        b_elem_ty: I::Ty,
+        goal: Goal<I, (ty::Ty<I>, ty::Ty<I>)>,
+        a_elem_ty: ty::Ty<I>,
+        b_elem_ty: ty::Ty<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         self.eq(goal.param_env, a_elem_ty, b_elem_ty)?;
         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
@@ -1105,7 +1156,7 @@ where
     /// ```
     fn consider_builtin_struct_unsize(
         &mut self,
-        goal: Goal<I, (I::Ty, I::Ty)>,
+        goal: Goal<I, (ty::Ty<I>, ty::Ty<I>)>,
         def: I::AdtDef,
         a_args: I::GenericArgs,
         b_args: I::GenericArgs,
@@ -1268,8 +1319,8 @@ where
         goal: Goal<I, TraitPredicate<I>>,
         constituent_tys: impl Fn(
             &EvalCtxt<'_, D>,
-            I::Ty,
-        ) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>,
+            ty::Ty<I>,
+        ) -> Result<ty::Binder<I, Vec<ty::Ty<I>>>, NoSolution>,
     ) -> Result<Candidate<I>, NoSolution> {
         self.probe_trait_candidate(source).enter(|ecx| {
             let goals =
@@ -1491,7 +1542,10 @@ where
         self.merge_trait_candidates(candidate_preference_mode, candidates, failed_candidate_info)
     }
 
-    fn try_stall_coroutine(&mut self, self_ty: I::Ty) -> Option<Result<Candidate<I>, NoSolution>> {
+    fn try_stall_coroutine(
+        &mut self,
+        self_ty: ty::Ty<I>,
+    ) -> Option<Result<Candidate<I>, NoSolution>> {
         if let ty::Coroutine(def_id, _) = self_ty.kind() {
             match self.typing_mode() {
                 TypingMode::Analysis {

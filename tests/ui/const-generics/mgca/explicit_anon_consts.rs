@@ -34,22 +34,22 @@ fn repeats<const N: usize>() -> [(); N] {
     //~^ ERROR: generic parameters may not be used in const operations
 }
 
-#[type_const]
-const ITEM1<const N: usize>: usize = N;
-#[type_const]
-const ITEM2<const N: usize>: usize = { N };
-#[type_const]
-const ITEM3<const N: usize>: usize = const { N };
+
+type const ITEM1<const N: usize>: usize = N;
+
+type const ITEM2<const N: usize>: usize = { N };
+
+type const ITEM3<const N: usize>: usize = const { N };
 //~^ ERROR: generic parameters may not be used in const operations
-#[type_const]
-const ITEM4<const N: usize>: usize = { 1 + 1 };
+
+type const ITEM4<const N: usize>: usize = { 1 + 1 };
 //~^ ERROR: complex const arguments must be placed inside of a `const` block
-#[type_const]
-const ITEM5<const N: usize>: usize = const { 1 + 1};
+
+type const ITEM5<const N: usize>: usize = const { 1 + 1};
 
 trait Trait {
-    #[type_const]
-    const ASSOC: usize;
+
+    type const ASSOC: usize;
 }
 
 fn ace_bounds<

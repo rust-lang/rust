@@ -4,8 +4,7 @@ use rustc_errors::{Applicability, StashKey, Suggestions};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg, HirId};
-use rustc_middle::query::plumbing::CyclePlaceholder;
-use rustc_middle::ty::print::with_forced_trimmed_paths;
+use rustc_middle::ty::print::{with_forced_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefiningScopeKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
@@ -63,7 +62,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            TraitItemKind::Const(ty, rhs) => rhs
+            TraitItemKind::Const(ty, rhs, _) => rhs
                 .and_then(|rhs| {
                     ty.is_suggestable_infer_ty().then(|| {
                         infer_placeholder_type(
@@ -183,10 +182,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             }
         },
 
-        Node::OpaqueTy(..) => tcx.type_of_opaque(def_id).map_or_else(
-            |CyclePlaceholder(guar)| Ty::new_error(tcx, guar),
-            |ty| ty.instantiate_identity(),
-        ),
+        Node::OpaqueTy(..) => tcx.type_of_opaque(def_id).instantiate_identity(),
 
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
             ForeignItemKind::Fn(..) => {
@@ -249,12 +245,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
     }
 }
 
-pub(super) fn type_of_opaque(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-) -> Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
+pub(super) fn type_of_opaque(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<'_, Ty<'_>> {
     if let Some(def_id) = def_id.as_local() {
-        Ok(match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
+        match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
             hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. } => {
                 opaque::find_opaque_ty_constraints_for_tait(
                     tcx,
@@ -287,11 +280,11 @@ pub(super) fn type_of_opaque(
                     DefiningScopeKind::MirBorrowck,
                 )
             }
-        })
+        }
     } else {
         // Foreign opaque type will go through the foreign provider
         // and load the type from metadata.
-        Ok(tcx.type_of(def_id))
+        tcx.type_of(def_id)
     }
 }
 
@@ -420,9 +413,9 @@ fn infer_placeholder_type<'tcx>(
     kind: &'static str,
 ) -> Ty<'tcx> {
     let tcx = cx.tcx();
-    // If the type is omitted on a #[type_const] we can't run
+    // If the type is omitted on a `type const` we can't run
     // type check on since that requires the const have a body
-    // which type_consts don't.
+    // which `type const`s don't.
     let ty = if tcx.is_type_const(def_id.to_def_id()) {
         if let Some(trait_item_def_id) = tcx.trait_item_of(def_id.to_def_id()) {
             tcx.type_of(trait_item_def_id).instantiate_identity()
@@ -430,7 +423,7 @@ fn infer_placeholder_type<'tcx>(
             Ty::new_error_with_message(
                 tcx,
                 ty_span,
-                "constant with #[type_const] requires an explicit type",
+                "constant with `type const` requires an explicit type",
             )
         }
     } else {
@@ -458,7 +451,7 @@ fn infer_placeholder_type<'tcx>(
                     err.span_suggestion(
                         ty_span,
                         format!("provide a type for the {kind}"),
-                        format!("{colon} {ty}"),
+                        with_types_for_suggestion!(format!("{colon} {ty}")),
                         Applicability::MachineApplicable,
                     );
                 } else {

@@ -1,5 +1,5 @@
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use.rs:5:1
+  --> tests/ui/double_must_use.rs:8:1
    |
 LL | pub fn must_use_result() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | pub fn must_use_result() -> Result<(), ()> {
    = help: to override `-D warnings` add `#[allow(clippy::double_must_use)]`
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use.rs:12:1
+  --> tests/ui/double_must_use.rs:15:1
    |
 LL | pub fn must_use_tuple() -> (Result<(), ()>, u8) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | pub fn must_use_tuple() -> (Result<(), ()>, u8) {
    = help: either add some descriptive message or remove the attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use.rs:19:1
+  --> tests/ui/double_must_use.rs:22:1
    |
 LL | pub fn must_use_array() -> [Result<(), ()>; 1] {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,12 +25,28 @@ LL | pub fn must_use_array() -> [Result<(), ()>; 1] {
    = help: either add some descriptive message or remove the attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use.rs:37:1
+  --> tests/ui/double_must_use.rs:40:1
    |
 LL | async fn async_must_use_result() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: either add some descriptive message or remove the attribute
 
-error: aborting due to 4 previous errors
+error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
+  --> tests/ui/double_must_use.rs:55:1
+   |
+LL | pub fn must_use_result_with_uninhabited_2() -> Result<T, !> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: either add some descriptive message or remove the attribute
+
+error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
+  --> tests/ui/double_must_use.rs:66:1
+   |
+LL | pub fn must_use_controlflow_with_uninhabited_2() -> ControlFlow<std::convert::Infallible, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: either add some descriptive message or remove the attribute
+
+error: aborting due to 6 previous errors
 

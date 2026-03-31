@@ -1,7 +1,7 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use hir::{ExpandResult, InFile, Semantics, Type, TypeInfo, Variant};
+use hir::{EnumVariant, ExpandResult, InFile, Semantics, Type, TypeInfo};
 use ide_db::{
     RootDatabase, active_parameter::ActiveParameter, syntax_helpers::node_ext::find_loops,
 };
@@ -778,6 +778,16 @@ fn expected_type_and_name<'db>(
                     let ty = sema.type_of_pat(&ast::Pat::from(it)).map(TypeInfo::original);
                     (ty, None)
                 },
+                ast::TupleStructPat(it) => {
+                    let fields = it.path().and_then(|path| match sema.resolve_path(&path)? {
+                        hir::PathResolution::Def(hir::ModuleDef::Adt(adt)) => Some(adt.as_struct()?.fields(sema.db)),
+                        hir::PathResolution::Def(hir::ModuleDef::EnumVariant(variant)) => Some(variant.fields(sema.db)),
+                        _ => None,
+                    });
+                    let nr = it.fields().take_while(|it| it.syntax().text_range().end() <= token.text_range().start()).count();
+                    let ty = fields.and_then(|fields| Some(fields.get(nr)?.ty(sema.db).to_type(sema.db)));
+                    (ty, None)
+                },
                 ast::Fn(it) => {
                     cov_mark::hit!(expected_type_fn_ret_with_leading_char);
                     cov_mark::hit!(expected_type_fn_ret_without_leading_char);
@@ -944,10 +954,10 @@ fn classify_name_ref<'db>(
     let field_expr_handle = |receiver, node| {
         let receiver = find_opt_node_in_file(original_file, receiver);
         let receiver_is_ambiguous_float_literal = match &receiver {
-            Some(ast::Expr::Literal(l)) => matches! {
-                l.kind(),
-                ast::LiteralKind::FloatNumber { .. } if l.syntax().last_token().is_some_and(|it| it.text().ends_with('.'))
-            },
+            Some(ast::Expr::Literal(l)) => {
+                matches!(l.kind(), ast::LiteralKind::FloatNumber { .. })
+                    && l.syntax().last_token().is_some_and(|it| it.text().ends_with('.'))
+            }
             _ => false,
         };
 
@@ -1139,7 +1149,7 @@ fn classify_name_ref<'db>(
                                     hir::ModuleDef::Adt(adt) => {
                                         sema.source(adt)?.value.generic_param_list()
                                     }
-                                    hir::ModuleDef::Variant(variant) => {
+                                    hir::ModuleDef::EnumVariant(variant) => {
                                         sema.source(variant.parent_enum(sema.db))?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Trait(trait_) => {
@@ -1501,7 +1511,7 @@ fn classify_name_ref<'db>(
                         | SyntaxKind::RECORD_FIELD
                 )
             })
-            .and_then(|_| nameref.as_ref()?.syntax().ancestors().find_map(ast::Adt::cast))
+            .and_then(|_| find_node_at_offset::<ast::Adt>(original_file, original_offset))
             .and_then(|adt| sema.derive_helpers_in_scope(&adt))
             .unwrap_or_default();
         Some(PathKind::Attr { attr_ctx: AttrCtx { kind, annotated_item_kind, derive_helpers } })
@@ -1815,7 +1825,7 @@ fn pattern_context_for(
                                         });
 
                                         (!variant_already_present).then_some(*variant)
-                                    }).collect::<Vec<Variant>>())
+                                    }).collect::<Vec<EnumVariant>>())
                         });
 
                         if let Some(missing_variants_) = missing_variants_opt {

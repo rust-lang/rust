@@ -5,7 +5,6 @@ use std::{cmp, iter};
 
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
-use rustc_apfloat::Float;
 use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
@@ -62,7 +61,7 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
         // Go over the modules.
         for &segment in modules {
             let Some(next_item) = find_children(tcx, cur_item, segment)
-                .find(|item| tcx.def_kind(item) == DefKind::Mod)
+                .find(|&item| tcx.def_kind(item) == DefKind::Mod)
             else {
                 continue 'crates;
             };
@@ -72,7 +71,7 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
         match item {
             Some((item_name, namespace)) => {
                 let Some(item) = find_children(tcx, cur_item, item_name)
-                    .find(|item| tcx.def_kind(item).ns() == Some(namespace))
+                    .find(|&item| tcx.def_kind(item).ns() == Some(namespace))
                 else {
                     continue 'crates;
                 };
@@ -138,7 +137,7 @@ pub fn iter_exported_symbols<'tcx>(
     }
 
     // Next, all our dependencies.
-    // `dependency_formats` includes all the transitive informations needed to link a crate,
+    // `dependency_formats` includes all the transitive information needed to link a crate,
     // which is what we need here since we need to dig out `exported_symbols` from all transitive
     // dependencies.
     let dependency_formats = tcx.dependency_formats(());
@@ -163,50 +162,6 @@ pub fn iter_exported_symbols<'tcx>(
         }
     }
     interp_ok(())
-}
-
-/// Convert a softfloat type to its corresponding hostfloat type.
-pub trait ToHost {
-    type HostFloat;
-    fn to_host(self) -> Self::HostFloat;
-}
-
-/// Convert a hostfloat type to its corresponding softfloat type.
-pub trait ToSoft {
-    type SoftFloat;
-    fn to_soft(self) -> Self::SoftFloat;
-}
-
-impl ToHost for rustc_apfloat::ieee::Double {
-    type HostFloat = f64;
-
-    fn to_host(self) -> Self::HostFloat {
-        f64::from_bits(self.to_bits().try_into().unwrap())
-    }
-}
-
-impl ToSoft for f64 {
-    type SoftFloat = rustc_apfloat::ieee::Double;
-
-    fn to_soft(self) -> Self::SoftFloat {
-        Float::from_bits(self.to_bits().into())
-    }
-}
-
-impl ToHost for rustc_apfloat::ieee::Single {
-    type HostFloat = f32;
-
-    fn to_host(self) -> Self::HostFloat {
-        f32::from_bits(self.to_bits().try_into().unwrap())
-    }
-}
-
-impl ToSoft for f32 {
-    type SoftFloat = rustc_apfloat::ieee::Single;
-
-    fn to_soft(self) -> Self::SoftFloat {
-        Float::from_bits(self.to_bits().into())
-    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -774,19 +729,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let nanoseconds_scalar = this.read_scalar(&nanoseconds_place)?;
         let nanoseconds = nanoseconds_scalar.to_target_isize(this)?;
 
-        interp_ok(
-            try {
-                // tv_sec must be non-negative.
-                let seconds: u64 = seconds.try_into().ok()?;
-                // tv_nsec must be non-negative.
-                let nanoseconds: u32 = nanoseconds.try_into().ok()?;
-                if nanoseconds >= 1_000_000_000 {
-                    // tv_nsec must not be greater than 999,999,999.
-                    None?
-                }
-                Duration::new(seconds, nanoseconds)
-            },
-        )
+        interp_ok(try {
+            // tv_sec must be non-negative.
+            let seconds: u64 = seconds.try_into().ok()?;
+            // tv_nsec must be non-negative.
+            let nanoseconds: u32 = nanoseconds.try_into().ok()?;
+            if nanoseconds >= 1_000_000_000 {
+                // tv_nsec must not be greater than 999,999,999.
+                None?
+            }
+            Duration::new(seconds, nanoseconds)
+        })
     }
 
     /// Read bytes from a byte slice.
@@ -1148,7 +1101,7 @@ impl ToUsize for u32 {
 }
 
 /// Similarly, a maximum address size of `u64` is assumed widely here, so let's have ergonomic
-/// converion from `usize` to `u64`.
+/// conversion from `usize` to `u64`.
 pub trait ToU64 {
     fn to_u64(self) -> u64;
 }

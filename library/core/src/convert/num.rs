@@ -70,8 +70,8 @@ impl_from_bool!(i8 i16 i32 i64 i128 isize);
 
 /// Implement `From<$small>` for `$large`
 macro_rules! impl_from {
-    ($small:ty => $large:ty, #[$attr:meta]) => {
-        #[$attr]
+    ($small:ty => $large:ty, $(#[$attrs:meta]),+) => {
+        $(#[$attrs])+
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
         impl const From<$small> for $large {
             #[doc = concat!("Converts from [`", stringify!($small), "`] to [`", stringify!($large), "`] losslessly.")]
@@ -157,8 +157,7 @@ impl_from!(i16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 impl_from!(i16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-// FIXME(f128): This impl would allow using `f128` on stable before it is stabilised.
-// impl_from!(i64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(i64 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 
 // unsigned integer -> float
 impl_from!(u8 => f16, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
@@ -170,8 +169,7 @@ impl_from!(u16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 impl_from!(u16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-// FIXME(f128): This impl would allow using `f128` on stable before it is stabilised.
-// impl_from!(u64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(u64 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 
 // float -> float
 // FIXME(f16,f128): adding additional `From<{float}>` impls to `f32` breaks inference. See
@@ -198,11 +196,11 @@ macro_rules! impl_float_from_bool {
             /// # Examples
             /// ```
             $($(#[doc = $doctest_prefix])*)?
-            #[doc = concat!("let x: ", stringify!($float)," = false.into();")]
+            #[doc = concat!("let x = ", stringify!($float), "::from(false);")]
             /// assert_eq!(x, 0.0);
             /// assert!(x.is_sign_positive());
             ///
-            #[doc = concat!("let y: ", stringify!($float)," = true.into();")]
+            #[doc = concat!("let y = ", stringify!($float), "::from(true);")]
             /// assert_eq!(y, 1.0);
             $($(#[doc = $doctest_suffix])*)?
             /// ```
@@ -219,6 +217,7 @@ impl_float_from_bool!(
     f16;
     doctest_prefix:
     // rustdoc doesn't remove the conventional space after the `///`
+    ///# #![allow(unused_features)]
     ///#![feature(f16)]
     ///# #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
@@ -230,6 +229,7 @@ impl_float_from_bool!(f64);
 impl_float_from_bool!(
     f128;
     doctest_prefix:
+    ///# #![allow(unused_features)]
     ///#![feature(f128)]
     ///# #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
@@ -341,11 +341,11 @@ macro_rules! impl_try_from_integer_for_bool {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!("assert_eq!(0_", stringify!($int), ".try_into(), Ok(false));")]
+            #[doc = concat!("assert_eq!(bool::try_from(0_", stringify!($int), "), Ok(false));")]
             ///
-            #[doc = concat!("assert_eq!(1_", stringify!($int), ".try_into(), Ok(true));")]
+            #[doc = concat!("assert_eq!(bool::try_from(1_", stringify!($int), "), Ok(true));")]
             ///
-            #[doc = concat!("assert!(<", stringify!($int), " as TryInto<bool>>::try_into(2).is_err());")]
+            #[doc = concat!("assert!(bool::try_from(2_", stringify!($int), ").is_err());")]
             /// ```
             #[inline]
             fn try_from(i: $int) -> Result<Self, Self::Error> {

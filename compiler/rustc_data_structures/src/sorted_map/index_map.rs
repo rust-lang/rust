@@ -3,8 +3,7 @@
 use std::hash::{Hash, Hasher};
 
 use rustc_index::{Idx, IndexVec};
-
-use crate::stable_hasher::{HashStable, StableHasher};
+use rustc_macros::HashStable_NoContext;
 
 /// An indexed multi-map that preserves insertion order while permitting both *O*(log *n*) lookup of
 /// an item by key and *O*(1) lookup by index.
@@ -24,11 +23,13 @@ use crate::stable_hasher::{HashStable, StableHasher};
 /// in-place.
 ///
 /// [`SortedMap`]: super::SortedMap
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, HashStable_NoContext)]
 pub struct SortedIndexMultiMap<I: Idx, K, V> {
     /// The elements of the map in insertion order.
     items: IndexVec<I, (K, V)>,
 
+    // We can ignore this field because it is not observable from the outside.
+    #[stable_hasher(ignore)]
     /// Indices of the items in the set, sorted by the item's key.
     idx_sorted_by_item_key: Vec<I>,
 }
@@ -123,22 +124,6 @@ where
 {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.items.hash(hasher)
-    }
-}
-
-impl<I: Idx, K, V, C> HashStable<C> for SortedIndexMultiMap<I, K, V>
-where
-    K: HashStable<C>,
-    V: HashStable<C>,
-{
-    fn hash_stable(&self, ctx: &mut C, hasher: &mut StableHasher) {
-        let SortedIndexMultiMap {
-            items,
-            // We can ignore this field because it is not observable from the outside.
-            idx_sorted_by_item_key: _,
-        } = self;
-
-        items.hash_stable(ctx, hasher)
     }
 }
 

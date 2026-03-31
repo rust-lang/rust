@@ -7,7 +7,6 @@
 //@ [e2024] edition: 2024
 //@ run-pass
 
-#![feature(if_let_guard)]
 #![deny(rust_2024_compatibility)]
 
 use core::{cell::RefCell, ops::Drop};

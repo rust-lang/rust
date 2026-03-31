@@ -3,7 +3,7 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, SuggestionStyle, listify, pluralize,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, SuggestionStyle, listify, msg, pluralize,
     struct_span_code_err,
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -31,7 +31,6 @@ use crate::errors::{
     self, AssocItemConstraintsNotAllowedHere, ManualImplementation, ParenthesizedFnTraitExpansion,
     TraitObjectDeclaredWithNoTraits,
 };
-use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
@@ -142,7 +141,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
         }
 
-        let assoc_kind_str = assoc_tag_str(assoc_tag);
+        let assoc_kind = assoc_tag_str(assoc_tag);
         let qself_str = qself.to_string(tcx);
 
         // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
@@ -152,7 +151,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut err = errors::AssocItemNotFound {
             span: if is_dummy { span } else { assoc_ident.span },
             assoc_ident,
-            assoc_kind: assoc_kind_str,
+            assoc_kind,
             qself: &qself_str,
             label: None,
             sugg: None,
@@ -162,7 +161,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         if is_dummy {
-            err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span });
+            err.label =
+                Some(errors::AssocItemNotFoundLabel::NotFound { span, assoc_ident, assoc_kind });
             return self.dcx().emit_err(err);
         }
 
@@ -182,7 +182,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             err.sugg = Some(errors::AssocItemNotFoundSugg::Similar {
                 span: assoc_ident.span,
-                assoc_kind: assoc_kind_str,
+                assoc_kind,
                 suggested_name,
             });
             return self.dcx().emit_err(err);
@@ -215,7 +215,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             if let [best_trait] = visible_traits
                 .iter()
                 .copied()
-                .filter(|trait_def_id| {
+                .filter(|&trait_def_id| {
                     tcx.associated_items(trait_def_id)
                         .filter_by_name_unhygienic(suggested_name)
                         .any(|item| item.tag() == assoc_tag)
@@ -225,7 +225,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let trait_name = tcx.def_path_str(best_trait);
                 err.label = Some(errors::AssocItemNotFoundLabel::FoundInOtherTrait {
                     span: assoc_ident.span,
-                    assoc_kind: assoc_kind_str,
+                    assoc_kind,
                     trait_name: &trait_name,
                     suggested_name,
                     identically_named: suggested_name == assoc_ident.name,
@@ -257,7 +257,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTrait {
                             span: assoc_ident.span,
                             trait_name: &trait_name,
-                            assoc_kind: assoc_kind_str,
+                            assoc_kind,
                             suggested_name,
                         });
                         return self.dcx().emit_err(err);
@@ -287,6 +287,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             trait_ref,
                             identically_named,
                             suggested_name,
+                            assoc_kind,
                             applicability,
                         });
                     } else {
@@ -305,7 +306,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             // was also not an exact match, so we also suggest changing it.
                             err.span_suggestion_verbose(
                                 assoc_ident.span,
-                                fluent::hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg,
+                                msg!("...and changing the associated {$assoc_kind} name"),
                                 suggested_name,
                                 Applicability::MaybeIncorrect,
                             );
@@ -323,11 +324,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             err.sugg = Some(errors::AssocItemNotFoundSugg::Other {
                 span: assoc_ident.span,
                 qself: &qself_str,
-                assoc_kind: assoc_kind_str,
+                assoc_kind,
                 suggested_name: *candidate_name,
             });
         } else {
-            err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span: assoc_ident.span });
+            err.label = Some(errors::AssocItemNotFoundLabel::NotFound {
+                span: assoc_ident.span,
+                assoc_ident,
+                assoc_kind,
+            });
         }
 
         self.dcx().emit_err(err)
@@ -529,7 +534,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         }
                     }
                 }
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "there is a variant with a similar name",
                     suggestion,
                     Applicability::HasPlaceholders,
@@ -1235,7 +1240,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             && let name = Symbol::intern(&format!("{ident2}_{ident3}"))
             && let Some(item) = inherent_impls
                 .iter()
-                .flat_map(|inherent_impl| {
+                .flat_map(|&inherent_impl| {
                     tcx.associated_items(inherent_impl).filter_by_name_unhygienic(name)
                 })
                 .next()
@@ -1547,7 +1552,7 @@ pub fn prohibit_assoc_item_constraint(
                             (constraint.span.with_lo(constraint.ident.span.hi()), String::new()),
                         ];
 
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             "declare the type parameter right after the `impl` keyword",
                             suggestions,
                             Applicability::MaybeIncorrect,
@@ -1722,7 +1727,7 @@ fn generics_args_err_extend<'a>(
                 },
                 (args_span, String::new()),
             ];
-            err.multipart_suggestion_verbose(msg, suggestion, Applicability::MaybeIncorrect);
+            err.multipart_suggestion(msg, suggestion, Applicability::MaybeIncorrect);
         }
         GenericsArgsErrExtend::DefVariant(segments) => {
             let args: Vec<Span> = segments

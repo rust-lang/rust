@@ -30,7 +30,7 @@ impl From<usize> for StaticNodeIdx {
 }
 
 newtype_index! {
-    #[derive(Ord, PartialOrd)]
+    #[orderable]
     struct StaticSccIdx {}
 }
 

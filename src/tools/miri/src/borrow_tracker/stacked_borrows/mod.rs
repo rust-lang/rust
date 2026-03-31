@@ -71,7 +71,9 @@ impl NewPermission {
                         access: None,
                         protector: None,
                     }
-                } else if pointee.is_unpin(*cx.tcx, cx.typing_env()) {
+                } else if pointee.is_unpin(*cx.tcx, cx.typing_env())
+                    && pointee.is_unsafe_unpin(*cx.tcx, cx.typing_env())
+                {
                     // A regular full mutable reference. On `FnEntry` this is `noalias` and `dereferenceable`.
                     NewPermission::Uniform {
                         perm: Permission::Unique,
@@ -129,7 +131,9 @@ impl NewPermission {
     fn from_box_ty<'tcx>(ty: Ty<'tcx>, kind: RetagKind, cx: &crate::MiriInterpCx<'tcx>) -> Self {
         // `ty` is not the `Box` but the field of the Box with this pointer (due to allocator handling).
         let pointee = ty.builtin_deref(true).unwrap();
-        if pointee.is_unpin(*cx.tcx, cx.typing_env()) {
+        if pointee.is_unpin(*cx.tcx, cx.typing_env())
+            && pointee.is_unsafe_unpin(*cx.tcx, cx.typing_env())
+        {
             // A regular box. On `FnEntry` this is `noalias`, but not `dereferenceable` (hence only
             // a weak protector).
             NewPermission::Uniform {
@@ -651,7 +655,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                         dcx.log_protector();
                     }
                 },
-                AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead => {
+                AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead | AllocKind::VaList => {
                     // No stacked borrows on these allocations.
                 }
             }
@@ -913,6 +917,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     RetagInfo { cause: self.retag_cause, in_field: self.in_field },
                 )?;
                 self.ecx.write_immediate(*val, place)?;
+
                 interp_ok(())
             }
         }
@@ -959,6 +964,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // (Yes this means we technically also recursively retag the allocator itself
                         // even if field retagging is not enabled. *shrug*)
                         self.walk_value(place)?;
+                    }
+                    ty::Adt(adt, _) if adt.is_maybe_dangling() => {
+                        // Skip traversing for everything inside of `MaybeDangling`
                     }
                     _ => {
                         // Not a reference/pointer/box. Recurse.
@@ -1010,7 +1018,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id:?}");
                 alloc_extra.borrow_tracker_sb().borrow_mut().exposed_tags.insert(tag);
             }
-            AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead => {
+            AllocKind::Function
+            | AllocKind::VTable
+            | AllocKind::TypeId
+            | AllocKind::Dead
+            | AllocKind::VaList => {
                 // No stacked borrows on these allocations.
             }
         }

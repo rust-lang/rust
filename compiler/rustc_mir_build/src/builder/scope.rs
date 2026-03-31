@@ -94,8 +94,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
 use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
 use rustc_session::lint::Level;
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Spanned};
 use tracing::{debug, instrument};
 
 use super::matches::BuiltMatchTree;

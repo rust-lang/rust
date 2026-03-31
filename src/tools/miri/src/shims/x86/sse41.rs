@@ -115,7 +115,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 round_all::<rustc_apfloat::ieee::Double>(this, op, rounding, dest)?;
             }
             // Used to implement the _mm_minpos_epu16 function.
-            // Find the minimum unsinged 16-bit integer in `op` and
+            // Find the minimum unsigned 16-bit integer in `op` and
             // returns its value and position.
             "phminposuw" => {
                 let [op] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;

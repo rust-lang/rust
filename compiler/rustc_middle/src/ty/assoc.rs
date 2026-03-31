@@ -30,7 +30,7 @@ impl AssocItem {
         match self.kind {
             ty::AssocKind::Type { data: AssocTypeData::Normal(name) } => Some(name),
             ty::AssocKind::Type { data: AssocTypeData::Rpitit(_) } => None,
-            ty::AssocKind::Const { name } => Some(name),
+            ty::AssocKind::Const { name, .. } => Some(name),
             ty::AssocKind::Fn { name, .. } => Some(name),
         }
     }
@@ -119,7 +119,7 @@ impl AssocItem {
                 tcx.fn_sig(self.def_id).instantiate_identity().skip_binder().to_string()
             }
             ty::AssocKind::Type { .. } => format!("type {};", self.name()),
-            ty::AssocKind::Const { name } => {
+            ty::AssocKind::Const { name, .. } => {
                 format!("const {}: {:?};", name, tcx.type_of(self.def_id).instantiate_identity())
             }
         }
@@ -137,8 +137,8 @@ impl AssocItem {
         self.kind.as_def_kind()
     }
 
-    pub fn is_const(&self) -> bool {
-        matches!(self.kind, ty::AssocKind::Const { .. })
+    pub fn is_type_const(&self) -> bool {
+        matches!(self.kind, ty::AssocKind::Const { is_type_const: true, .. })
     }
 
     pub fn is_fn(&self) -> bool {
@@ -173,7 +173,7 @@ pub enum AssocTypeData {
 
 #[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash, Encodable, Decodable)]
 pub enum AssocKind {
-    Const { name: Symbol },
+    Const { name: Symbol, is_type_const: bool },
     Fn { name: Symbol, has_self: bool },
     Type { data: AssocTypeData },
 }
@@ -196,7 +196,9 @@ impl AssocKind {
 
     pub fn as_def_kind(&self) -> DefKind {
         match self {
-            Self::Const { .. } => DefKind::AssocConst,
+            Self::Const { is_type_const, .. } => {
+                DefKind::AssocConst { is_type_const: *is_type_const }
+            }
             Self::Fn { .. } => DefKind::AssocFn,
             Self::Type { .. } => DefKind::AssocTy,
         }

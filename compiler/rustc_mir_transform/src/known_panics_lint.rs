@@ -35,7 +35,7 @@ impl<'tcx> crate::MirLint<'tcx> for KnownPanicsLint {
         let def_id = body.source.def_id().expect_local();
         let def_kind = tcx.def_kind(def_id);
         let is_fn_like = def_kind.is_fn_like();
-        let is_assoc_const = def_kind == DefKind::AssocConst;
+        let is_assoc_const = matches!(def_kind, DefKind::AssocConst { .. });
 
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {
@@ -241,7 +241,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 assert!(
                     !err.kind().formatted_string(),
                     "known panics lint encountered formatting error: {}",
-                    format_interp_error(self.ecx.tcx.dcx(), err),
+                    format_interp_error(err),
                 );
                 err
             })
@@ -443,7 +443,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Cast(..)
-            | Rvalue::ShallowInitBox(..)
             | Rvalue::Discriminant(..)
             | Rvalue::WrapUnsafeBinder(..) => {}
         }
@@ -604,8 +603,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             Ref(..) | RawPtr(..) => return None,
-
-            ShallowInitBox(..) => return None,
 
             Cast(ref kind, ref value, to) => match kind {
                 CastKind::IntToInt | CastKind::IntToFloat => {

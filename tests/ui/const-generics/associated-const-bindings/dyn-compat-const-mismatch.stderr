@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<() as Trait>::N == 0`
-  --> $DIR/dyn-compat-const-mismatch.rs:17:32
+  --> $DIR/dyn-compat-const-mismatch.rs:15:32
    |
 LL |     let _: &dyn Trait<N = 0> = &();
    |                                ^^^ expected `0`, found `1`

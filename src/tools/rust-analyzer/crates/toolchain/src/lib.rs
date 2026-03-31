@@ -74,9 +74,6 @@ impl Tool {
 // Prevent rustup from automatically installing toolchains, see https://github.com/rust-lang/rust-analyzer/issues/20719.
 pub const NO_RUSTUP_AUTO_INSTALL_ENV: (&str, &str) = ("RUSTUP_AUTO_INSTALL", "0");
 
-// These get ignored when displaying what command is running in LSP status messages.
-pub const DISPLAY_COMMAND_IGNORE_ENVS: &[&str] = &[NO_RUSTUP_AUTO_INSTALL_ENV.0];
-
 #[allow(clippy::disallowed_types)] /* generic parameter allows for FxHashMap */
 pub fn command<H>(
     cmd: impl AsRef<OsStr>,

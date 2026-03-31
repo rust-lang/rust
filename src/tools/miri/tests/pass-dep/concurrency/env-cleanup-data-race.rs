@@ -8,7 +8,7 @@ fn main() {
     unsafe {
         thread::spawn(|| {
             // Access the environment in another thread without taking the env lock
-            let s = libc::getenv("MIRI_ENV_VAR_TEST\0".as_ptr().cast());
+            let s = libc::getenv(c"MIRI_ENV_VAR_TEST".as_ptr());
             if s.is_null() {
                 panic!("null");
             }

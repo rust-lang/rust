@@ -1,0 +1,29 @@
+error[E0391]: cycle detected when building an abstract representation for `function::{constant#0}`
+  --> $DIR/generic-const-exprs-deadlock-issue-134978.rs:17:10
+   |
+LL |     [(); Struct::<{ NUM_CARDS + 0 }>::OK]:,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires building THIR for `function::{constant#0}`...
+  --> $DIR/generic-const-exprs-deadlock-issue-134978.rs:17:10
+   |
+LL |     [(); Struct::<{ NUM_CARDS + 0 }>::OK]:,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires type-checking `function::{constant#0}`...
+  --> $DIR/generic-const-exprs-deadlock-issue-134978.rs:17:10
+   |
+LL |     [(); Struct::<{ NUM_CARDS + 0 }>::OK]:,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires building an abstract representation for `function::{constant#0}`, completing the cycle
+note: cycle used when checking that `function` is well-formed
+  --> $DIR/generic-const-exprs-deadlock-issue-134978.rs:15:1
+   |
+LL | / fn function<const NUM_CARDS: usize>()
+LL | | where
+LL | |     [(); Struct::<{ NUM_CARDS + 0 }>::OK]:,
+   | |___________________________________________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

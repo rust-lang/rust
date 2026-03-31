@@ -13,7 +13,7 @@ stack backtrace:
 (end_short_backtrace)
 (begin_short_backtrace)
 
-error: the compiler unexpectedly panicked. this is a bug.
+error: the compiler unexpectedly panicked. This is a bug
 
 
 

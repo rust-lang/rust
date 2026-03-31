@@ -3,9 +3,8 @@ use std::fmt;
 use askama::Template;
 use rustc_abi::{Primitive, TagEncoding, Variants};
 use rustc_hir::def_id::DefId;
-use rustc_middle::span_bug;
 use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::ty::{self};
+use rustc_middle::{span_bug, ty};
 use rustc_span::symbol::Symbol;
 
 use crate::html::render::Context;

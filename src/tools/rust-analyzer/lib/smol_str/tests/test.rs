@@ -10,6 +10,7 @@ use smol_str::{SmolStr, SmolStrBuilder};
 #[cfg(target_pointer_width = "64")]
 fn smol_str_is_smol() {
     assert_eq!(::std::mem::size_of::<SmolStr>(), ::std::mem::size_of::<String>(),);
+    assert_eq!(::std::mem::size_of::<Option<SmolStr>>(), ::std::mem::size_of::<SmolStr>(),);
 }
 
 #[test]
@@ -332,6 +333,29 @@ fn test_builder_push() {
     assert_eq!("a".repeat(24), s);
 }
 
+#[test]
+fn test_from_char() {
+    // ASCII char
+    let s: SmolStr = 'a'.into();
+    assert_eq!(s, "a");
+    assert!(!s.is_heap_allocated());
+
+    // Multi-byte char (2 bytes)
+    let s: SmolStr = SmolStr::from('ñ');
+    assert_eq!(s, "ñ");
+    assert!(!s.is_heap_allocated());
+
+    // 3-byte char
+    let s: SmolStr = '€'.into();
+    assert_eq!(s, "€");
+    assert!(!s.is_heap_allocated());
+
+    // 4-byte char (emoji)
+    let s: SmolStr = '🦀'.into();
+    assert_eq!(s, "🦀");
+    assert!(!s.is_heap_allocated());
+}
+
 #[cfg(test)]
 mod test_str_ext {
     use smol_str::StrExt;
@@ -393,7 +417,7 @@ mod test_str_ext {
     }
 }
 
-#[cfg(feature = "borsh")]
+#[cfg(all(feature = "borsh", feature = "std"))]
 mod borsh_tests {
     use borsh::BorshDeserialize;
     use smol_str::{SmolStr, ToSmolStr};

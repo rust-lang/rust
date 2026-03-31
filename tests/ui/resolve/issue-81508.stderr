@@ -1,20 +1,14 @@
-error[E0433]: failed to resolve: use of undeclared type `Baz`
+error[E0433]: cannot find type `Baz` in this scope
   --> $DIR/issue-81508.rs:11:20
    |
-LL |     let Baz: &str = "";
-   |         --- help: `Baz` is defined here, but is not a type
-LL |
 LL |     println!("{}", Baz::Bar);
-   |                    ^^^ use of undeclared type `Baz`
+   |                    ^^^ `Baz` is declared as a local binding at `issue-81508.rs:9:9`, not a type
 
-error[E0433]: failed to resolve: use of undeclared type `Foo`
+error[E0433]: cannot find type `Foo` in this scope
   --> $DIR/issue-81508.rs:20:24
    |
-LL |     use super::Foo;
-   |         ---------- help: `Foo` is defined here, but is not a type
-LL |     fn function() {
 LL |         println!("{}", Foo::Bar);
-   |                        ^^^ use of undeclared type `Foo`
+   |                        ^^^ `Foo` is declared as a constant at `issue-81508.rs:18:9`, not a type
 
 error: aborting due to 2 previous errors
 

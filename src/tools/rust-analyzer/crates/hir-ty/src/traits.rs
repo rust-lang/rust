@@ -7,7 +7,11 @@ use hir_def::{
     AdtId, AssocItemId, HasModule, ImplId, Lookup, TraitId,
     lang_item::LangItems,
     nameres::DefMap,
-    signatures::{ConstFlags, EnumFlags, FnFlags, StructFlags, TraitFlags, TypeAliasFlags},
+    signatures::{
+        ConstFlags, ConstSignature, EnumFlags, EnumSignature, FnFlags, FunctionSignature,
+        StructFlags, StructSignature, TraitFlags, TraitSignature, TypeAliasFlags,
+        TypeAliasSignature, UnionSignature,
+    },
 };
 use hir_expand::name::Name;
 use intern::sym;
@@ -279,21 +283,18 @@ pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id
             | TyKind::Float(_) => true,
 
             TyKind::Adt(adt_def, _) => match adt_def.def_id().0 {
-                hir_def::AdtId::StructId(id) => db
-                    .struct_signature(id)
+                hir_def::AdtId::StructId(id) => StructSignature::of(db, id)
                     .flags
                     .contains(StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
-                hir_def::AdtId::UnionId(id) => db
-                    .union_signature(id)
+                hir_def::AdtId::UnionId(id) => UnionSignature::of(db, id)
                     .flags
                     .contains(StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
-                hir_def::AdtId::EnumId(it) => db
-                    .enum_signature(it)
+                hir_def::AdtId::EnumId(it) => EnumSignature::of(db, it)
                     .flags
                     .contains(EnumFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
             },
             TyKind::Dynamic(it, _) => it.principal_def_id().is_some_and(|trait_id| {
-                db.trait_signature(trait_id.0)
+                TraitSignature::of(db, trait_id.0)
                     .flags
                     .contains(TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
             }),
@@ -304,14 +305,13 @@ pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id
         rustc_has_incoherent_inherent_impls
             && !items.items.is_empty()
             && items.items.iter().all(|&(_, assoc)| match assoc {
-                AssocItemId::FunctionId(it) => {
-                    db.function_signature(it).flags.contains(FnFlags::RUSTC_ALLOW_INCOHERENT_IMPL)
-                }
-                AssocItemId::ConstId(it) => {
-                    db.const_signature(it).flags.contains(ConstFlags::RUSTC_ALLOW_INCOHERENT_IMPL)
-                }
-                AssocItemId::TypeAliasId(it) => db
-                    .type_alias_signature(it)
+                AssocItemId::FunctionId(it) => FunctionSignature::of(db, it)
+                    .flags
+                    .contains(FnFlags::RUSTC_ALLOW_INCOHERENT_IMPL),
+                AssocItemId::ConstId(it) => ConstSignature::of(db, it)
+                    .flags
+                    .contains(ConstFlags::RUSTC_ALLOW_INCOHERENT_IMPL),
+                AssocItemId::TypeAliasId(it) => TypeAliasSignature::of(db, it)
                     .flags
                     .contains(TypeAliasFlags::RUSTC_ALLOW_INCOHERENT_IMPL),
             })
@@ -350,7 +350,7 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
                     let AdtId::StructId(s) = adt_def.def_id().0 else {
                         break ty;
                     };
-                    let struct_signature = db.struct_signature(s);
+                    let struct_signature = StructSignature::of(db, s);
                     if struct_signature.flags.contains(StructFlags::FUNDAMENTAL) {
                         let next = subs.types().next();
                         match next {

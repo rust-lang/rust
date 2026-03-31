@@ -2,7 +2,7 @@
 
 Apple visionOS / xrOS targets.
 
-**Tier: 3**
+**Tier: 2 (without Host Tools)**
 
 - `aarch64-apple-visionos`: Apple visionOS on arm64.
 - `aarch64-apple-visionos-sim`: Apple visionOS Simulator on arm64.
@@ -31,18 +31,11 @@ case `XROS_DEPLOYMENT_TARGET`.
 
 ## Building the target
 
-The targets can be built by enabling them for a `rustc` build in
-`bootstrap.toml`, by adding, for example:
-
-```toml
-[build]
-target = ["aarch64-apple-visionos", "aarch64-apple-visionos-sim"]
+The targets are distributed through `rustup`, and can be installed using one of:
+```console
+$ rustup target add aarch64-apple-visionos
+$ rustup target add aarch64-apple-visionos-sim
 ```
-
-Using the unstable `-Zbuild-std` with a nightly Cargo may also work.
-
-Note: Currently, a newer version of `libc` and `cc` may be required, this will
-be fixed in [#124560](https://github.com/rust-lang/rust/pull/124560).
 
 ## Building Rust programs
 

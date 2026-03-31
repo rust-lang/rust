@@ -1,8 +1,13 @@
-error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
   --> $DIR/object-lifetime-default-dyn-binding-nonstatic3.rs:16:36
    |
 LL | fn bar(x: &str) -> &dyn Foo<Item = dyn Bar> { &() }
    |                                    ^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL | fn bar(x: &str) -> &dyn Foo<Item = dyn Bar + /* 'a */> { &() }
+   |                                            ++++++++++
 
 error: aborting due to 1 previous error
 

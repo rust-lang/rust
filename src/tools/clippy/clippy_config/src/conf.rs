@@ -35,7 +35,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "IPv4", "IPv6",
     "InfiniBand", "RoCE",
     "ClojureScript", "CoffeeScript", "JavaScript", "PostScript", "PureScript", "TypeScript",
-    "PowerPC", "WebAssembly",
+    "PowerPC", "PowerShell", "WebAssembly",
     "NaN", "NaNs",
     "OAuth", "GraphQL",
     "OCaml",
@@ -413,6 +413,15 @@ define_Conf! {
     /// Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
     #[lints(unwrap_used)]
     allow_unwrap_in_tests: bool = false,
+    /// List of types to allow `unwrap()` and `expect()` on.
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// allow-unwrap-types = [ "std::sync::LockResult" ]
+    /// ```
+    #[lints(expect_used, unwrap_used)]
+    allow_unwrap_types: Vec<String> = Vec::new(),
     /// Whether `useless_vec` should ignore test functions or `#[cfg(test)]`
     #[lints(useless_vec)]
     allow_useless_vec_in_tests: bool = false,
@@ -423,7 +432,7 @@ define_Conf! {
     #[lints(multiple_crate_versions)]
     allowed_duplicate_crates: Vec<String> = Vec::new(),
     /// Allowed names below the minimum allowed characters. The value `".."` can be used as part of
-    /// the list to indicate, that the configured values should be appended to the default
+    /// the list to indicate that the configured values should be appended to the default
     /// configuration of Clippy. By default, any configuration will replace the default value.
     #[lints(min_ident_chars)]
     allowed_idents_below_min_chars: Vec<String> =
@@ -581,6 +590,17 @@ define_Conf! {
     /// Use the Cognitive Complexity lint instead.
     #[conf_deprecated("Please use `cognitive-complexity-threshold` instead", cognitive_complexity_threshold)]
     cyclomatic_complexity_threshold: u64 = 25,
+    /// The list of disallowed fields, written as fully qualified paths.
+    ///
+    /// **Fields:**
+    /// - `path` (required): the fully qualified path to the field that should be disallowed
+    /// - `reason` (optional): explanation why this field is disallowed
+    /// - `replacement` (optional): suggested alternative method
+    /// - `allow-invalid` (optional, `false` by default): when set to `true`, it will ignore this entry
+    ///   if the path doesn't exist, instead of emitting an error
+    #[disallowed_paths_allow_replacements = true]
+    #[lints(disallowed_fields)]
+    disallowed_fields: Vec<DisallowedPath> = Vec::new(),
     /// The list of disallowed macros, written as fully qualified paths.
     ///
     /// **Fields:**
@@ -620,7 +640,7 @@ define_Conf! {
     #[lints(disallowed_types)]
     disallowed_types: Vec<DisallowedPath> = Vec::new(),
     /// The list of words this lint should not consider as identifiers needing ticks. The value
-    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
+    /// `".."` can be used as part of the list to indicate that the configured values should be appended to the
     /// default configuration of Clippy. By default, any configuration will replace the default value. For example:
     /// * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
     /// * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.

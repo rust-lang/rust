@@ -5,6 +5,9 @@
 //!   long description text.
 
 use std::fmt;
+use std::sync::LazyLock;
+
+use rustc_data_structures::fx::FxHashMap;
 
 rustc_index::newtype_index! {
     #[max = 9999] // Because all error codes have four digits.
@@ -27,15 +30,28 @@ macro_rules! define_error_code_constants_and_diagnostics_table {
         $(
             pub const ${concat(E, $num)}: $crate::ErrCode = $crate::ErrCode::from_u32($num);
         )*
-        pub static DIAGNOSTICS: &[($crate::ErrCode, &str)] = &[
-            $( (
-                ${concat(E, $num)},
-                include_str!(
-                    concat!("../../rustc_error_codes/src/error_codes/E", stringify!($num), ".md")
-                )
-            ), )*
-        ];
+        static DIAGNOSTICS: LazyLock<FxHashMap<ErrCode, &'static str>> = LazyLock::new(|| {
+            [
+                $( (
+                    ${concat(E, $num)},
+                    include_str!(
+                        concat!("../../rustc_error_codes/src/error_codes/E", stringify!($num), ".md")
+                    )
+                ), )*
+            ]
+            .iter()
+            .copied()
+            .collect()
+        });
     )
 }
 
 rustc_error_codes::error_codes!(define_error_code_constants_and_diagnostics_table);
+
+#[derive(Debug)]
+pub struct InvalidErrorCode;
+
+/// Returns `InvalidErrorCode` if the code requested does not exist.
+pub fn try_find_description(code: ErrCode) -> Result<&'static str, InvalidErrorCode> {
+    DIAGNOSTICS.get(&code).copied().ok_or(InvalidErrorCode)
+}

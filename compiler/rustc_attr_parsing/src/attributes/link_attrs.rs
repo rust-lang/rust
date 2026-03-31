@@ -1,4 +1,4 @@
-use rustc_errors::inline_fluent;
+use rustc_errors::msg;
 use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
 use rustc_hir::attrs::*;
@@ -22,7 +22,6 @@ pub(crate) struct LinkNameParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {
     const PATH: &[Symbol] = &[sym::link_name];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::ForeignFn),
@@ -316,7 +315,7 @@ impl LinkParser {
                         sess,
                         sym::raw_dylib_elf,
                         nv.value_span,
-                        inline_fluent!("link kind `raw-dylib` is unstable on ELF platforms"),
+                        msg!("link kind `raw-dylib` is unstable on ELF platforms"),
                     )
                     .emit();
                 } else {
@@ -331,7 +330,7 @@ impl LinkParser {
                         sess,
                         sym::link_arg_attribute,
                         nv.value_span,
-                        inline_fluent!("link kind `link-arg` is unstable"),
+                        msg!("link kind `link-arg` is unstable"),
                     )
                     .emit();
                 }
@@ -396,8 +395,7 @@ impl LinkParser {
             return true;
         };
         if !features.link_cfg() {
-            feature_err(sess, sym::link_cfg, item.span(), inline_fluent!("link cfg is unstable"))
-                .emit();
+            feature_err(sess, sym::link_cfg, item.span(), msg!("link cfg is unstable")).emit();
         }
         *cfg = parse_cfg_entry(cx, link_cfg).ok();
         true
@@ -467,7 +465,6 @@ pub(crate) struct LinkSectionParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Static),
@@ -525,8 +522,8 @@ impl<S: Stage> NoArgsAttributeParser<S> for FfiPureParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
 }
 
-pub(crate) struct StdInternalSymbolParser;
-impl<S: Stage> NoArgsAttributeParser<S> for StdInternalSymbolParser {
+pub(crate) struct RustcStdInternalSymbolParser;
+impl<S: Stage> NoArgsAttributeParser<S> for RustcStdInternalSymbolParser {
     const PATH: &[Symbol] = &[sym::rustc_std_internal_symbol];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
@@ -542,7 +539,6 @@ pub(crate) struct LinkOrdinalParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
     const PATH: &[Symbol] = &[sym::link_ordinal];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::ForeignFn),
@@ -583,8 +579,6 @@ pub(crate) struct LinkageParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
     const PATH: &[Symbol] = &[sym::linkage];
-
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
 
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[

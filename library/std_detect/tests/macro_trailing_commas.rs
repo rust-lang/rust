@@ -1,4 +1,4 @@
-#![allow(internal_features)]
+#![allow(internal_features, unused_features)]
 #![cfg_attr(
     any(
         target_arch = "arm",

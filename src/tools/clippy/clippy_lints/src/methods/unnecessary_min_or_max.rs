@@ -88,7 +88,17 @@ fn detect_extrema<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<
     match (cv.int_value(cx.tcx, ty)?, ty.kind()) {
         (FullInt::S(i), &ty::Int(ity)) if i == i128::MIN >> (128 - ity.bit_width()?) => Some(Extrema::Minimum),
         (FullInt::S(i), &ty::Int(ity)) if i == i128::MAX >> (128 - ity.bit_width()?) => Some(Extrema::Maximum),
-        (FullInt::U(i), &ty::Uint(uty)) if i == u128::MAX >> (128 - uty.bit_width()?) => Some(Extrema::Maximum),
+        (FullInt::U(i), &ty::Uint(uty))
+            if {
+                let bits = match uty {
+                    ty::UintTy::Usize => u32::try_from(cx.tcx.data_layout.pointer_size().bits()).ok()?,
+                    _ => u32::try_from(uty.bit_width()?).ok()?,
+                };
+                i == u128::MAX >> (128 - bits)
+            } =>
+        {
+            Some(Extrema::Maximum)
+        },
         (FullInt::U(0), &ty::Uint(_)) => Some(Extrema::Minimum),
         _ => None,
     }

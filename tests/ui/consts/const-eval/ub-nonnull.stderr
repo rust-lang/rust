@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value: encountered 0, but expected something greater or equal to 1
+error[E0080]: constructing invalid value of type NonNull<u8>: encountered 0, but expected something greater or equal to 1
   --> $DIR/ub-nonnull.rs:16:1
    |
 LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
@@ -15,7 +15,7 @@ error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer 
 LL |     let out_of_bounds_ptr = &ptr[255];
    |                             ^^^^^^^^^ evaluation of `OUT_OF_BOUNDS_PTR` failed here
 
-error[E0080]: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
+error[E0080]: constructing invalid value of type NonZero<u8>: at .0.0, encountered 0, but expected something greater or equal to 1
   --> $DIR/ub-nonnull.rs:26:1
    |
 LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
@@ -26,7 +26,7 @@ LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
+error[E0080]: constructing invalid value of type NonZero<usize>: at .0.0, encountered 0, but expected something greater or equal to 1
   --> $DIR/ub-nonnull.rs:28:1
    |
 LL | const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
@@ -47,7 +47,7 @@ LL | const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
                __                                              │ ░
            }
 
-error[E0080]: constructing invalid value: encountered 42, but expected something in the range 10..=30
+error[E0080]: constructing invalid value of type RestrictedRange1: encountered 42, but expected something in the range 10..=30
   --> $DIR/ub-nonnull.rs:44:1
    |
 LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
@@ -58,7 +58,7 @@ LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered 20, but expected something less or equal to 10, or greater or equal to 30
+error[E0080]: constructing invalid value of type RestrictedRange2: encountered 20, but expected something less or equal to 10, or greater or equal to 30
   --> $DIR/ub-nonnull.rs:50:1
    |
 LL | const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
@@ -69,7 +69,7 @@ LL | const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered 0, but expected something greater or equal to 1
+error[E0080]: constructing invalid value of type NonNull<dyn Send>: encountered 0, but expected something greater or equal to 1
   --> $DIR/ub-nonnull.rs:53:1
    |
 LL | const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
@@ -80,7 +80,7 @@ LL | const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered a maybe-null pointer, but expected something that is definitely non-zero
+error[E0080]: constructing invalid value of type NonNull<()>: encountered a maybe-null pointer, but expected something that is definitely non-zero
   --> $DIR/ub-nonnull.rs:61:1
    |
 LL | const MAYBE_NULL_PTR: NonNull<()> = unsafe { mem::transmute((&raw const S).wrapping_add(4)) };

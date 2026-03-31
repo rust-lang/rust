@@ -8,7 +8,6 @@
 //! is computed by selecting an idea from this table.
 
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::find_attr;
@@ -79,20 +78,14 @@ impl<'tcx> InherentCollect<'tcx> {
         }
 
         if self.tcx.features().rustc_attrs() {
-            if !find_attr!(
-                self.tcx.get_all_attrs(ty_def_id),
-                AttributeKind::RustcHasIncoherentInherentImpls
-            ) {
+            if !find_attr!(self.tcx, ty_def_id, RustcHasIncoherentInherentImpls) {
                 let impl_span = self.tcx.def_span(impl_def_id);
                 return Err(self.tcx.dcx().emit_err(errors::InherentTyOutside { span: impl_span }));
             }
 
             let items = self.tcx.associated_item_def_ids(impl_def_id);
             for &impl_item in items {
-                if !find_attr!(
-                    self.tcx.get_all_attrs(impl_item),
-                    AttributeKind::RustcAllowIncoherentImpl(_)
-                ) {
+                if !find_attr!(self.tcx, impl_item, RustcAllowIncoherentImpl(_)) {
                     let impl_span = self.tcx.def_span(impl_def_id);
                     return Err(self.tcx.dcx().emit_err(errors::InherentTyOutsideRelevant {
                         span: impl_span,
@@ -110,7 +103,22 @@ impl<'tcx> InherentCollect<'tcx> {
             Ok(())
         } else {
             let impl_span = self.tcx.def_span(impl_def_id);
-            Err(self.tcx.dcx().emit_err(errors::InherentTyOutsideNew { span: impl_span }))
+            let mut err = errors::InherentTyOutsideNew { span: impl_span, note: None };
+
+            if let hir::TyKind::Path(rustc_hir::QPath::Resolved(_, path)) =
+                self.tcx.hir_node_by_def_id(impl_def_id).expect_item().expect_impl().self_ty.kind
+                && let rustc_hir::def::Res::Def(DefKind::TyAlias, def_id) = path.res
+            {
+                let ty_name = self.tcx.def_path_str(def_id);
+                let alias_ty_name = self.tcx.type_of(def_id).skip_binder().to_string();
+                err.note = Some(errors::InherentTyOutsideNewAliasNote {
+                    span: self.tcx.def_span(def_id),
+                    ty_name,
+                    alias_ty_name,
+                });
+            }
+
+            Err(self.tcx.dcx().emit_err(err))
         }
     }
 
@@ -123,10 +131,7 @@ impl<'tcx> InherentCollect<'tcx> {
         if !self.tcx.hir_rustc_coherence_is_core() {
             if self.tcx.features().rustc_attrs() {
                 for &impl_item in items {
-                    if !find_attr!(
-                        self.tcx.get_all_attrs(impl_item),
-                        AttributeKind::RustcAllowIncoherentImpl(_)
-                    ) {
+                    if !find_attr!(self.tcx, impl_item, RustcAllowIncoherentImpl(_)) {
                         let span = self.tcx.def_span(impl_def_id);
                         return Err(self.tcx.dcx().emit_err(errors::InherentTyOutsidePrimitive {
                             span,

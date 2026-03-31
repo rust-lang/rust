@@ -7,7 +7,6 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::jobserver::{self, Proxy};
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_errors::registry::Registry;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_lint::LintStore;
 use rustc_middle::ty;
@@ -17,14 +16,12 @@ use rustc_parse::lexer::StripTokens;
 use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::Recovery;
 use rustc_parse::parser::attr::AllowLeadingUnsafe;
-use rustc_query_impl::QueryCtxt;
-use rustc_query_system::query::print_query_stack;
+use rustc_query_impl::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::parse::ParseSess;
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
 use rustc_span::{FileName, sym};
-use rustc_target::spec::Target;
 use tracing::trace;
 
 use crate::util;
@@ -54,10 +51,9 @@ pub struct Compiler {
 pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
-            let psess = ParseSess::emitter_with_note(
-                vec![rustc_parse::DEFAULT_LOCALE_RESOURCE],
-                format!("this occurred on the command line: `--cfg={s}`"),
-            );
+            let psess = ParseSess::emitter_with_note(format!(
+                "this occurred on the command line: `--cfg={s}`"
+            ));
             let filename = FileName::cfg_spec_source_code(&s);
 
             macro_rules! error {
@@ -126,10 +122,9 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
     let mut check_cfg = CheckCfg { exhaustive_names, exhaustive_values, ..CheckCfg::default() };
 
     for s in specs {
-        let psess = ParseSess::emitter_with_note(
-            vec![rustc_parse::DEFAULT_LOCALE_RESOURCE],
-            format!("this occurred on the command line: `--check-cfg={s}`"),
-        );
+        let psess = ParseSess::emitter_with_note(format!(
+            "this occurred on the command line: `--check-cfg={s}`"
+        ));
         let filename = FileName::cfg_spec_source_code(&s);
 
         const VISIT: &str =
@@ -335,20 +330,20 @@ pub struct Config {
     /// bjorn3 for "hooking rust-analyzer's VFS into rustc at some point for
     /// running rustc without having to save". (See #102759.)
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    /// The list of fluent resources, used for lints declared with
-    /// [`Diagnostic`](rustc_errors::Diagnostic) and [`LintDiagnostic`](rustc_errors::LintDiagnostic).
-    pub locale_resources: Vec<&'static str>,
 
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
     /// This is a callback from the driver that is called when [`ParseSess`] is created.
     pub psess_created: Option<Box<dyn FnOnce(&mut ParseSess) + Send>>,
 
-    /// This is a callback to hash otherwise untracked state used by the caller, if the
-    /// hash changes between runs the incremental cache will be cleared.
+    /// This is a callback to track otherwise untracked state used by the caller.
     ///
-    /// e.g. used by Clippy to hash its config file
-    pub hash_untracked_state: Option<Box<dyn FnOnce(&Session, &mut StableHasher) + Send>>,
+    /// You can write to `sess.env_depinfo` and `sess.file_depinfo` to track env vars and files.
+    /// To track any other state you can write to the given hasher. If the hash changes between
+    /// runs the incremental cache will be cleared.
+    ///
+    /// The hashing functionality has no known user. FIXME should this be removed?
+    pub track_state: Option<Box<dyn FnOnce(&Session, &mut StableHasher) + Send>>,
 
     /// This is a callback from the driver that is called when we're registering lints;
     /// it is called during lint loading when we have the LintStore in a non-shared state.
@@ -371,11 +366,7 @@ pub struct Config {
     /// hotswapping branch of cg_clif" for "setting the codegen backend from a
     /// custom driver where the custom codegen backend has arbitrary data."
     /// (See #102759.)
-    pub make_codegen_backend:
-        Option<Box<dyn FnOnce(&config::Options, &Target) -> Box<dyn CodegenBackend> + Send>>,
-
-    /// Registry of diagnostics codes.
-    pub registry: Registry,
+    pub make_codegen_backend: Option<Box<dyn FnOnce(&Session) -> Box<dyn CodegenBackend> + Send>>,
 
     /// The inner atomic value is set to true when a feature marked as `internal` is
     /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
@@ -429,31 +420,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             // impl `Send`. Creating a new one is fine.
             let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
 
-            let codegen_backend = match config.make_codegen_backend {
-                None => util::get_codegen_backend(
-                    &early_dcx,
-                    &config.opts.sysroot,
-                    config.opts.unstable_opts.codegen_backend.as_deref(),
-                    &target,
-                ),
-                Some(make_codegen_backend) => {
-                    // N.B. `make_codegen_backend` takes precedence over
-                    // `target.default_codegen_backend`, which is ignored in this case.
-                    make_codegen_backend(&config.opts, &target)
-                }
-            };
-
             let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
-
-            let bundle = match rustc_errors::fluent_bundle(
-                &config.opts.sysroot.all_paths().collect::<Vec<_>>(),
-                config.opts.unstable_opts.translate_lang.clone(),
-                config.opts.unstable_opts.translate_additional_ftl.as_deref(),
-                config.opts.unstable_opts.translate_directionality_markers,
-            ) {
-                Ok(bundle) => bundle,
-                Err(e) => early_dcx.early_fatal(format!("failed to load fluent bundle: {e}")),
-            };
 
             let mut sess = rustc_session::build_session(
                 config.opts,
@@ -463,9 +430,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     output_file: config.output_file,
                     temps_dir,
                 },
-                bundle,
-                config.registry,
-                config.locale_resources,
                 config.lint_caps,
                 target,
                 util::rustc_version_str().unwrap_or("unknown"),
@@ -473,8 +437,22 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.using_internal_features,
             );
 
+            let codegen_backend = match config.make_codegen_backend {
+                None => util::get_codegen_backend(
+                    &early_dcx,
+                    &sess.opts.sysroot,
+                    sess.opts.unstable_opts.codegen_backend.as_deref(),
+                    &sess.target,
+                ),
+                Some(make_codegen_backend) => {
+                    // N.B. `make_codegen_backend` takes precedence over
+                    // `target.default_codegen_backend`, which is ignored in this case.
+                    make_codegen_backend(&sess)
+                }
+            };
             codegen_backend.init(&sess);
             sess.replaced_intrinsics = FxHashSet::from_iter(codegen_backend.replaced_intrinsics());
+            sess.thin_lto_supported = codegen_backend.thin_lto_supported();
 
             let cfg = parse_cfg(sess.dcx(), config.crate_cfg);
             let mut cfg = config::build_configuration(&sess, cfg);
@@ -489,9 +467,9 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 psess_created(&mut sess.psess);
             }
 
-            if let Some(hash_untracked_state) = config.hash_untracked_state {
+            if let Some(track_state) = config.track_state {
                 let mut hasher = StableHasher::new();
-                hash_untracked_state(&sess, &mut hasher);
+                track_state(&sess, &mut hasher);
                 sess.opts.untracked_state_hash = hasher.finish()
             }
 
@@ -567,7 +545,7 @@ pub fn try_print_query_stack(
     let all_frames = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
             ty::print::with_no_queries!(print_query_stack(
-                QueryCtxt::new(icx.tcx),
+                icx.tcx,
                 icx.query,
                 dcx,
                 limit_frames,

@@ -4,8 +4,7 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    #[type_const]
-    const ASSOC: isize;
+    type const ASSOC: isize;
 }
 
 fn ace<T: Trait<ASSOC = 1, ASSOC = -1>>() {}

@@ -34,11 +34,11 @@ declare_clippy_lint! {
     "manually reimplementing `is_power_of_two`"
 }
 
+impl_lint_pass!(ManualIsPowerOfTwo => [MANUAL_IS_POWER_OF_TWO]);
+
 pub struct ManualIsPowerOfTwo {
     msrv: Msrv,
 }
-
-impl_lint_pass!(ManualIsPowerOfTwo => [MANUAL_IS_POWER_OF_TWO]);
 
 impl ManualIsPowerOfTwo {
     pub fn new(conf: &'static Conf) -> Self {

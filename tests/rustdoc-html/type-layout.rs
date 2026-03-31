@@ -64,6 +64,12 @@ pub type GenericTypeAlias = (Generic<(u32, ())>, Generic<u32>);
 //@ hasraw type_layout/type.Edges.html 'Unable to compute type layout, possibly due to this type having generic parameters. Layout can only be computed for concrete, fully-instantiated types.'
 pub type Edges<'a, E> = std::borrow::Cow<'a, [E]>;
 
+pub trait Project { type Assoc; }
+// We can't compute layout as the alias stays rigid. A `LayoutError::TooGeneric` is returned.
+//@ hasraw type_layout/struct.RigidAlias.html 'Unable to compute type layout, possibly due to this type having generic parameters. Layout can only be computed for concrete, fully-instantiated types.'
+//@ !hasraw - 'Size: '
+pub struct RigidAlias(<() as Project>::Assoc) where for<'a> (): Project;
+
 //@ !hasraw type_layout/trait.MyTrait.html 'Size: '
 pub trait MyTrait {}
 
@@ -92,9 +98,3 @@ pub enum Uninhabited {}
 //@ hasraw type_layout/struct.Uninhabited2.html 'Size: '
 //@ hasraw - '8 bytes (<a href="{{channel}}/reference/glossary.html#uninhabited">uninhabited</a>)'
 pub struct Uninhabited2(std::convert::Infallible, u64);
-
-pub trait Project { type Assoc; }
-// We can't compute layout. A `LayoutError::Unknown` is returned.
-//@ hasraw type_layout/struct.Unknown.html 'Unable to compute type layout.'
-//@ !hasraw - 'Size: '
-pub struct Unknown(<() as Project>::Assoc) where for<'a> (): Project;

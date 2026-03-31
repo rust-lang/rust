@@ -2175,7 +2175,7 @@ unsafe impl<T> Sync for ChunksExactMut<'_, T> where T: Sync {}
 ///
 /// [`array_windows`]: slice::array_windows
 /// [slices]: slice
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 #[stable(feature = "array_windows", since = "1.94.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ArrayWindows<'a, T: 'a, const N: usize> {
@@ -2186,6 +2186,14 @@ impl<'a, T: 'a, const N: usize> ArrayWindows<'a, T, N> {
     #[inline]
     pub(super) const fn new(slice: &'a [T]) -> Self {
         Self { v: slice }
+    }
+}
+
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+#[stable(feature = "array_windows", since = "1.94.0")]
+impl<T, const N: usize> Clone for ArrayWindows<'_, T, N> {
+    fn clone(&self) -> Self {
+        Self { v: self.v }
     }
 }
 
@@ -2224,6 +2232,14 @@ impl<'a, T, const N: usize> Iterator for ArrayWindows<'a, T, N> {
     fn last(self) -> Option<Self::Item> {
         self.v.last_chunk()
     }
+
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
+        // SAFETY: since the caller guarantees that `idx` is in bounds,
+        // which means that `idx` cannot overflow an `isize`, and the
+        // "slice" created by `cast_array` is a subslice of `self.v`
+        // thus is guaranteed to be valid for the lifetime `'a` of `self.v`.
+        unsafe { &*self.v.as_ptr().add(idx).cast_array() }
+    }
 }
 
 #[stable(feature = "array_windows", since = "1.94.0")]
@@ -2250,6 +2266,22 @@ impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
     fn is_empty(&self) -> bool {
         self.v.len() < N
     }
+}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T, const N: usize> TrustedLen for ArrayWindows<'_, T, N> {}
+
+#[stable(feature = "array_windows", since = "1.94.0")]
+impl<T, const N: usize> FusedIterator for ArrayWindows<'_, T, N> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<T, const N: usize> TrustedRandomAccess for ArrayWindows<'_, T, N> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<T, const N: usize> TrustedRandomAccessNoCoerce for ArrayWindows<'_, T, N> {
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a

@@ -20,10 +20,10 @@
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant, const_item_rhs_to_expr};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::is_in_const_context;
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::paths::{PathNS, lookup_path_str};
 use clippy_utils::ty::{get_field_idx_by_name, implements_trait};
+use clippy_utils::{is_in_const_context, sym};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet};
@@ -39,63 +39,8 @@ use rustc_middle::ty::{
     TypeckResults, TypingEnv,
 };
 use rustc_session::impl_lint_pass;
-use rustc_span::{DUMMY_SP, sym};
+use rustc_span::DUMMY_SP;
 use std::collections::hash_map::Entry;
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for the declaration of named constant which contain interior mutability.
-    ///
-    /// ### Why is this bad?
-    /// Named constants are copied at every use site which means any change to their value
-    /// will be lost after the newly created value is dropped. e.g.
-    ///
-    /// ```rust
-    /// use core::sync::atomic::{AtomicUsize, Ordering};
-    /// const ATOMIC: AtomicUsize = AtomicUsize::new(0);
-    /// fn add_one() -> usize {
-    ///     // This will always return `0` since `ATOMIC` is copied before it's used.
-    ///     ATOMIC.fetch_add(1, Ordering::AcqRel)
-    /// }
-    /// ```
-    ///
-    /// If shared modification of the value is desired, a `static` item is needed instead.
-    /// If that is not desired, a `const fn` constructor should be used to make it obvious
-    /// at the use site that a new value is created.
-    ///
-    /// ### Known problems
-    /// Prior to `const fn` stabilization this was the only way to provide a value which
-    /// could initialize a `static` item (e.g. the `std::sync::ONCE_INIT` constant). In
-    /// this case the use of `const` is required and this lint should be suppressed.
-    ///
-    /// There also exists types which contain private fields with interior mutability, but
-    /// no way to both create a value as a constant and modify any mutable field using the
-    /// type's public interface (e.g. `bytes::Bytes`). As there is no reasonable way to
-    /// scan a crate's interface to see if this is the case, all such types will be linted.
-    /// If this happens use the `ignore-interior-mutability` configuration option to allow
-    /// the type.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-    ///
-    /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
-    /// CONST_ATOM.store(6, SeqCst); // the content of the atomic is unchanged
-    /// assert_eq!(CONST_ATOM.load(SeqCst), 12); // because the CONST_ATOM in these lines are distinct
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-    /// static STATIC_ATOM: AtomicUsize = AtomicUsize::new(15);
-    /// STATIC_ATOM.store(9, SeqCst);
-    /// assert_eq!(STATIC_ATOM.load(SeqCst), 9); // use a `static` item to refer to the same instance
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub DECLARE_INTERIOR_MUTABLE_CONST,
-    suspicious,
-    "declaring `const` with interior mutability"
-}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -159,6 +104,66 @@ declare_clippy_lint! {
     style,
     "referencing `const` with interior mutability"
 }
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the declaration of named constant which contain interior mutability.
+    ///
+    /// ### Why is this bad?
+    /// Named constants are copied at every use site which means any change to their value
+    /// will be lost after the newly created value is dropped. e.g.
+    ///
+    /// ```rust
+    /// use core::sync::atomic::{AtomicUsize, Ordering};
+    /// const ATOMIC: AtomicUsize = AtomicUsize::new(0);
+    /// fn add_one() -> usize {
+    ///     // This will always return `0` since `ATOMIC` is copied before it's used.
+    ///     ATOMIC.fetch_add(1, Ordering::AcqRel)
+    /// }
+    /// ```
+    ///
+    /// If shared modification of the value is desired, a `static` item is needed instead.
+    /// If that is not desired, a `const fn` constructor should be used to make it obvious
+    /// at the use site that a new value is created.
+    ///
+    /// ### Known problems
+    /// Prior to `const fn` stabilization this was the only way to provide a value which
+    /// could initialize a `static` item (e.g. the `std::sync::ONCE_INIT` constant). In
+    /// this case the use of `const` is required and this lint should be suppressed.
+    ///
+    /// There also exists types which contain private fields with interior mutability, but
+    /// no way to both create a value as a constant and modify any mutable field using the
+    /// type's public interface (e.g. `bytes::Bytes`). As there is no reasonable way to
+    /// scan a crate's interface to see if this is the case, all such types will be linted.
+    /// If this happens use the `ignore-interior-mutability` configuration option to allow
+    /// the type.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+    ///
+    /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
+    /// CONST_ATOM.store(6, SeqCst); // the content of the atomic is unchanged
+    /// assert_eq!(CONST_ATOM.load(SeqCst), 12); // because the CONST_ATOM in these lines are distinct
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+    /// static STATIC_ATOM: AtomicUsize = AtomicUsize::new(15);
+    /// STATIC_ATOM.store(9, SeqCst);
+    /// assert_eq!(STATIC_ATOM.load(SeqCst), 9); // use a `static` item to refer to the same instance
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub DECLARE_INTERIOR_MUTABLE_CONST,
+    suspicious,
+    "declaring `const` with interior mutability"
+}
+
+impl_lint_pass!(NonCopyConst<'_> => [
+    BORROW_INTERIOR_MUTABLE_CONST,
+    DECLARE_INTERIOR_MUTABLE_CONST,
+]);
 
 #[derive(Clone, Copy)]
 enum IsFreeze {
@@ -256,8 +261,6 @@ pub struct NonCopyConst<'tcx> {
     // can be hit quite frequently.
     freeze_tys: FxHashMap<Ty<'tcx>, IsFreeze>,
 }
-
-impl_lint_pass!(NonCopyConst<'_> => [DECLARE_INTERIOR_MUTABLE_CONST, BORROW_INTERIOR_MUTABLE_CONST]);
 
 impl<'tcx> NonCopyConst<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, conf: &'static Conf) -> Self {
@@ -394,14 +397,14 @@ impl<'tcx> NonCopyConst<'tcx> {
                     let res = typeck.qpath_res(p, e.hir_id);
                     let gen_args = EarlyBinder::bind(typeck.node_args(e.hir_id)).instantiate(tcx, gen_args);
                     match res {
-                        Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                        Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                             if let Ok(val) =
                                 tcx.const_eval_resolve(typing_env, UnevaluatedConst::new(did, gen_args), DUMMY_SP)
                                 && let Ok(is_freeze) = self.is_value_freeze(tcx, typing_env, ty, val) =>
                         {
                             is_freeze
                         },
-                        Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                        Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                             if let Some((typeck, init)) = get_const_hir_value(tcx, typing_env, did, gen_args) =>
                         {
                             self.is_init_expr_freeze(tcx, typing_env, typeck, gen_args, init)
@@ -588,7 +591,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                             EarlyBinder::bind(init_typeck.node_args(init_expr.hir_id)).instantiate(tcx, init_args);
                         match init_typeck.qpath_res(init_path, init_expr.hir_id) {
                             Res::Def(DefKind::Ctor(..), _) => return None,
-                            Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                            Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                                 if let Ok(val) = tcx.const_eval_resolve(
                                     typing_env,
                                     UnevaluatedConst::new(did, next_init_args),
@@ -598,7 +601,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                             {
                                 return res;
                             },
-                            Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                            Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                                 if let Some((next_typeck, value)) =
                                     get_const_hir_value(tcx, typing_env, did, next_init_args) =>
                             {
@@ -739,7 +742,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Const(_, ct_rhs_opt) = item.kind
+        if let TraitItemKind::Const(_, ct_rhs_opt, _) = item.kind
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::No => true,
@@ -831,7 +834,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Path(qpath) = &e.kind
             && let typeck = cx.typeck_results()
-            && let Res::Def(DefKind::Const | DefKind::AssocConst, did) = typeck.qpath_res(qpath, e.hir_id)
+            && let Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did) = typeck.qpath_res(qpath, e.hir_id)
             // As of `1.80` constant contexts can't borrow any type with interior mutability
             && !is_in_const_context(cx)
             && !self.is_ty_freeze(cx.tcx, cx.typing_env(), typeck.expr_ty(e)).is_freeze()
@@ -931,7 +934,7 @@ fn get_const_hir_value<'tcx>(
         {
             match tcx.hir_node(tcx.local_def_id_to_hir_id(did)) {
                 Node::ImplItem(item) if let ImplItemKind::Const(.., ct_rhs) = item.kind => (did, ct_rhs),
-                Node::TraitItem(item) if let TraitItemKind::Const(.., Some(ct_rhs)) = item.kind => (did, ct_rhs),
+                Node::TraitItem(item) if let TraitItemKind::Const(_, Some(ct_rhs), _) = item.kind => (did, ct_rhs),
                 _ => return None,
             }
         },

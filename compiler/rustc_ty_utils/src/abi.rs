@@ -1,8 +1,7 @@
-use std::iter;
+use std::{assert_matches, iter};
 
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{BackendRepr, ExternAbi, PointerKind, Scalar, Size};
-use rustc_data_structures::assert_matches;
+use rustc_abi::{Align, BackendRepr, ExternAbi, PointerKind, Scalar, Size};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
@@ -12,7 +11,6 @@ use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
-use rustc_session::config::OptLevel;
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::{
@@ -21,7 +19,12 @@ use rustc_target::callconv::{
 use tracing::debug;
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { fn_abi_of_fn_ptr, fn_abi_of_instance, ..*providers };
+    *providers = Providers {
+        fn_abi_of_fn_ptr,
+        fn_abi_of_instance_no_deduced_attrs,
+        fn_abi_of_instance_raw,
+        ..*providers
+    };
 }
 
 // NOTE(eddyb) this is private to avoid using it from outside of
@@ -243,33 +246,108 @@ fn fn_sig_for_fn_abi<'tcx>(
     }
 }
 
+/// Describes a function for determination of its ABI.
+struct FnAbiDesc<'tcx> {
+    layout_cx: LayoutCx<'tcx>,
+    sig: ty::FnSig<'tcx>,
+
+    /// The function's definition, if its body can be used to deduce parameter attributes.
+    determined_fn_def_id: Option<DefId>,
+    caller_location: Option<Ty<'tcx>>,
+    is_virtual_call: bool,
+    extra_args: &'tcx [Ty<'tcx>],
+}
+
+impl<'tcx> FnAbiDesc<'tcx> {
+    fn for_fn_ptr(
+        tcx: TyCtxt<'tcx>,
+        query: ty::PseudoCanonicalInput<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
+    ) -> Self {
+        let ty::PseudoCanonicalInput { typing_env, value: (sig, extra_args) } = query;
+        Self {
+            layout_cx: LayoutCx::new(tcx, typing_env),
+            sig: tcx.normalize_erasing_regions(
+                typing_env,
+                tcx.instantiate_bound_regions_with_erased(sig),
+            ),
+            // Parameter attributes can never be deduced for indirect calls, as there is no
+            // function body available to use.
+            determined_fn_def_id: None,
+            caller_location: None,
+            is_virtual_call: false,
+            extra_args,
+        }
+    }
+
+    fn for_instance(
+        tcx: TyCtxt<'tcx>,
+        query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
+    ) -> Self {
+        let ty::PseudoCanonicalInput { typing_env, value: (instance, extra_args) } = query;
+        let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
+        let is_tls_shim_call = matches!(instance.def, ty::InstanceKind::ThreadLocalShim(_));
+        Self {
+            layout_cx: LayoutCx::new(tcx, typing_env),
+            sig: tcx.normalize_erasing_regions(
+                typing_env,
+                fn_sig_for_fn_abi(tcx, instance, typing_env),
+            ),
+            // Parameter attributes can be deduced from the bodies of neither:
+            // - virtual calls, as they might call other functions from the vtable; nor
+            // - TLS shims, as they would refer to the underlying static.
+            determined_fn_def_id: (!is_virtual_call && !is_tls_shim_call)
+                .then(|| instance.def_id()),
+            caller_location: instance
+                .def
+                .requires_caller_location(tcx)
+                .then(|| tcx.caller_location_ty()),
+            is_virtual_call,
+            extra_args,
+        }
+    }
+}
+
 fn fn_abi_of_fn_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
-    let ty::PseudoCanonicalInput { typing_env, value: (sig, extra_args) } = query;
-    fn_abi_new_uncached(
-        &LayoutCx::new(tcx, typing_env),
-        tcx.instantiate_bound_regions_with_erased(sig),
-        extra_args,
-        None,
-    )
+    let desc = FnAbiDesc::for_fn_ptr(tcx, query);
+    fn_abi_new_uncached(desc)
 }
 
-fn fn_abi_of_instance<'tcx>(
+fn fn_abi_of_instance_no_deduced_attrs<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
-    let ty::PseudoCanonicalInput { typing_env, value: (instance, extra_args) } = query;
-    fn_abi_new_uncached(
-        &LayoutCx::new(tcx, typing_env),
-        fn_sig_for_fn_abi(tcx, instance, typing_env),
-        extra_args,
-        Some(instance),
-    )
+    let desc = FnAbiDesc::for_instance(tcx, query);
+    fn_abi_new_uncached(desc)
 }
 
-// Handle safe Rust thin and wide pointers.
+fn fn_abi_of_instance_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
+) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
+    // The `fn_abi_of_instance_no_deduced_attrs` query may have been called during CTFE, so we
+    // delegate to it here in order to reuse (and, if necessary, augment) its result.
+    tcx.fn_abi_of_instance_no_deduced_attrs(query).map(|fn_abi| {
+        let params = FnAbiDesc::for_instance(tcx, query);
+        // If the function's body can be used to deduce parameter attributes, then adjust such
+        // "no deduced attrs" ABI; otherwise, return that ABI unadjusted.
+        params.determined_fn_def_id.map_or(fn_abi, |fn_def_id| {
+            fn_abi_adjust_for_deduced_attrs(&params.layout_cx, fn_abi, params.sig.abi, fn_def_id)
+        })
+    })
+}
+
+/// Returns argument attributes for a scalar argument.
+///
+/// `drop_target_pointee`, if set, causes pointer-typed scalars to be treated like mutable
+/// references to the given type. This is used to special-case the argument of `ptr::drop_in_place`,
+/// interpreting it as `&mut T` instead of `*mut T`, for the purposes of attributes (which is valid
+/// as per its safety contract). If `drop_target_pointee` is set, `offset` must be 0 and `layout.ty`
+/// must be a pointer to the given type. Note that for wide pointers this function is called twice
+/// -- once for the data pointer and once for the vtable pointer. `drop_target_pointee` must only
+/// be set for the data pointer.
 fn arg_attrs_for_rust_scalar<'tcx>(
     cx: LayoutCx<'tcx>,
     scalar: Scalar,
@@ -302,38 +380,31 @@ fn arg_attrs_for_rust_scalar<'tcx>(
 
     let tcx = cx.tcx();
 
-    if let Some(pointee) = layout.pointee_info_at(&cx, offset) {
-        let kind = if let Some(kind) = pointee.safe {
-            Some(kind)
-        } else if let Some(pointee) = drop_target_pointee {
-            // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
-            Some(PointerKind::MutableRef { unpin: pointee.is_unpin(tcx, cx.typing_env) })
-        } else {
-            None
-        };
-        if let Some(kind) = kind {
+    let drop_target_pointee_info = drop_target_pointee.and_then(|pointee| {
+        assert_eq!(pointee, layout.ty.builtin_deref(true).unwrap());
+        assert_eq!(offset, Size::ZERO);
+        // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
+        let mutref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, pointee);
+        let layout = cx.layout_of(mutref).unwrap();
+        layout.pointee_info_at(&cx, offset)
+    });
+
+    if let Some(pointee) = drop_target_pointee_info.or_else(|| layout.pointee_info_at(&cx, offset))
+    {
+        if pointee.align > Align::ONE {
             attrs.pointee_align =
                 Some(pointee.align.min(cx.tcx().sess.target.max_reliable_alignment()));
+        }
 
-            attrs.pointee_size = match kind {
-                // LLVM dereferenceable attribute has unclear semantics on the return type,
-                // they seem to be "dereferenceable until the end of the program", which is
-                // generally, not valid for references. See
-                // <https://rust-lang.zulipchat.com/#narrow/channel/136281-t-opsem/topic/LLVM.20dereferenceable.20on.20return.20type/with/563001493>
-                _ if is_return => Size::ZERO,
-                // `Box` are not necessarily dereferenceable for the entire duration of the function as
-                // they can be deallocated at any time. Same for non-frozen shared references (see
-                // <https://github.com/rust-lang/rust/pull/98017>), and for mutable references to
-                // potentially self-referential types (see
-                // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>). If LLVM had a way
-                // to say "dereferenceable on entry" we could use it here.
-                PointerKind::Box { .. }
-                | PointerKind::SharedRef { frozen: false }
-                | PointerKind::MutableRef { unpin: false } => Size::ZERO,
-                PointerKind::SharedRef { frozen: true }
-                | PointerKind::MutableRef { unpin: true } => pointee.size,
-            };
+        // LLVM dereferenceable attribute has unclear semantics on the return type,
+        // they seem to be "dereferenceable until the end of the program", which is
+        // generally, not valid for references. See
+        // <https://rust-lang.zulipchat.com/#narrow/channel/136281-t-opsem/topic/LLVM.20dereferenceable.20on.20return.20type/with/563001493>
+        if !is_return {
+            attrs.pointee_size = pointee.size;
+        };
 
+        if let Some(kind) = pointee.safe {
             // The aliasing rules for `Box<T>` are still not decided, but currently we emit
             // `noalias` for it. This can be turned off using an unstable flag.
             // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
@@ -414,7 +485,7 @@ fn fn_abi_sanity_check<'tcx>(
                 match arg.layout.backend_repr {
                     BackendRepr::Scalar(_)
                     | BackendRepr::SimdVector { .. }
-                    | BackendRepr::ScalableVector { .. } => {}
+                    | BackendRepr::SimdScalableVector { .. } => {}
                     BackendRepr::ScalarPair(..) => {
                         panic!("`PassMode::Direct` used for ScalarPair type {}", arg.layout.ty)
                     }
@@ -479,27 +550,21 @@ fn fn_abi_sanity_check<'tcx>(
     fn_arg_sanity_check(cx, fn_abi, spec_abi, &fn_abi.ret);
 }
 
-#[tracing::instrument(level = "debug", skip(cx, instance))]
+#[tracing::instrument(
+    level = "debug",
+    skip(cx, caller_location, determined_fn_def_id, is_virtual_call)
+)]
 fn fn_abi_new_uncached<'tcx>(
-    cx: &LayoutCx<'tcx>,
-    sig: ty::FnSig<'tcx>,
-    extra_args: &[Ty<'tcx>],
-    instance: Option<ty::Instance<'tcx>>,
+    FnAbiDesc {
+        layout_cx: ref cx,
+        sig,
+        determined_fn_def_id,
+        caller_location,
+        is_virtual_call,
+        extra_args,
+    }: FnAbiDesc<'tcx>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let tcx = cx.tcx();
-    let (caller_location, determined_fn_def_id, is_virtual_call) = if let Some(instance) = instance
-    {
-        let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
-        let is_tls_shim_call = matches!(instance.def, ty::InstanceKind::ThreadLocalShim(_));
-        (
-            instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty()),
-            if is_virtual_call || is_tls_shim_call { None } else { Some(instance.def_id()) },
-            is_virtual_call,
-        )
-    } else {
-        (None, None, false)
-    };
-    let sig = tcx.normalize_erasing_regions(cx.typing_env, sig);
 
     let abi_map = AbiMap::from_target(&tcx.sess.target);
     let conv = abi_map.canonize_abi(sig.abi, sig.c_variadic).unwrap();
@@ -550,7 +615,16 @@ fn fn_abi_new_uncached<'tcx>(
         };
 
         Ok(ArgAbi::new(cx, layout, |scalar, offset| {
-            arg_attrs_for_rust_scalar(*cx, scalar, layout, offset, is_return, drop_target_pointee)
+            arg_attrs_for_rust_scalar(
+                *cx,
+                scalar,
+                layout,
+                offset,
+                is_return,
+                // Only set `drop_target_pointee` for the data part of a wide pointer.
+                // See `arg_attrs_for_rust_scalar` docs for more information.
+                drop_target_pointee.filter(|_| offset == Size::ZERO),
+            )
         }))
     };
 
@@ -575,16 +649,7 @@ fn fn_abi_new_uncached<'tcx>(
             sig.abi,
         ),
     };
-    fn_abi_adjust_for_abi(
-        cx,
-        &mut fn_abi,
-        sig.abi,
-        // If this is a virtual call, we cannot pass the `fn_def_id`, as it might call other
-        // functions from vtable. And for a tls shim, passing the `fn_def_id` would refer to
-        // the underlying static. Internally, `deduced_param_attrs` attempts to infer attributes
-        // by visit the function body.
-        determined_fn_def_id,
-    );
+    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi);
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
     fn_abi_sanity_check(cx, &fn_abi, sig.abi);
     Ok(tcx.arena.alloc(fn_abi))
@@ -595,7 +660,6 @@ fn fn_abi_adjust_for_abi<'tcx>(
     cx: &LayoutCx<'tcx>,
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
     abi: ExternAbi,
-    fn_def_id: Option<DefId>,
 ) {
     if abi == ExternAbi::Unadjusted {
         // The "unadjusted" ABI passes aggregates in "direct" mode. That's fragile but needed for
@@ -616,30 +680,35 @@ fn fn_abi_adjust_for_abi<'tcx>(
         for arg in fn_abi.args.iter_mut() {
             unadjust(arg);
         }
-        return;
-    }
-
-    let tcx = cx.tcx();
-
-    if abi.is_rustic_abi() {
+    } else if abi.is_rustic_abi() {
         fn_abi.adjust_for_rust_abi(cx);
-        // Look up the deduced parameter attributes for this function, if we have its def ID and
-        // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
-        // as appropriate.
-        let deduced =
-            if tcx.sess.opts.optimize != OptLevel::No && tcx.sess.opts.incremental.is_none() {
-                fn_def_id.map(|fn_def_id| tcx.deduced_param_attrs(fn_def_id)).unwrap_or_default()
-            } else {
-                &[]
-            };
-        if !deduced.is_empty() {
-            apply_deduced_attributes(cx, deduced, 0, &mut fn_abi.ret);
-            for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
-                apply_deduced_attributes(cx, deduced, arg_idx + 1, arg);
-            }
-        }
     } else {
         fn_abi.adjust_for_foreign_abi(cx, abi);
+    }
+}
+
+#[tracing::instrument(level = "trace", skip(cx))]
+fn fn_abi_adjust_for_deduced_attrs<'tcx>(
+    cx: &LayoutCx<'tcx>,
+    fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+    abi: ExternAbi,
+    fn_def_id: DefId,
+) -> &'tcx FnAbi<'tcx, Ty<'tcx>> {
+    let tcx = cx.tcx();
+    // Look up the deduced parameter attributes for this function, if we have its def ID.
+    // We'll tag its parameters with those attributes as appropriate.
+    let deduced = if abi.is_rustic_abi() { tcx.deduced_param_attrs(fn_def_id) } else { &[] };
+    if deduced.is_empty() {
+        fn_abi
+    } else {
+        let mut fn_abi = fn_abi.clone();
+        apply_deduced_attributes(cx, deduced, 0, &mut fn_abi.ret);
+        for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
+            apply_deduced_attributes(cx, deduced, arg_idx + 1, arg);
+        }
+        debug!("fn_abi_adjust_for_deduced_attrs = {:?}", fn_abi);
+        fn_abi_sanity_check(cx, &fn_abi, abi);
+        tcx.arena.alloc(fn_abi)
     }
 }
 

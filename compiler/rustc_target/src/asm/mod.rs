@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 
-use crate::spec::{Abi, Arch, RelocModel, Target};
+use crate::spec::{Arch, CfgAbi, RelocModel, Target};
 
 pub struct ModifierInfo {
     pub modifier: char,
@@ -67,7 +67,7 @@ macro_rules! def_reg_class {
 macro_rules! def_regs {
     ($arch:ident $arch_reg:ident $arch_regclass:ident {
         $(
-            $reg:ident: $class:ident $(, $extra_class:ident)* = [$reg_name:literal $(, $alias:literal)*] $(% $filter:ident)?,
+            $reg:ident: $class:ident $(, $extra_class:ident)* = [$reg_name:literal $(, $alias:literal)*] $(% $filter:ident)*,
         )*
         $(
             #error = [$($bad_reg:literal),+] => $error:literal,
@@ -121,7 +121,7 @@ macro_rules! def_regs {
                                 _target_features,
                                 _target,
                                 _is_clobber
-                            )?;)?
+                            )?;)*
                             Ok(())
                         }
                     )*
@@ -142,7 +142,7 @@ macro_rules! def_regs {
             #[allow(unused_imports)]
             use super::{InlineAsmReg, InlineAsmRegClass};
             $(
-                if $($filter(_arch, _reloc_model, _target_features, _target, false).is_ok() &&)? true {
+                if $($filter(_arch, _reloc_model, _target_features, _target, false).is_ok() &&)* true {
                     if let Some(set) = _map.get_mut(&InlineAsmRegClass::$arch($arch_regclass::$class)) {
                         set.insert(InlineAsmReg::$arch($arch_reg::$reg));
                     }
@@ -614,7 +614,7 @@ impl InlineAsmRegClass {
         allow_experimental_reg: bool,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
-            Self::X86(r) => r.supported_types(arch),
+            Self::X86(r) => r.supported_types(arch, allow_experimental_reg),
             Self::Arm(r) => r.supported_types(arch),
             Self::AArch64(r) => r.supported_types(arch),
             Self::RiscV(r) => r.supported_types(arch),
@@ -1001,7 +1001,7 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => match name {
-                "C" | "system" => Ok(if target.abi == Abi::Spe {
+                "C" | "system" => Ok(if target.cfg_abi == CfgAbi::Spe {
                     InlineAsmClobberAbi::PowerPCSPE
                 } else {
                     InlineAsmClobberAbi::PowerPC

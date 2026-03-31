@@ -237,8 +237,7 @@ where
         Rvalue::Use(operand)
         | Rvalue::Repeat(operand, _)
         | Rvalue::UnaryOp(_, operand)
-        | Rvalue::Cast(_, operand, _)
-        | Rvalue::ShallowInitBox(operand, _) => in_operand::<Q, _>(cx, in_local, operand),
+        | Rvalue::Cast(_, operand, _) => in_operand::<Q, _>(cx, in_local, operand),
 
         Rvalue::BinaryOp(_, box (lhs, rhs)) => {
             in_operand::<Q, _>(cx, in_local, lhs) || in_operand::<Q, _>(cx, in_local, rhs)
@@ -345,7 +344,7 @@ where
     let uneval = match constant.const_ {
         Const::Ty(_, ct) => match ct.kind() {
             ty::ConstKind::Param(_) | ty::ConstKind::Error(_) => None,
-            // Unevaluated consts in MIR bodies don't have associated MIR (e.g. `#[type_const]`).
+            // Unevaluated consts in MIR bodies don't have associated MIR (e.g. `type const`).
             ty::ConstKind::Unevaluated(_) => None,
             // FIXME(mgca): Investigate whether using `None` for `ConstKind::Value` is overly
             // strict, and if instead we should be doing some kind of value-based analysis.

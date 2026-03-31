@@ -1,6 +1,6 @@
 //! Random value generation.
 
-use crate::range::RangeFull;
+use crate::ops::RangeFull;
 
 /// A source of randomness.
 #[unstable(feature = "random", issue = "130703")]

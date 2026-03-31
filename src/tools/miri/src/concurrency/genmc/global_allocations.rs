@@ -62,7 +62,7 @@ impl GlobalStateInner {
         let entry = match self.base_addr.entry(alloc_id) {
             Entry::Occupied(occupied_entry) => {
                 // Looks like some other thread allocated this for us
-                // between when we released the read lock and aquired the write lock,
+                // between when we released the read lock and acquired the write lock,
                 // so we just return that value.
                 return interp_ok(*occupied_entry.get());
             }

@@ -75,9 +75,15 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         debug!(?pattern);
 
                         let span = match local.init {
-                            Some(init) => local.span.with_hi(init.span.hi()),
-                            None => local.span,
+                            Some(init)
+                                if let Some(init_span) =
+                                    init.span.find_ancestor_inside_same_ctxt(local.span) =>
+                            {
+                                local.span.with_hi(init_span.hi())
+                            }
+                            Some(_) | None => local.span,
                         };
+                        let initializer = local.init.map(|init| self.mirror_expr(init));
                         let stmt = Stmt {
                             kind: StmtKind::Let {
                                 remainder_scope,
@@ -86,7 +92,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                     data: region::ScopeData::Node,
                                 },
                                 pattern,
-                                initializer: local.init.map(|init| self.mirror_expr(init)),
+                                initializer,
                                 else_block,
                                 hir_id: local.hir_id,
                                 span,

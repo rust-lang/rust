@@ -18,9 +18,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
-#![feature(cfg_select)]
 #![feature(core_io_borrowed_buf)]
-#![feature(if_let_guard)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
@@ -54,7 +52,6 @@ use hygiene::Transparency;
 pub use hygiene::{
     DesugaringKind, ExpnData, ExpnHash, ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext,
 };
-use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LOCAL_CRATE, LocalDefId, StableCrateId};
 pub mod edit_distance;
@@ -92,6 +89,20 @@ use sha2::Sha256;
 
 #[cfg(test)]
 mod tests;
+
+#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable_Generic)]
+pub struct Spanned<T> {
+    pub node: T,
+    pub span: Span,
+}
+
+pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
+    Spanned { node: t, span: sp }
+}
+
+pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
+    respan(DUMMY_SP, t)
+}
 
 /// Per-session global variables: this struct is stored in thread-local storage
 /// in such a way that it is accessible without any kind of handle to all
@@ -2402,14 +2413,12 @@ impl SourceFile {
     /// normalized one. Hence we need to convert those offsets to the normalized
     /// form when constructing spans.
     pub fn normalized_byte_pos(&self, offset: u32) -> BytePos {
-        let diff = match self
-            .normalized_pos
-            .binary_search_by(|np| (np.pos.0 + np.diff).cmp(&(self.start_pos.0 + offset)))
-        {
-            Ok(i) => self.normalized_pos[i].diff,
-            Err(0) => 0,
-            Err(i) => self.normalized_pos[i - 1].diff,
-        };
+        let diff =
+            match self.normalized_pos.binary_search_by(|np| (np.pos.0 + np.diff).cmp(&offset)) {
+                Ok(i) => self.normalized_pos[i].diff,
+                Err(0) => 0,
+                Err(i) => self.normalized_pos[i - 1].diff,
+            };
 
         BytePos::from_u32(self.start_pos.0 + offset - diff)
     }
@@ -2656,7 +2665,7 @@ impl_pos! {
     pub struct BytePos(pub u32);
 
     /// A byte offset relative to file beginning.
-    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, HashStable_Generic)]
     pub struct RelativeBytePos(pub u32);
 
     /// A character offset.
@@ -2677,12 +2686,6 @@ impl<S: Encoder> Encodable<S> for BytePos {
 impl<D: Decoder> Decodable<D> for BytePos {
     fn decode(d: &mut D) -> BytePos {
         BytePos(d.read_u32())
-    }
-}
-
-impl<H: HashStableContext> HashStable<H> for RelativeBytePos {
-    fn hash_stable(&self, hcx: &mut H, hasher: &mut StableHasher) {
-        self.0.hash_stable(hcx, hasher);
     }
 }
 
@@ -2798,106 +2801,24 @@ impl InnerSpan {
 /// This is a hack to allow using the [`HashStable_Generic`] derive macro
 /// instead of implementing everything in rustc_middle.
 pub trait HashStableContext {
+    /// The main event: stable hashing of a span.
+    fn span_hash_stable(&mut self, span: Span, hasher: &mut StableHasher);
+
+    /// Compute a `DefPathHash`.
     fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
-    fn hash_spans(&self) -> bool;
-    /// Accesses `sess.opts.unstable_opts.incremental_ignore_spans` since
-    /// we don't have easy access to a `Session`
-    fn unstable_opts_incremental_ignore_spans(&self) -> bool;
-    fn def_span(&self, def_id: LocalDefId) -> Span;
-    fn span_data_to_lines_and_cols(
-        &mut self,
-        span: &SpanData,
-    ) -> Option<(&SourceFile, usize, BytePos, usize, BytePos)>;
-    fn hashing_controls(&self) -> HashingControls;
+
+    /// Assert that the provided `HashStableContext` is configured with the default
+    /// `HashingControls`. We should always have bailed out before getting to here with a
+    fn assert_default_hashing_controls(&self, msg: &str);
 }
 
-impl<CTX> HashStable<CTX> for Span
+impl<Hcx> HashStable<Hcx> for Span
 where
-    CTX: HashStableContext,
+    Hcx: HashStableContext,
 {
-    /// Hashes a span in a stable way. We can't directly hash the span's `BytePos`
-    /// fields (that would be similar to hashing pointers, since those are just
-    /// offsets into the `SourceMap`). Instead, we hash the (file name, line, column)
-    /// triple, which stays the same even if the containing `SourceFile` has moved
-    /// within the `SourceMap`.
-    ///
-    /// Also note that we are hashing byte offsets for the column, not unicode
-    /// codepoint offsets. For the purpose of the hash that's sufficient.
-    /// Also, hashing filenames is expensive so we avoid doing it twice when the
-    /// span starts and ends in the same file, which is almost always the case.
-    ///
-    /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        const TAG_VALID_SPAN: u8 = 0;
-        const TAG_INVALID_SPAN: u8 = 1;
-        const TAG_RELATIVE_SPAN: u8 = 2;
-
-        if !ctx.hash_spans() {
-            return;
-        }
-
-        let span = self.data_untracked();
-        span.ctxt.hash_stable(ctx, hasher);
-        span.parent.hash_stable(ctx, hasher);
-
-        if span.is_dummy() {
-            Hash::hash(&TAG_INVALID_SPAN, hasher);
-            return;
-        }
-
-        let parent = span.parent.map(|parent| ctx.def_span(parent).data_untracked());
-        if let Some(parent) = parent
-            && parent.contains(span)
-        {
-            // This span is enclosed in a definition: only hash the relative position.
-            // This catches a subset of the cases from the `file.contains(parent.lo)`,
-            // But we can do this check cheaply without the expensive `span_data_to_lines_and_cols` query.
-            Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-            (span.lo - parent.lo).to_u32().hash_stable(ctx, hasher);
-            (span.hi - parent.lo).to_u32().hash_stable(ctx, hasher);
-            return;
-        }
-
-        // If this is not an empty or invalid span, we want to hash the last
-        // position that belongs to it, as opposed to hashing the first
-        // position past it.
-        let Some((file, line_lo, col_lo, line_hi, col_hi)) = ctx.span_data_to_lines_and_cols(&span)
-        else {
-            Hash::hash(&TAG_INVALID_SPAN, hasher);
-            return;
-        };
-
-        if let Some(parent) = parent
-            && file.contains(parent.lo)
-        {
-            // This span is relative to another span in the same file,
-            // only hash the relative position.
-            Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-            Hash::hash(&(span.lo.0.wrapping_sub(parent.lo.0)), hasher);
-            Hash::hash(&(span.hi.0.wrapping_sub(parent.lo.0)), hasher);
-            return;
-        }
-
-        Hash::hash(&TAG_VALID_SPAN, hasher);
-        Hash::hash(&file.stable_id, hasher);
-
-        // Hash both the length and the end location (line/column) of a span. If we
-        // hash only the length, for example, then two otherwise equal spans with
-        // different end locations will have the same hash. This can cause a problem
-        // during incremental compilation wherein a previous result for a query that
-        // depends on the end location of a span will be incorrectly reused when the
-        // end location of the span it depends on has changed (see issue #74890). A
-        // similar analysis applies if some query depends specifically on the length
-        // of the span, but we only hash the end location. So hash both.
-
-        let col_lo_trunc = (col_lo.0 as u64) & 0xFF;
-        let line_lo_trunc = ((line_lo as u64) & 0xFF_FF_FF) << 8;
-        let col_hi_trunc = (col_hi.0 as u64) & 0xFF << 32;
-        let line_hi_trunc = ((line_hi as u64) & 0xFF_FF_FF) << 40;
-        let col_line = col_lo_trunc | line_lo_trunc | col_hi_trunc | line_hi_trunc;
-        let len = (span.hi - span.lo).0;
-        Hash::hash(&col_line, hasher);
-        Hash::hash(&len, hasher);
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        // `span_hash_stable` does all the work.
+        hcx.span_hash_stable(*self, hasher)
     }
 }
 

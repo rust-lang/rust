@@ -53,10 +53,8 @@ fn explore_directory(dir: &Path) -> Vec<String> {
             if let Some(ext) = path.extension() {
                 match ext.to_str().unwrap() {
                     "rs" | "toml" => current_file.clone_from(&file_prefix),
-                    "stderr" | "stdout" => {
-                        if file_prefix != current_file {
-                            missing_files.push(path.to_str().unwrap().to_string());
-                        }
+                    "stderr" | "stdout" if file_prefix != current_file => {
+                        missing_files.push(path.to_str().unwrap().to_string());
                     },
                     _ => {},
                 }

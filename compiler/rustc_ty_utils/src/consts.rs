@@ -1,12 +1,11 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::query::Providers;
 use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
-use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Expr, LitToConstInput, TyCtxt, TypeVisitableExt};
 use rustc_middle::{mir, thir};
 use rustc_span::Span;
 use tracing::instrument;
@@ -59,7 +58,11 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::Literal { lit, neg } => {
             let sp = node.span;
-            tcx.at(sp).lit_to_const(LitToConstInput { lit: lit.node, ty: node.ty, neg })
+            match tcx.at(sp).lit_to_const(LitToConstInput { lit: lit.node, ty: Some(node.ty), neg })
+            {
+                Some(value) => ty::Const::new_value(tcx, value.valtree, value.ty),
+                None => ty::Const::new_misc_error(tcx),
+            }
         }
         &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
             let val = ty::ValTree::from_scalar_int(tcx, lit);
@@ -172,7 +175,6 @@ fn recurse_build<'tcx>(
         | ExprKind::LoopMatch { .. } => {
             error(GenericConstantTooComplexSub::LoopNotSupported(node.span))?
         }
-        ExprKind::Box { .. } => error(GenericConstantTooComplexSub::BoxNotSupported(node.span))?,
         ExprKind::ByUse { .. } => {
             error(GenericConstantTooComplexSub::ByUseNotSupported(node.span))?
         }
@@ -258,7 +260,6 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
                 count.has_non_region_param()
             }
             thir::ExprKind::Scope { .. }
-            | thir::ExprKind::Box { .. }
             | thir::ExprKind::If { .. }
             | thir::ExprKind::Call { .. }
             | thir::ExprKind::ByUse { .. }

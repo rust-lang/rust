@@ -12,8 +12,8 @@ use crate::sys::{unsupported, unsupported_err};
 #[path = "unsupported.rs"]
 mod unsupported_fs;
 pub use unsupported_fs::{
-    DirBuilder, FileTimes, canonicalize, link, readlink, remove_dir_all, rename, rmdir, symlink,
-    unlink,
+    Dir, DirBuilder, FileTimes, canonicalize, link, readlink, remove_dir_all, rename, rmdir,
+    symlink, unlink,
 };
 
 /// VEXos file descriptor.

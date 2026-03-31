@@ -413,7 +413,7 @@ fn valtree_into_mplace<'tcx>(
                         Some(variant_idx),
                     )
                 }
-                _ => (place.clone(), branches, None),
+                _ => (place.clone(), branches.as_slice(), None),
             };
             debug!(?place_adjusted, ?branches);
 

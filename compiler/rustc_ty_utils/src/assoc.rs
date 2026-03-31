@@ -2,7 +2,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, ImplItemImplKind, ItemKind};
+use rustc_hir::{self as hir, ConstItemRhs, ImplItemImplKind, ItemKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -88,7 +88,9 @@ fn associated_item_from_trait_item(
     let owner_id = trait_item.owner_id;
     let name = trait_item.ident.name;
     let kind = match trait_item.kind {
-        hir::TraitItemKind::Const { .. } => ty::AssocKind::Const { name },
+        hir::TraitItemKind::Const(_, _, is_type_const) => {
+            ty::AssocKind::Const { name, is_type_const: is_type_const.into() }
+        }
         hir::TraitItemKind::Fn { .. } => {
             ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
         }
@@ -104,7 +106,9 @@ fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>
     let owner_id = impl_item.owner_id;
     let name = impl_item.ident.name;
     let kind = match impl_item.kind {
-        hir::ImplItemKind::Const { .. } => ty::AssocKind::Const { name },
+        hir::ImplItemKind::Const(_, rhs) => {
+            ty::AssocKind::Const { name, is_type_const: matches!(rhs, ConstItemRhs::TypeConst(_)) }
+        }
         hir::ImplItemKind::Fn { .. } => {
             ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
         }

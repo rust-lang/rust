@@ -35,15 +35,18 @@
 
 use std::env::{self, VarError};
 use std::fmt::{self, Display};
+use std::fs::File;
 use std::io::{self, IsTerminal};
+use std::sync::Mutex;
 
 use tracing::dispatcher::SetGlobalDefaultError;
 use tracing::{Event, Subscriber};
-use tracing_subscriber::Registry;
 use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
 use tracing_subscriber::fmt::FmtContext;
-use tracing_subscriber::fmt::format::{self, FormatEvent, FormatFields};
+use tracing_subscriber::fmt::format::{self, FmtSpan, FormatEvent, FormatFields};
+use tracing_subscriber::fmt::writer::BoxMakeWriter;
 use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::{Layer, Registry};
 // Re-export tracing
 pub use {tracing, tracing_core, tracing_subscriber};
 
@@ -55,12 +58,15 @@ pub struct LoggerConfig {
     pub verbose_entry_exit: Result<String, VarError>,
     pub verbose_thread_ids: Result<String, VarError>,
     pub backtrace: Result<String, VarError>,
+    pub json: Result<String, VarError>,
+    pub output_target: Result<String, VarError>,
     pub wraptree: Result<String, VarError>,
     pub lines: Result<String, VarError>,
 }
 
 impl LoggerConfig {
     pub fn from_env(env: &str) -> Self {
+        // NOTE: documented in the dev guide. If you change this, also update it!
         LoggerConfig {
             filter: env::var(env),
             color_logs: env::var(format!("{env}_COLOR")),
@@ -69,6 +75,8 @@ impl LoggerConfig {
             backtrace: env::var(format!("{env}_BACKTRACE")),
             wraptree: env::var(format!("{env}_WRAPTREE")),
             lines: env::var(format!("{env}_LINES")),
+            json: env::var(format!("{env}_FORMAT_JSON")),
+            output_target: env::var(format!("{env}_OUTPUT_TARGET")),
         }
     }
 }
@@ -136,23 +144,59 @@ where
         Err(_) => false,
     };
 
-    let mut layer = tracing_tree::HierarchicalLayer::default()
-        .with_writer(io::stderr)
-        .with_ansi(color_logs)
-        .with_targets(true)
-        .with_verbose_exit(verbose_entry_exit)
-        .with_verbose_entry(verbose_entry_exit)
-        .with_indent_amount(2)
-        .with_indent_lines(lines)
-        .with_thread_ids(verbose_thread_ids)
-        .with_thread_names(verbose_thread_ids);
+    let json = match cfg.json {
+        Ok(v) => &v == "1",
+        Err(_) => false,
+    };
 
-    if let Ok(v) = cfg.wraptree {
-        match v.parse::<usize>() {
-            Ok(v) => layer = layer.with_wraparound(v),
-            Err(_) => return Err(Error::InvalidWraptree(v)),
+    let output_target: BoxMakeWriter = match cfg.output_target {
+        Ok(v) => match File::options().create(true).write(true).truncate(true).open(&v) {
+            Ok(i) => BoxMakeWriter::new(Mutex::new(i)),
+            Err(e) => {
+                eprintln!("couldn't open {v} as a log target: {e:?}");
+                BoxMakeWriter::new(io::stderr)
+            }
+        },
+        Err(_) => BoxMakeWriter::new(io::stderr),
+    };
+
+    let layer = if json {
+        let format = tracing_subscriber::fmt::format()
+            .json()
+            .with_span_list(true)
+            .with_source_location(true);
+
+        let fmt_layer = tracing_subscriber::fmt::layer()
+            .json()
+            .event_format(format)
+            .with_writer(output_target)
+            .with_target(true)
+            .with_ansi(false)
+            .with_thread_ids(verbose_thread_ids)
+            .with_thread_names(verbose_thread_ids)
+            .with_span_events(FmtSpan::ACTIVE);
+        Layer::boxed(fmt_layer)
+    } else {
+        let mut layer = tracing_tree::HierarchicalLayer::default()
+            .with_writer(output_target)
+            .with_ansi(color_logs)
+            .with_targets(true)
+            .with_verbose_exit(verbose_entry_exit)
+            .with_verbose_entry(verbose_entry_exit)
+            .with_indent_amount(2)
+            .with_indent_lines(lines)
+            .with_thread_ids(verbose_thread_ids)
+            .with_thread_names(verbose_thread_ids);
+
+        if let Ok(v) = cfg.wraptree {
+            match v.parse::<usize>() {
+                Ok(v) => layer = layer.with_wraparound(v),
+                Err(_) => return Err(Error::InvalidWraptree(v)),
+            }
         }
-    }
+
+        Layer::boxed(layer)
+    };
 
     let subscriber = build_subscriber();
     // NOTE: It is important to make sure that the filter is applied on the last layer

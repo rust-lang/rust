@@ -18,7 +18,6 @@ extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_target;
 
 /// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
 /// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
@@ -39,9 +38,9 @@ mod log;
 use std::env;
 use std::num::{NonZero, NonZeroI32};
 use std::ops::Range;
+use std::process::ExitCode;
 use std::rc::Rc;
 use std::str::FromStr;
-use std::sync::Once;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use miri::{
@@ -65,10 +64,9 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::EarlyDiagCtxt;
-use rustc_session::config::{CrateType, ErrorOutputType, OptLevel, Options};
+use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
+use rustc_session::{EarlyDiagCtxt, Session};
 use rustc_span::def_id::DefId;
-use rustc_target::spec::Target;
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 
@@ -173,18 +171,21 @@ fn run_many_seeds(
 /// Generates the codegen backend for code that Miri will interpret: we basically
 /// use the dummy backend, except that we put the LLVM backend in charge of
 /// target features.
-fn make_miri_codegen_backend(opts: &Options, target: &Target) -> Box<dyn CodegenBackend> {
-    let early_dcx = EarlyDiagCtxt::new(opts.error_format);
+fn make_miri_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
+    let early_dcx = EarlyDiagCtxt::new(sess.opts.error_format);
 
     // Use the target_config method of the default codegen backend (eg LLVM) to ensure the
     // calculated target features match said backend by respecting eg -Ctarget-cpu.
-    let target_config_backend =
-        rustc_interface::util::get_codegen_backend(&early_dcx, &opts.sysroot, None, target);
-    let target_config_backend_init = Once::new();
+    let target_config_backend = rustc_interface::util::get_codegen_backend(
+        &early_dcx,
+        &sess.opts.sysroot,
+        None,
+        &sess.target,
+    );
+    target_config_backend.init(sess);
 
     Box::new(DummyCodegenBackend {
         target_config_override: Some(Box::new(move |sess| {
-            target_config_backend_init.call_once(|| target_config_backend.init(sess));
             target_config_backend.target_config(sess)
         })),
     })
@@ -192,7 +193,11 @@ fn make_miri_codegen_backend(opts: &Options, target: &Target) -> Box<dyn Codegen
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
     fn config(&mut self, config: &mut rustc_interface::interface::Config) {
+        // We never reach codegen anyway.
         config.make_codegen_backend = Some(Box::new(make_miri_codegen_backend));
+
+        // Register our custom extra symbols.
+        config.extra_symbols = miri::sym::EXTRA_SYMBOLS.into();
     }
 
     fn after_analysis<'tcx>(
@@ -353,6 +358,9 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
                 )
             }
         });
+
+        // Register our custom extra symbols.
+        config.extra_symbols = miri::sym::EXTRA_SYMBOLS.into();
     }
 
     fn after_analysis<'tcx>(
@@ -374,7 +382,7 @@ fn exit(exit_code: i32) -> ! {
     // Drop the tracing guard before exiting, so tracing calls are flushed correctly.
     deinit_loggers();
     // Make sure the supervisor knows about the exit code.
-    #[cfg(all(unix, feature = "native-lib"))]
+    #[cfg(all(feature = "native-lib", unix))]
     miri::native_lib::register_retcode_sv(exit_code);
     // Actually exit.
     std::process::exit(exit_code);
@@ -404,7 +412,11 @@ fn run_compiler_and_exit(
     // Invoke compiler, catch any unwinding panics and handle return code.
     let exit_code =
         rustc_driver::catch_with_exit_code(move || rustc_driver::run_compiler(args, callbacks));
-    exit(exit_code)
+    exit(if exit_code == ExitCode::SUCCESS {
+        rustc_driver::EXIT_SUCCESS
+    } else {
+        rustc_driver::EXIT_FAILURE
+    })
 }
 
 /// Parses a comma separated list of `T` from the given string:
@@ -434,7 +446,7 @@ fn parse_range(val: &str) -> Result<Range<u32>, &'static str> {
     Ok(from..to)
 }
 
-fn main() {
+fn main() -> ExitCode {
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Snapshot a copy of the environment before `rustc` starts messing with it.
@@ -449,9 +461,7 @@ fn main() {
         if crate_kind == "host" {
             // For host crates like proc macros and build scripts, we are an entirely normal rustc.
             // These eventually produce actual binaries and never run in Miri.
-            match rustc_driver::main() {
-                // Empty match proves this function will never return.
-            }
+            return rustc_driver::main();
         } else if crate_kind != "target" {
             panic!("invalid `MIRI_BE_RUSTC` value: {crate_kind:?}")
         };
@@ -746,7 +756,7 @@ fn main() {
     debug!("crate arguments: {:?}", miri_config.args);
     if !miri_config.native_lib.is_empty() && miri_config.native_lib_enable_tracing {
         // SAFETY: No other threads are running
-        #[cfg(all(unix, feature = "native-lib"))]
+        #[cfg(all(feature = "native-lib", unix))]
         if unsafe { miri::native_lib::init_sv() }.is_err() {
             eprintln!(
                 "warning: The native-lib tracer could not be started. Is this an x86 Linux system, and does Miri have permissions to ptrace?\n\

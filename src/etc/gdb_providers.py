@@ -18,6 +18,12 @@ def unwrap_unique_or_non_null(unique_or_nonnull):
     return ptr if ptr.type.code == gdb.TYPE_CODE_PTR else ptr[ptr.type.fields()[0]]
 
 
+def unwrap_scalar_wrappers(wrapper):
+    while not wrapper.type.is_scalar:
+        wrapper = wrapper[wrapper.type.fields()[0]]
+    return wrapper
+
+
 # GDB 14 has a tag class that indicates that extension methods are ok
 # to call.  Use of this tag only requires that printers hide local
 # attributes and methods by prefixing them with "_".
@@ -197,8 +203,8 @@ class StdRcProvider(printer_base):
         self._is_atomic = is_atomic
         self._ptr = unwrap_unique_or_non_null(valobj["ptr"])
         self._value = self._ptr["data" if is_atomic else "value"]
-        self._strong = self._ptr["strong"]["v" if is_atomic else "value"]["value"]
-        self._weak = self._ptr["weak"]["v" if is_atomic else "value"]["value"] - 1
+        self._strong = unwrap_scalar_wrappers(self._ptr["strong"])
+        self._weak = unwrap_scalar_wrappers(self._ptr["weak"]) - 1
 
     def to_string(self):
         if self._is_atomic:

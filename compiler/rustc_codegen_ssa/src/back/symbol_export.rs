@@ -14,6 +14,7 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::config::CrateType;
+use rustc_span::Span;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, Os, TlsModel};
 use tracing::debug;
@@ -197,6 +198,14 @@ fn exported_non_generic_symbols_provider_local<'tcx>(
             })
         }))
     }
+
+    symbols.extend(sorted.iter().flat_map(|&(&def_id, &info)| {
+        tcx.codegen_fn_attrs(def_id).foreign_item_symbol_aliases.iter().map(
+            move |&(foreign_item, _linkage, _visibility)| {
+                (ExportedSymbol::NonGeneric(foreign_item), info)
+            },
+        )
+    }));
 
     if tcx.entry_fn(()).is_some() {
         let exported_symbol =
@@ -763,4 +772,44 @@ fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<String> {
     }
 
     ret
+}
+
+pub fn escape_symbol_name(tcx: TyCtxt<'_>, symbol: &str, span: Span) -> String {
+    // https://github.com/llvm/llvm-project/blob/a55fbab0cffc9b4af497b9e4f187b61143743e06/llvm/lib/MC/MCSymbol.cpp
+    use rustc_target::spec::{Arch, BinaryFormat};
+    if !symbol.is_empty()
+        && symbol.chars().all(|c| matches!(c, '0'..='9' | 'A'..='Z' | 'a'..='z' | '_' | '$' | '.'))
+    {
+        return symbol.to_string();
+    }
+    if tcx.sess.target.binary_format == BinaryFormat::Xcoff {
+        tcx.sess.dcx().span_fatal(
+            span,
+            format!(
+                "symbol escaping is not supported for the binary format {}",
+                tcx.sess.target.binary_format
+            ),
+        );
+    }
+    if tcx.sess.target.arch == Arch::Nvptx64 {
+        tcx.sess.dcx().span_fatal(
+            span,
+            format!(
+                "symbol escaping is not supported for the architecture {}",
+                tcx.sess.target.arch
+            ),
+        );
+    }
+    let mut escaped_symbol = String::new();
+    escaped_symbol.push('\"');
+    for c in symbol.chars() {
+        match c {
+            '\n' => escaped_symbol.push_str("\\\n"),
+            '"' => escaped_symbol.push_str("\\\""),
+            '\\' => escaped_symbol.push_str("\\\\"),
+            c => escaped_symbol.push(c),
+        }
+    }
+    escaped_symbol.push('\"');
+    escaped_symbol
 }

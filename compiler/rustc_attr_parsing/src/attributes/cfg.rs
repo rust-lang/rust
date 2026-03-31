@@ -3,7 +3,7 @@ use std::convert::identity;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, ast, token};
-use rustc_errors::{Applicability, PResult, inline_fluent};
+use rustc_errors::{Applicability, PResult, msg};
 use rustc_feature::{
     AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
 };
@@ -20,7 +20,9 @@ use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::context::{AcceptContext, ShouldEmit, Stage};
-use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser};
+use crate::parser::{
+    AllowExprMetavar, ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser,
+};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
@@ -141,7 +143,7 @@ fn parse_cfg_entry_target<S: Stage>(
             cx.sess(),
             sym::cfg_target_compact,
             meta_span,
-            inline_fluent!("compact `cfg(target(..))` is experimental and subject to change"),
+            msg!("compact `cfg(target(..))` is experimental and subject to change"),
         )
         .emit();
     }
@@ -363,6 +365,7 @@ fn parse_cfg_attr_internal<'a>(
     let meta = MetaItemOrLitParser::parse_single(
         parser,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+        AllowExprMetavar::Yes,
     )?;
     let pred_span = pred_start.with_hi(parser.token.span.hi());
 

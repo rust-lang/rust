@@ -1,5 +1,5 @@
 error: this lint expectation is unfulfilled
-  --> tests/ui/len_without_is_empty_expect.rs:18:14
+  --> tests/ui/len_without_is_empty_expect.rs:17:14
    |
 LL |     #[expect(clippy::len_without_is_empty)]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

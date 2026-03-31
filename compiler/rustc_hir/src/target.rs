@@ -1,8 +1,4 @@
-//! This module implements some validity checks for attributes.
-//! In particular it verifies that `#[inline]` and `#[repr]` attributes are
-//! attached to items that actually support them and if there are
-//! conflicts between multiple such attributes attached to the same
-//! item.
+//! This module lists attribute targets, with conversions from other types.
 
 use std::fmt::{self, Display};
 
@@ -148,7 +144,7 @@ impl Target {
             DefKind::ExternCrate => Target::ExternCrate,
             DefKind::Use => Target::Use,
             DefKind::Static { .. } => Target::Static,
-            DefKind::Const => Target::Const,
+            DefKind::Const { .. } => Target::Const,
             DefKind::Fn => Target::Fn,
             DefKind::Macro(..) => Target::MacroDef,
             DefKind::Mod => Target::Mod,

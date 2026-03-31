@@ -1,4 +1,4 @@
-error: rustc_outlives
+error: rustc_dump_inferred_outlives
   --> $DIR/reference.rs:4:1
    |
 LL | struct Foo<'a, T> {

@@ -1,4 +1,4 @@
-use rustc_macros::{Diagnostic, LintDiagnostic};
+use rustc_macros::Diagnostic;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_span::{Span, Symbol};
 
@@ -24,7 +24,7 @@ pub(crate) struct NoOptimizedMir {
     pub instance: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("moving {$size} bytes")]
 #[note(
     "the current maximum size is {$limit}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = \"...\"]`"
@@ -162,9 +162,9 @@ pub(crate) struct AbiRequiredTargetFeature<'a> {
     #[primary_span]
     #[label(
         "function {$is_call ->
-[true] called
-*[false] defined
-} here"
+            [true] called
+            *[false] defined
+        } here"
     )]
     pub span: Span,
     pub required_feature: &'a str,

@@ -571,7 +571,11 @@ macro_rules! create_config {
 
                 eprintln!(
                     "Warning: the `version` option is deprecated. \
-                    Use `style_edition` instead."
+                    Use `style_edition=\"{0}\"` instead.",
+                    match self.version.2 {
+                        Version::One => "2015",
+                        Version::Two => "2024",
+                    }
                 );
 
                 if self.was_set().style_edition() || self.was_set_cli().style_edition() {

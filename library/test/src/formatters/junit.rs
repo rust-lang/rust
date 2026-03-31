@@ -1,5 +1,5 @@
+use std::io;
 use std::io::prelude::Write;
-use std::io::{self};
 use std::time::Duration;
 
 use super::OutputFormatter;

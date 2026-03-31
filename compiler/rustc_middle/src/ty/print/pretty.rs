@@ -17,13 +17,13 @@ use rustc_hir::limit::Limit;
 use rustc_macros::{Lift, extension};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
-use rustc_type_ir::{Upcast as _, elaborate};
+use rustc_type_ir::{FieldInfo, Upcast as _, elaborate};
 use smallvec::SmallVec;
 
 // `pretty` is a separate module only for organization.
 use super::*;
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
-use crate::query::{IntoQueryParam, Providers};
+use crate::query::{IntoQueryKey, Providers};
 use crate::ty::{
     ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitPredicate,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -404,7 +404,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             return Ok(true);
         }
         if let Some(symbol) = key.get_opt_name() {
-            if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = kind
+            if let DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy = kind
                 && let Some(parent) = self.tcx().opt_parent(def_id)
                 && let parent_key = self.tcx().def_key(parent)
                 && let Some(symbol) = parent_key.get_opt_name()
@@ -429,7 +429,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             | DefKind::Trait
             | DefKind::TyAlias
             | DefKind::Fn
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::Static { .. } = kind
             {
             } else {
@@ -793,6 +793,16 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     false => write!(self, "{}", self.tcx().item_name(def_id))?,
                 },
             },
+            ty::Adt(def, args)
+                if let Some(FieldInfo { base, variant, name, .. }) =
+                    def.field_representing_type_info(self.tcx(), args) =>
+            {
+                if let Some(variant) = variant {
+                    write!(self, "field_of!({base}, {variant}.{name})")?;
+                } else {
+                    write!(self, "field_of!({base}, {name})")?;
+                }
+            }
             ty::Adt(def, args) => self.print_def_path(def.did(), args)?,
             ty::Dynamic(data, r) => {
                 let print_r = self.should_print_optional_region(r);
@@ -1541,7 +1551,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         match ct.kind() {
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
                 match self.tcx().def_kind(def) {
-                    DefKind::Const | DefKind::AssocConst => {
+                    DefKind::Const { .. } | DefKind::AssocConst { .. } => {
                         self.pretty_print_value_path(def, args)?;
                     }
                     DefKind::AnonConst => {
@@ -1920,7 +1930,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             // Otherwise, print the array separated by commas (or if it's a tuple)
             (ty::ValTreeKind::Branch(fields), ty::Array(..) | ty::Tuple(..)) => {
-                let fields_iter = fields.iter().copied();
+                let fields_iter = fields.iter();
 
                 match *cv.ty.kind() {
                     ty::Array(..) => {
@@ -2170,17 +2180,18 @@ fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
 impl<'t> TyCtxt<'t> {
     /// Returns a string identifying this `DefId`. This string is
     /// suitable for user output.
-    pub fn def_path_str(self, def_id: impl IntoQueryParam<DefId>) -> String {
+    pub fn def_path_str(self, def_id: impl IntoQueryKey<DefId>) -> String {
+        let def_id = def_id.into_query_key();
         self.def_path_str_with_args(def_id, &[])
     }
 
     /// For this one we determine the appropriate namespace for the `def_id`.
     pub fn def_path_str_with_args(
         self,
-        def_id: impl IntoQueryParam<DefId>,
+        def_id: impl IntoQueryKey<DefId>,
         args: &'t [GenericArg<'t>],
     ) -> String {
-        let def_id = def_id.into_query_param();
+        let def_id = def_id.into_query_key();
         let ns = guess_def_namespace(self, def_id);
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
 
@@ -2190,10 +2201,10 @@ impl<'t> TyCtxt<'t> {
     /// For this one we always use value namespace.
     pub fn value_path_str_with_args(
         self,
-        def_id: impl IntoQueryParam<DefId>,
+        def_id: impl IntoQueryKey<DefId>,
         args: &'t [GenericArg<'t>],
     ) -> String {
-        let def_id = def_id.into_query_param();
+        let def_id = def_id.into_query_key();
         let ns = Namespace::ValueNS;
         debug!("value_path_str: def_id={:?}, ns={:?}", def_id, ns);
 
@@ -2211,6 +2222,19 @@ impl fmt::Write for FmtPrinter<'_, '_> {
 impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn reset_path(&mut self) -> Result<(), PrintError> {
+        self.empty_path = true;
+        Ok(())
+    }
+
+    fn should_omit_parent_def_path(&self, parent_def_id: DefId) -> bool {
+        RTN_MODE.with(|mode| mode.get()) == RtnMode::ForSuggestion
+            && matches!(
+                self.tcx().def_key(parent_def_id).disambiguated_data.data,
+                DefPathData::ValueNs(..) | DefPathData::Closure | DefPathData::AnonConst
+            )
     }
 
     fn print_def_path(
@@ -3303,7 +3327,8 @@ define_print_and_forward_display! {
     TraitRefPrintSugared<'tcx> {
         if !with_reduced_queries()
             && p.tcx().trait_def(self.0.def_id).paren_sugar
-            && let ty::Tuple(args) = self.0.args.type_at(1).kind()
+            && let Some(args_ty) = self.0.args.get(1).and_then(|arg| arg.as_type())
+            && let ty::Tuple(args) = args_ty.kind()
         {
             write!(p, "{}(", p.tcx().item_name(self.0.def_id))?;
             for (i, arg) in args.iter().enumerate() {

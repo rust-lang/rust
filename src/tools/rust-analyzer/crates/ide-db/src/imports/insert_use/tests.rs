@@ -1438,3 +1438,156 @@ fn check_guess(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected: Import
     let file = ImportScope { kind: ImportScopeKind::File(syntax), required_cfgs: vec![] };
     assert_eq!(super::guess_granularity_from_scope(&file), expected);
 }
+
+#[test]
+fn insert_with_existing_imports_and_cfg_module() {
+    check(
+        "std::fmt",
+        r#"
+use foo::bar;
+
+#[cfg(target_arch = "x86_64")]
+pub mod api;
+"#,
+        r#"
+use std::fmt;
+
+use foo::bar;
+
+#[cfg(target_arch = "x86_64")]
+pub mod api;
+"#,
+        ImportGranularity::Crate,
+    );
+}
+
+#[test]
+fn insert_before_cfg_module() {
+    check(
+        "std::fmt",
+        r#"
+#[cfg(target_arch = "x86_64")]
+pub mod api;
+"#,
+        r#"
+use std::fmt;
+
+#[cfg(target_arch = "x86_64")]
+pub mod api;
+"#,
+        ImportGranularity::Crate,
+    );
+}
+
+fn check_merge(ra_fixture0: &str, ra_fixture1: &str, last: &str, mb: MergeBehavior) {
+    let use0 = ast::SourceFile::parse(ra_fixture0, span::Edition::CURRENT)
+        .tree()
+        .syntax()
+        .descendants()
+        .find_map(ast::Use::cast)
+        .unwrap();
+
+    let use1 = ast::SourceFile::parse(ra_fixture1, span::Edition::CURRENT)
+        .tree()
+        .syntax()
+        .descendants()
+        .find_map(ast::Use::cast)
+        .unwrap();
+
+    let result = try_merge_imports(&use0, &use1, mb);
+    assert_eq!(result.map(|u| u.to_string().trim().to_owned()), Some(last.trim().to_owned()));
+}
+
+#[test]
+fn merge_gated_imports() {
+    check_merge(
+        r#"#[cfg(test)] use foo::bar;"#,
+        r#"#[cfg(test)] use foo::baz;"#,
+        r#"#[cfg(test)] use foo::{bar, baz};"#,
+        MergeBehavior::Crate,
+    );
+}
+
+#[test]
+fn merge_gated_imports_with_different_values() {
+    let use0 = ast::SourceFile::parse(r#"#[cfg(a)] use foo::bar;"#, span::Edition::CURRENT)
+        .tree()
+        .syntax()
+        .descendants()
+        .find_map(ast::Use::cast)
+        .unwrap();
+
+    let use1 = ast::SourceFile::parse(r#"#[cfg(b)] use foo::baz;"#, span::Edition::CURRENT)
+        .tree()
+        .syntax()
+        .descendants()
+        .find_map(ast::Use::cast)
+        .unwrap();
+
+    let result = try_merge_imports(&use0, &use1, MergeBehavior::Crate);
+    assert_eq!(result, None);
+}
+
+#[test]
+fn merge_gated_imports_different_order() {
+    check_merge(
+        r#"#[cfg(a)] #[cfg(b)] use foo::bar;"#,
+        r#"#[cfg(b)] #[cfg(a)] use foo::baz;"#,
+        r#"#[cfg(a)] #[cfg(b)] use foo::{bar, baz};"#,
+        MergeBehavior::Crate,
+    );
+}
+
+#[test]
+fn merge_into_existing_cfg_import() {
+    check(
+        r#"foo::Foo"#,
+        r#"
+#[cfg(target_os = "windows")]
+use bar::Baz;
+
+#[cfg(target_os = "windows")]
+fn buzz() {
+    Foo$0;
+}
+"#,
+        r#"
+#[cfg(target_os = "windows")]
+use bar::Baz;
+#[cfg(target_os = "windows")]
+use foo::Foo;
+
+#[cfg(target_os = "windows")]
+fn buzz() {
+    Foo;
+}
+"#,
+        ImportGranularity::Crate,
+    );
+}
+
+#[test]
+fn reproduce_user_issue_missing_semicolon() {
+    check(
+        "std::fmt",
+        r#"
+use {
+    foo
+}
+
+#[cfg(target_arch = "x86_64")]
+pub mod api;
+"#,
+        r#"
+use std::fmt;
+
+use {
+    foo
+}
+
+#[cfg(target_arch = "x86_64")]
+pub mod api;
+"#,
+        ImportGranularity::Crate,
+    );
+}

@@ -5,12 +5,13 @@ use std::rc::Rc;
 use itertools::Itertools as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::Subdiagnostic;
+use rustc_errors::formatting::DiagMessageAddArg;
+use rustc_errors::{Subdiagnostic, msg};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::MixedBitSet;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::bug;
 use rustc_middle::mir::{
     self, BasicBlock, Body, ClearCrossCrate, Local, Location, MirDumper, Place, StatementKind,
@@ -23,8 +24,8 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{Analysis, MaybeReachable, ResultsCursor};
+use rustc_session::lint;
 use rustc_session::lint::builtin::TAIL_EXPR_DROP_ORDER;
-use rustc_session::lint::{self};
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::debug;
 
@@ -498,14 +499,18 @@ fn assign_observables_names(
     names
 }
 
-#[derive(LintDiagnostic)]
-#[diag(mir_transform_tail_expr_drop_order)]
+#[derive(Diagnostic)]
+#[diag("relative drop order changing in Rust 2024")]
 struct TailExprDropOrderLint<'a> {
     #[subdiagnostic]
     local_labels: Vec<LocalLabel<'a>>,
-    #[label(mir_transform_drop_location)]
+    #[label(
+        "now the temporary value is dropped here, before the local variables in the block or statement"
+    )]
     drop_span: Option<Span>,
-    #[note(mir_transform_note_epilogue)]
+    #[note(
+        "most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages"
+    )]
     _epilogue: (),
 }
 
@@ -520,26 +525,40 @@ struct LocalLabel<'a> {
 /// A custom `Subdiagnostic` implementation so that the notes are delivered in a specific order
 impl Subdiagnostic for LocalLabel<'_> {
     fn add_to_diag<G: rustc_errors::EmissionGuarantee>(self, diag: &mut rustc_errors::Diag<'_, G>) {
-        // Because parent uses this field , we need to remove it delay before adding it.
-        diag.remove_arg("name");
-        diag.arg("name", self.name);
-        diag.remove_arg("is_generated_name");
-        diag.arg("is_generated_name", self.is_generated_name);
-        diag.remove_arg("is_dropped_first_edition_2024");
-        diag.arg("is_dropped_first_edition_2024", self.is_dropped_first_edition_2024);
-        let msg = diag.eagerly_translate(crate::fluent_generated::mir_transform_tail_expr_local);
-        diag.span_label(self.span, msg);
+        diag.span_label(
+            self.span,
+            msg!(
+                "{$is_generated_name ->
+                    [true] this value will be stored in a temporary; let us call it `{$name}`
+                    *[false] `{$name}` calls a custom destructor
+                }"
+            )
+            .arg("name", self.name)
+            .arg("is_generated_name", self.is_generated_name)
+            .format(),
+        );
         for dtor in self.destructors {
             dtor.add_to_diag(diag);
         }
-        let msg =
-            diag.eagerly_translate(crate::fluent_generated::mir_transform_label_local_epilogue);
-        diag.span_label(self.span, msg);
+        diag.span_label(self.span, msg!(
+            "{$is_dropped_first_edition_2024 ->
+                [true] up until Edition 2021 `{$name}` is dropped last but will be dropped earlier in Edition 2024
+                *[false] `{$name}` will be dropped later as of Edition 2024
+            }"
+        )
+            .arg("is_dropped_first_edition_2024", self.is_dropped_first_edition_2024)
+            .arg("name", self.name)
+            .format());
     }
 }
 
 #[derive(Subdiagnostic)]
-#[note(mir_transform_tail_expr_dtor)]
+#[note(
+    "{$dtor_kind ->
+        [dyn] `{$name}` may invoke a custom destructor because it contains a trait object
+        *[concrete] `{$name}` invokes this custom destructor
+    }"
+)]
 struct DestructorLabel<'a> {
     #[primary_span]
     span: Span,

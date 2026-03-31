@@ -2,7 +2,7 @@
 //@ build-pass
 
 // A regression test for #149081. The environment of `size` and `align`
-// currently means that the item bound of`T::Assoc` doesn't hold. This can
+// currently means that the item bound of `T::Assoc` doesn't hold. This can
 // result in normalization failures and ICE during MIR optimizations.
 //
 // This will no longer be an issue once #149283 is implemented.

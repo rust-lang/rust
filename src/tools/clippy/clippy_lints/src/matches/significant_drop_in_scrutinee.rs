@@ -185,6 +185,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
         if let Some(adt) = ty.ty_adt_def()
             && get_builtin_attr(
                 self.cx.sess(),
+                #[allow(deprecated)]
                 self.cx.tcx.get_all_attrs(adt.did()),
                 sym::has_significant_drop,
             )

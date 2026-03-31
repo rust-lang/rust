@@ -16,7 +16,7 @@ pub mod project;
 pub mod query;
 #[allow(hidden_glob_reexports)]
 mod select;
-mod specialize;
+pub mod specialize;
 mod structural_normalize;
 #[allow(hidden_glob_reexports)]
 mod util;
@@ -300,19 +300,14 @@ fn do_normalize_predicates<'tcx>(
         Ok(predicates) => Ok(predicates),
         Err(fixup_err) => {
             // If we encounter a fixup error, it means that some type
-            // variable wound up unconstrained. I actually don't know
-            // if this can happen, and I certainly don't expect it to
-            // happen often, but if it did happen it probably
-            // represents a legitimate failure due to some kind of
-            // unconstrained variable.
-            //
-            // @lcnr: Let's still ICE here for now. I want a test case
-            // for that.
-            span_bug!(
+            // variable wound up unconstrained. That can happen for
+            // ill-formed impls, so we delay a bug here instead of
+            // immediately ICEing and let type checking report the
+            // actual user-facing errors.
+            Err(tcx.dcx().span_delayed_bug(
                 span,
-                "inference variables in normalized parameter environment: {}",
-                fixup_err
-            );
+                format!("inference variables in normalized parameter environment: {fixup_err}"),
+            ))
         }
     }
 }
@@ -680,6 +675,20 @@ pub fn try_evaluate_const<'tcx>(
                     let typing_env = ty::TypingEnv::post_analysis(tcx, uv.def);
 
                     (args, typing_env)
+                }
+                Some(ty::AnonConstKind::OGCA) => {
+                    if infcx.typing_mode() != TypingMode::PostAnalysis {
+                        // OGCA anon consts should be treated as always having generics
+                        // during anything before codegen (or maybe MIR opts too).
+                        return Err(EvaluateConstErr::HasGenericsOrInfers);
+                    }
+
+                    if uv.args.has_non_region_param() || uv.args.has_non_region_infer() {
+                        return Err(EvaluateConstErr::HasGenericsOrInfers);
+                    }
+
+                    let typing_env = ty::TypingEnv::fully_monomorphized();
+                    (uv.args, typing_env)
                 }
                 Some(ty::AnonConstKind::MCG) | Some(ty::AnonConstKind::NonTypeSystem) | None => {
                     // We are only dealing with "truly" generic/uninferred constants here:

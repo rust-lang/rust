@@ -393,6 +393,7 @@ pub mod consts {
     pub const LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
+#[doc(test(attr(allow(unused_features))))]
 impl f64 {
     /// The radix or base of the internal representation of `f64`.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
@@ -511,6 +512,64 @@ impl f64 {
     /// Negative infinity (−∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
+
+    /// Maximum integer that can be represented exactly in an [`f64`] value,
+    /// with no other integer converting to the same floating point value.
+    ///
+    /// For an integer `x` which satisfies `MIN_EXACT_INTEGER <= x <= MAX_EXACT_INTEGER`,
+    /// there is a "one-to-one" mapping between [`i64`] and [`f64`] values.
+    /// `MAX_EXACT_INTEGER + 1` also converts losslessly to [`f64`] and back to
+    /// [`i64`], but `MAX_EXACT_INTEGER + 2` converts to the same [`f64`] value
+    /// (and back to `MAX_EXACT_INTEGER + 1` as an integer) so there is not a
+    /// "one-to-one" mapping.
+    ///
+    /// [`MAX_EXACT_INTEGER`]: f64::MAX_EXACT_INTEGER
+    /// [`MIN_EXACT_INTEGER`]: f64::MIN_EXACT_INTEGER
+    /// ```
+    /// #![feature(float_exact_integer_constants)]
+    /// # // FIXME(#152635): Float rounding on `i586` does not adhere to IEEE 754
+    /// # #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))] {
+    /// let max_exact_int = f64::MAX_EXACT_INTEGER;
+    /// assert_eq!(max_exact_int, max_exact_int as f64 as i64);
+    /// assert_eq!(max_exact_int + 1, (max_exact_int + 1) as f64 as i64);
+    /// assert_ne!(max_exact_int + 2, (max_exact_int + 2) as f64 as i64);
+    ///
+    /// // Beyond `f64::MAX_EXACT_INTEGER`, multiple integers can map to one float value
+    /// assert_eq!((max_exact_int + 1) as f64, (max_exact_int + 2) as f64);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
+    pub const MAX_EXACT_INTEGER: i64 = (1 << Self::MANTISSA_DIGITS) - 1;
+
+    /// Minimum integer that can be represented exactly in an [`f64`] value,
+    /// with no other integer converting to the same floating point value.
+    ///
+    /// For an integer `x` which satisfies `MIN_EXACT_INTEGER <= x <= MAX_EXACT_INTEGER`,
+    /// there is a "one-to-one" mapping between [`i64`] and [`f64`] values.
+    /// `MAX_EXACT_INTEGER + 1` also converts losslessly to [`f64`] and back to
+    /// [`i64`], but `MAX_EXACT_INTEGER + 2` converts to the same [`f64`] value
+    /// (and back to `MAX_EXACT_INTEGER + 1` as an integer) so there is not a
+    /// "one-to-one" mapping.
+    ///
+    /// This constant is equivalent to `-MAX_EXACT_INTEGER`.
+    ///
+    /// [`MAX_EXACT_INTEGER`]: f64::MAX_EXACT_INTEGER
+    /// [`MIN_EXACT_INTEGER`]: f64::MIN_EXACT_INTEGER
+    /// ```
+    /// #![feature(float_exact_integer_constants)]
+    /// # // FIXME(#152635): Float rounding on `i586` does not adhere to IEEE 754
+    /// # #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))] {
+    /// let min_exact_int = f64::MIN_EXACT_INTEGER;
+    /// assert_eq!(min_exact_int, min_exact_int as f64 as i64);
+    /// assert_eq!(min_exact_int - 1, (min_exact_int - 1) as f64 as i64);
+    /// assert_ne!(min_exact_int - 2, (min_exact_int - 2) as f64 as i64);
+    ///
+    /// // Below `f64::MIN_EXACT_INTEGER`, multiple integers can map to one float value
+    /// assert_eq!((min_exact_int - 1) as f64, (min_exact_int - 2) as f64);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
+    pub const MIN_EXACT_INTEGER: i64 = -Self::MAX_EXACT_INTEGER;
 
     /// Sign bit
     pub(crate) const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
@@ -949,7 +1008,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn max(self, other: f64) -> f64 {
-        intrinsics::maxnumf64(self, other)
+        intrinsics::maximum_number_nsz_f64(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -976,7 +1035,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn min(self, other: f64) -> f64 {
-        intrinsics::minnumf64(self, other)
+        intrinsics::minimum_number_nsz_f64(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -1507,7 +1566,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn abs(self) -> f64 {
-        intrinsics::fabsf64(self)
+        intrinsics::fabs(self)
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -1631,7 +1690,7 @@ impl f64 {
 /// They will be stabilized as inherent methods._
 pub mod math {
     use crate::intrinsics;
-    use crate::num::libm;
+    use crate::num::imp::libm;
 
     /// Experimental version of `floor` in `core`. See [`f64::floor`] for details.
     ///
@@ -1819,6 +1878,7 @@ pub mod math {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(unused_features)]
     /// #![feature(core_float_math)]
     ///
     /// # // FIXME(#140515): mingw has an incorrect fma

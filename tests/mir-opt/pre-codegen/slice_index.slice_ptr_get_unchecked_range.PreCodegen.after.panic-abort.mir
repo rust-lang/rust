@@ -13,7 +13,7 @@ fn slice_ptr_get_unchecked_range(_1: *const [u32], _2: std::ops::Range<usize>) -
             let _7: usize;
             scope 3 {
                 scope 6 (inlined core::slice::index::get_offset_len_noubcheck::<u32>) {
-                    let _8: *const u32;
+                    let mut _8: *const u32;
                     scope 7 {
                         let _9: *const u32;
                         scope 8 {

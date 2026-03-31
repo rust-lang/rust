@@ -8,7 +8,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
 use rustc_span::def_id::DefId;
-use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
+use rustc_span::{BytePos, ExpnKind, MacroKind, Span, sym};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
@@ -294,7 +294,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         // Avoid bogus move errors because of an incoherent `Copy` impl.
         self.infcx.type_implements_trait(copy_def_id, [ty], self.infcx.param_env).may_apply()
-            && self.infcx.tcx.coherent_trait(copy_def_id).is_err()
+            && self.infcx.tcx.ensure_result().coherent_trait(copy_def_id).is_err()
     }
 
     fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'infcx> {
@@ -375,7 +375,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     .source_map()
                     .indentation_before(stmt.span)
                     .unwrap_or_else(|| "    ".to_string());
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "consider cloning the value before moving it into the closure",
                     vec![
                         (
@@ -405,7 +405,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 .source_map()
                 .indentation_before(closure_expr.span)
                 .unwrap_or_else(|| "    ".to_string());
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "consider cloning the value before moving it into the closure",
                 vec![
                     (
@@ -626,7 +626,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let predicates = match parent.kind {
             hir::ExprKind::Call(callee, _) => {
                 let ty = typeck_result.node_type_opt(callee.hir_id)?;
-                let ty::FnDef(fn_def_id, args) = ty.kind() else { return None };
+                let ty::FnDef(fn_def_id, args) = *ty.kind() else { return None };
                 tcx.predicates_of(fn_def_id).instantiate(tcx, args)
             }
             hir::ExprKind::MethodCall(..) => {
@@ -700,14 +700,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     binds_to.sort();
                     binds_to.dedup();
 
-                    self.add_move_error_details(err, &binds_to);
+                    self.add_move_error_details(err, &binds_to, &[]);
                 }
             }
             GroupedMoveError::MovesFromValue { mut binds_to, .. } => {
                 binds_to.sort();
                 binds_to.dedup();
-                self.add_move_error_suggestions(err, &binds_to);
-                self.add_move_error_details(err, &binds_to);
+                let desugar_spans = self.add_move_error_suggestions(err, &binds_to);
+                self.add_move_error_details(err, &binds_to, &desugar_spans);
             }
             // No binding. Nothing to suggest.
             GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
@@ -823,7 +823,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
-    fn add_move_error_suggestions(&self, err: &mut Diag<'_>, binds_to: &[Local]) {
+    fn add_move_error_suggestions(&self, err: &mut Diag<'_>, binds_to: &[Local]) -> Vec<Span> {
         /// A HIR visitor to associate each binding with a `&` or `&mut` that could be removed to
         /// make it bind by reference instead (if possible)
         struct BindingFinder<'tcx> {
@@ -843,6 +843,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             ref_pat_for_binding: Vec<(Span, Option<&'tcx hir::Pat<'tcx>>)>,
             /// Output: ref patterns that can't be removed straightforwardly
             cannot_remove: FxHashSet<HirId>,
+            /// Output: binding spans from destructuring assignment desugaring
+            desugar_binding_spans: Vec<Span>,
         }
         impl<'tcx> Visitor<'tcx> for BindingFinder<'tcx> {
             type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
@@ -883,16 +885,38 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
 
                 if let hir::PatKind::Binding(_, _, ident, _) = p.kind {
-                    // the spans in `binding_spans` encompass both the ident and binding mode
-                    if let Some(&bind_sp) =
-                        self.binding_spans.iter().find(|bind_sp| bind_sp.contains(ident.span))
-                    {
-                        self.ref_pat_for_binding.push((bind_sp, self.ref_pat));
+                    // Skip synthetic bindings from destructuring assignment desugaring
+                    // These have name `lhs` and their parent is a `LetStmt` with
+                    // `LocalSource::AssignDesugar`
+                    let dominated_by_desugar_assign = ident.name == sym::lhs
+                        && self.tcx.hir_parent_iter(p.hir_id).any(|(_, node)| {
+                            matches!(
+                                node,
+                                hir::Node::LetStmt(&hir::LetStmt {
+                                    source: hir::LocalSource::AssignDesugar,
+                                    ..
+                                })
+                            )
+                        });
+
+                    if dominated_by_desugar_assign {
+                        if let Some(&bind_sp) =
+                            self.binding_spans.iter().find(|bind_sp| bind_sp.contains(ident.span))
+                        {
+                            self.desugar_binding_spans.push(bind_sp);
+                        }
                     } else {
-                        // we've encountered a binding that we're not reporting a move error for.
-                        // we don't want to change its type, so don't remove the surrounding `&`.
-                        if let Some(ref_pat) = self.ref_pat {
-                            self.cannot_remove.insert(ref_pat.hir_id);
+                        // the spans in `binding_spans` encompass both the ident and binding mode
+                        if let Some(&bind_sp) =
+                            self.binding_spans.iter().find(|bind_sp| bind_sp.contains(ident.span))
+                        {
+                            self.ref_pat_for_binding.push((bind_sp, self.ref_pat));
+                        } else {
+                            // we've encountered a binding that we're not reporting a move error for.
+                            // we don't want to change its type, so don't remove the surrounding `&`.
+                            if let Some(ref_pat) = self.ref_pat {
+                                self.cannot_remove.insert(ref_pat.hir_id);
+                            }
                         }
                     }
                 }
@@ -913,10 +937,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 binding_spans.push(bind_to.source_info.span);
             }
         }
-        let Some(pat_span) = pat_span else { return };
+        let Some(pat_span) = pat_span else { return Vec::new() };
 
         let tcx = self.infcx.tcx;
-        let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) else { return };
+        let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) else { return Vec::new() };
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
         let mut finder = BindingFinder {
             typeck_results,
@@ -928,6 +952,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             has_adjustments: false,
             ref_pat_for_binding: Vec::new(),
             cannot_remove: FxHashSet::default(),
+            desugar_binding_spans: Vec::new(),
         };
         finder.visit_body(body);
 
@@ -952,33 +977,38 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         for (span, msg, suggestion) in suggestions {
             err.span_suggestion_verbose(span, msg, suggestion, Applicability::MachineApplicable);
         }
+        finder.desugar_binding_spans
     }
 
-    fn add_move_error_details(&self, err: &mut Diag<'_>, binds_to: &[Local]) {
+    fn add_move_error_details(
+        &self,
+        err: &mut Diag<'_>,
+        binds_to: &[Local],
+        desugar_spans: &[Span],
+    ) {
         for (j, local) in binds_to.iter().enumerate() {
             let bind_to = &self.body.local_decls[*local];
             let binding_span = bind_to.source_info.span;
 
-            if j == 0 {
-                err.span_label(binding_span, "data moved here");
-            } else {
-                err.span_label(binding_span, "...and here");
-            }
-
             if binds_to.len() == 1 {
                 let place_desc = self.local_name(*local).map(|sym| format!("`{sym}`"));
 
-                if let Some(expr) = self.find_expr(binding_span) {
-                    let local_place: PlaceRef<'tcx> = (*local).into();
-                    self.suggest_cloning(err, local_place, bind_to.ty, expr, None);
-                }
-
-                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
-                    is_partial_move: false,
+                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::LabelMovedHere {
                     ty: bind_to.ty,
                     place: place_desc.as_deref().unwrap_or("the place"),
                     span: binding_span,
                 });
+
+                if !desugar_spans.contains(&binding_span)
+                    && let Some(expr) = self.find_expr(binding_span)
+                {
+                    let local_place: PlaceRef<'tcx> = (*local).into();
+                    self.suggest_cloning(err, local_place, bind_to.ty, expr, None);
+                }
+            } else if j == 0 {
+                err.span_label(binding_span, "data moved here");
+            } else {
+                err.span_label(binding_span, "...and here");
             }
         }
 

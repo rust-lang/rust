@@ -14,7 +14,6 @@ use std::ops::ControlFlow;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{E0720, ErrorGuaranteed};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, InferKind, Visitor};
 use rustc_hir::{self as hir, AmbigArg, HirId, find_attr};
@@ -46,8 +45,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is used for unit tests.
-        let rustc_dump_user_args = self.has_rustc_attrs
-            && find_attr!(self.tcx.get_all_attrs(item_def_id), AttributeKind::RustcDumpUserArgs);
+        let rustc_dump_user_args =
+            self.has_rustc_attrs && find_attr!(self.tcx, item_def_id, RustcDumpUserArgs);
 
         let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_args);
         for param in body.params {

@@ -219,14 +219,16 @@ fn test() {
 
 #[test]
 fn infer_try_block() {
-    // FIXME: We should test more cases, but it currently doesn't work, since
-    // our labeled block type inference is broken.
     check_types(
         r#"
-//- minicore: try, option
+//- minicore: try, option, result, from
 fn test() {
     let x: Option<_> = try { Some(2)?; };
       //^ Option<()>
+    let homogeneous = try { Ok::<(), u32>(())?; "hi" };
+      //^^^^^^^^^^^ Result<&'? str, u32>
+    let heterogeneous = try bikeshed Result<_, u64> { 1 };
+      //^^^^^^^^^^^^^ Result<i32, u64>
 }
 "#,
     );
@@ -1269,6 +1271,7 @@ fn bar() {
             241..245 'R::B': fn B<(), i32>(i32) -> R<(), i32>
             241..248 'R::B(7)': R<(), i32>
             246..247 '7': i32
+            46..47 '2': usize
         "#]],
     );
 }
@@ -2212,6 +2215,40 @@ fn test() {
             472..482 's.method()': u64
             484..485 'S': S
         "#]],
+    );
+}
+
+#[test]
+fn tuple_struct_constructor_as_fn_trait() {
+    check_types(
+        r#"
+//- minicore: fn
+struct S(u32, u64);
+
+fn takes_fn<F: Fn(u32, u64) -> S>(f: F) -> S { f(1, 2) }
+
+fn test() {
+    takes_fn(S);
+  //^^^^^^^^^^^ S
+}
+"#,
+    );
+}
+
+#[test]
+fn enum_variant_constructor_as_fn_trait() {
+    check_types(
+        r#"
+//- minicore: fn
+enum E { A(u32) }
+
+fn takes_fn<F: Fn(u32) -> E>(f: F) -> E { f(1) }
+
+fn test() {
+    takes_fn(E::A);
+  //^^^^^^^^^^^^^^ E
+}
+"#,
     );
 }
 
@@ -3745,6 +3782,8 @@ fn main() {
             371..373 'v4': usize
             376..378 'v3': [u8; 4]
             376..389 'v3.do_thing()': usize
+            86..87 '4': usize
+            192..193 '2': usize
         "#]],
     )
 }
@@ -3784,6 +3823,9 @@ fn main() {
             240..242 'v2': [u8; 2]
             245..246 'v': [u8; 2]
             245..257 'v.do_thing()': [u8; 2]
+            130..131 'L': usize
+            102..103 'L': usize
+            130..131 'L': usize
         "#]],
     )
 }
@@ -4819,7 +4861,7 @@ fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
             431..433 '{}': ()
             447..450 'baz': impl Baz<Assoc = impl Foo>
             480..482 '{}': ()
-            500..503 'baz': impl Baz<Assoc = &'a impl Foo + 'a>
+            500..503 'baz': impl Baz<Assoc = &'a (impl Foo + 'a)>
             544..546 '{}': ()
             560..563 'baz': impl Baz<Assoc = Qux<impl Foo>>
             598..600 '{}': ()

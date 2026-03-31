@@ -9,9 +9,9 @@
     rustc_private,
     transparent_unions,
     auto_traits,
-    freeze_impls,
-    thread_local
+    freeze_impls
 )]
+#![cfg_attr(not(all(windows, target_env = "gnu")), feature(thread_local))]
 #![no_core]
 #![allow(dead_code, internal_features, ambiguous_wide_pointer_comparisons)]
 
@@ -620,11 +620,6 @@ impl<T: ?Sized> Deref for Box<T> {
     fn deref(&self) -> &Self::Target {
         &**self
     }
-}
-
-#[lang = "exchange_malloc"]
-unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
-    unsafe { libc::malloc(size) }
 }
 
 #[lang = "drop"]

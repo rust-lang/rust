@@ -6,7 +6,6 @@
 
 use std::iter;
 
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::{
@@ -138,10 +137,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                 {
                     // Don't transform repr(transparent) types with an user-defined CFI encoding to
                     // preserve the user-defined CFI encoding.
-                    if find_attr!(
-                        self.tcx.get_all_attrs(adt_def.did()),
-                        AttributeKind::CfiEncoding { .. }
-                    ) {
+                    if find_attr!(self.tcx, adt_def.did(), CfiEncoding { .. }) {
                         return t;
                     }
                     let variant = adt_def.non_enum_variant();
@@ -243,7 +239,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
         .flat_map(|super_poly_trait_ref| {
             tcx.associated_items(super_poly_trait_ref.def_id())
                 .in_definition_order()
-                .filter(|item| item.is_type() || item.is_const())
+                .filter(|item| item.is_type() || item.is_type_const())
                 .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                 .map(move |assoc_item| {
                     super_poly_trait_ref.map_bound(|super_trait_ref| {

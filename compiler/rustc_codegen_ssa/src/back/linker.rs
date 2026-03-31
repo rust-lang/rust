@@ -2,7 +2,7 @@ use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::{env, io, iter, mem, str};
+use std::{env, iter, mem, str};
 
 use find_msvc_tools;
 use rustc_hir::attrs::WindowsSubsystemKind;
@@ -18,7 +18,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_target::spec::{Abi, Arch, Cc, LinkOutputKind, LinkerFlavor, Lld, Os};
+use rustc_target::spec::{Arch, Cc, CfgAbi, LinkOutputKind, LinkerFlavor, Lld, Os};
 use tracing::{debug, warn};
 
 use super::command::Command;
@@ -84,7 +84,7 @@ pub(crate) fn get_linker<'a>(
     // To comply with the Windows App Certification Kit,
     // MSVC needs to link with the Store versions of the runtime libraries (vcruntime, msvcrt, etc).
     let t = &sess.target;
-    if matches!(flavor, LinkerFlavor::Msvc(..)) && t.abi == Abi::Uwp {
+    if matches!(flavor, LinkerFlavor::Msvc(..)) && t.cfg_abi == CfgAbi::Uwp {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
             if let Some(root_lib_path) = original_path.ancestors().nth(4) {
@@ -135,7 +135,7 @@ pub(crate) fn get_linker<'a>(
 
     // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
     // to the linker args construction.
-    assert!(cmd.get_args().is_empty() || sess.target.abi == Abi::Uwp);
+    assert!(cmd.get_args().is_empty() || sess.target.cfg_abi == CfgAbi::Uwp);
     match flavor {
         LinkerFlavor::Unix(Cc::No) if sess.target.os == Os::L4Re => {
             Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>
@@ -352,6 +352,7 @@ pub(crate) trait Linker {
     fn add_no_exec(&mut self) {}
     fn add_as_needed(&mut self) {}
     fn reset_per_library_state(&mut self) {}
+    fn enable_profiling(&mut self) {}
 }
 
 impl dyn Linker + '_ {
@@ -527,7 +528,8 @@ impl<'a> Linker for GccLinker<'a> {
     ) {
         match output_kind {
             LinkOutputKind::DynamicNoPicExe => {
-                if !self.is_ld && self.is_gnu {
+                // noop on windows w/ gcc, warning w/ clang
+                if !self.is_ld && self.is_gnu && !self.sess.target.is_like_windows {
                     self.cc_arg("-no-pie");
                 }
             }
@@ -731,6 +733,19 @@ impl<'a> Linker for GccLinker<'a> {
         self.link_or_cc_args(&["-u", "__llvm_profile_runtime"]);
     }
 
+    fn enable_profiling(&mut self) {
+        // This flag is also used when linking to choose target specific
+        // libraries needed to enable profiling.
+        self.cc_arg("-pg");
+        // On windows-gnu targets, libgmon also needs to be linked, and this
+        // requires readding libraries to satisfy its dependencies.
+        if self.sess.target.is_like_windows {
+            self.cc_arg("-lgmon");
+            self.cc_arg("-lkernel32");
+            self.cc_arg("-lmsvcrt");
+        }
+    }
+
     fn control_flow_guard(&mut self) {}
 
     fn ehcont_guard(&mut self) {}
@@ -809,7 +824,7 @@ impl<'a> Linker for GccLinker<'a> {
 
         if self.sess.target.is_like_darwin {
             // Write a plain, newline-separated list of symbols
-            let res: io::Result<()> = try {
+            let res = try {
                 let mut f = File::create_buffered(&path)?;
                 for (sym, _) in symbols {
                     debug!("  _{sym}");
@@ -821,7 +836,7 @@ impl<'a> Linker for GccLinker<'a> {
             }
             self.link_arg("-exported_symbols_list").link_arg(path);
         } else if self.sess.target.is_like_windows {
-            let res: io::Result<()> = try {
+            let res = try {
                 let mut f = File::create_buffered(&path)?;
 
                 // .def file similar to MSVC one but without LIBRARY section
@@ -845,7 +860,7 @@ impl<'a> Linker for GccLinker<'a> {
                 self.link_arg("--export").link_arg(sym);
             }
         } else if crate_type == CrateType::Executable && !self.sess.target.is_like_solaris {
-            let res: io::Result<()> = try {
+            let res = try {
                 let mut f = File::create_buffered(&path)?;
                 writeln!(f, "{{")?;
                 for (sym, _) in symbols {
@@ -860,7 +875,7 @@ impl<'a> Linker for GccLinker<'a> {
             self.link_arg("--dynamic-list").link_arg(path);
         } else {
             // Write an LD version script
-            let res: io::Result<()> = try {
+            let res = try {
                 let mut f = File::create_buffered(&path)?;
                 writeln!(f, "{{")?;
                 if !symbols.is_empty() {
@@ -1139,7 +1154,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
 
         let path = tmpdir.join("lib.def");
-        let res: io::Result<()> = try {
+        let res = try {
             let mut f = File::create_buffered(&path)?;
 
             // Start off with the standard module name header and then go
@@ -1735,7 +1750,7 @@ impl<'a> Linker for AixLinker<'a> {
         symbols: &[(String, SymbolExportKind)],
     ) {
         let path = tmpdir.join("list.exp");
-        let res: io::Result<()> = try {
+        let res = try {
             let mut f = File::create_buffered(&path)?;
             // FIXME: use llvm-nm to generate export list.
             for (symbol, _) in symbols {
@@ -2135,7 +2150,7 @@ impl<'a> Linker for BpfLinker<'a> {
         symbols: &[(String, SymbolExportKind)],
     ) {
         let path = tmpdir.join("symbols");
-        let res: io::Result<()> = try {
+        let res = try {
             let mut f = File::create_buffered(&path)?;
             for (sym, _) in symbols {
                 writeln!(f, "{sym}")?;

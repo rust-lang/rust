@@ -1,0 +1,10 @@
+error: the constant `S` is not of type `usize`
+  --> $DIR/struct-ctor-in-array-len.rs:13:14
+   |
+LL |     let _b = [0; S];
+   |              ^^^^^^ expected `usize`, found `S`
+   |
+   = note: the length of array `[{integer}; S]` must be type `usize`
+
+error: aborting due to 1 previous error
+

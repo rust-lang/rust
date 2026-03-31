@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
             parent.span,
             format!("called `.bytes().nth().unwrap()` on a `{caller_type}`"),
             "try",
-            format!("{receiver}.as_bytes()[{n}]",),
+            format!("{receiver}.as_bytes()[{n}]"),
             applicability,
         );
     } else {

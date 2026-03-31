@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ edition:2018
 
 macro_rules! pat_bar {

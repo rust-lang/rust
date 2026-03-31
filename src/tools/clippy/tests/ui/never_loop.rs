@@ -447,22 +447,7 @@ fn loop_label() {
     }
 }
 
-fn main() {
-    test1();
-    test2();
-    test3();
-    test4();
-    test5();
-    test6();
-    test7();
-    test8();
-    test9();
-    test10();
-    test11(|| 0);
-    test12(true, false);
-    test13();
-    test14();
-}
+fn main() {}
 
 fn issue15059() {
     'a: for _ in 0..1 {
@@ -544,5 +529,15 @@ fn issue15673() {
             }
         }
         return;
+    }
+}
+
+#[expect(clippy::diverging_sub_expression, clippy::short_circuit_statement)]
+fn issue16462() {
+    let mut n = 10;
+    loop {
+        println!("{n}");
+        n -= 1;
+        n >= 0 || break;
     }
 }

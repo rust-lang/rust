@@ -5,16 +5,16 @@ LL |     takes_array::<{ [1, 2, 1 + 2] }>();
    |                            ^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/array-expr-complex.rs:10:19
+  --> $DIR/array-expr-complex.rs:10:21
    |
 LL |     takes_array::<{ [X; 3] }>();
-   |                   ^^^^^^^^^^
+   |                     ^^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/array-expr-complex.rs:12:19
+  --> $DIR/array-expr-complex.rs:12:21
    |
 LL |     takes_array::<{ [0; Y] }>();
-   |                   ^^^^^^^^^^
+   |                     ^^^^^^
 
 error: aborting due to 3 previous errors
 

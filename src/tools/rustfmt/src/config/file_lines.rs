@@ -196,7 +196,7 @@ fn normalize_ranges(ranges: &mut HashMap<FileName, Vec<Range>>) {
                     break;
                 }
             }
-            result.push(next)
+            result.push(next);
         }
         *ranges = result;
     }

@@ -58,10 +58,7 @@ fn result_methods() {
     let _ = opt_map!(res, |x| x + 1).unwrap_or_else(|_e| 0); // should not lint
 }
 
-fn main() {
-    option_methods();
-    result_methods();
-}
+fn main() {}
 
 fn issue15714() {
     let o: Option<i32> = Some(3);

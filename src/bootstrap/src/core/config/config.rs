@@ -88,7 +88,7 @@ pub const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
 /// filled out from the decoded forms of the structs below. For documentation
 /// on each field, see the corresponding fields in
 /// `bootstrap.example.toml`.
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Config {
     pub change_id: Option<ChangeId>,
     pub bypass_bootstrap_lock: bool,
@@ -298,6 +298,7 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
+    pub initial_rustdoc: PathBuf,
     pub initial_cargo_clippy: Option<PathBuf>,
     pub initial_sysroot: PathBuf,
     pub initial_rustfmt: Option<PathBuf>,
@@ -318,7 +319,7 @@ pub struct Config {
 
     /// Default value for `--extra-checks`
     pub tidy_extra_checks: Option<String>,
-    pub is_running_on_ci: bool,
+    pub ci_env: CiEnv,
 
     /// Cache for determining path modifications
     pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
@@ -414,6 +415,12 @@ impl Config {
             "flags.exclude" = ?flags_exclude
         );
 
+        if flags_cmd.no_doc() {
+            eprintln!(
+                "WARN: `x.py test --no-doc` is renamed to `--all-targets`. `--no-doc` will be removed in the near future. Additionally `--tests` is added which only executes unit and integration tests."
+            )
+        }
+
         // Set config values based on flags.
         let mut exec_ctx = ExecutionContext::new(flags_verbose, flags_cmd.fail_fast());
         exec_ctx.set_dry_run(if flags_dry_run { DryRun::UserSelected } else { DryRun::Disabled });
@@ -456,6 +463,7 @@ impl Config {
             build_dir: build_build_dir,
             cargo: mut build_cargo,
             rustc: mut build_rustc,
+            rustdoc: build_rustdoc,
             rustfmt: build_rustfmt,
             cargo_clippy: build_cargo_clippy,
             docs: build_docs,
@@ -728,7 +736,11 @@ impl Config {
             );
         }
 
-        let is_running_on_ci = flags_ci.unwrap_or(CiEnv::is_ci());
+        let ci_env = match flags_ci {
+            Some(true) => CiEnv::GitHubActions,
+            Some(false) => CiEnv::None,
+            None => CiEnv::current(),
+        };
         let dwn_ctx = DownloadContext {
             path_modification_cache: path_modification_cache.clone(),
             src: &src,
@@ -739,13 +751,16 @@ impl Config {
             stage0_metadata: &stage0_metadata,
             llvm_assertions,
             bootstrap_cache_path: &build_bootstrap_cache_path,
-            is_running_on_ci,
+            ci_env,
         };
 
         let initial_rustc = build_rustc.unwrap_or_else(|| {
             download_beta_toolchain(&dwn_ctx, &out);
             default_stage0_rustc_path(&out)
         });
+
+        let initial_rustdoc = build_rustdoc
+            .unwrap_or_else(|| initial_rustc.with_file_name(exe("rustdoc", host_target)));
 
         let initial_sysroot = t!(PathBuf::from_str(
             command(&initial_rustc)
@@ -1168,7 +1183,7 @@ impl Config {
 
         // CI should always run stage 2 builds, unless it specifically states otherwise
         #[cfg(not(test))]
-        if flags_stage.is_none() && is_running_on_ci {
+        if flags_stage.is_none() && ci_env.is_running_in_ci() {
             match flags_cmd {
                 Subcommand::Test { .. }
                 | Subcommand::Miri { .. }
@@ -1295,6 +1310,7 @@ impl Config {
             ccache,
             change_id: toml.change_id.inner,
             channel,
+            ci_env,
             clippy_info,
             cmd: flags_cmd,
             codegen_tests: rust_codegen_tests.unwrap_or(true),
@@ -1343,9 +1359,9 @@ impl Config {
             initial_cargo,
             initial_cargo_clippy: build_cargo_clippy,
             initial_rustc,
+            initial_rustdoc,
             initial_rustfmt,
             initial_sysroot,
-            is_running_on_ci,
             jemalloc: rust_jemalloc.unwrap_or(false),
             jobs: Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0))),
             json_output: flags_json_output,
@@ -1498,6 +1514,10 @@ impl Config {
 
     pub fn dry_run(&self) -> bool {
         self.exec_ctx.dry_run()
+    }
+
+    pub fn is_running_on_ci(&self) -> bool {
+        self.ci_env.is_running_in_ci()
     }
 
     pub fn is_explicit_stage(&self) -> bool {
@@ -1666,7 +1686,7 @@ impl Config {
                     if !self.llvm_from_ci {
                         // This happens when LLVM submodule is updated in CI, we should disable ci-rustc without an error
                         // to not break CI. For non-CI environments, we should return an error.
-                        if self.is_running_on_ci {
+                        if self.is_running_on_ci() {
                             println!("WARNING: LLVM submodule has changes, `download-rustc` will be disabled.");
                             return None;
                         } else {
@@ -1788,8 +1808,7 @@ impl Config {
             .unwrap()
             .entry(paths.to_vec())
             .or_insert_with(|| {
-                check_path_modifications(&self.src, &self.git_config(), paths, CiEnv::current())
-                    .unwrap()
+                check_path_modifications(&self.src, &self.git_config(), paths, self.ci_env).unwrap()
             })
             .clone()
     }
@@ -1859,11 +1878,17 @@ impl Config {
             .get(&target)
             .and_then(|t| t.llvm_libunwind)
             .or(self.llvm_libunwind_default)
-            .unwrap_or(if target.contains("fuchsia") || target.contains("hexagon") {
-                LlvmLibunwind::InTree
-            } else {
-                LlvmLibunwind::No
-            })
+            .unwrap_or(
+                if target.contains("fuchsia")
+                    || (target.contains("hexagon") && !target.contains("qurt"))
+                {
+                    // Fuchsia and Hexagon Linux use in-tree llvm-libunwind.
+                    // Hexagon QuRT uses libc_eh from the Hexagon SDK instead.
+                    LlvmLibunwind::InTree
+                } else {
+                    LlvmLibunwind::No
+                },
+            )
     }
 
     pub fn split_debuginfo(&self, target: TargetSelection) -> SplitDebuginfo {
@@ -2217,7 +2242,7 @@ pub fn download_ci_rustc_commit<'a>(
                     return None;
                 }
 
-                if dwn_ctx.is_running_on_ci {
+                if dwn_ctx.is_running_on_ci() {
                     eprintln!("CI rustc commit matches with HEAD and we are in CI.");
                     eprintln!(
                         "`rustc.download-ci` functionality will be skipped as artifacts are not available."
@@ -2261,7 +2286,7 @@ pub fn check_path_modifications_<'a>(
                 dwn_ctx.src,
                 &git_config(dwn_ctx.stage0_metadata),
                 paths,
-                CiEnv::current(),
+                dwn_ctx.ci_env,
             )
             .unwrap()
         })
@@ -2316,7 +2341,7 @@ pub fn parse_download_ci_llvm<'a>(
             }
 
             #[cfg(not(test))]
-            if b && dwn_ctx.is_running_on_ci && CiEnv::is_rust_lang_managed_ci_job() {
+            if b && dwn_ctx.is_running_on_ci() && CiEnv::is_rust_lang_managed_ci_job() {
                 // On rust-lang CI, we must always rebuild LLVM if there were any modifications to it
                 panic!(
                     "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
@@ -2407,7 +2432,7 @@ pub(crate) fn update_submodule<'a>(
     let actual_hash = recorded
         .split_whitespace()
         .nth(2)
-        .unwrap_or_else(|| panic!("unexpected output `{recorded}`"));
+        .unwrap_or_else(|| panic!("unexpected output `{recorded}` when updating {relative_path}"));
 
     if actual_hash == checked_out_hash {
         // already checked out

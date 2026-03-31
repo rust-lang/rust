@@ -10,8 +10,6 @@
 // Thus, `&'_ u8` should be included in type signature
 // of the underlying coroutine.
 
-#![feature(if_let_guard)]
-
 async fn f() -> u8 { 1 }
 async fn foo() -> [bool; 10] { [false; 10] }
 

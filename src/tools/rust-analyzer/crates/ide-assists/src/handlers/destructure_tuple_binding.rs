@@ -8,13 +8,13 @@ use ide_db::{
 use itertools::Itertools;
 use syntax::{
     T,
-    ast::{self, AstNode, FieldExpr, HasName, IdentPat, make},
-    ted,
+    ast::{self, AstNode, FieldExpr, HasName, IdentPat, syntax_factory::SyntaxFactory},
+    syntax_editor::{Position, SyntaxEditor},
 };
 
 use crate::{
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
-    utils::ref_field_expr::determine_ref_and_parens,
+    utils::{cover_edit_range, ref_field_expr::determine_ref_and_parens},
 };
 
 // Assist: destructure_tuple_binding
@@ -89,13 +89,22 @@ fn destructure_tuple_edit_impl(
     data: &TupleData,
     in_sub_pattern: bool,
 ) {
-    let assignment_edit = edit_tuple_assignment(ctx, edit, data, in_sub_pattern);
-    let current_file_usages_edit = edit_tuple_usages(data, edit, ctx, in_sub_pattern);
+    let mut syntax_editor = edit.make_editor(data.ident_pat.syntax());
+    let syntax_factory = SyntaxFactory::with_mappings();
 
-    assignment_edit.apply();
+    let assignment_edit =
+        edit_tuple_assignment(ctx, edit, &mut syntax_editor, &syntax_factory, data, in_sub_pattern);
+    let current_file_usages_edit = edit_tuple_usages(data, ctx, &syntax_factory, in_sub_pattern);
+
+    assignment_edit.apply(&mut syntax_editor, &syntax_factory);
     if let Some(usages_edit) = current_file_usages_edit {
-        usages_edit.into_iter().for_each(|usage_edit| usage_edit.apply(edit))
+        usages_edit
+            .into_iter()
+            .for_each(|usage_edit| usage_edit.apply(ctx, edit, &mut syntax_editor))
     }
+
+    syntax_editor.add_mappings(syntax_factory.finish_with_mappings());
+    edit.add_file_edits(ctx.vfs_file_id(), syntax_editor);
 }
 
 fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleData> {
@@ -157,6 +166,7 @@ enum RefType {
     Mutable,
 }
 struct TupleData {
+    // FIXME: After removing ted, it may be possible to reuse destructure_struct_binding::Target
     ident_pat: IdentPat,
     ref_type: Option<RefType>,
     field_names: Vec<String>,
@@ -165,11 +175,11 @@ struct TupleData {
 fn edit_tuple_assignment(
     ctx: &AssistContext<'_>,
     edit: &mut SourceChangeBuilder,
+    editor: &mut SyntaxEditor,
+    make: &SyntaxFactory,
     data: &TupleData,
     in_sub_pattern: bool,
 ) -> AssignmentEdit {
-    let ident_pat = edit.make_mut(data.ident_pat.clone());
-
     let tuple_pat = {
         let original = &data.ident_pat;
         let is_ref = original.ref_token().is_some();
@@ -177,10 +187,11 @@ fn edit_tuple_assignment(
         let fields = data
             .field_names
             .iter()
-            .map(|name| ast::Pat::from(make::ident_pat(is_ref, is_mut, make::name(name))));
-        make::tuple_pat(fields).clone_for_update()
+            .map(|name| ast::Pat::from(make.ident_pat(is_ref, is_mut, make.name(name))));
+        make.tuple_pat(fields)
     };
-    let is_shorthand_field = ident_pat
+    let is_shorthand_field = data
+        .ident_pat
         .name()
         .as_ref()
         .and_then(ast::RecordPatField::for_field_name)
@@ -189,14 +200,20 @@ fn edit_tuple_assignment(
     if let Some(cap) = ctx.config.snippet_cap {
         // place cursor on first tuple name
         if let Some(ast::Pat::IdentPat(first_pat)) = tuple_pat.fields().next() {
-            edit.add_tabstop_before(
-                cap,
-                first_pat.name().expect("first ident pattern should have a name"),
-            )
+            let annotation = edit.make_tabstop_before(cap);
+            editor.add_annotation(
+                first_pat.name().expect("first ident pattern should have a name").syntax(),
+                annotation,
+            );
         }
     }
 
-    AssignmentEdit { ident_pat, tuple_pat, in_sub_pattern, is_shorthand_field }
+    AssignmentEdit {
+        ident_pat: data.ident_pat.clone(),
+        tuple_pat,
+        in_sub_pattern,
+        is_shorthand_field,
+    }
 }
 struct AssignmentEdit {
     ident_pat: ast::IdentPat,
@@ -206,23 +223,30 @@ struct AssignmentEdit {
 }
 
 impl AssignmentEdit {
-    fn apply(self) {
+    fn apply(self, syntax_editor: &mut SyntaxEditor, syntax_mapping: &SyntaxFactory) {
         // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
         if self.in_sub_pattern {
-            self.ident_pat.set_pat(Some(self.tuple_pat.into()))
+            self.ident_pat.set_pat_with_editor(
+                Some(self.tuple_pat.into()),
+                syntax_editor,
+                syntax_mapping,
+            )
         } else if self.is_shorthand_field {
-            ted::insert(ted::Position::after(self.ident_pat.syntax()), self.tuple_pat.syntax());
-            ted::insert_raw(ted::Position::after(self.ident_pat.syntax()), make::token(T![:]));
+            syntax_editor.insert(Position::after(self.ident_pat.syntax()), self.tuple_pat.syntax());
+            syntax_editor
+                .insert(Position::after(self.ident_pat.syntax()), syntax_mapping.whitespace(" "));
+            syntax_editor
+                .insert(Position::after(self.ident_pat.syntax()), syntax_mapping.token(T![:]));
         } else {
-            ted::replace(self.ident_pat.syntax(), self.tuple_pat.syntax())
+            syntax_editor.replace(self.ident_pat.syntax(), self.tuple_pat.syntax())
         }
     }
 }
 
 fn edit_tuple_usages(
     data: &TupleData,
-    edit: &mut SourceChangeBuilder,
     ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
     in_sub_pattern: bool,
 ) -> Option<Vec<EditTupleUsage>> {
     // We need to collect edits first before actually applying them
@@ -238,20 +262,20 @@ fn edit_tuple_usages(
         .as_ref()?
         .as_slice()
         .iter()
-        .filter_map(|r| edit_tuple_usage(ctx, edit, r, data, in_sub_pattern))
+        .filter_map(|r| edit_tuple_usage(ctx, make, r, data, in_sub_pattern))
         .collect_vec();
 
     Some(edits)
 }
 fn edit_tuple_usage(
     ctx: &AssistContext<'_>,
-    builder: &mut SourceChangeBuilder,
+    make: &SyntaxFactory,
     usage: &FileReference,
     data: &TupleData,
     in_sub_pattern: bool,
 ) -> Option<EditTupleUsage> {
     match detect_tuple_index(usage, data) {
-        Some(index) => Some(edit_tuple_field_usage(ctx, builder, data, index)),
+        Some(index) => Some(edit_tuple_field_usage(ctx, make, data, index)),
         None if in_sub_pattern => {
             cov_mark::hit!(destructure_tuple_call_with_subpattern);
             None
@@ -262,20 +286,18 @@ fn edit_tuple_usage(
 
 fn edit_tuple_field_usage(
     ctx: &AssistContext<'_>,
-    builder: &mut SourceChangeBuilder,
+    make: &SyntaxFactory,
     data: &TupleData,
     index: TupleIndex,
 ) -> EditTupleUsage {
     let field_name = &data.field_names[index.index];
-    let field_name = make::expr_path(make::ext::ident_path(field_name));
+    let field_name = make.expr_path(make.ident_path(field_name));
 
     if data.ref_type.is_some() {
         let (replace_expr, ref_data) = determine_ref_and_parens(ctx, &index.field_expr);
-        let replace_expr = builder.make_mut(replace_expr);
-        EditTupleUsage::ReplaceExpr(replace_expr, ref_data.wrap_expr(field_name))
+        EditTupleUsage::ReplaceExpr(replace_expr, ref_data.wrap_expr_with_factory(field_name, make))
     } else {
-        let field_expr = builder.make_mut(index.field_expr);
-        EditTupleUsage::ReplaceExpr(field_expr.into(), field_name)
+        EditTupleUsage::ReplaceExpr(index.field_expr.into(), field_name)
     }
 }
 enum EditTupleUsage {
@@ -291,14 +313,25 @@ enum EditTupleUsage {
 }
 
 impl EditTupleUsage {
-    fn apply(self, edit: &mut SourceChangeBuilder) {
+    fn apply(
+        self,
+        ctx: &AssistContext<'_>,
+        edit: &mut SourceChangeBuilder,
+        syntax_editor: &mut SyntaxEditor,
+    ) {
         match self {
             EditTupleUsage::NoIndex(range) => {
                 edit.insert(range.start(), "/*");
                 edit.insert(range.end(), "*/");
             }
             EditTupleUsage::ReplaceExpr(target_expr, replace_with) => {
-                ted::replace(target_expr.syntax(), replace_with.clone_for_update().syntax())
+                if let Some(range) = ctx.sema.original_range_opt(target_expr.syntax()) {
+                    let source = ctx.source_file().syntax();
+                    syntax_editor.replace_all(
+                        cover_edit_range(source, range.range),
+                        vec![replace_with.syntax().clone().into()],
+                    );
+                }
             }
         }
     }
@@ -329,24 +362,6 @@ fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIn
     if let Some(field_expr) = ast::FieldExpr::cast(node) {
         let idx = field_expr.name_ref()?.as_tuple_field()?;
         if idx < data.field_names.len() {
-            // special case: in macro call -> range of `field_expr` in applied macro, NOT range in actual file!
-            if field_expr.syntax().ancestors().any(|a| ast::MacroStmts::can_cast(a.kind())) {
-                cov_mark::hit!(destructure_tuple_macro_call);
-
-                // issue: cannot differentiate between tuple index passed into macro or tuple index as result of macro:
-                // ```rust
-                // macro_rules! m {
-                //     ($t1:expr, $t2:expr) => { $t1; $t2.0 }
-                // }
-                // let t = (1,2);
-                // m!(t.0, t)
-                // ```
-                // -> 2 tuple index usages detected!
-                //
-                // -> only handle `t`
-                return None;
-            }
-
             Some(TupleIndex { index: idx, field_expr })
         } else {
             // tuple index out of range
@@ -1417,7 +1432,6 @@ fn main() {
 
         #[test]
         fn detect_macro_call() {
-            cov_mark::check!(destructure_tuple_macro_call);
             check_in_place_assist(
                 r#"
 macro_rules! m {
@@ -1436,7 +1450,7 @@ macro_rules! m {
 
 fn main() {
     let ($0_0, _1) = (1,2);
-    m!(/*t*/.0);
+    m!(_0);
 }
                 "#,
             )
@@ -1528,7 +1542,6 @@ fn main() {
     m!(t.0);
 }
                 "#,
-                // FIXME: replace `t.0` with `_0` (cannot detect range of tuple index in macro call)
                 r#"
 macro_rules! m {
     ($e:expr) => { "foo"; $e };
@@ -1536,10 +1549,9 @@ macro_rules! m {
 
 fn main() {
     let ($0_0, _1) = (1,2);
-    m!(/*t*/.0);
+    m!(_0);
 }
                 "#,
-                // FIXME: replace `t.0` with `_0`
                 r#"
 macro_rules! m {
     ($e:expr) => { "foo"; $e };
@@ -1547,7 +1559,7 @@ macro_rules! m {
 
 fn main() {
     let t @ ($0_0, _1) = (1,2);
-    m!(t.0);
+    m!(_0);
 }
                 "#,
             )
@@ -1566,7 +1578,6 @@ fn main() {
     m!((t).0);
 }
                 "#,
-                // FIXME: replace `(t).0` with `_0`
                 r#"
 macro_rules! m {
     ($e:expr) => { "foo"; $e };
@@ -1574,10 +1585,9 @@ macro_rules! m {
 
 fn main() {
     let ($0_0, _1) = (1,2);
-    m!((/*t*/).0);
+    m!(_0);
 }
                 "#,
-                // FIXME: replace `(t).0` with `_0`
                 r#"
 macro_rules! m {
     ($e:expr) => { "foo"; $e };
@@ -1585,7 +1595,7 @@ macro_rules! m {
 
 fn main() {
     let t @ ($0_0, _1) = (1,2);
-    m!((t).0);
+    m!(_0);
 }
                 "#,
             )
@@ -1633,7 +1643,6 @@ fn main() {
     m!(t, t.0);
 }
                 "#,
-                // FIXME: replace `t.0` in macro call (not IN macro) with `_0`
                 r#"
 macro_rules! m {
     ($t:expr, $i:expr) => { $t.0 + $i };
@@ -1641,10 +1650,9 @@ macro_rules! m {
 
 fn main() {
     let ($0_0, _1) = (1,2);
-    m!(/*t*/, /*t*/.0);
+    m!(t, _0);
 }
                 "#,
-                // FIXME: replace `t.0` in macro call with `_0`
                 r#"
 macro_rules! m {
     ($t:expr, $i:expr) => { $t.0 + $i };
@@ -1652,9 +1660,37 @@ macro_rules! m {
 
 fn main() {
     let t @ ($0_0, _1) = (1,2);
-    m!(t, t.0);
+    m!(t, _0);
 }
                 "#,
+            )
+        }
+    }
+
+    mod in_macro_expr {
+        use super::assist::*;
+
+        // exact repro from #20716: tuple index inside write! must not panic
+        #[test]
+        fn tuple_index_in_write_macro() {
+            check_in_place_assist(
+                r#"
+//- minicore: write, fmt
+use core::fmt::Write;
+fn main() {
+    let mut s = String::new();
+    let $0x = (2i32, 3i32);
+    write!(s, "{}", x.0).unwrap();
+}
+"#,
+                r#"
+use core::fmt::Write;
+fn main() {
+    let mut s = String::new();
+    let ($0_0, _1) = (2i32, 3i32);
+    write!(s, "{}", _0).unwrap();
+}
+"#,
             )
         }
     }

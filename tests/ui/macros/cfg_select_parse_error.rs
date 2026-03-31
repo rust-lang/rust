@@ -1,4 +1,3 @@
-#![feature(cfg_select)]
 #![crate_type = "lib"]
 
 // Check that parse errors in arms that are not selected are still reported.

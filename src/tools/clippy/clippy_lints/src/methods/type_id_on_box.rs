@@ -1,13 +1,14 @@
 use crate::methods::TYPE_ID_ON_BOX;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
+use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::{self, ExistentialPredicate, Ty};
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 /// Checks if the given type is `dyn Any`, or a trait object that has `Any` as a supertrait.
 /// Only in those cases will its vtable have a `type_id` method that returns the implementor's

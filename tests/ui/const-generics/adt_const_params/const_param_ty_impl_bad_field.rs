@@ -1,5 +1,5 @@
 #![allow(incomplete_features)]
-#![feature(adt_const_params, unsized_const_params)]
+#![feature(adt_const_params, const_param_ty_trait)]
 
 #[derive(PartialEq, Eq)]
 struct NotParam;
@@ -8,10 +8,10 @@ struct NotParam;
 struct CantParam(NotParam);
 
 impl std::marker::ConstParamTy_ for CantParam {}
-//~^ error: the trait `ConstParamTy_` cannot be implemented for this type
+//~^ ERROR: the trait `ConstParamTy_` cannot be implemented for this type
 
 #[derive(std::marker::ConstParamTy, Eq, PartialEq)]
-//~^ error: the trait `ConstParamTy_` cannot be implemented for this type
 struct CantParamDerive(NotParam);
+//~^ ERROR: the trait `ConstParamTy_` cannot be implemented for this type
 
 fn main() {}

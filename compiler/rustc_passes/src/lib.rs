@@ -4,11 +4,6 @@
 //!
 //! This API is completely unstable and subject to change.
 
-// tidy-alphabetical-start
-#![feature(if_let_guard)]
-#![feature(map_try_insert)]
-// tidy-alphabetical-end
-
 use rustc_middle::query::Providers;
 
 pub mod abi_test;
@@ -29,8 +24,6 @@ mod reachable;
 pub mod stability;
 mod upvars;
 mod weak_lang_items;
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     check_attr::provide(providers);

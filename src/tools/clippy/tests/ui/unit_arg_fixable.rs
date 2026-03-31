@@ -26,9 +26,7 @@ fn bad() {
 fn taking_two_units(a: (), b: ()) {}
 fn taking_three_units(a: (), b: (), c: ()) {}
 
-fn main() {
-    bad();
-}
+fn main() {}
 
 fn issue14857() {
     let fn_take_unit = |_: ()| {};

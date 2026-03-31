@@ -1,15 +1,14 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
 use std::borrow::Cow;
-use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
+use std::{assert_matches, mem};
 
-use rustc_data_structures::assert_matches;
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::Visitor;
@@ -215,7 +214,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             return;
         }
 
-        if !tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
+        if !find_attr!(tcx, def_id, RustcDoNotConstCheck) {
             self.visit_body(body);
         }
 
@@ -334,7 +333,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             self.tcx.dcx().span_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
         }
         if let Some(def_id) = def_id.as_local()
-            && let Err(guar) = self.tcx.ensure_ok().check_well_formed(hir::OwnerId { def_id })
+            && let Err(guar) = self.tcx.ensure_result().check_well_formed(hir::OwnerId { def_id })
         {
             self.error_emitted = Some(guar);
         }
@@ -577,7 +576,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
-                    && let Some(coroutine_kind) = self.tcx.coroutine_kind(def_id)
+                    && let Some(coroutine_kind) = self.tcx.coroutine_kind(*def_id)
                 {
                     self.check_op(ops::Coroutine(coroutine_kind));
                 }
@@ -644,8 +643,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Cast(_, _, _) => {}
-
-            Rvalue::ShallowInitBox(_, _) => {}
 
             Rvalue::UnaryOp(op, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
@@ -815,6 +812,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     });
                 }
 
+                if self.tcx.fn_sig(callee).skip_binder().c_variadic() {
+                    self.check_op(ops::FnCallCVariadic)
+                }
+
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
 
                 // `begin_panic` and `panic_display` functions accept generic
@@ -841,13 +842,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     } else {
                         self.check_op(ops::PanicNonStr);
                     }
-                    // Allow this call, skip all the checks below.
-                    return;
-                }
-
-                // This can be called on stable via the `vec!` macro.
-                if tcx.is_lang_item(callee, LangItem::ExchangeMalloc) {
-                    self.check_op(ops::HeapAllocation);
                     // Allow this call, skip all the checks below.
                     return;
                 }

@@ -536,4 +536,57 @@ mod issue15541 {
     }
 }
 
+mod issue16155 {
+    #![allow(clippy::empty_loop)]
+
+    use super::do_something;
+
+    fn let_then_else(cond: bool) {
+        let true = cond else { loop {} };
+        //~^ infinite_loop
+    }
+
+    fn loop_in_one_if_branch(cond: bool) {
+        if cond {
+            loop {}
+            //~^ infinite_loop
+        }
+    }
+
+    fn loop_in_one_match_arm(x: Option<i32>) {
+        match x {
+            Some(_) => {},
+            None => loop {},
+            //~^ infinite_loop
+        }
+    }
+
+    fn loop_in_if_let_else(x: Option<i32>) {
+        if let Some(_val) = x {
+            do_something();
+        } else {
+            loop {}
+            //~^ infinite_loop
+        }
+    }
+
+    #[expect(clippy::if_same_then_else)]
+    fn all_branches_diverge_if(cond: bool) {
+        if cond {
+            loop {}
+            //~^ infinite_loop
+        } else {
+            loop {}
+            //~^ infinite_loop
+        }
+    }
+
+    fn all_branches_diverge_match(x: Option<i32>) {
+        match x {
+            Some(_) => loop {}, //~ infinite_loop
+            None => loop {},    //~ infinite_loop
+        }
+    }
+}
+
 fn main() {}

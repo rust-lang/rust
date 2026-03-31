@@ -483,6 +483,11 @@ impl ItemScope {
         self.declarations.push(def)
     }
 
+    pub(crate) fn remove_from_value_ns(&mut self, name: &Name, def: ModuleDefId) {
+        let entry = self.values.shift_remove(name);
+        assert!(entry.is_some_and(|entry| entry.def == def))
+    }
+
     pub(crate) fn get_legacy_macro(&self, name: &Name) -> Option<&[MacroId]> {
         self.legacy_macros.get(name).map(|it| &**it)
     }
@@ -891,6 +896,24 @@ impl ItemScope {
     pub(crate) fn update_visibility_macros(&mut self, name: &Name, vis: Visibility) {
         let res =
             self.macros.get_mut(name).expect("tried to update visibility of non-existent macro");
+        res.vis = vis;
+    }
+
+    pub(crate) fn update_def_types(&mut self, name: &Name, def: ModuleDefId, vis: Visibility) {
+        let res = self.types.get_mut(name).expect("tried to update def of non-existent type");
+        res.def = def;
+        res.vis = vis;
+    }
+
+    pub(crate) fn update_def_values(&mut self, name: &Name, def: ModuleDefId, vis: Visibility) {
+        let res = self.values.get_mut(name).expect("tried to update def of non-existent value");
+        res.def = def;
+        res.vis = vis;
+    }
+
+    pub(crate) fn update_def_macros(&mut self, name: &Name, def: MacroId, vis: Visibility) {
+        let res = self.macros.get_mut(name).expect("tried to update def of non-existent macro");
+        res.def = def;
         res.vis = vis;
     }
 }

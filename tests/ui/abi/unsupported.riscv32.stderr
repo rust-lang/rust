@@ -156,9 +156,9 @@ warning: "cdecl" is not a supported ABI for the current target
 LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    |                 ^^^^^^^^^^^^^^^^^^^
    |
+   = help: use `extern "C"` instead
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C"` instead
    = note: `#[warn(unsupported_calling_conventions)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: "cdecl" is not a supported ABI for the current target
@@ -167,9 +167,9 @@ warning: "cdecl" is not a supported ABI for the current target
 LL | extern "cdecl" {}
    | ^^^^^^^^^^^^^^^^^
    |
+   = help: use `extern "C"` instead
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C"` instead
 
 warning: "cdecl-unwind" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:108:1
@@ -177,9 +177,9 @@ warning: "cdecl-unwind" is not a supported ABI for the current target
 LL | extern "cdecl-unwind" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: use `extern "C-unwind"` instead
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C-unwind"` instead
 
 warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:97:1
@@ -187,9 +187,9 @@ warning: "cdecl" is not a supported ABI for the current target
 LL | extern "cdecl" fn cdecl() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: use `extern "C"` instead
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C"` instead
 
 error: aborting due to 24 previous errors; 4 warnings emitted
 

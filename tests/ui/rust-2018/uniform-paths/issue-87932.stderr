@@ -1,11 +1,11 @@
-error[E0599]: no function or associated item named `deserialize` found for struct `A` in the current scope
+error[E0599]: no associated function or constant named `deserialize` found for struct `A` in the current scope
   --> $DIR/issue-87932.rs:13:8
    |
 LL | pub struct A {}
-   | ------------ function or associated item `deserialize` not found for this struct
+   | ------------ associated function or constant `deserialize` not found for this struct
 ...
 LL |     A::deserialize();
-   |        ^^^^^^^^^^^ function or associated item not found in `A`
+   |        ^^^^^^^^^^^ associated function or constant not found in `A`
    |
    = help: items from traits can only be used if the trait is in scope
 help: trait `Deserialize` which provides `deserialize` is implemented but not in scope; perhaps you want to import it

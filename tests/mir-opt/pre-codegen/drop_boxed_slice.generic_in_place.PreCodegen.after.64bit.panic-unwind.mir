@@ -8,13 +8,15 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
             let _2: std::ptr::NonNull<[T]>;
             let mut _3: *mut [T];
             let mut _4: *const [T];
-            let _10: ();
+            let _9: ();
             scope 3 {
                 scope 4 {
                     scope 17 (inlined Layout::size) {
                     }
                     scope 18 (inlined std::ptr::Unique::<[T]>::cast::<u8>) {
+                        let mut _8: std::ptr::NonNull<u8>;
                         scope 19 (inlined NonNull::<[T]>::cast::<u8>) {
+                            let mut _7: *mut u8;
                             scope 20 (inlined NonNull::<[T]>::as_ptr) {
                             }
                         }
@@ -26,22 +28,12 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                     scope 23 (inlined <std::alloc::Global as Allocator>::deallocate) {
                         scope 24 (inlined std::alloc::Global::deallocate_impl) {
                             scope 25 (inlined std::alloc::Global::deallocate_impl_runtime) {
-                                let mut _8: *mut u8;
                                 scope 26 (inlined Layout::size) {
                                 }
-                                scope 27 (inlined NonNull::<u8>::as_ptr) {
-                                }
-                                scope 28 (inlined std::alloc::dealloc) {
-                                    let mut _9: usize;
-                                    scope 29 (inlined Layout::size) {
+                                scope 27 (inlined alloc::alloc::dealloc_nonnull) {
+                                    scope 28 (inlined Layout::size) {
                                     }
-                                    scope 30 (inlined Layout::align) {
-                                        scope 31 (inlined std::ptr::Alignment::as_usize) {
-                                            scope 32 (inlined std::ptr::Alignment::as_nonzero) {
-                                            }
-                                            scope 33 (inlined NonZero::<usize>::get) {
-                                            }
-                                        }
+                                    scope 29 (inlined Layout::alignment) {
                                     }
                                 }
                             }
@@ -54,17 +46,16 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                 }
                 scope 7 (inlined Layout::for_value_raw::<[T]>) {
                     let mut _5: usize;
-                    let mut _7: std::ptr::Alignment;
+                    let mut _6: std::mem::Alignment;
                     scope 8 {
                         scope 16 (inlined #[track_caller] Layout::from_size_alignment_unchecked) {
                         }
                     }
                     scope 9 (inlined size_of_val_raw::<[T]>) {
                     }
-                    scope 10 (inlined std::ptr::Alignment::of_val_raw::<[T]>) {
-                        let _6: usize;
+                    scope 10 (inlined std::mem::Alignment::of_val_raw::<[T]>) {
                         scope 11 {
-                            scope 13 (inlined #[track_caller] std::ptr::Alignment::new_unchecked) {
+                            scope 13 (inlined #[track_caller] std::mem::Alignment::new_unchecked) {
                                 scope 14 (inlined core::ub_checks::check_language_ub) {
                                     scope 15 (inlined core::ub_checks::check_language_ub::runtime) {
                                     }
@@ -80,6 +71,8 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     }
 
     bb0: {
+        StorageLive(_3);
+        StorageLive(_8);
         StorageLive(_2);
         _2 = copy (((*_1).0: std::ptr::Unique<[T]>).0: std::ptr::NonNull<[T]>);
         StorageLive(_4);
@@ -89,30 +82,23 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     }
 
     bb1: {
-        StorageLive(_6);
-        _6 = const <T as std::mem::SizedTypeProperties>::ALIGN;
-        _7 = copy _6 as std::ptr::Alignment (Transmute);
-        StorageDead(_6);
+        _6 = const <T as std::mem::SizedTypeProperties>::ALIGN as std::mem::Alignment (Transmute);
         StorageDead(_4);
-        switchInt(copy _5) -> [0: bb4, otherwise: bb2];
+        switchInt(copy _5) -> [0: bb3, otherwise: bb2];
     }
 
     bb2: {
-        StorageLive(_8);
-        _8 = copy _3 as *mut u8 (PtrToPtr);
-        StorageLive(_9);
-        _9 = copy _7 as usize (Transmute);
-        _10 = alloc::alloc::__rust_dealloc(move _8, move _5, move _9) -> [return: bb3, unwind unreachable];
+        StorageLive(_7);
+        _7 = copy _3 as *mut u8 (PtrToPtr);
+        _8 = copy _7 as std::ptr::NonNull<u8> (Transmute);
+        StorageDead(_7);
+        _9 = alloc::alloc::__rust_dealloc(move _8, move _5, move _6) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
-        StorageDead(_9);
-        StorageDead(_8);
-        goto -> bb4;
-    }
-
-    bb4: {
         StorageDead(_2);
+        StorageDead(_8);
+        StorageDead(_3);
         return;
     }
 }

@@ -11,8 +11,7 @@ trait T {
 }
 
 trait S {
-    #[type_const]
-    const C: i32;
+    type const C: i32;
 }
 
 fn main() {}

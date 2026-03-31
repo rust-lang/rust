@@ -5,6 +5,7 @@
 new_issue = true
 exclude_labels = [
     "A-diagnostics",
+    "C-date-reference-triage",
     "C-tracking-issue",
 ]
 
@@ -84,6 +85,7 @@ does not need reviews. You can request a review using `r? rustc-dev-guide` or \
 rustc-dev-guide = [
     "@BoxyUwU",
     "@jyn514",
+    "@reddevilmidzy",
     "@tshepang",
 ]
 

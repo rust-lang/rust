@@ -9,7 +9,8 @@
 //! coherence right now and was annoying to implement, so I am leaving it
 //! as is until we start using it for something else.
 
-use rustc_data_structures::assert_matches;
+use std::assert_matches;
+
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::Obligation;
 use rustc_macros::extension;
@@ -443,9 +444,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
     pub(crate) fn visit_with<V: ProofTreeVisitor<'tcx>>(&self, visitor: &mut V) -> V::Result {
         if self.depth < visitor.config().max_depth {
             try_visit!(visitor.visit_goal(self));
+            V::Result::output()
+        } else {
+            visitor.on_recursion_limit()
         }
-
-        V::Result::output()
     }
 }
 
@@ -460,6 +462,10 @@ pub trait ProofTreeVisitor<'tcx> {
     }
 
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> Self::Result;
+
+    fn on_recursion_limit(&mut self) -> Self::Result {
+        Self::Result::output()
+    }
 }
 
 #[extension(pub trait InferCtxtProofTreeExt<'tcx>)]

@@ -327,3 +327,7 @@ pub fn read_output(
 ) -> io::Result<()> {
     Err(io::Error::from_raw_os_error(moto_rt::E_NOT_IMPLEMENTED.into()))
 }
+
+pub fn getpid() -> u32 {
+    panic!("Pids on Motor OS are u64.")
+}

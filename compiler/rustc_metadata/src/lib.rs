@@ -1,10 +1,8 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(decl_macro)]
 #![feature(error_iter)]
 #![feature(file_buffered)]
 #![feature(gen_blocks)]
-#![feature(if_let_guard)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
 #![feature(never_type)]
@@ -34,5 +32,3 @@ pub use native_libs::{
     try_find_native_static_library, walk_native_lib_search_dirs,
 };
 pub use rmeta::{EncodedMetadata, METADATA_HEADER, encode_metadata, rendered_const};
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

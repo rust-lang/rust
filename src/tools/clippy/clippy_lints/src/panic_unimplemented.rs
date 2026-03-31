@@ -1,12 +1,11 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
-use clippy_utils::{is_in_test, is_inside_always_const_context};
+use clippy_utils::{is_in_test, is_inside_always_const_context, sym};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::sym;
 
 pub struct PanicUnimplemented {
     allow_panic_in_tests: bool,
@@ -39,23 +38,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `unimplemented!`.
-    ///
-    /// ### Why restrict this?
-    /// This macro, or panics in general, may be unwanted in production code.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// unimplemented!();
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub UNIMPLEMENTED,
-    restriction,
-    "`unimplemented!` should not be present in production code"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for usage of `todo!`.
     ///
     /// ### Why restrict this?
@@ -78,6 +60,23 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for usage of `unimplemented!`.
+    ///
+    /// ### Why restrict this?
+    /// This macro, or panics in general, may be unwanted in production code.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// unimplemented!();
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub UNIMPLEMENTED,
+    restriction,
+    "`unimplemented!` should not be present in production code"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for usage of `unreachable!`.
     ///
     /// ### Why restrict this?
@@ -93,7 +92,7 @@ declare_clippy_lint! {
     "usage of the `unreachable!` macro"
 }
 
-impl_lint_pass!(PanicUnimplemented => [UNIMPLEMENTED, UNREACHABLE, TODO, PANIC]);
+impl_lint_pass!(PanicUnimplemented => [PANIC, TODO, UNIMPLEMENTED, UNREACHABLE]);
 
 impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

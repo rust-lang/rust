@@ -7,13 +7,11 @@
 trait X<const N: usize = { <Self as Y>::N }> {}
 
 trait Y {
-    #[type_const]
-    const N: usize;
+    type const N: usize;
 }
 
 impl<T: ?Sized> Y for T {
-    #[type_const]
-    const N: usize = 1;
+    type const N: usize = 1;
 }
 
 fn main() {

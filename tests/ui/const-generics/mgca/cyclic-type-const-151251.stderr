@@ -1,8 +1,8 @@
 error[E0275]: overflow normalizing the unevaluated constant `A`
-  --> $DIR/cyclic-type-const-151251.rs:8:1
+  --> $DIR/cyclic-type-const-151251.rs:7:1
    |
-LL | const A: u8 = A;
-   | ^^^^^^^^^^^
+LL | type const A: u8 = A;
+   | ^^^^^^^^^^^^^^^^
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 

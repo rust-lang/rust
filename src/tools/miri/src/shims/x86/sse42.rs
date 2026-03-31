@@ -5,6 +5,7 @@ use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::Arch;
 
+use crate::shims::math::compute_crc32;
 use crate::*;
 
 /// A bitmask constant for scrutinizing the immediate byte provided
@@ -213,7 +214,7 @@ fn deconstruct_args<'tcx>(
     };
 
     // The fourth letter of each string comparison intrinsic is either 'e' for "explicit" or 'i' for "implicit".
-    // The distinction will correspond to the intrinsics type signature. In this constext, "explicit" and "implicit"
+    // The distinction will correspond to the intrinsics type signature. In this context, "explicit" and "implicit"
     // refer to the way the string length is determined. The length is either passed explicitly in the "explicit"
     // case or determined by a null terminator in the "implicit" case.
     let is_explicit = match unprefixed_name.as_bytes().get(4) {
@@ -297,7 +298,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     deconstruct_args(unprefixed_name, this, link_name, abi, args)?;
                 let mask = compare_strings(this, &str1, &str2, len, imm)?;
 
-                // The sixth bit inside the immediate byte distiguishes
+                // The sixth bit inside the immediate byte distinguishes
                 // between a bit mask or a byte mask when generating a mask.
                 if imm & 0b100_0000 != 0 {
                     let (array_layout, size) = if imm & USE_WORDS != 0 {
@@ -347,7 +348,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let mask = compare_strings(this, &str1, &str2, len, imm)?;
 
                 let len = default_len::<u32>(imm);
-                // The sixth bit inside the immediate byte distiguishes between the least
+                // The sixth bit inside the immediate byte distinguishes between the least
                 // significant bit and the most significant bit when generating an index.
                 let result = if imm & 0b100_0000 != 0 {
                     // most significant bit
@@ -445,46 +446,19 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // The 64-bit version will only consider the lower 32 bits,
                     // while the upper 32 bits get discarded.
                     #[expect(clippy::as_conversions)]
-                    u128::from((left.to_u64()? as u32).reverse_bits())
+                    (left.to_u64()? as u32)
                 } else {
-                    u128::from(left.to_u32()?.reverse_bits())
+                    left.to_u32()?
                 };
-                let v = match bit_size {
-                    8 => u128::from(right.to_u8()?.reverse_bits()),
-                    16 => u128::from(right.to_u16()?.reverse_bits()),
-                    32 => u128::from(right.to_u32()?.reverse_bits()),
-                    64 => u128::from(right.to_u64()?.reverse_bits()),
+                let data = match bit_size {
+                    8 => u64::from(right.to_u8()?),
+                    16 => u64::from(right.to_u16()?),
+                    32 => u64::from(right.to_u32()?),
+                    64 => right.to_u64()?,
                     _ => unreachable!(),
                 };
 
-                // Perform polynomial division modulo 2.
-                // The algorithm for the division is an adapted version of the
-                // schoolbook division algorithm used for normal integer or polynomial
-                // division. In this context, the quotient is not calculated, since
-                // only the remainder is needed.
-                //
-                // The algorithm works as follows:
-                // 1. Pull down digits until division can be performed. In the context of division
-                //    modulo 2 it means locating the most significant digit of the dividend and shifting
-                //    the divisor such that the position of the divisors most significand digit and the
-                //    dividends most significand digit match.
-                // 2. Perform a division and determine the remainder. Since it is arithmetic modulo 2,
-                //    this operation is a simple bitwise exclusive or.
-                // 3. Repeat steps 1. and 2. until the full remainder is calculated. This is the case
-                //    once the degree of the remainder polynomial is smaller than the degree of the
-                //    divisor polynomial. In other words, the number of leading zeros of the remainder
-                //    is larger than the number of leading zeros of the divisor. It is important to
-                //    note that standard arithmetic comparison is not applicable here:
-                //    0b10011 / 0b11111 = 0b01100 is a valid division, even though the dividend is
-                //    smaller than the divisor.
-                let mut dividend = (crc << bit_size) ^ (v << 32);
-                const POLYNOMIAL: u128 = 0x11EDC6F41;
-                while dividend.leading_zeros() <= POLYNOMIAL.leading_zeros() {
-                    dividend ^=
-                        (POLYNOMIAL << POLYNOMIAL.leading_zeros()) >> dividend.leading_zeros();
-                }
-
-                let result = u32::try_from(dividend).unwrap().reverse_bits();
+                let result = compute_crc32(crc, data, bit_size, 0x11EDC6F41);
                 let result = if bit_size == 64 {
                     Scalar::from_u64(u64::from(result))
                 } else {

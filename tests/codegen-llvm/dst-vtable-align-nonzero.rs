@@ -64,4 +64,4 @@ pub unsafe fn align_load_from_vtable_align_intrinsic(x: &dyn Trait) -> usize {
     core::intrinsics::vtable_align(vtable)
 }
 
-// CHECK: [[RANGE_META]] = !{[[USIZE]] 1, [[USIZE]] 0}
+// CHECK: [[RANGE_META]] = !{[[USIZE]] 1, [[USIZE]] [[#0x20000001]]

@@ -51,6 +51,8 @@ declare_clippy_lint! {
     "checks for expressions that could be replaced by the `?` operator"
 }
 
+impl_lint_pass!(QuestionMark => [MANUAL_LET_ELSE, QUESTION_MARK]);
+
 pub struct QuestionMark {
     pub(crate) msrv: Msrv,
     pub(crate) matches_behaviour: MatchLintBehaviour,
@@ -64,8 +66,6 @@ pub struct QuestionMark {
     /// with the `Err(x.into())` expansion being ambiguous.
     inferred_ret_closure_stack: u16,
 }
-
-impl_lint_pass!(QuestionMark => [QUESTION_MARK, MANUAL_LET_ELSE]);
 
 impl QuestionMark {
     pub fn new(conf: &'static Conf) -> Self {
@@ -143,7 +143,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         && init_expr_can_use_question_mark(cx, init_expr)
         && let Some(ret) = find_let_else_ret_expression(els)
         && let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, ret)
-        && !span_contains_comment(cx.tcx.sess.source_map(), els.span)
+        && !span_contains_comment(cx, els.span)
         && !span_contains_cfg(cx, els.span)
     {
         let mut applicability = Applicability::MaybeIncorrect;
@@ -474,7 +474,6 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         if_else,
         ..
     }) = higher::IfLet::hir(cx, expr)
-        && !is_else_clause(cx.tcx, expr)
         && let PatKind::TupleStruct(ref path1, [field], ddpos) = let_pat.kind
         && ddpos.as_opt_usize().is_none()
         && let PatKind::Binding(BindingMode(by_ref, _), bind_id, ident, None) = field.kind
@@ -491,8 +490,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             || is_early_return(sym::Result, cx, &if_block))
         && if_else
             .map(|e| eq_expr_value(cx, let_expr, peel_blocks(e)))
-            .filter(|e| *e)
-            .is_none()
+            .is_none_or(|e| !e)
     {
         if !is_copy(cx, caller_ty)
             && let Some(hir_id) = let_expr.res_local_id()
@@ -503,16 +501,22 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
 
         let mut applicability = Applicability::MachineApplicable;
         let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
-        let requires_semi = matches!(cx.tcx.parent_hir_node(expr.hir_id), Node::Stmt(_));
+        let parent = cx.tcx.parent_hir_node(expr.hir_id);
+        let requires_semi = matches!(parent, Node::Stmt(_)) || cx.typeck_results().expr_ty(expr).is_unit();
         let method_call_str = match by_ref {
             ByRef::Yes(_, Mutability::Mut) => ".as_mut()",
             ByRef::Yes(_, Mutability::Not) => ".as_ref()",
             ByRef::No => "",
         };
-        let sugg = format!(
+
+        let mut sugg = format!(
             "{receiver_str}{method_call_str}?{}",
             if requires_semi { ";" } else { "" }
         );
+        if is_else_clause(cx.tcx, expr) || (requires_semi && !matches!(parent, Node::Stmt(_) | Node::Block(_))) {
+            sugg = format!("{{ {sugg} }}");
+        }
+
         span_lint_and_sugg(
             cx,
             QUESTION_MARK,

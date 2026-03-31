@@ -16,7 +16,7 @@ module to generate correct metadata and insert it into the LLVM IR.
 As the exact format of metadata trees may change between different LLVM
 versions, we now use LLVM
 [DIBuilder](https://llvm.org/docs/doxygen/html/classllvm_1_1DIBuilder.html)
-to create metadata where possible. This will hopefully ease the adaption of
+to create metadata where possible. This will hopefully ease the adaptation of
 this module to future LLVM versions.
 
 The public API of the module is a set of functions that will insert the
@@ -87,19 +87,19 @@ describe the type anew. This behavior is encapsulated in the
 ## Source Locations and Line Information
 
 In addition to data type descriptions the debugging information must also
-allow to map machine code locations back to source code locations in order
+allow mapping machine code locations back to source code locations in order
 to be useful. This functionality is also handled in this module. The
-following functions allow to control source mappings:
+following functions allow controlling source mappings:
 
 + `set_source_location()`
 + `clear_source_location()`
 + `start_emitting_source_locations()`
 
-`set_source_location()` allows to set the current source location. All IR
+`set_source_location()` allows setting the current source location. All IR
 instructions created after a call to this function will be linked to the
 given source location, until another location is specified with
 `set_source_location()` or the source location is cleared with
-`clear_source_location()`. In the later case, subsequent IR instruction
+`clear_source_location()`. In the latter case, subsequent IR instructions
 will not be linked to any source location. As you can see, this is a
 stateful API (mimicking the one in LLVM), so be careful with source
 locations set by previous calls. It's probably best to not rely on any

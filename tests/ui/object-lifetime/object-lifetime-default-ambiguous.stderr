@@ -1,20 +1,35 @@
-error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
   --> $DIR/object-lifetime-default-ambiguous.rs:23:28
    |
 LL | fn a<'a,'b>(t: Ref2<'a,'b, dyn Test>) {
    |                            ^^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL | fn a<'a,'b>(t: Ref2<'a,'b, dyn Test + /* 'a */>) {
+   |                                     ++++++++++
 
-error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
   --> $DIR/object-lifetime-default-ambiguous.rs:27:14
    |
 LL | fn b(t: Ref2<dyn Test>) {
    |              ^^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL | fn b(t: Ref2<dyn Test + /* 'a */>) {
+   |                       ++++++++++
 
-error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
   --> $DIR/object-lifetime-default-ambiguous.rs:43:15
    |
 LL | fn f(t: &Ref2<dyn Test>) {
    |               ^^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL | fn f(t: &Ref2<dyn Test + /* 'a */>) {
+   |                        ++++++++++
 
 error: aborting due to 3 previous errors
 

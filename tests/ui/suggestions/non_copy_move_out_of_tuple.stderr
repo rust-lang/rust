@@ -4,8 +4,7 @@ error[E0507]: cannot move out of `tuple.0` which is behind a shared reference
 LL |     (b,) = *tuple;
    |      -     ^^^^^^
    |      |
-   |      data moved here
-   |      move occurs because the place has type `NonCopy`, which does not implement the `Copy` trait
+   |      data moved here because the place has type `NonCopy`, which does not implement the `Copy` trait
    |
 note: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/non_copy_move_out_of_tuple.rs:3:1

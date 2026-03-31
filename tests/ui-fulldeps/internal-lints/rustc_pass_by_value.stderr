@@ -7,8 +7,8 @@ LL |     ty_ref: &Ty<'_>,
 note: the lint level is defined here
   --> $DIR/rustc_pass_by_value.rs:5:9
    |
-LL | #![deny(rustc::pass_by_value)]
-   |         ^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(rustc::disallowed_pass_by_ref)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: passing `TyCtxt<'_>` by reference
   --> $DIR/rustc_pass_by_value.rs:16:18

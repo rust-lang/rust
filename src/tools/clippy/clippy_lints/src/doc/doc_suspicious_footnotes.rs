@@ -91,7 +91,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, range: Range<usize>, fragments: &F
                             diag.span_suggestion_verbose(
                                 this_fragment.span.shrink_to_hi(),
                                 "add footnote definition",
-                                format!("\n\n{label}: <!-- description -->", label = &doc[start..end],),
+                                format!("\n\n{label}: <!-- description -->", label = &doc[start..end]),
                                 Applicability::HasPlaceholders,
                             );
                         } else {

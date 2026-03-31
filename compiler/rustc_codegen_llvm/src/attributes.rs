@@ -3,16 +3,17 @@ use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr, RtsanSettin
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs, TargetFeature,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
+use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
 
 use crate::context::SimpleCx;
-use crate::errors::SanitizerMemtagRequiresMte;
+use crate::errors::{PackedStackBackchainNeedsSoftfloat, SanitizerMemtagRequiresMte};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{
     self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects, Value,
@@ -120,7 +121,8 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     if enabled.contains(SanitizerSet::THREAD) {
         attrs.push(llvm::AttributeKind::SanitizeThread.create_attr(cx.llcx));
     }
-    if enabled.contains(SanitizerSet::HWADDRESS) {
+    if enabled.contains(SanitizerSet::HWADDRESS) || enabled.contains(SanitizerSet::KERNELHWADDRESS)
+    {
         attrs.push(llvm::AttributeKind::SanitizeHWAddress.create_attr(cx.llcx));
     }
     if enabled.contains(SanitizerSet::SHADOWCALLSTACK) {
@@ -301,15 +303,34 @@ fn stackprotector_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll A
     Some(sspattr.create_attr(cx.llcx))
 }
 
-fn backchain_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
+fn packed_stack_attr<'ll>(
+    cx: &SimpleCx<'ll>,
+    sess: &Session,
+    function_attributes: &Vec<TargetFeature>,
+) -> Option<&'ll Attribute> {
     if sess.target.arch != Arch::S390x {
         return None;
     }
+    if !sess.opts.unstable_opts.packed_stack {
+        return None;
+    }
 
-    let requested_features = sess.opts.cg.target_feature.split(',');
-    let found_positive = requested_features.clone().any(|r| r == "+backchain");
+    // The backchain and softfloat flags can be set via -Ctarget-features=...
+    // or via #[target_features(enable = ...)] so we have to check both possibilities
+    let have_backchain = sess.unstable_target_features.contains(&sym::backchain)
+        || function_attributes.iter().any(|feature| feature.name == sym::backchain);
+    let have_softfloat = sess.unstable_target_features.contains(&sym::soft_float)
+        || function_attributes.iter().any(|feature| feature.name == sym::soft_float);
 
-    if found_positive { Some(llvm::CreateAttrString(cx.llcx, "backchain")) } else { None }
+    // If both, backchain and packedstack, are enabled LLVM cannot generate valid function entry points
+    // with the default ABI. However if the softfloat flag is set LLVM will switch to the softfloat
+    // ABI, where this works.
+    if have_backchain && !have_softfloat {
+        sess.dcx().emit_err(PackedStackBackchainNeedsSoftfloat);
+        return None;
+    }
+
+    Some(llvm::CreateAttrString(cx.llcx, "packed-stack"))
 }
 
 pub(crate) fn target_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> &'ll Attribute {
@@ -471,7 +492,8 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     {
         to_add.push(create_alloc_family_attr(cx.llcx));
         if let Some(instance) = instance
-            && let Some(name) = find_attr!(tcx.get_all_attrs(instance.def_id()), rustc_hir::attrs::AttributeKind::RustcAllocatorZeroedVariant {name} => name)
+            && let Some(name) =
+                find_attr!(tcx, instance.def_id(), RustcAllocatorZeroedVariant {name} => name)
         {
             to_add.push(llvm::CreateAttrStringValue(
                 cx.llcx,
@@ -516,22 +538,18 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.push(llvm::CreateAllocKindAttr(cx.llcx, AllocKindFlags::Free));
         // applies to argument place instead of function place
         let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
-        let attrs: &[_] = if llvm_util::get_version() >= (21, 0, 0) {
-            // "Does not capture provenance" means "if the function call stashes the pointer somewhere,
-            // accessing that pointer after the function returns is UB". That is definitely the case here since
-            // freeing will destroy the provenance.
-            let captures_addr = AttributeKind::CapturesAddress.create_attr(cx.llcx);
-            &[allocated_pointer, captures_addr]
-        } else {
-            &[allocated_pointer]
-        };
+        // "Does not capture provenance" means "if the function call stashes the pointer somewhere,
+        // accessing that pointer after the function returns is UB". That is definitely the case here since
+        // freeing will destroy the provenance.
+        let captures_addr = AttributeKind::CapturesAddress.create_attr(cx.llcx);
+        let attrs = &[allocated_pointer, captures_addr];
         attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), attrs);
     }
     if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align);
     }
-    if let Some(backchain) = backchain_attr(cx, sess) {
-        to_add.push(backchain);
+    if let Some(packed_stack) = packed_stack_attr(cx, sess, &codegen_fn_attrs.target_features) {
+        to_add.push(packed_stack);
     }
     to_add.extend(patchable_function_entry_attrs(
         cx,

@@ -2,7 +2,7 @@
 
 #![feature(rustc_attrs)]
 #![allow(internal_features)]
-#![rustc_variance_of_opaques]
+#![rustc_dump_variances_of_opaques]
 
 use std::ops::Deref;
 

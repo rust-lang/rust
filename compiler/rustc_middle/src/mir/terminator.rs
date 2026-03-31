@@ -326,28 +326,42 @@ impl<O> AssertKind<O> {
             }
         }
     }
+}
 
-    /// Format the diagnostic message for use in a lint (e.g. when the assertion fails during const-eval).
-    ///
-    /// Needs to be kept in sync with the run-time behavior (which is defined by
-    /// `AssertKind::panic_function` and the lang items mentioned in its docs).
-    /// Note that we deliberately show more details here than we do at runtime, such as the actual
-    /// numbers that overflowed -- it is much easier to do so here than at runtime.
-    pub fn diagnostic_message(&self) -> DiagMessage {
+/// Format the diagnostic message for use in a lint (e.g. when the assertion fails during const-eval).
+///
+/// Needs to be kept in sync with the run-time behavior (which is defined by
+/// `AssertKind::panic_function` and the lang items mentioned in its docs).
+/// Note that we deliberately show more details here than we do at runtime, such as the actual
+/// numbers that overflowed -- it is much easier to do so here than at runtime.
+impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         use AssertKind::*;
 
-        use crate::fluent_generated::*;
-
         match self {
-            BoundsCheck { .. } => middle_bounds_check,
-            Overflow(BinOp::Shl, _, _) => middle_assert_shl_overflow,
-            Overflow(BinOp::Shr, _, _) => middle_assert_shr_overflow,
-            Overflow(_, _, _) => middle_assert_op_overflow,
-            OverflowNeg(_) => middle_assert_overflow_neg,
-            DivisionByZero(_) => middle_assert_divide_by_zero,
-            RemainderByZero(_) => middle_assert_remainder_by_zero,
+            BoundsCheck { len, index } => {
+                write!(f, "index out of bounds: the length is {len:?} but the index is {index:?}")
+            }
+            Overflow(BinOp::Shl, _, val) => {
+                write!(f, "attempt to shift left by `{val:#?}`, which would overflow")
+            }
+            Overflow(BinOp::Shr, _, val) => {
+                write!(f, "attempt to shift right by `{val:#?}`, which would overflow")
+            }
+            Overflow(binop, left, right) => {
+                write!(
+                    f,
+                    "attempt to compute `{left:#?} {op} {right:#?}`, which would overflow",
+                    op = binop.to_hir_binop().as_str()
+                )
+            }
+            OverflowNeg(val) => write!(f, "attempt to negate `{val:#?}`, which would overflow"),
+            DivisionByZero(val) => write!(f, "attempt to divide `{val:#?}` by zero"),
+            RemainderByZero(val) => {
+                write!(f, "attempt to calculate the remainder of `{val:#?}` with a divisor of zero")
+            }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                middle_assert_async_resume_after_return
+                write!(f, "`async fn` resumed after completion")
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
@@ -356,83 +370,46 @@ impl<O> AssertKind<O> {
                 bug!("gen blocks can be resumed after they return and will keep returning `None`")
             }
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
-                middle_assert_coroutine_resume_after_return
+                write!(f, "coroutine resumed after completion")
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                middle_assert_async_resume_after_panic
+                write!(f, "`async fn` resumed after panicking")
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                middle_assert_gen_resume_after_panic
+                write!(f, "`gen` fn or block cannot be further iterated on after it panicked")
             }
             ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
-                middle_assert_coroutine_resume_after_panic
+                write!(f, "coroutine resumed after panicking")
             }
-            NullPointerDereference => middle_assert_null_ptr_deref,
-            InvalidEnumConstruction(_) => middle_assert_invalid_enum_construction,
+            NullPointerDereference => write!(f, "null pointer dereference occurred"),
+            InvalidEnumConstruction(source) => {
+                write!(f, "trying to construct an enum from an invalid value `{source:#?}`")
+            }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                middle_assert_async_resume_after_drop
+                write!(f, "`async fn` resumed after async drop")
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                middle_assert_gen_resume_after_drop
+                write!(f, "`gen` fn or block cannot be further iterated on after it async dropped")
             }
             ResumedAfterDrop(CoroutineKind::Coroutine(_)) => {
-                middle_assert_coroutine_resume_after_drop
+                write!(f, "coroutine resumed after async drop")
             }
 
-            MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
-        }
-    }
-
-    pub fn add_args(self, adder: &mut dyn FnMut(DiagArgName, DiagArgValue))
-    where
-        O: fmt::Debug,
-    {
-        use AssertKind::*;
-
-        macro_rules! add {
-            ($name: expr, $value: expr) => {
-                adder($name.into(), $value.into_diag_arg(&mut None));
-            };
-        }
-
-        match self {
-            BoundsCheck { len, index } => {
-                add!("len", format!("{len:?}"));
-                add!("index", format!("{index:?}"));
-            }
-            Overflow(BinOp::Shl | BinOp::Shr, _, val)
-            | DivisionByZero(val)
-            | RemainderByZero(val)
-            | OverflowNeg(val) => {
-                add!("val", format!("{val:#?}"));
-            }
-            Overflow(binop, left, right) => {
-                add!("op", binop.to_hir_binop().as_str());
-                add!("left", format!("{left:#?}"));
-                add!("right", format!("{right:#?}"));
-            }
-            ResumedAfterReturn(_)
-            | ResumedAfterPanic(_)
-            | NullPointerDereference
-            | ResumedAfterDrop(_) => {}
-            MisalignedPointerDereference { required, found } => {
-                add!("required", format!("{required:#?}"));
-                add!("found", format!("{found:#?}"));
-            }
-            InvalidEnumConstruction(source) => {
-                add!("source", format!("{source:#?}"));
-            }
+            MisalignedPointerDereference { required, found } => write!(
+                f,
+                "misaligned pointer dereference: address must be a multiple of {required:#?} but is {found:#?}"
+            ),
         }
     }
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Terminator<'tcx> {
     pub source_info: SourceInfo,
     pub kind: TerminatorKind<'tcx>,
@@ -693,28 +670,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         match self {
             TerminatorKind::Goto { target } => Some(*target),
             _ => None,
-        }
-    }
-
-    /// Returns true if the terminator can write to memory.
-    pub fn can_write_to_memory(&self) -> bool {
-        match self {
-            TerminatorKind::Goto { .. }
-            | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate(_)
-            | TerminatorKind::Return
-            | TerminatorKind::Assert { .. }
-            | TerminatorKind::CoroutineDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::Unreachable => false,
-            TerminatorKind::Call { .. }
-            | TerminatorKind::Drop { .. }
-            | TerminatorKind::TailCall { .. }
-            // Yield writes to the resume_arg place.
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::InlineAsm { .. } => true,
         }
     }
 }

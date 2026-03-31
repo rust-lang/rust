@@ -543,6 +543,9 @@ pub fn std_cargo(
         // `MACOSX_DEPLOYMENT_TARGET`, `IPHONEOS_DEPLOYMENT_TARGET`, etc.
         let mut cmd = builder.rustc_cmd(cargo.compiler());
         cmd.arg("--target").arg(target.rustc_target_arg());
+        // FIXME(#152709): -Zunstable-options is to handle JSON targets.
+        // Remove when JSON targets are stabilized.
+        cmd.arg("-Zunstable-options").env("RUSTC_BOOTSTRAP", "1");
         cmd.arg("--print=deployment-target");
         let output = cmd.run_capture_stdout(builder).stdout();
 
@@ -1377,6 +1380,9 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
             }
         }
     }
+
+    // The host this new compiler will *run* on.
+    cargo.env("CFG_COMPILER_HOST_TRIPLE", target.triple);
 
     if builder.config.rust_verify_llvm_ir {
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");

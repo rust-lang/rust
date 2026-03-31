@@ -14,20 +14,22 @@ impl<T> SmartPtr<T> {
     fn foo(&self) {}
 }
 
-fn main() {
-    let val = 1_u32;
-    let ptr = &val;
+fn a() {
+    let ptr = &1u32;
     let _a: i32 = (ptr as &_).read();
     //~^ ERROR type annotations needed
+}
 
+fn b() {
     // Same again, but with a smart pointer type
-    let val2 = 1_u32;
-    let rc = std::rc::Rc::new(val2);
+    let rc = std::rc::Rc::new(1u32);
     let _b = (rc as std::rc::Rc<_>).read();
     //~^ ERROR type annotations needed
+}
 
+fn c() {
     // Same again, but with a smart pointer type
-    let ptr = SmartPtr(val);
+    let ptr = SmartPtr(1u32);
 
     // We can call unambiguous outer-type methods on this
     (ptr as SmartPtr<_>).foo();
@@ -46,3 +48,5 @@ fn main() {
     let _c = (ptr as SmartPtr<_>).read();
     //~^ ERROR no method named `read` found for struct `SmartPtr<T>`
 }
+
+fn main() {}

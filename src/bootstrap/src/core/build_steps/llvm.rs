@@ -23,7 +23,7 @@ use crate::core::config::{Config, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
-    self, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
+    self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
 use crate::{CLang, GitRepo, Kind, trace};
 
@@ -561,7 +561,6 @@ impl Step for Llvm {
             }
         };
 
-        // FIXME(ZuseZ4): Do we need that for Enzyme too?
         // When building LLVM with LLVM_LINK_LLVM_DYLIB for macOS, an unversioned
         // libLLVM.dylib will be built. However, llvm-config will still look
         // for a versioned path like libLLVM-14.dylib. Manually create a symbolic
@@ -632,11 +631,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = get_llvm_version(builder, llvm_config);
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next())
-        && major >= 20
+        && major >= 21
     {
         return;
     }
-    panic!("\n\nbad LLVM version: {version}, need >=20\n\n")
+    panic!("\n\nbad LLVM version: {version}, need >=21\n\n")
 }
 
 fn configure_cmake(
@@ -773,7 +772,15 @@ fn configure_cmake(
         .define("CMAKE_CXX_COMPILER", sanitize_cc(&cxx))
         .define("CMAKE_ASM_COMPILER", sanitize_cc(&cc));
 
-    cfg.build_arg("-j").build_arg(builder.jobs().to_string());
+    // If we are running under a FIFO jobserver, we should not pass -j to CMake; otherwise it
+    // overrides the jobserver settings and can lead to oversubscription.
+    let has_modern_jobserver = env::var("MAKEFLAGS")
+        .map(|flags| flags.contains("--jobserver-auth=fifo:"))
+        .unwrap_or(false);
+
+    if !has_modern_jobserver {
+        cfg.build_arg("-j").build_arg(builder.jobs().to_string());
+    }
     let mut cflags = ccflags.cflags.clone();
     // FIXME(madsmtm): Allow `cmake-rs` to select flags by itself by passing
     // our flags via `.cflag`/`.cxxflag` instead.
@@ -1008,33 +1015,9 @@ impl Step for OmpOffload {
         t!(fs::create_dir_all(&out_dir));
 
         builder.config.update_submodule("src/llvm-project");
-        let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/runtimes/"));
 
-        // If we use an external clang as opposed to building our own llvm_clang, than that clang will
-        // come with it's own set of default include directories, which are based on a potentially older
-        // LLVM. This can cause issues, so we overwrite it to include headers based on our
-        // `src/llvm-project` submodule instead.
-        // FIXME(offload): With LLVM-22 we hopefully won't need an external clang anymore.
-        let mut cflags = CcFlags::default();
-        if !builder.config.llvm_clang {
-            let base = builder.llvm_out(target).join("include");
-            let inc_dir = base.display();
-            cflags.push_all(format!(" -I {inc_dir}"));
-        }
-
-        configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), cflags, &[]);
-
-        // Re-use the same flags as llvm to control the level of debug information
-        // generated for offload.
-        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
-            (false, _) => "Debug",
-            (true, false) => "Release",
-            (true, true) => "RelWithDebInfo",
-        };
-        trace!(?profile);
-
-        // OpenMP/Offload builds currently (LLVM-21) still depend on Clang, although there are
-        // intentions to loosen this requirement for LLVM-22. If we were to
+        // OpenMP/Offload builds currently (LLVM-22) still depend on Clang, although there are
+        // intentions to loosen this requirement over time. FIXME(offload): re-evaluate on LLVM 23
         let clang_dir = if !builder.config.llvm_clang {
             // We must have an external clang to use.
             assert!(&builder.build.config.llvm_clang_dir.is_some());
@@ -1044,23 +1027,66 @@ impl Step for OmpOffload {
             None
         };
 
-        // FIXME(offload): Once we move from OMP to Offload (Ol) APIs, we should drop the openmp
-        // runtime to simplify our build. We should also re-evaluate the LLVM_Root and try to get
-        // rid of the Clang_DIR, once we upgrade to LLVM-22.
-        cfg.out_dir(&out_dir)
-            .profile(profile)
-            .env("LLVM_CONFIG_REAL", &host_llvm_config)
-            .define("LLVM_ENABLE_ASSERTIONS", "ON")
-            .define("LLVM_ENABLE_RUNTIMES", "openmp;offload")
-            .define("LLVM_INCLUDE_TESTS", "OFF")
-            .define("OFFLOAD_INCLUDE_TESTS", "OFF")
-            .define("OPENMP_STANDALONE_BUILD", "ON")
-            .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
-            .define("LLVM_DIR", llvm_cmake_dir);
-        if let Some(p) = clang_dir {
-            cfg.define("Clang_DIR", p);
+        // In the context of OpenMP offload, some libraries must be compiled for the gpu target,
+        // some for the host, and others for both. We do not perform a full cross-compilation, since
+        // we don't want to run rustc on a GPU.
+        let omp_targets = vec![target.triple.as_ref(), "amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"];
+        for omp_target in omp_targets {
+            let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/runtimes/"));
+
+            // If we use an external clang as opposed to building our own llvm_clang, than that clang will
+            // come with it's own set of default include directories, which are based on a potentially older
+            // LLVM. This can cause issues, so we overwrite it to include headers based on our
+            // `src/llvm-project` submodule instead.
+            // FIXME(offload): With LLVM-22 we hopefully won't need an external clang anymore.
+            let mut cflags = CcFlags::default();
+            if !builder.config.llvm_clang {
+                let base = builder.llvm_out(target).join("include");
+                let inc_dir = base.display();
+                cflags.push_all(format!(" -I {inc_dir}"));
+            }
+
+            configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), cflags, &[]);
+
+            // Re-use the same flags as llvm to control the level of debug information
+            // generated for offload.
+            let profile =
+                match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
+                    (false, _) => "Debug",
+                    (true, false) => "Release",
+                    (true, true) => "RelWithDebInfo",
+                };
+            trace!(?profile);
+
+            // FIXME(offload): Once we move from OMP to Offload (Ol) APIs, we should drop the openmp
+            // runtime to simplify our build. So far, these are still under development.
+            cfg.out_dir(&out_dir)
+                .profile(profile)
+                .env("LLVM_CONFIG_REAL", &host_llvm_config)
+                .define("LLVM_ENABLE_ASSERTIONS", "ON")
+                .define("LLVM_INCLUDE_TESTS", "OFF")
+                .define("OFFLOAD_INCLUDE_TESTS", "OFF")
+                .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
+                .define("LLVM_DIR", llvm_cmake_dir.clone())
+                .define("LLVM_DEFAULT_TARGET_TRIPLE", omp_target);
+            if let Some(p) = clang_dir.clone() {
+                cfg.define("Clang_DIR", p);
+            }
+
+            // We don't perform a full cross-compilation of rustc, therefore our target.triple
+            // will still be a CPU target.
+            if *omp_target == *target.triple {
+                // The offload library provides functionality which only makes sense on the host.
+                cfg.define("LLVM_ENABLE_RUNTIMES", "openmp;offload");
+            } else {
+                // OpenMP provides some device libraries, so we also compile it for all gpu targets.
+                cfg.define("LLVM_USE_LINKER", "lld");
+                cfg.define("LLVM_ENABLE_RUNTIMES", "openmp");
+                cfg.define("CMAKE_C_COMPILER_TARGET", omp_target);
+                cfg.define("CMAKE_CXX_COMPILER_TARGET", omp_target);
+            }
+            cfg.build();
         }
-        cfg.build();
 
         t!(stamp.write());
 
@@ -1125,12 +1151,18 @@ impl Step for Enzyme {
 
         let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
 
+        // Enzyme links against LLVM. If we update the LLVM submodule libLLVM might get a new
+        // version number, in which case Enzyme will now fail to find LLVM. By including the LLVM
+        // hash into the Enzyme hash we force a rebuild of Enzyme when updating LLVM.
+        let enzyme_hash_input = builder.in_tree_llvm_info.sha().unwrap_or_default().to_owned()
+            + builder.enzyme_info.sha().unwrap_or_default();
+
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
         let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
             generate_smart_stamp_hash(
                 builder,
                 &builder.config.src.join("src/tools/enzyme"),
-                builder.enzyme_info.sha().unwrap_or_default(),
+                &enzyme_hash_input,
             )
         });
 
@@ -1140,7 +1172,7 @@ impl Step for Enzyme {
         let llvm_version_major = llvm::get_llvm_version_major(builder, &host_llvm_config);
         let lib_ext = std::env::consts::DLL_EXTENSION;
         let libenzyme = format!("libEnzyme-{llvm_version_major}");
-        let build_dir = out_dir.join("lib");
+        let build_dir = out_dir.join(libdir(target));
         let dylib = build_dir.join(&libenzyme).with_extension(lib_ext);
 
         trace!("checking build stamp to see if we need to rebuild enzyme artifacts");
@@ -1178,7 +1210,16 @@ impl Step for Enzyme {
         // hard to spot more relevant issues.
         let mut cflags = CcFlags::default();
         cflags.push_all("-Wno-deprecated");
-        configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), cflags, &[]);
+
+        // Logic copied from `configure_llvm`
+        // ThinLTO is only available when building with LLVM, enabling LLD is required.
+        // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
+        let mut ldflags = LdFlags::default();
+        if builder.config.llvm_thin_lto && !target.contains("apple") {
+            ldflags.push_all("-fuse-ld=lld");
+        }
+
+        configure_cmake(builder, target, &mut cfg, true, ldflags, cflags, &[]);
 
         // Re-use the same flags as llvm to control the level of debug information
         // generated by Enzyme.
@@ -1517,6 +1558,8 @@ fn supported_sanitizers(
             &["asan", "dfsan", "lsan", "msan", "safestack", "tsan", "rtsan"],
         ),
         "x86_64-unknown-linux-gnuasan" => common_libs("linux", "x86_64", &["asan"]),
+        "x86_64-unknown-linux-gnumsan" => common_libs("linux", "x86_64", &["msan"]),
+        "x86_64-unknown-linux-gnutsan" => common_libs("linux", "x86_64", &["tsan"]),
         "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
         }

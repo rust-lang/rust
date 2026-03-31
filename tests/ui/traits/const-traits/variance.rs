@@ -1,6 +1,6 @@
 #![feature(rustc_attrs, const_trait_impl)]
 #![allow(internal_features)]
-#![rustc_variance_of_opaques]
+#![rustc_dump_variances_of_opaques]
 
 const trait Foo {}
 

@@ -6,8 +6,7 @@
 struct Foo<const N: usize>;
 
 trait Trait {
-    #[type_const]
-    const ASSOC: usize;
+    type const ASSOC: usize;
 }
 
 type Arr<const N: usize> = [(); {{{ N }}}];

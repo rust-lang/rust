@@ -402,59 +402,59 @@ rustc_data_structures::define_id_collections!(
     LocalDefId
 );
 
-impl<CTX: HashStableContext> HashStable<CTX> for DefId {
+impl<Hcx: HashStableContext> HashStable<Hcx> for DefId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hcx.def_path_hash(*self).hash_stable(hcx, hasher);
     }
 }
 
-impl<CTX: HashStableContext> HashStable<CTX> for LocalDefId {
+impl<Hcx: HashStableContext> HashStable<Hcx> for LocalDefId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hcx.def_path_hash(self.to_def_id()).local_hash().hash_stable(hcx, hasher);
     }
 }
 
-impl<CTX: HashStableContext> HashStable<CTX> for CrateNum {
+impl<Hcx: HashStableContext> HashStable<Hcx> for CrateNum {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_def_id().to_stable_hash_key(hcx).stable_crate_id().hash_stable(hcx, hasher);
     }
 }
 
-impl<CTX: HashStableContext> ToStableHashKey<CTX> for DefId {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for DefId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &Hcx) -> DefPathHash {
         hcx.def_path_hash(*self)
     }
 }
 
-impl<CTX: HashStableContext> ToStableHashKey<CTX> for LocalDefId {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for LocalDefId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &Hcx) -> DefPathHash {
         hcx.def_path_hash(self.to_def_id())
     }
 }
 
-impl<CTX: HashStableContext> ToStableHashKey<CTX> for CrateNum {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for CrateNum {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &Hcx) -> DefPathHash {
         self.as_def_id().to_stable_hash_key(hcx)
     }
 }
 
-impl<CTX: HashStableContext> ToStableHashKey<CTX> for DefPathHash {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for DefPathHash {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &CTX) -> DefPathHash {
+    fn to_stable_hash_key(&self, _: &Hcx) -> DefPathHash {
         *self
     }
 }
@@ -540,7 +540,7 @@ macro_rules! typed_def_id {
 }
 
 // N.B.: when adding new typed `DefId`s update the corresponding trait impls in
-// `rustc_middle::dep_graph::def_node` for `DepNodeParams`.
+// `rustc_middle::dep_graph::dep_node_key` for `DepNodeKey`.
 typed_def_id! { ModDefId, LocalModDefId }
 
 impl LocalModDefId {

@@ -47,6 +47,8 @@ declare_clippy_lint! {
     "manual implementations of `BuildHasher::hash_one`"
 }
 
+impl_lint_pass!(ManualHashOne => [MANUAL_HASH_ONE]);
+
 pub struct ManualHashOne {
     msrv: Msrv,
 }
@@ -56,8 +58,6 @@ impl ManualHashOne {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(ManualHashOne => [MANUAL_HASH_ONE]);
 
 impl LateLintPass<'_> for ManualHashOne {
     fn check_local(&mut self, cx: &LateContext<'_>, local: &LetStmt<'_>) {

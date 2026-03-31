@@ -6,13 +6,11 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    #[type_const]
-    const N: i32 where Self: Bound;
+    type const N: i32 where Self: Bound;
 }
 
 impl Trait for () {
-    #[type_const]
-    const N: i32 = 0;
+    type const N: i32 = 0;
 }
 
 trait Bound {}

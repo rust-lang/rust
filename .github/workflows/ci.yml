@@ -94,6 +94,10 @@ jobs:
       CACHE_DOMAIN: ci-caches.rust-lang.org
     continue-on-error: ${{ matrix.continue_on_error || false }}
     strategy:
+      # If the user starts multiple jobs in a try build, let them all finish.
+      # Try builds are sometimes used to test several jobs at once, and it is useful to know which
+      # of them would succeed or not.
+      fail-fast: ${{ needs.calculate_matrix.outputs.run_type != 'try' }}
       matrix:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}

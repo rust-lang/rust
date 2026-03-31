@@ -8,6 +8,7 @@
 //@ normalize-stdout: "TypeId\(0x[0-9a-f]+\)" -> "TypeId($$HEX)"
 //@ needs-threads
 //@ needs-unwind (panic)
+//@ reference: attributes.testing.should_panic.expected
 
 #[test]
 #[should_panic]

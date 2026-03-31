@@ -85,9 +85,9 @@ RUN /tmp/build-fuchsia-toolchain.sh
 COPY host-x86_64/dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
 RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh
 
-RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-x86_64-linux.tar.gz | \
+RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-30/wasi-sdk-30.0-x86_64-linux.tar.gz | \
   tar -xz
-ENV WASI_SDK_PATH=/tmp/wasi-sdk-29.0-x86_64-linux
+ENV WASI_SDK_PATH=/tmp/wasi-sdk-30.0-x86_64-linux
 
 COPY scripts/freebsd-toolchain.sh /tmp/
 RUN /tmp/freebsd-toolchain.sh i686
@@ -95,16 +95,14 @@ RUN /tmp/freebsd-toolchain.sh i686
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_AR /usr/local/bin/llvm-ar
-ENV CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_RUSTFLAGS \
--C link-arg=--sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot \
+ENV CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_AR="/usr/local/bin/llvm-ar"
+ENV CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_RUSTFLAGS="-C link-arg=--sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot \
 -Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot/lib \
--Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib
-ENV CARGO_TARGET_AARCH64_UNKNOWN_FUCHSIA_AR /usr/local/bin/llvm-ar
-ENV CARGO_TARGET_AARCH64_UNKNOWN_FUCHSIA_RUSTFLAGS \
--C link-arg=--sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot \
+-Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib"
+ENV CARGO_TARGET_AARCH64_UNKNOWN_FUCHSIA_AR="/usr/local/bin/llvm-ar"
+ENV CARGO_TARGET_AARCH64_UNKNOWN_FUCHSIA_RUSTFLAGS="-C link-arg=--sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot \
 -Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot/lib \
--Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/lib
+-Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/lib"
 
 ENV TARGETS=x86_64-unknown-fuchsia
 ENV TARGETS=$TARGETS,aarch64-unknown-fuchsia
@@ -126,6 +124,8 @@ ENV TARGETS=$TARGETS,x86_64-unknown-uefi
 ENV TARGETS=$TARGETS,riscv64gc-unknown-linux-musl
 
 ENV TARGETS_SANITIZERS=x86_64-unknown-linux-gnuasan
+ENV TARGETS_SANITIZERS=$TARGETS_SANITIZERS,x86_64-unknown-linux-gnumsan
+ENV TARGETS_SANITIZERS=$TARGETS_SANITIZERS,x86_64-unknown-linux-gnutsan
 
 # As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
 # we need asm in the search path for gcc-9 (for gnux32) but not in the search path of the
@@ -136,8 +136,8 @@ RUN ln -s /usr/include/x86_64-linux-gnu/asm /usr/local/include/asm
 # musl-gcc can't find libgcc_s.so.1 since it doesn't use the standard search paths.
 RUN ln -s /usr/riscv64-linux-gnu/lib/libgcc_s.so.1 /usr/lib/gcc-cross/riscv64-linux-gnu/11/
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --enable-llvm-bitcode-linker --disable-docs \
+ENV RUST_CONFIGURE_ARGS="--enable-extended --enable-lld --enable-llvm-bitcode-linker --disable-docs \
   --musl-root-armv7=/musl-armv7 \
-  --musl-root-riscv64gc=/musl-riscv64gc
+  --musl-root-riscv64gc=/musl-riscv64gc"
 
-ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS && python3 ../x.py dist --host='' --set build.sanitizers=true --target $TARGETS_SANITIZERS
+ENV SCRIPT="python3 ../x.py dist --host= --target $TARGETS && python3 ../x.py dist --host= --set build.sanitizers=true --target $TARGETS_SANITIZERS"

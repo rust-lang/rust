@@ -2,20 +2,21 @@
 
 //@ revisions: min mgca
 //@[mgca] check-pass
-
+#![allow(incomplete_features)]
+#![feature(mgca_type_const_syntax)]
 #![cfg_attr(mgca, feature(min_generic_const_args))]
-#![cfg_attr(mgca, expect(incomplete_features))]
+// FIXME(mgca) syntax is it's own feature flag before
+// expansion and is also an incomplete feature.
+//#![cfg_attr(mgca, expect(incomplete_features))]
 
 trait UnderlyingImpl<const MAX_SIZE: usize> {
     type InfoType: LevelInfo;
     type SupportedArray<T>;
 }
 
-// FIXME: cfg_attr(..., type_const) is broken (search for sym::type_const in compiler/)
 trait LevelInfo {
     #[cfg(mgca)]
-    #[type_const]
-    const SUPPORTED_SLOTS: usize;
+    type const SUPPORTED_SLOTS: usize;
 
     #[cfg(not(mgca))]
     const SUPPORTED_SLOTS: usize;
@@ -25,8 +26,7 @@ struct Info;
 
 impl LevelInfo for Info {
     #[cfg(mgca)]
-    #[type_const]
-    const SUPPORTED_SLOTS: usize = 1;
+    type const SUPPORTED_SLOTS: usize = 1;
 
     #[cfg(not(mgca))]
     const SUPPORTED_SLOTS: usize = 1;

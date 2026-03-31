@@ -41,13 +41,13 @@ declare_clippy_lint! {
     "calls to `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` which perform useless conversions to the same type"
 }
 
+impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
+
 #[derive(Default)]
 pub struct UselessConversion {
     try_desugar_arm: Vec<HirId>,
     expn_depth: u32,
 }
-
-impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
 
 enum MethodOrFunction {
     Method,
@@ -157,7 +157,9 @@ fn into_iter_deep_call<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>) -
 impl<'tcx> LateLintPass<'tcx> for UselessConversion {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {
-            self.expn_depth += 1;
+            if e.span.desugaring_kind().is_none() {
+                self.expn_depth += 1;
+            }
             return;
         }
 
@@ -437,7 +439,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
         if Some(&e.hir_id) == self.try_desugar_arm.last() {
             self.try_desugar_arm.pop();
         }
-        if e.span.from_expansion() {
+        if e.span.from_expansion() && e.span.desugaring_kind().is_none() {
             self.expn_depth -= 1;
         }
     }

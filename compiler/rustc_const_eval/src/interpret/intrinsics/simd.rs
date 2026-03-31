@@ -2,7 +2,6 @@ use either::Either;
 use rustc_abi::{BackendRepr, Endian};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, Round};
-use rustc_data_structures::assert_matches;
 use rustc_middle::mir::interpret::{InterpErrorKind, Pointer, UndefinedBehaviorInfo};
 use rustc_middle::ty::{FloatTy, ScalarInt, SimdAlign};
 use rustc_middle::{bug, err_ub_format, mir, span_bug, throw_unsup_format, ty};
@@ -175,8 +174,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | sym::simd_le
             | sym::simd_gt
             | sym::simd_ge
-            | sym::simd_fmax
-            | sym::simd_fmin
+            | sym::simd_maximum_number_nsz
+            | sym::simd_minimum_number_nsz
             | sym::simd_saturating_add
             | sym::simd_saturating_sub
             | sym::simd_arith_offset => {
@@ -212,8 +211,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::simd_le => Op::MirOp(BinOp::Le),
                     sym::simd_gt => Op::MirOp(BinOp::Gt),
                     sym::simd_ge => Op::MirOp(BinOp::Ge),
-                    sym::simd_fmax => Op::FMinMax(MinMax::MaximumNumber),
-                    sym::simd_fmin => Op::FMinMax(MinMax::MinimumNumber),
+                    sym::simd_maximum_number_nsz => Op::FMinMax(MinMax::MaximumNumberNsz),
+                    sym::simd_minimum_number_nsz => Op::FMinMax(MinMax::MinimumNumberNsz),
                     sym::simd_saturating_add => Op::SaturatingOp(BinOp::Add),
                     sym::simd_saturating_sub => Op::SaturatingOp(BinOp::Sub),
                     sym::simd_arith_offset => Op::WrappingOffset,
@@ -305,8 +304,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::simd_reduce_xor => Op::MirOp(BinOp::BitXor),
                     sym::simd_reduce_any => Op::MirOpBool(BinOp::BitOr),
                     sym::simd_reduce_all => Op::MirOpBool(BinOp::BitAnd),
-                    sym::simd_reduce_max => Op::MinMax(MinMax::MaximumNumber),
-                    sym::simd_reduce_min => Op::MinMax(MinMax::MinimumNumber),
+                    sym::simd_reduce_max => Op::MinMax(MinMax::MaximumNumberNsz),
+                    sym::simd_reduce_min => Op::MinMax(MinMax::MinimumNumberNsz),
                     _ => unreachable!(),
                 };
 
@@ -330,8 +329,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             } else {
                                 // Just boring integers, no NaNs to worry about.
                                 let mirop = match mmop {
-                                    MinMax::MinimumNumber | MinMax::Minimum => BinOp::Le,
-                                    MinMax::MaximumNumber | MinMax::Maximum => BinOp::Ge,
+                                    MinMax::MinimumNumberNsz | MinMax::Minimum => BinOp::Le,
+                                    MinMax::MaximumNumberNsz | MinMax::Maximum => BinOp::Ge,
                                 };
                                 if self.binary_op(mirop, &res, &op)?.to_scalar().to_bool()? {
                                     res
@@ -838,7 +837,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         vector_layout: TyAndLayout<'tcx>,
         alignment: SimdAlign,
     ) -> InterpResult<'tcx> {
-        assert_matches!(vector_layout.backend_repr, BackendRepr::SimdVector { .. });
+        // Packed SIMD types with non-power-of-two element counts use BackendRepr::Memory
+        // instead of BackendRepr::SimdVector. We need to handle both cases.
+        // FIXME: remove the BackendRepr::Memory case when SIMD vectors are always passed as BackendRepr::SimdVector.
+        assert!(vector_layout.ty.is_simd(), "check_simd_ptr_alignment called on non-SIMD type");
+        match vector_layout.backend_repr {
+            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => {}
+            _ => {
+                span_bug!(
+                    self.cur_span(),
+                    "SIMD type has unexpected backend_repr: {:?}",
+                    vector_layout.backend_repr
+                );
+            }
+        }
 
         let align = match alignment {
             ty::SimdAlign::Unaligned => {

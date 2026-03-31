@@ -9,6 +9,7 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
+use rustc_type_ir::solve::Certainty::Maybe;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{
     self as ty, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -45,11 +46,11 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn self_ty(self) -> I::Ty;
+    fn self_ty(self) -> ty::Ty<I>;
 
     fn trait_ref(self, cx: I) -> ty::TraitRef<I>;
 
-    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self;
+    fn with_replaced_self_ty(self, cx: I, self_ty: ty::Ty<I>) -> Self;
 
     fn trait_def_id(self, cx: I) -> I::TraitId;
 
@@ -138,8 +139,10 @@ where
             .enter_single_candidate(|ecx| {
                 Self::match_assumption(ecx, goal, assumption, |ecx| {
                     ecx.try_evaluate_added_goals()?;
-                    source.set(ecx.characterize_param_env_assumption(goal.param_env, assumption)?);
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    let (src, certainty) =
+                        ecx.characterize_param_env_assumption(goal.param_env, assumption)?;
+                    source.set(src);
+                    ecx.evaluate_added_goals_and_make_canonical_response(certainty)
                 })
             });
 
@@ -348,6 +351,11 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Vec<Candidate<I>>;
+
+    fn consider_builtin_field_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution>;
 }
 
 /// Allows callers of `assemble_and_evaluate_candidates` to choose whether to limit
@@ -617,6 +625,7 @@ where
                 Some(SolverTraitLangItem::BikeshedGuaranteedNoDrop) => {
                     G::consider_builtin_bikeshed_guaranteed_no_drop_candidate(self, goal)
                 }
+                Some(SolverTraitLangItem::Field) => G::consider_builtin_field_candidate(self, goal),
                 _ => Err(NoSolution),
             }
         };
@@ -674,7 +683,7 @@ where
     // hitting another overflow error something. Add a depth parameter needed later.
     fn assemble_alias_bound_candidates_recur<G: GoalKind<D>>(
         &mut self,
-        self_ty: I::Ty,
+        self_ty: ty::Ty<I>,
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
         consider_self_bounds: AliasBoundKind,
@@ -1008,13 +1017,13 @@ where
             struct ReplaceOpaque<I: Interner> {
                 cx: I,
                 alias_ty: ty::AliasTy<I>,
-                self_ty: I::Ty,
+                self_ty: ty::Ty<I>,
             }
             impl<I: Interner> TypeFolder<I> for ReplaceOpaque<I> {
                 fn cx(&self) -> I {
                     self.cx
                 }
-                fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+                fn fold_ty(&mut self, ty: ty::Ty<I>) -> ty::Ty<I> {
                     if let ty::Alias(ty::Opaque, alias_ty) = ty.kind() {
                         if alias_ty == self.alias_ty {
                             return self.self_ty;
@@ -1222,21 +1231,26 @@ where
         &mut self,
         param_env: I::ParamEnv,
         assumption: I::Clause,
-    ) -> Result<CandidateSource<I>, NoSolution> {
+    ) -> Result<(CandidateSource<I>, Certainty), NoSolution> {
         // FIXME: This should be fixed, but it also requires changing the behavior
         // in the old solver which is currently relied on.
         if assumption.has_bound_vars() {
-            return Ok(CandidateSource::ParamEnv(ParamEnvSource::NonGlobal));
+            return Ok((CandidateSource::ParamEnv(ParamEnvSource::NonGlobal), Certainty::Yes));
         }
 
         match assumption.visit_with(&mut FindParamInClause {
             ecx: self,
             param_env,
             universes: vec![],
+            recursion_depth: 0,
         }) {
             ControlFlow::Break(Err(NoSolution)) => Err(NoSolution),
-            ControlFlow::Break(Ok(())) => Ok(CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)),
-            ControlFlow::Continue(()) => Ok(CandidateSource::ParamEnv(ParamEnvSource::Global)),
+            ControlFlow::Break(Ok(certainty)) => {
+                Ok((CandidateSource::ParamEnv(ParamEnvSource::NonGlobal), certainty))
+            }
+            ControlFlow::Continue(()) => {
+                Ok((CandidateSource::ParamEnv(ParamEnvSource::Global), Certainty::Yes))
+            }
         }
     }
 }
@@ -1245,6 +1259,7 @@ struct FindParamInClause<'a, 'b, D: SolverDelegate<Interner = I>, I: Interner> {
     ecx: &'a mut EvalCtxt<'b, D>,
     param_env: I::ParamEnv,
     universes: Vec<Option<ty::UniverseIndex>>,
+    recursion_depth: usize,
 }
 
 impl<D, I> TypeVisitor<I> for FindParamInClause<'_, '_, D, I>
@@ -1252,7 +1267,11 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    type Result = ControlFlow<Result<(), NoSolution>>;
+    // - `Continue(())`: no generic parameter was found, the type is global
+    // - `Break(Ok(Certainty::Yes))`: a generic parameter was found, the type is non-global
+    // - `Break(Ok(Certainty::Maybe(_)))`: the recursion limit reached, assume that the type is non-global
+    // - `Break(Err(NoSolution))`: normalization failed
+    type Result = ControlFlow<Result<Certainty, NoSolution>>;
 
     fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
         self.universes.push(None);
@@ -1261,7 +1280,7 @@ where
         ControlFlow::Continue(())
     }
 
-    fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
+    fn visit_ty(&mut self, ty: ty::Ty<I>) -> Self::Result {
         let ty = self.ecx.replace_bound_vars(ty, &mut self.universes);
         let Ok(ty) = self.ecx.structurally_normalize_ty(self.param_env, ty) else {
             return ControlFlow::Break(Err(NoSolution));
@@ -1269,12 +1288,24 @@ where
 
         if let ty::Placeholder(p) = ty.kind() {
             if p.universe() == ty::UniverseIndex::ROOT {
-                ControlFlow::Break(Ok(()))
+                ControlFlow::Break(Ok(Certainty::Yes))
             } else {
                 ControlFlow::Continue(())
             }
         } else if ty.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_RE_INFER) {
-            ty.super_visit_with(self)
+            self.recursion_depth += 1;
+            if self.recursion_depth > self.ecx.cx().recursion_limit() {
+                return ControlFlow::Break(Ok(Maybe {
+                    cause: MaybeCause::Overflow {
+                        suggest_increasing_limit: true,
+                        keep_constraints: false,
+                    },
+                    opaque_types_jank: OpaqueTypesJank::AllGood,
+                }));
+            }
+            let result = ty.super_visit_with(self);
+            self.recursion_depth -= 1;
+            result
         } else {
             ControlFlow::Continue(())
         }
@@ -1288,7 +1319,7 @@ where
 
         if let ty::ConstKind::Placeholder(p) = ct.kind() {
             if p.universe() == ty::UniverseIndex::ROOT {
-                ControlFlow::Break(Ok(()))
+                ControlFlow::Break(Ok(Certainty::Yes))
             } else {
                 ControlFlow::Continue(())
             }
@@ -1304,12 +1335,12 @@ where
             ty::ReStatic | ty::ReError(_) | ty::ReBound(..) => ControlFlow::Continue(()),
             ty::RePlaceholder(p) => {
                 if p.universe() == ty::UniverseIndex::ROOT {
-                    ControlFlow::Break(Ok(()))
+                    ControlFlow::Break(Ok(Certainty::Yes))
                 } else {
                     ControlFlow::Continue(())
                 }
             }
-            ty::ReVar(_) => ControlFlow::Break(Ok(())),
+            ty::ReVar(_) => ControlFlow::Break(Ok(Certainty::Yes)),
             ty::ReErased | ty::ReEarlyParam(_) | ty::ReLateParam(_) => {
                 unreachable!("unexpected region in param-env clause")
             }

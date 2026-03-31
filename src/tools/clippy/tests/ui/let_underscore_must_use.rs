@@ -109,4 +109,14 @@ fn main() {
 
     #[allow(clippy::let_underscore_must_use)]
     let _ = a;
+
+    // No lint because this type should behave as `()`
+    let _ = Result::<_, std::convert::Infallible>::Ok(());
+
+    #[must_use]
+    struct T;
+
+    // Lint because this type should behave as `T`
+    let _ = Result::<_, std::convert::Infallible>::Ok(T);
+    //~^ let_underscore_must_use
 }

@@ -3,12 +3,12 @@ use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, struct_span_code_err};
+use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, msg, struct_span_code_err};
 use rustc_hir::def::*;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, MatchSource};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_lint::Level;
+use rustc_lint_defs::Level;
 use rustc_middle::bug;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
@@ -29,7 +29,6 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::instrument;
 
 use crate::errors::*;
-use crate::fluent_generated as fluent;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let typeck_results = tcx.typeck(def_id);
@@ -102,8 +101,7 @@ struct MatchVisitor<'p, 'tcx> {
     error: Result<(), ErrorGuaranteed>,
 }
 
-// Visitor for a thir body. This calls `check_match`, `check_let` and `check_let_chain` as
-// appropriate.
+// Visitor for a thir body. This calls `check_match` and `check_let` as appropriate.
 impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
     fn thir(&self) -> &'p Thir<'tcx> {
         self.thir
@@ -161,16 +159,16 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 self.check_match(scrutinee, arms, MatchSource::Normal, span);
             }
             ExprKind::Let { box ref pat, expr } => {
-                self.check_let(pat, Some(expr), ex.span);
+                self.check_let(pat, Some(expr), ex.span, None);
             }
             ExprKind::LogicalOp { op: LogicalOp::And, .. }
                 if !matches!(self.let_source, LetSource::None) =>
             {
                 let mut chain_refutabilities = Vec::new();
                 let Ok(()) = self.visit_land(ex, &mut chain_refutabilities) else { return };
-                // If at least one of the operands is a `let ... = ...`.
-                if chain_refutabilities.iter().any(|x| x.is_some()) {
-                    self.check_let_chain(chain_refutabilities, ex.span);
+                // Lint only single irrefutable let binding.
+                if let [Some((_, Irrefutable))] = chain_refutabilities[..] {
+                    self.lint_single_let(ex.span, None);
                 }
                 return;
             }
@@ -185,8 +183,9 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 self.with_hir_source(hir_id, |this| {
                     let let_source =
                         if else_block.is_some() { LetSource::LetElse } else { LetSource::PlainLet };
+                    let else_span = else_block.map(|bid| this.thir.blocks[bid].span);
                     this.with_let_source(let_source, |this| {
-                        this.check_let(pattern, initializer, span)
+                        this.check_let(pattern, initializer, span, else_span)
                     });
                     visit::walk_stmt(this, stmt);
                 });
@@ -343,7 +342,6 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | Binary { .. }
             | Block { .. }
             | Borrow { .. }
-            | Box { .. }
             | Call { .. }
             | ByUse { .. }
             | Closure { .. }
@@ -428,22 +426,19 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let(&mut self, pat: &'p Pat<'tcx>, scrutinee: Option<ExprId>, span: Span) {
+    fn check_let(
+        &mut self,
+        pat: &'p Pat<'tcx>,
+        scrutinee: Option<ExprId>,
+        span: Span,
+        else_span: Option<Span>,
+    ) {
         assert!(self.let_source != LetSource::None);
         let scrut = scrutinee.map(|id| &self.thir[id]);
         if let LetSource::PlainLet = self.let_source {
-            self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span))
-        } else {
-            let Ok(refutability) = self.is_let_irrefutable(pat, scrut) else { return };
-            if matches!(refutability, Irrefutable) {
-                report_irrefutable_let_patterns(
-                    self.tcx,
-                    self.hir_source,
-                    self.let_source,
-                    1,
-                    span,
-                );
-            }
+            self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span));
+        } else if let Ok(Irrefutable) = self.is_let_irrefutable(pat, scrut) {
+            self.lint_single_let(span, else_span);
         }
     }
 
@@ -551,74 +546,15 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let_chain(
-        &mut self,
-        chain_refutabilities: Vec<Option<(Span, RefutableFlag)>>,
-        whole_chain_span: Span,
-    ) {
-        assert!(self.let_source != LetSource::None);
-
-        if chain_refutabilities.iter().all(|r| matches!(*r, Some((_, Irrefutable)))) {
-            // The entire chain is made up of irrefutable `let` statements
-            report_irrefutable_let_patterns(
-                self.tcx,
-                self.hir_source,
-                self.let_source,
-                chain_refutabilities.len(),
-                whole_chain_span,
-            );
-            return;
-        }
-
-        if let Some(until) =
-            chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, Irrefutable))))
-            && until > 0
-        {
-            // The chain has a non-zero prefix of irrefutable `let` statements.
-
-            // Check if the let source is while, for there is no alternative place to put a prefix,
-            // and we shouldn't lint.
-            // For let guards inside a match, prefixes might use bindings of the match pattern,
-            // so can't always be moved out.
-            // For `else if let`, an extra indentation level would be required to move the bindings.
-            // FIXME: Add checking whether the bindings are actually used in the prefix,
-            // and lint if they are not.
-            if !matches!(
-                self.let_source,
-                LetSource::WhileLet | LetSource::IfLetGuard | LetSource::ElseIfLet
-            ) {
-                // Emit the lint
-                let prefix = &chain_refutabilities[..until];
-                let span_start = prefix[0].unwrap().0;
-                let span_end = prefix.last().unwrap().unwrap().0;
-                let span = span_start.to(span_end);
-                let count = prefix.len();
-                self.tcx.emit_node_span_lint(
-                    IRREFUTABLE_LET_PATTERNS,
-                    self.hir_source,
-                    span,
-                    LeadingIrrefutableLetPatterns { count },
-                );
-            }
-        }
-
-        if let Some(from) =
-            chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, Irrefutable))))
-            && from != (chain_refutabilities.len() - 1)
-        {
-            // The chain has a non-empty suffix of irrefutable `let` statements
-            let suffix = &chain_refutabilities[from + 1..];
-            let span_start = suffix[0].unwrap().0;
-            let span_end = suffix.last().unwrap().unwrap().0;
-            let span = span_start.to(span_end);
-            let count = suffix.len();
-            self.tcx.emit_node_span_lint(
-                IRREFUTABLE_LET_PATTERNS,
-                self.hir_source,
-                span,
-                TrailingIrrefutableLetPatterns { count },
-            );
-        }
+    fn lint_single_let(&mut self, let_span: Span, else_span: Option<Span>) {
+        report_irrefutable_let_patterns(
+            self.tcx,
+            self.hir_source,
+            self.let_source,
+            1,
+            let_span,
+            else_span,
+        );
     }
 
     fn analyze_binding(
@@ -913,6 +849,7 @@ fn report_irrefutable_let_patterns(
     source: LetSource,
     count: usize,
     span: Span,
+    else_span: Option<Span>,
 ) {
     macro_rules! emit_diag {
         ($lint:tt) => {{
@@ -924,7 +861,14 @@ fn report_irrefutable_let_patterns(
         LetSource::None | LetSource::PlainLet | LetSource::Else => bug!(),
         LetSource::IfLet | LetSource::ElseIfLet => emit_diag!(IrrefutableLetPatternsIfLet),
         LetSource::IfLetGuard => emit_diag!(IrrefutableLetPatternsIfLetGuard),
-        LetSource::LetElse => emit_diag!(IrrefutableLetPatternsLetElse),
+        LetSource::LetElse => {
+            tcx.emit_node_span_lint(
+                IRREFUTABLE_LET_PATTERNS,
+                id,
+                span,
+                IrrefutableLetPatternsLetElse { count, else_span },
+            );
+        }
         LetSource::WhileLet => emit_diag!(IrrefutableLetPatternsWhileLet),
     }
 }
@@ -986,22 +930,16 @@ fn report_unreachable_pattern<'p, 'tcx>(
             let mut iter = covering_pats.iter();
             let mut multispan = MultiSpan::from_span(pat_span);
             for p in iter.by_ref().take(CAP_COVERED_BY_MANY) {
-                multispan.push_span_label(
-                    p.data().span,
-                    fluent::mir_build_unreachable_matches_same_values,
-                );
+                multispan.push_span_label(p.data().span, msg!("matches some of the same values"));
             }
             let remain = iter.count();
             if remain == 0 {
-                multispan.push_span_label(
-                    pat_span,
-                    fluent::mir_build_unreachable_making_this_unreachable,
-                );
+                multispan.push_span_label(pat_span, msg!("collectively making this unreachable"));
             } else {
                 lint.covered_by_many_n_more_count = remain;
                 multispan.push_span_label(
                     pat_span,
-                    fluent::mir_build_unreachable_making_this_unreachable_n_more,
+                    msg!("...and {$covered_by_many_n_more_count} other patterns collectively make this unreachable"),
                 );
             }
             lint.covered_by_many = Some(multispan);
@@ -1040,7 +978,7 @@ fn find_fallback_pattern_typo<'tcx>(
                     continue;
                 };
                 if let Some(value_ns) = path.res.value_ns
-                    && let Res::Def(DefKind::Const, id) = value_ns
+                    && let Res::Def(DefKind::Const { .. }, id) = value_ns
                     && infcx.can_eq(param_env, ty, cx.tcx.type_of(id).instantiate_identity())
                 {
                     if cx.tcx.visibility(id).is_accessible_from(parent, cx.tcx) {
@@ -1057,7 +995,7 @@ fn find_fallback_pattern_typo<'tcx>(
                     }
                 }
             }
-            if let DefKind::Const = cx.tcx.def_kind(item.owner_id)
+            if let DefKind::Const { .. } = cx.tcx.def_kind(item.owner_id)
                 && infcx.can_eq(param_env, ty, cx.tcx.type_of(item.owner_id).instantiate_identity())
             {
                 // Look for local consts.
@@ -1197,7 +1135,7 @@ fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>
     // the pattern's source text must resemble a plain identifier without any
     // `::` namespace separators or other non-identifier characters.
     if let Some(def_id) = try { pat.extra.as_deref()?.expanded_const? }
-        && matches!(tcx.def_kind(def_id), DefKind::Const)
+        && matches!(tcx.def_kind(def_id), DefKind::Const { .. })
         && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
         && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
     {

@@ -4,7 +4,8 @@ use std::collections::BTreeMap;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan, listify};
+use rustc_errors::formatting::DiagMessageAddArg;
+use rustc_errors::{Applicability, Diag, DiagMessage, EmissionGuarantee, MultiSpan, listify, msg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{
     self as hir, CoroutineKind, GenericBound, LangItem, WhereBoundPredicate, WherePredicateKind,
@@ -22,8 +23,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveOutIndex};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::call_kind::{CallDesugaringKind, call_kind};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -35,7 +35,6 @@ use tracing::debug;
 use super::MirBorrowckCtxt;
 use super::borrow_set::BorrowData;
 use crate::constraints::OutlivesConstraint;
-use crate::fluent_generated as fluent;
 use crate::nll::ConstraintDescription;
 use crate::session_diagnostics::{
     CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
@@ -700,7 +699,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
                 .is_some()
             {
-                diag.span_note(pred.span, fluent::borrowck_limitations_implies_static);
+                diag.span_note(pred.span, LIMITATION_NOTE);
                 return;
             }
             for bound in bounds.iter() {
@@ -711,7 +710,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
                         .is_some()
                     {
-                        diag.span_note(bound.span, fluent::borrowck_limitations_implies_static);
+                        diag.span_note(bound.span, LIMITATION_NOTE);
                         return;
                     }
                 }
@@ -1275,12 +1274,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     if let ty::Param(param_ty) = *self_ty.kind()
                         && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
                         && let param = generics.type_param(param_ty, self.infcx.tcx)
-                        && let Some(hir_generics) = self
-                            .infcx
-                            .tcx
-                            .typeck_root_def_id(self.mir_def_id().to_def_id())
-                            .as_local()
-                            .and_then(|def_id| self.infcx.tcx.hir_get_generics(def_id))
+                        && let Some(hir_generics) = self.infcx.tcx.hir_get_generics(
+                            self.infcx.tcx.typeck_root_def_id_local(self.mir_def_id()),
+                        )
                         && let spans = hir_generics
                             .predicates
                             .iter()
@@ -1310,20 +1306,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         && !spans.is_empty()
                     {
                         let mut span: MultiSpan = spans.clone().into();
-                        err.arg("ty", param_ty.to_string());
-                        let msg = err.dcx.eagerly_translate_to_string(
-                            fluent::borrowck_moved_a_fn_once_in_call_def,
-                            err.args.iter(),
-                        );
-                        err.remove_arg("ty");
+                        let msg = msg!("`{$ty}` is made to be an `FnOnce` closure here")
+                            .arg("ty", param_ty.to_string())
+                            .format();
                         for sp in spans {
                             span.push_span_label(sp, msg.clone());
                         }
                         span.push_span_label(
                             fn_call_span,
-                            fluent::borrowck_moved_a_fn_once_in_call,
+                            msg!("this value implements `FnOnce`, which causes it to be moved when called"),
                         );
-                        err.span_note(span, fluent::borrowck_moved_a_fn_once_in_call_call);
+                        err.span_note(span, msg!("`FnOnce` closures can only be called once"));
                     } else {
                         err.subdiagnostic(CaptureReasonNote::FnOnceMoveInCall { var_span });
                     }
@@ -1381,7 +1374,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option | sym::Result))
                     });
                     if is_option_or_result && maybe_reinitialized_locations_is_empty {
-                        err.subdiagnostic(CaptureReasonLabel::BorrowContent { var_span });
+                        err.subdiagnostic(CaptureReasonLabel::BorrowContent {
+                            var_span: var_span.shrink_to_hi(),
+                        });
                     }
                     if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
                         let ty = moved_place.ty(self.body, tcx).ty;
@@ -1512,11 +1507,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                         )
                                     }
                                 };
-                                err.multipart_suggestion_verbose(
-                                    msg,
-                                    sugg,
-                                    Applicability::MaybeIncorrect,
-                                );
+                                err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
                                 for error in errors {
                                     if let FulfillmentErrorCode::Select(
                                         SelectionError::Unimplemented,
@@ -1568,3 +1559,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.local_name(index).is_none_or(|name| name.as_str().starts_with('_'))
     }
 }
+
+const LIMITATION_NOTE: DiagMessage =
+    msg!("due to a current limitation of the type system, this implies a `'static` lifetime");

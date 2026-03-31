@@ -6,8 +6,6 @@
 //@ ignore-remote
 
 #![feature(rustc_private)]
-#![feature(assert_matches)]
-#![feature(ascii_char, ascii_char_variants)]
 
 extern crate rustc_driver;
 extern crate rustc_hir;

@@ -5,8 +5,7 @@ struct Qux<'a> {
     x: &'a (),
 }
 impl<'a> Qux<'a> {
-    #[type_const]
-    const LEN: usize = 4;
+    type const LEN: usize = 4;
     fn foo(_: [u8; Qux::LEN]) {}
 }
 

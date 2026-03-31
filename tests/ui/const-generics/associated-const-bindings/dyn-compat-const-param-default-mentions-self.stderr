@@ -1,5 +1,5 @@
 error[E0393]: the const parameter `N` must be explicitly specified
-  --> $DIR/dyn-compat-const-param-default-mentions-self.rs:20:16
+  --> $DIR/dyn-compat-const-param-default-mentions-self.rs:18:16
    |
 LL | trait X<const N: usize = { <Self as Y>::N }> {}
    | -------------------------------------------- const parameter `N` must be specified for this

@@ -1,6 +1,6 @@
 use rustc_errors::codes::*;
 use rustc_errors::{DiagArgFromDisplay, MultiSpan};
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -87,7 +87,7 @@ pub(crate) struct ReportEffectiveVisibility {
     pub descr: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("{$kind} `{$descr}` from private dependency '{$krate}' in public interface")]
 pub(crate) struct FromPrivateDependencyInPublicInterface<'a> {
     pub kind: &'a str,
@@ -95,7 +95,7 @@ pub(crate) struct FromPrivateDependencyInPublicInterface<'a> {
     pub krate: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("{$kind} `{$descr}` is reachable but cannot be named")]
 pub(crate) struct UnnameableTypesLint<'a> {
     #[label(
@@ -111,7 +111,7 @@ pub(crate) struct UnnameableTypesLint<'a> {
 // Used for `private_interfaces` and `private_bounds` lints.
 // They will replace private-in-public errors and compatibility lints in future.
 // See https://rust-lang.github.io/rfcs/2145-type-privacy.html for more details.
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("{$ty_kind} `{$ty_descr}` is more private than the item `{$item_descr}`")]
 pub(crate) struct PrivateInterfacesOrBoundsLint<'a> {
     #[label("{$item_kind} `{$item_descr}` is reachable at visibility `{$item_vis_descr}`")]

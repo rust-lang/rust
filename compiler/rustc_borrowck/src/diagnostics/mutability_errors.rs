@@ -354,14 +354,71 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         self.infcx.tcx.sess.source_map().span_to_snippet(source_info.span)
                     {
                         if snippet.starts_with("&mut ") {
-                            // We don't have access to the HIR to get accurate spans, but we can
-                            // give a best effort structured suggestion.
-                            err.span_suggestion_verbose(
-                                source_info.span.with_hi(source_info.span.lo() + BytePos(5)),
-                                "if there is only one mutable reborrow, remove the `&mut`",
-                                "",
-                                Applicability::MaybeIncorrect,
-                            );
+                            // In calls, `&mut &mut T` may be deref-coerced to `&mut T`, and
+                            // removing the extra `&mut` is the most direct suggestion. But for
+                            // pattern-matching expressions (`match`, `if let`, `while let`), that
+                            // can easily turn into a move, so prefer suggesting an explicit
+                            // reborrow via `&mut *x` instead.
+                            let mut in_pat_scrutinee = false;
+                            let mut is_deref_coerced = false;
+                            if let Some(expr) = self.find_expr(source_info.span) {
+                                let tcx = self.infcx.tcx;
+                                let span = expr.span.source_callsite();
+                                for (_, node) in tcx.hir_parent_iter(expr.hir_id) {
+                                    if let Node::Expr(parent_expr) = node {
+                                        match parent_expr.kind {
+                                            ExprKind::Match(scrutinee, ..)
+                                                if scrutinee
+                                                    .span
+                                                    .source_callsite()
+                                                    .contains(span) =>
+                                            {
+                                                in_pat_scrutinee = true;
+                                                break;
+                                            }
+                                            ExprKind::Let(let_expr)
+                                                if let_expr
+                                                    .init
+                                                    .span
+                                                    .source_callsite()
+                                                    .contains(span) =>
+                                            {
+                                                in_pat_scrutinee = true;
+                                                break;
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+
+                                let typeck = tcx.typeck(expr.hir_id.owner.def_id);
+                                is_deref_coerced =
+                                    typeck.expr_adjustments(expr).iter().any(|adj| {
+                                        matches!(adj.kind, ty::adjustment::Adjust::Deref(_))
+                                    });
+                            }
+
+                            if in_pat_scrutinee {
+                                // Best-effort structured suggestion: insert `*` after `&mut `.
+                                err.span_suggestion_verbose(
+                                    source_info
+                                        .span
+                                        .with_lo(source_info.span.lo() + BytePos(5))
+                                        .shrink_to_lo(),
+                                    "to reborrow the mutable reference, add `*`",
+                                    "*",
+                                    Applicability::MaybeIncorrect,
+                                );
+                            } else if is_deref_coerced {
+                                // We don't have access to the HIR to get accurate spans, but we
+                                // can give a best effort structured suggestion.
+                                err.span_suggestion_verbose(
+                                    source_info.span.with_hi(source_info.span.lo() + BytePos(5)),
+                                    "if there is only one mutable reborrow, remove the `&mut`",
+                                    "",
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                         } else {
                             // This can occur with things like `(&mut self).foo()`.
                             err.span_help(source_info.span, "try removing `&mut` here");
@@ -557,7 +614,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                     _ => {
                         let local = &self.body.local_decls[local];
-                        match local.local_info() {
+                        match *local.local_info() {
                             LocalInfo::StaticRef { def_id, .. } => {
                                 let span = self.infcx.tcx.def_span(def_id);
                                 err.span_label(span, format!("this `static` cannot be {acted_on}"));
@@ -1283,7 +1340,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 return;
             }
 
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 format!(
                     "consider changing this to be a mutable {pointer_desc}{}{extra}",
                     if is_trait_sig {
@@ -1308,7 +1365,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if self.infcx.tcx.sess.source_map().is_imported(span) {
                     return;
                 }
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "consider using `get_mut`",
                     vec![(span, suggestion)],
                     Applicability::MaybeIncorrect,
@@ -1695,7 +1752,7 @@ fn suggest_ampmut<'tcx>(
                 && let Either::Left(rhs_stmt_new) = body.stmt_at(*assign)
                 && let StatementKind::Assign(box (_, rvalue_new)) = &rhs_stmt_new.kind
                 && let rhs_span_new = rhs_stmt_new.source_info.span
-                && let Ok(rhs_str_new) = tcx.sess.source_map().span_to_snippet(rhs_span)
+                && let Ok(rhs_str_new) = tcx.sess.source_map().span_to_snippet(rhs_span_new)
             {
                 (rvalue, rhs_span, rhs_str) = (rvalue_new, rhs_span_new, rhs_str_new);
             }

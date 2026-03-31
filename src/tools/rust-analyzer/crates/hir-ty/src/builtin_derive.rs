@@ -35,6 +35,24 @@ fn coerce_pointee_new_type_param(trait_id: TraitId) -> TypeParamId {
     })
 }
 
+fn trait_args(trait_: BuiltinDeriveImplTrait, self_ty: Ty<'_>) -> GenericArgs<'_> {
+    match trait_ {
+        BuiltinDeriveImplTrait::Copy
+        | BuiltinDeriveImplTrait::Clone
+        | BuiltinDeriveImplTrait::Default
+        | BuiltinDeriveImplTrait::Debug
+        | BuiltinDeriveImplTrait::Hash
+        | BuiltinDeriveImplTrait::Eq
+        | BuiltinDeriveImplTrait::Ord => GenericArgs::new_from_slice(&[self_ty.into()]),
+        BuiltinDeriveImplTrait::PartialOrd | BuiltinDeriveImplTrait::PartialEq => {
+            GenericArgs::new_from_slice(&[self_ty.into(), self_ty.into()])
+        }
+        BuiltinDeriveImplTrait::CoerceUnsized | BuiltinDeriveImplTrait::DispatchFromDyn => {
+            panic!("`CoerceUnsized` and `DispatchFromDyn` have special generics")
+        }
+    }
+}
+
 pub(crate) fn generics_of<'db>(interner: DbInterner<'db>, id: BuiltinDeriveImplId) -> Generics {
     let db = interner.db;
     let loc = id.loc(db);
@@ -62,7 +80,7 @@ pub(crate) fn generics_of<'db>(interner: DbInterner<'db>, id: BuiltinDeriveImplI
 
 pub fn generic_params_count(db: &dyn HirDatabase, id: BuiltinDeriveImplId) -> usize {
     let loc = id.loc(db);
-    let adt_params = GenericParams::new(db, loc.adt.into());
+    let adt_params = GenericParams::of(db, loc.adt.into());
     let extra_params_count = match loc.trait_ {
         BuiltinDeriveImplTrait::Copy
         | BuiltinDeriveImplTrait::Clone
@@ -95,29 +113,27 @@ pub fn impl_trait<'db>(
         | BuiltinDeriveImplTrait::Debug
         | BuiltinDeriveImplTrait::Hash
         | BuiltinDeriveImplTrait::Ord
-        | BuiltinDeriveImplTrait::Eq => {
+        | BuiltinDeriveImplTrait::Eq
+        | BuiltinDeriveImplTrait::PartialOrd
+        | BuiltinDeriveImplTrait::PartialEq => {
             let self_ty = Ty::new_adt(
                 interner,
                 loc.adt,
                 GenericArgs::identity_for_item(interner, loc.adt.into()),
             );
-            EarlyBinder::bind(TraitRef::new(interner, trait_id.into(), [self_ty]))
-        }
-        BuiltinDeriveImplTrait::PartialOrd | BuiltinDeriveImplTrait::PartialEq => {
-            let self_ty = Ty::new_adt(
+            EarlyBinder::bind(TraitRef::new_from_args(
                 interner,
-                loc.adt,
-                GenericArgs::identity_for_item(interner, loc.adt.into()),
-            );
-            EarlyBinder::bind(TraitRef::new(interner, trait_id.into(), [self_ty, self_ty]))
+                trait_id.into(),
+                trait_args(loc.trait_, self_ty),
+            ))
         }
         BuiltinDeriveImplTrait::CoerceUnsized | BuiltinDeriveImplTrait::DispatchFromDyn => {
-            let generic_params = GenericParams::new(db, loc.adt.into());
+            let generic_params = GenericParams::of(db, loc.adt.into());
             let interner = DbInterner::new_no_crate(db);
             let args = GenericArgs::identity_for_item(interner, loc.adt.into());
             let self_ty = Ty::new_adt(interner, loc.adt, args);
             let Some((pointee_param_idx, _, new_param_ty)) =
-                coerce_pointee_params(interner, loc, &generic_params, trait_id)
+                coerce_pointee_params(interner, loc, generic_params, trait_id)
             else {
                 // Malformed derive.
                 return EarlyBinder::bind(TraitRef::new(
@@ -133,10 +149,10 @@ pub fn impl_trait<'db>(
     }
 }
 
-#[salsa::tracked(returns(ref), unsafe(non_update_types))]
+#[salsa::tracked(returns(ref))]
 pub fn predicates<'db>(db: &'db dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPredicates {
     let loc = impl_.loc(db);
-    let generic_params = GenericParams::new(db, loc.adt.into());
+    let generic_params = GenericParams::of(db, loc.adt.into());
     let interner = DbInterner::new_with(db, loc.module(db).krate(db));
     let adt_predicates = GenericPredicates::query(db, loc.adt.into());
     let trait_id = loc
@@ -152,7 +168,7 @@ pub fn predicates<'db>(db: &'db dyn HirDatabase, impl_: BuiltinDeriveImplId) -> 
         | BuiltinDeriveImplTrait::PartialOrd
         | BuiltinDeriveImplTrait::Eq
         | BuiltinDeriveImplTrait::PartialEq => {
-            simple_trait_predicates(interner, loc, &generic_params, adt_predicates, trait_id)
+            simple_trait_predicates(interner, loc, generic_params, adt_predicates, trait_id)
         }
         BuiltinDeriveImplTrait::Default => {
             if matches!(loc.adt, AdtId::EnumId(_)) {
@@ -162,12 +178,12 @@ pub fn predicates<'db>(db: &'db dyn HirDatabase, impl_: BuiltinDeriveImplId) -> 
                         .store(),
                 ))
             } else {
-                simple_trait_predicates(interner, loc, &generic_params, adt_predicates, trait_id)
+                simple_trait_predicates(interner, loc, generic_params, adt_predicates, trait_id)
             }
         }
         BuiltinDeriveImplTrait::CoerceUnsized | BuiltinDeriveImplTrait::DispatchFromDyn => {
             let Some((pointee_param_idx, pointee_param_id, new_param_ty)) =
-                coerce_pointee_params(interner, loc, &generic_params, trait_id)
+                coerce_pointee_params(interner, loc, generic_params, trait_id)
             else {
                 // Malformed derive.
                 return GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(
@@ -260,7 +276,8 @@ fn simple_trait_predicates<'db>(
             let param_idx =
                 param_idx.into_raw().into_u32() + (generic_params.len_lifetimes() as u32);
             let param_ty = Ty::new_param(interner, param_id, param_idx);
-            let trait_ref = TraitRef::new(interner, trait_id.into(), [param_ty]);
+            let trait_args = trait_args(loc.trait_, param_ty);
+            let trait_ref = TraitRef::new_from_args(interner, trait_id.into(), trait_args);
             trait_ref.upcast(interner)
         });
     let mut assoc_type_bounds = Vec::new();
@@ -270,12 +287,14 @@ fn simple_trait_predicates<'db>(
             &mut assoc_type_bounds,
             interner.db.field_types(id.into()),
             trait_id,
+            loc.trait_,
         ),
         AdtId::UnionId(id) => extend_assoc_type_bounds(
             interner,
             &mut assoc_type_bounds,
             interner.db.field_types(id.into()),
             trait_id,
+            loc.trait_,
         ),
         AdtId::EnumId(id) => {
             for &(variant_id, _, _) in &id.enum_variants(interner.db).variants {
@@ -284,6 +303,7 @@ fn simple_trait_predicates<'db>(
                     &mut assoc_type_bounds,
                     interner.db.field_types(variant_id.into()),
                     trait_id,
+                    loc.trait_,
                 )
             }
         }
@@ -305,12 +325,14 @@ fn extend_assoc_type_bounds<'db>(
     interner: DbInterner<'db>,
     assoc_type_bounds: &mut Vec<Clause<'db>>,
     fields: &ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>,
-    trait_: TraitId,
+    trait_id: TraitId,
+    trait_: BuiltinDeriveImplTrait,
 ) {
     struct ProjectionFinder<'a, 'db> {
         interner: DbInterner<'db>,
         assoc_type_bounds: &'a mut Vec<Clause<'db>>,
-        trait_: TraitId,
+        trait_id: TraitId,
+        trait_: BuiltinDeriveImplTrait,
     }
 
     impl<'db> TypeVisitor<DbInterner<'db>> for ProjectionFinder<'_, 'db> {
@@ -319,7 +341,12 @@ fn extend_assoc_type_bounds<'db>(
         fn visit_ty(&mut self, t: Ty<'db>) -> Self::Result {
             if let TyKind::Alias(AliasTyKind::Projection, _) = t.kind() {
                 self.assoc_type_bounds.push(
-                    TraitRef::new(self.interner, self.trait_.into(), [t]).upcast(self.interner),
+                    TraitRef::new_from_args(
+                        self.interner,
+                        self.trait_id.into(),
+                        trait_args(self.trait_, t),
+                    )
+                    .upcast(self.interner),
                 );
             }
 
@@ -327,7 +354,7 @@ fn extend_assoc_type_bounds<'db>(
         }
     }
 
-    let mut visitor = ProjectionFinder { interner, assoc_type_bounds, trait_ };
+    let mut visitor = ProjectionFinder { interner, assoc_type_bounds, trait_id, trait_ };
     for (_, field) in fields.iter() {
         field.get().instantiate_identity().visit_with(&mut visitor);
     }
@@ -488,10 +515,12 @@ struct MultiGenericParams<'a, T, #[pointee] U: ?Sized, const N: usize>(*const U)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct Simple;
 
-trait Trait {}
+trait Trait {
+    type Assoc;
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct WithGenerics<'a, T: Trait, const N: usize>(&'a [T; N]);
+struct WithGenerics<'a, T: Trait, const N: usize>(&'a [T; N], T::Assoc);
         "#,
             expect![[r#"
 
@@ -514,41 +543,49 @@ struct WithGenerics<'a, T: Trait, const N: usize>(&'a [T; N]);
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Debug, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Debug, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Clone, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Clone, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Copy, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Copy, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
-                Clause(Binder { value: TraitPredicate(#1: PartialEq, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(#1: PartialEq<[#1]>, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): PartialEq<[Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. })]>, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Eq, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Eq, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
-                Clause(Binder { value: TraitPredicate(#1: PartialOrd, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(#1: PartialOrd<[#1]>, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): PartialOrd<[Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. })]>, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Ord, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Ord, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Hash, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Hash, polarity:Positive), bound_vars: [] })
 
             "#]],
         );

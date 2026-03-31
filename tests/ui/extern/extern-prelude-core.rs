@@ -1,5 +1,4 @@
 //@ run-pass
-#![feature(lang_items)]
 #![no_std]
 
 extern crate std as other;

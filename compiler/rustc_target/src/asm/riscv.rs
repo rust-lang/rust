@@ -55,7 +55,7 @@ impl RiscVInlineAsmRegClass {
 }
 
 pub(crate) fn is_e(target_features: &FxIndexSet<Symbol>) -> bool {
-    target_features.contains(&sym::e)
+    target_features.contains(&sym::character('e'))
 }
 
 fn not_e(

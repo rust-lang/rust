@@ -1,23 +1,19 @@
-use std::{mem, ptr};
-
 use rustc_data_structures::sync;
 
 use super::{GlobalCtxt, TyCtxt};
 use crate::dep_graph::TaskDepsRef;
-use crate::query::plumbing::QueryJobId;
+use crate::query::QueryJobId;
 
 /// This is the implicit state of rustc. It contains the current
 /// `TyCtxt` and query. It is updated when creating a local interner or
 /// executing a new query. Whenever there's a `TyCtxt` value available
 /// you should also have access to an `ImplicitCtxt` through the functions
 /// in this module.
-#[derive(Clone)]
 pub struct ImplicitCtxt<'a, 'tcx> {
     /// The current `TyCtxt`.
     pub tcx: TyCtxt<'tcx>,
 
-    /// The current query job, if any. This is updated by `JobOwner::start` in
-    /// `ty::query::plumbing` when executing a query.
+    /// The current query job, if any.
     pub query: Option<QueryJobId>,
 
     /// Used to prevent queries from calling too deeply.
@@ -88,29 +84,6 @@ where
     F: for<'a, 'tcx> FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
 {
     with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
-}
-
-/// Allows access to the current `ImplicitCtxt` whose tcx field is the same as the tcx argument
-/// passed in. This means the closure is given an `ImplicitCtxt` with the same `'tcx` lifetime
-/// as the `TyCtxt` passed in.
-/// This will panic if you pass it a `TyCtxt` which is different from the current
-/// `ImplicitCtxt`'s `tcx` field.
-#[inline]
-pub fn with_related_context<'tcx, F, R>(tcx: TyCtxt<'tcx>, f: F) -> R
-where
-    F: FnOnce(&ImplicitCtxt<'_, 'tcx>) -> R,
-{
-    with_context(|context| {
-        // The two gcx have different invariant lifetimes, so we need to erase them for the comparison.
-        assert!(ptr::eq(
-            context.tcx.gcx as *const _ as *const (),
-            tcx.gcx as *const _ as *const ()
-        ));
-
-        let context: &ImplicitCtxt<'_, '_> = unsafe { mem::transmute(context) };
-
-        f(context)
-    })
 }
 
 /// Allows access to the `TyCtxt` in the current `ImplicitCtxt`.

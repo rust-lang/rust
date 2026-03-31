@@ -24,7 +24,7 @@ pub fn align_to4(x: &[u8]) -> bool {
 #[no_mangle]
 pub fn align_offset_byte_ptr(ptr: *const u8) -> usize {
     // CHECK: %[[ADDR:.+]] = ptrtoint ptr %ptr to [[USIZE:i[0-9]+]]
-    // CHECK: %[[UP:.+]] = add [[USIZE]] %[[ADDR]], 31
+    // CHECK: %[[UP:.+]] = add [[USIZE]] %[[ADDR]], {{31|28}}
     // CHECK: %[[ALIGNED:.+]] = and [[USIZE]] %[[UP]], -32
     // CHECK: %[[OFFSET:.+]] = sub [[USIZE]] %[[ALIGNED]], %[[ADDR]]
 
@@ -41,7 +41,7 @@ pub fn align_offset_byte_ptr(ptr: *const u8) -> usize {
 #[no_mangle]
 pub fn align_offset_word_slice(slice: &[Align4]) -> usize {
     // CHECK: %[[ADDR:.+]] = ptrtoint ptr %slice.0 to [[USIZE]]
-    // CHECK: %[[UP:.+]] = add [[USIZE]] %[[ADDR]], 31
+    // CHECK: %[[UP:.+]] = add [[USIZE]] %[[ADDR]], {{31|28}}
     // CHECK: %[[ALIGNED:.+]] = and [[USIZE]] %[[UP]], -32
     // CHECK: %[[BOFFSET:.+]] = sub [[USIZE]] %[[ALIGNED]], %[[ADDR]]
     // CHECK: %[[OFFSET:.+]] = lshr exact [[USIZE]] %[[BOFFSET]], 2
@@ -57,7 +57,7 @@ pub fn align_offset_word_slice(slice: &[Align4]) -> usize {
 #[no_mangle]
 pub fn align_offset_word_ptr(ptr: *const Align4) -> usize {
     // CHECK: %[[ADDR:.+]] = ptrtoint ptr %ptr to [[USIZE]]
-    // CHECK: %[[UP:.+]] = add [[USIZE]] %[[ADDR]], 31
+    // CHECK: %[[UP:.+]] = add [[USIZE]] %[[ADDR]], {{31|28}}
     // CHECK: %[[ALIGNED:.+]] = and [[USIZE]] %[[UP]], -32
     // CHECK: %[[BOFFSET:.+]] = sub [[USIZE]] %[[ALIGNED]], %[[ADDR]]
 

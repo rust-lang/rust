@@ -25,5 +25,29 @@ error: unchecked subtraction of a `Duration`
 LL |     let _ = instant1 - dur2 - dur3;
    |             ^^^^^^^^^^^^^^^ help: try: `instant1.checked_sub(dur2).unwrap()`
 
-error: aborting due to 4 previous errors
+error: unchecked subtraction of two `Duration` that will underflow
+  --> tests/ui/unchecked_time_subtraction_unfixable.rs:25:13
+   |
+LL |     let _ = Duration::from_millis(1) - Duration::from_millis(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this is intentional, consider allowing the lint
+
+error: unchecked subtraction of two `Duration` that will underflow
+  --> tests/ui/unchecked_time_subtraction_unfixable.rs:27:13
+   |
+LL |     let _ = Duration::from_millis(1) - Duration::from_mins(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this is intentional, consider allowing the lint
+
+error: unchecked subtraction of two `Duration` that will underflow
+  --> tests/ui/unchecked_time_subtraction_unfixable.rs:29:13
+   |
+LL |     let _ = Duration::from_nanos(1) - Duration::from_secs(1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this is intentional, consider allowing the lint
+
+error: aborting due to 7 previous errors
 

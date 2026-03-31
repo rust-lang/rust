@@ -4,15 +4,15 @@ use std::ops::ControlFlow;
 use rustc_abi::{ExternAbi, FieldIdx, ScalableElt};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
-use rustc_errors::{EmissionGuarantee, MultiSpan};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::ReprAttr::ReprPacked;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::{LangItem, Node, attrs, find_attr, intravisit};
+use rustc_hir::{LangItem, Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, WellFormedLoc};
 use rustc_lint_defs::builtin::{REPR_TRANSPARENT_NON_ZST_FIELDS, UNSUPPORTED_CALLING_CONVENTIONS};
+use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
@@ -24,10 +24,8 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
-use rustc_span::source_map::Spanned;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
-use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument};
@@ -55,6 +53,22 @@ fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T
 }
 
 pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
+    struct UnsupportedCallingConventions {
+        abi: ExternAbi,
+    }
+
+    impl<'a> Diagnostic<'a, ()> for UnsupportedCallingConventions {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { abi } = self;
+            let mut lint = Diag::new(
+                dcx,
+                level,
+                format!("{abi} is not a supported ABI for the current target"),
+            );
+            add_abi_diag_help(abi, &mut lint);
+            lint
+        }
+    }
     // FIXME: This should be checked earlier, e.g. in `rustc_ast_lowering`, as this
     // currently only guards function imports, function definitions, and function pointer types.
     // Functions in trait declarations can still use "deprecated" ABIs without any warning.
@@ -66,12 +80,12 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
             tcx.dcx().span_delayed_bug(span, format!("{abi} should be rejected in ast_lowering"));
         }
         AbiMapping::Deprecated(..) => {
-            tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message(format!(
-                    "{abi} is not a supported ABI for the current target"
-                ));
-                add_abi_diag_help(abi, lint);
-            });
+            tcx.emit_node_span_lint(
+                UNSUPPORTED_CALLING_CONVENTIONS,
+                hir_id,
+                span,
+                UnsupportedCallingConventions { abi },
+            );
         }
     }
 }
@@ -79,7 +93,7 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
 pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, fn_sig_span: Span) {
     if fn_sig.abi == ExternAbi::Custom {
         // Function definitions that use `extern "custom"` must be naked functions.
-        if !find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Naked(_)) {
+        if !find_attr!(tcx, def_id, Naked(_)) {
             tcx.dcx().emit_err(crate::errors::AbiCustomClothedFunction {
                 span: fn_sig_span,
                 naked_span: tcx.def_span(def_id).shrink_to_lo(),
@@ -176,6 +190,11 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
 
 /// Check that a `static` is inhabited.
 fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    #[derive(Diagnostic)]
+    #[diag("static of uninhabited type")]
+    #[note("uninhabited statics cannot be initialized, and any access would be an immediate error")]
+    struct StaticOfUninhabitedType;
+
     // Make sure statics are inhabited.
     // Other parts of the compiler assume that there are no uninhabited places. In principle it
     // would be enough to check this for `extern` statics, as statics with an initializer will
@@ -196,7 +215,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         // SIMD types with invalid layout (e.g., zero-length) should emit an error
         Err(e @ LayoutError::InvalidSimd { .. }) => {
             let ty_span = tcx.ty_span(def_id);
-            tcx.dcx().emit_err(Spanned { span: ty_span, node: e.into_diagnostic() });
+            tcx.dcx().span_err(ty_span, e.to_string());
             return;
         }
         // Generic statics are rejected, but we still reach this case.
@@ -206,15 +225,11 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
     };
     if layout.is_uninhabited() {
-        tcx.node_span_lint(
+        tcx.emit_node_span_lint(
             UNINHABITED_STATIC,
             tcx.local_def_id_to_hir_id(def_id),
             span,
-            |lint| {
-                lint.primary_message("static of uninhabited type");
-                lint
-                .note("uninhabited statics cannot be initialized, and any access would be an immediate error");
-            },
+            StaticOfUninhabitedType,
         );
     }
 }
@@ -806,11 +821,10 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
-            check_diagnostic_attrs(tcx, def_id);
             if of_trait {
                 let impl_trait_header = tcx.impl_trait_header(def_id);
                 res = res.and(
-                    tcx.ensure_ok()
+                    tcx.ensure_result()
                         .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id),
                 );
 
@@ -829,7 +843,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
             let assoc_items = tcx.associated_items(def_id);
-            check_diagnostic_attrs(tcx, def_id);
 
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
@@ -901,7 +914,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // avoids this query from having a direct dependency edge on the HIR
             return res;
         }
-        DefKind::Const => {
+        DefKind::Const { .. } => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
@@ -923,7 +936,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 );
                 check_where_clauses(wfcx, def_id);
 
-                if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_)) {
+                if tcx.is_type_const(def_id) {
                     wfcheck::check_type_const(wfcx, def_id, ty, true)?;
                 }
                 Ok(())
@@ -939,10 +952,10 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             check_type_alias_type_params_are_used(tcx, def_id);
+            let ty = tcx.type_of(def_id).instantiate_identity();
+            let span = tcx.def_span(def_id);
             if tcx.type_alias_is_lazy(def_id) {
                 res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
-                    let ty = tcx.type_of(def_id).instantiate_identity();
-                    let span = tcx.def_span(def_id);
                     let item_ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
                     wfcx.register_wf_obligation(
                         span,
@@ -953,6 +966,30 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     Ok(())
                 }));
                 check_variances_for_type_defn(tcx, def_id);
+            } else {
+                res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+                    // HACK: We sometimes incidentally check that const arguments have the correct
+                    // type as a side effect of the anon const desugaring. To make this "consistent"
+                    // for users we explicitly check `ConstArgHasType` clauses so that const args
+                    // that don't go through an anon const still have their types checked.
+                    //
+                    // We use the unnormalized type as this mirrors the behaviour that we previously
+                    // would have had when all const arguments were anon consts.
+                    //
+                    // Changing this to normalized obligations is a breaking change:
+                    // `type Bar = [(); panic!()];` would become an error
+                    if let Some(unnormalized_obligations) = wfcx.unnormalized_obligations(span, ty)
+                    {
+                        let filtered_obligations =
+                            unnormalized_obligations.into_iter().filter(|o| {
+                                matches!(o.predicate.kind().skip_binder(),
+                                    ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _))
+                                    if matches!(ct.kind(), ty::ConstKind::Param(..)))
+                            });
+                        wfcx.ocx.register_obligations(filtered_obligations)
+                    }
+                    Ok(())
+                }));
             }
 
             // Only `Node::Item` and `Node::ForeignItem` still have HIR based
@@ -981,12 +1018,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                         (0, _) => ("const", "consts", None),
                         _ => ("type or const", "types or consts", None),
                     };
-                    let name =
-                        if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiForeignItem) {
-                            "externally implementable items"
-                        } else {
-                            "foreign items"
-                        };
+                    let name = if find_attr!(tcx, def_id, RustcEiiForeignItem) {
+                        "externally implementable items"
+                    } else {
+                        "foreign items"
+                    };
 
                     let span = tcx.def_span(def_id);
                     struct_span_code_err!(
@@ -1064,7 +1100,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // avoids this query from having a direct dependency edge on the HIR
             return res;
         }
-        DefKind::AssocConst => {
+        DefKind::AssocConst { .. } => {
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             res = res.and(check_associated_item(tcx, def_id));
@@ -1124,11 +1160,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
     })
 }
 
-pub(super) fn check_diagnostic_attrs(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    // an error would be reported if this fails.
-    let _ = OnUnimplementedDirective::of_item(tcx, def_id.to_def_id());
-}
-
 pub(super) fn check_specialization_validity<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def: &ty::TraitDef,
@@ -1175,10 +1206,32 @@ pub(super) fn check_specialization_validity<'tcx>(
 
     if let Err(parent_impl) = result {
         if !tcx.is_impl_trait_in_trait(impl_item) {
-            report_forbidden_specialization(tcx, impl_item, parent_impl);
+            let span = tcx.def_span(impl_item);
+            let ident = tcx.item_ident(impl_item);
+
+            let err = match tcx.span_of_impl(parent_impl) {
+                Ok(sp) => errors::ImplNotMarkedDefault::Ok { span, ident, ok_label: sp },
+                Err(cname) => errors::ImplNotMarkedDefault::Err { span, ident, cname },
+            };
+
+            tcx.dcx().emit_err(err);
         } else {
             tcx.dcx().delayed_bug(format!("parent item: {parent_impl:?} not marked as default"));
         }
+    }
+}
+
+fn check_overriding_final_trait_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_item: ty::AssocItem,
+    impl_item: ty::AssocItem,
+) {
+    if trait_item.defaultness(tcx).is_final() {
+        tcx.dcx().emit_err(errors::OverridingFinalTraitFunction {
+            impl_span: tcx.def_span(impl_item.def_id),
+            trait_span: tcx.def_span(trait_item.def_id),
+            ident: tcx.item_ident(impl_item.def_id),
+        });
     }
 }
 
@@ -1201,7 +1254,7 @@ fn check_impl_items_against_trait<'tcx>(
     match impl_trait_header.polarity {
         ty::ImplPolarity::Reservation | ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
-            if let [first_item_ref, ..] = impl_item_refs {
+            if let [first_item_ref, ..] = *impl_item_refs {
                 let first_item_span = tcx.def_span(first_item_ref);
                 struct_span_code_err!(
                     tcx.dcx(),
@@ -1226,8 +1279,7 @@ fn check_impl_items_against_trait<'tcx>(
             Err(ErrorGuaranteed { .. }) => continue,
         };
 
-        let res = tcx.ensure_ok().compare_impl_item(impl_item.expect_local());
-
+        let res = tcx.ensure_result().compare_impl_item(impl_item.expect_local());
         if res.is_ok() {
             match ty_impl_item.kind {
                 ty::AssocKind::Fn { .. } => {
@@ -1259,6 +1311,8 @@ fn check_impl_items_against_trait<'tcx>(
             impl_id.to_def_id(),
             impl_item,
         );
+
+        check_overriding_final_trait_item(tcx, ty_trait_item, ty_impl_item);
     }
 
     if let Ok(ancestors) = trait_def.ancestors(tcx, impl_id.to_def_id()) {
@@ -1349,7 +1403,7 @@ fn check_impl_items_against_trait<'tcx>(
         }
 
         if let Some(missing_items) = must_implement_one_of {
-            let attr_span = find_attr!(tcx.get_all_attrs(trait_ref.def_id), AttributeKind::RustcMustImplementOneOf {attr_span, ..} => *attr_span);
+            let attr_span = find_attr!(tcx, trait_ref.def_id, RustcMustImplementOneOf {attr_span, ..} => *attr_span);
 
             missing_items_must_implement_one_of_err(
                 tcx,
@@ -1458,8 +1512,17 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
             return;
         }
         ScalableElt::Container if fields.is_empty() => {
-            let mut err =
-                tcx.dcx().struct_span_err(span, "scalable vectors must have a single field");
+            let mut err = tcx
+                .dcx()
+                .struct_span_err(span, "scalable vector tuples must have at least one field");
+            err.help("tuples of scalable vectors can only contain multiple of the same scalable vector type");
+            err.emit();
+            return;
+        }
+        ScalableElt::Container if fields.len() > 8 => {
+            let mut err = tcx
+                .dcx()
+                .struct_span_err(span, "scalable vector tuples can have at most eight fields");
             err.help("tuples of scalable vectors can only contain multiple of the same scalable vector type");
             err.emit();
             return;
@@ -1532,8 +1595,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
 pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
     let repr = def.repr();
     if repr.packed() {
-        if let Some(reprs) = find_attr!(tcx.get_all_attrs(def.did()), attrs::AttributeKind::Repr { reprs, .. } => reprs)
-        {
+        if let Some(reprs) = find_attr!(tcx, def.did(), Repr { reprs, .. } => reprs) {
             for (r, _) in reprs {
                 if let ReprPacked(pack) = r
                     && let Some(repr_pack) = repr.pack
@@ -1624,6 +1686,39 @@ pub(super) fn check_packed_inner(
 }
 
 pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
+    struct ZeroSizedFieldReprTransparentIncompatibility<'tcx> {
+        unsuited: UnsuitedInfo<'tcx>,
+    }
+
+    impl<'a, 'tcx> Diagnostic<'a, ()> for ZeroSizedFieldReprTransparentIncompatibility<'tcx> {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { unsuited } = self;
+            let (title, note) = match unsuited.reason {
+                UnsuitedReason::NonExhaustive => (
+                    "external non-exhaustive types",
+                    "is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future.",
+                ),
+                UnsuitedReason::PrivateField => (
+                    "external types with private fields",
+                    "contains private fields, so it could become non-zero-sized in the future.",
+                ),
+                UnsuitedReason::ReprC => (
+                    "`repr(C)` types",
+                    "is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.",
+                ),
+            };
+            Diag::new(
+                dcx,
+                level,
+                format!("zero-sized fields in `repr(transparent)` cannot contain {title}"),
+            )
+            .with_note(format!(
+                "this field contains `{field_ty}`, which {note}",
+                field_ty = unsuited.ty,
+            ))
+        }
+    }
+
     if !adt.repr().transparent() {
         return;
     }
@@ -1700,12 +1795,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, typing_env, t)),
             ty::Array(ty, _) => check_unsuited(tcx, typing_env, *ty),
             ty::Adt(def, args) => {
-                if !def.did().is_local()
-                    && !find_attr!(
-                        tcx.get_all_attrs(def.did()),
-                        AttributeKind::RustcPubTransparent(_)
-                    )
-                {
+                if !def.did().is_local() && !find_attr!(tcx, def.did(), RustcPubTransparent(_)) {
                     let non_exhaustive = def.is_variant_list_non_exhaustive()
                         || def.variants().iter().any(ty::VariantDef::is_field_list_non_exhaustive);
                     let has_priv = def.all_fields().any(|f| !f.vis.is_public());
@@ -1739,29 +1829,11 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
             if non_trivial_count > 0 || prev_unsuited_1zst {
-                tcx.node_span_lint(
+                tcx.emit_node_span_lint(
                     REPR_TRANSPARENT_NON_ZST_FIELDS,
                     tcx.local_def_id_to_hir_id(adt.did().expect_local()),
                     field.span,
-                    |lint| {
-                        let title = match unsuited.reason {
-                            UnsuitedReason::NonExhaustive => "external non-exhaustive types",
-                            UnsuitedReason::PrivateField => "external types with private fields",
-                            UnsuitedReason::ReprC => "`repr(C)` types",
-                        };
-                        lint.primary_message(
-                            format!("zero-sized fields in `repr(transparent)` cannot contain {title}"),
-                        );
-                        let note = match unsuited.reason {
-                            UnsuitedReason::NonExhaustive => "is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future.",
-                            UnsuitedReason::PrivateField => "contains private fields, so it could become non-zero-sized in the future.",
-                            UnsuitedReason::ReprC => "is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.",
-                        };
-                        lint.note(format!(
-                            "this field contains `{field_ty}`, which {note}",
-                            field_ty = unsuited.ty,
-                        ));
-                    },
+                    ZeroSizedFieldReprTransparentIncompatibility { unsuited },
                 );
             } else {
                 prev_unsuited_1zst = true;
@@ -1776,19 +1848,16 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     def.destructor(tcx); // force the destructor to be evaluated
 
     if def.variants().is_empty() {
-        find_attr!(
-            tcx.get_all_attrs(def_id),
-            attrs::AttributeKind::Repr { reprs, first_span } => {
-                struct_span_code_err!(
-                    tcx.dcx(),
-                    reprs.first().map(|repr| repr.1).unwrap_or(*first_span),
-                    E0084,
-                    "unsupported representation for zero-variant enum"
-                )
-                .with_span_label(tcx.def_span(def_id), "zero-variant enum")
-                .emit();
-            }
-        );
+        find_attr!(tcx, def_id, Repr { reprs, first_span } => {
+            struct_span_code_err!(
+                tcx.dcx(),
+                reprs.first().map(|repr| repr.1).unwrap_or(*first_span),
+                E0084,
+                "unsupported representation for zero-variant enum"
+            )
+            .with_span_label(tcx.def_span(def_id), "zero-variant enum")
+            .emit();
+        });
     }
 
     for v in def.variants() {

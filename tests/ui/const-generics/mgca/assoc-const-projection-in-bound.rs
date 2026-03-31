@@ -7,13 +7,11 @@
 trait Abc {}
 
 trait A {
-    #[type_const]
-    const VALUE: usize;
+    type const VALUE: usize;
 }
 
 impl<T: Abc> A for T {
-    #[type_const]
-    const VALUE: usize = 0;
+    type const VALUE: usize = 0;
 }
 
 trait S<const K: usize> {}

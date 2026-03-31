@@ -4,12 +4,10 @@
 
 // tidy-alphabetical-start
 #![feature(box_patterns)]
-#![feature(if_let_guard)]
+#![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
 // tidy-alphabetical-end
 
 pub mod ast_validation;
 mod errors;
 pub mod feature_gate;
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

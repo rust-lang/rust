@@ -47,8 +47,7 @@ use rustc_type_ir::TyKind::*;
 use tracing::instrument;
 
 use crate::query::Providers;
-use crate::ty::context::TyCtxt;
-use crate::ty::{self, DefId, Ty, TypeVisitableExt, VariantDef, Visibility};
+use crate::ty::{self, DefId, Ty, TyCtxt, TypeVisitableExt, VariantDef, Visibility};
 
 pub mod inhabited_predicate;
 
@@ -62,10 +61,9 @@ pub(crate) fn provide(providers: &mut Providers) {
 /// requires calling [`InhabitedPredicate::instantiate`]
 fn inhabited_predicate_adt(tcx: TyCtxt<'_>, def_id: DefId) -> InhabitedPredicate<'_> {
     if let Some(def_id) = def_id.as_local() {
-        if matches!(tcx.representability(def_id), ty::Representability::Infinite(_)) {
-            return InhabitedPredicate::True;
-        }
+        tcx.ensure_ok().check_representability(def_id);
     }
+
     let adt = tcx.adt_def(def_id);
     InhabitedPredicate::any(
         tcx,

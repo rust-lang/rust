@@ -1,0 +1,10 @@
+error: the constant `2` is not of type `usize`
+  --> $DIR/type-const-in-array-len-wrong-type.rs:10:26
+   |
+LL |     fn lfn_contents() -> [char; Self::LFN_FRAGMENT_LEN] {
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `i64`
+   |
+   = note: the length of array `[char; 2]` must be type `usize`
+
+error: aborting due to 1 previous error
+

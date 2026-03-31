@@ -245,7 +245,7 @@ RecordFieldList =
 
 RecordField =
   Attr* Visibility? 'unsafe'?
-  Name ':' Type ('=' Expr)?
+  Name ':' Type ('=' default_val:ConstArg)?
 
 TupleFieldList =
   '(' fields:(TupleField (',' TupleField)* ','?)? ')'
@@ -268,7 +268,7 @@ VariantList =
 
 Variant =
   Attr* Visibility?
-  Name FieldList? ('=' Expr)?
+  Name FieldList? ('=' ConstArg)?
 
 Union =
   Attr* Visibility?
@@ -472,8 +472,11 @@ RefExpr =
 TryExpr =
   Attr* Expr '?'
 
+TryBlockModifier =
+  'try' ('bikeshed' Type)?
+
 BlockExpr =
-  Attr* Label? ('try' | 'unsafe' | ('async' 'move'?) | ('gen' 'move'?) | 'const') StmtList
+  Attr* Label? (TryBlockModifier | 'unsafe' | ('async' 'move'?) | ('gen' 'move'?) | 'const') StmtList
 
 PrefixExpr =
   Attr* op:('-' | '!' | '*') Expr

@@ -279,7 +279,7 @@ impl<'db> DefCollector<'db> {
         let _p = tracing::info_span!("seed_with_top_level").entered();
 
         let file_id = self.def_map.krate.root_file_id(self.db);
-        let item_tree = self.db.file_item_tree(file_id.into());
+        let item_tree = self.db.file_item_tree(file_id.into(), self.def_map.krate);
         let attrs = match item_tree.top_level_attrs() {
             AttrsOrCfg::Enabled { attrs } => attrs.as_ref(),
             AttrsOrCfg::CfgDisabled(it) => it.1.as_ref(),
@@ -387,7 +387,7 @@ impl<'db> DefCollector<'db> {
     }
 
     fn seed_with_inner(&mut self, tree_id: TreeId) {
-        let item_tree = tree_id.item_tree(self.db);
+        let item_tree = tree_id.item_tree(self.db, self.def_map.krate);
         let is_cfg_enabled = matches!(item_tree.top_level_attrs(), AttrsOrCfg::Enabled { .. });
         if is_cfg_enabled {
             self.inject_prelude();
@@ -634,6 +634,7 @@ impl<'db> DefCollector<'db> {
             crate_data.exported_derives.insert(proc_macro_id.into(), helpers);
         }
         crate_data.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
+        crate_data.fn_proc_macro_mapping_back.insert(proc_macro_id, fn_id);
     }
 
     /// Define a macro with `macro_rules`.
@@ -1209,42 +1210,69 @@ impl<'db> DefCollector<'db> {
             // `ItemScope::push_res_with_import()`.
             if let Some(def) = defs.types
                 && let Some(prev_def) = prev_defs.types
-                && def.def == prev_def.def
-                && self.from_glob_import.contains_type(module_id, name.clone())
-                && def.vis != prev_def.vis
-                && def.vis.max(self.db, prev_def.vis, &self.def_map) == Some(def.vis)
             {
-                changed = true;
-                // This import is being handled here, don't pass it down to
-                // `ItemScope::push_res_with_import()`.
-                defs.types = None;
-                self.def_map.modules[module_id].scope.update_visibility_types(name, def.vis);
+                if def.def == prev_def.def
+                    && self.from_glob_import.contains_type(module_id, name.clone())
+                    && def.vis != prev_def.vis
+                    && def.vis.max(self.db, prev_def.vis, &self.def_map) == Some(def.vis)
+                {
+                    changed = true;
+                    // This import is being handled here, don't pass it down to
+                    // `ItemScope::push_res_with_import()`.
+                    defs.types = None;
+                    self.def_map.modules[module_id].scope.update_visibility_types(name, def.vis);
+                }
+                // When the source module's definition changed (e.g., due to an explicit import
+                // shadowing a glob), propagate the new definition to modules that glob-import from it.
+                // We check that the previous definition came from the same glob import to avoid
+                // incorrectly overwriting definitions from different glob sources.
+                //
+                // Note this is not a perfect fix, but it makes
+                // https://github.com/rust-lang/rust-analyzer/issues/19224 work for now until we
+                // implement a proper glob graph
+                else if def.def != prev_def.def && prev_def.import == def_import_type {
+                    changed = true;
+                    defs.types = None;
+                    self.def_map.modules[module_id].scope.update_def_types(name, def.def, def.vis);
+                }
             }
 
             if let Some(def) = defs.values
                 && let Some(prev_def) = prev_defs.values
-                && def.def == prev_def.def
-                && self.from_glob_import.contains_value(module_id, name.clone())
-                && def.vis != prev_def.vis
-                && def.vis.max(self.db, prev_def.vis, &self.def_map) == Some(def.vis)
             {
-                changed = true;
-                // See comment above.
-                defs.values = None;
-                self.def_map.modules[module_id].scope.update_visibility_values(name, def.vis);
+                if def.def == prev_def.def
+                    && self.from_glob_import.contains_value(module_id, name.clone())
+                    && def.vis != prev_def.vis
+                    && def.vis.max(self.db, prev_def.vis, &self.def_map) == Some(def.vis)
+                {
+                    changed = true;
+                    defs.values = None;
+                    self.def_map.modules[module_id].scope.update_visibility_values(name, def.vis);
+                } else if def.def != prev_def.def
+                    && prev_def.import.map(ImportOrExternCrate::from) == def_import_type
+                {
+                    changed = true;
+                    defs.values = None;
+                    self.def_map.modules[module_id].scope.update_def_values(name, def.def, def.vis);
+                }
             }
 
             if let Some(def) = defs.macros
                 && let Some(prev_def) = prev_defs.macros
-                && def.def == prev_def.def
-                && self.from_glob_import.contains_macro(module_id, name.clone())
-                && def.vis != prev_def.vis
-                && def.vis.max(self.db, prev_def.vis, &self.def_map) == Some(def.vis)
             {
-                changed = true;
-                // See comment above.
-                defs.macros = None;
-                self.def_map.modules[module_id].scope.update_visibility_macros(name, def.vis);
+                if def.def == prev_def.def
+                    && self.from_glob_import.contains_macro(module_id, name.clone())
+                    && def.vis != prev_def.vis
+                    && def.vis.max(self.db, prev_def.vis, &self.def_map) == Some(def.vis)
+                {
+                    changed = true;
+                    defs.macros = None;
+                    self.def_map.modules[module_id].scope.update_visibility_macros(name, def.vis);
+                } else if def.def != prev_def.def && prev_def.import == def_import_type {
+                    changed = true;
+                    defs.macros = None;
+                    self.def_map.modules[module_id].scope.update_def_macros(name, def.def, def.vis);
+                }
             }
         }
 
@@ -1680,7 +1708,7 @@ impl<'db> DefCollector<'db> {
         }
         let file_id = macro_call_id.into();
 
-        let item_tree = self.db.file_item_tree(file_id);
+        let item_tree = self.db.file_item_tree(file_id, self.def_map.krate);
 
         // Derive helpers that are in scope for an item are also in scope for attribute macro expansions
         // of that item (but not derive or fn like macros).
@@ -2068,6 +2096,8 @@ impl ModCollector<'_, '_> {
 
                     let vis = resolve_vis(def_map, local_def_map, &self.item_tree[it.visibility]);
 
+                    update_def(self.def_collector, fn_id.into(), &it.name, vis, false);
+
                     if self.def_collector.def_map.block.is_none()
                         && self.def_collector.is_proc_macro
                         && self.module_id == self.def_collector.def_map.root
@@ -2078,9 +2108,14 @@ impl ModCollector<'_, '_> {
                             InFile::new(self.file_id(), id),
                             fn_id,
                         );
-                    }
 
-                    update_def(self.def_collector, fn_id.into(), &it.name, vis, false);
+                        // A proc macro is implemented as a function, but it's treated as a macro, not a function.
+                        // You cannot call it like a function, for example, except in its defining crate.
+                        // So we keep the function definition, but remove it from the scope, leaving only the macro.
+                        self.def_collector.def_map[module_id]
+                            .scope
+                            .remove_from_value_ns(&it.name, fn_id.into());
+                    }
                 }
                 ModItemId::Struct(id) => {
                     let it = &self.item_tree[id];
@@ -2300,10 +2335,10 @@ impl ModCollector<'_, '_> {
                     self.file_id(),
                     &module.name,
                     path_attr.as_deref(),
-                    self.def_collector.def_map.krate,
                 ) {
                     Ok((file_id, is_mod_rs, mod_dir)) => {
-                        let item_tree = db.file_item_tree(file_id.into());
+                        let item_tree =
+                            db.file_item_tree(file_id.into(), self.def_collector.def_map.krate);
                         match item_tree.top_level_attrs() {
                             AttrsOrCfg::CfgDisabled(cfg) => {
                                 self.emit_unconfigured_diagnostic(
@@ -2793,8 +2828,8 @@ foo!(KABOOM);
         let fixture = r#"
 //- /lib.rs crate:foo crate-attr:recursion_limit="4" crate-attr:no_core crate-attr:no_std crate-attr:feature(register_tool)
         "#;
-        let (db, file_id) = TestDB::with_single_file(fixture);
-        let def_map = crate_def_map(&db, file_id.krate(&db));
+        let (db, _) = TestDB::with_single_file(fixture);
+        let def_map = crate_def_map(&db, db.test_crate());
         assert_eq!(def_map.recursion_limit(), 4);
         assert!(def_map.is_no_core());
         assert!(def_map.is_no_std());

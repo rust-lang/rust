@@ -19,7 +19,7 @@ pub fn check(root: &Path, tidy_ctx: TidyCtx) {
     let mut check = tidy_ctx.start_check("extdeps");
 
     for &WorkspaceInfo { path, submodules, .. } in crate::deps::WORKSPACES {
-        if crate::deps::has_missing_submodule(root, submodules) {
+        if crate::deps::has_missing_submodule(root, submodules, tidy_ctx.is_running_on_ci()) {
             continue;
         }
 

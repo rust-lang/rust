@@ -7,7 +7,6 @@
 //@ edition: 2021
 
 #![feature(rustc_private)]
-#![feature(assert_matches)]
 
 extern crate rustc_hir;
 extern crate rustc_middle;
@@ -140,7 +139,8 @@ fn test_stable_mir() -> ControlFlow<()> {
         }
     }
 
-    let foo_const = get_item(&items, (DefKind::Const, "input::FOO")).unwrap();
+    let foo_const =
+        get_item(&items, (DefKind::Const { is_type_const: false }, "input::FOO")).unwrap();
     // Ensure we don't panic trying to get the body of a constant.
     foo_const.expect_body();
 
@@ -182,7 +182,8 @@ fn get_item<'a>(
     items.iter().find(|crate_item| {
         matches!(
             (item.0, crate_item.kind()),
-            (DefKind::Fn, ItemKind::Fn) | (DefKind::Const, ItemKind::Const)
+            (DefKind::Fn, ItemKind::Fn)
+                | (DefKind::Const { is_type_const: false }, ItemKind::Const)
         ) && crate_item.name() == item.1
     })
 }

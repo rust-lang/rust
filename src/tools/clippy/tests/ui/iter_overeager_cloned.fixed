@@ -102,3 +102,63 @@ fn main() {
 fn cloned_flatten(x: Option<&Option<String>>) -> Option<String> {
     x.cloned().flatten()
 }
+
+mod issue_16428 {
+    #[derive(Clone)]
+    struct Foo;
+
+    impl Foo {
+        async fn do_async(&self) {}
+    }
+
+    fn async_move_map() -> Vec<impl std::future::Future<Output = ()>> {
+        let map: std::collections::HashMap<(), Foo> = std::collections::HashMap::new();
+
+        // Should NOT lint: async move block captures `item` by value
+        map.values()
+            .cloned()
+            .map(|item| async move { item.do_async().await })
+            .collect::<Vec<_>>()
+    }
+
+    fn async_move_for_each() {
+        let map: std::collections::HashMap<(), Foo> = std::collections::HashMap::new();
+
+        // Should NOT lint: async move block captures `item` by value
+        map.values()
+            .cloned()
+            .for_each(|item| drop(async move { item.do_async().await }));
+    }
+
+    fn move_closure() {
+        let vec = vec!["1".to_string(), "2".to_string()];
+
+        // Should NOT lint: move closure captures `x` by value
+        let _: Vec<_> = vec.iter().cloned().map(|x| move || x.len()).collect();
+    }
+
+    fn async_move_not_capturing_param() {
+        let vec = vec!["1".to_string(), "2".to_string()];
+
+        // Should lint: async move captures `y`, not `x`
+        let _ = vec.iter().map(|x| {
+            //~^ redundant_iter_cloned
+            let y = x.len();
+            async move { y }
+        });
+    }
+
+    fn move_closure_not_capturing_param() {
+        let vec = vec!["1".to_string(), "2".to_string()];
+
+        // Should lint: move closure captures `y`, not `x`
+        let _: Vec<_> = vec
+            //~^ redundant_iter_cloned
+            .iter()
+            .map(|x| {
+                let y = x.len();
+                move || y
+            })
+            .collect();
+    }
+}

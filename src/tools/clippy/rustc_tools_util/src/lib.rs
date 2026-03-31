@@ -91,7 +91,7 @@ impl std::fmt::Debug for VersionInfo {
             self.crate_name, self.major, self.minor, self.patch,
         )?;
         if let Some(ref commit_hash) = self.commit_hash {
-            write!(f, ", commit_hash: \"{}\"", commit_hash.trim(),)?;
+            write!(f, ", commit_hash: \"{}\"", commit_hash.trim())?;
         }
         if let Some(ref commit_date) = self.commit_date {
             write!(f, ", commit_date: \"{}\"", commit_date.trim())?;

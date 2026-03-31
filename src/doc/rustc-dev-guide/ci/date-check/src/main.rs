@@ -163,6 +163,9 @@ fn main() {
             }
         }
         println!();
+
+        println!("@rustbot label +C-date-reference-triage +E-easy +E-help-wanted");
+        println!();
     }
 }
 

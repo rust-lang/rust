@@ -50,10 +50,6 @@ mod issue2076 {
     }
 }
 
-#[allow(
-    clippy::needless_borrow,
-    reason = "the suggestion creates `Weak::clone(&rec)`, but `rec` is already a reference"
-)]
 mod issue15009 {
     use std::rc::{Rc, Weak};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -62,7 +58,7 @@ mod issue15009 {
         let counter = AtomicU32::new(0);
         let counter_ref = &counter;
         let factorial = Rc::new_cyclic(move |rec| {
-            let rec = std::rc::Weak::</* generic */>::clone(&rec) as Weak<dyn Fn(u32) -> u32>;
+            let rec = std::rc::Weak::</* generic */>::clone(rec) as Weak<dyn Fn(u32) -> u32>;
             //~^ clone_on_ref_ptr
             move |x| {
                 // can capture env
@@ -78,4 +74,27 @@ mod issue15009 {
         println!("{}", factorial(7)); // 5040
         println!("{}", counter.load(Ordering::Relaxed)); // 14
     }
+}
+
+fn issue15741(mut rc: Rc<str>, ref_rc: &Rc<str>, refmut_rc: &mut Rc<str>) {
+    std::rc::Rc::<str>::clone(&rc);
+    //~^ clone_on_ref_ptr
+    std::rc::Rc::<str>::clone(ref_rc);
+    //~^ clone_on_ref_ptr
+    std::rc::Rc::<str>::clone(refmut_rc);
+    //~^ clone_on_ref_ptr
+
+    // The following cases already cause warn-by-default lints to fire, and the suggestion just makes
+    // another set of warn-by-default lints to fire, so this is probably fine
+
+    #[allow(clippy::needless_borrow, clippy::unnecessary_mut_passed)] // before the suggestion
+    #[allow(clippy::double_parens)] // after the suggestion
+    {
+        std::rc::Rc::<str>::clone(&(rc));
+        //~^ clone_on_ref_ptr
+        std::rc::Rc::<str>::clone(&rc);
+        //~^ clone_on_ref_ptr
+        std::rc::Rc::<str>::clone(&mut rc);
+        //~^ clone_on_ref_ptr
+    };
 }

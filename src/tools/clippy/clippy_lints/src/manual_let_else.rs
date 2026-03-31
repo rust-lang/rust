@@ -9,7 +9,9 @@ use rustc_ast::BindingMode;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::{Arm, Expr, ExprKind, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{
+    Arm, BlockCheckMode, Expr, ExprKind, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath, Stmt, StmtKind,
+};
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
@@ -177,7 +179,10 @@ fn emit_manual_let_else(
             let (sn_expr, _) = snippet_with_context(cx, expr.span, span.ctxt(), "", &mut app);
             let (sn_else, else_is_mac_call) = snippet_with_context(cx, else_body.span, span.ctxt(), "", &mut app);
 
-            let else_bl = if matches!(else_body.kind, ExprKind::Block(..)) && !else_is_mac_call {
+            let else_bl = if let ExprKind::Block(block, None) = else_body.kind
+                && matches!(block.rules, BlockCheckMode::DefaultBlock)
+                && !else_is_mac_call
+            {
                 sn_else.into_owned()
             } else {
                 format!("{{ {sn_else} }}")
@@ -301,7 +306,7 @@ fn replace_in_pattern(
                     .collect::<Vec<_>>();
                 let fields_string = fields.join(", ");
 
-                let dot_dot_str = if dot_dot.is_some() { " .." } else { "" };
+                let dot_dot_str = if dot_dot.is_some() { ", .." } else { "" };
                 let (sn_pth, _) = snippet_with_context(cx, path.span(), span.ctxt(), "", app);
                 return format!("{sn_pth} {{ {fields_string}{dot_dot_str} }}");
             },

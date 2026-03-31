@@ -5,8 +5,8 @@
 // run the tests. See the comment there for an explanation why this is the case.
 
 use core::marker::{Destruct, PhantomData};
-use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
-use core::ptr::{self, Alignment, NonNull, Unique};
+use core::mem::{Alignment, ManuallyDrop, MaybeUninit, SizedTypeProperties};
+use core::ptr::{self, NonNull, Unique};
 use core::{cmp, hint};
 
 #[cfg(not(no_global_oom_handling))]
@@ -43,7 +43,7 @@ const ZERO_CAP: Cap = unsafe { Cap::new_unchecked(0) };
 /// `Cap(cap)`, except if `T` is a ZST then `Cap::ZERO`.
 ///
 /// # Safety: cap must be <= `isize::MAX`.
-unsafe fn new_cap<T>(cap: usize) -> Cap {
+const unsafe fn new_cap<T>(cap: usize) -> Cap {
     if T::IS_ZST { ZERO_CAP } else { unsafe { Cap::new_unchecked(cap) } }
 }
 
@@ -260,7 +260,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// If the `ptr` and `capacity` come from a `RawVec` created via `alloc`, then this is
     /// guaranteed.
     #[inline]
-    pub(crate) unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
+    pub(crate) const unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
         // SAFETY: Precondition passed to the caller
         unsafe {
             let ptr = ptr.cast();
@@ -278,7 +278,8 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// See [`RawVec::from_raw_parts_in`].
     #[inline]
-    pub(crate) unsafe fn from_nonnull_in(ptr: NonNull<T>, capacity: usize, alloc: A) -> Self {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub(crate) const unsafe fn from_nonnull_in(ptr: NonNull<T>, capacity: usize, alloc: A) -> Self {
         // SAFETY: Precondition passed to the caller
         unsafe {
             let ptr = ptr.cast();
@@ -310,7 +311,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
     /// Returns a shared reference to the allocator backing this `RawVec`.
     #[inline]
-    pub(crate) fn allocator(&self) -> &A {
+    pub(crate) const fn allocator(&self) -> &A {
         self.inner.allocator()
     }
 
@@ -398,6 +399,21 @@ impl<T, A: Allocator> RawVec<T, A> {
     pub(crate) fn shrink_to_fit(&mut self, cap: usize) {
         // SAFETY: All calls on self.inner pass T::LAYOUT as the elem_layout
         unsafe { self.inner.shrink_to_fit(cap, T::LAYOUT) }
+    }
+
+    /// Shrinks the buffer down to the specified capacity. If the given amount
+    /// is 0, actually completely deallocates.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if the allocator cannot shrink the allocation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given amount is *larger* than the current capacity.
+    #[inline]
+    pub(crate) fn try_shrink_to_fit(&mut self, cap: usize) -> Result<(), TryReserveError> {
+        unsafe { self.inner.try_shrink_to_fit(cap, T::LAYOUT) }
     }
 }
 
@@ -554,7 +570,7 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
 impl<A: Allocator> RawVecInner<A> {
     #[inline]
     const fn new_in(alloc: A, align: Alignment) -> Self {
-        let ptr = Unique::from_non_null(NonNull::without_provenance(align.as_nonzero()));
+        let ptr = Unique::from_non_null(NonNull::without_provenance(align.as_nonzero_usize()));
         // `cap: 0` means "unallocated". zero-sized types are ignored.
         Self { ptr, cap: ZERO_CAP, alloc }
     }
@@ -578,12 +594,13 @@ impl<A: Allocator> RawVecInner<A> {
     }
 
     #[inline]
-    unsafe fn from_raw_parts_in(ptr: *mut u8, cap: Cap, alloc: A) -> Self {
+    const unsafe fn from_raw_parts_in(ptr: *mut u8, cap: Cap, alloc: A) -> Self {
         Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap, alloc }
     }
 
     #[inline]
-    unsafe fn from_nonnull_in(ptr: NonNull<u8>, cap: Cap, alloc: A) -> Self {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const unsafe fn from_nonnull_in(ptr: NonNull<u8>, cap: Cap, alloc: A) -> Self {
         Self { ptr: Unique::from(ptr), cap, alloc }
     }
 
@@ -603,7 +620,7 @@ impl<A: Allocator> RawVecInner<A> {
     }
 
     #[inline]
-    fn allocator(&self) -> &A {
+    const fn allocator(&self) -> &A {
         &self.alloc
     }
 
@@ -731,6 +748,20 @@ impl<A: Allocator> RawVecInner<A> {
         }
     }
 
+    /// # Safety
+    ///
+    /// - `elem_layout` must be valid for `self`, i.e. it must be the same `elem_layout` used to
+    ///   initially construct `self`
+    /// - `elem_layout`'s size must be a multiple of its alignment
+    /// - `cap` must be less than or equal to `self.capacity(elem_layout.size())`
+    unsafe fn try_shrink_to_fit(
+        &mut self,
+        cap: usize,
+        elem_layout: Layout,
+    ) -> Result<(), TryReserveError> {
+        unsafe { self.shrink(cap, elem_layout) }
+    }
+
     #[inline]
     const fn needs_to_grow(&self, len: usize, additional: usize, elem_layout: Layout) -> bool {
         additional > self.capacity(elem_layout.size()).wrapping_sub(len)
@@ -778,7 +809,6 @@ impl<A: Allocator> RawVecInner<A> {
     ///   initially construct `self`
     /// - `elem_layout`'s size must be a multiple of its alignment
     /// - `cap` must be less than or equal to `self.capacity(elem_layout.size())`
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
     unsafe fn shrink(&mut self, cap: usize, elem_layout: Layout) -> Result<(), TryReserveError> {
         assert!(cap <= self.capacity(elem_layout.size()), "Tried to shrink to a larger capacity");
@@ -796,7 +826,6 @@ impl<A: Allocator> RawVecInner<A> {
     ///
     /// # Safety
     /// `cap <= self.capacity()`
-    #[cfg(not(no_global_oom_handling))]
     unsafe fn shrink_unchecked(
         &mut self,
         cap: usize,

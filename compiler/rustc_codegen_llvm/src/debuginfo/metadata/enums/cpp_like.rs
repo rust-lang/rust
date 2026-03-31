@@ -21,8 +21,8 @@ use crate::debuginfo::metadata::{
     size_and_align_of, type_di_node, unknown_file_metadata, visibility_di_flags,
 };
 use crate::debuginfo::utils::DIB;
+use crate::llvm;
 use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};
-use crate::llvm::{self};
 
 // The names of the associated constants in each variant wrapper struct.
 // These have to match up with the names being used in `intrinsic.natvis`.

@@ -13,6 +13,7 @@ use rustc_target::spec::Os;
 use crate::errors::{
     MissingLangItem, MissingPanicHandler, PanicUnwindWithoutStd, UnknownExternLangItem,
 };
+use crate::lang_items::extract_ast;
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the
 /// lang items required by this crate, but not defined yet.
@@ -46,7 +47,7 @@ struct WeakLangItemVisitor<'a, 'tcx> {
 
 impl<'ast> visit::Visitor<'ast> for WeakLangItemVisitor<'_, '_> {
     fn visit_foreign_item(&mut self, i: &'ast ast::ForeignItem) {
-        if let Some((lang_item, _)) = lang_items::extract(&i.attrs) {
+        if let Some((lang_item, _)) = extract_ast(&i.attrs) {
             if let Some(item) = LangItem::from_name(lang_item)
                 && item.is_weak()
             {

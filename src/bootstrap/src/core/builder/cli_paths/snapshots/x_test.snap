@@ -94,7 +94,6 @@ expression: test
     - Set({test::compiler/rustc_errors})
     - Set({test::compiler/rustc_expand})
     - Set({test::compiler/rustc_feature})
-    - Set({test::compiler/rustc_fluent_macro})
     - Set({test::compiler/rustc_fs_util})
     - Set({test::compiler/rustc_graphviz})
     - Set({test::compiler/rustc_hashes})
@@ -130,7 +129,6 @@ expression: test
     - Set({test::compiler/rustc_public})
     - Set({test::compiler/rustc_public_bridge})
     - Set({test::compiler/rustc_query_impl})
-    - Set({test::compiler/rustc_query_system})
     - Set({test::compiler/rustc_resolve})
     - Set({test::compiler/rustc_sanitizers})
     - Set({test::compiler/rustc_serialize})
@@ -148,7 +146,8 @@ expression: test
     - Set({test::compiler/rustc_windows_rc})
 [Test] test::CrateRustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({test::src/librustdoc, test::src/tools/rustdoc})
+    - Set({test::src/librustdoc})
+    - Set({test::src/tools/rustdoc})
 [Test] test::CrateRustdocJsonTypes
     targets: [x86_64-unknown-linux-gnu]
     - Set({test::src/rustdoc-json-types})

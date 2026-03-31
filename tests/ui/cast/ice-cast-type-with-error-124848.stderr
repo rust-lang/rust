@@ -58,13 +58,7 @@ help: provide the argument
 LL |     let mut unpinned = MyType(Cell::new(None), /* value */);
    |                                              +++++++++++++
 
-error[E0606]: casting `&MyType<'_>` as `*const Cell<Option<&mut MyType<'_>>>` is invalid
-  --> $DIR/ice-cast-type-with-error-124848.rs:14:20
-   |
-LL |     let bad_addr = &unpinned as *const Cell<Option<&'a mut MyType<'a>>> as usize;
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+error: aborting due to 5 previous errors
 
-error: aborting due to 6 previous errors
-
-Some errors have detailed explanations: E0061, E0261, E0425, E0606.
+Some errors have detailed explanations: E0061, E0261, E0425.
 For more information about an error, try `rustc --explain E0061`.

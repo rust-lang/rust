@@ -17,6 +17,8 @@ use crate::time::Duration;
 use crate::{fmt, io};
 /// A Unix stream socket.
 ///
+/// Under Windows, it will only work starting from Windows 10 17063.
+///
 /// # Examples
 ///
 /// ```no_run

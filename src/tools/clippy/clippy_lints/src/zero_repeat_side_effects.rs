@@ -168,7 +168,7 @@ fn assign_expr_suggestion(
     let indent = snippet_indent(cx, outer_expr.span).unwrap_or_default();
     let var_name = snippet(cx, assign_expr_span.source_callsite(), "..");
     if needs_curly {
-        format!("{{\n    {indent}{inner_expr};\n    {indent}{var_name} = {vec_str}[] as {return_type}\n{indent}}}",)
+        format!("{{\n    {indent}{inner_expr};\n    {indent}{var_name} = {vec_str}[] as {return_type}\n{indent}}}")
     } else {
         format!("{inner_expr};\n{indent}{var_name} = {vec_str}[] as {return_type}")
     }

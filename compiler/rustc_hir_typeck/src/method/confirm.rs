@@ -18,7 +18,8 @@ use rustc_lint::builtin::{
 };
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
+    PointerCoercion,
 };
 use rustc_middle::ty::{
     self, AssocContainer, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
@@ -243,12 +244,16 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                             ty::Ref(_, ty, _) => *ty,
                             _ => bug!("Expected a reference type for argument to Pin"),
                         };
+                        adjustments.push(Adjustment {
+                            kind: Adjust::Deref(DerefAdjustKind::Pin),
+                            target: inner_ty,
+                        });
                         Ty::new_pinned_ref(self.tcx, region, inner_ty, mutbl)
                     }
                     _ => bug!("Cannot adjust receiver type for reborrowing pin of {target:?}"),
                 };
-
-                adjustments.push(Adjustment { kind: Adjust::ReborrowPin(mutbl), target });
+                adjustments
+                    .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Pin(mutbl)), target });
             }
             None => {}
         }
@@ -736,12 +741,18 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let trait_name = self.tcx.item_name(pick.item.container_id(self.tcx));
         let import_span = self.tcx.hir_span_if_local(pick.import_ids[0].to_def_id()).unwrap();
 
-        self.tcx.node_lint(AMBIGUOUS_GLOB_IMPORTED_TRAITS, segment.hir_id, |diag| {
-            diag.primary_message(format!("Use of ambiguously glob imported trait `{trait_name}`"))
+        self.tcx.emit_node_lint(
+            AMBIGUOUS_GLOB_IMPORTED_TRAITS,
+            segment.hir_id,
+            rustc_errors::DiagDecorator(|diag| {
+                diag.primary_message(format!(
+                    "Use of ambiguously glob imported trait `{trait_name}`"
+                ))
                 .span(segment.ident.span)
                 .span_label(import_span, format!("`{trait_name}` imported ambiguously here"))
                 .help(format!("Import `{trait_name}` explicitly"));
-        });
+            }),
+        );
     }
 
     fn upcast(

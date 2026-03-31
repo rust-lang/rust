@@ -1,5 +1,5 @@
 use rustc_hir::{Expr, ExprKind, Stmt, StmtKind};
-use rustc_middle::ty::{self};
+use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 

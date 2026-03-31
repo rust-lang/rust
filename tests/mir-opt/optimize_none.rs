@@ -15,13 +15,14 @@ pub fn add_noopt() -> i32 {
 #[optimize(none)]
 pub fn const_branch() -> i32 {
     // CHECK-LABEL: fn const_branch(
-    // CHECK: switchInt(const true) -> [0: [[FALSE:bb[0-9]+]], otherwise: [[TRUE:bb[0-9]+]]];
+    // CHECK: [[BOOL:_[0-9]+]] = const true;
+    // CHECK: switchInt(move [[BOOL]]) -> [0: [[BB_FALSE:bb[0-9]+]], otherwise: [[BB_TRUE:bb[0-9]+]]];
     // CHECK-NEXT: }
-    // CHECK: [[FALSE]]: {
+    // CHECK: [[BB_FALSE]]: {
     // CHECK-NEXT: _0 = const 0
     // CHECK-NEXT: goto
     // CHECK-NEXT: }
-    // CHECK: [[TRUE]]: {
+    // CHECK: [[BB_TRUE]]: {
     // CHECK-NEXT: _0 = const 1
     // CHECK-NEXT: goto
     // CHECK-NEXT: }

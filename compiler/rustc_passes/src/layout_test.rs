@@ -1,5 +1,5 @@
 use rustc_abi::{HasDataLayout, TargetDataLayout};
-use rustc_hir::attrs::{AttributeKind, RustcLayoutType};
+use rustc_hir::attrs::RustcLayoutType;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
@@ -7,7 +7,6 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
-use rustc_span::source_map::Spanned;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt;
 use rustc_trait_selection::traits;
@@ -20,8 +19,7 @@ pub fn test_layout(tcx: TyCtxt<'_>) {
         return;
     }
     for id in tcx.hir_crate_items(()).definitions() {
-        let attrs = tcx.get_all_attrs(id);
-        if let Some(attrs) = find_attr!(attrs, AttributeKind::RustcLayout(attrs) => attrs) {
+        if let Some(attrs) = find_attr!(tcx, id, RustcLayout(attrs) => attrs) {
             // Attribute parsing handles error reporting
             if matches!(
                 tcx.def_kind(id),
@@ -117,7 +115,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attrs: &[RustcLayout
         }
 
         Err(layout_error) => {
-            tcx.dcx().emit_err(Spanned { node: layout_error.into_diagnostic(), span });
+            tcx.dcx().span_err(span, layout_error.to_string());
         }
     }
 }

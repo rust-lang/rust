@@ -7,11 +7,11 @@ use super::abi::ReprOptions;
 use super::mir::{Body, Mutability, Safety};
 use super::{DefId, Error, Symbol, with};
 use crate::abi::{FnAbi, Layout};
-use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType};
+use crate::crate_def::{CrateDef, CrateDefType};
 use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
-use crate::mir::mono::StaticDef;
+use crate::mir::mono::{Instance, StaticDef};
 use crate::target::MachineInfo;
-use crate::{Filename, IndexedVal, Opaque, ThreadLocalIndex};
+use crate::{AssocItems, Filename, IndexedVal, Opaque, ThreadLocalIndex};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Ty(usize, ThreadLocalIndex);
@@ -862,17 +862,11 @@ pub struct Discr {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct VariantDef {
     /// The variant index.
-    ///
-    /// ## Warning
-    /// Do not access this field directly!
-    pub idx: VariantIdx,
+    pub(crate) idx: VariantIdx,
     /// The data type where this variant comes from.
     /// For now, we use this to retrieve information about the variant itself so we don't need to
     /// cache more information.
-    ///
-    /// ## Warning
-    /// Do not access this field directly!
-    pub adt_def: AdtDef,
+    pub(crate) adt_def: AdtDef,
 }
 
 impl VariantDef {
@@ -894,10 +888,7 @@ impl VariantDef {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct FieldDef {
     /// The field definition.
-    ///
-    /// ## Warning
-    /// Do not access this field directly! This is public for the compiler to have access to it.
-    pub def: DefId,
+    pub(crate) def: DefId,
 
     /// The field name.
     pub name: Symbol,
@@ -952,13 +943,13 @@ crate_def! {
     pub TraitDef;
 }
 
-impl_crate_def_items! {
-    TraitDef;
-}
-
 impl TraitDef {
     pub fn declaration(trait_def: &TraitDef) -> TraitDecl {
         with(|cx| cx.trait_decl(trait_def))
+    }
+
+    pub fn associated_items(&self) -> AssocItems {
+        with(|cx| cx.associated_items(self.def_id()))
     }
 }
 
@@ -978,14 +969,14 @@ crate_def! {
     pub ImplDef;
 }
 
-impl_crate_def_items! {
-    ImplDef;
-}
-
 impl ImplDef {
     /// Retrieve information about this implementation.
     pub fn trait_impl(&self) -> ImplTrait {
         with(|cx| cx.trait_impl(self))
+    }
+
+    pub fn associated_items(&self) -> AssocItems {
+        with(|cx| cx.associated_items(self.def_id()))
     }
 }
 
@@ -1449,6 +1440,18 @@ impl TraitRef {
         };
         self_ty
     }
+
+    /// Retrieve all vtable entries.
+    pub fn vtable_entries(&self) -> Vec<VtblEntry> {
+        with(|cx| cx.vtable_entries(self))
+    }
+
+    /// Returns the vtable entry at the given index.
+    ///
+    /// Returns `None` if the index is out of bounds.
+    pub fn vtable_entry(&self, idx: usize) -> Option<VtblEntry> {
+        with(|cx| cx.vtable_entry(self, idx))
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -1586,7 +1589,8 @@ macro_rules! serialize_index_impl {
         }
     };
 }
-pub(crate) use {index_impl, serialize_index_impl};
+pub(crate) use index_impl;
+pub(crate) use serialize_index_impl;
 
 index_impl!(TyConstId);
 index_impl!(MirConstId);
@@ -1663,4 +1667,20 @@ impl AssocItem {
     pub fn is_impl_trait_in_trait(&self) -> bool {
         matches!(self.kind, AssocKind::Type { data: AssocTypeData::Rpitit(_) })
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum VtblEntry {
+    /// destructor of this type (used in vtable header)
+    MetadataDropInPlace,
+    /// layout size of this type (used in vtable header)
+    MetadataSize,
+    /// layout align of this type (used in vtable header)
+    MetadataAlign,
+    /// non-dispatchable associated function that is excluded from trait object
+    Vacant,
+    /// dispatchable associated function
+    Method(Instance),
+    /// pointer to a separate supertrait vtable, can be used by trait upcasting coercion
+    TraitVPtr(TraitRef),
 }

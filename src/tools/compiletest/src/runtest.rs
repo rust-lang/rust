@@ -272,22 +272,26 @@ impl<'test> TestCx<'test> {
         {
             self.fatal("cannot use should-ice in a test that is not cfail");
         }
-        match self.config.mode {
-            TestMode::Pretty => self.run_pretty_test(),
-            TestMode::DebugInfo => self.run_debuginfo_test(),
-            TestMode::Codegen => self.run_codegen_test(),
-            TestMode::RustdocHtml => self.run_rustdoc_html_test(),
-            TestMode::RustdocJson => self.run_rustdoc_json_test(),
-            TestMode::CodegenUnits => self.run_codegen_units_test(),
-            TestMode::Incremental => self.run_incremental_test(),
-            TestMode::RunMake => self.run_rmake_test(),
-            TestMode::Ui => self.run_ui_test(),
-            TestMode::MirOpt => self.run_mir_opt_test(),
-            TestMode::Assembly => self.run_assembly_test(),
-            TestMode::RustdocJs => self.run_rustdoc_js_test(),
-            TestMode::CoverageMap => self.run_coverage_map_test(), // see self::coverage
-            TestMode::CoverageRun => self.run_coverage_run_test(), // see self::coverage
-            TestMode::Crashes => self.run_crash_test(),
+        // Run the test multiple times if requested.
+        // This is useful for catching flaky tests under the parallel frontend.
+        for _ in 0..self.config.iteration_count {
+            match self.config.mode {
+                TestMode::Pretty => self.run_pretty_test(),
+                TestMode::DebugInfo => self.run_debuginfo_test(),
+                TestMode::Codegen => self.run_codegen_test(),
+                TestMode::RustdocHtml => self.run_rustdoc_html_test(),
+                TestMode::RustdocJson => self.run_rustdoc_json_test(),
+                TestMode::CodegenUnits => self.run_codegen_units_test(),
+                TestMode::Incremental => self.run_incremental_test(),
+                TestMode::RunMake => self.run_rmake_test(),
+                TestMode::Ui => self.run_ui_test(),
+                TestMode::MirOpt => self.run_mir_opt_test(),
+                TestMode::Assembly => self.run_assembly_test(),
+                TestMode::RustdocJs => self.run_rustdoc_js_test(),
+                TestMode::CoverageMap => self.run_coverage_map_test(), // see self::coverage
+                TestMode::CoverageRun => self.run_coverage_run_test(), // see self::coverage
+                TestMode::Crashes => self.run_crash_test(),
+            }
         }
     }
 
@@ -504,12 +508,11 @@ impl<'test> TestCx<'test> {
             let normalized_revision = normalize_revision(revision);
             let cfg_arg = ["--cfg", &normalized_revision];
             let arg = format!("--cfg={normalized_revision}");
-            if self
-                .props
-                .compile_flags
-                .windows(2)
-                .any(|args| args == cfg_arg || args[0] == arg || args[1] == arg)
-            {
+            // Handle if compile_flags is length 1
+            let contains_arg =
+                self.props.compile_flags.iter().any(|considered_arg| *considered_arg == arg);
+            let contains_cfg_arg = self.props.compile_flags.windows(2).any(|args| args == cfg_arg);
+            if contains_arg || contains_cfg_arg {
                 error!(
                     "redundant cfg argument `{normalized_revision}` is already created by the \
                     revision"
@@ -1670,6 +1673,11 @@ impl<'test> TestCx<'test> {
                 if self.props.force_host { &*self.config.host } else { &*self.config.target };
 
             compiler.arg(&format!("--target={}", target));
+            if target.ends_with(".json") {
+                // `-Zunstable-options` is necessary when compiletest is running with custom targets
+                // (such as synthetic targets used to bless mir-opt tests).
+                compiler.arg("-Zunstable-options");
+            }
         }
         self.set_revision_flags(&mut compiler);
 
@@ -1748,6 +1756,14 @@ impl<'test> TestCx<'test> {
                 compiler.arg("-Zwrite-long-types-to-disk=no");
                 // FIXME: use this for other modes too, for perf?
                 compiler.arg("-Cstrip=debuginfo");
+
+                if self.config.parallel_frontend_enabled() {
+                    // Currently, we only use multiple threads for the UI test suite,
+                    // because UI tests can effectively verify the parallel frontend and
+                    // require minimal modification. The option will later be extended to
+                    // other test suites.
+                    compiler.arg(&format!("-Zthreads={}", self.config.parallel_frontend_threads));
+                }
             }
             TestMode::MirOpt => {
                 // We check passes under test to minimize the mir-opt test dump
@@ -1903,8 +1919,9 @@ impl<'test> TestCx<'test> {
             compiler.args(&["-A", "unused", "-W", "unused_attributes"]);
         }
 
-        // Allow tests to use internal features.
+        // Allow tests to use internal and incomplete features.
         compiler.args(&["-A", "internal_features"]);
+        compiler.args(&["-A", "incomplete_features"]);
 
         // Allow tests to have unused parens and braces.
         // Add #![deny(unused_parens, unused_braces)] to the test file if you want to
@@ -2105,7 +2122,7 @@ impl<'test> TestCx<'test> {
     }
 
     /// Prints a message to (captured) stdout if `config.verbose` is true.
-    /// The message is also logged to `tracing::debug!` regardles of verbosity.
+    /// The message is also logged to `tracing::debug!` regardless of verbosity.
     ///
     /// Use `format_args!` as the argument to perform formatting if required.
     fn logv(&self, message: impl fmt::Display) {
@@ -2379,15 +2396,22 @@ impl<'test> TestCx<'test> {
             _ => {}
         };
 
-        let stderr = if self.force_color_svg() {
-            anstyle_svg::Term::new().render_svg(&proc_res.stderr)
-        } else if explicit_format {
-            proc_res.stderr.clone()
-        } else {
-            json::extract_rendered(&proc_res.stderr)
-        };
+        let stderr;
+        let normalized_stderr;
 
-        let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
+        if self.force_color_svg() {
+            let normalized = self.normalize_output(&proc_res.stderr, &self.props.normalize_stderr);
+            stderr = anstyle_svg::Term::new().render_svg(&normalized);
+            normalized_stderr = stderr.clone();
+        } else {
+            stderr = if explicit_format {
+                proc_res.stderr.clone()
+            } else {
+                json::extract_rendered(&proc_res.stderr)
+            };
+            normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
+        }
+
         let mut errors = 0;
         match output_kind {
             TestOutput::Compile => {
@@ -2707,28 +2731,40 @@ impl<'test> TestCx<'test> {
         // Wrapper tools set by `runner` might provide extra output on failure,
         // for example a WebAssembly runtime might print the stack trace of an
         // `unreachable` instruction by default.
-        //
+        let compare_output_by_lines_subset = self.config.runner.is_some();
+
         // Also, some tests like `ui/parallel-rustc` have non-deterministic
         // orders of output, so we need to compare by lines.
-        let compare_output_by_lines =
-            self.props.compare_output_by_lines || self.config.runner.is_some();
+        let compare_output_by_lines = self.props.compare_output_by_lines;
 
         let tmp;
-        let (expected, actual): (&str, &str) = if compare_output_by_lines {
+        let (expected, actual): (&str, &str) = if compare_output_by_lines_subset {
             let actual_lines: HashSet<_> = actual.lines().collect();
             let expected_lines: Vec<_> = expected.lines().collect();
             let mut used = expected_lines.clone();
             used.retain(|line| actual_lines.contains(line));
+
             // check if `expected` contains a subset of the lines of `actual`
             if used.len() == expected_lines.len() && (expected.is_empty() == actual.is_empty()) {
                 return CompareOutcome::Same;
             }
             if expected_lines.is_empty() {
-                // if we have no lines to check, force a full overwite
+                // if we have no lines to check, force a full overwrite
                 ("", actual)
             } else {
+                // this prints/blesses the subset, not the actual
                 tmp = (expected_lines.join("\n"), used.join("\n"));
                 (&tmp.0, &tmp.1)
+            }
+        } else if compare_output_by_lines {
+            let mut actual_lines: Vec<&str> = actual.lines().collect();
+            let mut expected_lines: Vec<&str> = expected.lines().collect();
+            actual_lines.sort_unstable();
+            expected_lines.sort_unstable();
+            if actual_lines == expected_lines {
+                return CompareOutcome::Same;
+            } else {
+                (expected, actual)
             }
         } else {
             (expected, actual)

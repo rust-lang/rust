@@ -13,7 +13,7 @@ use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, Node, PatKind, QPath};
+use rustc_hir::{self as hir, Node, PatKind, QPath, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
@@ -21,7 +21,7 @@ use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_session::lint::{self, LintExpectationId};
-use rustc_span::{Symbol, kw, sym};
+use rustc_span::{Symbol, kw};
 
 use crate::errors::{
     ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,
@@ -43,10 +43,10 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::TraitAlias
         | DefKind::AssocTy
         | DefKind::Fn
-        | DefKind::Const
+        | DefKind::Const { .. }
         | DefKind::Static { .. }
         | DefKind::AssocFn
-        | DefKind::AssocConst
+        | DefKind::AssocConst { .. }
         | DefKind::Macro(_)
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
@@ -120,7 +120,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn handle_res(&mut self, res: Res) {
         match res {
             Res::Def(
-                DefKind::Const | DefKind::AssocConst | DefKind::AssocTy | DefKind::TyAlias,
+                DefKind::Const { .. }
+                | DefKind::AssocConst { .. }
+                | DefKind::AssocTy
+                | DefKind::TyAlias,
                 def_id,
             ) => {
                 self.check_def_id(def_id);
@@ -154,7 +157,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             Res::Def(_, def_id) => self.check_def_id(def_id),
             Res::SelfTyParam { trait_: t } => self.check_def_id(t),
             Res::SelfTyAlias { alias_to: i, .. } => self.check_def_id(i),
-            Res::ToolMod | Res::NonMacroAttr(..) | Res::Err => {}
+            Res::ToolMod | Res::NonMacroAttr(..) | Res::OpenMod(..) | Res::Err => {}
         }
     }
 
@@ -377,10 +380,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// for discussion).
     fn should_ignore_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) -> bool {
         if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
-            && let impl_of = self.tcx.parent(impl_item.owner_id.to_def_id())
-            && self.tcx.is_automatically_derived(impl_of)
+            && let impl_of = self.tcx.local_parent(impl_item.owner_id.def_id)
+            && self.tcx.is_automatically_derived(impl_of.to_def_id())
             && let trait_ref = self.tcx.impl_trait_ref(impl_of).instantiate_identity()
-            && self.tcx.has_attr(trait_ref.def_id, sym::rustc_trivial_field_reads)
+            && find_attr!(self.tcx, trait_ref.def_id, RustcTrivialFieldReads)
         {
             if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
                 && let Some(adt_def_id) = adt_def.did().as_local()
@@ -485,7 +488,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn check_impl_or_impl_item_live(&mut self, local_def_id: LocalDefId) -> bool {
         let (impl_block_id, trait_def_id) = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
-            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => {
+            DefKind::AssocConst { .. } | DefKind::AssocTy | DefKind::AssocFn => {
                 let trait_item_id =
                     self.tcx.trait_item_of(local_def_id).and_then(|def_id| def_id.as_local());
                 (self.tcx.local_parent(local_def_id), trait_item_id)
@@ -702,12 +705,6 @@ fn has_allow_dead_code_or_lang_attr(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> Option<ComesFromAllowExpect> {
-    fn has_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-        tcx.has_attr(def_id, sym::lang)
-            // Stable attribute for #[lang = "panic_impl"]
-            || tcx.has_attr(def_id, sym::panic_handler)
-    }
-
     fn has_allow_expect_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
         let lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).level;
@@ -728,7 +725,7 @@ fn has_allow_dead_code_or_lang_attr(
 
     if has_allow_expect_dead_code(tcx, def_id) {
         Some(ComesFromAllowExpect::Yes)
-    } else if has_used_like_attr(tcx, def_id) || has_lang_attr(tcx, def_id) {
+    } else if has_used_like_attr(tcx, def_id) || find_attr!(tcx, def_id, Lang(..)) {
         Some(ComesFromAllowExpect::No)
     } else {
         None
@@ -772,7 +769,7 @@ fn maybe_record_as_seed<'tcx>(
                 );
             }
         }
-        DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy => {
+        DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::AssocTy => {
             if allow_dead_code.is_none() {
                 let parent = tcx.local_parent(owner_id.def_id);
                 match tcx.def_kind(parent) {
@@ -815,7 +812,7 @@ fn maybe_record_as_seed<'tcx>(
             // global_asm! is always live.
             worklist.push((owner_id.def_id, ComesFromAllowExpect::No));
         }
-        DefKind::Const => {
+        DefKind::Const { .. } => {
             if tcx.item_name(owner_id.def_id) == kw::Underscore {
                 // `const _` is always live, as that syntax only exists for the side effects
                 // of type checking and evaluating the constant expression, and marking them
@@ -1075,7 +1072,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                 let enum_variants_with_same_name = dead_codes
                     .iter()
                     .filter_map(|dead_item| {
-                        if let DefKind::AssocFn | DefKind::AssocConst =
+                        if let DefKind::AssocFn | DefKind::AssocConst { .. } =
                             tcx.def_kind(dead_item.def_id)
                             && let impl_did = tcx.local_parent(dead_item.def_id)
                             && let DefKind::Impl { of_trait: false } = tcx.def_kind(impl_did)
@@ -1148,12 +1145,12 @@ impl<'tcx> DeadVisitor<'tcx> {
             return;
         }
         match self.tcx.def_kind(def_id) {
-            DefKind::AssocConst
+            DefKind::AssocConst { .. }
             | DefKind::AssocTy
             | DefKind::AssocFn
             | DefKind::Fn
             | DefKind::Static { .. }
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::TyAlias
             | DefKind::Enum
             | DefKind::Union

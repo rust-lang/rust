@@ -38,7 +38,7 @@ use crate::errors;
 use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
 
-// TODO(antoyo)
+// FIXME(antoyo)
 type Funclet = ();
 
 enum ExtremumOperation {
@@ -75,7 +75,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let func = self.current_func();
 
         let load_ordering = match order {
-            // TODO(antoyo): does this make sense?
+            // FIXME(antoyo): does this make sense?
             AtomicOrdering::AcqRel | AtomicOrdering::Release => AtomicOrdering::Acquire,
             _ => order,
         };
@@ -284,8 +284,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                             func_ptr,
                             index
                         );
-                        // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
-                        // TODO: remove bitcast now that vector types can be compared?
+                        // FIXME(antoyo): perhaps use __builtin_convertvector for vector casting.
+                        // FIXME: remove bitcast now that vector types can be compared?
                         // ==> We use bitcast to avoid having to do many manual casts from e.g. __m256i to __v32qi (in
                         // the case of _mm256_aesenc_epi128).
                         self.bitcast(actual_val, expected_ty)
@@ -430,7 +430,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // That's why we assign the result to a local.
         let return_type = self.context.new_type::<bool>();
         let current_func = self.block.get_function();
-        // TODO(antoyo): return the new_call() directly? Since the overflow function has no side-effects.
+        // FIXME(antoyo): return the new_call() directly? Since the overflow function has no side-effects.
         let result = current_func.new_local(
             self.location,
             return_type,
@@ -485,12 +485,13 @@ impl<'a, 'gcc, 'tcx> Deref for Builder<'a, 'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
-    type Value = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Value;
-    type Metadata = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Metadata;
     type Function = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Function;
     type BasicBlock = <CodegenCx<'gcc, 'tcx> as BackendTypes>::BasicBlock;
-    type Type = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Type;
     type Funclet = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Funclet;
+
+    type Value = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Value;
+    type Type = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Type;
+    type FunctionSignature = <CodegenCx<'gcc, 'tcx> as BackendTypes>::FunctionSignature;
 
     type DIScope = <CodegenCx<'gcc, 'tcx> as BackendTypes>::DIScope;
     type DILocation = <CodegenCx<'gcc, 'tcx> as BackendTypes>::DILocation;
@@ -609,7 +610,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         let current_block = self.block;
         self.block = try_block;
-        let call = self.call(typ, fn_attrs, None, func, args, None, instance); // TODO(antoyo): use funclet here?
+        let call = self.call(typ, fn_attrs, None, func, args, None, instance); // FIXME(antoyo): use funclet here?
         self.block = current_block;
 
         let return_value =
@@ -647,7 +648,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(self.location, condition, then, catch);
         if let Some(_fn_abi) = fn_abi {
-            // TODO(bjorn3): Apply function attributes
+            // FIXME(bjorn3): Apply function attributes
         }
         call_site
     }
@@ -674,7 +675,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.assign_to_var(a + b)
     }
 
-    // TODO(antoyo): should we also override the `unchecked_` versions?
+    // FIXME(antoyo): should we also override the `unchecked_` versions?
     fn sub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.assign_to_var(self.gcc_sub(a, b))
     }
@@ -702,7 +703,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn exactudiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): poison if not exact.
+        // FIXME(antoyo): poison if not exact.
         let a_type = a.get_type().to_unsigned(self);
         let a = self.gcc_int_cast(a, a_type);
         let b_type = b.get_type().to_unsigned(self);
@@ -715,7 +716,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn exactsdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): poison if not exact.
+        // FIXME(antoyo): poison if not exact.
         // FIXME(antoyo): rustc_codegen_ssa::mir::intrinsic uses different types for a and b but they
         // should be the same.
         let typ = a.get_type().to_signed(self);
@@ -736,7 +737,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn frem(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): add check in libgccjit since using the binary operator % causes the following error:
+        // FIXME(antoyo): add check in libgccjit since using the binary operator % causes the following error:
         // during RTL pass: expand
         // libgccjit.so: error: in expmed_mode_index, at expmed.h:240
         // 0x7f0101d58dc6 expmed_mode_index
@@ -788,7 +789,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 return self.context.new_call(self.location, fmod, &[a, b]);
             }
             TypeKind::FP128 => {
-                // TODO(antoyo): use get_simple_function_f128_2args.
+                // FIXME(antoyo): use get_simple_function_f128_2args.
                 let f128_type = self.type_f128();
                 let fmodf128 = self.context.new_function(
                     None,
@@ -836,7 +837,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn ashr(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): check whether behavior is an arithmetic shift for >> .
+        // FIXME(antoyo): check whether behavior is an arithmetic shift for >> .
         // It seems to be if the value is signed.
         self.gcc_lshr(a, b)
     }
@@ -936,7 +937,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn alloca(&mut self, size: Size, align: Align) -> RValue<'gcc> {
         let ty = self.cx.type_array(self.cx.type_i8(), size.bytes()).get_aligned(align.bytes());
-        // TODO(antoyo): It might be better to return a LValue, but fixing the rustc API is non-trivial.
+        // FIXME(antoyo): It might be better to return a LValue, but fixing the rustc API is non-trivial.
         self.current_func()
             .new_local(self.location, ty, format!("stack_var_{}", self.next_value_counter()))
             .get_address(self.location)
@@ -1005,8 +1006,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         order: AtomicOrdering,
         size: Size,
     ) -> RValue<'gcc> {
-        // TODO(antoyo): use ty.
-        // TODO(antoyo): handle alignment.
+        // FIXME(antoyo): use ty.
+        // FIXME(antoyo): handle alignment.
         let atomic_load =
             self.context.get_builtin_function(format!("__atomic_load_{}", size.bytes()));
         let ordering = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
@@ -1127,11 +1128,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn range_metadata(&mut self, _load: RValue<'gcc>, _range: WrappingRange) {
-        // TODO(antoyo)
+        // FIXME(antoyo)
     }
 
     fn nonnull_metadata(&mut self, _load: RValue<'gcc>) {
-        // TODO(antoyo)
+        // FIXME(antoyo)
     }
 
     fn store(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
@@ -1160,7 +1161,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             self.cx.context.new_cast(self.location, ptr, modified_destination_type.make_pointer());
         let modified_destination = modified_ptr.dereference(self.location);
         self.llbb().add_assignment(self.location, modified_destination, val);
-        // TODO(antoyo): handle `MemFlags::NONTEMPORAL`.
+        // FIXME(antoyo): handle `MemFlags::NONTEMPORAL`.
         // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
         // When adding support for NONTEMPORAL, make sure to not just emit MOVNT on x86; see the
         // LLVM backend for details.
@@ -1174,7 +1175,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         order: AtomicOrdering,
         size: Size,
     ) {
-        // TODO(antoyo): handle alignment.
+        // FIXME(antoyo): handle alignment.
         let atomic_store =
             self.context.get_builtin_function(format!("__atomic_store_{}", size.bytes()));
         let ordering = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
@@ -1204,7 +1205,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let ptr_type = ptr.get_type();
         let mut pointee_type = ptr.get_type();
         // NOTE: we cannot use array indexing here like in inbounds_gep because array indexing is
-        // always considered in bounds in GCC (TODO(antoyo): to be verified).
+        // always considered in bounds in GCC (FIXME(antoyo): to be verified).
         // So, we have to cast to a number.
         let mut result = self.context.new_bitcast(self.location, ptr, self.sizet_type);
         // FIXME(antoyo): if there were more than 1 index, this code is probably wrong and would
@@ -1232,7 +1233,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) -> RValue<'gcc> {
         // NOTE: due to opaque pointers now being used, we need to cast here.
         let ptr = self.context.new_cast(self.location, ptr, typ.make_pointer());
-        // NOTE: array indexing is always considered in bounds in GCC (TODO(antoyo): to be verified).
+        // NOTE: array indexing is always considered in bounds in GCC (FIXME(antoyo): to be verified).
         let mut indices = indices.iter();
         let index = indices.next().expect("first index in inbounds_gep");
         let mut result = self.context.new_array_access(self.location, ptr, *index);
@@ -1244,14 +1245,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     /* Casts */
     fn trunc(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): check that it indeed truncate the value.
+        // FIXME(antoyo): check that it indeed truncate the value.
         self.gcc_int_cast(value, dest_ty)
     }
 
     fn sext(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): check that it indeed sign extend the value.
+        // FIXME(antoyo): check that it indeed sign extend the value.
         if dest_ty.dyncast_vector().is_some() {
-            // TODO(antoyo): nothing to do as it is only for LLVM?
+            // FIXME(antoyo): nothing to do as it is only for LLVM?
             return value;
         }
         self.context.new_cast(self.location, value, dest_ty)
@@ -1274,7 +1275,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn fptrunc(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): make sure it truncates.
+        // FIXME(antoyo): make sure it truncates.
         set_rvalue_location(self, self.context.new_cast(self.location, value, dest_ty))
     }
 
@@ -1404,7 +1405,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let dst = self.pointercast(dst, self.type_i8p());
         let src = self.pointercast(src, self.type_ptr_to(self.type_void()));
         let memcpy = self.context.get_builtin_function("memcpy");
-        // TODO(antoyo): handle aligns and is_volatile.
+        // FIXME(antoyo): handle aligns and is_volatile.
         self.block.add_eval(
             self.location,
             self.context.new_call(self.location, memcpy, &[dst, src, size]),
@@ -1427,7 +1428,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let src = self.pointercast(src, self.type_ptr_to(self.type_void()));
 
         let memmove = self.context.get_builtin_function("memmove");
-        // TODO(antoyo): handle is_volatile.
+        // FIXME(antoyo): handle is_volatile.
         self.block.add_eval(
             self.location,
             self.context.new_call(self.location, memmove, &[dst, src, size]),
@@ -1446,7 +1447,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let ptr = self.pointercast(ptr, self.type_i8p());
         let memset = self.context.get_builtin_function("memset");
-        // TODO(antoyo): handle align and is_volatile.
+        // FIXME(antoyo): handle align and is_volatile.
         let fill_byte = self.context.new_cast(self.location, fill_byte, self.i32_type);
         let size = self.intcast(size, self.type_size_t(), false);
         self.block.add_eval(
@@ -1495,6 +1496,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     #[cfg(not(feature = "master"))]
     fn extract_element(&mut self, vec: RValue<'gcc>, idx: RValue<'gcc>) -> RValue<'gcc> {
+        use crate::context::new_array_type;
+
         let vector_type = vec
             .get_type()
             .unqualified()
@@ -1503,7 +1506,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let element_type = vector_type.get_element_type();
         let vec_num_units = vector_type.get_num_units();
         let array_type =
-            self.context.new_array_type(self.location, element_type, vec_num_units as u64);
+            new_array_type(self.context, self.location, element_type, vec_num_units as u64);
         let array = self.context.new_bitcast(self.location, vec, array_type).to_rvalue();
         self.context.new_array_access(self.location, array, idx).to_rvalue()
     }
@@ -1596,7 +1599,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let value1_type = self.u8_type.make_pointer();
         let ptr = self.cx.context.new_cast(self.location, ptr, value1_type);
         let value1 = ptr;
-        let value2 = zero; // TODO(antoyo): set the proper value here (the type of exception?).
+        let value2 = zero; // FIXME(antoyo): set the proper value here (the type of exception?).
 
         (value1, value2)
     }
@@ -1613,7 +1616,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn filter_landing_pad(&mut self, pers_fn: Function<'gcc>) {
-        // TODO(antoyo): generate the correct landing pad
+        // FIXME(antoyo): generate the correct landing pad
         self.cleanup_landing_pad(pers_fn);
     }
 
@@ -1650,6 +1653,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _unwind: Option<Block<'gcc>>,
         _handlers: &[Block<'gcc>],
     ) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    fn get_funclet_cleanuppad(&self, _funclet: &Funclet) -> RValue<'gcc> {
         unimplemented!();
     }
 
@@ -1740,15 +1747,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn set_invariant_load(&mut self, load: RValue<'gcc>) {
         // NOTE: Hack to consider vtable function pointer as non-global-variable function pointer.
         self.normal_function_addresses.borrow_mut().insert(load);
-        // TODO(antoyo)
+        // FIXME(antoyo)
     }
 
     fn lifetime_start(&mut self, _ptr: RValue<'gcc>, _size: Size) {
-        // TODO(antoyo)
+        // FIXME(antoyo)
     }
 
     fn lifetime_end(&mut self, _ptr: RValue<'gcc>, _size: Size) {
-        // TODO(antoyo)
+        // FIXME(antoyo)
     }
 
     fn call(
@@ -1764,7 +1771,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
         let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
-            // TODO(antoyo): remove when the API supports a different type for functions.
+            // FIXME(antoyo): remove when the API supports a different type for functions.
             let func: Function<'gcc> = self.cx.rvalue_as_function(func);
             self.function_call(func, args, funclet)
         } else {
@@ -1772,7 +1779,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             self.function_ptr_call(typ, func, args, funclet)
         };
         if let Some(_fn_abi) = fn_abi {
-            // TODO(bjorn3): Apply function attributes
+            // FIXME(bjorn3): Apply function attributes
         }
         call
     }
@@ -1871,32 +1878,31 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // On the other hand, f_max works even if int_ty::MAX is greater than float_ty::MAX. Because
         // we're rounding towards zero, we just get float_ty::MAX (which is always an integer).
         // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
-        let int_max = |signed: bool, int_width: u64| -> u128 {
+        fn int_max(signed: bool, int_width: u64) -> u128 {
             let shift_amount = 128 - int_width;
             if signed { i128::MAX as u128 >> shift_amount } else { u128::MAX >> shift_amount }
-        };
-        let int_min = |signed: bool, int_width: u64| -> i128 {
+        }
+        fn int_min(signed: bool, int_width: u64) -> i128 {
             if signed { i128::MIN >> (128 - int_width) } else { 0 }
-        };
+        }
 
-        let compute_clamp_bounds_single = |signed: bool, int_width: u64| -> (u128, u128) {
+        // FIXME: rewrite using a generic function with <F: Float>.
+        let compute_clamp_bounds_half = |signed: bool, int_width: u64| -> (u128, u128) {
             let rounded_min =
-                ieee::Single::from_i128_r(int_min(signed, int_width), Round::TowardZero);
-            assert_eq!(rounded_min.status, Status::OK);
+                ieee::Half::from_i128_r(int_min(signed, int_width), Round::TowardZero);
+            //assert_eq!(rounded_min.status, Status::OK);
             let rounded_max =
-                ieee::Single::from_u128_r(int_max(signed, int_width), Round::TowardZero);
+                ieee::Half::from_u128_r(int_max(signed, int_width), Round::TowardZero);
             assert!(rounded_max.value.is_finite());
             (rounded_min.value.to_bits(), rounded_max.value.to_bits())
         };
-        let compute_clamp_bounds_double = |signed: bool, int_width: u64| -> (u128, u128) {
-            let rounded_min =
-                ieee::Double::from_i128_r(int_min(signed, int_width), Round::TowardZero);
+        fn compute_clamp_bounds<F: Float>(signed: bool, int_width: u64) -> (u128, u128) {
+            let rounded_min = F::from_i128_r(int_min(signed, int_width), Round::TowardZero);
             assert_eq!(rounded_min.status, Status::OK);
-            let rounded_max =
-                ieee::Double::from_u128_r(int_max(signed, int_width), Round::TowardZero);
+            let rounded_max = F::from_u128_r(int_max(signed, int_width), Round::TowardZero);
             assert!(rounded_max.value.is_finite());
             (rounded_min.value.to_bits(), rounded_max.value.to_bits())
-        };
+        }
         // To implement saturation, we perform the following steps:
         //
         // 1. Cast val to an integer with fpto[su]i. This may result in undef.
@@ -1926,15 +1932,19 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let float_bits_to_llval = |bx: &mut Self, bits| {
             let bits_llval = match float_width {
+                16 => bx.cx().const_u16(bits as u16),
                 32 => bx.cx().const_u32(bits as u32),
                 64 => bx.cx().const_u64(bits as u64),
+                128 => bx.cx().const_u128(bits),
                 n => bug!("unsupported float width {}", n),
             };
             bx.bitcast(bits_llval, float_ty)
         };
         let (f_min, f_max) = match float_width {
-            32 => compute_clamp_bounds_single(signed, int_width),
-            64 => compute_clamp_bounds_double(signed, int_width),
+            16 => compute_clamp_bounds_half(signed, int_width),
+            32 => compute_clamp_bounds::<ieee::Single>(signed, int_width),
+            64 => compute_clamp_bounds::<ieee::Double>(signed, int_width),
+            128 => compute_clamp_bounds::<ieee::Quad>(signed, int_width),
             n => bug!("unsupported float width {}", n),
         };
         let f_min = float_bits_to_llval(self, f_min);
@@ -2013,7 +2023,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         block.add_assignment(self.location, mask_var, mask);
         let mask = mask_var.to_rvalue();
 
-        // TODO(antoyo): use a recursive unqualified() here.
+        // FIXME(antoyo): use a recursive unqualified() here.
         let vector_type = v1.get_type().unqualified().dyncast_vector().expect("vector type");
         let element_type = vector_type.get_element_type();
         let vec_num_units = vector_type.get_num_units();
@@ -2268,6 +2278,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         })
     }
 
+    /// Emits a SIMD min/max operation for floats. The semantics for each lane are: if one
+    /// side is NaN (QNaN or SNaN), the other side is returned.
     fn vector_extremum(
         &mut self,
         a: RValue<'gcc>,
@@ -2276,8 +2288,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     ) -> RValue<'gcc> {
         let vector_type = a.get_type();
 
-        // mask out the NaNs in b and replace them with the corresponding lane in a, so when a and
-        // b get compared & spliced together, we get the numeric values instead of NaNs.
+        // Mask out the NaNs (both QNaN and SNaN) in b and replace them with the corresponding lane
+        // in a, so when a and b get compared & spliced together, we get the numeric values instead
+        // of NaNs.
         let b_nan_mask = self.context.new_comparison(self.location, ComparisonOp::NotEquals, b, b);
         let mask_type = b_nan_mask.get_type();
         let b_nan_mask_inverted =
@@ -2299,7 +2312,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.context.new_bitcast(self.location, res, vector_type)
     }
 
-    pub fn vector_fmin(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn vector_minimum_number_nsz(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.vector_extremum(a, b, ExtremumOperation::Min)
     }
 
@@ -2331,7 +2344,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    pub fn vector_fmax(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn vector_maximum_number_nsz(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.vector_extremum(a, b, ExtremumOperation::Max)
     }
 
@@ -2377,7 +2390,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         #[cfg(feature = "master")]
         let (cond, element_type) = {
-            // TODO(antoyo): dyncast_vector should not require a call to unqualified.
+            // FIXME(antoyo): dyncast_vector should not require a call to unqualified.
             let then_val_vector_type =
                 then_val.get_type().unqualified().dyncast_vector().expect("vector type");
             let then_val_element_type = then_val_vector_type.get_element_type();
@@ -2416,7 +2429,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // NOTE: sometimes, the type of else_val can be different than the type of then_val in
         // libgccjit (vector of int vs vector of int32_t), but they should be the same for the AND
         // operation to work.
-        // TODO: remove bitcast now that vector types can be compared?
+        // FIXME: remove bitcast now that vector types can be compared?
         let else_val = self.context.new_bitcast(self.location, else_val, then_val.get_type());
         let else_vals = inverted_masks & else_val;
 
@@ -2498,7 +2511,7 @@ impl ToGccComp for IntPredicate {
 
 impl ToGccComp for RealPredicate {
     fn to_gcc_comparison(&self) -> ComparisonOp {
-        // TODO(antoyo): check that ordered vs non-ordered is respected.
+        // FIXME(antoyo): check that ordered vs non-ordered is respected.
         match *self {
             RealPredicate::RealPredicateFalse => unreachable!(),
             RealPredicate::RealOEQ => ComparisonOp::Equals,
@@ -2540,7 +2553,7 @@ impl ToGccOrdering for AtomicOrdering {
         use MemOrdering::*;
 
         let ordering = match self {
-            AtomicOrdering::Relaxed => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
+            AtomicOrdering::Relaxed => __ATOMIC_RELAXED, // FIXME(antoyo): check if that's the same.
             AtomicOrdering::Acquire => __ATOMIC_ACQUIRE,
             AtomicOrdering::Release => __ATOMIC_RELEASE,
             AtomicOrdering::AcqRel => __ATOMIC_ACQ_REL,

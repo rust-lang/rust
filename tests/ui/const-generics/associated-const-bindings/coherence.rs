@@ -2,12 +2,10 @@
 #![expect(incomplete_features)]
 
 pub trait IsVoid {
-    #[type_const]
-    const IS_VOID: bool;
+    type const IS_VOID: bool;
 }
 impl IsVoid for () {
-    #[type_const]
-    const IS_VOID: bool = true;
+    type const IS_VOID: bool = true;
 }
 
 pub trait Maybe {}

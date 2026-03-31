@@ -16,6 +16,9 @@ mod owned;
 #[cfg(not(target_os = "trusty"))]
 mod net;
 
+// Implementation of stdio file descriptor constants.
+mod stdio;
+
 #[cfg(test)]
 mod tests;
 
@@ -24,3 +27,5 @@ mod tests;
 pub use owned::*;
 #[stable(feature = "os_fd", since = "1.66.0")]
 pub use raw::*;
+#[unstable(feature = "stdio_fd_consts", issue = "150836")]
+pub use stdio::*;

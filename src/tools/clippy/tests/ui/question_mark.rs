@@ -635,3 +635,36 @@ fn wrongly_unmangled_macros() -> Option<i32> {
     }
     test_expr!(42)
 }
+
+fn issue16429(b: i32) -> Option<i32> {
+    let a = Some(5);
+    let _ = if b == 1 {
+        b
+    } else if let Some(x) = a {
+        //~^ question_mark
+        x
+    } else {
+        return None;
+    };
+
+    Some(0)
+}
+
+fn issue16654() -> Result<(), i32> {
+    let result = func_returning_result();
+
+    #[allow(clippy::collapsible_if)]
+    if true {
+        if let Err(err) = result {
+            //~^ question_mark
+            return Err(err);
+        }
+    }
+
+    _ = [if let Err(err) = result {
+        //~^ question_mark
+        return Err(err);
+    }];
+
+    Ok(())
+}

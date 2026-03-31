@@ -2,12 +2,11 @@ use std::any::Any;
 use std::default::Default;
 use std::iter;
 use std::path::Component::Prefix;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
 use rustc_ast::attr::MarkedAttrs;
-use rustc_ast::token::MetaVarKind;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind, Safety};
@@ -16,20 +15,20 @@ use rustc_data_structures::sync;
 use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, CfgEntry, CollapseMacroDebuginfo, Deprecation};
+use rustc_hir::attrs::{CfgEntry, CollapseMacroDebuginfo, Deprecation};
 use rustc_hir::def::MacroKinds;
 use rustc_hir::limit::Limit;
 use rustc_hir::{Stability, find_attr};
 use rustc_lint_defs::RegisteredTools;
 use rustc_parse::MACRO_ARGUMENTS;
-use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser};
+use rustc_parse::parser::Parser;
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{DUMMY_SP, FileName, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
@@ -150,14 +149,14 @@ impl Annotatable {
     pub fn expect_trait_item(self) -> Box<ast::AssocItem> {
         match self {
             Annotatable::AssocItem(i, AssocCtxt::Trait) => i,
-            _ => panic!("expected Item"),
+            _ => panic!("expected trait item"),
         }
     }
 
     pub fn expect_impl_item(self) -> Box<ast::AssocItem> {
         match self {
             Annotatable::AssocItem(i, AssocCtxt::Impl { .. }) => i,
-            _ => panic!("expected Item"),
+            _ => panic!("expected impl item"),
         }
     }
 
@@ -278,7 +277,8 @@ impl<'cx> MacroExpanderResult<'cx> {
         // Emit the SEMICOLON_IN_EXPRESSIONS_FROM_MACROS deprecation lint.
         let is_local = true;
 
-        let parser = ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, is_local, macro_ident);
+        let parser =
+            ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, is_local, macro_ident, &[], &[]);
         ExpandResult::Ready(Box::new(parser))
     }
 }
@@ -378,8 +378,8 @@ where
 
 /// Represents a thing that maps token trees to Macro Results
 pub trait TTMacroExpander: Any {
-    fn expand<'cx>(
-        &self,
+    fn expand<'cx, 'a: 'cx>(
+        &'a self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
@@ -395,8 +395,8 @@ impl<F: 'static> TTMacroExpander for F
 where
     F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>,
 {
-    fn expand<'cx>(
-        &self,
+    fn expand<'cx, 'a: 'cx>(
+        &'a self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
@@ -897,14 +897,13 @@ impl SyntaxExtension {
     /// | yes           | yes | yes           | yes      | yes |
     fn get_collapse_debuginfo(sess: &Session, attrs: &[hir::Attribute], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
-        let attr =
-            if let Some(info) = find_attr!(attrs, AttributeKind::CollapseDebugInfo(info) => info) {
-                info.clone()
-            } else if find_attr!(attrs, AttributeKind::RustcBuiltinMacro { .. }) {
-                CollapseMacroDebuginfo::Yes
-            } else {
-                CollapseMacroDebuginfo::Unspecified
-            };
+        let attr = if let Some(info) = find_attr!(attrs, CollapseDebugInfo(info) => info) {
+            info.clone()
+        } else if find_attr!(attrs, RustcBuiltinMacro { .. }) {
+            CollapseMacroDebuginfo::Yes
+        } else {
+            CollapseMacroDebuginfo::Unspecified
+        };
 
         #[rustfmt::skip]
         let collapse_table = [
@@ -919,7 +918,7 @@ impl SyntaxExtension {
     fn get_hide_backtrace(attrs: &[hir::Attribute]) -> bool {
         // FIXME(estebank): instead of reusing `#[rustc_diagnostic_item]` as a proxy, introduce a
         // new attribute purely for this under the `#[diagnostic]` namespace.
-        ast::attr::find_by_name(attrs, sym::rustc_diagnostic_item).is_some()
+        find_attr!(attrs, RustcDiagnosticItem(..))
     }
 
     /// Constructs a syntax extension with the given properties
@@ -934,19 +933,17 @@ impl SyntaxExtension {
         attrs: &[hir::Attribute],
         is_local: bool,
     ) -> SyntaxExtension {
-        let allow_internal_unstable =
-            find_attr!(attrs, AttributeKind::AllowInternalUnstable(i, _) => i)
-                .map(|i| i.as_slice())
-                .unwrap_or_default();
-        let allow_internal_unsafe = find_attr!(attrs, AttributeKind::AllowInternalUnsafe(_));
+        let allow_internal_unstable = find_attr!(attrs, AllowInternalUnstable(i, _) => i)
+            .map(|i| i.as_slice())
+            .unwrap_or_default();
+        let allow_internal_unsafe = find_attr!(attrs, AllowInternalUnsafe(_));
 
         let local_inner_macros =
-            *find_attr!(attrs, AttributeKind::MacroExport {local_inner_macros: l, ..} => l)
-                .unwrap_or(&false);
+            *find_attr!(attrs, MacroExport {local_inner_macros: l, ..} => l).unwrap_or(&false);
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
-        let (builtin_name, helper_attrs) = match find_attr!(attrs, AttributeKind::RustcBuiltinMacro { builtin_name, helper_attrs, .. } => (builtin_name, helper_attrs))
+        let (builtin_name, helper_attrs) = match find_attr!(attrs, RustcBuiltinMacro { builtin_name, helper_attrs, .. } => (builtin_name, helper_attrs))
         {
             // Override `helper_attrs` passed above if it's a built-in macro,
             // marking `proc_macro_derive` macros as built-in is not a realistic use case.
@@ -960,19 +957,9 @@ impl SyntaxExtension {
         };
         let hide_backtrace = builtin_name.is_some() || Self::get_hide_backtrace(attrs);
 
-        let stability = find_attr!(attrs, AttributeKind::Stability { stability, .. } => *stability);
+        let stability = find_attr!(attrs, Stability { stability, .. } => *stability);
 
-        // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
-        if let Some(sp) =
-            find_attr!(attrs, AttributeKind::RustcConstStability { span, .. } => *span)
-        {
-            sess.dcx().emit_err(errors::MacroConstStability {
-                span: sp,
-                head_span: sess.source_map().guess_head_span(span),
-            });
-        }
-        if let Some(sp) = find_attr!(attrs, AttributeKind::RustcBodyStability{ span, .. } => *span)
-        {
+        if let Some(sp) = find_attr!(attrs, RustcBodyStability{ span, .. } => *span) {
             sess.dcx().emit_err(errors::MacroBodyStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
@@ -988,7 +975,7 @@ impl SyntaxExtension {
             stability,
             deprecation: find_attr!(
                 attrs,
-                AttributeKind::Deprecation { deprecation, .. } => *deprecation
+                Deprecated { deprecation, .. } => *deprecation
             ),
             helper_attrs,
             edition,
@@ -1429,81 +1416,4 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
             _ => Ok(path),
         }
     }
-}
-
-/// If this item looks like a specific enums from `rental`, emit a fatal error.
-/// See #73345 and #83125 for more details.
-/// FIXME(#73933): Remove this eventually.
-fn pretty_printing_compatibility_hack(item: &Item, psess: &ParseSess) {
-    if let ast::ItemKind::Enum(ident, _, enum_def) = &item.kind
-        && ident.name == sym::ProceduralMasqueradeDummyType
-        && let [variant] = &*enum_def.variants
-        && variant.ident.name == sym::Input
-        && let FileName::Real(real) = psess.source_map().span_to_filename(ident.span)
-        && let Some(c) = real
-            .local_path()
-            .unwrap_or(Path::new(""))
-            .components()
-            .flat_map(|c| c.as_os_str().to_str())
-            .find(|c| c.starts_with("rental") || c.starts_with("allsorts-rental"))
-    {
-        let crate_matches = if c.starts_with("allsorts-rental") {
-            true
-        } else {
-            let mut version = c.trim_start_matches("rental-").split('.');
-            version.next() == Some("0")
-                && version.next() == Some("5")
-                && version.next().and_then(|c| c.parse::<u32>().ok()).is_some_and(|v| v < 6)
-        };
-
-        if crate_matches {
-            psess.dcx().emit_fatal(errors::ProcMacroBackCompat {
-                crate_name: "rental".to_string(),
-                fixed_version: "0.5.6".to_string(),
-            });
-        }
-    }
-}
-
-pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, psess: &ParseSess) {
-    let item = match ann {
-        Annotatable::Item(item) => item,
-        Annotatable::Stmt(stmt) => match &stmt.kind {
-            ast::StmtKind::Item(item) => item,
-            _ => return,
-        },
-        _ => return,
-    };
-    pretty_printing_compatibility_hack(item, psess)
-}
-
-pub(crate) fn stream_pretty_printing_compatibility_hack(
-    kind: MetaVarKind,
-    stream: &TokenStream,
-    psess: &ParseSess,
-) {
-    let item = match kind {
-        MetaVarKind::Item => {
-            let mut parser = Parser::new(psess, stream.clone(), None);
-            // No need to collect tokens for this simple check.
-            parser
-                .parse_item(ForceCollect::No, AllowConstBlockItems::No)
-                .expect("failed to reparse item")
-                .expect("an actual item")
-        }
-        MetaVarKind::Stmt => {
-            let mut parser = Parser::new(psess, stream.clone(), None);
-            // No need to collect tokens for this simple check.
-            let stmt = parser
-                .parse_stmt(ForceCollect::No)
-                .expect("failed to reparse")
-                .expect("an actual stmt");
-            match &stmt.kind {
-                ast::StmtKind::Item(item) => item.clone(),
-                _ => return,
-            }
-        }
-        _ => return,
-    };
-    pretty_printing_compatibility_hack(&item, psess)
 }

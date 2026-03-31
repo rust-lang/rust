@@ -5,7 +5,8 @@ use rustc_middle::ty::{self, Ty};
 
 use super::GenmcCtx;
 use crate::{
-    InterpCx, InterpResult, MiriMachine, TerminationInfo, ThreadId, interp_ok, throw_machine_stop,
+    InterpCx, InterpResult, MiriMachine, TerminationInfo, ThreadId, interp_ok, sym,
+    throw_machine_stop,
 };
 
 enum NextInstrKind {
@@ -76,11 +77,11 @@ fn get_function_kind<'tcx>(
         // NOTE: Functions intercepted by Miri in `concurrency/genmc/intercep.rs` must also be added here.
         // Such intercepted functions, like `sys::Mutex::lock`, should be treated as atomics to ensure we call the scheduler when we encounter one of them.
         // These functions must also be classified whether they may have load semantics.
-        if ecx.tcx.is_diagnostic_item(rustc_span::sym::sys_mutex_lock, callee_def_id)
-            || ecx.tcx.is_diagnostic_item(rustc_span::sym::sys_mutex_try_lock, callee_def_id)
+        if ecx.tcx.is_diagnostic_item(sym::sys_mutex_lock, callee_def_id)
+            || ecx.tcx.is_diagnostic_item(sym::sys_mutex_try_lock, callee_def_id)
         {
             return interp_ok(MaybeAtomic(ActionKind::Load));
-        } else if ecx.tcx.is_diagnostic_item(rustc_span::sym::sys_mutex_unlock, callee_def_id) {
+        } else if ecx.tcx.is_diagnostic_item(sym::sys_mutex_unlock, callee_def_id) {
             return interp_ok(MaybeAtomic(ActionKind::NonLoad));
         }
         // The next step is a call to a regular Rust function.

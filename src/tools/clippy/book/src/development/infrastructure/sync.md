@@ -79,7 +79,7 @@ to be run inside the `rust` directory):
     ```bash
     git fetch upstream  # assuming upstream is the rust-lang/rust remote
     git switch rustup
-    git merge upstream/master --no-ff
+    git merge upstream/main --no-ff
     ```
     > Note: This is one of the few instances where a merge commit is allowed in
     > a PR.
@@ -99,7 +99,7 @@ to be run inside the `rust` directory):
 
 All the following commands have to be run inside the `rust` directory.
 
-1. Make sure you have checked out the latest `master` of `rust-lang/rust`.
+1. Make sure you have checked out the latest `main` of `rust-lang/rust`.
 2. Sync the `rust-lang/rust-clippy` master to the rust-copy of Clippy:
     ```bash
     git switch -c clippy-subtree-update

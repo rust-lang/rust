@@ -4,12 +4,12 @@
 #[sanitize(brontosaurus = "off")] //~ ERROR malformed `sanitize` attribute input
 fn main() {}
 
-#[sanitize(address = "off")] //~ ERROR multiple `sanitize` attributes
 #[sanitize(address = "off")]
+#[sanitize(address = "off")] //~ ERROR multiple `sanitize` attributes
 fn multiple_consistent() {}
 
-#[sanitize(address = "on")] //~ ERROR multiple `sanitize` attributes
-#[sanitize(address = "off")]
+#[sanitize(address = "on")]
+#[sanitize(address = "off")] //~ ERROR multiple `sanitize` attributes
 fn multiple_inconsistent() {}
 
 #[sanitize(address = "bogus")] //~ ERROR malformed `sanitize` attribute input

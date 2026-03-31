@@ -50,10 +50,6 @@ mod issue2076 {
     }
 }
 
-#[allow(
-    clippy::needless_borrow,
-    reason = "the suggestion creates `Weak::clone(&rec)`, but `rec` is already a reference"
-)]
 mod issue15009 {
     use std::rc::{Rc, Weak};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -78,4 +74,27 @@ mod issue15009 {
         println!("{}", factorial(7)); // 5040
         println!("{}", counter.load(Ordering::Relaxed)); // 14
     }
+}
+
+fn issue15741(mut rc: Rc<str>, ref_rc: &Rc<str>, refmut_rc: &mut Rc<str>) {
+    rc.clone();
+    //~^ clone_on_ref_ptr
+    ref_rc.clone();
+    //~^ clone_on_ref_ptr
+    refmut_rc.clone();
+    //~^ clone_on_ref_ptr
+
+    // The following cases already cause warn-by-default lints to fire, and the suggestion just makes
+    // another set of warn-by-default lints to fire, so this is probably fine
+
+    #[allow(clippy::needless_borrow, clippy::unnecessary_mut_passed)] // before the suggestion
+    #[allow(clippy::double_parens)] // after the suggestion
+    {
+        (rc).clone();
+        //~^ clone_on_ref_ptr
+        (&rc).clone();
+        //~^ clone_on_ref_ptr
+        (&mut rc).clone();
+        //~^ clone_on_ref_ptr
+    };
 }

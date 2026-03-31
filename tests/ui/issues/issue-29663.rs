@@ -1,8 +1,6 @@
 //@ run-pass
-#![allow(stable_features)]
 // write_volatile causes an LLVM assert with composite types
 
-#![feature(volatile)]
 use std::ptr::{read_volatile, write_volatile};
 
 #[derive(Debug, Eq, PartialEq)]
