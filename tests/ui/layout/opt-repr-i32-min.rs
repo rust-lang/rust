@@ -1,5 +1,6 @@
 //@ run-pass
-// Tests that Option<E> niche optimisation does not incorrectly use i32::MIN  as the None niche when a repr(i32) enum variant already holds that value.
+// Tests that Option<E> niche optimisation does not incorrectly use i32::MIN
+// as the None niche when a repr(i32) enum variant already holds that value.
 // github.com/rust-lang/rust/issues/49973
 #[derive(Debug)]
 #[repr(i32)]
