@@ -208,14 +208,15 @@ pub struct CtxtInterners<'tcx> {
 
 impl<'tcx> CtxtInterners<'tcx> {
     fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> CtxtInterners<'tcx> {
-        // Default interner size - this value has been chosen empirically, and may need to be adjusted
-        // as the compiler evolves.
+        // Default interner size - this value has been chosen empirically, and may need to be
+        // adjusted as the compiler evolves.
         const N: usize = 2048;
         CtxtInterners {
             arena,
-            // The factors have been chosen by @FractalFir based on observed interner sizes, and local perf runs.
-            // To get the interner sizes, insert `eprintln` printing the size of the interner in functions like `intern_ty`.
-            // Bigger benchmarks tend to give more accurate ratios, so use something like `x perf eprintln --includes cargo`.
+            // The factors have been chosen by @FractalFir based on observed interner sizes, and
+            // local perf runs. To get the interner sizes, insert `eprintln` printing the size of
+            // the interner in functions like `intern_ty`. Bigger benchmarks tend to give more
+            // accurate ratios, so use something like `x perf eprintln --includes cargo`.
             type_: InternedSet::with_capacity(N * 16),
             const_lists: InternedSet::with_capacity(N * 4),
             args: InternedSet::with_capacity(N * 4),
@@ -298,8 +299,9 @@ impl<'tcx> CtxtInterners<'tcx> {
         untracked: &'a Untracked,
         val: &T,
     ) -> Fingerprint {
-        // It's impossible to hash inference variables (and will ICE), so we don't need to try to cache them.
-        // Without incremental, we rarely stable-hash types, so let's not do it proactively.
+        // It's impossible to hash inference variables (and will ICE), so we don't need to try to
+        // cache them. Without incremental, we rarely stable-hash types, so let's not do it
+        // proactively.
         if flags.flags.intersects(TypeFlags::HAS_INFER) || sess.opts.incremental.is_none() {
             Fingerprint::ZERO
         } else {
@@ -368,11 +370,12 @@ const NUM_PREINTERNED_ANON_BOUND_TYS_I: u32 = 3;
 // From general profiling of the *max vars during canonicalization* of a value:
 // - about 90% of the time, there are no canonical vars
 // - about 9% of the time, there is only one canonical var
-// - there are rarely more than 3-5 canonical vars (with exceptions in particularly pathological cases)
+// - there are rarely more than 3-5 canonical vars (with exceptions in particularly pathological
+//   cases)
 // This may not match the number of bound vars found in `for`s.
 // Given that this is all heap interned, it seems likely that interning fewer
-// vars here won't make an appreciable difference. Though, if we were to inline the data (in an array),
-// we may want to consider reducing the number for canonicalized vars down to 4 or so.
+// vars here won't make an appreciable difference. Though, if we were to inline the data (in an
+// array), we may want to consider reducing the number for canonicalized vars down to 4 or so.
 const NUM_PREINTERNED_ANON_BOUND_TYS_V: u32 = 20;
 
 // This number may seem high, but it is reached in all but the smallest crates.
@@ -423,8 +426,8 @@ pub struct CommonTypes<'tcx> {
     pub fresh_float_tys: Vec<Ty<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `Bound(BoundVarIndexKind::Bound(DebruijnIndex(i)), BoundTy { var: v, kind: BoundTyKind::Anon})`
-    /// for small values of `i` and `v`.
+    /// `Bound(BoundVarIndexKind::Bound(DebruijnIndex(i)), BoundTy { var: v, kind:
+    /// BoundTyKind::Anon})` for small values of `i` and `v`.
     pub anon_bound_tys: Vec<Vec<Ty<'tcx>>>,
 
     // Pre-interned values of the form:
