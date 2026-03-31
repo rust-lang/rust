@@ -79,12 +79,14 @@ symcheck+=(-- --build-and-check --target "$target")
 # Executable section checks are meaningless on no-std targets
 [[ "$target" == *"-none"* ]] && symcheck+=(--no-os)
 
-"${symcheck[@]}" -- -p compiler_builtins
-"${symcheck[@]}" -- -p compiler_builtins --release
-"${symcheck[@]}" -- -p compiler_builtins --features c
-"${symcheck[@]}" -- -p compiler_builtins --features c --release
-"${symcheck[@]}" -- -p compiler_builtins --features no-asm
-"${symcheck[@]}" -- -p compiler_builtins --features no-asm --release
+# We only need to check the configurations std may use
+symcheck_cb_args=(-- --package compiler_builtins --features compiler-builtins)
+"${symcheck[@]}" "${symcheck_cb_args[@]}"
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --release
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --features c
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --features c --release
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --features no-asm
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --features no-asm --release
 
 run_intrinsics_test() {
     build_args=(--verbose --manifest-path builtins-test-intrinsics/Cargo.toml)
