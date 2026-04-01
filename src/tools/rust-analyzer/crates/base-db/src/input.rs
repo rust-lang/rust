@@ -929,6 +929,27 @@ impl<'a> IntoIterator for &'a Env {
     }
 }
 
+/// The crate graph had a cycle. This is typically a bug, and
+/// rust-analyzer logs a warning when it encounters a cycle. Generally
+/// rust-analyzer will continue working OK in the presence of cycle,
+/// but it's better to have an accurate crate graph.
+///
+/// ## dev-dependencies
+///
+/// Note that it's actually legal for a cargo package (i.e. a thing
+/// with a Cargo.toml) to depend on itself in dev-dependencies. This
+/// can enable additional features, and is typically used when a
+/// project wants features to be enabled in tests. Dev-dependencies
+/// are not propagated, so they aren't visible to package that depend
+/// on this one.
+///
+/// <https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#development-dependencies>
+///
+/// However, rust-analyzer constructs its crate graph from Cargo
+/// metadata, so it can end up producing a cyclic crate graph from a
+/// well-formed package graph.
+///
+/// <https://github.com/rust-lang/rust-analyzer/issues/14167>
 #[derive(Debug)]
 pub struct CyclicDependenciesError {
     path: Vec<(CrateBuilderId, Option<CrateDisplayName>)>,
