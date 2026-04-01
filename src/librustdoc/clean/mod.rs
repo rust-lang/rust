@@ -272,7 +272,7 @@ fn clean_poly_trait_ref_with_constraints<'tcx>(
     GenericBound::TraitBound(
         PolyTrait {
             trait_: clean_trait_ref_with_constraints(cx, poly_trait_ref, constraints),
-            generic_params: clean_bound_vars(poly_trait_ref.bound_vars(), cx),
+            generic_params: clean_bound_vars(poly_trait_ref.bound_vars(), cx.tcx),
         },
         hir::TraitBoundModifiers::NONE,
     )
@@ -2080,7 +2080,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             // FIXME: should we merge the outer and inner binders somehow?
             let sig = bound_ty.skip_binder().fn_sig(cx.tcx);
             let decl = clean_poly_fn_sig(cx, None, sig);
-            let generic_params = clean_bound_vars(sig.bound_vars(), cx);
+            let generic_params = clean_bound_vars(sig.bound_vars(), cx.tcx);
 
             BareFunction(Box::new(BareFunctionDecl {
                 safety: sig.safety(),
@@ -2090,7 +2090,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }))
         }
         ty::UnsafeBinder(inner) => {
-            let generic_params = clean_bound_vars(inner.bound_vars(), cx);
+            let generic_params = clean_bound_vars(inner.bound_vars(), cx.tcx);
             let ty = clean_middle_ty(inner.into(), cx, None, None);
             UnsafeBinder(Box::new(UnsafeBinderTy { generic_params, ty }))
         }
@@ -3238,13 +3238,13 @@ fn clean_assoc_item_constraint<'tcx>(
 
 fn clean_bound_vars<'tcx>(
     bound_vars: &ty::List<ty::BoundVariableKind<'tcx>>,
-    cx: &mut DocContext<'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) -> Vec<GenericParamDef> {
     bound_vars
         .into_iter()
         .filter_map(|var| match var {
             ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id)) => {
-                let name = cx.tcx.item_name(def_id);
+                let name = tcx.item_name(def_id);
                 if name != kw::UnderscoreLifetime {
                     Some(GenericParamDef::lifetime(def_id, name))
                 } else {
@@ -3252,7 +3252,7 @@ fn clean_bound_vars<'tcx>(
                 }
             }
             ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id)) => {
-                let name = cx.tcx.item_name(def_id);
+                let name = tcx.item_name(def_id);
                 Some(GenericParamDef {
                     name,
                     def_id,
