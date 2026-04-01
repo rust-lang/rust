@@ -148,7 +148,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
                 }),
             ))),
             GenericArgKind::Const(ct) => {
-                Some(GenericArg::Const(Box::new(clean_middle_const(arg.rebind(ct), cx))))
+                Some(GenericArg::Const(Box::new(clean_middle_const(arg.rebind(ct)))))
             }
         }
     };

@@ -342,7 +342,6 @@ pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg<'tcx>) -> ConstantKind 
 
 pub(crate) fn clean_middle_const<'tcx>(
     constant: ty::Binder<'tcx, ty::Const<'tcx>>,
-    _cx: &mut DocContext<'tcx>,
 ) -> ConstantKind {
     // FIXME: instead of storing the stringified expression, store `self` directly instead.
     ConstantKind::TyConst { expr: constant.skip_binder().to_string().into() }
@@ -464,7 +463,7 @@ fn clean_middle_term<'tcx>(
 ) -> Term {
     match term.skip_binder().kind() {
         ty::TermKind::Ty(ty) => Term::Type(clean_middle_ty(term.rebind(ty), cx, None, None)),
-        ty::TermKind::Const(c) => Term::Constant(clean_middle_const(term.rebind(c), cx)),
+        ty::TermKind::Const(c) => Term::Constant(clean_middle_const(term.rebind(c))),
     }
 }
 
@@ -479,7 +478,7 @@ fn clean_hir_term<'tcx>(
             // FIXME(generic_const_items): this should instantiate with the alias item's args
             let ty = cx.tcx.type_of(assoc_item.unwrap()).instantiate_identity();
             let ct = lower_const_arg_for_rustdoc(cx.tcx, c, ty);
-            Term::Constant(clean_middle_const(ty::Binder::dummy(ct), cx))
+            Term::Constant(clean_middle_const(ty::Binder::dummy(ct)))
         }
     }
 }
