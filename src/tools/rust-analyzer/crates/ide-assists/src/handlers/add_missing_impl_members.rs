@@ -9,8 +9,8 @@ use crate::{
     AssistId,
     assist_context::{AssistContext, Assists},
     utils::{
-        DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl_with_factory,
-        filter_assoc_items, gen_trait_fn_body,
+        DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl, filter_assoc_items,
+        gen_trait_fn_body,
     },
 };
 
@@ -149,7 +149,7 @@ fn add_missing_impl_members_inner(
     let target = impl_def.syntax().text_range();
     acc.add(AssistId::quick_fix(assist_id), label, target, |edit| {
         let make = SyntaxFactory::with_mappings();
-        let new_item = add_trait_assoc_items_to_impl_with_factory(
+        let new_item = add_trait_assoc_items_to_impl(
             &make,
             &ctx.sema,
             ctx.config,

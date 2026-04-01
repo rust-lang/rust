@@ -203,11 +203,9 @@ pub fn filter_assoc_items(
 /// [`filter_assoc_items()`]), clones each item for update and applies path transformation to it,
 /// then inserts into `impl_`. Returns the modified `impl_` and the first associated item that got
 /// inserted.
-///
-/// Legacy: prefer [`add_trait_assoc_items_to_impl_with_factory`] when a [`SyntaxFactory`] is
-/// available.
 #[must_use]
 pub fn add_trait_assoc_items_to_impl(
+    make: &SyntaxFactory,
     sema: &Semantics<'_, RootDatabase>,
     config: &AssistConfig,
     original_items: &[InFile<ast::AssocItem>],
@@ -241,74 +239,6 @@ pub fn add_trait_assoc_items_to_impl(
             if let Some(source_scope) = sema.scope(original_item.syntax()) {
                 // FIXME: Paths in nested macros are not handled well. See
                 // `add_missing_impl_members::paths_in_nested_macro_should_get_transformed` test.
-                let transform =
-                    PathTransform::trait_impl(target_scope, &source_scope, trait_, impl_.clone());
-                cloned_item = ast::AssocItem::cast(transform.apply(cloned_item.syntax())).unwrap();
-            }
-            cloned_item.remove_attrs_and_docs();
-            cloned_item
-        })
-        .filter_map(|item| match item {
-            ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                let fn_ = fn_.clone_subtree();
-                let new_body = make::block_expr(None, Some(expr_fill_default(config)));
-                let mut fn_editor = SyntaxEditor::new(fn_.syntax().clone());
-                fn_.replace_or_insert_body(&mut fn_editor, new_body.clone_for_update());
-                let new_fn_ = fn_editor.finish().new_root().clone();
-                ast::AssocItem::cast(new_fn_)
-            }
-            ast::AssocItem::TypeAlias(type_alias) => {
-                let type_alias = type_alias.clone_subtree();
-                if let Some(type_bound_list) = type_alias.type_bound_list() {
-                    let mut type_alias_editor = SyntaxEditor::new(type_alias.syntax().clone());
-                    type_bound_list.remove(&mut type_alias_editor);
-                    let type_alias = type_alias_editor.finish().new_root().clone();
-                    ast::AssocItem::cast(type_alias)
-                } else {
-                    Some(ast::AssocItem::TypeAlias(type_alias))
-                }
-            }
-            item => Some(item),
-        })
-        .map(|item| AstNodeEdit::indent(&item, new_indent_level))
-        .collect()
-}
-
-/// [`SyntaxFactory`]-based variant of [`add_trait_assoc_items_to_impl`].
-#[must_use]
-pub fn add_trait_assoc_items_to_impl_with_factory(
-    make: &SyntaxFactory,
-    sema: &Semantics<'_, RootDatabase>,
-    config: &AssistConfig,
-    original_items: &[InFile<ast::AssocItem>],
-    trait_: hir::Trait,
-    impl_: &ast::Impl,
-    target_scope: &hir::SemanticsScope<'_>,
-) -> Vec<ast::AssocItem> {
-    let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
-    original_items
-        .iter()
-        .map(|InFile { file_id, value: original_item }| {
-            let mut cloned_item = {
-                if let Some(macro_file) = file_id.macro_file() {
-                    let span_map = sema.db.expansion_span_map(macro_file);
-                    let item_prettified = prettify_macro_expansion(
-                        sema.db,
-                        original_item.syntax().clone(),
-                        &span_map,
-                        target_scope.krate().into(),
-                    );
-                    if let Some(formatted) = ast::AssocItem::cast(item_prettified) {
-                        return formatted;
-                    } else {
-                        stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
-                    }
-                }
-                original_item
-            }
-            .reset_indent();
-
-            if let Some(source_scope) = sema.scope(original_item.syntax()) {
                 let transform =
                     PathTransform::trait_impl(target_scope, &source_scope, trait_, impl_.clone());
                 cloned_item = ast::AssocItem::cast(transform.apply(cloned_item.syntax())).unwrap();
