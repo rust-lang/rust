@@ -11448,6 +11448,47 @@ fn foo() { let bar = Bar; bar.fo$0o(); }
 }
 
 #[test]
+fn test_hover_doc_attr_macro_argument_expr_issue_7688() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+macro_rules! doc_comment {
+    ($x:expr, $($tt:tt)*) => {
+        #[doc = $x]
+        $($tt)*
+    };
+}
+
+doc_comment! {
+    concat!("Hello", " world"),
+    struct Ba$0r;
+}
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Hello world
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_doc_attr_concat_macro() {
     check(
         r#"
