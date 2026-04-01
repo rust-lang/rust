@@ -13,9 +13,10 @@ env:
 jobs:
   pull:
     if: github.repository == 'rust-lang/compiler-builtins'
-    uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@a097aeb82f49801051560482307ceaca7e58bf97 # main
+    uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@8970a6eb3a6095db68e4d765b3b5fba5e9c42cf6 # main
     with:
       github-app-id: ${{ vars.APP_CLIENT_ID }}
+      pr-author: "workflows-compiler-builtins[bot]"
       # https://rust-lang.zulipchat.com/#narrow/channel/219381-t-libs/topic/compiler-builtins.20subtree.20sync.20automation/with/528482375
       zulip-stream-id: 219381
       zulip-topic: "compiler-builtins subtree sync automation"
