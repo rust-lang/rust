@@ -453,6 +453,13 @@ impl Item {
         self.stability.is_some_and(|x| x.is_unstable())
     }
 
+    pub(crate) fn is_exported_macro(&self) -> bool {
+        match self.kind {
+            ItemKind::MacroItem(..) => find_attr!(&self.attrs.other_attrs, MacroExport { .. }),
+            _ => false,
+        }
+    }
+
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
         self.item_id
             .as_def_id()
