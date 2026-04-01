@@ -59,6 +59,15 @@ struct PostExpansionVisitor<'a> {
     features: &'a Features,
 }
 
+// -----------------------------------------------------------------------------
+// POST-EXPANSION FEATURE GATES FOR UNSTABLE ATTRIBUTES ETC.
+// **LEGACY**  POST-EXPANSION FEATURE GATES FOR UNSTABLE SYNTAX  **LEGACY**
+// -----------------------------------------------------------------------------
+
+// IMPORTANT: Don't add any new post-expansion feature gates for new unstable syntax!
+//            It's a legacy mechanism for them.
+//            Instead, register a pre-expansion feature gate using `gate_all` in fn `check_crate`.
+
 impl<'a> PostExpansionVisitor<'a> {
     /// Feature gate `impl Trait` inside `type Alias = $type_expr;`.
     fn check_impl_trait(&self, ty: &ast::Ty, in_associated_ty: bool) {
@@ -448,6 +457,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 }
 
+// -----------------------------------------------------------------------------
+
 pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     maybe_stage_features(sess, features, krate);
     check_incompatible_features(sess, features);
@@ -455,6 +466,10 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     check_new_solver_banned_features(sess, features);
 
     let mut visitor = PostExpansionVisitor { sess, features };
+
+    // -----------------------------------------------------------------------------
+    // PRE-EXPANSION FEATURE GATES FOR UNSTABLE SYNTAX
+    // -----------------------------------------------------------------------------
 
     let spans = sess.psess.gated_spans.spans.borrow();
     macro_rules! gate_all {
@@ -464,54 +479,63 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
             }
         };
     }
+
+    // tidy-alphabetical-start
+    gate_all!(async_for_loop, "`for await` loops are experimental");
+    gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
+    gate_all!(const_block_items, "const block items are experimental");
+    gate_all!(const_closures, "const closures are experimental");
+    gate_all!(const_trait_impl, "const trait impls are experimental");
+    gate_all!(contracts, "contracts are incomplete");
+    gate_all!(contracts_internals, "contract internal machinery is for internal use only");
+    gate_all!(coroutines, "coroutine syntax is experimental");
+    gate_all!(default_field_values, "default values on fields are experimental");
+    gate_all!(ergonomic_clones, "ergonomic clones are experimental");
+    gate_all!(explicit_tail_calls, "`become` expression is experimental");
+    gate_all!(final_associated_functions, "`final` on trait functions is experimental");
+    gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
+    gate_all!(frontmatter, "frontmatters are experimental");
+    gate_all!(gen_blocks, "gen blocks are experimental");
+    gate_all!(generic_const_items, "generic const items are experimental");
+    gate_all!(global_registration, "global registration is experimental");
+    gate_all!(guard_patterns, "guard patterns are experimental", "consider using match arm guards");
+    gate_all!(impl_restriction, "`impl` restrictions are experimental");
+    gate_all!(min_generic_const_args, "unbraced const blocks as const args are experimental");
+    gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
+    gate_all!(mut_ref, "mutable by-reference bindings are experimental");
+    gate_all!(pin_ergonomics, "pinned reference syntax is experimental");
+    gate_all!(postfix_match, "postfix match is experimental");
+    gate_all!(return_type_notation, "return type notation is experimental");
+    gate_all!(super_let, "`super let` is experimental");
+    gate_all!(try_blocks_heterogeneous, "`try bikeshed` expression is experimental");
+    gate_all!(unsafe_binders, "unsafe binder types are experimental");
+    gate_all!(unsafe_fields, "`unsafe` fields are experimental");
+    gate_all!(where_clause_attrs, "attributes in `where` clause are unstable");
+    gate_all!(yeet_expr, "`do yeet` expression is experimental");
+    // tidy-alphabetical-end
+
     gate_all!(
         async_trait_bounds,
         "`async` trait bounds are unstable",
         "use the desugared name of the async trait, such as `AsyncFn`"
     );
-    gate_all!(async_for_loop, "`for await` loops are experimental");
     gate_all!(
         closure_lifetime_binder,
         "`for<...>` binders for closures are experimental",
         "consider removing `for<...>`"
     );
-    gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
-    // Yield exprs can be enabled either by `yield_expr`, by `coroutines` or by `gen_blocks`.
-    for &span in spans.get(&sym::yield_expr).into_iter().flatten() {
-        if (!visitor.features.coroutines() && !span.allows_unstable(sym::coroutines))
-            && (!visitor.features.gen_blocks() && !span.allows_unstable(sym::gen_blocks))
-            && (!visitor.features.yield_expr() && !span.allows_unstable(sym::yield_expr))
-        {
-            // Emit yield_expr as the error, since that will be sufficient. You can think of it
-            // as coroutines and gen_blocks imply yield_expr.
-            feature_err(visitor.sess, sym::yield_expr, span, "yield syntax is experimental").emit();
-        }
-    }
-    gate_all!(gen_blocks, "gen blocks are experimental");
-    gate_all!(const_trait_impl, "const trait impls are experimental");
     gate_all!(
         half_open_range_patterns_in_slices,
         "half-open range patterns in slices are unstable"
     );
-    gate_all!(try_blocks_heterogeneous, "`try bikeshed` expression is experimental");
-    gate_all!(yeet_expr, "`do yeet` expression is experimental");
-    gate_all!(const_closures, "const closures are experimental");
-    gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
-    gate_all!(ergonomic_clones, "ergonomic clones are experimental");
-    gate_all!(explicit_tail_calls, "`become` expression is experimental");
-    gate_all!(generic_const_items, "generic const items are experimental");
-    gate_all!(guard_patterns, "guard patterns are experimental", "consider using match arm guards");
-    gate_all!(default_field_values, "default values on fields are experimental");
-    gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
-    gate_all!(postfix_match, "postfix match is experimental");
-    gate_all!(mut_ref, "mutable by-reference bindings are experimental");
-    gate_all!(min_generic_const_args, "unbraced const blocks as const args are experimental");
-    // `associated_const_equality` will  be stabilized as part of `min_generic_const_args`.
+
+    // `associated_const_equality` will be stabilized as part of `min_generic_const_args`.
     for &span in spans.get(&sym::associated_const_equality).into_iter().flatten() {
         gate!(visitor, min_generic_const_args, span, "associated const equality is incomplete");
     }
-    // `mgca_type_const_syntax` is part of `min_generic_const_args` so either
-    // or both are enabled we don't need to emit a feature error.
+
+    // `mgca_type_const_syntax` is part of `min_generic_const_args` so if
+    // either or both are enabled we don't need to emit a feature error.
     for &span in spans.get(&sym::mgca_type_const_syntax).into_iter().flatten() {
         if visitor.features.min_generic_const_args()
             || visitor.features.mgca_type_const_syntax()
@@ -529,33 +553,23 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         .emit();
     }
 
-    gate_all!(global_registration, "global registration is experimental");
-    gate_all!(return_type_notation, "return type notation is experimental");
-    gate_all!(pin_ergonomics, "pinned reference syntax is experimental");
-    gate_all!(unsafe_fields, "`unsafe` fields are experimental");
-    gate_all!(unsafe_binders, "unsafe binder types are experimental");
-    gate_all!(contracts, "contracts are incomplete");
-    gate_all!(contracts_internals, "contract internal machinery is for internal use only");
-    gate_all!(where_clause_attrs, "attributes in `where` clause are unstable");
-    gate_all!(super_let, "`super let` is experimental");
-    gate_all!(frontmatter, "frontmatters are experimental");
-    gate_all!(coroutines, "coroutine syntax is experimental");
-    gate_all!(const_block_items, "const block items are experimental");
-    gate_all!(final_associated_functions, "`final` on trait functions is experimental");
-    gate_all!(impl_restriction, "`impl` restrictions are experimental");
+    // Negative bounds are *super* internal.
+    // Under no circumstances do we want to advertise the feature name to users!
+    if !visitor.features.negative_bounds() {
+        for &span in spans.get(&sym::negative_bounds).into_iter().flatten() {
+            sess.dcx().emit_err(errors::NegativeBoundUnsupported { span });
+        }
+    }
 
     if !visitor.features.never_patterns() {
         for &span in spans.get(&sym::never_patterns).into_iter().flatten() {
             if span.allows_unstable(sym::never_patterns) {
                 continue;
             }
-            let sm = sess.source_map();
             // We gate two types of spans: the span of a `!` pattern, and the span of a
             // match arm without a body. For the latter we want to give the user a normal
             // error.
-            if let Ok(snippet) = sm.span_to_snippet(span)
-                && snippet == "!"
-            {
+            if let Ok("!") = sess.source_map().span_to_snippet(span).as_deref() {
                 feature_err(sess, sym::never_patterns, span, "`!` patterns are experimental")
                     .emit();
             } else {
@@ -565,16 +579,27 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         }
     }
 
-    if !visitor.features.negative_bounds() {
-        for &span in spans.get(&sym::negative_bounds).into_iter().flatten() {
-            sess.dcx().emit_err(errors::NegativeBoundUnsupported { span });
+    // Yield exprs can be enabled either by `yield_expr`, by `coroutines` or by `gen_blocks`.
+    for &span in spans.get(&sym::yield_expr).into_iter().flatten() {
+        if (!visitor.features.coroutines() && !span.allows_unstable(sym::coroutines))
+            && (!visitor.features.gen_blocks() && !span.allows_unstable(sym::gen_blocks))
+            && (!visitor.features.yield_expr() && !span.allows_unstable(sym::yield_expr))
+        {
+            // Only mentioned `yield_expr` in the diagnostic since that'll be sufficient.
+            // You can think of it as `coroutines` and `gen_blocks` implying `yield_expr`.
+            feature_err(visitor.sess, sym::yield_expr, span, "yield syntax is experimental").emit();
         }
     }
 
-    // All uses of `gate_all_legacy_dont_use!` below this point were added in #65742,
-    // and subsequently disabled (with the non-early gating readded).
-    // We emit an early future-incompatible warning for these.
-    // New syntax gates should go above here to get a hard error gate.
+    // -----------------------------------------------------------------------------
+    // **LEGACY**  SOFT PRE-EXPANSION FEATURE GATES FOR UNSTABLE SYNTAX  **LEGACY**
+    // -----------------------------------------------------------------------------
+
+    // IMPORTANT: Do not extend the list below! New syntax should go above and use `gate_all`.
+
+    // FIXME(#154045): Migrate all of these to erroring feature gates and
+    //                 remove the corresponding post-expansion feature gates.
+
     macro_rules! soft_gate_all_legacy_dont_use {
         ($feature:ident, $explain:literal) => {
             for &span in spans.get(&sym::$feature).into_iter().flatten() {
@@ -585,11 +610,15 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         };
     }
 
-    soft_gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
-    soft_gate_all_legacy_dont_use!(trait_alias, "trait aliases are experimental");
-    soft_gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
-    soft_gate_all_legacy_dont_use!(try_blocks, "`try` blocks are unstable");
+    // tidy-alphabetical-start
     soft_gate_all_legacy_dont_use!(auto_traits, "`auto` traits are unstable");
+    soft_gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
+    soft_gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
+    soft_gate_all_legacy_dont_use!(trait_alias, "trait aliases are experimental");
+    soft_gate_all_legacy_dont_use!(try_blocks, "`try` blocks are unstable");
+    // tidy-alphabetical-end
+
+    // -----------------------------------------------------------------------------
 
     visit::walk_crate(&mut visitor, krate);
 }
