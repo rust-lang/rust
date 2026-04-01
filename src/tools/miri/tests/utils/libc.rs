@@ -159,13 +159,17 @@ pub mod epoll {
 }
 
 pub mod net {
+    use std::io;
+
+    use super::{errno_check, errno_result};
+
     /// IPv4 localhost address bytes
     pub const IPV4_LOCALHOST: [u8; 4] = [127, 0, 0, 1];
     /// IPv6 localhost address bytes
     pub const IPV6_LOCALHOST: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
 
     /// Create a libc representation of an IPv4 address given the address bytes and a port.
-    pub fn ipv4_sock_addr(addr_bytes: [u8; 4], port: u16) -> libc::sockaddr_in {
+    pub fn sock_addr_ipv4(addr_bytes: [u8; 4], port: u16) -> libc::sockaddr_in {
         libc::sockaddr_in {
             sin_family: libc::AF_INET as libc::sa_family_t,
             sin_port: port.to_be(),
@@ -181,13 +185,13 @@ pub mod net {
     /// Create a libc representation of an IPv6 address given the address bytes and a port.
     ///
     /// This method sets `flowinfo` and `scope_id` to 0.
-    pub fn ipv6_sock_addr(addr_bytes: [u8; 16], port: u16) -> libc::sockaddr_in6 {
-        ipv6_sock_addr_full(addr_bytes, port, 0, 0)
+    pub fn sock_addr_ipv6(addr_bytes: [u8; 16], port: u16) -> libc::sockaddr_in6 {
+        sock_addr_full_ipv6(addr_bytes, port, 0, 0)
     }
 
     /// Create a libc representation of a full IPv6 address given the address bytes, a port
     /// as well as a flowinfo and scope id.
-    pub fn ipv6_sock_addr_full(
+    pub fn sock_addr_full_ipv6(
         addr_bytes: [u8; 16],
         port: u16,
         flowinfo: u32,
@@ -203,6 +207,182 @@ pub mod net {
             // This is only needed on some targets where an additional `sin6_len` field exists.
             ..unsafe { core::mem::zeroed() }
         }
+    }
+
+    /// Create an IPv4 TCP socket which listens on a random port at the localhost address.
+    /// Returns the socket file descriptor and the actual socket address the socket is listening on.
+    pub fn make_listener_ipv4(
+        options: libc::c_int,
+    ) -> io::Result<(libc::c_int, libc::sockaddr_in)> {
+        let sockfd =
+            unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM | options, 0))? };
+        // Turn address into socket address with a random free port.
+        let addr = sock_addr_ipv4(IPV4_LOCALHOST, 0);
+        unsafe {
+            errno_result(libc::bind(
+                sockfd,
+                (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+                size_of::<libc::sockaddr_in>() as libc::socklen_t,
+            ))?;
+        }
+
+        unsafe {
+            errno_result(libc::listen(sockfd, 16))?;
+        }
+
+        // Retrieve actual listener address because we used a randomized port.
+        let (_, addr_with_port) =
+            sockname_ipv4(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })?;
+
+        Ok((sockfd, addr_with_port))
+    }
+
+    /// Create an IPv6 TCP socket which listens on a random port at the localhost address.
+    /// Returns the socket file descriptor and the actual socket address the socket is listening on.
+    pub fn make_listener_ipv6(
+        options: libc::c_int,
+    ) -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
+        let sockfd =
+            unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM | options, 0))? };
+        // Turn address into socket address with a random free port.
+        let addr = sock_addr_ipv6(IPV6_LOCALHOST, 0);
+        unsafe {
+            errno_result(libc::bind(
+                sockfd,
+                (&addr as *const libc::sockaddr_in6).cast::<libc::sockaddr>(),
+                size_of::<libc::sockaddr_in6>() as libc::socklen_t,
+            ))?;
+        }
+
+        unsafe {
+            errno_result(libc::listen(sockfd, 16))?;
+        }
+
+        // Retrieve actual listener address because we used a randomized port.
+        let (_, addr_with_port) =
+            sockname_ipv6(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })?;
+
+        Ok((sockfd, addr_with_port))
+    }
+
+    /// Accept an incoming IPv4 connection.
+    pub fn accept_ipv4(sockfd: libc::c_int) -> io::Result<(libc::c_int, libc::sockaddr_in)> {
+        sockname_ipv4(|storage, len| unsafe { libc::accept(sockfd, storage, len) })
+    }
+
+    /// Accept an incoming IPv6 connection.
+    pub fn accept_ipv6(sockfd: libc::c_int) -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
+        sockname_ipv6(|storage, len| unsafe { libc::accept(sockfd, storage, len) })
+    }
+
+    /// Connect the socket to the specified IPv4 address.
+    pub fn connect_ipv4(sockfd: libc::c_int, addr: libc::sockaddr_in) {
+        unsafe {
+            errno_check(libc::connect(
+                sockfd,
+                (&addr as *const libc::sockaddr_in).cast(),
+                size_of::<libc::sockaddr_in>() as libc::socklen_t,
+            ));
+        }
+    }
+
+    /// Connect the socket to the specified IPv6 address.
+    pub fn connect_ipv6(sockfd: libc::c_int, addr: libc::sockaddr_in6) {
+        unsafe {
+            errno_check(libc::connect(
+                sockfd,
+                (&addr as *const libc::sockaddr_in6).cast(),
+                size_of::<libc::sockaddr_in6>() as libc::socklen_t,
+            ));
+        }
+    }
+
+    /// Set a socket option. It's the caller's responsibility to ensure that `T` is
+    /// associated with the given socket option.
+    ///
+    /// This function is directly copied from the standard library implementation
+    /// for sockets on UNIX targets.
+    pub fn setsockopt<T>(
+        sockfd: i32,
+        level: libc::c_int,
+        option_name: libc::c_int,
+        option_value: T,
+    ) -> io::Result<()> {
+        let option_len = size_of::<T>() as libc::socklen_t;
+
+        errno_result(unsafe {
+            libc::setsockopt(
+                sockfd,
+                level,
+                option_name,
+                (&raw const option_value) as *const _,
+                option_len,
+            )
+        })?;
+        Ok(())
+    }
+
+    /// Wraps a call to a platform function that returns an IPv4 socket address.
+    /// Returns a tuple containing the actual return value of the performed
+    /// syscall and the written address of it.
+    pub fn sockname_ipv4<F>(f: F) -> io::Result<(libc::c_int, libc::sockaddr_in)>
+    where
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
+    {
+        let (result, addr) = sockname(f)?;
+        let LibcSocketAddr::V4(addr) = addr else { panic!("expected IPv4 address") };
+
+        Ok((result, addr))
+    }
+
+    /// Wraps a call to a platform function that returns an IPv6 socket address.
+    /// Returns a tuple containing the actual return value of the performed
+    /// syscall and the written address of it.
+    pub fn sockname_ipv6<F>(f: F) -> io::Result<(libc::c_int, libc::sockaddr_in6)>
+    where
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
+    {
+        let (result, addr) = sockname(f)?;
+        let LibcSocketAddr::V6(addr) = addr else { panic!("expected IPv6 address") };
+
+        Ok((result, addr))
+    }
+
+    enum LibcSocketAddr {
+        V4(libc::sockaddr_in),
+        V6(libc::sockaddr_in6),
+    }
+
+    /// Wraps a call to a platform function that returns a socket address.
+    /// This is very much the same as the function with the same name in the
+    /// standard library implementation.
+    /// Returns a tuple containing the actual return value of the performed
+    /// syscall and the written address of it.
+    fn sockname<F>(f: F) -> io::Result<(libc::c_int, LibcSocketAddr)>
+    where
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
+    {
+        let mut storage = std::mem::MaybeUninit::<libc::sockaddr_storage>::zeroed();
+        let mut len = size_of::<libc::sockaddr_storage>() as libc::socklen_t;
+        let value = errno_result(f(storage.as_mut_ptr().cast(), &mut len))?;
+        // SAFETY:
+        // The caller guarantees that the storage has been successfully initialized
+        // and its size written to `len` if `f` returns a success.
+        let address = unsafe {
+            match (*storage.as_ptr()).ss_family as libc::c_int {
+                libc::AF_INET => {
+                    assert!(len as usize >= size_of::<libc::sockaddr_in>());
+                    LibcSocketAddr::V4(*(storage.as_ptr() as *const _ as *const libc::sockaddr_in))
+                }
+                libc::AF_INET6 => {
+                    assert!(len as usize >= size_of::<libc::sockaddr_in6>());
+                    LibcSocketAddr::V6(*(storage.as_ptr() as *const _ as *const libc::sockaddr_in6))
+                }
+                _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid argument")),
+            }
+        };
+
+        Ok((value, address))
     }
 
     pub unsafe fn recv_all(
