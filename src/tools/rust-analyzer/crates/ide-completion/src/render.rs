@@ -3077,6 +3077,22 @@ enum Foo {
                 st String String []
             "#]],
         );
+
+        check_relevance(
+            r#"
+struct Other;
+struct Vec<T>(T);
+enum Foo {
+    Vec(Vec<$0>)
+}
+    "#,
+            expect![[r#"
+                en Foo Foo []
+                st Other Other []
+                sp Self Foo []
+                st Vec<…> Vec<{unknown}> []
+            "#]],
+        );
     }
 
     #[test]
