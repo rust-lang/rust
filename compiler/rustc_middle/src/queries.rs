@@ -1436,8 +1436,10 @@ rustc_queries! {
 
     query def_kind(def_id: DefId) -> DefKind {
         desc { "looking up definition kind of `{}`", tcx.def_path_str(def_id) }
-        cache_on_disk
         separate_provide_extern
+        // This query has no local provider. For defs in the current crate,
+        // its value is always set by feeding when the `DefId` is created,
+        // usually in `TyCtxt::create_def`.
         feedable
     }
 
