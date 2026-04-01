@@ -320,7 +320,6 @@ jobs:
       with:
         name: ${{ env.BASELINE_NAME }}
         path: ${{ env.BASELINE_NAME }}.tar.xz
-        archive: false # already compressed
 
     - name: Print test logs if available
       if: always()
