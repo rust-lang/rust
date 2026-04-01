@@ -4680,7 +4680,7 @@ impl TypeParam {
     pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
         let self_ty = self.ty(db).ty;
         GenericPredicates::query_explicit(db, self.id.parent())
-            .iter_identity_copied()
+            .iter_identity()
             .filter_map(|pred| match &pred.kind().skip_binder() {
                 ClauseKind::Trait(trait_ref) if trait_ref.self_ty() == self_ty => {
                     Some(Trait::from(trait_ref.def_id().0))
