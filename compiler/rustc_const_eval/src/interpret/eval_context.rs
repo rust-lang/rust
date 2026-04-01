@@ -107,8 +107,7 @@ impl<'tcx, M: Machine<'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'tcx, M> {
             | LayoutError::SizeOverflow(_)
             | LayoutError::InvalidSimd { .. }
             | LayoutError::TooGeneric(_)
-            | LayoutError::ReferencesError(_)
-            | LayoutError::Cycle(_) => {}
+            | LayoutError::ReferencesError(_) => {}
         }
         err_inval!(Layout(err))
     }
