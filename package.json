@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "basic-ftp": "5.2.0",
     "browser-ui-test": "^0.23.3",
     "es-check": "^9.4.4",
     "eslint": "^8.57.1",
