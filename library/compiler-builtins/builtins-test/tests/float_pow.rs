@@ -62,11 +62,11 @@ pow! {
 #[cfg(f128_enabled)]
 #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
 pow! {
-    f128, 1e-36, __powitf2, not(feature = "no-sys-f128");
+    f128, 1e-36, __powitf2, not(no_sys_f128);
 }
 
 #[cfg(f128_enabled)]
 #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
 pow! {
-    f128, 1e-36, __powikf2, not(feature = "no-sys-f128");
+    f128, 1e-36, __powikf2, not(no_sys_f128);
 }

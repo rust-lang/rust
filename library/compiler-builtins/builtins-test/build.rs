@@ -6,7 +6,7 @@ mod builtins_configure {
 
 /// Features to enable
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-enum Feature {
+enum SetCfg {
     NoSysF128,
     NoSysF128IntConvert,
     NoSysF16,
@@ -14,7 +14,15 @@ enum Feature {
     NoSysF16F128Convert,
 }
 
-impl Feature {
+impl SetCfg {
+    const ALL: &[Self] = &[
+        Self::NoSysF128,
+        Self::NoSysF128IntConvert,
+        Self::NoSysF16,
+        Self::NoSysF16F64Convert,
+        Self::NoSysF16F128Convert,
+    ];
+
     fn implies(self) -> &'static [Self] {
         match self {
             Self::NoSysF128 => [Self::NoSysF128IntConvert, Self::NoSysF16F128Convert].as_slice(),
@@ -24,13 +32,33 @@ impl Feature {
             Self::NoSysF16F128Convert => [].as_slice(),
         }
     }
+
+    fn name(self) -> &'static str {
+        match self {
+            Self::NoSysF128 => "no_sys_f128",
+            Self::NoSysF128IntConvert => "no_sys_f128_int_convert",
+            Self::NoSysF16F64Convert => "no_sys_f16_f64_convert",
+            Self::NoSysF16F128Convert => "no_sys_f16_f128_convert",
+            Self::NoSysF16 => "no_sys_f16",
+        }
+    }
+
+    fn warning(self) -> &'static str {
+        match self {
+            SetCfg::NoSysF128 => "using apfloat fallback for f128",
+            SetCfg::NoSysF128IntConvert => "using apfloat fallback for f128 <-> int conversions",
+            SetCfg::NoSysF16F64Convert => "using apfloat fallback for f16 <-> f64 conversions",
+            SetCfg::NoSysF16F128Convert => "using apfloat fallback for f16 <-> f128 conversions",
+            SetCfg::NoSysF16 => "using apfloat fallback for f16",
+        }
+    }
 }
 
 fn main() {
     println!("cargo::rerun-if-changed=../configure.rs");
 
     let target = builtins_configure::Target::from_env();
-    let mut features = HashSet::new();
+    let mut to_set = HashSet::new();
 
     // These platforms do not have f128 symbols available in their system libraries, so
     // skip related tests.
@@ -51,14 +79,14 @@ fn main() {
         // <https://github.com/rust-lang/compiler-builtins/pull/606#issuecomment-2105657287>.
         || target.arch == "powerpc64"
     {
-        features.insert(Feature::NoSysF128);
+        to_set.insert(SetCfg::NoSysF128);
     }
 
     if target.arch == "x86" {
         // 32-bit x86 does not have `__fixunstfti`/`__fixtfti` but does have everything else
-        features.insert(Feature::NoSysF128IntConvert);
+        to_set.insert(SetCfg::NoSysF128IntConvert);
         // FIXME: 32-bit x86 has a bug in `f128 -> f16` system libraries
-        features.insert(Feature::NoSysF16F128Convert);
+        to_set.insert(SetCfg::NoSysF16F128Convert);
     }
 
     // These platforms do not have f16 symbols available in their system libraries, so
@@ -77,42 +105,30 @@ fn main() {
         || target.arch == "wasm32"
         || target.arch == "wasm64"
     {
-        features.insert(Feature::NoSysF16);
+        to_set.insert(SetCfg::NoSysF16);
     }
 
     // These platforms are missing either `__extendhfdf2` or `__truncdfhf2`.
     if target.vendor == "apple" || target.os == "windows" {
-        features.insert(Feature::NoSysF16F64Convert);
+        to_set.insert(SetCfg::NoSysF16F64Convert);
     }
 
     // Add implied features. Collection is required for borrows.
-    features.extend(
-        features
+    to_set.extend(
+        to_set
             .iter()
             .flat_map(|x| x.implies())
             .copied()
             .collect::<Vec<_>>(),
     );
 
-    for feature in features {
-        let (name, warning) = match feature {
-            Feature::NoSysF128 => ("no-sys-f128", "using apfloat fallback for f128"),
-            Feature::NoSysF128IntConvert => (
-                "no-sys-f128-int-convert",
-                "using apfloat fallback for f128 <-> int conversions",
-            ),
-            Feature::NoSysF16F64Convert => (
-                "no-sys-f16-f64-convert",
-                "using apfloat fallback for f16 <-> f64 conversions",
-            ),
-            Feature::NoSysF16F128Convert => (
-                "no-sys-f16-f128-convert",
-                "using apfloat fallback for f16 <-> f128 conversions",
-            ),
-            Feature::NoSysF16 => ("no-sys-f16", "using apfloat fallback for f16"),
-        };
-        println!("cargo:warning={warning}");
-        println!("cargo:rustc-cfg=feature=\"{name}\"");
+    for cfg in SetCfg::ALL {
+        println!("cargo:rustc-check-cfg=cfg({})", cfg.name());
+    }
+
+    for cfg in to_set {
+        println!("cargo:warning={}", cfg.warning());
+        println!("cargo:rustc-cfg={}", cfg.name());
     }
 
     builtins_configure::configure_aliases(&target);

@@ -154,12 +154,12 @@ mod float_div {
         f128, __divtf3, Quad,
         // FIXME(llvm): there is a bug in LLVM rt.
         // See <https://github.com/llvm/llvm-project/issues/91840>.
-        not(any(feature = "no-sys-f128", all(target_arch = "aarch64", target_os = "linux")));
+        not(any(no_sys_f128, all(target_arch = "aarch64", target_os = "linux")));
     }
 
     #[cfg(f128_enabled)]
     #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
     float! {
-        f128, __divkf3, Quad, not(feature = "no-sys-f128");
+        f128, __divkf3, Quad, not(no_sys_f128);
     }
 }

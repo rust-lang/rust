@@ -117,7 +117,7 @@ mod i_to_f {
 
     #[cfg(f128_enabled)]
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
-    i_to_f! { f128, Quad, not(feature = "no-sys-f128-int-convert"),
+    i_to_f! { f128, Quad, not(no_sys_f128_int_convert),
         u32, __floatunsitf;
         i32, __floatsitf;
         u64, __floatunditf;
@@ -128,7 +128,7 @@ mod i_to_f {
 
     #[cfg(f128_enabled)]
     #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-    i_to_f! { f128, Quad, not(feature = "no-sys-f128-int-convert"),
+    i_to_f! { f128, Quad, not(no_sys_f128_int_convert),
         u32, __floatunsikf;
         i32, __floatsikf;
         u64, __floatundikf;
@@ -236,7 +236,7 @@ mod f_to_i {
                 x,
                 f128,
                 Quad,
-                not(feature = "no-sys-f128-int-convert"),
+                not(no_sys_f128_int_convert),
                 u32, __fixunstfsi;
                 u64, __fixunstfdi;
                 u128, __fixunstfti;
@@ -309,12 +309,12 @@ mod extend {
     )))]
     f_to_f! {
         extend,
-        f16 => f32, Half => Single, __extendhfsf2, not(feature = "no-sys-f16");
-        f16 => f32, Half => Single, __gnu_h2f_ieee, not(feature = "no-sys-f16");
-        f16 => f64, Half => Double, __extendhfdf2, not(feature = "no-sys-f16-f64-convert");
-        f16 => f128, Half => Quad, __extendhftf2, not(feature = "no-sys-f16-f128-convert");
-        f32 => f128, Single => Quad, __extendsftf2, not(feature = "no-sys-f128");
-        f64 => f128, Double => Quad, __extenddftf2, not(feature = "no-sys-f128");
+        f16 => f32, Half => Single, __extendhfsf2, not(no_sys_f16);
+        f16 => f32, Half => Single, __gnu_h2f_ieee, not(no_sys_f16);
+        f16 => f64, Half => Double, __extendhfdf2, not(no_sys_f16_f64_convert);
+        f16 => f128, Half => Quad, __extendhftf2, not(no_sys_f16_f128_convert);
+        f32 => f128, Single => Quad, __extendsftf2, not(no_sys_f128);
+        f64 => f128, Double => Quad, __extenddftf2, not(no_sys_f128);
     }
 
     #[cfg(f128_enabled)]
@@ -322,8 +322,8 @@ mod extend {
     f_to_f! {
         extend,
         // FIXME(#655): `f16` tests disabled until we can bootstrap symbols
-        f32 => f128, Single => Quad, __extendsfkf2, not(feature = "no-sys-f128");
-        f64 => f128, Double => Quad, __extenddfkf2, not(feature = "no-sys-f128");
+        f32 => f128, Single => Quad, __extendsfkf2, not(no_sys_f128);
+        f64 => f128, Double => Quad, __extenddfkf2, not(no_sys_f128);
     }
 }
 
@@ -343,12 +343,12 @@ mod trunc {
     )))]
     f_to_f! {
         trunc,
-        f32 => f16, Single => Half, __truncsfhf2, not(feature = "no-sys-f16");
-        f32 => f16, Single => Half, __gnu_f2h_ieee, not(feature = "no-sys-f16");
-        f64 => f16, Double => Half, __truncdfhf2, not(feature = "no-sys-f16-f64-convert");
-        f128 => f16, Quad => Half, __trunctfhf2, not(feature = "no-sys-f16-f128-convert");
-        f128 => f32, Quad => Single, __trunctfsf2, not(feature = "no-sys-f128");
-        f128 => f64, Quad => Double, __trunctfdf2, not(feature = "no-sys-f128");
+        f32 => f16, Single => Half, __truncsfhf2, not(no_sys_f16);
+        f32 => f16, Single => Half, __gnu_f2h_ieee, not(no_sys_f16);
+        f64 => f16, Double => Half, __truncdfhf2, not(no_sys_f16_f64_convert);
+        f128 => f16, Quad => Half, __trunctfhf2, not(no_sys_f16_f128_convert);
+        f128 => f32, Quad => Single, __trunctfsf2, not(no_sys_f128);
+        f128 => f64, Quad => Double, __trunctfdf2, not(no_sys_f128);
     }
 
     #[cfg(f128_enabled)]
@@ -356,7 +356,7 @@ mod trunc {
     f_to_f! {
         trunc,
         // FIXME(#655): `f16` tests disabled until we can bootstrap symbols
-        f128 => f32, Quad => Single, __trunckfsf2, not(feature = "no-sys-f128");
-        f128 => f64, Quad => Double, __trunckfdf2, not(feature = "no-sys-f128");
+        f128 => f32, Quad => Single, __trunckfsf2, not(no_sys_f128);
+        f128 => f64, Quad => Double, __trunckfdf2, not(no_sys_f128);
     }
 }

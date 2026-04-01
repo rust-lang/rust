@@ -74,7 +74,7 @@ float_bench! {
     crate_fn_ppc: sub::__subkf3,
     sys_fn: __subtf3,
     sys_fn_ppc: __subkf3,
-    sys_available: not(feature = "no-sys-f128"),
+    sys_available: not(no_sys_f128),
     asm: []
 }
 
