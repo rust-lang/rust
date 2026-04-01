@@ -8,7 +8,7 @@ use std::fmt::{self, Debug};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-pub use rustc_span::HashStableContext;
+use rustc_span::HashStableContext;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, DefIndex, DefPathHash, LocalDefId};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
@@ -176,7 +176,7 @@ pub const CRATE_HIR_ID: HirId =
 
 pub const CRATE_OWNER_ID: OwnerId = OwnerId { def_id: CRATE_DEF_ID };
 
-impl<Hcx: rustc_span::HashStableContext> ToStableHashKey<Hcx> for HirId {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for HirId {
     type KeyType = (DefPathHash, ItemLocalId);
 
     #[inline]
