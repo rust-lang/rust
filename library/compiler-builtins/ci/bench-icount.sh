@@ -78,8 +78,8 @@ function run_icount_benchmarks() {
 }
 
 # Run once with softfloats, once with arch instructions enabled
-run_icount_benchmarks -- --save-baseline=softfloat
-run_icount_benchmarks --features arch -- --save-baseline=hardfloat
+run_icount_benchmarks                 -- --save-baseline=arch_disabled
+run_icount_benchmarks --features arch -- --save-baseline=arch_enabled
 
 if [ "$failed" != "0" ]; then
     echo "One or more benchmarks failed"
