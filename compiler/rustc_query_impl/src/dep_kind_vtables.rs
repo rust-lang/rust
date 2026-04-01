@@ -138,6 +138,7 @@ macro_rules! define_dep_kind_vtables {
                     desc: $desc:expr,
                     eval_always: $eval_always:literal,
                     feedable: $feedable:literal,
+                    handle_cycle_error: $handle_cycle_error:literal,
                     no_force: $no_force:literal,
                     no_hash: $no_hash:literal,
                     returns_error_guaranteed: $returns_error_guaranteed:literal,

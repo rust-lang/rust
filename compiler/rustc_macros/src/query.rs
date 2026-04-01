@@ -142,6 +142,7 @@ struct QueryModifiers {
     desc: Desc,
     eval_always: Option<Ident>,
     feedable: Option<Ident>,
+    handle_cycle_error: Option<Ident>,
     no_force: Option<Ident>,
     no_hash: Option<Ident>,
     separate_provide_extern: Option<Ident>,
@@ -156,6 +157,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut desc = None;
     let mut eval_always = None;
     let mut feedable = None;
+    let mut handle_cycle_error = None;
     let mut no_force = None;
     let mut no_hash = None;
     let mut separate_provide_extern = None;
@@ -190,6 +192,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(eval_always = modifier);
         } else if modifier == "feedable" {
             try_insert!(feedable = modifier);
+        } else if modifier == "handle_cycle_error" {
+            try_insert!(handle_cycle_error = modifier);
         } else if modifier == "no_force" {
             try_insert!(no_force = modifier);
         } else if modifier == "no_hash" {
@@ -211,6 +215,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         desc,
         eval_always,
         feedable,
+        handle_cycle_error,
         no_force,
         no_hash,
         separate_provide_extern,
@@ -246,6 +251,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         desc,
         eval_always,
         feedable,
+        handle_cycle_error,
         no_force,
         no_hash,
         separate_provide_extern,
@@ -270,6 +276,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
     };
     let eval_always = eval_always.is_some();
     let feedable = feedable.is_some();
+    let handle_cycle_error = handle_cycle_error.is_some();
     let no_force = no_force.is_some();
     let no_hash = no_hash.is_some();
     let returns_error_guaranteed = returns_error_guaranteed(&query.return_ty);
@@ -290,6 +297,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         desc: #desc,
         eval_always: #eval_always,
         feedable: #feedable,
+        handle_cycle_error: #handle_cycle_error,
         no_force: #no_force,
         no_hash: #no_hash,
         returns_error_guaranteed: #returns_error_guaranteed,
@@ -358,6 +366,7 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
         // `desc` is handled above
         eval_always,
         feedable,
+        handle_cycle_error,
         no_force,
         no_hash,
         separate_provide_extern,

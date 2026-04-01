@@ -22,6 +22,7 @@ macro_rules! define_queries {
                     desc: $desc:expr,
                     eval_always: $eval_always:literal,
                     feedable: $feedable:literal,
+                    handle_cycle_error: $handle_cycle_error:literal,
                     no_force: $no_force:literal,
                     no_hash: $no_hash:literal,
                     returns_error_guaranteed: $returns_error_guaranteed:literal,
@@ -144,7 +145,6 @@ macro_rules! define_queries {
                     -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>>
                 {
                     use rustc_middle::queries::$name::Value;
-
                     QueryVTable {
                         name: stringify!($name),
                         eval_always: $eval_always,
@@ -177,9 +177,13 @@ macro_rules! define_queries {
                         #[cfg(not($cache_on_disk))]
                         try_load_from_disk_fn: |_tcx, _key, _prev_index, _index| None,
 
-                        // The default just emits `err` and then aborts.
-                        // `handle_cycle_error::specialize_query_vtables` overwrites this default
-                        // for certain queries.
+                        #[cfg($handle_cycle_error)]
+                        handle_cycle_error_fn: |tcx, key, cycle, err| {
+                            use rustc_middle::query::erase::erase_val;
+
+                            erase_val($crate::handle_cycle_error::$name(tcx, key, cycle, err))
+                        },
+                        #[cfg(not($handle_cycle_error))]
                         handle_cycle_error_fn: |_tcx, _key, _cycle, err| {
                             $crate::handle_cycle_error::default(err)
                         },
