@@ -13,8 +13,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::{Ident, kw};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, kw};
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
 use std::ops::ControlFlow;
 
@@ -71,14 +71,14 @@ declare_clippy_lint! {
     "detect unconditional recursion in some traits implementation"
 }
 
+impl_lint_pass!(UnconditionalRecursion => [UNCONDITIONAL_RECURSION]);
+
 #[derive(Default)]
 pub struct UnconditionalRecursion {
     /// The key is the `DefId` of the type implementing the `Default` trait and the value is the
     /// `DefId` of the return call.
     default_impl_for_type: FxHashMap<DefId, DefId>,
 }
-
-impl_lint_pass!(UnconditionalRecursion => [UNCONDITIONAL_RECURSION]);
 
 fn span_error(cx: &LateContext<'_>, method_span: Span, expr: &Expr<'_>) {
     span_lint_and_then(

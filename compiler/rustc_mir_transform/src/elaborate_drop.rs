@@ -9,8 +9,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, traits};
-use rustc_span::DUMMY_SP;
-use rustc_span::source_map::{Spanned, dummy_spanned};
+use rustc_span::{DUMMY_SP, Spanned, dummy_spanned};
 use tracing::{debug, instrument};
 
 use crate::patch::MirPatch;
@@ -160,7 +159,7 @@ where
 ///
 /// The passed `elaborator` is used to determine what should happen at the drop terminator. It
 /// decides whether the drop can be statically determined or whether it needs a dynamic drop flag,
-/// and whether the drop is "open", ie. should be expanded to drop all subfields of the dropped
+/// and whether the drop is "open", i.e. should be expanded to drop all subfields of the dropped
 /// value.
 ///
 /// When this returns, the MIR patch in the `elaborator` contains the necessary changes.
@@ -422,11 +421,8 @@ where
 
     fn build_drop(&mut self, bb: BasicBlock) {
         let drop_ty = self.place_ty(self.place);
-        if self.tcx().features().async_drop()
-            && self.elaborator.body().coroutine.is_some()
-            && self.elaborator.allow_async_drops()
-            && !self.elaborator.patch_ref().block(self.elaborator.body(), bb).is_cleanup
-            && drop_ty.needs_async_drop(self.tcx(), self.elaborator.typing_env())
+        if !self.elaborator.patch_ref().block(self.elaborator.body(), bb).is_cleanup
+            && self.check_if_can_async_drop(drop_ty, false)
         {
             self.build_async_drop(
                 self.place,
@@ -450,6 +446,46 @@ where
                 },
             );
         }
+    }
+
+    /// Function to check if we can generate an async drop here
+    fn check_if_can_async_drop(&mut self, drop_ty: Ty<'tcx>, call_destructor_only: bool) -> bool {
+        let is_async_drop_feature_enabled = if self.tcx().features().async_drop() {
+            true
+        } else {
+            // Check if the type needing async drop comes from a dependency crate.
+            if let ty::Adt(adt_def, _) = drop_ty.kind() {
+                !adt_def.did().is_local() && adt_def.async_destructor(self.tcx()).is_some()
+            } else {
+                false
+            }
+        };
+
+        // Short-circuit before calling needs_async_drop/is_async_drop, as those
+        // require the `async_drop` lang item to exist (which may not be present
+        // in minimal/custom core environments like cranelift's mini_core).
+        if !is_async_drop_feature_enabled
+            || !self.elaborator.body().coroutine.is_some()
+            || !self.elaborator.allow_async_drops()
+        {
+            return false;
+        }
+
+        let needs_async_drop = if call_destructor_only {
+            drop_ty.is_async_drop(self.tcx(), self.elaborator.typing_env())
+        } else {
+            drop_ty.needs_async_drop(self.tcx(), self.elaborator.typing_env())
+        };
+
+        // Async drop in libstd/libcore would become insta-stable — catch that mistake.
+        if needs_async_drop && self.tcx().features().staged_api() {
+            span_bug!(
+                self.source_info.span,
+                "don't use async drop in libstd, it becomes insta-stable"
+            );
+        }
+
+        needs_async_drop
     }
 
     /// This elaborates a single drop instruction, located at `bb`, and
@@ -1003,12 +1039,7 @@ where
     ) -> BasicBlock {
         debug!("destructor_call_block({:?}, {:?})", self, succ);
         let ty = self.place_ty(self.place);
-        if self.tcx().features().async_drop()
-            && self.elaborator.body().coroutine.is_some()
-            && self.elaborator.allow_async_drops()
-            && !unwind.is_cleanup()
-            && ty.is_async_drop(self.tcx(), self.elaborator.typing_env())
-        {
+        if !unwind.is_cleanup() && self.check_if_can_async_drop(ty, true) {
             self.build_async_drop(self.place, ty, None, succ, unwind, dropline, true)
         } else {
             self.destructor_call_block_sync((succ, unwind))
@@ -1078,12 +1109,7 @@ where
         let loop_block = self.elaborator.patch().new_block(loop_block);
 
         let place = tcx.mk_place_deref(ptr);
-        if self.tcx().features().async_drop()
-            && self.elaborator.body().coroutine.is_some()
-            && self.elaborator.allow_async_drops()
-            && !unwind.is_cleanup()
-            && ety.needs_async_drop(self.tcx(), self.elaborator.typing_env())
-        {
+        if !unwind.is_cleanup() && self.check_if_can_async_drop(ety, false) {
             self.build_async_drop(
                 place,
                 ety,
@@ -1368,12 +1394,7 @@ where
 
     fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
         let drop_ty = self.place_ty(self.place);
-        if self.tcx().features().async_drop()
-            && self.elaborator.body().coroutine.is_some()
-            && self.elaborator.allow_async_drops()
-            && !unwind.is_cleanup()
-            && drop_ty.needs_async_drop(self.tcx(), self.elaborator.typing_env())
-        {
+        if !unwind.is_cleanup() && self.check_if_can_async_drop(drop_ty, false) {
             self.build_async_drop(
                 self.place,
                 drop_ty,

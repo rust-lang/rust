@@ -3,11 +3,11 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
 use std::borrow::Cow;
+use std::debug_assert_matches;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, ScalableElt, VariantIdx};
-use rustc_data_structures::debug_assert_matches;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
@@ -753,7 +753,7 @@ impl<'tcx> Ty<'tcx> {
                     .map(|principal| {
                         tcx.associated_items(principal.def_id())
                             .in_definition_order()
-                            .filter(|item| item.is_type() || item.is_const())
+                            .filter(|item| item.is_type() || item.is_type_const())
                             .filter(|item| !item.is_impl_trait_in_trait())
                             .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                             .count()
@@ -1365,6 +1365,14 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Returns the type, pinnedness, mutability, and the region of a reference (`&T` or `&mut T`)
+    /// or a pinned-reference type (`Pin<&T>` or `Pin<&mut T>`).
+    ///
+    /// Regarding the [`pin_ergonomics`] feature, one of the goals is to make pinned references
+    /// (`Pin<&T>` and `Pin<&mut T>`) behaves similar to normal references (`&T` and `&mut T`).
+    /// This function is useful when references and pinned references are processed similarly.
+    ///
+    /// [`pin_ergonomics`]: https://github.com/rust-lang/rust/issues/130494
     pub fn maybe_pinned_ref(
         self,
     ) -> Option<(Ty<'tcx>, ty::Pinnedness, ty::Mutability, Region<'tcx>)> {
@@ -1592,13 +1600,23 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Iterates over tuple fields.
+    /// Returns a list of tuple type arguments.
+    ///
     /// Panics when called on anything but a tuple.
     #[inline]
     pub fn tuple_fields(self) -> &'tcx List<Ty<'tcx>> {
         match self.kind() {
             Tuple(args) => args,
             _ => bug!("tuple_fields called on non-tuple: {self:?}"),
+        }
+    }
+
+    /// Returns a list of tuple type arguments, or `None` if `self` isn't a tuple.
+    #[inline]
+    pub fn opt_tuple_fields(self) -> Option<&'tcx List<Ty<'tcx>>> {
+        match self.kind() {
+            Tuple(args) => Some(args),
+            _ => None,
         }
     }
 

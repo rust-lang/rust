@@ -4,7 +4,6 @@
 //! scrutinee and end up with a type error; this would prevent us from reporting that only constants
 //! supporting structural equality can be used as patterns.
 #![feature(deref_patterns)]
-#![allow(incomplete_features)]
 
 const EMPTY: Vec<()> = Vec::new();
 

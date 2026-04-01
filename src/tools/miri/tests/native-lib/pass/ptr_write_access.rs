@@ -176,7 +176,7 @@ fn test_swap_ptr_triple_dangling() {
     }
 
     extern "C" {
-        fn swap_ptr_triple_dangling(t_ptr: *const Triple);
+        fn swap_ptr_triple_dangling(t_ptr: *mut Triple);
     }
 
     let x = 101;
@@ -184,9 +184,9 @@ fn test_swap_ptr_triple_dangling() {
     let ptr = Box::as_ptr(&b);
     drop(b);
     let z = 121;
-    let triple = Triple { ptr0: &raw const x, ptr1: ptr, ptr2: &raw const z };
+    let mut triple = Triple { ptr0: &raw const x, ptr1: ptr, ptr2: &raw const z };
 
-    unsafe { swap_ptr_triple_dangling(&triple) }
+    unsafe { swap_ptr_triple_dangling(&mut triple) }
     assert_eq!(unsafe { *triple.ptr2 }, x);
 }
 

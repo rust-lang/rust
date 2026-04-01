@@ -1,5 +1,5 @@
 use rustc_middle::mir::{self, NonDivergingIntrinsic, StmtDebugInfo};
-use rustc_middle::span_bug;
+use rustc_middle::{bug, span_bug, ty};
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
@@ -77,15 +77,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let dst_val = self.codegen_operand(bx, dst);
                 let src_val = self.codegen_operand(bx, src);
                 let count = self.codegen_operand(bx, count).immediate();
-                let pointee_layout = dst_val
-                    .layout
-                    .pointee_info_at(bx, rustc_abi::Size::ZERO)
-                    .expect("Expected pointer");
-                let bytes = bx.mul(count, bx.const_usize(pointee_layout.size.bytes()));
 
-                let align = pointee_layout.align;
+                let &ty::RawPtr(pointee, _) = dst_val.layout.ty.kind() else {
+                    bug!("expected pointer")
+                };
+                let pointee_layout = bx
+                    .tcx()
+                    .layout_of(bx.typing_env().as_query_input(pointee))
+                    .expect("expected pointee to have a layout");
+                let elem_size = pointee_layout.layout.size().bytes();
+                let bytes = bx.mul(count, bx.const_usize(elem_size));
+
+                let align = pointee_layout.layout.align.abi;
                 let dst = dst_val.immediate();
                 let src = src_val.immediate();
+
                 bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty(), None);
             }
             mir::StatementKind::FakeRead(..)

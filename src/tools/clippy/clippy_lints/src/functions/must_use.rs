@@ -24,7 +24,7 @@ use super::{DOUBLE_MUST_USE, MUST_USE_CANDIDATE, MUST_USE_UNIT};
 
 pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
     let attrs = cx.tcx.hir_attrs(item.hir_id());
-    let attr = find_attr!(cx.tcx.hir_attrs(item.hir_id()), MustUse { span, reason } => (span, reason));
+    let attr = find_attr!(cx.tcx, item.hir_id(), MustUse { span, reason } => (span, reason));
     if let hir::ItemKind::Fn {
         ref sig,
         body: ref body_id,
@@ -65,7 +65,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         let attrs = cx.tcx.hir_attrs(item.hir_id());
-        let attr = find_attr!(cx.tcx.hir_attrs(item.hir_id()), MustUse { span, reason } => (span, reason));
+        let attr = find_attr!(cx.tcx, item.hir_id(), MustUse { span, reason } => (span, reason));
         if let Some((attr_span, reason)) = attr {
             check_needless_must_use(
                 cx,
@@ -98,7 +98,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
 
         let attrs = cx.tcx.hir_attrs(item.hir_id());
-        let attr = find_attr!(cx.tcx.hir_attrs(item.hir_id()), MustUse { span, reason } => (span, reason));
+        let attr = find_attr!(cx.tcx, item.hir_id(), MustUse { span, reason } => (span, reason));
         if let Some((attr_span, reason)) = attr {
             check_needless_must_use(
                 cx,
@@ -217,7 +217,7 @@ fn check_must_use_candidate<'tcx>(
         diag.span_suggestion(
             item_span.shrink_to_lo(),
             "add the attribute",
-            format!("#[must_use] \n{indent}"),
+            format!("#[must_use]\n{indent}"),
             Applicability::MachineApplicable,
         );
         if let Some(msg) = match return_ty(cx, item_id).opt_diag_name(cx) {

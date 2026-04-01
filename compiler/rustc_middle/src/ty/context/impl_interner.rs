@@ -1,9 +1,8 @@
 //! Implementation of [`rustc_type_ir::Interner`] for [`TyCtxt`].
 
-use std::fmt;
+use std::{debug_assert_matches, fmt};
 
 use rustc_abi::ExternAbi;
-use rustc_data_structures::debug_assert_matches;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -15,7 +14,6 @@ use rustc_type_ir::{CollectAndApply, Interner, TypeFoldable, search_graph};
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::canonical::CanonicalVarKinds;
-use crate::query::IntoQueryParam;
 use crate::traits::cache::WithDepNode;
 use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
@@ -95,6 +93,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Safety = hir::Safety;
     type Abi = ExternAbi;
     type Const = ty::Const<'tcx>;
+    type Consts = &'tcx List<Self::Const>;
 
     type ParamConst = ty::ParamConst;
     type ValueConst = ty::Value<'tcx>;
@@ -400,6 +399,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(CtorOf::Struct, CtorKind::Fn)
         );
         self.is_conditionally_const(def_id)
+    }
+
+    fn closure_is_const(self, def_id: DefId) -> bool {
+        debug_assert_matches!(self.def_kind(def_id), DefKind::Closure);
+        self.constness(def_id) == hir::Constness::Const
     }
 
     fn alias_has_const_conditions(self, def_id: DefId) -> bool {
@@ -715,7 +719,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn item_name(self, id: DefId) -> Symbol {
-        let id = id.into_query_param();
         self.opt_item_name(id).unwrap_or_else(|| {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })

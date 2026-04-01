@@ -160,7 +160,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
 }
 
 // The visitor captures the corresponding `hir::Ty` of the anonymous region
-// in the case of structs ie. `hir::TyKind::Path`.
+// in the case of structs i.e. `hir::TyKind::Path`.
 // This visitor would be invoked for each lifetime corresponding to a struct,
 // and would walk the types like Vec<Ref> in the above example and Ref looking for the HIR
 // where that lifetime appears. This allows us to highlight the

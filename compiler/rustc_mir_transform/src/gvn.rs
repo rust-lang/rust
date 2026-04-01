@@ -48,8 +48,15 @@
 //! # Handling of references
 //!
 //! We handle references by assigning a different "provenance" index to each Ref/RawPtr rvalue.
-//! This ensure that we do not spuriously merge borrows that should not be merged. Meanwhile, we
-//! consider all the derefs of an immutable reference to a freeze type to give the same value:
+//! This ensure that we do not spuriously merge borrows that should not be merged. For instance:
+//! ```ignore (MIR)
+//! _x = &_a;
+//! _a = 0;
+//! _y = &_a; // cannot be turned into `_y = _x`!
+//! ```
+//!
+//! On top of that, we consider all the derefs of an immutable reference to a freeze type to give
+//! the same value:
 //! ```ignore (MIR)
 //! _a = *_b // _b is &Freeze
 //! _c = *_b // replaced by _c = _a
@@ -302,8 +309,7 @@ impl<'a, 'tcx> ValueSet<'a, 'tcx> {
 
     /// Insert a `(Value, Ty)` pair to be deduplicated.
     /// Returns `true` as second tuple field if this value did not exist previously.
-    #[cfg_attr(not(bootstrap), allow(rustc::disallowed_pass_by_ref))] // closures take `&VnIndex`
-    #[cfg_attr(bootstrap, allow(rustc::pass_by_value))]
+    #[allow(rustc::disallowed_pass_by_ref)] // closures take `&VnIndex`
     fn insert(&mut self, ty: Ty<'tcx>, value: Value<'a, 'tcx>) -> (VnIndex, bool) {
         debug_assert!(match value {
             Value::Opaque(_) | Value::Address { .. } => false,
@@ -1700,7 +1706,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)
             }
             BackendRepr::SimdVector { .. }
-            | BackendRepr::ScalableVector { .. }
+            | BackendRepr::SimdScalableVector { .. }
             | BackendRepr::Memory { .. } => false,
         }
     }

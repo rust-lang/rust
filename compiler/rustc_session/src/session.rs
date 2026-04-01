@@ -143,6 +143,12 @@ pub struct Session {
     /// None signifies that this is not tracked.
     pub using_internal_features: &'static AtomicBool,
 
+    /// Environment variables accessed during the build and their values when they exist.
+    pub env_depinfo: Lock<FxIndexSet<(Symbol, Option<Symbol>)>>,
+
+    /// File paths accessed during the build.
+    pub file_depinfo: Lock<FxIndexSet<Symbol>>,
+
     target_filesearch: FileSearch,
     host_filesearch: FileSearch,
 
@@ -166,6 +172,11 @@ pub struct Session {
     /// Used by `-Zmir-opt-bisect-limit` to assign an index to each
     /// optimization-pass execution candidate during this compilation.
     pub mir_opt_bisect_eval_count: AtomicUsize,
+
+    /// Enabled features that are used in the current compilation.
+    ///
+    /// The value is the `DepNodeIndex` of the node encodes the used feature.
+    pub used_features: Lock<FxHashMap<Symbol, u32>>,
 }
 
 #[derive(Clone, Copy)]
@@ -522,9 +533,12 @@ impl Session {
     pub fn emit_lifetime_markers(&self) -> bool {
         self.opts.optimize != config::OptLevel::No
         // AddressSanitizer and KernelAddressSanitizer uses lifetimes to detect use after scope bugs.
+        //
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
-        // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
-        || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
+        //
+        // HWAddressSanitizer and KernelHWAddressSanitizer will use lifetimes to detect use after
+        // scope bugs in the future.
+        || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
     }
 
     pub fn diagnostic_width(&self) -> usize {
@@ -615,9 +629,9 @@ impl Session {
             config::LtoCli::Thin => {
                 // The user explicitly asked for ThinLTO
                 if !self.thin_lto_supported {
-                    // Backend doesn't support ThinLTO, disable LTO.
+                    // Backend doesn't support ThinLTO, fallback to fat LTO.
                     self.dcx().emit_warn(errors::ThinLtoNotSupportedByBackend);
-                    return config::Lto::No;
+                    return config::Lto::Fat;
                 }
                 return config::Lto::Thin;
             }
@@ -1090,12 +1104,15 @@ pub fn build_session(
         unstable_target_features: Default::default(),
         cfg_version,
         using_internal_features,
+        env_depinfo: Default::default(),
+        file_depinfo: Default::default(),
         target_filesearch,
         host_filesearch,
         invocation_temp,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
+        used_features: Lock::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1347,13 +1364,9 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if sess.opts.cg.soft_float {
-        if sess.target.arch == Arch::Arm {
-            sess.dcx().emit_warn(errors::SoftFloatDeprecated);
-        } else {
-            // All `use_softfp` does is the equivalent of `-mfloat-abi` in GCC/clang, which only exists on ARM targets.
-            // We document this flag to only affect `*eabihf` targets, so let's show a warning for all other targets.
-            sess.dcx().emit_warn(errors::SoftFloatIgnored);
+    if sess.opts.unstable_opts.packed_stack {
+        if sess.target.arch != Arch::S390x {
+            sess.dcx().emit_err(errors::UnsupportedPackedStack);
         }
     }
 }

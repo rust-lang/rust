@@ -33,6 +33,8 @@ declare_clippy_lint! {
     "check consistent use of braces in macro"
 }
 
+impl_lint_pass!(MacroBraces => [NONSTANDARD_MACRO_BRACES]);
+
 struct MacroInfo {
     callsite_span: Span,
     callsite_snippet: SourceText,
@@ -53,8 +55,6 @@ impl MacroBraces {
         }
     }
 }
-
-impl_lint_pass!(MacroBraces => [NONSTANDARD_MACRO_BRACES]);
 
 impl EarlyLintPass for MacroBraces {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {

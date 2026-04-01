@@ -14,7 +14,7 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
-    utils::ref_field_expr::determine_ref_and_parens,
+    utils::{cover_edit_range, ref_field_expr::determine_ref_and_parens},
 };
 
 // Assist: destructure_tuple_binding
@@ -98,7 +98,9 @@ fn destructure_tuple_edit_impl(
 
     assignment_edit.apply(&mut syntax_editor, &syntax_factory);
     if let Some(usages_edit) = current_file_usages_edit {
-        usages_edit.into_iter().for_each(|usage_edit| usage_edit.apply(edit, &mut syntax_editor))
+        usages_edit
+            .into_iter()
+            .for_each(|usage_edit| usage_edit.apply(ctx, edit, &mut syntax_editor))
     }
 
     syntax_editor.add_mappings(syntax_factory.finish_with_mappings());
@@ -164,6 +166,7 @@ enum RefType {
     Mutable,
 }
 struct TupleData {
+    // FIXME: After removing ted, it may be possible to reuse destructure_struct_binding::Target
     ident_pat: IdentPat,
     ref_type: Option<RefType>,
     field_names: Vec<String>,
@@ -310,14 +313,25 @@ enum EditTupleUsage {
 }
 
 impl EditTupleUsage {
-    fn apply(self, edit: &mut SourceChangeBuilder, syntax_editor: &mut SyntaxEditor) {
+    fn apply(
+        self,
+        ctx: &AssistContext<'_>,
+        edit: &mut SourceChangeBuilder,
+        syntax_editor: &mut SyntaxEditor,
+    ) {
         match self {
             EditTupleUsage::NoIndex(range) => {
                 edit.insert(range.start(), "/*");
                 edit.insert(range.end(), "*/");
             }
             EditTupleUsage::ReplaceExpr(target_expr, replace_with) => {
-                syntax_editor.replace(target_expr.syntax(), replace_with.syntax())
+                if let Some(range) = ctx.sema.original_range_opt(target_expr.syntax()) {
+                    let source = ctx.source_file().syntax();
+                    syntax_editor.replace_all(
+                        cover_edit_range(source, range.range),
+                        vec![replace_with.syntax().clone().into()],
+                    );
+                }
             }
         }
     }
@@ -348,24 +362,6 @@ fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIn
     if let Some(field_expr) = ast::FieldExpr::cast(node) {
         let idx = field_expr.name_ref()?.as_tuple_field()?;
         if idx < data.field_names.len() {
-            // special case: in macro call -> range of `field_expr` in applied macro, NOT range in actual file!
-            if field_expr.syntax().ancestors().any(|a| ast::MacroStmts::can_cast(a.kind())) {
-                cov_mark::hit!(destructure_tuple_macro_call);
-
-                // issue: cannot differentiate between tuple index passed into macro or tuple index as result of macro:
-                // ```rust
-                // macro_rules! m {
-                //     ($t1:expr, $t2:expr) => { $t1; $t2.0 }
-                // }
-                // let t = (1,2);
-                // m!(t.0, t)
-                // ```
-                // -> 2 tuple index usages detected!
-                //
-                // -> only handle `t`
-                return None;
-            }
-
             Some(TupleIndex { index: idx, field_expr })
         } else {
             // tuple index out of range
@@ -1436,7 +1432,6 @@ fn main() {
 
         #[test]
         fn detect_macro_call() {
-            cov_mark::check!(destructure_tuple_macro_call);
             check_in_place_assist(
                 r#"
 macro_rules! m {
@@ -1455,7 +1450,7 @@ macro_rules! m {
 
 fn main() {
     let ($0_0, _1) = (1,2);
-    m!(/*t*/.0);
+    m!(_0);
 }
                 "#,
             )
@@ -1547,7 +1542,6 @@ fn main() {
     m!(t.0);
 }
                 "#,
-                // FIXME: replace `t.0` with `_0` (cannot detect range of tuple index in macro call)
                 r#"
 macro_rules! m {
     ($e:expr) => { "foo"; $e };
@@ -1555,10 +1549,9 @@ macro_rules! m {
 
 fn main() {
     let ($0_0, _1) = (1,2);
-    m!(/*t*/.0);
+    m!(_0);
 }
                 "#,
-                // FIXME: replace `t.0` with `_0`
                 r#"
 macro_rules! m {
     ($e:expr) => { "foo"; $e };
@@ -1566,7 +1559,7 @@ macro_rules! m {
 
 fn main() {
     let t @ ($0_0, _1) = (1,2);
-    m!(t.0);
+    m!(_0);
 }
                 "#,
             )
@@ -1585,7 +1578,6 @@ fn main() {
     m!((t).0);
 }
                 "#,
-                // FIXME: replace `(t).0` with `_0`
                 r#"
 macro_rules! m {
     ($e:expr) => { "foo"; $e };
@@ -1593,10 +1585,9 @@ macro_rules! m {
 
 fn main() {
     let ($0_0, _1) = (1,2);
-    m!((/*t*/).0);
+    m!(_0);
 }
                 "#,
-                // FIXME: replace `(t).0` with `_0`
                 r#"
 macro_rules! m {
     ($e:expr) => { "foo"; $e };
@@ -1604,7 +1595,7 @@ macro_rules! m {
 
 fn main() {
     let t @ ($0_0, _1) = (1,2);
-    m!((t).0);
+    m!(_0);
 }
                 "#,
             )
@@ -1652,7 +1643,6 @@ fn main() {
     m!(t, t.0);
 }
                 "#,
-                // FIXME: replace `t.0` in macro call (not IN macro) with `_0`
                 r#"
 macro_rules! m {
     ($t:expr, $i:expr) => { $t.0 + $i };
@@ -1660,10 +1650,9 @@ macro_rules! m {
 
 fn main() {
     let ($0_0, _1) = (1,2);
-    m!(/*t*/, /*t*/.0);
+    m!(t, _0);
 }
                 "#,
-                // FIXME: replace `t.0` in macro call with `_0`
                 r#"
 macro_rules! m {
     ($t:expr, $i:expr) => { $t.0 + $i };
@@ -1671,9 +1660,37 @@ macro_rules! m {
 
 fn main() {
     let t @ ($0_0, _1) = (1,2);
-    m!(t, t.0);
+    m!(t, _0);
 }
                 "#,
+            )
+        }
+    }
+
+    mod in_macro_expr {
+        use super::assist::*;
+
+        // exact repro from #20716: tuple index inside write! must not panic
+        #[test]
+        fn tuple_index_in_write_macro() {
+            check_in_place_assist(
+                r#"
+//- minicore: write, fmt
+use core::fmt::Write;
+fn main() {
+    let mut s = String::new();
+    let $0x = (2i32, 3i32);
+    write!(s, "{}", x.0).unwrap();
+}
+"#,
+                r#"
+use core::fmt::Write;
+fn main() {
+    let mut s = String::new();
+    let ($0_0, _1) = (2i32, 3i32);
+    write!(s, "{}", _0).unwrap();
+}
+"#,
             )
         }
     }

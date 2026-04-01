@@ -277,15 +277,15 @@ impl Default for MacroUseArgs {
 }
 
 #[derive(Debug, Clone, Encodable, Decodable, HashStable_Generic)]
-pub struct StrippedCfgItem<ModId = DefId> {
-    pub parent_module: ModId,
+pub struct StrippedCfgItem<ScopeId = DefId> {
+    pub parent_scope: ScopeId,
     pub ident: Ident,
     pub cfg: (CfgEntry, Span),
 }
 
-impl<ModId> StrippedCfgItem<ModId> {
-    pub fn map_mod_id<New>(self, f: impl FnOnce(ModId) -> New) -> StrippedCfgItem<New> {
-        StrippedCfgItem { parent_module: f(self.parent_module), ident: self.ident, cfg: self.cfg }
+impl<ScopeId> StrippedCfgItem<ScopeId> {
+    pub fn map_scope_id<New>(self, f: impl FnOnce(ScopeId) -> New) -> StrippedCfgItem<New> {
+        StrippedCfgItem { parent_scope: f(self.parent_scope), ident: self.ident, cfg: self.cfg }
     }
 }
 
@@ -1180,13 +1180,18 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
+    /// Represents `#[diagnostic::on_move]`
+    OnMove {
+        span: Span,
+        directive: Option<Box<Directive>>,
+    },
+
     /// Represents `#[rustc_on_unimplemented]` and `#[diagnostic::on_unimplemented]`.
     OnUnimplemented {
         span: Span,
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
     },
-
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 
@@ -1366,14 +1371,26 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_def_parents]`
     RustcDumpDefParents,
 
+    /// Represents `#[rustc_dump_inferred_outlives]`
+    RustcDumpInferredOutlives,
+
     /// Represents `#[rustc_dump_item_bounds]`
     RustcDumpItemBounds,
+
+    /// Represents `#[rustc_dump_object_lifetime_defaults]`.
+    RustcDumpObjectLifetimeDefaults,
 
     /// Represents `#[rustc_dump_predicates]`
     RustcDumpPredicates,
 
     /// Represents `#[rustc_dump_user_args]`
     RustcDumpUserArgs,
+
+    /// Represents `#[rustc_dump_variances]`
+    RustcDumpVariances,
+
+    /// Represents `#[rustc_dump_variances_of_opaques]`
+    RustcDumpVariancesOfOpaques,
 
     /// Represents `#[rustc_dump_vtable]`
     RustcDumpVtable(Span),
@@ -1493,14 +1510,8 @@ pub enum AttributeKind {
         span: Span,
     },
 
-    /// Represents `#[rustc_object_lifetime_default]`.
-    RustcObjectLifetimeDefault,
-
     /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
-
-    /// Represents `#[rustc_outlives]`
-    RustcOutlives,
 
     /// Represents `#[rustc_paren_sugar]`.
     RustcParenSugar(Span),
@@ -1573,12 +1584,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     RustcUnsafeSpecializationMarker(Span),
-
-    /// Represents `#[rustc_variance]`
-    RustcVariance,
-
-    /// Represents `#[rustc_variance_of_opaques]`
-    RustcVarianceOfOpaques,
 
     /// Represents `#[sanitize]`
     ///

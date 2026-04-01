@@ -3,6 +3,7 @@
 // FIXME: Once the portability lint RFC is implemented (see tracking issue #41619),
 // switch to use those structures instead.
 
+use std::str::FromStr;
 use std::sync::Arc;
 use std::{fmt, mem, ops};
 
@@ -15,6 +16,7 @@ use rustc_hir::attrs::{self, AttributeKind, CfgEntry, CfgHideShow, HideOrShow};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
+use rustc_target::spec;
 
 use crate::display::{Joined as _, MaybeDisplay, Wrapped};
 use crate::html::escape::Escape;
@@ -421,54 +423,10 @@ impl fmt::Display for Display<'_> {
                     (sym::unix, None) => "Unix",
                     (sym::windows, None) => "Windows",
                     (sym::debug_assertions, None) => "debug-assertions enabled",
-                    (sym::target_os, Some(os)) => match os.as_str() {
-                        "android" => "Android",
-                        "cygwin" => "Cygwin",
-                        "dragonfly" => "DragonFly BSD",
-                        "emscripten" => "Emscripten",
-                        "freebsd" => "FreeBSD",
-                        "fuchsia" => "Fuchsia",
-                        "haiku" => "Haiku",
-                        "hermit" => "HermitCore",
-                        "illumos" => "illumos",
-                        "ios" => "iOS",
-                        "l4re" => "L4Re",
-                        "linux" => "Linux",
-                        "macos" => "macOS",
-                        "netbsd" => "NetBSD",
-                        "openbsd" => "OpenBSD",
-                        "redox" => "Redox",
-                        "solaris" => "Solaris",
-                        "tvos" => "tvOS",
-                        "wasi" => "WASI",
-                        "watchos" => "watchOS",
-                        "windows" => "Windows",
-                        "visionos" => "visionOS",
-                        _ => "",
-                    },
-                    (sym::target_arch, Some(arch)) => match arch.as_str() {
-                        "aarch64" => "AArch64",
-                        "arm" => "ARM",
-                        "loongarch32" => "LoongArch LA32",
-                        "loongarch64" => "LoongArch LA64",
-                        "m68k" => "M68k",
-                        "csky" => "CSKY",
-                        "mips" => "MIPS",
-                        "mips32r6" => "MIPS Release 6",
-                        "mips64" => "MIPS-64",
-                        "mips64r6" => "MIPS-64 Release 6",
-                        "msp430" => "MSP430",
-                        "powerpc" => "PowerPC",
-                        "powerpc64" => "PowerPC-64",
-                        "riscv32" => "RISC-V RV32",
-                        "riscv64" => "RISC-V RV64",
-                        "s390x" => "s390x",
-                        "sparc64" => "SPARC64",
-                        "wasm32" | "wasm64" => "WebAssembly",
-                        "x86" => "x86",
-                        "x86_64" => "x86-64",
-                        _ => "",
-                    },
+                    (sym::target_os, Some(os)) => human_readable_target_os(*os).unwrap_or_default(),
+                    (sym::target_arch, Some(arch)) => {
+                        human_readable_target_arch(*arch).unwrap_or_default()
+                    }
                     (sym::target_vendor, Some(vendor)) => match vendor.as_str() {
                         "apple" => "Apple",
                         "pc" => "PC",
@@ -476,15 +434,9 @@ impl fmt::Display for Display<'_> {
                         "fortanix" => "Fortanix",
                         _ => "",
                     },
-                    (sym::target_env, Some(env)) => match env.as_str() {
-                        "gnu" => "GNU",
-                        "msvc" => "MSVC",
-                        "musl" => "musl",
-                        "newlib" => "Newlib",
-                        "uclibc" => "uClibc",
-                        "sgx" => "SGX",
-                        _ => "",
-                    },
+                    (sym::target_env, Some(env)) => {
+                        human_readable_target_env(*env).unwrap_or_default()
+                    }
                     (sym::target_endian, Some(endian)) => {
                         return write!(fmt, "{endian}-endian");
                     }
@@ -525,6 +477,135 @@ impl fmt::Display for Display<'_> {
             }
         }
     }
+}
+
+fn human_readable_target_os(os: Symbol) -> Option<&'static str> {
+    let os = spec::Os::from_str(os.as_str()).ok()?;
+
+    use spec::Os::*;
+    Some(match os {
+        // tidy-alphabetical-start
+        Aix => "AIX",
+        AmdHsa => "AMD HSA",
+        Android => "Android",
+        Cuda => "CUDA",
+        Cygwin => "Cygwin",
+        Dragonfly => "DragonFly BSD",
+        Emscripten => "Emscripten",
+        EspIdf => "ESP-IDF",
+        FreeBsd => "FreeBSD",
+        Fuchsia => "Fuchsia",
+        Haiku => "Haiku",
+        HelenOs => "HelenOS",
+        Hermit => "Hermit",
+        Horizon => "Horizon",
+        Hurd => "GNU/Hurd",
+        IOs => "iOS",
+        Illumos => "illumos",
+        L4Re => "L4Re",
+        Linux => "Linux",
+        LynxOs178 => "LynxOS-178",
+        MacOs => "macOS",
+        Managarm => "Managarm",
+        Motor => "Motor OS",
+        NetBsd => "NetBSD",
+        None => "bare-metal", // FIXME(scrabsha): is this appropriate?
+        Nto => "QNX Neutrino",
+        NuttX => "NuttX",
+        OpenBsd => "OpenBSD",
+        Psp => "Play Station Portable",
+        Psx => "Play Station 1",
+        Qurt => "QuRT",
+        Redox => "Redox OS",
+        Rtems => "RTEMS OS",
+        Solaris => "Solaris",
+        SolidAsp3 => "SOLID ASP3",
+        TeeOs => "TEEOS",
+        Trusty => "Trusty",
+        TvOs => "tvOS",
+        Uefi => "UEFI",
+        VexOs => "VEXos",
+        VisionOs => "visionOS",
+        Vita => "Play Station Vita",
+        VxWorks => "VxWorks",
+        Wasi => "WASI",
+        WatchOs => "watchOS",
+        Windows => "Windows",
+        Xous => "Xous",
+        Zkvm => "zero knowledge Virtual Machine",
+        // tidy-alphabetical-end
+        Unknown | Other(_) => return Option::None,
+    })
+}
+
+fn human_readable_target_arch(os: Symbol) -> Option<&'static str> {
+    let arch = spec::Arch::from_str(os.as_str()).ok()?;
+
+    use spec::Arch::*;
+    Some(match arch {
+        // tidy-alphabetical-start
+        AArch64 => "AArch64",
+        AmdGpu => "AMG GPU",
+        Arm => "ARM",
+        Arm64EC => "ARM64EC",
+        Avr => "AVR",
+        Bpf => "BPF",
+        CSky => "C-SKY",
+        Hexagon => "Hexagon",
+        LoongArch32 => "LoongArch64",
+        LoongArch64 => "LoongArch32",
+        M68k => "Motorola 680x0",
+        Mips => "MIPS",
+        Mips32r6 => "MIPS release 6",
+        Mips64 => "MIPS-64",
+        Mips64r6 => "MIPS-64 release 6",
+        Msp430 => "MSP430",
+        Nvptx64 => "NVidia GPU",
+        PowerPC => "PowerPC",
+        PowerPC64 => "PowerPC64",
+        RiscV32 => "RISC-V RV32",
+        RiscV64 => "RISC-V RV64",
+        S390x => "s390x",
+        Sparc => "SPARC",
+        Sparc64 => "SPARC-64",
+        SpirV => "SPIR-V",
+        Wasm32 | Wasm64 => "WebAssembly",
+        X86 => "x86",
+        X86_64 => "x86-64",
+        Xtensa => "Xtensa",
+        // tidy-alphabetical-end
+        Other(_) => return None,
+    })
+}
+
+fn human_readable_target_env(env: Symbol) -> Option<&'static str> {
+    let env = spec::Env::from_str(env.as_str()).ok()?;
+
+    use spec::Env::*;
+    Some(match env {
+        // tidy-alphabetical-start
+        Gnu => "GNU",
+        MacAbi => "Catalyst",
+        Mlibc => "mac ABI",
+        Msvc => "MSVC",
+        Musl => "musl",
+        Newlib => "Newlib",
+        Nto70 => "Neutrino 7.0",
+        Nto71 => "Neutrino 7.1",
+        Nto71IoSock => "Neutrino 7.1 with io-sock",
+        Nto80 => "Neutrino 8.0",
+        Ohos => "OpenHarmony",
+        P1 => "WASIp1",
+        P2 => "WASIp2",
+        P3 => "WASIp3",
+        Relibc => "relibc",
+        Sgx => "SGX",
+        Sim => "Simulator",
+        Uclibc => "uClibc",
+        V5 => "V5",
+        // tidy-alphabetical-end
+        Unspecified | Other(_) => return None,
+    })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

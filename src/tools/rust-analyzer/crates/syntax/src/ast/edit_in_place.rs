@@ -591,7 +591,7 @@ impl ast::AssocItemList {
                     normalize_ws_between_braces(self.syntax());
                     (IndentLevel::from_token(&l_curly) + 1, ted::Position::after(&l_curly), "\n")
                 }
-                None => (IndentLevel::single(), ted::Position::last_child_of(self.syntax()), "\n"),
+                None => (IndentLevel::zero(), ted::Position::last_child_of(self.syntax()), "\n"),
             },
         };
         let elements: Vec<SyntaxElement> = vec![

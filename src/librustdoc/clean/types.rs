@@ -7,9 +7,11 @@ use std::{fmt, iter};
 use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
+use rustc_ast as ast;
 use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -28,7 +30,6 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents};
 use tracing::{debug, trace};
-use {rustc_ast as ast, rustc_hir as hir};
 
 pub(crate) use self::ItemKind::*;
 pub(crate) use self::Type::{
@@ -884,6 +885,9 @@ pub(crate) enum ItemKind {
     TraitItem(Box<Trait>),
     TraitAliasItem(TraitAlias),
     ImplItem(Box<Impl>),
+    /// This variant is used only as a placeholder for trait impls in order to correctly compute
+    /// `doc_cfg` as trait impls are added to `clean::Crate` after we went through the whole tree.
+    PlaceholderImplItem,
     /// A required method in a trait declaration meaning it's only a function signature.
     RequiredMethodItem(Box<Function>, Defaultness),
     /// A method in a trait impl or a provided method in a trait declaration.
@@ -963,7 +967,8 @@ impl ItemKind {
             | AssocTypeItem(..)
             | StrippedItem(_)
             | KeywordItem
-            | AttributeItem => [].iter(),
+            | AttributeItem
+            | PlaceholderImplItem => [].iter(),
         }
     }
 }
@@ -2429,7 +2434,7 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 8);
-    static_assert_size!(ItemInner, 144);
+    static_assert_size!(ItemInner, 136);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);

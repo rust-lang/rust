@@ -25,17 +25,8 @@ pub macro throw_machine_stop_str($($tt:tt)*) {{
             write!(f, $($tt)*)
         }
     }
+    impl rustc_middle::mir::interpret::MachineStopType for Zst {}
 
-    impl rustc_middle::mir::interpret::MachineStopType for Zst {
-        fn diagnostic_message(&self) -> rustc_errors::DiagMessage {
-            self.to_string().into()
-        }
-
-        fn add_args(
-            self: Box<Self>,
-            _: &mut dyn FnMut(rustc_errors::DiagArgName, rustc_errors::DiagArgValue),
-        ) {}
-    }
     throw_machine_stop!(Zst)
 }}
 

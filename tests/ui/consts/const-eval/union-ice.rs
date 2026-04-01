@@ -1,5 +1,5 @@
 //@ only-x86_64
-
+//@ ignore-parallel-frontend different alloc ids
 type Field1 = i32;
 type Field3 = i64;
 

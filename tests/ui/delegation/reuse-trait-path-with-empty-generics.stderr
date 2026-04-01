@@ -1,0 +1,9 @@
+error[E0423]: expected function, found trait `Trait`
+  --> $DIR/reuse-trait-path-with-empty-generics.rs:10:11
+   |
+LL |     reuse Trait::<> as bar4;
+   |           ^^^^^^^^^ not a function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0423`.

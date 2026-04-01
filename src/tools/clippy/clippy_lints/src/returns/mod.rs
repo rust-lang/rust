@@ -115,7 +115,11 @@ declare_clippy_lint! {
     "using a return statement like `return Err(expr)?;` where removing it would suffice"
 }
 
-declare_lint_pass!(Return => [LET_AND_RETURN, NEEDLESS_RETURN, NEEDLESS_RETURN_WITH_QUESTION_MARK]);
+declare_lint_pass!(Return => [
+    LET_AND_RETURN,
+    NEEDLESS_RETURN,
+    NEEDLESS_RETURN_WITH_QUESTION_MARK,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for Return {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {

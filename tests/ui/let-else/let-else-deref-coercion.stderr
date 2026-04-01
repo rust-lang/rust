@@ -6,7 +6,7 @@ LL |         let Bar::Present(z) = self else {
    |             |
    |             expected `Foo`, found `Bar`
    |
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |         let Bar::Present(z) = &**self else {
    |                               +++
@@ -19,7 +19,7 @@ LL |         let Bar(z) = x;
    |             |
    |             expected `Foo`, found `Bar`
    |
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |         let Bar(z) = &**x;
    |                      +++

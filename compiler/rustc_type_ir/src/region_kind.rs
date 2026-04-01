@@ -4,7 +4,7 @@ use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use rustc_type_ir_macros::GenericTypeVisitable;
 
 use self::RegionKind::*;
@@ -16,7 +16,7 @@ rustc_index::newtype_index! {
     #[orderable]
     #[debug_format = "'?{}"]
     #[gate_rustc_only]
-    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[stable_hash_no_context]
     pub struct RegionVid {}
 }
 
@@ -34,26 +34,26 @@ rustc_index::newtype_index! {
 /// In general, the region lattice looks like
 ///
 /// ```text
-/// static ----------+-----...------+       (greatest)
+/// empty(Un) --------                      (smallest)
+/// |                 \
+/// ...                \
+/// |                   \
+/// empty(U1) --         \
+/// |           \         placeholder(Un)
+/// |            \                  |
+/// empty(root)   placeholder(U1)   |
+/// |                |              |
+/// |                |              |
 /// |                |              |
 /// param regions    |              |
 /// |                |              |
-/// |                |              |
-/// |                |              |
-/// empty(root)   placeholder(U1)   |
-/// |            /                  |
-/// |           /         placeholder(Un)
-/// empty(U1) --         /
-/// |                   /
-/// ...                /
-/// |                 /
-/// empty(Un) --------                      (smallest)
+/// static ----------+-----...------+       (greatest)
 /// ```
 ///
-/// Early-bound/free regions are the named lifetimes in scope from the
-/// function declaration. They have relationships to one another
-/// determined based on the declared relationships from the
-/// function.
+/// Lifetimes in scope from a function declaration are represented via
+/// [`RegionKind::ReEarlyParam`]/[`RegionKind::ReLateParam`]. They
+/// have relationships to one another and `'static` based on the
+/// declared relationships from the function.
 ///
 /// Note that inference variables and bound regions are not included
 /// in this diagram. In the case of inference variables, they should
@@ -62,29 +62,36 @@ rustc_index::newtype_index! {
 /// include -- the diagram indicates the relationship between free
 /// regions.
 ///
+/// You can read more about the distinction between early and late bound
+/// parameters in the rustc dev guide: [Early vs Late bound parameters].
+///
+/// A note on subtyping: If we assume that references take their region
+/// covariantly, and use that to define the subtyping relationship of regions,
+/// it may be somewhat surprising that `'empty` is Top and `'static` is Bottom,
+/// and that "`'a` is a subtype of `'b`" is defined as "`'a` is bigger than
+/// `'b`" - good to keep in mind.
+///
 /// ## Inference variables
 ///
 /// During region inference, we sometimes create inference variables,
-/// represented as `ReVar`. These will be inferred by the code in
-/// `infer::lexical_region_resolve` to some free region from the
-/// lattice above (the minimal region that meets the
+/// represented as [`RegionKind::ReVar`]. These will be inferred by
+/// the code in `infer::lexical_region_resolve` to some free region
+/// from the lattice above (the minimal region that meets the
 /// constraints).
 ///
 /// During NLL checking, where regions are defined differently, we
-/// also use `ReVar` -- in that case, the index is used to index into
-/// the NLL region checker's data structures. The variable may in fact
-/// represent either a free region or an inference variable, in that
-/// case.
+/// also use [`RegionKind::ReVar`] -- in that case, the index is used
+/// to index into the NLL region checker's data structures. The
+/// variable may in fact represent either a free region or an
+/// inference variable, in that case.
 ///
 /// ## Bound Regions
 ///
 /// These are regions that are stored behind a binder and must be instantiated
-/// with some concrete region before being used. There are two kind of
-/// bound regions: early-bound, which are bound in an item's `Generics`,
-/// and are instantiated by an `GenericArgs`, and late-bound, which are part of
-/// higher-ranked types (e.g., `for<'a> fn(&'a ())`), and are instantiated by
-/// the likes of `liberate_late_bound_regions`. The distinction exists
-/// because higher-ranked lifetimes aren't supported in all places. See [1][2].
+/// with some concrete region before being used. A type can be wrapped in a
+/// `Binder`, which introduces new type/const/lifetime variables (e.g., `for<'a>
+/// fn(&'a ())`). These parameters are referred to via [`RegionKind::ReBound`].
+/// You can instantiate them by the likes of `liberate_late_bound_regions`.
 ///
 /// Unlike `Param`s, bound regions are not supposed to exist "in the wild"
 /// outside their binder, e.g., in types passed to type inference, and
@@ -123,8 +130,7 @@ rustc_index::newtype_index! {
 /// happen, you can use `leak_check`. This is more clearly explained
 /// by the [rustc dev guide].
 ///
-/// [1]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
-/// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
+/// [Early vs Late bound parameters]: https://rustc-dev-guide.rust-lang.org/early-late-parameters.html
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[derive(GenericTypeVisitable)]
@@ -160,7 +166,7 @@ pub enum RegionKind<I: Interner> {
     /// more info about early and late bound lifetime parameters.
     ReLateParam(I::LateParamRegion),
 
-    /// Static data that has an "infinite" lifetime. Top in the region lattice.
+    /// Static data that has an "infinite" lifetime. Bottom in the region lattice.
     ReStatic,
 
     /// A region variable. Should not exist outside of type inference.
@@ -211,15 +217,15 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 
 #[cfg(feature = "nightly")]
 // This is not a derived impl because a derive would require `I: HashStable`
-impl<CTX, I: Interner> HashStable<CTX> for RegionKind<I>
+impl<Hcx, I: Interner> HashStable<Hcx> for RegionKind<I>
 where
-    I::EarlyParamRegion: HashStable<CTX>,
-    I::LateParamRegion: HashStable<CTX>,
-    I::DefId: HashStable<CTX>,
-    I::Symbol: HashStable<CTX>,
+    I::EarlyParamRegion: HashStable<Hcx>,
+    I::LateParamRegion: HashStable<Hcx>,
+    I::DefId: HashStable<Hcx>,
+    I::Symbol: HashStable<Hcx>,
 {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
             ReErased | ReStatic | ReError(_) => {

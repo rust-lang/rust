@@ -357,6 +357,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert(1, 2);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     #[rustc_const_stable(feature = "const_collections_with_hasher", since = "1.85.0")]
     pub const fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
@@ -389,6 +390,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert(1, 2);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashMap<K, V, S> {
         HashMap { base: base::HashMap::with_capacity_and_hasher(capacity, hasher) }
@@ -409,6 +411,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
     /// the `HashMap` to be useful, see its documentation for details.
     #[inline]
+    #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_hasher_in(hash_builder: S, alloc: A) -> Self {
         HashMap { base: base::HashMap::with_hasher_in(hash_builder, alloc) }
@@ -430,6 +433,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// the `HashMap` to be useful, see its documentation for details.
     ///
     #[inline]
+    #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_and_hasher_in(capacity: usize, hash_builder: S, alloc: A) -> Self {
         HashMap { base: base::HashMap::with_capacity_and_hasher_in(capacity, hash_builder, alloc) }

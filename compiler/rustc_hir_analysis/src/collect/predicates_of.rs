@@ -1,5 +1,6 @@
+use std::assert_matches;
+
 use hir::Node;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -106,7 +107,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             );
 
             return ty::GenericPredicates {
-                parent: Some(tcx.parent(def_id.to_def_id())),
+                parent: Some(tcx.local_parent(def_id).to_def_id()),
                 predicates: tcx.arena.alloc_from_iter(predicates),
             };
         }
@@ -435,6 +436,11 @@ fn const_evaluatable_predicates_of<'tcx>(
                     //
                     //     struct Foo<const N: usize, const M: usize = { N + 1 }>;
                     //     struct Bar<const N: usize>(Foo<N, 3>);
+                    return;
+                }
+
+                // Skip type consts as mGCA doesn't support evaluatable clauses.
+                if self.tcx.is_type_const(uv.def) {
                     return;
                 }
 
@@ -1063,6 +1069,9 @@ pub(super) fn const_conditions<'tcx>(
         },
         // N.B. Tuple ctors are unconditionally constant.
         Node::Ctor(hir::VariantData::Tuple { .. }) => return Default::default(),
+        Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_), .. }) => {
+            (hir::Generics::empty(), None, tcx.is_conditionally_const(tcx.local_parent(def_id)))
+        }
         _ => bug!("const_conditions called on wrong item: {def_id:?}"),
     };
 

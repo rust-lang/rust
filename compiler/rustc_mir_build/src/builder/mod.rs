@@ -68,11 +68,11 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
 /// be called by the query `mir_built`.
 pub(crate) fn build_mir_inner_impl<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
     tcx.ensure_done().thir_abstract_const(def);
-    if let Err(e) = tcx.ensure_ok().check_match(def) {
+    if let Err(e) = tcx.ensure_result().check_match(def) {
         return construct_error(tcx, def, e);
     }
 
-    if let Err(err) = tcx.ensure_ok().check_tail_calls(def) {
+    if let Err(err) = tcx.ensure_result().check_tail_calls(def) {
         return construct_error(tcx, def, err);
     }
 
@@ -491,7 +491,7 @@ fn construct_fn<'tcx>(
     };
 
     if let Some((dialect, phase)) =
-        find_attr!(tcx.hir_attrs(fn_id), CustomMir(dialect, phase, _) => (dialect, phase))
+        find_attr!(tcx, fn_id, CustomMir(dialect, phase, _) => (dialect, phase))
     {
         return custom::build_custom_mir(
             tcx,

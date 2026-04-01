@@ -6,7 +6,6 @@
 mod test_1 {
     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
     reuse foo as bar;
-    //~^ ERROR: type annotations needed
 
     fn check<A, B, C>() {
         bar::<1, 2, 3, 4, 5, 6>();
@@ -44,7 +43,7 @@ mod test_2 {
     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
 
     reuse foo::<> as bar1;
-    //~^ ERROR: type annotations needed
+    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
 
     reuse foo::<String, String> as bar2;
     //~^ ERROR: function takes 3 generic arguments but 2 generic arguments were supplied
@@ -85,18 +84,23 @@ mod test_3 {
     //~| ERROR: cannot find type `asd` in this scope
     //~| ERROR: cannot find type `asd` in this scope
     //~| ERROR: cannot find type `asdasa` in this scope
+    //~| ERROR: trait takes 3 lifetime arguments but 0 lifetime arguments were supplied
     //~| ERROR: trait takes 2 generic arguments but 6 generic arguments were supplied
 
     reuse Trait::<'static, 'static>::foo as bar2;
     //~^ ERROR: trait takes 3 lifetime arguments but 2 lifetime arguments were supplied
+    //~| ERROR: the placeholder `_` is not allowed within types on item signatures for functions
     reuse Trait::<1, 2, 3, 4, 5>::foo as bar3;
-    //~^ ERROR: trait takes 2 generic arguments but 5 generic arguments were supplied
+    //~^ ERROR: trait takes 3 lifetime arguments but 0 lifetime arguments were supplied
+    //~| ERROR: trait takes 2 generic arguments but 5 generic arguments were supplied
 
     reuse Trait::<1, 2, true>::foo as bar4;
-    //~^ ERROR: trait takes 2 generic arguments but 3 generic arguments were supplied
+    //~^ ERROR: trait takes 3 lifetime arguments but 0 lifetime arguments were supplied
+    //~| ERROR: trait takes 2 generic arguments but 3 generic arguments were supplied
 
     reuse Trait::<'static>::foo as bar5;
     //~^ ERROR: trait takes 3 lifetime arguments but 1 lifetime argument was supplied
+    //~| ERROR: the placeholder `_` is not allowed within types on item signatures for functions
 
     reuse Trait::<1, 2, 'static, DDDD>::foo::<1, 2, 3, 4, 5, 6> as bar6;
     //~^ ERROR: cannot find type `DDDD` in this scope [E0425]

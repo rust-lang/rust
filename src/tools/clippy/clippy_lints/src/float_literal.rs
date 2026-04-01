@@ -61,13 +61,11 @@ declare_clippy_lint! {
     "lossy whole number float literals"
 }
 
+impl_lint_pass!(FloatLiteral => [EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL]);
+
 pub struct FloatLiteral {
     const_literal_digits_threshold: usize,
 }
-
-impl_lint_pass!(FloatLiteral => [
-    EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL
-]);
 
 impl FloatLiteral {
     pub fn new(conf: &'static Conf) -> Self {

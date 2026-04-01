@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
@@ -450,28 +451,23 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 requirement,
                 expected_found: Some((expected, found)),
             } => {
-                // `RegionOriginNote` can appear multiple times on one diagnostic with different
-                // `requirement` values. Scope args per-note and eagerly translate to avoid
-                // cross-note arg collisions.
-                // See https://github.com/rust-lang/rust/issues/143872 for details.
-                diag.store_args();
-                diag.arg("requirement", requirement);
-                let msg = diag.eagerly_translate(msg!(
+                let msg = msg!(
                     "...so that the {$requirement ->
-                            [method_compat] method type is compatible with trait
-                            [type_compat] associated type is compatible with trait
-                            [const_compat] const is compatible with trait
-                            [expr_assignable] expression is assignable
-                            [if_else_different] `if` and `else` have incompatible types
-                            [no_else] `if` missing an `else` returns `()`
-                            [fn_main_correct_type] `main` function has the correct type
-                            [fn_lang_correct_type] lang item function has the correct type
-                            [intrinsic_correct_type] intrinsic has the correct type
-                            [method_correct_type] method receiver has the correct type
-                            *[other] types are compatible
-                        }"
-                ));
-                diag.restore_args();
+                        [method_compat] method type is compatible with trait
+                        [type_compat] associated type is compatible with trait
+                        [const_compat] const is compatible with trait
+                        [expr_assignable] expression is assignable
+                        [if_else_different] `if` and `else` have incompatible types
+                        [no_else] `if` missing an `else` returns `()`
+                        [fn_main_correct_type] `main` function has the correct type
+                        [fn_lang_correct_type] lang item function has the correct type
+                        [intrinsic_correct_type] intrinsic has the correct type
+                        [method_correct_type] method receiver has the correct type
+                        *[other] types are compatible
+                    }"
+                )
+                .arg("requirement", requirement)
+                .format();
                 label_or_note(diag, span, msg);
 
                 diag.note_expected_found("", expected, "", found);
@@ -480,9 +476,7 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 // FIXME: this really should be handled at some earlier stage. Our
                 // handling of region checking when type errors are present is
                 // *terrible*.
-                diag.store_args();
-                diag.arg("requirement", requirement);
-                let msg = diag.eagerly_translate(msg!(
+                let msg = msg!(
                     "...so that {$requirement ->
                             [method_compat] method type is compatible with trait
                             [type_compat] associated type is compatible with trait
@@ -496,8 +490,9 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                             [method_correct_type] method receiver has the correct type
                             *[other] types are compatible
                         }"
-                ));
-                diag.restore_args();
+                )
+                .arg("requirement", requirement)
+                .format();
                 label_or_note(diag, span, msg);
             }
         };
@@ -1174,7 +1169,9 @@ impl Subdiagnostic for ConsiderBorrowingParamHelp {
             type_param_span
                 .push_span_label(span, msg!("consider borrowing this type parameter in the trait"));
         }
-        let msg = diag.eagerly_translate(msg!("the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`"));
+        let msg = msg!(
+            "the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`"
+        );
         diag.span_help(type_param_span, msg);
     }
 }
@@ -1218,10 +1215,9 @@ impl Subdiagnostic for DynTraitConstraintSuggestion {
             self.ident.span,
             msg!("calling this method introduces the `impl`'s `'static` requirement"),
         );
-        let msg = diag.eagerly_translate(msg!("the used `impl` has a `'static` requirement"));
+        let msg = msg!("the used `impl` has a `'static` requirement");
         diag.span_note(multi_span, msg);
-        let msg =
-            diag.eagerly_translate(msg!("consider relaxing the implicit `'static` requirement"));
+        let msg = msg!("consider relaxing the implicit `'static` requirement");
         diag.span_suggestion_verbose(
             self.span.shrink_to_hi(),
             msg,
@@ -1229,38 +1225,6 @@ impl Subdiagnostic for DynTraitConstraintSuggestion {
             Applicability::MaybeIncorrect,
         );
     }
-}
-
-#[derive(Diagnostic)]
-#[diag("{$has_param_name ->
-    [true] `{$param_name}`
-    *[false] `fn` parameter
-} has {$lifetime_kind ->
-    [true] lifetime `{$lifetime}`
-    *[false] an anonymous lifetime `'_`
-} but calling `{$assoc_item}` introduces an implicit `'static` lifetime requirement", code = E0772)]
-pub struct ButCallingIntroduces {
-    #[label(
-        "{$has_lifetime ->
-        [true] lifetime `{$lifetime}`
-        *[false] an anonymous lifetime `'_`
-    }"
-    )]
-    pub param_ty_span: Span,
-    #[primary_span]
-    #[label("...is used and required to live as long as `'static` here because of an implicit lifetime bound on the {$has_impl_path ->
-        [true] `impl` of `{$impl_path}`
-        *[false] inherent `impl`
-    }")]
-    pub cause_span: Span,
-
-    pub has_param_name: bool,
-    pub param_name: String,
-    pub has_lifetime: bool,
-    pub lifetime: String,
-    pub assoc_item: Symbol,
-    pub has_impl_path: bool,
-    pub impl_path: String,
 }
 
 pub struct ReqIntroducedLocations {
@@ -1284,9 +1248,7 @@ impl Subdiagnostic for ReqIntroducedLocations {
             );
         }
         self.span.push_span_label(self.cause_span, msg!("because of this returned expression"));
-        let msg = diag.eagerly_translate(msg!(
-            "\"`'static` lifetime requirement introduced by the return type"
-        ));
+        let msg = msg!("\"`'static` lifetime requirement introduced by the return type");
         diag.span_note(self.span, msg);
     }
 }
@@ -1726,8 +1688,7 @@ pub struct SuggestTuplePatternMany {
 impl Subdiagnostic for SuggestTuplePatternMany {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("path", self.path);
-        let message =
-            diag.eagerly_translate(msg!("try wrapping the pattern in a variant of `{$path}`"));
+        let message = msg!("try wrapping the pattern in a variant of `{$path}`");
         diag.multipart_suggestions(
             message,
             self.compatible_variants.into_iter().map(|variant| {
@@ -1746,7 +1707,8 @@ pub enum TypeErrorAdditionalDiags {
     #[suggestion(
         "if you meant to write a byte literal, prefix with `b`",
         code = "b'{code}'",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     MeantByteLiteral {
         #[primary_span]
@@ -1756,7 +1718,8 @@ pub enum TypeErrorAdditionalDiags {
     #[suggestion(
         "if you meant to write a `char` literal, use single quotes",
         code = "'{code}'",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     MeantCharLiteral {
         #[primary_span]
@@ -1776,7 +1739,8 @@ pub enum TypeErrorAdditionalDiags {
     #[suggestion(
         "consider specifying the actual array length",
         code = "{length}",
-        applicability = "maybe-incorrect"
+        applicability = "maybe-incorrect",
+        style = "verbose"
     )]
     ConsiderSpecifyingLength {
         #[primary_span]

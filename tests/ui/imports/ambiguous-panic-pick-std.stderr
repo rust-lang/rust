@@ -4,8 +4,6 @@ warning: `panic` is ambiguous
 LL |     panic!(std::string::String::new());
    |     ^^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #147319 <https://github.com/rust-lang/rust/issues/147319>
    = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
 note: `panic` could refer to the macro imported here
   --> $DIR/ambiguous-panic-pick-std.rs:7:5
@@ -16,6 +14,8 @@ LL | use ::std::prelude::v1::*;
    = help: or use `crate::panic` to refer to this macro unambiguously
 note: `panic` could also refer to a macro from prelude
   --> $SRC_DIR/core/src/prelude/mod.rs:LL:COL
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147319 <https://github.com/rust-lang/rust/issues/147319>
    = note: `#[warn(ambiguous_panic_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: panic message is not a string literal
@@ -24,8 +24,8 @@ warning: panic message is not a string literal
 LL |     panic!(std::string::String::new());
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
    = note: this usage of `panic!()` is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
    = note: `#[warn(non_fmt_panics)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 help: add a "{}" format string to `Display` the message

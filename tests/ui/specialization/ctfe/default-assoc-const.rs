@@ -1,7 +1,6 @@
 //! Regression test for revealing associated types through specialization during const eval.
 //@ check-pass
 #![feature(specialization)]
-//~^ WARNING the feature `specialization` is incomplete and may not be safe to use
 
 trait Foo {
     const ASSOC: usize;

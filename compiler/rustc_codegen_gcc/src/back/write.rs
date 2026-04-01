@@ -2,12 +2,10 @@ use std::{env, fs};
 
 use gccjit::{Context, OutputKind};
 use rustc_codegen_ssa::back::link::ensure_removed;
-use rustc_codegen_ssa::back::write::{
-    BitcodeSection, CodegenContext, EmitObj, ModuleConfig, SharedEmitter,
-};
+use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_errors::DiagCtxt;
+use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::link_or_copy;
 use rustc_log::tracing::debug;
 use rustc_session::config::OutputType;
@@ -20,13 +18,10 @@ use crate::{GccContext, LtoMode};
 pub(crate) fn codegen(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
-    shared_emitter: &SharedEmitter,
+    dcx: DiagCtxtHandle<'_>,
     module: ModuleCodegen<GccContext>,
     config: &ModuleConfig,
 ) -> CompiledModule {
-    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
-    let dcx = dcx.handle();
-
     let _timer = prof.generic_activity_with_arg("GCC_module_codegen", &*module.name);
     {
         let context = &module.module_llvm.context;
@@ -49,7 +44,7 @@ pub(crate) fn codegen(
             let _timer =
                 prof.generic_activity_with_arg("GCC_module_codegen_make_bitcode", &*module.name);
 
-            // TODO(antoyo)
+            // FIXME(antoyo)
             /*if let Some(bitcode_filename) = bc_out.file_name() {
                 cgcx.prof.artifact_size(
                     "llvm_bitcode",
@@ -73,14 +68,14 @@ pub(crate) fn codegen(
                 let _timer = prof
                     .generic_activity_with_arg("GCC_module_codegen_embed_bitcode", &*module.name);
                 if lto_supported {
-                    // TODO(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
+                    // FIXME(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
                     //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
 
                     context.add_command_line_option("-flto=auto");
                     context.add_command_line_option("-flto-partition=one");
                     context.add_command_line_option("-ffat-lto-objects");
                 }
-                // TODO(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
+                // FIXME(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
                 context
                     .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
             }
@@ -140,7 +135,7 @@ pub(crate) fn codegen(
 
                         // NOTE: without -fuse-linker-plugin, we get the following error:
                         // lto1: internal compiler error: decompressed stream: Destination buffer is too small
-                        // TODO(antoyo): since we do not do LTO when the linker is invoked anymore, perhaps
+                        // FIXME(antoyo): since we do not do LTO when the linker is invoked anymore, perhaps
                         // the following flag is not necessary anymore.
                         context.add_driver_option("-fuse-linker-plugin");
                     }

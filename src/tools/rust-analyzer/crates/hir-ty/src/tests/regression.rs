@@ -2754,6 +2754,7 @@ where
             664..680 'filter...ter_fn': dyn Fn(&'? T) -> bool + 'static
             691..698 'loop {}': !
             696..698 '{}': ()
+            512..513 'N': usize
         "#]],
     );
 }
@@ -2793,5 +2794,50 @@ fn foo() {
             98..119 'is_siz...rsive>': fn is_sized<Recursive>()
             98..121 'is_siz...ive>()': ()
         "#]],
+    );
+}
+
+#[test]
+fn regression_21742() {
+    check_no_mismatches(
+        r#"
+pub trait IntoIterator {
+    type Item;
+}
+
+pub trait Collection: IntoIterator<Item = <Self as Collection>::Item> {
+    type Item;
+    fn contains(&self, item: &<Self as Collection>::Item);
+}
+
+fn contains_0<S: Collection<Item = i32>>(points: &S) {
+    points.contains(&0)
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_21773() {
+    check_no_mismatches(
+        r#"
+trait Neg {
+    type Output;
+}
+
+trait Abs: Neg {
+    fn abs(&self) -> Self::Output;
+}
+
+trait SelfAbs: Abs + Neg
+where
+    Self::Output: Neg<Output = Self::Output> + Abs,
+{
+}
+
+fn wrapped_abs<T: SelfAbs<Output = T>>(v: T) -> T {
+    v.abs()
+}
+    "#,
     );
 }

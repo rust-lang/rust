@@ -308,10 +308,10 @@ fn wtf8buf_truncate_fail_code_point_boundary() {
 }
 
 #[test]
-#[should_panic]
-fn wtf8buf_truncate_fail_longer() {
+fn wtf8buf_truncate_invalid_len() {
     let mut string = Wtf8Buf::from_str("aé");
     string.truncate(4);
+    assert_eq!(string, Wtf8Buf::from_str("aé"));
 }
 
 #[test]

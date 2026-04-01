@@ -8,16 +8,18 @@ use crate::diagnostics::{CheckId, TidyCtx};
 
 const RUSTDOC_JSON_TYPES: &str = "src/rustdoc-json-types";
 
-pub fn check(src_path: &Path, ci_info: &crate::CiInfo, tidy_ctx: TidyCtx) {
+pub fn check(src_path: &Path, tidy_ctx: TidyCtx) {
     let mut check = tidy_ctx.start_check(CheckId::new("rustdoc_json").path(src_path));
 
-    let Some(base_commit) = &ci_info.base_commit else {
+    let Some(base_commit) = &tidy_ctx.base_commit else {
         check.verbose_msg("No base commit, skipping rustdoc_json check");
         return;
     };
 
     // First we check that `src/rustdoc-json-types` was modified.
-    if !crate::files_modified(ci_info, |p| p.starts_with(RUSTDOC_JSON_TYPES)) {
+    if !crate::files_modified(&tidy_ctx.base_commit, tidy_ctx.is_running_on_ci(), |p| {
+        p.starts_with(RUSTDOC_JSON_TYPES)
+    }) {
         // `rustdoc-json-types` was not modified so nothing more to check here.
         return;
     }

@@ -22,6 +22,7 @@ use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItem
 
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
+pub(crate) mod on_move;
 pub(crate) mod on_unimplemented;
 
 #[derive(Copy, Clone)]
@@ -32,6 +33,8 @@ pub(crate) enum Mode {
     DiagnosticOnUnimplemented,
     /// `#[diagnostic::on_const]`
     DiagnosticOnConst,
+    /// `#[diagnostic::on_move]`
+    DiagnosticOnMove,
 }
 
 fn merge_directives<S: Stage>(
@@ -113,6 +116,13 @@ fn parse_directive_items<'p, S: Stage>(
                         span,
                     );
                 }
+                Mode::DiagnosticOnMove => {
+                    cx.emit_lint(
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        AttributeLintKind::MalformedOnMoveAttr { span },
+                        span,
+                    );
+                }
             }
             continue;
         }}
@@ -132,7 +142,7 @@ fn parse_directive_items<'p, S: Stage>(
                 Mode::RustcOnUnimplemented => {
                     cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
                 }
-                Mode::DiagnosticOnUnimplemented |Mode::DiagnosticOnConst => {
+                Mode::DiagnosticOnUnimplemented |Mode::DiagnosticOnConst | Mode::DiagnosticOnMove => {
                     cx.emit_lint(
                         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         AttributeLintKind::IgnoredDiagnosticOption {
@@ -460,11 +470,12 @@ fn parse_filter(input: Symbol) -> FilterFormatString {
                 // if the integer type has been resolved, to allow targeting all integers.
                 // `"{integer}"` and `"{float}"` come from numerics that haven't been inferred yet,
                 // from the `Display` impl of `InferTy` to be precise.
+                // `"{union|enum|struct}"` is used as a special selector for ADTs.
                 //
                 // Don't try to format these later!
-                Position::ArgumentNamed(arg @ ("integer" | "integral" | "float")) => {
-                    LitOrArg::Lit(Symbol::intern(&format!("{{{arg}}}")))
-                }
+                Position::ArgumentNamed(
+                    arg @ ("integer" | "integral" | "float" | "union" | "enum" | "struct"),
+                ) => LitOrArg::Lit(Symbol::intern(&format!("{{{arg}}}"))),
 
                 Position::ArgumentNamed(arg) => LitOrArg::Arg(Symbol::intern(arg)),
                 Position::ArgumentImplicitlyIs(_) => LitOrArg::Lit(sym::empty_braces),

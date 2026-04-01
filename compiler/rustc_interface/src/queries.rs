@@ -1,8 +1,8 @@
 use std::any::Any;
 use std::sync::Arc;
 
-use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::{CompiledModules, CrateInfo};
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
@@ -21,6 +21,7 @@ pub struct Linker {
     output_filenames: Arc<OutputFilenames>,
     // Only present when incr. comp. is enabled.
     crate_hash: Option<Svh>,
+    crate_info: CrateInfo,
     metadata: EncodedMetadata,
     ongoing_codegen: Box<dyn Any>,
 }
@@ -30,7 +31,7 @@ impl Linker {
         tcx: TyCtxt<'_>,
         codegen_backend: &dyn CodegenBackend,
     ) -> Linker {
-        let (ongoing_codegen, metadata) = passes::start_codegen(codegen_backend, tcx);
+        let (ongoing_codegen, crate_info, metadata) = passes::start_codegen(codegen_backend, tcx);
 
         Linker {
             dep_graph: tcx.dep_graph.clone(),
@@ -40,22 +41,32 @@ impl Linker {
             } else {
                 None
             },
+            crate_info,
             metadata,
             ongoing_codegen,
         }
     }
 
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) {
-        let (codegen_results, mut work_products) = sess.time("finish_ongoing_codegen", || {
-            match self.ongoing_codegen.downcast::<CodegenResults>() {
+        let (compiled_modules, mut work_products) = sess.time("finish_ongoing_codegen", || {
+            match self.ongoing_codegen.downcast::<CompiledModules>() {
                 // This was a check only build
-                Ok(codegen_results) => (*codegen_results, IndexMap::default()),
+                Ok(compiled_modules) => (*compiled_modules, IndexMap::default()),
 
                 Err(ongoing_codegen) => {
                     codegen_backend.join_codegen(ongoing_codegen, sess, &self.output_filenames)
                 }
             }
         });
+
+        if sess.codegen_units().as_usize() == 1 && sess.opts.unstable_opts.time_llvm_passes {
+            codegen_backend.print_pass_timings()
+        }
+
+        if sess.print_llvm_stats() {
+            codegen_backend.print_statistics()
+        }
+
         sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
 
         if sess.opts.incremental.is_some()
@@ -97,10 +108,11 @@ impl Linker {
 
         if sess.opts.unstable_opts.no_link {
             let rlink_file = self.output_filenames.with_extension(config::RLINK_EXT);
-            CodegenResults::serialize_rlink(
+            CompiledModules::serialize_rlink(
                 sess,
                 &rlink_file,
-                &codegen_results,
+                &compiled_modules,
+                &self.crate_info,
                 &self.metadata,
                 &self.output_filenames,
             )
@@ -112,6 +124,12 @@ impl Linker {
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
         let _timing = sess.timings.section_guard(sess.dcx(), TimingSection::Linking);
-        codegen_backend.link(sess, codegen_results, self.metadata, &self.output_filenames)
+        codegen_backend.link(
+            sess,
+            compiled_modules,
+            self.crate_info,
+            self.metadata,
+            &self.output_filenames,
+        )
     }
 }

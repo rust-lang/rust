@@ -35,6 +35,8 @@ declare_clippy_lint! {
     "manually reimplementing `rem_euclid`"
 }
 
+impl_lint_pass!(ManualRemEuclid => [MANUAL_REM_EUCLID]);
+
 pub struct ManualRemEuclid {
     msrv: Msrv,
 }
@@ -44,8 +46,6 @@ impl ManualRemEuclid {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(ManualRemEuclid => [MANUAL_REM_EUCLID]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

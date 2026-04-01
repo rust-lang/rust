@@ -1,6 +1,6 @@
 fn main() {
     extern "C" {
-        // Use the wrong type (ie. not `i32`) for the `c` argument.
+        // Use the wrong type (i.e. not `i32`) for the `c` argument.
         fn memchr(s: *const std::ffi::c_void, c: u8, n: usize) -> *mut std::ffi::c_void;
     }
 

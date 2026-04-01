@@ -49,7 +49,7 @@ pub fn __crc32d(crc: u32, data: u64) -> u32 {
 #[inline(always)]
 #[target_feature(enable = "jsconv")]
 #[cfg_attr(test, assert_instr(fjcvtzs))]
-#[stable(feature = "stdarch_aarch64_jscvt", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_aarch64_jscvt", since = "1.95.0")]
 pub fn __jcvt(a: f64) -> i32 {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -13532,7 +13532,14 @@ pub fn vmaxh_f16(a: f16, b: f16) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmaxnm))]
 pub fn vmaxnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
-    unsafe { simd_fmax(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnm.v1f64"
+        )]
+        fn _vmaxnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t;
+    }
+    unsafe { _vmaxnm_f64(a, b) }
 }
 #[doc = "Floating-point Maximum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmq_f64)"]
@@ -13541,7 +13548,14 @@ pub fn vmaxnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmaxnm))]
 pub fn vmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    unsafe { simd_fmax(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnm.v2f64"
+        )]
+        fn _vmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t;
+    }
+    unsafe { _vmaxnmq_f64(a, b) }
 }
 #[doc = "Floating-point Maximum Number"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmh_f16)"]
@@ -13551,7 +13565,14 @@ pub fn vmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxnm))]
 pub fn vmaxnmh_f16(a: f16, b: f16) -> f16 {
-    f16::max(a, b)
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnm.f16"
+        )]
+        fn _vmaxnmh_f16(a: f16, b: f16) -> f16;
+    }
+    unsafe { _vmaxnmh_f16(a, b) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmv_f16)"]
@@ -13561,7 +13582,14 @@ pub fn vmaxnmh_f16(a: f16, b: f16) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxnmv))]
 pub fn vmaxnmv_f16(a: float16x4_t) -> f16 {
-    unsafe { simd_reduce_max(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f16.v4f16"
+        )]
+        fn _vmaxnmv_f16(a: float16x4_t) -> f16;
+    }
+    unsafe { _vmaxnmv_f16(a) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmvq_f16)"]
@@ -13571,7 +13599,14 @@ pub fn vmaxnmv_f16(a: float16x4_t) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxnmv))]
 pub fn vmaxnmvq_f16(a: float16x8_t) -> f16 {
-    unsafe { simd_reduce_max(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f16.v8f16"
+        )]
+        fn _vmaxnmvq_f16(a: float16x8_t) -> f16;
+    }
+    unsafe { _vmaxnmvq_f16(a) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmv_f32)"]
@@ -13580,7 +13615,14 @@ pub fn vmaxnmvq_f16(a: float16x8_t) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
 pub fn vmaxnmv_f32(a: float32x2_t) -> f32 {
-    unsafe { simd_reduce_max(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f32.v2f32"
+        )]
+        fn _vmaxnmv_f32(a: float32x2_t) -> f32;
+    }
+    unsafe { _vmaxnmv_f32(a) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmvq_f64)"]
@@ -13589,7 +13631,14 @@ pub fn vmaxnmv_f32(a: float32x2_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
 pub fn vmaxnmvq_f64(a: float64x2_t) -> f64 {
-    unsafe { simd_reduce_max(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f64.v2f64"
+        )]
+        fn _vmaxnmvq_f64(a: float64x2_t) -> f64;
+    }
+    unsafe { _vmaxnmvq_f64(a) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmvq_f32)"]
@@ -13598,7 +13647,14 @@ pub fn vmaxnmvq_f64(a: float64x2_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmaxnmv))]
 pub fn vmaxnmvq_f32(a: float32x4_t) -> f32 {
-    unsafe { simd_reduce_max(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f32.v4f32"
+        )]
+        fn _vmaxnmvq_f32(a: float32x4_t) -> f32;
+    }
+    unsafe { _vmaxnmvq_f32(a) }
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxv_f16)"]
@@ -13846,7 +13902,14 @@ pub fn vminh_f16(a: f16, b: f16) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fminnm))]
 pub fn vminnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
-    unsafe { simd_fmin(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnm.v1f64"
+        )]
+        fn _vminnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t;
+    }
+    unsafe { _vminnm_f64(a, b) }
 }
 #[doc = "Floating-point Minimum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmq_f64)"]
@@ -13855,7 +13918,14 @@ pub fn vminnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fminnm))]
 pub fn vminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    unsafe { simd_fmin(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnm.v2f64"
+        )]
+        fn _vminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t;
+    }
+    unsafe { _vminnmq_f64(a, b) }
 }
 #[doc = "Floating-point Minimum Number"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmh_f16)"]
@@ -13865,7 +13935,14 @@ pub fn vminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminnm))]
 pub fn vminnmh_f16(a: f16, b: f16) -> f16 {
-    f16::min(a, b)
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnm.f16"
+        )]
+        fn _vminnmh_f16(a: f16, b: f16) -> f16;
+    }
+    unsafe { _vminnmh_f16(a, b) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmv_f16)"]
@@ -13875,7 +13952,14 @@ pub fn vminnmh_f16(a: f16, b: f16) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminnmv))]
 pub fn vminnmv_f16(a: float16x4_t) -> f16 {
-    unsafe { simd_reduce_min(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f16.v4f16"
+        )]
+        fn _vminnmv_f16(a: float16x4_t) -> f16;
+    }
+    unsafe { _vminnmv_f16(a) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmvq_f16)"]
@@ -13885,7 +13969,14 @@ pub fn vminnmv_f16(a: float16x4_t) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminnmv))]
 pub fn vminnmvq_f16(a: float16x8_t) -> f16 {
-    unsafe { simd_reduce_min(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f16.v8f16"
+        )]
+        fn _vminnmvq_f16(a: float16x8_t) -> f16;
+    }
+    unsafe { _vminnmvq_f16(a) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmv_f32)"]
@@ -13894,7 +13985,14 @@ pub fn vminnmvq_f16(a: float16x8_t) -> f16 {
 #[cfg_attr(test, assert_instr(fminnmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vminnmv_f32(a: float32x2_t) -> f32 {
-    unsafe { simd_reduce_min(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f32.v2f32"
+        )]
+        fn _vminnmv_f32(a: float32x2_t) -> f32;
+    }
+    unsafe { _vminnmv_f32(a) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmvq_f64)"]
@@ -13903,7 +14001,14 @@ pub fn vminnmv_f32(a: float32x2_t) -> f32 {
 #[cfg_attr(test, assert_instr(fminnmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vminnmvq_f64(a: float64x2_t) -> f64 {
-    unsafe { simd_reduce_min(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f64.v2f64"
+        )]
+        fn _vminnmvq_f64(a: float64x2_t) -> f64;
+    }
+    unsafe { _vminnmvq_f64(a) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmvq_f32)"]
@@ -13912,7 +14017,14 @@ pub fn vminnmvq_f64(a: float64x2_t) -> f64 {
 #[cfg_attr(test, assert_instr(fminnmv))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vminnmvq_f32(a: float32x4_t) -> f32 {
-    unsafe { simd_reduce_min(a) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f32.v4f32"
+        )]
+        fn _vminnmvq_f32(a: float32x4_t) -> f32;
+    }
+    unsafe { _vminnmvq_f32(a) }
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminv_f16)"]
@@ -14131,26 +14243,7 @@ pub fn vmlaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlal_high_s16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlal_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_s16)"]
@@ -14165,26 +14258,7 @@ pub fn vmlal_high_laneq_s16<const LANE: i32>(
     c: int16x8_t,
 ) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmlal_high_s16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlal_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_lane_s32)"]
@@ -14195,13 +14269,7 @@ pub fn vmlal_high_laneq_s16<const LANE: i32>(
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmlal_high_s32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlal_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_s32)"]
@@ -14216,13 +14284,7 @@ pub fn vmlal_high_laneq_s32<const LANE: i32>(
     c: int32x4_t,
 ) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlal_high_s32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlal_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_lane_u16)"]
@@ -14237,26 +14299,7 @@ pub fn vmlal_high_lane_u16<const LANE: i32>(
     c: uint16x4_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlal_high_u16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlal_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_u16)"]
@@ -14271,26 +14314,7 @@ pub fn vmlal_high_laneq_u16<const LANE: i32>(
     c: uint16x8_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmlal_high_u16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlal_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_lane_u32)"]
@@ -14305,13 +14329,7 @@ pub fn vmlal_high_lane_u32<const LANE: i32>(
     c: uint32x2_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmlal_high_u32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlal_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_u32)"]
@@ -14326,13 +14344,7 @@ pub fn vmlal_high_laneq_u32<const LANE: i32>(
     c: uint32x4_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlal_high_u32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlal_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_n_s16)"]
@@ -14475,26 +14487,7 @@ pub fn vmlsq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlsl_high_s16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlsl_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_s16)"]
@@ -14509,26 +14502,7 @@ pub fn vmlsl_high_laneq_s16<const LANE: i32>(
     c: int16x8_t,
 ) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmlsl_high_s16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlsl_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_lane_s32)"]
@@ -14539,13 +14513,7 @@ pub fn vmlsl_high_laneq_s16<const LANE: i32>(
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmlsl_high_s32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlsl_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_s32)"]
@@ -14560,13 +14528,7 @@ pub fn vmlsl_high_laneq_s32<const LANE: i32>(
     c: int32x4_t,
 ) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlsl_high_s32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlsl_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_lane_u16)"]
@@ -14581,26 +14543,7 @@ pub fn vmlsl_high_lane_u16<const LANE: i32>(
     c: uint16x4_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlsl_high_u16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlsl_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_u16)"]
@@ -14615,26 +14558,7 @@ pub fn vmlsl_high_laneq_u16<const LANE: i32>(
     c: uint16x8_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmlsl_high_u16(
-            a,
-            b,
-            simd_shuffle!(
-                c,
-                c,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmlsl_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_lane_u32)"]
@@ -14649,13 +14573,7 @@ pub fn vmlsl_high_lane_u32<const LANE: i32>(
     c: uint32x2_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmlsl_high_u32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlsl_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_u32)"]
@@ -14670,13 +14588,7 @@ pub fn vmlsl_high_laneq_u32<const LANE: i32>(
     c: uint32x4_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmlsl_high_u32(
-            a,
-            b,
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmlsl_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_n_s16)"]
@@ -14975,12 +14887,7 @@ pub fn vmul_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) -> float64
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmul_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        simd_mul(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_f16)"]
@@ -14992,25 +14899,7 @@ pub fn vmul_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float1
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        simd_mul(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_f64)"]
@@ -15104,25 +14993,7 @@ pub fn vmulh_laneq_f16<const LANE: i32>(a: f16, b: float16x8_t) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmull_high_s16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmull_high_s16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_s16)"]
@@ -15133,25 +15004,7 @@ pub fn vmull_high_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int32
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmull_high_s16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmull_high_s16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_lane_s32)"]
@@ -15162,12 +15015,7 @@ pub fn vmull_high_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int3
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmull_high_s32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmull_high_s32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_s32)"]
@@ -15178,12 +15026,7 @@ pub fn vmull_high_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int64
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmull_high_s32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmull_high_s32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_lane_u16)"]
@@ -15194,25 +15037,7 @@ pub fn vmull_high_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int6
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmull_high_u16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmull_high_u16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_u16)"]
@@ -15223,25 +15048,7 @@ pub fn vmull_high_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> uin
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmull_high_u16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmull_high_u16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_lane_u32)"]
@@ -15252,12 +15059,7 @@ pub fn vmull_high_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> ui
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmull_high_u32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmull_high_u32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_u32)"]
@@ -15268,12 +15070,7 @@ pub fn vmull_high_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> uin
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmull_high_u32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmull_high_u32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_n_s16)"]
@@ -15436,7 +15233,7 @@ pub fn vmull_p64(a: p64, b: p64) -> p128 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -> float64x2_t {
     static_assert!(LANE == 0);
-    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_f64)"]
@@ -15447,7 +15244,7 @@ pub fn vmulq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -> float6
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmuls_lane_f32)"]
@@ -15599,12 +15396,7 @@ pub fn vmulxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulx_lane_f16<const LANE: i32>(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmulx_f16(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmulx_f16(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_laneq_f16)"]
@@ -15616,12 +15408,7 @@ pub fn vmulx_lane_f16<const LANE: i32>(a: float16x4_t, b: float16x4_t) -> float1
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulx_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmulx_f16(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmulx_f16(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_lane_f16)"]
@@ -15633,25 +15420,7 @@ pub fn vmulx_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulxq_lane_f16<const LANE: i32>(a: float16x8_t, b: float16x4_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmulxq_f16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmulxq_f16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_laneq_f16)"]
@@ -15663,25 +15432,7 @@ pub fn vmulxq_lane_f16<const LANE: i32>(a: float16x8_t, b: float16x4_t) -> float
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulxq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmulxq_f16(
-            a,
-            simd_shuffle!(
-                b,
-                b,
-                [
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32,
-                    LANE as u32
-                ]
-            ),
-        )
-    }
+    unsafe { vmulxq_f16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_lane_f32)"]
@@ -15692,7 +15443,7 @@ pub fn vmulxq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> floa
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulx_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmulx_f32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { vmulx_f32(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_laneq_f32)"]
@@ -15703,7 +15454,7 @@ pub fn vmulx_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> float3
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulx_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmulx_f32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { vmulx_f32(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_lane_f32)"]
@@ -15714,12 +15465,7 @@ pub fn vmulx_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) -> float
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        vmulxq_f32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmulxq_f32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_laneq_f32)"]
@@ -15730,12 +15476,7 @@ pub fn vmulxq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) -> float
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmulxq_f32(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    unsafe { vmulxq_f32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_laneq_f64)"]
@@ -15746,7 +15487,7 @@ pub fn vmulxq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -> floa
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmulxq_f64(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { vmulxq_f64(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_lane_f64)"]
@@ -15916,7 +15657,7 @@ pub fn vmulxh_laneq_f16<const LANE: i32>(a: f16, b: float16x8_t) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -> float64x2_t {
     static_assert!(LANE == 0);
-    unsafe { vmulxq_f64(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    unsafe { vmulxq_f64(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
 }
 #[doc = "Negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vneg_f64)"]
@@ -17916,8 +17657,7 @@ pub fn vqnegd_s64(a: i64) -> i64 {
 pub fn vqrdmlah_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int16x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlah_s16(a, b, c)
     }
 }
@@ -17931,7 +17671,7 @@ pub fn vqrdmlah_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4
 pub fn vqrdmlah_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
+        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
         vqrdmlah_s32(a, b, c)
     }
 }
@@ -17945,8 +17685,7 @@ pub fn vqrdmlah_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2
 pub fn vqrdmlah_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe {
-        let c: int16x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlah_s16(a, b, c)
     }
 }
@@ -17960,7 +17699,7 @@ pub fn vqrdmlah_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x
 pub fn vqrdmlah_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
+        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
         vqrdmlah_s32(a, b, c)
     }
 }
@@ -17974,20 +17713,7 @@ pub fn vqrdmlah_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x
 pub fn vqrdmlahq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32
-            ]
-        );
+        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
         vqrdmlahq_s16(a, b, c)
     }
 }
@@ -18001,8 +17727,7 @@ pub fn vqrdmlahq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x
 pub fn vqrdmlahq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlahq_s32(a, b, c)
     }
 }
@@ -18016,20 +17741,7 @@ pub fn vqrdmlahq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x
 pub fn vqrdmlahq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe {
-        let c: int16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32
-            ]
-        );
+        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
         vqrdmlahq_s16(a, b, c)
     }
 }
@@ -18043,8 +17755,7 @@ pub fn vqrdmlahq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16
 pub fn vqrdmlahq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlahq_s32(a, b, c)
     }
 }
@@ -18190,8 +17901,7 @@ pub fn vqrdmlahs_s32(a: i32, b: i32, c: i32) -> i32 {
 pub fn vqrdmlsh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int16x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlsh_s16(a, b, c)
     }
 }
@@ -18205,7 +17915,7 @@ pub fn vqrdmlsh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4
 pub fn vqrdmlsh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
+        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
         vqrdmlsh_s32(a, b, c)
     }
 }
@@ -18219,8 +17929,7 @@ pub fn vqrdmlsh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2
 pub fn vqrdmlsh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe {
-        let c: int16x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlsh_s16(a, b, c)
     }
 }
@@ -18234,7 +17943,7 @@ pub fn vqrdmlsh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x
 pub fn vqrdmlsh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
+        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
         vqrdmlsh_s32(a, b, c)
     }
 }
@@ -18248,20 +17957,7 @@ pub fn vqrdmlsh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x
 pub fn vqrdmlshq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32
-            ]
-        );
+        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
         vqrdmlshq_s16(a, b, c)
     }
 }
@@ -18275,8 +17971,7 @@ pub fn vqrdmlshq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x
 pub fn vqrdmlshq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlshq_s32(a, b, c)
     }
 }
@@ -18290,20 +17985,7 @@ pub fn vqrdmlshq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x
 pub fn vqrdmlshq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe {
-        let c: int16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32
-            ]
-        );
+        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
         vqrdmlshq_s16(a, b, c)
     }
 }
@@ -18317,8 +17999,7 @@ pub fn vqrdmlshq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16
 pub fn vqrdmlshq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
         vqrdmlshq_s32(a, b, c)
     }
 }
@@ -25039,16 +24720,9 @@ pub unsafe fn vst1q_lane_f64<const LANE: i32>(a: *mut f64, b: float64x2_t) {
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(st1))]
+#[cfg_attr(test, assert_instr(stp))]
 pub unsafe fn vst2_f64(a: *mut f64, b: float64x1x2_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st2.v1f64.p0"
-        )]
-        fn _vst2_f64(a: float64x1_t, b: float64x1_t, ptr: *mut i8);
-    }
-    _vst2_f64(b.0, b.1, a as _)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_f64)"]
@@ -25125,14 +24799,7 @@ pub unsafe fn vst2_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st2))]
 pub unsafe fn vst2q_f64(a: *mut f64, b: float64x2x2_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st2.v2f64.p0"
-        )]
-        fn _vst2q_f64(a: float64x2_t, b: float64x2_t, ptr: *mut i8);
-    }
-    _vst2q_f64(b.0, b.1, a as _)
+    crate::core_arch::macros::interleaving_store!(f64, 2, 2, a, b)
 }
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s64)"]
@@ -25143,14 +24810,7 @@ pub unsafe fn vst2q_f64(a: *mut f64, b: float64x2x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st2))]
 pub unsafe fn vst2q_s64(a: *mut i64, b: int64x2x2_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st2.v2i64.p0"
-        )]
-        fn _vst2q_s64(a: int64x2_t, b: int64x2_t, ptr: *mut i8);
-    }
-    _vst2q_s64(b.0, b.1, a as _)
+    crate::core_arch::macros::interleaving_store!(i64, 2, 2, a, b)
 }
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_f64)"]
@@ -25295,14 +24955,7 @@ pub unsafe fn vst2q_u64(a: *mut u64, b: uint64x2x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vst3_f64(a: *mut f64, b: float64x1x3_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st3.v1f64.p0"
-        )]
-        fn _vst3_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t, ptr: *mut i8);
-    }
-    _vst3_f64(b.0, b.1, b.2, a as _)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_f64)"]
@@ -25379,14 +25032,7 @@ pub unsafe fn vst3_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st3))]
 pub unsafe fn vst3q_f64(a: *mut f64, b: float64x2x3_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st3.v2f64.p0"
-        )]
-        fn _vst3q_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t, ptr: *mut i8);
-    }
-    _vst3q_f64(b.0, b.1, b.2, a as _)
+    crate::core_arch::macros::interleaving_store!(f64, 2, 3, a, b)
 }
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s64)"]
@@ -25397,14 +25043,7 @@ pub unsafe fn vst3q_f64(a: *mut f64, b: float64x2x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st3))]
 pub unsafe fn vst3q_s64(a: *mut i64, b: int64x2x3_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st3.v2i64.p0"
-        )]
-        fn _vst3q_s64(a: int64x2_t, b: int64x2_t, c: int64x2_t, ptr: *mut i8);
-    }
-    _vst3q_s64(b.0, b.1, b.2, a as _)
+    crate::core_arch::macros::interleaving_store!(i64, 2, 3, a, b)
 }
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_f64)"]
@@ -25549,14 +25188,7 @@ pub unsafe fn vst3q_u64(a: *mut u64, b: uint64x2x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vst4_f64(a: *mut f64, b: float64x1x4_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st4.v1f64.p0"
-        )]
-        fn _vst4_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t, d: float64x1_t, ptr: *mut i8);
-    }
-    _vst4_f64(b.0, b.1, b.2, b.3, a as _)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_f64)"]
@@ -25647,14 +25279,7 @@ pub unsafe fn vst4_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st4))]
 pub unsafe fn vst4q_f64(a: *mut f64, b: float64x2x4_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st4.v2f64.p0"
-        )]
-        fn _vst4q_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t, d: float64x2_t, ptr: *mut i8);
-    }
-    _vst4q_f64(b.0, b.1, b.2, b.3, a as _)
+    crate::core_arch::macros::interleaving_store!(f64, 2, 4, a, b)
 }
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s64)"]
@@ -25665,14 +25290,7 @@ pub unsafe fn vst4q_f64(a: *mut f64, b: float64x2x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st4))]
 pub unsafe fn vst4q_s64(a: *mut i64, b: int64x2x4_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st4.v2i64.p0"
-        )]
-        fn _vst4q_s64(a: int64x2_t, b: int64x2_t, c: int64x2_t, d: int64x2_t, ptr: *mut i8);
-    }
-    _vst4q_s64(b.0, b.1, b.2, b.3, a as _)
+    crate::core_arch::macros::interleaving_store!(i64, 2, 4, a, b)
 }
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_f64)"]

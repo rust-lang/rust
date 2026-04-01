@@ -35,8 +35,7 @@ fn c() {
         //~^ ERROR cannot move out
         //~| NOTE cannot move out
         &mut [_a,
-        //~^ NOTE data moved here
-        //~| NOTE move occurs because `_a` has type
+        //~^ NOTE data moved here because `_a` has type
         //~| HELP consider removing the mutable borrow
             ..
         ] => {
@@ -59,8 +58,7 @@ fn d() {
         &mut [
         //~^ HELP consider removing the mutable borrow
          _b] => {}
-        //~^ NOTE data moved here
-        //~| NOTE move occurs because `_b` has type
+        //~^ NOTE data moved here because `_b` has type
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out

@@ -1050,6 +1050,14 @@ mod tests {
         test_vld1q_f16_x2(f16, 16, float16x8x2_t, vst1q_f16_x2, vld1q_f16_x2);
         test_vld1q_f16_x3(f16, 24, float16x8x3_t, vst1q_f16_x3, vld1q_f16_x3);
         test_vld1q_f16_x4(f16, 32, float16x8x4_t, vst1q_f16_x4, vld1q_f16_x4);
+
+        test_vld2_f16_x2(f16, 8, float16x4x2_t, vst2_f16, vld2_f16);
+        test_vld2_f16_x3(f16, 12, float16x4x3_t, vst3_f16, vld3_f16);
+        test_vld2_f16_x4(f16, 16, float16x4x4_t, vst4_f16, vld4_f16);
+
+        test_vld2q_f16_x2(f16, 16, float16x8x2_t, vst2q_f16, vld2q_f16);
+        test_vld3q_f16_x3(f16, 24, float16x8x3_t, vst3q_f16, vld3q_f16);
+        test_vld4q_f16_x4(f16, 32, float16x8x4_t, vst4q_f16, vld4q_f16);
     }
 
     macro_rules! wide_store_load_roundtrip_aes {

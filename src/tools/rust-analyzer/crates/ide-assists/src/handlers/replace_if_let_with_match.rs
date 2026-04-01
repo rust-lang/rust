@@ -972,7 +972,8 @@ fn main() {
 fn main() {
     if true {
         match path.strip_prefix(root_path)
-            .and(x) {
+            .and(x)
+        {
             Ok(rel_path) => {
                 let rel_path = RelativePathBuf::from_path(rel_path)
                     .ok()?;
@@ -1012,7 +1013,8 @@ fn main() {
 fn main() {
     if true {
         match path.strip_prefix(root_path)
-            .and(x) {
+            .and(x)
+        {
             Ok(rel_path) => {
                 Foo {
                     x: 1
@@ -1046,7 +1048,8 @@ fn main() {
 fn main() {
     if true {
         match true
-            && false {
+            && false
+        {
             true => foo(),
             false => (),
         }
@@ -1925,7 +1928,8 @@ fn main() {
 fn main() {
     if true {
         if let Ok(rel_path) = path.strip_prefix(root_path)
-            .and(x) {
+            .and(x)
+        {
             Foo {
                 x: 2
             }
@@ -1965,7 +1969,8 @@ fn main() {
 fn main() {
     if true {
         if let Ok(rel_path) = path.strip_prefix(root_path)
-            .and(x) {
+            .and(x)
+        {
             let rel_path = RelativePathBuf::from_path(rel_path)
                 .ok()?;
             Some((*id, rel_path))

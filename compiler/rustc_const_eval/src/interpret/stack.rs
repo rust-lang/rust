@@ -381,7 +381,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let locals = IndexVec::from_elem(dead_local, &body.local_decls);
         let pre_frame = Frame {
             body,
-            loc: Right(body.span), // Span used for errors caused during preamble.
+            loc: Right(self.tcx.def_span(body.source.def_id())), // Span used for errors caused during preamble.
             return_cont,
             return_place: return_place.clone(),
             locals,
@@ -408,7 +408,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Finish things up.
         M::after_stack_push(self)?;
-        self.frame_mut().loc = Left(mir::Location::START);
         // `tracing_separate_thread` is used to instruct the tracing_chrome [tracing::Layer] in Miri
         // to put the "frame" span on a separate trace thread/line than other spans, to make the
         // visualization in <https://ui.perfetto.dev> easier to interpret. It is set to a value of
@@ -466,9 +465,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
-    /// In the current stack frame, mark all locals as live that are not arguments and don't have
-    /// `Storage*` annotations (this includes the return place).
-    pub(crate) fn storage_live_for_always_live_locals(&mut self) -> InterpResult<'tcx> {
+    /// Call this after `push_stack_frame_raw` and when all the other setup that needs to be done
+    /// is completed.
+    pub(crate) fn push_stack_frame_done(&mut self) -> InterpResult<'tcx> {
+        // Mark all locals as live that are not arguments and don't have `Storage*` annotations
+        // (this includes the return place, but not the arguments).
         self.storage_live(mir::RETURN_PLACE)?;
 
         let body = self.body();
@@ -478,6 +479,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.storage_live(local)?;
             }
         }
+
+        // Get ready to execute the first instruction in the stack frame.
+        self.frame_mut().loc = Left(mir::Location::START);
+
         interp_ok(())
     }
 
@@ -631,8 +636,8 @@ impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// of variadic arguments. Return a list of the places that hold those arguments.
     pub(crate) fn allocate_varargs<I, J>(
         &mut self,
-        caller_args: &mut I,
-        callee_abis: &mut J,
+        caller_args: I,
+        mut callee_abis: J,
     ) -> InterpResult<'tcx, Vec<MPlaceTy<'tcx, M::Provenance>>>
     where
         I: Iterator<Item = (&'a FnArg<'tcx, M::Provenance>, &'a ArgAbi<'tcx, Ty<'tcx>>)>,

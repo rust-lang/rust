@@ -12,7 +12,7 @@ use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, SharedEmitter, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
+use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -24,7 +24,8 @@ use rustc_session::config::{self, Lto};
 use tracing::{debug, info};
 
 use crate::back::write::{
-    self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
+    self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, codegen,
+    save_temp_bitcode,
 };
 use crate::errors::{LlvmError, LtoBitcodeFromRlib};
 use crate::llvm::{self, build_string};
@@ -709,13 +710,13 @@ impl ModuleBufferMethods for ModuleBuffer {
     }
 }
 
-pub(crate) fn optimize_thin_module(
+pub(crate) fn optimize_and_codegen_thin_module(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     shared_emitter: &SharedEmitter,
     tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
     thin_module: ThinModule<LlvmCodegenBackend>,
-) -> ModuleCodegen<ModuleLlvm> {
+) -> CompiledModule {
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
 
@@ -794,7 +795,7 @@ pub(crate) fn optimize_thin_module(
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
     }
-    module
+    codegen(cgcx, prof, shared_emitter, module, &cgcx.module_config)
 }
 
 /// Maps LLVM module identifiers to their corresponding LLVM LTO cache keys

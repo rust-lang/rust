@@ -32,6 +32,7 @@ declare_clippy_lint! {
     restriction,
     "exported types named `Error` that implement `Error`"
 }
+
 declare_lint_pass!(ErrorImplError => [ERROR_IMPL_ERROR]);
 
 impl<'tcx> LateLintPass<'tcx> for ErrorImplError {

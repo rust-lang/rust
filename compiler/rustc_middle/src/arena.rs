@@ -32,7 +32,7 @@ macro_rules! arena_types {
                 rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,
             >,
             [] resolver: rustc_data_structures::steal::Steal<(
-                rustc_middle::ty::ResolverAstLowering,
+                rustc_middle::ty::ResolverAstLowering<'tcx>,
                 std::sync::Arc<rustc_ast::Crate>,
             )>,
             [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
@@ -92,7 +92,6 @@ macro_rules! arena_types {
             [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::Symbol>,
             [] autodiff_item: rustc_hir::attrs::AutoDiffItem,
             [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::Symbol>,
-            [] valtree: rustc_middle::ty::ValTreeKind<rustc_middle::ty::TyCtxt<'tcx>>,
             [] stable_order_of_exportable_impls:
                 rustc_data_structures::fx::FxIndexMap<rustc_hir::def_id::DefId, usize>,
 

@@ -50,7 +50,7 @@ fn make_mu_ref_uninit<'a>() -> MU<&'a u16> {
 
 #[no_mangle]
 fn make_mu_str(x: &str) -> MU<&str> {
-    // CHECK-LABEL: { ptr, i64 } @make_mu_str(ptr align 1 %x.0, i64 %x.1)
+    // CHECK-LABEL: { ptr, i64 } @make_mu_str(ptr %x.0, i64 %x.1)
     // CHECK-NEXT: start:
     // CHECK-NEXT: %0 = insertvalue { ptr, i64 } poison, ptr %x.0, 0
     // CHECK-NEXT: %1 = insertvalue { ptr, i64 } %0, i64 %x.1, 1

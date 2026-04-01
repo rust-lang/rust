@@ -16,6 +16,8 @@ LL |     arg.map(|v| &**v)
 error[E0308]: mismatched types
   --> $DIR/transforming-option-ref-issue-127545.rs:9:19
    |
+LL | pub fn bar(arg: Option<&Vec<i32>>) -> &[i32] {
+   |                                       ------ this return type influences the call expression's return type
 LL |     arg.unwrap_or(&[])
    |         --------- ^^^ expected `&Vec<i32>`, found `&[_; 0]`
    |         |
@@ -41,6 +43,8 @@ LL +     arg.map_or(&[], |v| v)
 error[E0308]: mismatched types
   --> $DIR/transforming-option-ref-issue-127545.rs:13:19
    |
+LL | pub fn barzz<'a>(arg: Option<&'a Vec<i32>>, v: &'a [i32]) -> &'a [i32] {
+   |                                                              --------- this return type influences the call expression's return type
 LL |     arg.unwrap_or(v)
    |         --------- ^ expected `&Vec<i32>`, found `&[i32]`
    |         |
@@ -66,6 +70,8 @@ LL +     arg.map_or(v, |v| v)
 error[E0308]: mismatched types
   --> $DIR/transforming-option-ref-issue-127545.rs:17:19
    |
+LL | pub fn convert_result(arg: Result<&Vec<i32>, ()>) -> &[i32] {
+   |                                                      ------ this return type influences the call expression's return type
 LL |     arg.unwrap_or(&[])
    |         --------- ^^^ expected `&Vec<i32>`, found `&[_; 0]`
    |         |

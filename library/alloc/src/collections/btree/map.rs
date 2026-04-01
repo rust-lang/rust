@@ -693,6 +693,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// map.insert(1, "a");
     /// ```
     #[unstable(feature = "btreemap_alloc", issue = "32838")]
+    #[must_use]
     pub const fn new_in(alloc: A) -> BTreeMap<K, V, A> {
         BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(alloc), _marker: PhantomData }
     }
@@ -1218,26 +1219,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         K: Ord,
         A: Clone,
     {
-        // Do we have to append anything at all?
-        if other.is_empty() {
-            return;
-        }
-
-        // We can just swap `self` and `other` if `self` is empty.
-        if self.is_empty() {
-            mem::swap(self, other);
-            return;
-        }
-
-        let self_iter = mem::replace(self, Self::new_in((*self.alloc).clone())).into_iter();
-        let other_iter = mem::replace(other, Self::new_in((*self.alloc).clone())).into_iter();
-        let root = self.root.get_or_insert_with(|| Root::new((*self.alloc).clone()));
-        root.append_from_sorted_iters(
-            self_iter,
-            other_iter,
-            &mut self.length,
-            (*self.alloc).clone(),
-        )
+        let other = mem::replace(other, Self::new_in((*self.alloc).clone()));
+        self.merge(other, |_key, _self_val, other_val| other_val);
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
@@ -2119,7 +2102,9 @@ impl<K, V> Default for Values<'_, K, V> {
     }
 }
 
-/// An iterator produced by calling `extract_if` on BTreeMap.
+/// This `struct` is created by the [`extract_if`] method on [`BTreeMap`].
+///
+/// [`extract_if`]: BTreeMap::extract_if
 #[stable(feature = "btree_extract_if", since = "1.91.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed; \
     use `retain` or `extract_if().for_each(drop)` to remove and discard elements"]

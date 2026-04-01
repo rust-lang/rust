@@ -6,8 +6,8 @@
 
 use crate::error::Error;
 use crate::intrinsics::{unchecked_add, unchecked_mul, unchecked_sub};
-use crate::mem::SizedTypeProperties;
-use crate::ptr::{Alignment, NonNull};
+use crate::mem::{Alignment, SizedTypeProperties};
+use crate::ptr::NonNull;
 use crate::{assert_unsafe_precondition, fmt, mem};
 
 /// Layout of a block of memory.
@@ -263,12 +263,12 @@ impl Layout {
     /// be that of a valid pointer, which means this must not be used
     /// as a "not yet initialized" sentinel value.
     /// Types that lazily allocate must track initialization by some other means.
-    #[stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "alloc_layout_extra", since = "1.95.0")]
+    #[rustc_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
     #[must_use]
     #[inline]
     pub const fn dangling_ptr(&self) -> NonNull<u8> {
-        NonNull::without_provenance(self.align.as_nonzero())
+        NonNull::without_provenance(self.align.as_nonzero_usize())
     }
 
     /// Creates a layout describing the record that can hold a value
@@ -423,8 +423,8 @@ impl Layout {
     /// let repeated = padding_needed.repeat(0).unwrap();
     /// assert_eq!(repeated, (Layout::from_size_align(0, 4).unwrap(), 8));
     /// ```
-    #[stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "alloc_layout_extra", since = "1.95.0")]
+    #[rustc_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
     #[inline]
     pub const fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
         // FIXME(const-hack): the following could be way shorter with `?`
@@ -520,8 +520,8 @@ impl Layout {
     /// aligned.
     ///
     /// On arithmetic overflow, returns `LayoutError`.
-    #[stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "alloc_layout_extra", since = "1.95.0")]
+    #[rustc_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
     #[inline]
     pub const fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
         if let Some(size) = self.size.checked_mul(n) {
@@ -538,8 +538,8 @@ impl Layout {
     /// and is not incorporated *at all* into the resulting layout.
     ///
     /// On arithmetic overflow, returns `LayoutError`.
-    #[stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "alloc_layout_extra", since = "1.95.0")]
+    #[rustc_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
     #[inline]
     pub const fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
         // SAFETY: each `size` is at most `isize::MAX == usize::MAX/2`, so the

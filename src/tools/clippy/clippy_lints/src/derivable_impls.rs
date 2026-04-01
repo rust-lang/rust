@@ -56,6 +56,8 @@ declare_clippy_lint! {
     "manual implementation of the `Default` trait which is equal to a derive"
 }
 
+impl_lint_pass!(DerivableImpls => [DERIVABLE_IMPLS]);
+
 pub struct DerivableImpls {
     msrv: Msrv,
 }
@@ -65,8 +67,6 @@ impl DerivableImpls {
         DerivableImpls { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(DerivableImpls => [DERIVABLE_IMPLS]);
 
 fn is_path_self(e: &Expr<'_>) -> bool {
     if let ExprKind::Path(QPath::Resolved(_, p)) = e.kind {

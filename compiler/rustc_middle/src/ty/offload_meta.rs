@@ -3,8 +3,14 @@ use bitflags::bitflags;
 use crate::ty::{self, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 
 pub struct OffloadMetadata {
-    pub payload_size: u64,
+    pub payload_size: OffloadSize,
     pub mode: MappingFlags,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum OffloadSize {
+    Dynamic,
+    Static(u64),
 }
 
 bitflags! {
@@ -59,17 +65,18 @@ impl OffloadMetadata {
 }
 
 // FIXME(Sa4dUs): implement a solid logic to determine the payload size
-fn get_payload_size<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u64 {
+fn get_payload_size<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> OffloadSize {
     match ty.kind() {
         ty::RawPtr(inner, _) | ty::Ref(_, inner, _) => get_payload_size(tcx, *inner),
-        _ => tcx
-            .layout_of(PseudoCanonicalInput {
+        _ => OffloadSize::Static(
+            tcx.layout_of(PseudoCanonicalInput {
                 typing_env: TypingEnv::fully_monomorphized(),
                 value: ty,
             })
             .unwrap()
             .size
             .bytes(),
+        ),
     }
 }
 

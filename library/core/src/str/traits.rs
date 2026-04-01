@@ -258,7 +258,7 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
     }
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::Range<usize> {
     type Output = str;
@@ -555,7 +555,7 @@ unsafe impl const SliceIndex<str> for ops::RangeFrom<usize> {
     }
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::RangeFrom<usize> {
     type Output = str;
@@ -685,7 +685,7 @@ unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
     }
 }
 
-#[stable(feature = "new_range_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::RangeInclusive<usize> {
     type Output = str;
@@ -760,6 +760,52 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
         (0..=self.end).index_mut(slice)
+    }
+}
+
+/// Implements substring slicing with syntax `&self[..= last]` or `&mut
+/// self[..= last]`.
+///
+/// Returns a slice of the given string from the byte range \[0, `last`\].
+/// Equivalent to `&self [0 .. last + 1]`, except if `last` has the maximum
+/// value for `usize`.
+///
+/// This operation is *O*(1).
+///
+/// # Panics
+///
+/// Panics if `last` does not point to the ending byte offset of a character
+/// (`last + 1` is either a starting byte offset as defined by
+/// `is_char_boundary`, or equal to `len`), or if `last >= len`.
+#[stable(feature = "new_range_to_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+unsafe impl const SliceIndex<str> for range::RangeToInclusive<usize> {
+    type Output = str;
+    #[inline]
+    fn get(self, slice: &str) -> Option<&Self::Output> {
+        (0..=self.last).get(slice)
+    }
+    #[inline]
+    fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
+        (0..=self.last).get_mut(slice)
+    }
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
+        unsafe { (0..=self.last).get_unchecked(slice) }
+    }
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
+        unsafe { (0..=self.last).get_unchecked_mut(slice) }
+    }
+    #[inline]
+    fn index(self, slice: &str) -> &Self::Output {
+        (0..=self.last).index(slice)
+    }
+    #[inline]
+    fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+        (0..=self.last).index_mut(slice)
     }
 }
 

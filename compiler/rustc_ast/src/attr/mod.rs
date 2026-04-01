@@ -876,11 +876,15 @@ pub trait AttributeExt: Debug {
     /// a doc comment) will return `false`.
     fn is_doc_comment(&self) -> Option<Span>;
 
+    /// Returns true if the attribute's first *and only* path segment is equal to the passed-in
+    /// symbol.
     #[inline]
     fn has_name(&self, name: Symbol) -> bool {
         self.name().map(|x| x == name).unwrap_or(false)
     }
 
+    /// Returns true if the attribute's first *and only* path segment is any of the passed-in
+    /// symbols.
     #[inline]
     fn has_any_name(&self, names: &[Symbol]) -> bool {
         names.iter().any(|&name| self.has_name(name))
@@ -889,6 +893,7 @@ pub trait AttributeExt: Debug {
     /// get the span of the entire attribute
     fn span(&self) -> Span;
 
+    /// Returns whether the attribute is a path, without any arguments.
     fn is_word(&self) -> bool;
 
     fn path(&self) -> SmallVec<[Symbol; 1]> {
@@ -911,11 +916,14 @@ pub trait AttributeExt: Debug {
     /// * `#[deprecated(note = "note", ...)]` returns `Some("note")`.
     fn deprecation_note(&self) -> Option<Ident>;
 
+    /// Returns whether this attribute is any of the proc macro attributes.
+    /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
     fn is_proc_macro_attr(&self) -> bool {
         [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
             .iter()
             .any(|kind| self.has_name(*kind))
     }
+    /// Returns true if this attribute is `#[automatically_deived]`.
     fn is_automatically_derived_attr(&self) -> bool;
 
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.

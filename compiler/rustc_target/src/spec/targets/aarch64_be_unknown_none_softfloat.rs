@@ -8,20 +8,23 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    Abi, Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, StackProbeType,
-    Target, TargetMetadata, TargetOptions,
+    Arch, Cc, CfgAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, RustcAbi, SanitizerSet,
+    StackProbeType, Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
     let opts = TargetOptions {
-        abi: Abi::SoftFloat,
+        cfg_abi: CfgAbi::SoftFloat,
+        rustc_abi: Some(RustcAbi::Softfloat),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         features: "+v8a,+strict-align,-neon".into(),
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(128),
-        supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
+        supported_sanitizers: SanitizerSet::KCFI
+            | SanitizerSet::KERNELADDRESS
+            | SanitizerSet::KERNELHWADDRESS,
         stack_probes: StackProbeType::Inline,
         panic_strategy: PanicStrategy::Abort,
         endian: Endian::Big,

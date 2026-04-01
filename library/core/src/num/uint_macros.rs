@@ -447,7 +447,7 @@ macro_rules! uint_impl {
         pub const fn funnel_shl(self, rhs: Self, n: u32) -> Self {
             assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
             // SAFETY: just checked that `shift` is in-range
-            unsafe { intrinsics::unchecked_funnel_shl(self, rhs, n) }
+            unsafe { self.unchecked_funnel_shl(rhs, n) }
         }
 
         /// Performs a right funnel shift (concatenates `self` and `rhs`, with `self`
@@ -482,7 +482,61 @@ macro_rules! uint_impl {
         pub const fn funnel_shr(self, rhs: Self, n: u32) -> Self {
             assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
             // SAFETY: just checked that `shift` is in-range
-            unsafe { intrinsics::unchecked_funnel_shr(self, rhs, n) }
+            unsafe { self.unchecked_funnel_shr(rhs, n) }
+        }
+
+        /// Unchecked funnel shift left.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior if `n` is greater than or equal to
+        #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
+        /// i.e. when [`funnel_shl`](Self::funnel_shl) would panic.
+        ///
+        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
+        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        #[track_caller]
+        pub const unsafe fn unchecked_funnel_shl(self, low: Self, n: u32) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_funnel_shl cannot overflow"),
+                (n: u32 = n) => n < <$ActualT>::BITS,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_funnel_shl(self, low, n)
+            }
+        }
+
+        /// Unchecked funnel shift right.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior if `n` is greater than or equal to
+        #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
+        /// i.e. when [`funnel_shr`](Self::funnel_shr) would panic.
+        ///
+        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
+        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        #[track_caller]
+        pub const unsafe fn unchecked_funnel_shr(self, low: Self, n: u32) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_funnel_shr cannot overflow"),
+                (n: u32 = n) => n < <$ActualT>::BITS,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_funnel_shr(self, low, n)
+            }
         }
 
         /// Performs a carry-less multiplication, returning the lower bits.
@@ -574,7 +628,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn extract_bits(self, mask: Self) -> Self {
-            crate::num::int_bits::$ActualT::extract_impl(self as $ActualT, mask as $ActualT) as $SelfT
+            imp::int_bits::$ActualT::extract_impl(self as $ActualT, mask as $ActualT) as $SelfT
         }
 
         /// Returns an integer with the least significant bits of `self`
@@ -591,7 +645,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn deposit_bits(self, mask: Self) -> Self {
-            crate::num::int_bits::$ActualT::deposit_impl(self as $ActualT, mask as $ActualT) as $SelfT
+            imp::int_bits::$ActualT::deposit_impl(self as $ActualT, mask as $ActualT) as $SelfT
         }
 
         /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
@@ -802,7 +856,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_add(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_add(rhs);
-            if b { overflow_panic::add() } else { a }
+            if b { imp::overflow_panic::add() } else { a }
         }
 
         /// Unchecked integer addition. Computes `self + rhs`, assuming overflow
@@ -897,7 +951,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_add_signed(self, rhs: $SignedT) -> Self {
             let (a, b) = self.overflowing_add_signed(rhs);
-            if b { overflow_panic::add() } else { a }
+            if b { imp::overflow_panic::add() } else { a }
         }
 
         /// Checked integer subtraction. Computes `self - rhs`, returning
@@ -956,7 +1010,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_sub(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_sub(rhs);
-            if b { overflow_panic::sub() } else { a }
+            if b { imp::overflow_panic::sub() } else { a }
         }
 
         /// Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
@@ -1081,7 +1135,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_sub_signed(self, rhs: $SignedT) -> Self {
             let (a, b) = self.overflowing_sub_signed(rhs);
-            if b { overflow_panic::sub() } else { a }
+            if b { imp::overflow_panic::sub() } else { a }
         }
 
         #[doc = concat!(
@@ -1190,7 +1244,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_mul(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_mul(rhs);
-            if b { overflow_panic::mul() } else { a }
+            if b { imp::overflow_panic::mul() } else { a }
         }
 
         /// Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
@@ -1615,7 +1669,7 @@ macro_rules! uint_impl {
             if let Some(log) = self.checked_ilog(base) {
                 log
             } else {
-                int_log10::panic_for_nonpositive_argument()
+                imp::int_log10::panic_for_nonpositive_argument()
             }
         }
 
@@ -1640,7 +1694,7 @@ macro_rules! uint_impl {
             if let Some(log) = self.checked_ilog2() {
                 log
             } else {
-                int_log10::panic_for_nonpositive_argument()
+                imp::int_log10::panic_for_nonpositive_argument()
             }
         }
 
@@ -1665,7 +1719,7 @@ macro_rules! uint_impl {
             if let Some(log) = self.checked_ilog10() {
                 log
             } else {
-                int_log10::panic_for_nonpositive_argument()
+                imp::int_log10::panic_for_nonpositive_argument()
             }
         }
 
@@ -1827,7 +1881,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_neg(self) -> Self {
             let (a, b) = self.overflowing_neg();
-            if b { overflow_panic::neg() } else { a }
+            if b { imp::overflow_panic::neg() } else { a }
         }
 
         /// Checked shift left. Computes `self << rhs`, returning `None`
@@ -1883,7 +1937,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_shl(self, rhs: u32) -> Self {
             let (a, b) = self.overflowing_shl(rhs);
-            if b { overflow_panic::shl() } else { a }
+            if b { imp::overflow_panic::shl() } else { a }
         }
 
         /// Unchecked shift left. Computes `self << rhs`, assuming that
@@ -2068,7 +2122,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_shr(self, rhs: u32) -> Self {
             let (a, b) = self.overflowing_shr(rhs);
-            if b { overflow_panic::shr() } else { a }
+            if b { imp::overflow_panic::shr() } else { a }
         }
 
         /// Unchecked shift right. Computes `self >> rhs`, assuming that
@@ -3541,7 +3595,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            let result = crate::num::int_sqrt::$ActualT(self as $ActualT) as $SelfT;
+            let result = imp::int_sqrt::$ActualT(self as $ActualT) as $SelfT;
 
             // Inform the optimizer what the range of outputs is. If testing
             // `core` crashes with no panic message and a `num::int_sqrt::u*`
@@ -3554,7 +3608,7 @@ macro_rules! uint_impl {
             // integers is bounded by `[0, <$ActualT>::MAX]`, sqrt(n) will be
             // bounded by `[sqrt(0), sqrt(<$ActualT>::MAX)]`.
             unsafe {
-                const MAX_RESULT: $SelfT = crate::num::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT;
+                const MAX_RESULT: $SelfT = imp::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT;
                 crate::hint::assert_unchecked(result <= MAX_RESULT);
             }
 

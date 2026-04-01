@@ -1,22 +1,30 @@
-#![cfg_attr(bootstrap, feature(if_let_guard))]
-#![feature(abort_unwind)]
+#![cfg_attr(all(feature = "native-lib", unix), feature(iter_advance_by))]
+#![cfg_attr(
+    all(
+        feature = "native-lib",
+        target_os = "linux",
+        target_env = "gnu",
+        any(target_arch = "x86", target_arch = "x86_64")
+    ),
+    feature(abort_unwind)
+)]
 #![feature(rustc_private)]
+#![feature(f16)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![feature(io_error_more)]
+#![feature(io_error_inprogress)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
-#![feature(nonzero_ops)]
 #![feature(pointer_is_aligned_to)]
-#![feature(ptr_metadata)]
 #![feature(unqualified_local_imports)]
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
-#![feature(iter_advance_by)]
-#![cfg_attr(bootstrap, feature(cfg_select))]
+#![feature(macro_metavar_expr)]
+#![feature(uint_carryless_mul)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -39,6 +47,7 @@
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
     clippy::len_zero,
+    clippy::collapsible_match,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
 )]
@@ -87,6 +96,7 @@ mod math;
 mod operator;
 mod provenance_gc;
 mod shims;
+pub mod sym;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
 // Make all those symbols available in the same place as our own.
@@ -98,7 +108,7 @@ pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
 use rustc_log::tracing::{self, info, trace};
 use rustc_middle::{bug, span_bug};
 
-#[cfg(all(unix, feature = "native-lib"))]
+#[cfg(all(feature = "native-lib", unix))]
 pub mod native_lib {
     pub use crate::shims::{init_sv, register_retcode_sv};
 }
@@ -123,6 +133,7 @@ pub use crate::borrow_tracker::{
     BorTag, BorrowTrackerMethod, EvalContextExt as _, TreeBorrowsParams,
 };
 pub use crate::clock::{Instant, MonotonicClock};
+pub use crate::concurrency::blocking_io::{BlockingIoManager, EvalContextExt as _, WithSource};
 pub use crate::concurrency::cpu_affinity::MAX_CPUS;
 pub use crate::concurrency::data_race::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _,

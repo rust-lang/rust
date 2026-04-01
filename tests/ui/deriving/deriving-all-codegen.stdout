@@ -62,6 +62,7 @@ impl ::core::cmp::PartialEq for Empty {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Empty {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {}
@@ -138,6 +139,7 @@ impl ::core::cmp::PartialEq for Point {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Point {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {
@@ -225,6 +227,7 @@ impl ::core::cmp::PartialEq for PackedPoint {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for PackedPoint {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {
@@ -307,6 +310,7 @@ impl ::core::cmp::PartialEq for TupleSingleField {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for TupleSingleField {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {
@@ -381,6 +385,7 @@ impl ::core::cmp::PartialEq for SingleField {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for SingleField {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {
@@ -485,6 +490,7 @@ impl ::core::cmp::PartialEq for Big {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Big {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {
@@ -748,6 +754,7 @@ impl ::core::cmp::PartialEq for Unsized {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Unsized {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {
@@ -842,6 +849,7 @@ impl<T: ::core::cmp::PartialEq + Trait, U: ::core::cmp::PartialEq>
 #[automatically_derived]
 impl<T: ::core::cmp::Eq + Trait, U: ::core::cmp::Eq> ::core::cmp::Eq for
     Generic<T, U> where T::A: ::core::cmp::Eq {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {
@@ -963,6 +971,7 @@ impl<T: ::core::cmp::PartialEq + ::core::marker::Copy + Trait,
 impl<T: ::core::cmp::Eq + ::core::marker::Copy + Trait, U: ::core::cmp::Eq +
     ::core::marker::Copy> ::core::cmp::Eq for PackedGeneric<T, U> where
     T::A: ::core::cmp::Eq + ::core::marker::Copy {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {
@@ -1047,6 +1056,7 @@ impl ::core::cmp::PartialEq for Enum0 {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Enum0 {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {}
@@ -1116,6 +1126,7 @@ impl ::core::cmp::PartialEq for Enum1 {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Enum1 {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {
@@ -1181,6 +1192,7 @@ impl ::core::cmp::PartialEq for Fieldless1 {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fieldless1 {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {}
@@ -1257,6 +1269,7 @@ impl ::core::cmp::PartialEq for Fieldless {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fieldless {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {}
@@ -1366,6 +1379,7 @@ impl ::core::cmp::PartialEq for Mixed {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Mixed {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {
@@ -1563,6 +1577,7 @@ impl ::core::cmp::PartialEq for Fielded {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fielded {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {
@@ -1684,6 +1699,7 @@ impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
 #[automatically_derived]
 impl<T: ::core::cmp::Eq, U: ::core::cmp::Eq> ::core::cmp::Eq for
     EnumGeneric<T, U> {
+    #[inline]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_fields_are_eq(&self) {

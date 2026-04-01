@@ -3,7 +3,9 @@ use std::slice;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan,
+};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
@@ -80,6 +82,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     pub(crate) fn warn_if_unreachable(&self, id: HirId, span: Span, kind: &str) {
+        struct UnreachableItem<'a, 'b> {
+            kind: &'a str,
+            span: Span,
+            orig_span: Span,
+            custom_note: Option<&'b str>,
+        }
+
+        impl<'a, 'b, 'c> Diagnostic<'a, ()> for UnreachableItem<'b, 'c> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+                let Self { kind, span, orig_span, custom_note } = self;
+                let msg = format!("unreachable {kind}");
+                Diag::new(dcx, level, msg.clone()).with_span_label(span, msg).with_span_label(
+                    orig_span,
+                    custom_note.map(|c| c.to_owned()).unwrap_or_else(|| {
+                        "any code following this expression is unreachable".to_owned()
+                    }),
+                )
+            }
+        }
+
         let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() else {
             return;
         };
@@ -102,14 +124,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
-        let msg = format!("unreachable {kind}");
-        self.tcx().node_span_lint(lint::builtin::UNREACHABLE_CODE, id, span, |lint| {
-            lint.primary_message(msg.clone());
-            lint.span_label(span, msg).span_label(
-                orig_span,
-                custom_note.unwrap_or("any code following this expression is unreachable"),
-            );
-        })
+        self.tcx().emit_node_span_lint(
+            lint::builtin::UNREACHABLE_CODE,
+            id,
+            span,
+            UnreachableItem { kind, span, orig_span, custom_note },
+        );
     }
 
     /// Resolves type and const variables in `t` if possible. Unlike the infcx
@@ -311,12 +331,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Adjust::Deref(DerefAdjustKind::Builtin) => {
                     // FIXME(const_trait_impl): We *could* enforce `&T: [const] Deref` here.
                 }
+                Adjust::Deref(DerefAdjustKind::Pin) => {
+                    // FIXME(const_trait_impl): We *could* enforce `Pin<&T>: [const] Deref` here.
+                }
                 Adjust::Pointer(_pointer_coercion) => {
                     // FIXME(const_trait_impl): We should probably enforce these.
-                }
-                Adjust::ReborrowPin(_mutability) => {
-                    // FIXME(const_trait_impl): We could enforce these; they correspond to
-                    // `&mut T: DerefMut` tho, so it's kinda moot.
                 }
                 Adjust::Borrow(_) => {
                     // No effects to enforce here.

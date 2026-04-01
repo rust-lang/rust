@@ -71,6 +71,8 @@ declare_clippy_lint! {
     "ensures that all items used in the crate are available for the current MSRV"
 }
 
+impl_lint_pass!(IncompatibleMsrv => [INCOMPATIBLE_MSRV]);
+
 #[derive(Clone, Copy)]
 enum Availability {
     FeatureEnabled,
@@ -112,8 +114,6 @@ pub struct IncompatibleMsrv {
     // been checked when visiting the call expression.
     called_path: Option<HirId>,
 }
-
-impl_lint_pass!(IncompatibleMsrv => [INCOMPATIBLE_MSRV]);
 
 impl IncompatibleMsrv {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
@@ -269,5 +269,5 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
 fn is_under_cfg_attribute(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     cx.tcx
         .hir_parent_id_iter(hir_id)
-        .any(|id| find_attr!(cx.tcx.hir_attrs(id), CfgTrace(..) | CfgAttrTrace))
+        .any(|id| find_attr!(cx.tcx, id, CfgTrace(..) | CfgAttrTrace))
 }

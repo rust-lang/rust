@@ -12,7 +12,8 @@ use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::{
-    Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, sym, with_metavar_spans,
+    BytePos, Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, kw, sym,
+    with_metavar_spans,
 };
 use smallvec::{SmallVec, smallvec};
 
@@ -555,6 +556,19 @@ fn transcribe_pnr<'tx>(
         }
         ParseNtResult::Vis(vis) => {
             mk_delimited(vis.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
+        }
+        ParseNtResult::Guard(guard) => {
+            // FIXME(macro_guard_matcher):
+            // Perhaps it would be better to treat the leading `if` as part of `ast::Guard` during parsing?
+            // Currently they are separate, but in macros we match and emit the leading `if` for `:guard` matchers, which creates some inconsistency.
+
+            let leading_if_span =
+                guard.span_with_leading_if.with_hi(guard.span_with_leading_if.lo() + BytePos(2));
+            let mut ts =
+                TokenStream::token_alone(token::Ident(kw::If, IdentIsRaw::No), leading_if_span);
+            ts.push_stream(TokenStream::from_ast(&guard.cond));
+
+            mk_delimited(guard.span_with_leading_if, MetaVarKind::Guard, ts)
         }
     };
 

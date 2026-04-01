@@ -58,6 +58,8 @@ declare_clippy_lint! {
     "large size difference between variants on an enum"
 }
 
+impl_lint_pass!(LargeEnumVariant => [LARGE_ENUM_VARIANT]);
+
 pub struct LargeEnumVariant {
     maximum_size_difference_allowed: u64,
 }
@@ -69,8 +71,6 @@ impl LargeEnumVariant {
         }
     }
 }
-
-impl_lint_pass!(LargeEnumVariant => [LARGE_ENUM_VARIANT]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {

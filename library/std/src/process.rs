@@ -156,6 +156,7 @@
         target_env = "sgx",
         target_os = "xous",
         target_os = "trusty",
+        target_os = "hermit",
     ))
 ))]
 mod tests;
@@ -1380,6 +1381,7 @@ impl Output {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(unused_features)]
     /// #![feature(exit_status_error)]
     /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos")))))] {
     /// use std::process::Command;
@@ -1959,6 +1961,7 @@ impl crate::sealed::Sealed for ExitStatusError {}
 pub struct ExitStatusError(imp::ExitStatusError);
 
 #[unstable(feature = "exit_status_error", issue = "84908")]
+#[doc(test(attr(allow(unused_features))))]
 impl ExitStatusError {
     /// Reports the exit code, if applicable, from an `ExitStatusError`.
     ///
@@ -2545,7 +2548,7 @@ pub fn abort() -> ! {
 #[must_use]
 #[stable(feature = "getpid", since = "1.26.0")]
 pub fn id() -> u32 {
-    crate::sys::os::getpid()
+    imp::getpid()
 }
 
 /// A trait for implementing arbitrary return types in the `main` function.

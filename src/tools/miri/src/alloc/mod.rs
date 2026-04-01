@@ -1,7 +1,7 @@
 mod alloc_bytes;
-#[cfg(all(unix, feature = "native-lib"))]
+#[cfg(all(feature = "native-lib", unix))]
 pub mod isolated_alloc;
-#[cfg(not(all(unix, feature = "native-lib")))]
+#[cfg(not(all(feature = "native-lib", unix)))]
 pub mod isolated_alloc {
     use std::alloc::Layout;
 

@@ -24,6 +24,33 @@ use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for calls of `unwrap[_err]()` that will always fail.
+    ///
+    /// ### Why is this bad?
+    /// If panicking is desired, an explicit `panic!()` should be used.
+    ///
+    /// ### Known problems
+    /// This lint only checks `if` conditions not assignments.
+    /// So something like `let x: Option<()> = None; x.unwrap();` will not be recognized.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let option = Some(0);
+    /// # fn do_something_with(_x: usize) {}
+    /// if option.is_none() {
+    ///     do_something_with(option.unwrap())
+    /// }
+    /// ```
+    ///
+    /// This code will always panic. The if condition should probably be inverted.
+    #[clippy::version = "pre 1.29.0"]
+    pub PANICKING_UNWRAP,
+    correctness,
+    "checks for calls of `unwrap[_err]()` that will always fail"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for calls of `unwrap[_err]()` that cannot fail.
     ///
     /// ### Why is this bad?
@@ -53,32 +80,7 @@ declare_clippy_lint! {
     "checks for calls of `unwrap[_err]()` that cannot fail"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for calls of `unwrap[_err]()` that will always fail.
-    ///
-    /// ### Why is this bad?
-    /// If panicking is desired, an explicit `panic!()` should be used.
-    ///
-    /// ### Known problems
-    /// This lint only checks `if` conditions not assignments.
-    /// So something like `let x: Option<()> = None; x.unwrap();` will not be recognized.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let option = Some(0);
-    /// # fn do_something_with(_x: usize) {}
-    /// if option.is_none() {
-    ///     do_something_with(option.unwrap())
-    /// }
-    /// ```
-    ///
-    /// This code will always panic. The if condition should probably be inverted.
-    #[clippy::version = "pre 1.29.0"]
-    pub PANICKING_UNWRAP,
-    correctness,
-    "checks for calls of `unwrap[_err]()` that will always fail"
-}
+impl_lint_pass!(Unwrap => [PANICKING_UNWRAP, UNNECESSARY_UNWRAP]);
 
 pub(crate) struct Unwrap {
     msrv: Msrv,
@@ -523,8 +525,6 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
         self.cx.tcx
     }
 }
-
-impl_lint_pass!(Unwrap => [PANICKING_UNWRAP, UNNECESSARY_UNWRAP]);
 
 impl<'tcx> LateLintPass<'tcx> for Unwrap {
     fn check_fn(

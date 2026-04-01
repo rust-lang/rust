@@ -23,9 +23,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};
 use rustc_span::{BytePos, InnerSpan, Pos, RemapPathScopeComponents, SpanData, SyntaxContext, sym};
-use rustc_target::spec::{
-    Arch, CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel,
-};
+use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::{debug, trace};
 
 use crate::back::lto::{Buffer, ModuleBuffer};
@@ -38,7 +36,7 @@ use crate::builder::gpu_offload::scalar_width;
 use crate::common::AsCCharPtr;
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, ParseTargetMachineConfig,
-    UnknownCompression, WithLlvmError, WriteBytecode,
+    UnsupportedCompression, WithLlvmError, WriteBytecode,
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo};
@@ -206,13 +204,7 @@ pub(crate) fn target_machine_factory(
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
-    let float_abi = if sess.target.arch == Arch::Arm && sess.opts.cg.soft_float {
-        llvm::FloatAbi::Soft
-    } else {
-        // `validate_commandline_args_with_session_available` has already warned about this being
-        // ignored. Let's make sure LLVM doesn't suddenly start using this flag on more targets.
-        to_llvm_float_abi(sess.target.llvm_floatabi)
-    };
+    let float_abi = to_llvm_float_abi(sess.target.llvm_floatabi);
 
     let ffunction_sections =
         sess.opts.unstable_opts.function_sections.unwrap_or(sess.target.function_sections);
@@ -233,7 +225,7 @@ pub(crate) fn target_machine_factory(
     let triple = SmallCStr::new(&versioned_llvm_target(sess));
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
     let features = CString::new(target_features.join(",")).unwrap();
-    let abi = SmallCStr::new(&sess.target.llvm_abiname);
+    let abi = SmallCStr::new(sess.target.llvm_abiname.desc());
     let trap_unreachable =
         sess.opts.unstable_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
     let emit_stack_size_section = sess.opts.unstable_opts.emit_stack_sizes;
@@ -256,7 +248,7 @@ pub(crate) fn target_machine_factory(
             if llvm::LLVMRustLLVMHasZlibCompression() {
                 llvm::CompressionKind::Zlib
             } else {
-                sess.dcx().emit_warn(UnknownCompression { algorithm: "zlib" });
+                sess.dcx().emit_warn(UnsupportedCompression { algorithm: "zlib" });
                 llvm::CompressionKind::None
             }
         }
@@ -264,7 +256,7 @@ pub(crate) fn target_machine_factory(
             if llvm::LLVMRustLLVMHasZstdCompression() {
                 llvm::CompressionKind::Zstd
             } else {
-                sess.dcx().emit_warn(UnknownCompression { algorithm: "zstd" });
+                sess.dcx().emit_warn(UnsupportedCompression { algorithm: "zstd" });
                 llvm::CompressionKind::None
             }
         }
@@ -335,13 +327,13 @@ pub(crate) fn save_temp_bitcode(
         &module.name,
         cgcx.invocation_temp.as_deref(),
     );
-    write_bitcode_to_file(module, &path)
+    write_bitcode_to_file(&module.module_llvm, &path)
 }
 
-fn write_bitcode_to_file(module: &ModuleCodegen<ModuleLlvm>, path: &Path) {
+fn write_bitcode_to_file(module: &ModuleLlvm, path: &Path) {
     unsafe {
         let path = path_to_c_string(&path);
-        let llmod = module.module_llvm.llmod();
+        let llmod = module.llmod();
         llvm::LLVMWriteBitcodeToFile(llmod, path.as_ptr());
     }
 }
@@ -652,6 +644,10 @@ pub(crate) unsafe fn llvm_optimize(
             sanitize_kernel_address_recover: config
                 .sanitizer_recover
                 .contains(SanitizerSet::KERNELADDRESS),
+            sanitize_kernel_hwaddress: config.sanitizer.contains(SanitizerSet::KERNELHWADDRESS),
+            sanitize_kernel_hwaddress_recover: config
+                .sanitizer_recover
+                .contains(SanitizerSet::KERNELHWADDRESS),
         })
     } else {
         None
@@ -905,13 +901,8 @@ pub(crate) fn optimize(
     let _handlers =
         DiagnosticHandlers::new(cgcx, shared_emitter, llcx, module, CodegenDiagnosticsStage::Opt);
 
-    if config.emit_no_opt_bc {
-        let out = cgcx.output_filenames.temp_path_ext_for_cgu(
-            "no-opt.bc",
-            &module.name,
-            cgcx.invocation_temp.as_deref(),
-        );
-        write_bitcode_to_file(module, &out)
+    if module.kind == ModuleKind::Regular {
+        save_temp_bitcode(cgcx, module, "no-opt");
     }
 
     // FIXME(ZuseZ4): support SanitizeHWAddress and prevent illegal/unsupported opts

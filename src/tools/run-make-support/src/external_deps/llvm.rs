@@ -302,6 +302,12 @@ impl LlvmFilecheck {
         self.cmd.arg(input_file.as_ref());
         self
     }
+
+    /// Set a single `--check-prefix`.
+    pub fn check_prefix<S: AsRef<str>>(&mut self, prefix: S) -> &mut Self {
+        self.cmd.arg(format!("--check-prefix={}", prefix.as_ref()));
+        self
+    }
 }
 
 impl LlvmObjdump {
@@ -322,6 +328,12 @@ impl LlvmObjdump {
     /// Disassemble all executable sections found in the input files.
     pub fn disassemble(&mut self) -> &mut Self {
         self.cmd.arg("-d");
+        self
+    }
+
+    /// Demangle symbols.
+    pub fn demangle(&mut self) -> &mut Self {
+        self.cmd.arg("--demangle");
         self
     }
 }

@@ -52,6 +52,7 @@ declare_clippy_lint! {
     restriction,
     "checks for usage of an item without a `use` statement"
 }
+
 impl_lint_pass!(AbsolutePaths => [ABSOLUTE_PATHS]);
 
 pub struct AbsolutePaths {

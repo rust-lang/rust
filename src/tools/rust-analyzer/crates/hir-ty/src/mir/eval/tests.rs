@@ -1,4 +1,4 @@
-use hir_def::{HasModule, db::DefDatabase};
+use hir_def::{GenericDefId, HasModule, signatures::FunctionSignature};
 use hir_expand::EditionedFileId;
 use span::Edition;
 use syntax::{TextRange, TextSize};
@@ -25,7 +25,7 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
             .declarations()
             .find_map(|x| match x {
                 hir_def::ModuleDefId::FunctionId(x) => {
-                    if db.function_signature(x).name.display(db, Edition::CURRENT).to_string()
+                    if FunctionSignature::of(db, x).name.display(db, Edition::CURRENT).to_string()
                         == "main"
                     {
                         Some(x)
@@ -41,7 +41,7 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
                 func_id.into(),
                 GenericArgs::empty(interner).store(),
                 crate::ParamEnvAndCrate {
-                    param_env: db.trait_environment(func_id.into()),
+                    param_env: db.trait_environment(GenericDefId::from(func_id).into()),
                     krate: func_id.krate(db),
                 }
                 .store(),

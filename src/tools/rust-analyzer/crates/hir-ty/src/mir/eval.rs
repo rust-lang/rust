@@ -5,14 +5,17 @@ use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
 use base_db::{Crate, target::TargetLoadError};
 use either::Either;
 use hir_def::{
-    AdtId, DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, HasModule, ItemContainerId,
-    Lookup, StaticId, VariantId,
-    expr_store::HygieneId,
+    AdtId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, FunctionId, GeneralConstId,
+    HasModule, ItemContainerId, Lookup, StaticId, VariantId,
+    expr_store::{Body, HygieneId},
     item_tree::FieldsShape,
     lang_item::LangItems,
     layout::{TagEncoding, Variants},
     resolver::{HasResolver, TypeNs, ValueNs},
-    signatures::{StaticFlags, StructFlags},
+    signatures::{
+        EnumSignature, FunctionSignature, StaticFlags, StaticSignature, StructFlags,
+        StructSignature, TraitSignature,
+    },
 };
 use hir_expand::{InFile, mod_path::path, name::Name};
 use intern::sym;
@@ -386,7 +389,7 @@ impl MirEvalError {
             for (func, span, def) in stack.iter().take(30).rev() {
                 match func {
                     Either::Left(func) => {
-                        let function_name = db.function_signature(*func);
+                        let function_name = FunctionSignature::of(db, *func);
                         writeln!(
                             f,
                             "In function {} ({:?})",
@@ -398,7 +401,7 @@ impl MirEvalError {
                         writeln!(f, "In {closure:?}")?;
                     }
                 }
-                let source_map = db.body_with_source_map(*def).1;
+                let source_map = &Body::with_source_map(db, *def).1;
                 let span: InFile<SyntaxNodePtr> = match span {
                     MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
                         Ok(s) => s.map(|it| it.into()),
@@ -441,7 +444,7 @@ impl MirEvalError {
                 )?;
             }
             MirEvalError::MirLowerError(func, err) => {
-                let function_name = db.function_signature(*func);
+                let function_name = FunctionSignature::of(db, *func);
                 let self_ = match func.lookup(db).container {
                     ItemContainerId::ImplId(impl_id) => Some({
                         db.impl_self_ty(impl_id)
@@ -450,7 +453,10 @@ impl MirEvalError {
                             .to_string()
                     }),
                     ItemContainerId::TraitId(it) => Some(
-                        db.trait_signature(it).name.display(db, display_target.edition).to_string(),
+                        TraitSignature::of(db, it)
+                            .name
+                            .display(db, display_target.edition)
+                            .to_string(),
                     ),
                     _ => None,
                 };
@@ -660,7 +666,7 @@ impl<'db> Evaluator<'db> {
             db,
             random_state: oorandom::Rand64::new(0),
             param_env: trait_env.unwrap_or_else(|| ParamEnvAndCrate {
-                param_env: db.trait_environment_for_body(owner),
+                param_env: db.trait_environment(ExpressionStoreOwnerId::from(owner)),
                 krate: crate_id,
             }),
             crate_id,
@@ -730,8 +736,8 @@ impl<'db> Evaluator<'db> {
             self.param_env.param_env,
             ty,
             |c, subst, f| {
-                let InternedClosure(def, _) = self.db.lookup_intern_closure(c);
-                let infer = InferenceResult::for_body(self.db, def);
+                let InternedClosure(owner, _) = self.db.lookup_intern_closure(c);
+                let infer = InferenceResult::of(self.db, owner);
                 let (captures, _) = infer.closure_info(c);
                 let parent_subst = subst.as_closure().parent_args();
                 captures
@@ -893,8 +899,8 @@ impl<'db> Evaluator<'db> {
             OperandKind::Copy(p) | OperandKind::Move(p) => self.place_ty(p, locals)?,
             OperandKind::Constant { konst: _, ty } => ty.as_ref(),
             &OperandKind::Static(s) => {
-                let ty = InferenceResult::for_body(self.db, s.into())
-                    .expr_ty(self.db.body(s.into()).body_expr);
+                let ty = InferenceResult::of(self.db, DefWithBodyId::from(s))
+                    .expr_ty(Body::of(self.db, s.into()).root_expr());
                 Ty::new_ref(
                     self.interner(),
                     Region::new_static(self.interner()),
@@ -1954,6 +1960,9 @@ impl<'db> Evaluator<'db> {
                             MirEvalError::ConstEvalError(name, Box::new(e))
                         })?
                     }
+                    GeneralConstId::AnonConstId(_) => {
+                        not_supported!("anonymous const evaluation")
+                    }
                 };
                 if let ConstKind::Value(value) = result_owner.kind() {
                     break 'b value;
@@ -2818,15 +2827,15 @@ impl<'db> Evaluator<'db> {
         if let Some(o) = self.static_locations.get(&st) {
             return Ok(*o);
         };
-        let static_data = self.db.static_signature(st);
+        let static_data = StaticSignature::of(self.db, st);
         let result = if !static_data.flags.contains(StaticFlags::EXTERN) {
             let konst = self.db.const_eval_static(st).map_err(|e| {
                 MirEvalError::ConstEvalError(static_data.name.as_str().to_owned(), Box::new(e))
             })?;
             self.allocate_const_in_heap(locals, konst)?
         } else {
-            let ty = InferenceResult::for_body(self.db, st.into())
-                .expr_ty(self.db.body(st.into()).body_expr);
+            let ty = InferenceResult::of(self.db, DefWithBodyId::from(st))
+                .expr_ty(Body::of(self.db, st.into()).root_expr());
             let Some((size, align)) = self.size_align_of(ty, locals)? else {
                 not_supported!("unsized extern static");
             };
@@ -2849,7 +2858,7 @@ impl<'db> Evaluator<'db> {
                 let edition = self.crate_id.data(self.db).edition;
                 let name = format!(
                     "{}::{}",
-                    self.db.enum_signature(loc.parent).name.display(db, edition),
+                    EnumSignature::of(self.db, loc.parent).name.display(db, edition),
                     loc.parent
                         .enum_variants(self.db)
                         .variant_name_by_id(variant)
@@ -2909,7 +2918,7 @@ impl<'db> Evaluator<'db> {
                 let id = adt_def.def_id().0;
                 match id {
                     AdtId::StructId(s) => {
-                        let data = self.db.struct_signature(s);
+                        let data = StructSignature::of(self.db, s);
                         if data.flags.contains(StructFlags::IS_MANUALLY_DROP) {
                             return Ok(());
                         }

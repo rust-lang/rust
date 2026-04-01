@@ -100,10 +100,10 @@ fn check_op(cx: &LateContext<'_>, outer: &Expr<'_>, expr: &Expr<'_>, other: &Exp
 
             let mut applicability = Applicability::MachineApplicable;
             let (arg_snip, _) = snippet_with_context(cx, arg_span, expr.span.ctxt(), "..", &mut applicability);
-            let (expr_snip, eq_impl) = if with_deref.is_implemented() && !arg_ty.peel_refs().is_str() {
-                (format!("*{arg_snip}"), with_deref)
-            } else {
+            let (expr_snip, eq_impl) = if without_deref.is_implemented() {
                 (arg_snip.to_string(), without_deref)
+            } else {
+                (format!("*{arg_snip}"), with_deref)
             };
 
             let (span, hint) = if (eq_impl.ty_eq_other && left) || (eq_impl.other_eq_ty && !left) {

@@ -54,6 +54,8 @@ declare_clippy_lint! {
     "there is a field that is not safe to be sent to another thread in a `Send` struct"
 }
 
+impl_lint_pass!(NonSendFieldInSendTy => [NON_SEND_FIELDS_IN_SEND_TY]);
+
 pub struct NonSendFieldInSendTy {
     enable_raw_pointer_heuristic: bool,
 }
@@ -65,8 +67,6 @@ impl NonSendFieldInSendTy {
         }
     }
 }
-
-impl_lint_pass!(NonSendFieldInSendTy => [NON_SEND_FIELDS_IN_SEND_TY]);
 
 impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {

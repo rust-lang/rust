@@ -1,9 +1,13 @@
 //! Definition of `SolverDefId`
 
 use hir_def::{
-    AdtId, AttrDefId, BuiltinDeriveImplId, CallableDefId, ConstId, DefWithBodyId, EnumId,
-    EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId, StaticId, StructId, TraitId,
-    TypeAliasId, UnionId,
+    AdtId, AnonConstId, AttrDefId, BuiltinDeriveImplId, CallableDefId, ConstId, DefWithBodyId,
+    EnumId, EnumVariantId, ExpressionStoreOwnerId, FunctionId, GeneralConstId, GenericDefId,
+    ImplId, StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
+    signatures::{
+        ConstSignature, EnumSignature, FunctionSignature, StaticSignature, StructSignature,
+        TraitSignature, TypeAliasSignature, UnionSignature,
+    },
 };
 use rustc_type_ir::inherent;
 use stdx::impl_from;
@@ -12,13 +16,13 @@ use crate::db::{InternedClosureId, InternedCoroutineId, InternedOpaqueTyId};
 
 use super::DbInterner;
 
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Ctor {
     Struct(StructId),
     Enum(EnumVariantId),
 }
 
-#[derive(PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
+#[derive(PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SolverDefId {
     AdtId(AdtId),
     ConstId(ConstId),
@@ -26,13 +30,13 @@ pub enum SolverDefId {
     ImplId(ImplId),
     BuiltinDeriveImplId(BuiltinDeriveImplId),
     StaticId(StaticId),
+    AnonConstId(AnonConstId),
     TraitId(TraitId),
     TypeAliasId(TypeAliasId),
     InternedClosureId(InternedClosureId),
     InternedCoroutineId(InternedCoroutineId),
     InternedOpaqueTyId(InternedOpaqueTyId),
     EnumVariantId(EnumVariantId),
-    // FIXME(next-solver): Do we need the separation of `Ctor`? It duplicates some variants.
     Ctor(Ctor),
 }
 
@@ -42,32 +46,33 @@ impl std::fmt::Debug for SolverDefId {
         let db = interner.db;
         match *self {
             SolverDefId::AdtId(AdtId::StructId(id)) => {
-                f.debug_tuple("AdtId").field(&db.struct_signature(id).name.as_str()).finish()
+                f.debug_tuple("AdtId").field(&StructSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::AdtId(AdtId::EnumId(id)) => {
-                f.debug_tuple("AdtId").field(&db.enum_signature(id).name.as_str()).finish()
+                f.debug_tuple("AdtId").field(&EnumSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::AdtId(AdtId::UnionId(id)) => {
-                f.debug_tuple("AdtId").field(&db.union_signature(id).name.as_str()).finish()
+                f.debug_tuple("AdtId").field(&UnionSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::ConstId(id) => f
                 .debug_tuple("ConstId")
-                .field(&db.const_signature(id).name.as_ref().map_or("_", |name| name.as_str()))
+                .field(&ConstSignature::of(db, id).name.as_ref().map_or("_", |name| name.as_str()))
                 .finish(),
-            SolverDefId::FunctionId(id) => {
-                f.debug_tuple("FunctionId").field(&db.function_signature(id).name.as_str()).finish()
-            }
+            SolverDefId::FunctionId(id) => f
+                .debug_tuple("FunctionId")
+                .field(&FunctionSignature::of(db, id).name.as_str())
+                .finish(),
             SolverDefId::ImplId(id) => f.debug_tuple("ImplId").field(&id).finish(),
             SolverDefId::BuiltinDeriveImplId(id) => f.debug_tuple("ImplId").field(&id).finish(),
             SolverDefId::StaticId(id) => {
-                f.debug_tuple("StaticId").field(&db.static_signature(id).name.as_str()).finish()
+                f.debug_tuple("StaticId").field(&StaticSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::TraitId(id) => {
-                f.debug_tuple("TraitId").field(&db.trait_signature(id).name.as_str()).finish()
+                f.debug_tuple("TraitId").field(&TraitSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::TypeAliasId(id) => f
                 .debug_tuple("TypeAliasId")
-                .field(&db.type_alias_signature(id).name.as_str())
+                .field(&TypeAliasSignature::of(db, id).name.as_str())
                 .finish(),
             SolverDefId::InternedClosureId(id) => {
                 f.debug_tuple("InternedClosureId").field(&id).finish()
@@ -83,20 +88,21 @@ impl std::fmt::Debug for SolverDefId {
                 f.debug_tuple("EnumVariantId")
                     .field(&format_args!(
                         "\"{}::{}\"",
-                        db.enum_signature(parent_enum).name.as_str(),
+                        EnumSignature::of(db, parent_enum).name.as_str(),
                         parent_enum.enum_variants(db).variant_name_by_id(id).unwrap().as_str()
                     ))
                     .finish()
             }
+            SolverDefId::AnonConstId(id) => f.debug_tuple("AnonConstId").field(&id).finish(),
             SolverDefId::Ctor(Ctor::Struct(id)) => {
-                f.debug_tuple("Ctor").field(&db.struct_signature(id).name.as_str()).finish()
+                f.debug_tuple("Ctor").field(&StructSignature::of(db, id).name.as_str()).finish()
             }
             SolverDefId::Ctor(Ctor::Enum(id)) => {
                 let parent_enum = id.loc(db).parent;
                 f.debug_tuple("Ctor")
                     .field(&format_args!(
                         "\"{}::{}\"",
-                        db.enum_signature(parent_enum).name.as_str(),
+                        EnumSignature::of(db, parent_enum).name.as_str(),
                         parent_enum.enum_variants(db).variant_name_by_id(id).unwrap().as_str()
                     ))
                     .finish()
@@ -112,6 +118,7 @@ impl_from!(
     ImplId,
     BuiltinDeriveImplId,
     StaticId,
+    AnonConstId,
     TraitId,
     TypeAliasId,
     InternedClosureId,
@@ -142,6 +149,7 @@ impl From<GeneralConstId> for SolverDefId {
         match value {
             GeneralConstId::ConstId(const_id) => SolverDefId::ConstId(const_id),
             GeneralConstId::StaticId(static_id) => SolverDefId::StaticId(static_id),
+            GeneralConstId::AnonConstId(anon_const_id) => SolverDefId::AnonConstId(anon_const_id),
         }
     }
 }
@@ -154,6 +162,28 @@ impl From<DefWithBodyId> for SolverDefId {
             DefWithBodyId::StaticId(id) => id.into(),
             DefWithBodyId::ConstId(id) => id.into(),
             DefWithBodyId::VariantId(id) => id.into(),
+        }
+    }
+}
+
+impl From<VariantId> for SolverDefId {
+    #[inline]
+    fn from(value: VariantId) -> Self {
+        match value {
+            VariantId::EnumVariantId(id) => id.into(),
+            VariantId::StructId(id) => id.into(),
+            VariantId::UnionId(id) => id.into(),
+        }
+    }
+}
+
+impl From<ExpressionStoreOwnerId> for SolverDefId {
+    #[inline]
+    fn from(value: ExpressionStoreOwnerId) -> Self {
+        match value {
+            ExpressionStoreOwnerId::Body(body_id) => body_id.into(),
+            ExpressionStoreOwnerId::Signature(sig_id) => sig_id.into(),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => variant_id.into(),
         }
     }
 }
@@ -176,7 +206,8 @@ impl TryFrom<SolverDefId> for AttrDefId {
             SolverDefId::BuiltinDeriveImplId(_)
             | SolverDefId::InternedClosureId(_)
             | SolverDefId::InternedCoroutineId(_)
-            | SolverDefId::InternedOpaqueTyId(_) => Err(()),
+            | SolverDefId::InternedOpaqueTyId(_)
+            | SolverDefId::AnonConstId(_) => Err(()),
         }
     }
 }
@@ -199,6 +230,7 @@ impl TryFrom<SolverDefId> for DefWithBodyId {
             | SolverDefId::InternedClosureId(_)
             | SolverDefId::InternedCoroutineId(_)
             | SolverDefId::Ctor(Ctor::Struct(_))
+            | SolverDefId::AnonConstId(_)
             | SolverDefId::AdtId(_) => return Err(()),
         };
         Ok(id)
@@ -222,6 +254,7 @@ impl TryFrom<SolverDefId> for GenericDefId {
             | SolverDefId::InternedOpaqueTyId(_)
             | SolverDefId::EnumVariantId(_)
             | SolverDefId::BuiltinDeriveImplId(_)
+            | SolverDefId::AnonConstId(_)
             | SolverDefId::Ctor(_) => return Err(()),
         })
     }
@@ -343,6 +376,7 @@ impl From<GeneralConstIdWrapper> for SolverDefId {
         match value.0 {
             GeneralConstId::ConstId(id) => SolverDefId::ConstId(id),
             GeneralConstId::StaticId(id) => SolverDefId::StaticId(id),
+            GeneralConstId::AnonConstId(id) => SolverDefId::AnonConstId(id),
         }
     }
 }
@@ -353,6 +387,7 @@ impl TryFrom<SolverDefId> for GeneralConstIdWrapper {
         match value {
             SolverDefId::ConstId(it) => Ok(Self(it.into())),
             SolverDefId::StaticId(it) => Ok(Self(it.into())),
+            SolverDefId::AnonConstId(it) => Ok(Self(it.into())),
             _ => Err(()),
         }
     }

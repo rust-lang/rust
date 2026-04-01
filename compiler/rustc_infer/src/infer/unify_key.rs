@@ -110,6 +110,13 @@ impl<'tcx> ConstVariableValue<'tcx> {
             ConstVariableValue::Known { value } => Some(value),
         }
     }
+
+    pub(crate) fn is_unknown(&self) -> bool {
+        match *self {
+            ConstVariableValue::Unknown { .. } => true,
+            ConstVariableValue::Known { .. } => false,
+        }
+    }
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]

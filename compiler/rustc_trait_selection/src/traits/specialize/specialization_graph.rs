@@ -367,7 +367,7 @@ pub(crate) fn assoc_def(
         // Ensure that the impl is constrained, otherwise projection may give us
         // bad unconstrained infer vars.
         if let Some(impl_def_id) = impl_def_id.as_local() {
-            tcx.ensure_ok().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;
+            tcx.ensure_result().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;
         }
 
         let item = tcx.associated_item(impl_item_id);
@@ -390,7 +390,7 @@ pub(crate) fn assoc_def(
         if let ty::AssocContainer::TraitImpl(_) = assoc_item.item.container
             && let Some(impl_def_id) = assoc_item.item.container_id(tcx).as_local()
         {
-            tcx.ensure_ok().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;
+            tcx.ensure_result().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;
         }
 
         Ok(assoc_item)

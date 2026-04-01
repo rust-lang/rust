@@ -171,20 +171,7 @@ symbols! {
         AsyncGenFinished,
         AsyncGenPending,
         AsyncGenReady,
-        AtomicBool,
-        AtomicI8,
-        AtomicI16,
-        AtomicI32,
-        AtomicI64,
-        AtomicI128,
-        AtomicIsize,
-        AtomicPtr,
-        AtomicU8,
-        AtomicU16,
-        AtomicU32,
-        AtomicU64,
-        AtomicU128,
-        AtomicUsize,
+        Atomic,
         BTreeMap,
         Bool,
         Borrow,
@@ -485,7 +472,6 @@ symbols! {
         atomic_load,
         atomic_max,
         atomic_min,
-        atomic_mod,
         atomic_nand,
         atomic_or,
         atomic_singlethreadfence,
@@ -519,6 +505,7 @@ symbols! {
         avx512bw,
         avx512f,
         await_macro,
+        backchain,
         bang,
         begin_panic,
         bench,
@@ -760,6 +747,7 @@ symbols! {
         custom_mir,
         custom_test_frameworks,
         d32,
+        dbg_macro,
         dead_code,
         dealloc,
         debug,
@@ -811,6 +799,7 @@ symbols! {
         diagnostic,
         diagnostic_namespace,
         diagnostic_on_const,
+        diagnostic_on_move,
         dialect,
         direct,
         discriminant_kind,
@@ -928,10 +917,7 @@ symbols! {
         f64_nan,
         f128,
         f128_nan,
-        fabsf16,
-        fabsf32,
-        fabsf64,
-        fabsf128,
+        fabs,
         fadd_algebraic,
         fadd_fast,
         fake_variadic,
@@ -1041,6 +1027,7 @@ symbols! {
         global_registration,
         globs,
         gt,
+        guard,
         guard_patterns,
         half_open_range_patterns,
         half_open_range_patterns_in_slices,
@@ -1071,6 +1058,7 @@ symbols! {
         immediate_abort: "immediate-abort",
         impl_header_lifetime_elision,
         impl_lint_pass,
+        impl_restriction,
         impl_trait_in_assoc_type,
         impl_trait_in_bindings,
         impl_trait_in_fn_trait_return,
@@ -1086,6 +1074,7 @@ symbols! {
         include_bytes,
         include_str,
         inclusive_range_syntax,
+        incomplete_features,
         index,
         index_mut,
         infer_outlives_requirements,
@@ -1127,6 +1116,7 @@ symbols! {
         iterator_collect_fn,
         kcfi,
         kernel_address,
+        kernel_hwaddress,
         keylocker_x86,
         keyword,
         kind,
@@ -1165,6 +1155,7 @@ symbols! {
         link_section,
         linkage,
         linker,
+        linker_info,
         linker_messages,
         linkonce,
         linkonce_odr,
@@ -1202,6 +1193,7 @@ symbols! {
         macro_derive,
         macro_escape,
         macro_export,
+        macro_guard_matcher,
         macro_lifetime_matcher,
         macro_literal_matcher,
         macro_metavar_expr,
@@ -1220,19 +1212,21 @@ symbols! {
         masked,
         match_beginning_vert,
         match_default_bindings,
+        maximum_number_nsz_f16,
+        maximum_number_nsz_f32,
+        maximum_number_nsz_f64,
+        maximum_number_nsz_f128,
         maximumf16,
         maximumf32,
         maximumf64,
         maximumf128,
-        maxnumf16,
-        maxnumf32,
-        maxnumf64,
-        maxnumf128,
         may_dangle,
         may_unwind,
+        maybe_dangling,
         maybe_uninit,
         maybe_uninit_uninit,
         maybe_uninit_zeroed,
+        mem,
         mem_align_const,
         mem_discriminant,
         mem_drop,
@@ -1257,14 +1251,14 @@ symbols! {
         min_generic_const_args,
         min_specialization,
         min_type_alias_impl_trait,
+        minimum_number_nsz_f16,
+        minimum_number_nsz_f32,
+        minimum_number_nsz_f64,
+        minimum_number_nsz_f128,
         minimumf16,
         minimumf32,
         minimumf64,
         minimumf128,
-        minnumf16,
-        minnumf32,
-        minnumf64,
-        minnumf128,
         mips,
         mips32r6,
         mips64,
@@ -1417,6 +1411,7 @@ symbols! {
         omit_gdb_pretty_printer_section,
         on,
         on_const,
+        on_move,
         on_unimplemented,
         opaque,
         opaque_generic_const_args,
@@ -1721,9 +1716,13 @@ symbols! {
         rustc_driver,
         rustc_dummy,
         rustc_dump_def_parents,
+        rustc_dump_inferred_outlives,
         rustc_dump_item_bounds,
+        rustc_dump_object_lifetime_defaults,
         rustc_dump_predicates,
         rustc_dump_user_args,
+        rustc_dump_variances,
+        rustc_dump_variances_of_opaques,
         rustc_dump_vtable,
         rustc_dyn_incompatible_trait,
         rustc_effective_visibility,
@@ -1760,10 +1759,8 @@ symbols! {
         rustc_nounwind,
         rustc_objc_class,
         rustc_objc_selector,
-        rustc_object_lifetime_default,
         rustc_offload_kernel,
         rustc_on_unimplemented,
-        rustc_outlives,
         rustc_paren_sugar,
         rustc_partition_codegened,
         rustc_partition_reused,
@@ -1793,8 +1790,6 @@ symbols! {
         rustc_then_this_would_need,
         rustc_trivial_field_reads,
         rustc_unsafe_specialization_marker,
-        rustc_variance,
-        rustc_variance_of_opaques,
         rustdoc,
         rustdoc_internals,
         rustdoc_missing_doc_code_examples,
@@ -1860,8 +1855,6 @@ symbols! {
         simd_flog10,
         simd_floor,
         simd_fma,
-        simd_fmax,
-        simd_fmin,
         simd_fsin,
         simd_fsqrt,
         simd_funnel_shl,
@@ -1875,6 +1868,8 @@ symbols! {
         simd_lt,
         simd_masked_load,
         simd_masked_store,
+        simd_maximum_number_nsz,
+        simd_minimum_number_nsz,
         simd_mul,
         simd_ne,
         simd_neg,
@@ -1925,7 +1920,7 @@ symbols! {
         slice_len_fn,
         slice_patterns,
         slicing_syntax,
-        soft,
+        soft_float: "soft-float",
         sparc,
         sparc64,
         sparc_target_feature,
@@ -2016,6 +2011,7 @@ symbols! {
         test_2018_feature,
         test_accepted_feature,
         test_case,
+        test_incomplete_feature,
         test_removed_feature,
         test_runner,
         test_unstable_lint,
@@ -2605,17 +2601,17 @@ impl fmt::Display for Symbol {
     }
 }
 
-impl<CTX> HashStable<CTX> for Symbol {
+impl<Hcx> HashStable<Hcx> for Symbol {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_str().hash_stable(hcx, hasher);
     }
 }
 
-impl<CTX> ToStableHashKey<CTX> for Symbol {
+impl<Hcx> ToStableHashKey<Hcx> for Symbol {
     type KeyType = String;
     #[inline]
-    fn to_stable_hash_key(&self, _: &CTX) -> String {
+    fn to_stable_hash_key(&self, _: &Hcx) -> String {
         self.as_str().to_string()
     }
 }
@@ -2665,9 +2661,9 @@ impl fmt::Debug for ByteSymbol {
     }
 }
 
-impl<CTX> HashStable<CTX> for ByteSymbol {
+impl<Hcx> HashStable<Hcx> for ByteSymbol {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_byte_str().hash_stable(hcx, hasher);
     }
 }

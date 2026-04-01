@@ -6,12 +6,16 @@ use std::ops::ControlFlow;
 use either::Either;
 use hir::{ClosureKind, Path};
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
+use rustc_hir::attrs::diagnostic::FormatArgs;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
-use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, LangItem, PatField};
+use rustc_hir::{
+    CoroutineDesugaring, CoroutineKind, CoroutineSource, LangItem, PatField, find_attr,
+};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::{
@@ -28,7 +32,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{BytePos, Ident, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, ExpnKind, Ident, MacroKind, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
@@ -138,6 +142,36 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let partial_str = if is_partial_move { "partial " } else { "" };
             let partially_str = if is_partial_move { "partially " } else { "" };
 
+            let (on_move_message, on_move_label, on_move_notes) = if let ty::Adt(item_def, args) =
+                self.body.local_decls[moved_place.local].ty.kind()
+                && let Some(Some(directive)) = find_attr!(self.infcx.tcx, item_def.did(), OnMove { directive, .. }  => directive)
+            {
+                let item_name = self.infcx.tcx.item_name(item_def.did()).to_string();
+                let mut generic_args: Vec<_> = self
+                    .infcx
+                    .tcx
+                    .generics_of(item_def.did())
+                    .own_params
+                    .iter()
+                    .filter_map(|param| Some((param.name, args[param.index as usize].to_string())))
+                    .collect();
+                generic_args.push((kw::SelfUpper, item_name));
+
+                let args = FormatArgs {
+                    this: String::new(),
+                    trait_sugared: String::new(),
+                    item_context: "",
+                    generic_args,
+                };
+                (
+                    directive.message.as_ref().map(|e| e.1.format(&args)),
+                    directive.label.as_ref().map(|e| e.1.format(&args)),
+                    directive.notes.iter().map(|e| e.format(&args)).collect(),
+                )
+            } else {
+                (None, None, ThinVec::new())
+            };
+
             let mut err = self.cannot_act_on_moved_value(
                 span,
                 desired_action.as_noun(),
@@ -146,7 +180,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     moved_place,
                     DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
                 ),
+                on_move_message,
             );
+
+            for note in on_move_notes {
+                err.note(note);
+            }
 
             let reinit_spans = maybe_reinitialized_locations
                 .iter()
@@ -275,12 +314,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             if needs_note {
                 if let Some(local) = place.as_local() {
                     let span = self.body.local_decls[local].source_info.span;
-                    err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
-                        is_partial_move,
-                        ty,
-                        place: &note_msg,
-                        span,
-                    });
+                    if let Some(on_move_label) = on_move_label {
+                        err.span_label(span, on_move_label);
+                    } else {
+                        err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
+                            is_partial_move,
+                            ty,
+                            place: &note_msg,
+                            span,
+                        });
+                    }
                 } else {
                     err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Note {
                         is_partial_move,
@@ -545,8 +588,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     // for dbg!(x) which may take ownership, suggest dbg!(&x) instead
-    // but here we actually do not check whether the macro name is `dbg!`
-    // so that we may extend the scope a bit larger to cover more cases
     fn suggest_ref_for_dbg_args(
         &self,
         body: &hir::Expr<'_>,
@@ -560,29 +601,41 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         });
         let Some(var_info) = var_info else { return };
         let arg_name = var_info.name;
-        struct MatchArgFinder {
-            expr_span: Span,
-            match_arg_span: Option<Span>,
+        struct MatchArgFinder<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            move_span: Span,
             arg_name: Symbol,
+            match_arg_span: Option<Span> = None,
         }
-        impl Visitor<'_> for MatchArgFinder {
+        impl Visitor<'_> for MatchArgFinder<'_> {
             fn visit_expr(&mut self, e: &hir::Expr<'_>) {
                 // dbg! is expanded into a match pattern, we need to find the right argument span
-                if let hir::ExprKind::Match(expr, ..) = &e.kind
-                    && let hir::ExprKind::Path(hir::QPath::Resolved(
-                        _,
-                        path @ Path { segments: [seg], .. },
-                    )) = &expr.kind
-                    && seg.ident.name == self.arg_name
-                    && self.expr_span.source_callsite().contains(expr.span)
+                if let hir::ExprKind::Match(scrutinee, ..) = &e.kind
+                    && let hir::ExprKind::Tup(args) = scrutinee.kind
+                    && e.span.macro_backtrace().any(|expn| {
+                        expn.macro_def_id.is_some_and(|macro_def_id| {
+                            self.tcx.is_diagnostic_item(sym::dbg_macro, macro_def_id)
+                        })
+                    })
                 {
-                    self.match_arg_span = Some(path.span);
+                    for arg in args {
+                        if let hir::ExprKind::Path(hir::QPath::Resolved(
+                            _,
+                            path @ Path { segments: [seg], .. },
+                        )) = &arg.kind
+                            && seg.ident.name == self.arg_name
+                            && self.move_span.source_equal(arg.span)
+                        {
+                            self.match_arg_span = Some(path.span);
+                            return;
+                        }
+                    }
                 }
                 hir::intravisit::walk_expr(self, e);
             }
         }
 
-        let mut finder = MatchArgFinder { expr_span: move_span, match_arg_span: None, arg_name };
+        let mut finder = MatchArgFinder { tcx: self.infcx.tcx, move_span, arg_name, .. };
         finder.visit_expr(body);
         if let Some(macro_arg_span) = finder.match_arg_span {
             err.span_suggestion_verbose(
@@ -1438,6 +1491,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         expr: &hir::Expr<'_>,
     ) -> bool {
         let tcx = self.infcx.tcx;
+
+        // Don't suggest `.clone()` in a derive macro expansion.
+        if let ExpnKind::Macro(MacroKind::Derive, _) = self.body.span.ctxt().outer_expn_data().kind
+        {
+            return false;
+        }
         if let Some(_) = self.clone_on_reference(expr) {
             // Avoid redundant clone suggestion already suggested in `explain_captures`.
             // See `tests/ui/moves/needs-clone-through-deref.rs`
@@ -1520,10 +1579,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let tcx = self.infcx.tcx;
         let generics = tcx.generics_of(self.mir_def_id());
 
-        let Some(hir_generics) = tcx
-            .typeck_root_def_id(self.mir_def_id().to_def_id())
-            .as_local()
-            .and_then(|def_id| tcx.hir_get_generics(def_id))
+        let Some(hir_generics) =
+            tcx.hir_get_generics(tcx.typeck_root_def_id_local(self.mir_def_id()))
         else {
             return;
         };

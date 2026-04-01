@@ -43,7 +43,7 @@ use crate::mbe::quoted::{RulePart, parse_one_tt};
 use crate::mbe::transcribe::transcribe;
 use crate::mbe::{self, KleeneOp};
 
-pub(crate) struct ParserAnyMacro<'a> {
+pub(crate) struct ParserAnyMacro<'a, 'b> {
     parser: Parser<'a>,
 
     /// Span of the expansion site of the macro this parser is for
@@ -55,10 +55,15 @@ pub(crate) struct ParserAnyMacro<'a> {
     arm_span: Span,
     /// Whether or not this macro is defined in the current crate
     is_local: bool,
+    bindings: &'b [MacroRule],
+    matched_rule_bindings: &'b [MatcherLoc],
 }
 
-impl<'a> ParserAnyMacro<'a> {
-    pub(crate) fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
+impl<'a, 'b> ParserAnyMacro<'a, 'b> {
+    pub(crate) fn make(
+        mut self: Box<ParserAnyMacro<'a, 'b>>,
+        kind: AstFragmentKind,
+    ) -> AstFragment {
         let ParserAnyMacro {
             site_span,
             macro_ident,
@@ -67,13 +72,22 @@ impl<'a> ParserAnyMacro<'a> {
             arm_span,
             is_trailing_mac,
             is_local,
+            bindings,
+            matched_rule_bindings,
         } = *self;
         let snapshot = &mut parser.create_snapshot_for_diagnostic();
         let fragment = match parse_ast_fragment(parser, kind) {
             Ok(f) => f,
             Err(err) => {
                 let guar = diagnostics::emit_frag_parse_err(
-                    err, parser, snapshot, site_span, arm_span, kind,
+                    err,
+                    parser,
+                    snapshot,
+                    site_span,
+                    arm_span,
+                    kind,
+                    bindings,
+                    matched_rule_bindings,
                 );
                 return kind.dummy(site_span, guar);
             }
@@ -100,7 +114,7 @@ impl<'a> ParserAnyMacro<'a> {
         fragment
     }
 
-    #[instrument(skip(cx, tts))]
+    #[instrument(skip(cx, tts, bindings, matched_rule_bindings))]
     pub(crate) fn from_tts<'cx>(
         cx: &'cx mut ExtCtxt<'a>,
         tts: TokenStream,
@@ -108,6 +122,9 @@ impl<'a> ParserAnyMacro<'a> {
         arm_span: Span,
         is_local: bool,
         macro_ident: Ident,
+        // bindings and lhs is for diagnostics
+        bindings: &'b [MacroRule],
+        matched_rule_bindings: &'b [MatcherLoc],
     ) -> Self {
         Self {
             parser: Parser::new(&cx.sess.psess, tts, None),
@@ -121,11 +138,13 @@ impl<'a> ParserAnyMacro<'a> {
             is_trailing_mac: cx.current_expansion.is_trailing_mac,
             arm_span,
             is_local,
+            bindings,
+            matched_rule_bindings,
         }
     }
 }
 
-pub(super) enum MacroRule {
+pub(crate) enum MacroRule {
     /// A function-style rule, for use with `m!()`
     Func { lhs: Vec<MatcherLoc>, lhs_span: Span, rhs: mbe::TokenTree },
     /// An attr rule, for use with `#[m]`
@@ -226,8 +245,8 @@ impl MacroRulesMacroExpander {
 }
 
 impl TTMacroExpander for MacroRulesMacroExpander {
-    fn expand<'cx>(
-        &self,
+    fn expand<'cx, 'a: 'cx>(
+        &'a self,
         cx: &'cx mut ExtCtxt<'_>,
         sp: Span,
         input: TokenStream,
@@ -337,7 +356,7 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 
 /// Expands the rules based macro defined by `rules` for a given input `arg`.
 #[instrument(skip(cx, transparency, arg, rules))]
-fn expand_macro<'cx>(
+fn expand_macro<'cx, 'a: 'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     def_span: Span,
@@ -345,7 +364,7 @@ fn expand_macro<'cx>(
     name: Ident,
     transparency: Transparency,
     arg: TokenStream,
-    rules: &[MacroRule],
+    rules: &'a [MacroRule],
 ) -> Box<dyn MacResult + 'cx> {
     let psess = &cx.sess.psess;
 
@@ -359,7 +378,7 @@ fn expand_macro<'cx>(
 
     match try_success_result {
         Ok((rule_index, rule, named_matches)) => {
-            let MacroRule::Func { rhs, .. } = rule else {
+            let MacroRule::Func { lhs, rhs, .. } = rule else {
                 panic!("try_match_macro returned non-func rule");
             };
             let mbe::TokenTree::Delimited(rhs_span, _, rhs) = rhs else {
@@ -388,7 +407,7 @@ fn expand_macro<'cx>(
             }
 
             // Let the context choose how to interpret the result. Weird, but useful for X-macros.
-            Box::new(ParserAnyMacro::from_tts(cx, tts, sp, arm_span, is_local, name))
+            Box::new(ParserAnyMacro::from_tts(cx, tts, sp, arm_span, is_local, name, rules, lhs))
         }
         Err(CanRetry::No(guar)) => {
             debug!("Will not retry matching as an error was emitted already");
@@ -724,7 +743,7 @@ pub fn compile_declarative_macro(
             let args = p.parse_token_tree();
             check_args_parens(sess, sym::attr, &args);
             let args = parse_one_tt(args, RulePart::Pattern, sess, node_id, features, edition);
-            check_emission(check_lhs(sess, node_id, &args));
+            check_emission(check_lhs(sess, features, node_id, &args));
             if let Some(guar) = check_no_eof(sess, &p, "expected macro attr body") {
                 return dummy_syn_ext(guar);
             }
@@ -773,7 +792,7 @@ pub fn compile_declarative_macro(
         };
         let lhs_tt = p.parse_token_tree();
         let lhs_tt = parse_one_tt(lhs_tt, RulePart::Pattern, sess, node_id, features, edition);
-        check_emission(check_lhs(sess, node_id, &lhs_tt));
+        check_emission(check_lhs(sess, features, node_id, &lhs_tt));
         if let Err(e) = p.expect(exp!(FatArrow)) {
             return dummy_syn_ext(e.emit());
         }
@@ -870,21 +889,27 @@ fn check_args_empty(sess: &Session, args: &tokenstream::TokenTree) -> Result<(),
     }
 }
 
-fn check_lhs(sess: &Session, node_id: NodeId, lhs: &mbe::TokenTree) -> Result<(), ErrorGuaranteed> {
-    let e1 = check_lhs_nt_follows(sess, node_id, lhs);
+fn check_lhs(
+    sess: &Session,
+    features: &Features,
+    node_id: NodeId,
+    lhs: &mbe::TokenTree,
+) -> Result<(), ErrorGuaranteed> {
+    let e1 = check_lhs_nt_follows(sess, features, node_id, lhs);
     let e2 = check_lhs_no_empty_seq(sess, slice::from_ref(lhs));
     e1.and(e2)
 }
 
 fn check_lhs_nt_follows(
     sess: &Session,
+    features: &Features,
     node_id: NodeId,
     lhs: &mbe::TokenTree,
 ) -> Result<(), ErrorGuaranteed> {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     if let mbe::TokenTree::Delimited(.., delimited) = lhs {
-        check_matcher(sess, node_id, &delimited.tts)
+        check_matcher(sess, features, node_id, &delimited.tts)
     } else {
         let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
         Err(sess.dcx().span_err(lhs.span(), msg))
@@ -989,12 +1014,13 @@ fn check_rhs(sess: &Session, rhs: &mbe::TokenTree) -> Result<(), ErrorGuaranteed
 
 fn check_matcher(
     sess: &Session,
+    features: &Features,
     node_id: NodeId,
     matcher: &[mbe::TokenTree],
 ) -> Result<(), ErrorGuaranteed> {
     let first_sets = FirstSets::new(matcher);
     let empty_suffix = TokenSet::empty();
-    check_matcher_core(sess, node_id, &first_sets, matcher, &empty_suffix)?;
+    check_matcher_core(sess, features, node_id, &first_sets, matcher, &empty_suffix)?;
     Ok(())
 }
 
@@ -1331,6 +1357,7 @@ impl<'tt> TokenSet<'tt> {
 // see `FirstSets::new`.
 fn check_matcher_core<'tt>(
     sess: &Session,
+    features: &Features,
     node_id: NodeId,
     first_sets: &FirstSets<'tt>,
     matcher: &'tt [mbe::TokenTree],
@@ -1369,6 +1396,17 @@ fn check_matcher_core<'tt>(
             | TokenTree::MetaVar(..)
             | TokenTree::MetaVarDecl { .. }
             | TokenTree::MetaVarExpr(..) => {
+                if let TokenTree::MetaVarDecl { kind: NonterminalKind::Guard, .. } = token
+                    && !features.macro_guard_matcher()
+                {
+                    feature_err(
+                        sess,
+                        sym::macro_guard_matcher,
+                        token.span(),
+                        "`guard` fragments in macro are unstable",
+                    )
+                    .emit();
+                }
                 if token_can_be_followed_by_any(token) {
                     // don't need to track tokens that work with any,
                     last.replace_with_irrelevant();
@@ -1385,7 +1423,7 @@ fn check_matcher_core<'tt>(
                     d.delim.as_close_token_kind(),
                     span.close,
                 ));
-                check_matcher_core(sess, node_id, first_sets, &d.tts, &my_suffix)?;
+                check_matcher_core(sess, features, node_id, first_sets, &d.tts, &my_suffix)?;
                 // don't track non NT tokens
                 last.replace_with_irrelevant();
 
@@ -1417,7 +1455,14 @@ fn check_matcher_core<'tt>(
                 // At this point, `suffix_first` is built, and
                 // `my_suffix` is some TokenSet that we can use
                 // for checking the interior of `seq_rep`.
-                let next = check_matcher_core(sess, node_id, first_sets, &seq_rep.tts, my_suffix)?;
+                let next = check_matcher_core(
+                    sess,
+                    features,
+                    node_id,
+                    first_sets,
+                    &seq_rep.tts,
+                    my_suffix,
+                )?;
                 if next.maybe_empty {
                     last.add_all(&next);
                 } else {
@@ -1609,7 +1654,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 }
             }
             NonterminalKind::Pat(PatParam { .. }) => {
-                const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
+                const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`if let`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq | Or => IsInFollow::Yes,
@@ -1618,17 +1663,29 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                         }
                         _ => IsInFollow::No(TOKENS),
                     },
+                    TokenTree::MetaVarDecl { kind: NonterminalKind::Guard, .. } => IsInFollow::Yes,
                     _ => IsInFollow::No(TOKENS),
                 }
             }
             NonterminalKind::Pat(PatWithOr) => {
-                const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`if`", "`in`"];
+                const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`if`", "`if let`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq => IsInFollow::Yes,
                         Ident(name, IdentIsRaw::No) if name == kw::If || name == kw::In => {
                             IsInFollow::Yes
                         }
+                        _ => IsInFollow::No(TOKENS),
+                    },
+                    TokenTree::MetaVarDecl { kind: NonterminalKind::Guard, .. } => IsInFollow::Yes,
+                    _ => IsInFollow::No(TOKENS),
+                }
+            }
+            NonterminalKind::Guard => {
+                const TOKENS: &[&str] = &["`=>`", "`,`", "`{`"];
+                match tok {
+                    TokenTree::Token(token) => match token.kind {
+                        FatArrow | Comma | OpenBrace => IsInFollow::Yes,
                         _ => IsInFollow::No(TOKENS),
                     },
                     _ => IsInFollow::No(TOKENS),

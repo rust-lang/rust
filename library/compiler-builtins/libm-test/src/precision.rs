@@ -1,9 +1,10 @@
 //! Configuration for skipping or changing the result for individual test cases (inputs) rather
 //! than ignoring entire tests.
 
+use BaseName as Bn;
 use CheckBasis::{Mpfr, Musl};
+use Identifier as Id;
 use libm::support::CastFrom;
-use {BaseName as Bn, Identifier as Id};
 
 use crate::{BaseName, CheckBasis, CheckCtx, Float, Identifier, Int, TestResult};
 
@@ -219,6 +220,15 @@ impl MaybeOverride<(f32,)> for SpecialCase {
     fn check_float<F: Float>(input: (f32,), actual: F, expected: F, ctx: &CheckCtx) -> CheckAction {
         if ctx.base_name == BaseName::J0 && input.0 < -1e34 {
             // Errors get huge close to -inf
+            return XFAIL_NOCHECK;
+        }
+
+        // the testing infrastructure doesn't account for allowed ulp in the case of overflow
+        if matches!(ctx.base_name, BaseName::Lgamma | BaseName::LgammaR)
+            && input.0 == 4.0850034e36
+            && expected.is_infinite()
+            && actual == F::MAX
+        {
             return XFAIL_NOCHECK;
         }
 

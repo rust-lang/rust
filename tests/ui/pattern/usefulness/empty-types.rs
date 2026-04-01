@@ -9,7 +9,6 @@
 #![feature(never_type)]
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![cfg_attr(never_pats, feature(never_patterns))]
-//[never_pats]~^ WARN the feature `never_patterns` is incomplete
 #![allow(dead_code, unreachable_code)]
 #![deny(unreachable_patterns)]
 

@@ -38,15 +38,14 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, receiver
             .local_decls
             .iter_enumerated()
             .find(|(_, decl)| local.span.contains(decl.source_info.span))
-        && let Some(usages) = visit_local_usage(
-            &[local],
+        && let Some([usage]) = visit_local_usage(
+            [local],
             mir,
             Location {
                 block: START_BLOCK,
                 statement_index: 0,
             },
         )
-        && let [usage] = usages.as_slice()
     {
         let writer_never_mutated = usage.local_consume_or_mutate_locs.is_empty();
 

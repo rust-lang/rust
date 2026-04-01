@@ -117,8 +117,8 @@ impl fmt::Debug for InferConst {
 }
 
 #[cfg(feature = "nightly")]
-impl<CTX> HashStable<CTX> for InferConst {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+impl<Hcx> HashStable<Hcx> for InferConst {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             InferConst::Var(_) => {
                 panic!("const variables should not be hashed: {self:?}")
@@ -140,7 +140,7 @@ impl<CTX> HashStable<CTX> for InferConst {
 ///
 /// `ValTree` does not have this problem with representation, as it only contains integers or
 /// lists of (nested) `ty::Const`s (which may indirectly contain more `ValTree`s).
-#[derive_where(Clone, Debug, Hash, Eq, PartialEq; I: Interner)]
+#[derive_where(Clone, Copy, Debug, Hash, Eq, PartialEq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -159,8 +159,7 @@ pub enum ValTreeKind<I: Interner> {
     /// the fields of the variant.
     ///
     /// ZST types are represented as an empty slice.
-    // FIXME(mgca): Use a `List` here instead of a boxed slice
-    Branch(Box<[I::Const]>),
+    Branch(I::Consts),
 }
 
 impl<I: Interner> ValTreeKind<I> {
@@ -177,9 +176,9 @@ impl<I: Interner> ValTreeKind<I> {
     /// Converts to a `ValTreeKind::Branch` value, `panic`'ing
     /// if this valtree is some other kind.
     #[inline]
-    pub fn to_branch(&self) -> &[I::Const] {
+    pub fn to_branch(&self) -> I::Consts {
         match self {
-            ValTreeKind::Branch(branch) => &**branch,
+            ValTreeKind::Branch(branch) => *branch,
             ValTreeKind::Leaf(..) => panic!("expected branch, got {:?}", self),
         }
     }
@@ -193,9 +192,9 @@ impl<I: Interner> ValTreeKind<I> {
     }
 
     /// Attempts to convert to a `ValTreeKind::Branch` value.
-    pub fn try_to_branch(&self) -> Option<&[I::Const]> {
+    pub fn try_to_branch(&self) -> Option<I::Consts> {
         match self {
-            ValTreeKind::Branch(branch) => Some(&**branch),
+            ValTreeKind::Branch(branch) => Some(*branch),
             ValTreeKind::Leaf(_) => None,
         }
     }

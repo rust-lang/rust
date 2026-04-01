@@ -175,7 +175,7 @@ pub struct LeafDef {
     /// The node in the specialization graph containing the definition of `item`.
     pub defining_node: Node,
 
-    /// The "top-most" (ie. least specialized) specialization graph node that finalized the
+    /// The "top-most" (i.e. least specialized) specialization graph node that finalized the
     /// definition of `item`.
     ///
     /// Example:
@@ -210,7 +210,7 @@ impl LeafDef {
 }
 
 impl<'tcx> Ancestors<'tcx> {
-    /// Finds the bottom-most (ie. most specialized) definition of an associated
+    /// Finds the bottom-most (i.e. most specialized) definition of an associated
     /// item.
     pub fn leaf_def(mut self, tcx: TyCtxt<'tcx>, trait_item_def_id: DefId) -> Option<LeafDef> {
         let mut finalizing_node = None;

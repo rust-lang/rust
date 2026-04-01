@@ -23,11 +23,11 @@ declare_clippy_lint! {
     "assignments to temporaries"
 }
 
+declare_lint_pass!(TemporaryAssignment => [TEMPORARY_ASSIGNMENT]);
+
 fn is_temporary(expr: &Expr<'_>) -> bool {
     matches!(&expr.kind, ExprKind::Struct(..) | ExprKind::Tup(..))
 }
-
-declare_lint_pass!(TemporaryAssignment => [TEMPORARY_ASSIGNMENT]);
 
 impl<'tcx> LateLintPass<'tcx> for TemporaryAssignment {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

@@ -64,7 +64,7 @@ neon-unstable-feat-lut: &neon-unstable-feat-lut
   FnCall: [unstable, ['feature = "stdarch_neon_feat_lut"', 'issue = "138050"']]
 
 aarch64-stable-jscvt: &aarch64-stable-jscvt
-  FnCall: [stable, ['feature = "stdarch_aarch64_jscvt"', 'since = "CURRENT_RUSTC_VERSION"']]
+  FnCall: [stable, ['feature = "stdarch_aarch64_jscvt"', 'since = "1.95.0"']]
 
 # #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 neon-unstable-feat-lrcpc3: &neon-unstable-feat-lrcpc3
@@ -4567,20 +4567,11 @@ intrinsics:
       unsafe: [neon]
     attr:
       - *neon-stable
-    assert_instr: [st1]
+    assert_instr: [stp]
     types:
-      - ['f64', float64x1x2_t, float64x1_t]
+      - ['f64', float64x1x2_t]
     compose:
-      - LLVMLink:
-          name: 'st2.{neon_type[1]}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st2.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst2{neon_type[1].nox}', ['b.0', 'b.1', 'a as _']]
+      - FnCall: [core::ptr::write_unaligned, ['a.cast()', b]]
 
   - name: "vst2{neon_type[1].nox}"
     doc: "Store multiple 2-element structures from two registers"
@@ -4591,19 +4582,10 @@ intrinsics:
       - *neon-stable
     assert_instr: [st2]
     types:
-      - [i64, int64x2x2_t, int64x2_t]
-      - [f64, float64x2x2_t, float64x2_t]
+      - [i64, int64x2x2_t, "2"]
+      - [f64, float64x2x2_t, "2"]
     compose:
-      - LLVMLink:
-          name: 'st2.{neon_type[1]}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st2.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst2{neon_type[1].nox}', ['b.0', 'b.1', 'a as _']]
+      - FnCall: ["crate::core_arch::macros::interleaving_store!", [{ Type: "{type[0]}" }, "{type[2]}", "2", a, b], [], true]
 
   - name: "vst2{neon_type[1].lane_nox}"
     doc: "Store multiple 2-element structures from two registers"
@@ -4781,19 +4763,9 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [f64, float64x1x3_t, float64x1_t]
+      - [f64, float64x1x3_t]
     compose:
-      - LLVMLink:
-          name: 'st3.{neon_type[1].nox}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'c: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st3.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst3{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'a as _']]
+      - FnCall: [core::ptr::write_unaligned, ['a.cast()', b]]
 
   - name: "vst3{neon_type[1].lane_nox}"
     doc: "Store multiple 3-element structures from three registers"
@@ -4860,20 +4832,10 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [i64, int64x2x3_t, int64x2_t]
-      - [f64, float64x2x3_t, float64x2_t]
+      - [i64, int64x2x3_t, "2"]
+      - [f64, float64x2x3_t, "2"]
     compose:
-      - LLVMLink:
-          name: 'st3.{neon_type[1].nox}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'c: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st3.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst3{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'a as _']]
+      - FnCall: ["crate::core_arch::macros::interleaving_store!", [{ Type: "{type[0]}" }, "{type[2]}", "3", a, b], [], true]
 
   - name: "vst3{neon_type[1].nox}"
     doc: "Store multiple 3-element structures from three registers"
@@ -4995,20 +4957,9 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [f64, float64x1x4_t, float64x1_t]
+      - [f64, float64x1x4_t]
     compose:
-      - LLVMLink:
-          name: 'st4.{neon_type[1].nox}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'c: {type[2]}'
-            - 'd: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st4.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst4{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'a as _']]
+      - FnCall: [core::ptr::write_unaligned, ['a.cast()', b]]
 
   - name: "vst4{neon_type[1].lane_nox}"
     doc: "Store multiple 4-element structures from four registers"
@@ -5075,21 +5026,10 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [i64, int64x2x4_t, int64x2_t]
-      - [f64, float64x2x4_t, float64x2_t]
+      - [i64, int64x2x4_t, "2"]
+      - [f64, float64x2x4_t, "2"]
     compose:
-      - LLVMLink:
-          name: 'st4.{neon_type[1].nox}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'c: {type[2]}'
-            - 'd: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st4.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst4{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'a as _']]
+      - FnCall: ["crate::core_arch::macros::interleaving_store!", [{ Type: "{type[0]}" }, "{type[2]}", "4", a, b], [], true]
 
   - name: "vst4{neon_type[1].nox}"
     doc: "Store multiple 4-element structures from four registers"
@@ -5434,7 +5374,7 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ["q_lane_f64", float64x2_t, float64x1_t, "q_f64", '[LANE as u32, LANE as u32]']
+      - ["q_lane_f64", float64x2_t, float64x1_t, "q_f64", '[LANE as u32; 2]']
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
       - FnCall:
@@ -5503,11 +5443,11 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ['_lane_f32', float32x2_t, float32x2_t, '1', '_f32', '[LANE as u32, LANE as u32]']
-      - ['_laneq_f32', float32x2_t, float32x4_t, '2', '_f32', '[LANE as u32, LANE as u32]']
-      - ['q_lane_f32', float32x4_t, float32x2_t, '1', 'q_f32', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - ['q_laneq_f32', float32x4_t, float32x4_t, '2', 'q_f32', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - ['q_laneq_f64', float64x2_t, float64x2_t, '1', 'q_f64', '[LANE as u32, LANE as u32]']
+      - ['_lane_f32', float32x2_t, float32x2_t, '1', '_f32', '[LANE as u32; 2]']
+      - ['_laneq_f32', float32x2_t, float32x4_t, '2', '_f32', '[LANE as u32; 2]']
+      - ['q_lane_f32', float32x4_t, float32x2_t, '1', 'q_f32', '[LANE as u32; 4]']
+      - ['q_laneq_f32', float32x4_t, float32x4_t, '2', 'q_f32', '[LANE as u32; 4]']
+      - ['q_laneq_f64', float64x2_t, float64x2_t, '1', 'q_f64', '[LANE as u32; 2]']
     compose:
       - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
       - FnCall:
@@ -5533,10 +5473,10 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ['_lane_f16', float16x4_t, float16x4_t, '2', '_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - ['_laneq_f16', float16x4_t, float16x8_t, '3', '_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - ['q_lane_f16', float16x8_t, float16x4_t, '2', 'q_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - ['q_laneq_f16', float16x8_t, float16x8_t, '3', 'q_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - ['_lane_f16', float16x4_t, float16x4_t, '2', '_f16', '[LANE as u32; 4]']
+      - ['_laneq_f16', float16x4_t, float16x8_t, '3', '_f16', '[LANE as u32; 4]']
+      - ['q_lane_f16', float16x8_t, float16x4_t, '2', 'q_f16', '[LANE as u32; 8]']
+      - ['q_laneq_f16', float16x8_t, float16x8_t, '3', 'q_f16', '[LANE as u32; 8]']
     compose:
       - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
       - FnCall:
@@ -6685,6 +6625,7 @@ intrinsics:
               arch: aarch64,arm64ec
 
 
+
   - name: "vmaxnm{neon_type.no}"
     doc: Floating-point Maximum Number (vector)
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -6696,7 +6637,11 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - FnCall: [simd_fmax, [a, b]]
+      - LLVMLink:
+          name: "fmaxnm.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnm.{neon_type}"
+              arch: aarch64,arm64ec
 
 
   - name: "vmaxnmh_{type}"
@@ -6712,7 +6657,11 @@ intrinsics:
     types:
       - f16
     compose:
-      - FnCall: ["f16::max", [a, b]]
+      - LLVMLink:
+          name: "vmaxh.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnm.{type}"
+              arch: aarch64,arm64ec
 
 
   - name: "vminnmh_{type}"
@@ -6728,7 +6677,11 @@ intrinsics:
     types:
       - f16
     compose:
-      - FnCall: ["f16::min", [a, b]]
+      - LLVMLink:
+          name: "vminh.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fminnm.{type}"
+              arch: aarch64,arm64ec
 
 
   - name: "vmaxnmv{neon_type[0].no}"
@@ -6742,7 +6695,11 @@ intrinsics:
       - [float32x2_t, f32]
       - [float64x2_t, f64]
     compose:
-      - FnCall: [simd_reduce_max, [a]]
+      - LLVMLink:
+          name: "fmaxnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
   - name: "vmaxnmv{neon_type[0].no}"
     doc: Floating-point maximum number across vector
@@ -6754,7 +6711,11 @@ intrinsics:
     types:
       - [float32x4_t, f32]
     compose:
-      - FnCall: [simd_reduce_max, [a]]
+      - LLVMLink:
+          name: "fmaxnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
 
   - name: "vmaxnmv{neon_type[0].no}"
@@ -6771,7 +6732,11 @@ intrinsics:
       - [float16x4_t, f16]
       - [float16x8_t, f16]
     compose:
-      - FnCall: [simd_reduce_max, [a]]
+      - LLVMLink:
+          name: "fmaxnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
 
   - name: "vminnmv{neon_type[0].no}"
@@ -6788,7 +6753,11 @@ intrinsics:
       - [float16x4_t, f16]
       - [float16x8_t, f16]
     compose:
-      - FnCall: [simd_reduce_min, [a]]
+      - LLVMLink:
+          name: "fminnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
 
   - name: "vmaxv{neon_type[0].no}"
@@ -6897,7 +6866,11 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - FnCall: [simd_fmin, [a, b]]
+      - LLVMLink:
+          name: "fminnm.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fminnm.{neon_type}"
+              arch: aarch64,arm64ec
 
   - name: "vminnmv{neon_type[0].no}"
     doc: "Floating-point minimum number across vector"
@@ -6911,7 +6884,11 @@ intrinsics:
       - [float32x2_t, "f32"]
       - [float64x2_t, "f64"]
     compose:
-      - FnCall: [simd_reduce_min, [a]]
+      - LLVMLink:
+          name: "vminnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
   - name: "vminnmv{neon_type[0].no}"
     doc: "Floating-point minimum number across vector"
@@ -6924,7 +6901,11 @@ intrinsics:
     types:
       - [float32x4_t, "f32"]
     compose:
-      - FnCall: [simd_reduce_min, [a]]
+      - LLVMLink:
+          name: "vminnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
   - name: "vmovl_high{neon_type[0].noq}"
     doc: Vector move
@@ -7815,14 +7796,14 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [_lane_s16, int16x4_t, int16x4_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_laneq_s16, int16x4_t, int16x4_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_lane_s16, int16x8_t, int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s16, int16x8_t, int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_lane_s32, int32x2_t, int32x2_t, int32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [_laneq_s32, int32x2_t, int32x2_t, int32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [q_lane_s32, int32x4_t, int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s32, int32x4_t, int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [_lane_s16, int16x4_t, int16x4_t, int16x4_t, '2', '[LANE as u32; 4]']
+      - [_laneq_s16, int16x4_t, int16x4_t, int16x8_t, '3', '[LANE as u32; 4]']
+      - [q_lane_s16, int16x8_t, int16x8_t, int16x4_t, '2', '[LANE as u32; 8]']
+      - [q_laneq_s16, int16x8_t, int16x8_t, int16x8_t, '3', '[LANE as u32; 8]']
+      - [_lane_s32, int32x2_t, int32x2_t, int32x2_t, '1', '[LANE as u32; 2]']
+      - [_laneq_s32, int32x2_t, int32x2_t, int32x4_t, '2', '[LANE as u32; 2]']
+      - [q_lane_s32, int32x4_t, int32x4_t, int32x2_t, '1', '[LANE as u32; 4]']
+      - [q_laneq_s32, int32x4_t, int32x4_t, int32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[4]}']]
       - Let: [c, "{type[1]}", {FnCall: [simd_shuffle!, [c, c, "{type[5]}"]]}]
@@ -7899,14 +7880,14 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [_lane_s16, int16x4_t, int16x4_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_laneq_s16, int16x4_t, int16x4_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_lane_s16, int16x8_t, int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s16, int16x8_t, int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_lane_s32, int32x2_t, int32x2_t, int32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [_laneq_s32, int32x2_t, int32x2_t, int32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [q_lane_s32, int32x4_t, int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s32, int32x4_t, int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [_lane_s16, int16x4_t, int16x4_t, int16x4_t, '2', '[LANE as u32; 4]']
+      - [_laneq_s16, int16x4_t, int16x4_t, int16x8_t, '3', '[LANE as u32; 4]']
+      - [q_lane_s16, int16x8_t, int16x8_t, int16x4_t, '2', '[LANE as u32; 8]']
+      - [q_laneq_s16, int16x8_t, int16x8_t, int16x8_t, '3', '[LANE as u32; 8]']
+      - [_lane_s32, int32x2_t, int32x2_t, int32x2_t, '1', '[LANE as u32; 2]']
+      - [_laneq_s32, int32x2_t, int32x2_t, int32x4_t, '2', '[LANE as u32; 2]']
+      - [q_lane_s32, int32x4_t, int32x4_t, int32x2_t, '1', '[LANE as u32; 4]']
+      - [q_laneq_s32, int32x4_t, int32x4_t, int32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[4]}']]
       - Let: [c, "{type[1]}", {FnCall: [simd_shuffle!, [c, c, "{type[5]}"]]}]
@@ -11198,7 +11179,7 @@ intrinsics:
       - FnCall:
           - simd_mul
           - - a
-            - FnCall: ["simd_shuffle!", [b, b, '[LANE as u32, LANE as u32]']]
+            - FnCall: ["simd_shuffle!", [b, b, '[LANE as u32; 2]']]
 
   - name: "vmuld_lane_f64"
     doc: "Floating-point multiply"
@@ -11255,7 +11236,7 @@ intrinsics:
       - FnCall:
           - simd_mul
           - - a
-            - FnCall: [simd_shuffle!, [b, b, '[LANE as u32, LANE as u32]']]
+            - FnCall: [simd_shuffle!, [b, b, '[LANE as u32; 2]']]
 
 
   # vmulq_laneq_f16
@@ -11272,8 +11253,8 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [float16x4_t, float16x8_t, '_lane', "[LANE as u32, LANE as u32, LANE as u32, LANE as u32]"]
-      - [float16x8_t, float16x8_t, 'q_lane', "[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]"]
+      - [float16x4_t, float16x8_t, '_lane', "[LANE as u32; 4]"]
+      - [float16x8_t, float16x8_t, 'q_lane', "[LANE as u32; 8]"]
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '3']]
       - FnCall:
@@ -11395,10 +11376,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [int32x4_t, int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x4_t, int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int64x2_t, int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int64x2_t, int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [int32x4_t, int16x8_t, int16x4_t, '2', '[LANE as u32; 8]']
+      - [int32x4_t, int16x8_t, int16x8_t, '3', '[LANE as u32; 8]']
+      - [int64x2_t, int32x4_t, int32x2_t, '1', '[LANE as u32; 4]']
+      - [int64x2_t, int32x4_t, int32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
@@ -11418,10 +11399,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [uint32x4_t, uint16x8_t, uint16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint16x8_t, uint16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x4_t, uint32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x4_t, uint32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [uint32x4_t, uint16x8_t, uint16x4_t, '2', '[LANE as u32; 8]']
+      - [uint32x4_t, uint16x8_t, uint16x8_t, '3', '[LANE as u32; 8]']
+      - [uint64x2_t, uint32x4_t, uint32x2_t, '1', '[LANE as u32; 4]']
+      - [uint64x2_t, uint32x4_t, uint32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
@@ -11720,10 +11701,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [int16x8_t, int16x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int16x8_t, int16x8_t, int32x4_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x4_t, int32x2_t, int64x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x4_t, int32x4_t, int64x2_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [int16x8_t, int16x4_t, int32x4_t, '2', '[LANE as u32; 8]']
+      - [int16x8_t, int16x8_t, int32x4_t, '3', '[LANE as u32; 8]']
+      - [int32x4_t, int32x2_t, int64x2_t, '1', '[LANE as u32; 4]']
+      - [int32x4_t, int32x4_t, int64x2_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[3]}"]]
       - FnCall:
@@ -11742,10 +11723,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [uint16x8_t, uint16x4_t, uint32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint16x8_t, uint16x8_t, uint32x4_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint32x2_t, uint64x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint32x4_t, uint64x2_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [uint16x8_t, uint16x4_t, uint32x4_t, '2', '[LANE as u32; 8]']
+      - [uint16x8_t, uint16x8_t, uint32x4_t, '3', '[LANE as u32; 8]']
+      - [uint32x4_t, uint32x2_t, uint64x2_t, '1', '[LANE as u32; 4]']
+      - [uint32x4_t, uint32x4_t, uint64x2_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[3]}"]]
       - FnCall:
@@ -12033,10 +12014,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [int32x4_t, int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x4_t, int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int64x2_t, int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int64x2_t, int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [int32x4_t, int16x8_t, int16x4_t, '2', '[LANE as u32; 8]']
+      - [int32x4_t, int16x8_t, int16x8_t, '3', '[LANE as u32; 8]']
+      - [int64x2_t, int32x4_t, int32x2_t, '1', '[LANE as u32; 4]']
+      - [int64x2_t, int32x4_t, int32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall: ['vmlal_high_{neon_type[2]}', [a, b, {FnCall: [simd_shuffle!, [c, c, '{type[4]}']]}]]
@@ -12052,10 +12033,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [uint32x4_t, uint16x8_t, uint16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint16x8_t, uint16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x4_t, uint32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x4_t, uint32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [uint32x4_t, uint16x8_t, uint16x4_t, '2', '[LANE as u32; 8]']
+      - [uint32x4_t, uint16x8_t, uint16x8_t, '3', '[LANE as u32; 8]']
+      - [uint64x2_t, uint32x4_t, uint32x2_t, '1', '[LANE as u32; 4]']
+      - [uint64x2_t, uint32x4_t, uint32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall: ['vmlal_high_{neon_type[2]}', [a, b, {FnCall: [simd_shuffle!, [c, c, '{type[4]}']]}]]

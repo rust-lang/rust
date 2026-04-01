@@ -139,6 +139,8 @@ if foo {
 }
 ```
 
+If you want to leave a note in the codebase, use `// FIXME` instead.
+
 <a id="cio"></a>
 
 ## Using crates from crates.io

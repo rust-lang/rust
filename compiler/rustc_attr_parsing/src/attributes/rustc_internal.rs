@@ -31,7 +31,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcMustImplementOneOfParser {
     const PATH: &[Symbol] = &[sym::rustc_must_implement_one_of];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const TEMPLATE: AttributeTemplate = template!(List: &["function1, function2, ..."]);
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
@@ -105,7 +104,6 @@ pub(crate) struct RustcLayoutScalarValidRangeStartParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStartParser {
     const PATH: &[Symbol] = &[sym::rustc_layout_scalar_valid_range_start];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["start"]);
@@ -120,7 +118,6 @@ pub(crate) struct RustcLayoutScalarValidRangeEndParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEndParser {
     const PATH: &[Symbol] = &[sym::rustc_layout_scalar_valid_range_end];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["end"]);
@@ -135,7 +132,6 @@ pub(crate) struct RustcLegacyConstGenericsParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {
     const PATH: &[Symbol] = &[sym::rustc_legacy_const_generics];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["N"]);
@@ -193,7 +189,6 @@ pub(crate) struct RustcLintOptDenyFieldAccessParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLintOptDenyFieldAccessParser {
     const PATH: &[Symbol] = &[sym::rustc_lint_opt_deny_field_access];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Field)]);
     const TEMPLATE: AttributeTemplate = template!(Word);
@@ -373,7 +368,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDeprecatedSafe2024Parser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"audit_that = "...""#]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
@@ -441,7 +435,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcNeverTypeOptionsParser {
     const PATH: &[Symbol] = &[sym::rustc_never_type_options];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const TEMPLATE: AttributeTemplate = template!(List: &[
         r#"fallback = "unit", "never", "no""#,
         r#"diverging_block_default = "unit", "never""#,
@@ -588,20 +581,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcLintUntrackedQueryInformationPa
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintUntrackedQueryInformation;
 }
 
-pub(crate) struct RustcObjectLifetimeDefaultParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcObjectLifetimeDefaultParser {
-    const PATH: &[Symbol] = &[sym::rustc_object_lifetime_default];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcObjectLifetimeDefault;
-}
-
 pub(crate) struct RustcSimdMonomorphizeLaneLimitParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcSimdMonomorphizeLaneLimitParser {
     const PATH: &[Symbol] = &[sym::rustc_simd_monomorphize_lane_limit];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
@@ -619,7 +602,6 @@ pub(crate) struct RustcScalableVectorParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcScalableVectorParser {
     const PATH: &[Symbol] = &[sym::rustc_scalable_vector];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["count"]);
@@ -645,7 +627,6 @@ pub(crate) struct LangParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LangParser {
     const PATH: &[Symbol] = &[sym::lang];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); // Targets are checked per lang item in `rustc_passes`
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
@@ -990,8 +971,6 @@ pub(crate) struct RustcIfThisChangedParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcIfThisChangedParser {
     const PATH: &[Symbol] = &[sym::rustc_if_this_changed];
 
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
-
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
@@ -1156,7 +1135,6 @@ pub(crate) struct RustcDiagnosticItemParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcDiagnosticItemParser {
     const PATH: &[Symbol] = &[sym::rustc_diagnostic_item];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Trait),
@@ -1229,7 +1207,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSymbolNameParser {
         Allow(Target::Impl { of_trait: false }),
     ]);
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const TEMPLATE: AttributeTemplate = template!(Word);
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         if let Err(span) = args.no_args() {
@@ -1254,7 +1231,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDefPathParser {
         Allow(Target::Impl { of_trait: false }),
     ]);
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const TEMPLATE: AttributeTemplate = template!(Word);
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         if let Err(span) = args.no_args() {
@@ -1284,7 +1260,6 @@ pub(crate) struct RustcReservationImplParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcReservationImplParser {
     const PATH: &[Symbol] = &[sym::rustc_reservation_impl];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Impl { of_trait: true })]);
@@ -1320,7 +1295,6 @@ pub(crate) struct RustcDocPrimitiveParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcDocPrimitiveParser {
     const PATH: &[Symbol] = &[sym::rustc_doc_primitive];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Mod)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "primitive name");
 

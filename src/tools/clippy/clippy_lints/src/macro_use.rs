@@ -43,6 +43,8 @@ declare_clippy_lint! {
     "#[macro_use] is no longer needed"
 }
 
+impl_lint_pass!(MacroUseImports => [MACRO_USE_IMPORTS]);
+
 /// `MacroRefData` includes the name of the macro.
 #[derive(Debug, Clone)]
 pub struct MacroRefData {
@@ -64,8 +66,6 @@ pub struct MacroUseImports {
     collected: FxHashSet<Span>,
     mac_refs: Vec<MacroRefData>,
 }
-
-impl_lint_pass!(MacroUseImports => [MACRO_USE_IMPORTS]);
 
 impl MacroUseImports {
     fn push_unique_macro(&mut self, cx: &LateContext<'_>, span: Span) {

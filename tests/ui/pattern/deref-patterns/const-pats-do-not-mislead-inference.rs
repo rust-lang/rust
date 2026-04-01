@@ -8,7 +8,6 @@
 //! we'd get without `deref_patterns` enabled.
 
 #![cfg_attr(deref_patterns, feature(deref_patterns))]
-#![cfg_attr(deref_patterns, expect(incomplete_features))]
 
 fn uninferred<T>() -> T { unimplemented!() }
 

@@ -353,6 +353,8 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             name: name.as_ref().unwrap().to_string(),
             rename: src.map(|x| x.to_string()),
         },
+        // All placeholder impl items should have been removed in the stripper passes.
+        PlaceholderImplItem => unreachable!(),
     }
 }
 
@@ -1041,10 +1043,10 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
             for attr_span in test_attrs {
                 // FIXME: This is ugly, remove when `test_attrs` has been ported to new attribute API.
                 if let Ok(snippet) = source_map.span_to_snippet(*attr_span) {
-                    ret.push(Attribute::Other(format!("#[doc(test(attr({snippet})))")));
+                    ret.push(Attribute::Other(format!("#[doc(test(attr({snippet})))]")));
                 }
             }
-            toggle_attr(&mut ret, "no_crate_inject", no_crate_inject);
+            toggle_attr(&mut ret, "test(no_crate_inject)", no_crate_inject);
             return ret;
         }
 

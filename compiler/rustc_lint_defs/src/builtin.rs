@@ -39,6 +39,7 @@ declare_lint_pass! {
         DEPRECATED_IN_FUTURE,
         DEPRECATED_SAFE_2024,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
+        DUPLICATE_FEATURES,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
@@ -61,6 +62,7 @@ declare_lint_pass! {
         LARGE_ASSIGNMENTS,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         LEGACY_DERIVE_HELPERS,
+        LINKER_INFO,
         LINKER_MESSAGES,
         LONG_RUNNING_CONST_EVAL,
         LOSSY_PROVENANCE_CASTS,
@@ -104,7 +106,6 @@ declare_lint_pass! {
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
         SHADOWING_SUPERTRAIT_ITEMS,
         SINGLE_USE_LIFETIMES,
-        SOFT_UNSTABLE,
         STABLE_FEATURES,
         TAIL_EXPR_DROP_ORDER,
         TEST_UNSTABLE_LINT,
@@ -864,7 +865,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// # #![cfg_attr(bootstrap, feature(cfg_select))]
     /// cfg_select! {
     ///     _ => (),
     ///     windows => (),
@@ -1032,8 +1032,8 @@ declare_lint! {
     /// ```rust
     /// #[warn(unused_macro_rules)]
     /// macro_rules! unused_empty {
-    ///     (hello) => { println!("Hello, world!") }; // This rule is unused
-    ///     () => { println!("empty") }; // This rule is used
+    ///     (hello) => { println!("Hello, world!") }; // This rule is used
+    ///     () => { println!("empty") }; // This rule is unused
     /// }
     ///
     /// fn main() {
@@ -1088,14 +1088,36 @@ declare_lint! {
     /// crate-level [`feature` attributes].
     ///
     /// [`feature` attributes]: https://doc.rust-lang.org/nightly/unstable-book/
-    ///
-    /// Note: This lint is currently not functional, see [issue #44232] for
-    /// more details.
-    ///
-    /// [issue #44232]: https://github.com/rust-lang/rust/issues/44232
     pub UNUSED_FEATURES,
     Warn,
     "unused features found in crate-level `#[feature]` directives"
+}
+
+declare_lint! {
+    /// The `duplicate_features` lint detects duplicate features found in
+    /// crate-level [`feature` attributes].
+    ///
+    /// Note: This lint used to be a hard error (E0636).
+    ///
+    /// [`feature` attributes]: https://doc.rust-lang.org/nightly/unstable-book/
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// # #![allow(internal_features)]
+    /// #![feature(rustc_attrs)]
+    /// #![feature(rustc_attrs)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Enabling a feature more than once is a no-op.
+    /// To avoid this warning, remove the second `feature()` attribute.
+    pub DUPLICATE_FEATURES,
+    Deny,
+    "duplicate features found in crate-level `#[feature]` directives"
 }
 
 declare_lint! {
@@ -2319,22 +2341,6 @@ declare_lint! {
     "ambiguous associated items",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #57644),
-    };
-}
-
-declare_lint! {
-    /// The `soft_unstable` lint detects unstable features that were unintentionally allowed on
-    /// stable. This is a [future-incompatible] lint to transition this to a hard error in the
-    /// future. See [issue #64266] for more details.
-    ///
-    /// [issue #64266]: https://github.com/rust-lang/rust/issues/64266
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub SOFT_UNSTABLE,
-    Deny,
-    "a feature gate that doesn't break dependent crates",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #64266),
-        report_in_deps: true,
     };
 }
 
@@ -4068,6 +4074,40 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `linker_info` lint forwards warnings from the linker that are known to be informational-only.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs CLI args, platform-specific)
+    /// #[warn(linker_info)]
+    /// fn main () {}
+    /// ```
+    ///
+    /// On MacOS, using `-C link-arg=-lc` and the default linker, this will produce
+    ///
+    /// ```text
+    /// warning: linker stderr: ld: ignoring duplicate libraries: '-lc'
+    ///   |
+    /// note: the lint level is defined here
+    ///  --> ex.rs:1:9
+    ///   |
+    /// 1 | #![warn(linker_info)]
+    ///   |         ^^^^^^^^^^^^^^^
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Many linkers are very "chatty" and print lots of information that is not necessarily
+    /// indicative of an issue. This output has been ignored for many years and is often not
+    /// actionable by developers. It is silenced unless the developer specifically requests for it
+    /// to be printed. See this tracking issue for more details:
+    /// <https://github.com/rust-lang/rust/issues/136096>.
+    pub LINKER_INFO,
+    Allow,
+    "linker warnings known to be informational-only and not indicative of a problem"
+}
+
+declare_lint! {
     /// The `named_arguments_used_positionally` lint detects cases where named arguments are only
     /// used positionally in format strings. This usage is valid but potentially very confusing.
     ///
@@ -4565,7 +4605,7 @@ declare_lint! {
     ///
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub AMBIGUOUS_GLOB_IMPORTS,
-    Warn,
+    Deny,
     "detects certain glob imports that require reporting an ambiguity error",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #114095),

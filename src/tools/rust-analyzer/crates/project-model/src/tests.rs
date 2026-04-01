@@ -193,6 +193,12 @@ fn rust_project_hello_world_project_model() {
 }
 
 #[test]
+fn rust_project_labeled_project_model() {
+    // This just needs to parse.
+    _ = load_rust_project("labeled-project.json");
+}
+
+#[test]
 fn rust_project_cfg_groups() {
     let (crate_graph, _proc_macros) = load_rust_project("cfg-groups.json");
     check_crate_graph(crate_graph, expect_file!["../test_data/output/rust_project_cfg_groups.txt"]);

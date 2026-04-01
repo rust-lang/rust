@@ -1,7 +1,7 @@
+use std::assert_matches;
 use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
-use rustc_data_structures::assert_matches;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
@@ -50,10 +50,10 @@ pub trait BuilderMethods<'a, 'tcx>:
     type CodegenCx: CodegenMethods<
             'tcx,
             Value = Self::Value,
-            Metadata = Self::Metadata,
             Function = Self::Function,
             BasicBlock = Self::BasicBlock,
             Type = Self::Type,
+            FunctionSignature = Self::FunctionSignature,
             Funclet = Self::Funclet,
             DIScope = Self::DIScope,
             DILocation = Self::DILocation,
@@ -125,7 +125,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn invoke(
         &mut self,
-        llty: Self::Type,
+        llty: Self::FunctionSignature,
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Self::Value,
@@ -623,7 +623,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// assuming the function does not explicitly pass the destination as a pointer in `args`.
     fn call(
         &mut self,
-        llty: Self::Type,
+        llty: Self::FunctionSignature,
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         fn_val: Self::Value,
@@ -634,7 +634,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn tail_call(
         &mut self,
-        llty: Self::Type,
+        llty: Self::FunctionSignature,
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: Self::Value,

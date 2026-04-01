@@ -19,6 +19,7 @@ fn test_tidy_parser_full() {
         "yarn",
         "--verbose",
         "--bless",
+        "--ci",
         "--extra-checks",
         "if-installed:auto:js,auto:if-installed:py,if-installed:auto:cpp,if-installed:auto:spellcheck",
         "--", // pos_args
@@ -38,6 +39,8 @@ fn test_tidy_parser_full() {
     assert_eq!(parsed_args.npm, PathBuf::from("yarn"));
     assert!(parsed_args.verbose);
     assert!(parsed_args.bless);
+    assert!(parsed_args.ci.is_some());
+    assert!(parsed_args.ci.unwrap());
     assert_eq!(
         parsed_args.extra_checks,
         Some(vec![
@@ -165,4 +168,47 @@ fn test_tidy_parser_missing_npm_path() {
     ];
     let cmd = TidyArgParser::command();
     assert!(cmd.try_get_matches_from(args).is_err());
+}
+
+// --ci has some variations
+#[test]
+fn test_tidy_parse_ci_flag() {
+    // They are requried
+    let base_args = vec![
+        "rust-tidy",
+        "--root-path",
+        "/home/user/rust",
+        "--cargo-path",
+        "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo",
+        "--output-dir",
+        "/home/user/rust/build",
+        "--concurrency",
+        "16",
+        "--npm-path",
+        "yarn",
+    ];
+
+    // No --ci
+    let parsed_args = TidyArgParser::build(TidyArgParser::command().get_matches_from(&base_args));
+    assert!(parsed_args.ci.is_none());
+
+    // --ci
+    let mut args1 = base_args.clone();
+    args1.push("--ci");
+    let parsed_args = TidyArgParser::build(TidyArgParser::command().get_matches_from(args1));
+    assert!(parsed_args.ci.is_some());
+
+    // --ci=true
+    let mut args2 = base_args.clone();
+    args2.extend_from_slice(&["--ci", "true"]);
+    let parsed_args = TidyArgParser::build(TidyArgParser::command().get_matches_from(args2));
+    assert!(parsed_args.ci.is_some());
+    assert!(parsed_args.ci.unwrap());
+
+    // --ci=false
+    let mut args2 = base_args.clone();
+    args2.extend_from_slice(&["--ci", "false"]);
+    let parsed_args = TidyArgParser::build(TidyArgParser::command().get_matches_from(args2));
+    assert!(parsed_args.ci.is_some());
+    assert!(!parsed_args.ci.unwrap());
 }

@@ -57,6 +57,7 @@ declare_clippy_lint! {
     style,
     "use dedicated method to check ascii range"
 }
+
 impl_lint_pass!(ManualIsAsciiCheck => [MANUAL_IS_ASCII_CHECK]);
 
 pub struct ManualIsAsciiCheck {

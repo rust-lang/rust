@@ -1,6 +1,6 @@
 #![feature(rustc_attrs, type_alias_impl_trait, impl_trait_in_assoc_type)]
 #![allow(internal_features)]
-#![rustc_variance_of_opaques]
+#![rustc_dump_variances_of_opaques]
 
 trait Captures<'a> {}
 impl<T> Captures<'_> for T {}

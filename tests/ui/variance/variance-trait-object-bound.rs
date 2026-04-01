@@ -10,7 +10,7 @@ use std::mem;
 
 trait T { fn foo(&self); }
 
-#[rustc_variance]
+#[rustc_dump_variances]
 struct TOption<'a> { //~ ERROR ['a: +]
     v: Option<Box<dyn T + 'a>>,
 }

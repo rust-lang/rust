@@ -333,7 +333,7 @@ pub fn layout_of_ty_query(
         }
         TyKind::Closure(id, args) => {
             let def = db.lookup_intern_closure(id.0);
-            let infer = InferenceResult::for_body(db, def.0);
+            let infer = InferenceResult::of(db, def.0);
             let (captures, _) = infer.closure_info(id.0);
             let fields = captures
                 .iter()

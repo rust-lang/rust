@@ -196,12 +196,13 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 pub(crate) const UNNAMED: *const c_char = c"".as_ptr();
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericBuilder<'_, 'll, CX> {
-    type Value = <GenericCx<'ll, CX> as BackendTypes>::Value;
-    type Metadata = <GenericCx<'ll, CX> as BackendTypes>::Metadata;
     type Function = <GenericCx<'ll, CX> as BackendTypes>::Function;
     type BasicBlock = <GenericCx<'ll, CX> as BackendTypes>::BasicBlock;
-    type Type = <GenericCx<'ll, CX> as BackendTypes>::Type;
     type Funclet = <GenericCx<'ll, CX> as BackendTypes>::Funclet;
+
+    type Value = <GenericCx<'ll, CX> as BackendTypes>::Value;
+    type Type = <GenericCx<'ll, CX> as BackendTypes>::Type;
+    type FunctionSignature = <GenericCx<'ll, CX> as BackendTypes>::FunctionSignature;
 
     type DIScope = <GenericCx<'ll, CX> as BackendTypes>::DIScope;
     type DILocation = <GenericCx<'ll, CX> as BackendTypes>::DILocation;
@@ -714,7 +715,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     }
 
                     if let Some(pointee) = layout.pointee_info_at(bx, offset)
-                        && let Some(_) = pointee.safe
+                        && pointee.align > Align::ONE
                     {
                         bx.align_metadata(load, pointee.align);
                     }
@@ -1604,12 +1605,16 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         *self = Self::build(self.cx, next_bb);
     }
 
-    pub(crate) fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.minnum", &[self.val_ty(lhs)], &[lhs, rhs])
+    pub(crate) fn minimum_number_nsz(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        let call = self.call_intrinsic("llvm.minimumnum", &[self.val_ty(lhs)], &[lhs, rhs]);
+        unsafe { llvm::LLVMRustSetNoSignedZeros(call) };
+        call
     }
 
-    pub(crate) fn maxnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.maxnum", &[self.val_ty(lhs)], &[lhs, rhs])
+    pub(crate) fn maximum_number_nsz(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        let call = self.call_intrinsic("llvm.maximumnum", &[self.val_ty(lhs)], &[lhs, rhs]);
+        unsafe { llvm::LLVMRustSetNoSignedZeros(call) };
+        call
     }
 
     pub(crate) fn insert_element(

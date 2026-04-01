@@ -40,6 +40,8 @@ declare_clippy_lint! {
     "large future may lead to unexpected stack overflows"
 }
 
+impl_lint_pass!(LargeFuture => [LARGE_FUTURES]);
+
 pub struct LargeFuture {
     future_size_threshold: u64,
 }
@@ -51,8 +53,6 @@ impl LargeFuture {
         }
     }
 }
-
-impl_lint_pass!(LargeFuture => [LARGE_FUTURES]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeFuture {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {

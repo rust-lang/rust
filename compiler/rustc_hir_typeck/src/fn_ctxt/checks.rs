@@ -2,14 +2,16 @@ use std::ops::Deref;
 use std::{fmt, iter};
 
 use itertools::Itertools;
+use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, listify, pluralize};
+use rustc_hir as hir;
 use rustc_hir::attrs::DivergingBlockBehavior;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{Expr, ExprKind, HirId, LangItem, Node, QPath, is_range_literal};
+use rustc_hir::{Expr, ExprKind, FnRetTy, HirId, LangItem, Node, QPath, is_range_literal};
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, PermitVariants};
 use rustc_index::IndexVec;
@@ -25,7 +27,6 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
 use smallvec::SmallVec;
 use tracing::debug;
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
@@ -275,12 +276,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // Record all the argument types, with the args
                     // produced from the above subtyping unification.
-                    Ok(Some(
-                        formal_input_tys
-                            .iter()
-                            .map(|&ty| self.resolve_vars_if_possible(ty))
-                            .collect(),
-                    ))
+                    Ok(Some(formal_input_tys.to_vec()))
                 })
                 .ok()
             })
@@ -1586,6 +1582,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             err.span_note(spans, format!("{} defined here", self.tcx.def_descr(def_id)));
+            if let DefKind::Fn | DefKind::AssocFn = self.tcx.def_kind(def_id)
+                && let ty::Param(_) =
+                    self.tcx.fn_sig(def_id).instantiate_identity().skip_binder().output().kind()
+                && let parent = self.tcx.hir_get_parent_item(call_expr.hir_id).def_id
+                && let Some((output, body_id)) = match self.tcx.hir_node_by_def_id(parent) {
+                    hir::Node::Item(hir::Item {
+                        kind: hir::ItemKind::Fn { sig, body, .. },
+                        ..
+                    })
+                    | hir::Node::TraitItem(hir::TraitItem {
+                        kind: hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body)),
+                        ..
+                    })
+                    | hir::Node::ImplItem(hir::ImplItem {
+                        kind: hir::ImplItemKind::Fn(sig, body),
+                        ..
+                    }) => Some((sig.decl.output, body)),
+                    _ => None,
+                }
+                && let expr = self.tcx.hir_body(*body_id).value
+                && (expr.peel_blocks().span == call_expr.span
+                    || matches!(
+                        self.tcx.parent_hir_node(call_expr.hir_id),
+                        hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Ret(_), .. })
+                    ))
+            {
+                err.span_label(
+                    output.span(),
+                    match output {
+                        FnRetTy::DefaultReturn(_) => format!(
+                            "this implicit `()` return type influences the call expression's return type"
+                        ),
+                        FnRetTy::Return(_) => {
+                            "this return type influences the call expression's return type"
+                                .to_string()
+                        }
+                    },
+                );
+            }
         } else if let Some(hir::Node::Expr(e)) = self.tcx.hir_get_if_local(def_id)
             && let hir::ExprKind::Closure(hir::Closure { body, .. }) = &e.kind
         {

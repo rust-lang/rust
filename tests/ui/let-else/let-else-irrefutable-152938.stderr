@@ -1,0 +1,16 @@
+warning: irrefutable `let...else` pattern
+  --> $DIR/let-else-irrefutable-152938.rs:8:5
+   |
+LL |     let name_str = Some(name) else { return; };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern always matches, so the else clause is unreachable
+help: remove this `else` block
+  --> $DIR/let-else-irrefutable-152938.rs:8:36
+   |
+LL |     let name_str = Some(name) else { return; };
+   |                                    ^^^^^^^^^^^
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+
+warning: 1 warning emitted
+

@@ -742,7 +742,7 @@ impl CrateGraphBuilder {
         deps.into_iter()
     }
 
-    /// Returns all crates in the graph, sorted in topological order (ie. dependencies of a crate
+    /// Returns all crates in the graph, sorted in topological order (i.e. dependencies of a crate
     /// come before the crate itself).
     fn crates_in_topological_order(&self) -> Vec<CrateBuilderId> {
         let mut res = Vec::new();
@@ -870,7 +870,7 @@ impl CrateGraphBuilder {
 impl Crate {
     pub fn root_file_id(self, db: &dyn salsa::Database) -> EditionedFileId {
         let data = self.data(db);
-        EditionedFileId::new(db, data.root_file_id, data.edition, self)
+        EditionedFileId::new(db, data.root_file_id, data.edition)
     }
 }
 

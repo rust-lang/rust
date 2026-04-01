@@ -32,7 +32,7 @@ pub(crate) enum Duplicate {
 struct LanguageItemCollector<'ast, 'tcx> {
     items: LanguageItems,
     tcx: TyCtxt<'tcx>,
-    resolver: &'ast ResolverAstLowering,
+    resolver: &'ast ResolverAstLowering<'tcx>,
     // FIXME(#118552): We should probably feed def_span eagerly on def-id creation
     // so we can avoid constructing this map for local def-ids.
     item_spans: FxHashMap<DefId, Span>,
@@ -42,7 +42,7 @@ struct LanguageItemCollector<'ast, 'tcx> {
 impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        resolver: &'ast ResolverAstLowering,
+        resolver: &'ast ResolverAstLowering<'tcx>,
     ) -> LanguageItemCollector<'ast, 'tcx> {
         LanguageItemCollector {
             tcx,

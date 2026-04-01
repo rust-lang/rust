@@ -830,7 +830,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr_field, fields);
             match optional_base {
                 StructTailExpr::Base(base) => try_visit!(visitor.visit_expr(base)),
-                StructTailExpr::None | StructTailExpr::DefaultFields(_) => {}
+                StructTailExpr::None
+                | StructTailExpr::NoneWithError(_)
+                | StructTailExpr::DefaultFields(_) => {}
             }
         }
         ExprKind::Tup(subexpressions) => {

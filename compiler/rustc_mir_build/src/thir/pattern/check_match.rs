@@ -8,7 +8,7 @@ use rustc_hir::def::*;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, MatchSource};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_lint::Level;
+use rustc_lint_defs::Level;
 use rustc_middle::bug;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
@@ -101,8 +101,7 @@ struct MatchVisitor<'p, 'tcx> {
     error: Result<(), ErrorGuaranteed>,
 }
 
-// Visitor for a thir body. This calls `check_match`, `check_let` and `check_let_chain` as
-// appropriate.
+// Visitor for a thir body. This calls `check_match` and `check_let` as appropriate.
 impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
     fn thir(&self) -> &'p Thir<'tcx> {
         self.thir
@@ -160,7 +159,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 self.check_match(scrutinee, arms, MatchSource::Normal, span);
             }
             ExprKind::Let { box ref pat, expr } => {
-                self.check_let(pat, Some(expr), ex.span);
+                self.check_let(pat, Some(expr), ex.span, None);
             }
             ExprKind::LogicalOp { op: LogicalOp::And, .. }
                 if !matches!(self.let_source, LetSource::None) =>
@@ -169,7 +168,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 let Ok(()) = self.visit_land(ex, &mut chain_refutabilities) else { return };
                 // Lint only single irrefutable let binding.
                 if let [Some((_, Irrefutable))] = chain_refutabilities[..] {
-                    self.lint_single_let(ex.span);
+                    self.lint_single_let(ex.span, None);
                 }
                 return;
             }
@@ -184,8 +183,9 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 self.with_hir_source(hir_id, |this| {
                     let let_source =
                         if else_block.is_some() { LetSource::LetElse } else { LetSource::PlainLet };
+                    let else_span = else_block.map(|bid| this.thir.blocks[bid].span);
                     this.with_let_source(let_source, |this| {
-                        this.check_let(pattern, initializer, span)
+                        this.check_let(pattern, initializer, span, else_span)
                     });
                     visit::walk_stmt(this, stmt);
                 });
@@ -426,13 +426,19 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let(&mut self, pat: &'p Pat<'tcx>, scrutinee: Option<ExprId>, span: Span) {
+    fn check_let(
+        &mut self,
+        pat: &'p Pat<'tcx>,
+        scrutinee: Option<ExprId>,
+        span: Span,
+        else_span: Option<Span>,
+    ) {
         assert!(self.let_source != LetSource::None);
         let scrut = scrutinee.map(|id| &self.thir[id]);
         if let LetSource::PlainLet = self.let_source {
             self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span));
         } else if let Ok(Irrefutable) = self.is_let_irrefutable(pat, scrut) {
-            self.lint_single_let(span);
+            self.lint_single_let(span, else_span);
         }
     }
 
@@ -540,8 +546,15 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn lint_single_let(&mut self, let_span: Span) {
-        report_irrefutable_let_patterns(self.tcx, self.hir_source, self.let_source, 1, let_span);
+    fn lint_single_let(&mut self, let_span: Span, else_span: Option<Span>) {
+        report_irrefutable_let_patterns(
+            self.tcx,
+            self.hir_source,
+            self.let_source,
+            1,
+            let_span,
+            else_span,
+        );
     }
 
     fn analyze_binding(
@@ -836,6 +849,7 @@ fn report_irrefutable_let_patterns(
     source: LetSource,
     count: usize,
     span: Span,
+    else_span: Option<Span>,
 ) {
     macro_rules! emit_diag {
         ($lint:tt) => {{
@@ -847,7 +861,14 @@ fn report_irrefutable_let_patterns(
         LetSource::None | LetSource::PlainLet | LetSource::Else => bug!(),
         LetSource::IfLet | LetSource::ElseIfLet => emit_diag!(IrrefutableLetPatternsIfLet),
         LetSource::IfLetGuard => emit_diag!(IrrefutableLetPatternsIfLetGuard),
-        LetSource::LetElse => emit_diag!(IrrefutableLetPatternsLetElse),
+        LetSource::LetElse => {
+            tcx.emit_node_span_lint(
+                IRREFUTABLE_LET_PATTERNS,
+                id,
+                span,
+                IrrefutableLetPatternsLetElse { count, else_span },
+            );
+        }
         LetSource::WhileLet => emit_diag!(IrrefutableLetPatternsWhileLet),
     }
 }

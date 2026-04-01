@@ -1,4 +1,5 @@
 use hir::def_id::DefId;
+use rustc_abi as abi;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
@@ -7,6 +8,7 @@ use rustc_abi::{
     TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
+use rustc_hir as hir;
 use rustc_hir::find_attr;
 use rustc_index::{Idx as _, IndexVec};
 use rustc_middle::bug;
@@ -22,7 +24,6 @@ use rustc_middle::ty::{
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
-use {rustc_abi as abi, rustc_hir as hir};
 
 use crate::errors::NonPrimitiveSimdType;
 

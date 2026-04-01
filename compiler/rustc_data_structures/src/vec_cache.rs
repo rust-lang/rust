@@ -6,11 +6,15 @@
 //!
 //! This is currently used for query caching.
 
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 use std::marker::PhantomData;
+use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicPtr, AtomicU32, AtomicUsize, Ordering};
 
 use rustc_index::Idx;
+
+#[cfg(test)]
+mod tests;
 
 struct Slot<V> {
     // We never construct &Slot<V> so it's fine for this to not be in an UnsafeCell.
@@ -28,7 +32,7 @@ struct Slot<V> {
 #[derive(Copy, Clone, Debug)]
 struct SlotIndex {
     // the index of the bucket in VecCache (0 to 20)
-    bucket_idx: usize,
+    bucket_idx: BucketIndex,
     // the index of the slot within the bucket
     index_in_bucket: usize,
 }
@@ -42,7 +46,7 @@ const ENTRIES_BY_BUCKET: [usize; BUCKETS] = {
     let mut key = 0;
     loop {
         let si = SlotIndex::from_index(key);
-        entries[si.bucket_idx] = si.entries();
+        entries[si.bucket_idx.to_usize()] = si.bucket_idx.capacity();
         if key == 0 {
             key = 1;
         } else if key == (1 << 31) {
@@ -57,48 +61,24 @@ const ENTRIES_BY_BUCKET: [usize; BUCKETS] = {
 const BUCKETS: usize = 21;
 
 impl SlotIndex {
-    /// The total possible number of entries in the bucket
-    const fn entries(&self) -> usize {
-        if self.bucket_idx == 0 { 1 << 12 } else { 1 << (self.bucket_idx + 11) }
-    }
-
-    // This unpacks a flat u32 index into identifying which bucket it belongs to and the offset
-    // within that bucket. As noted in the VecCache docs, buckets double in size with each index.
-    // Typically that would mean 31 buckets (2^0 + 2^1 ... + 2^31 = u32::MAX - 1), but to reduce
-    // the size of the VecCache struct and avoid uselessly small allocations, we instead have the
-    // first bucket have 2**12 entries. To simplify the math, the second bucket also 2**12 entries,
-    // and buckets double from there.
-    //
-    // We assert that [0, 2**32 - 1] uniquely map through this function to individual, consecutive
-    // slots (see `slot_index_exhaustive` in tests).
+    /// Unpacks a flat 32-bit index into a [`BucketIndex`] and a slot offset within that bucket.
     #[inline]
     const fn from_index(idx: u32) -> Self {
-        const FIRST_BUCKET_SHIFT: usize = 12;
-        if idx < (1 << FIRST_BUCKET_SHIFT) {
-            return SlotIndex { bucket_idx: 0, index_in_bucket: idx as usize };
-        }
-        // We already ruled out idx 0, so this `ilog2` never panics (and the check optimizes away)
-        let bucket = idx.ilog2() as usize;
-        let entries = 1 << bucket;
-        SlotIndex {
-            bucket_idx: bucket - FIRST_BUCKET_SHIFT + 1,
-            index_in_bucket: idx as usize - entries,
-        }
+        let (bucket_idx, index_in_bucket) = BucketIndex::from_flat_index(idx as usize);
+        SlotIndex { bucket_idx, index_in_bucket }
     }
 
     // SAFETY: Buckets must be managed solely by functions here (i.e., get/put on SlotIndex) and
     // `self` comes from SlotIndex::from_index
     #[inline]
     unsafe fn get<V: Copy>(&self, buckets: &[AtomicPtr<Slot<V>>; 21]) -> Option<(V, u32)> {
-        // SAFETY: `bucket_idx` is ilog2(u32).saturating_sub(11), which is at most 21, i.e.,
-        // in-bounds of buckets. See `from_index` for computation.
-        let bucket = unsafe { buckets.get_unchecked(self.bucket_idx) };
+        let bucket = &buckets[self.bucket_idx];
         let ptr = bucket.load(Ordering::Acquire);
         // Bucket is not yet initialized: then we obviously won't find this entry in that bucket.
         if ptr.is_null() {
             return None;
         }
-        debug_assert!(self.index_in_bucket < self.entries());
+        debug_assert!(self.index_in_bucket < self.bucket_idx.capacity());
         // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
         // must be inbounds.
         let slot = unsafe { ptr.add(self.index_in_bucket) };
@@ -131,7 +111,7 @@ impl SlotIndex {
 
     #[cold]
     #[inline(never)]
-    fn initialize_bucket<V>(bucket: &AtomicPtr<Slot<V>>, bucket_idx: usize) -> *mut Slot<V> {
+    fn initialize_bucket<V>(bucket: &AtomicPtr<Slot<V>>, bucket_idx: BucketIndex) -> *mut Slot<V> {
         static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
         // If we are initializing the bucket, then acquire a global lock.
@@ -145,8 +125,8 @@ impl SlotIndex {
         // OK, now under the allocator lock, if we're still null then it's definitely us that will
         // initialize this bucket.
         if ptr.is_null() {
-            let bucket_len = SlotIndex { bucket_idx, index_in_bucket: 0 }.entries();
-            let bucket_layout = std::alloc::Layout::array::<Slot<V>>(bucket_len).unwrap();
+            let bucket_layout =
+                std::alloc::Layout::array::<Slot<V>>(bucket_idx.capacity()).unwrap();
             // This is more of a sanity check -- this code is very cold, so it's safe to pay a
             // little extra cost here.
             assert!(bucket_layout.size() > 0);
@@ -167,12 +147,10 @@ impl SlotIndex {
     /// Returns true if this successfully put into the map.
     #[inline]
     fn put<V>(&self, buckets: &[AtomicPtr<Slot<V>>; 21], value: V, extra: u32) -> bool {
-        // SAFETY: `bucket_idx` is ilog2(u32).saturating_sub(11), which is at most 21, i.e.,
-        // in-bounds of buckets.
-        let bucket = unsafe { buckets.get_unchecked(self.bucket_idx) };
+        let bucket = &buckets[self.bucket_idx];
         let ptr = self.bucket_ptr(bucket);
 
-        debug_assert!(self.index_in_bucket < self.entries());
+        debug_assert!(self.index_in_bucket < self.bucket_idx.capacity());
         // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
         // must be inbounds.
         let slot = unsafe { ptr.add(self.index_in_bucket) };
@@ -209,12 +187,10 @@ impl SlotIndex {
     /// Inserts into the map, given that the slot is unique, so it won't race with other threads.
     #[inline]
     unsafe fn put_unique<V>(&self, buckets: &[AtomicPtr<Slot<V>>; 21], value: V, extra: u32) {
-        // SAFETY: `bucket_idx` is ilog2(u32).saturating_sub(11), which is at most 21, i.e.,
-        // in-bounds of buckets.
-        let bucket = unsafe { buckets.get_unchecked(self.bucket_idx) };
+        let bucket = &buckets[self.bucket_idx];
         let ptr = self.bucket_ptr(bucket);
 
-        debug_assert!(self.index_in_bucket < self.entries());
+        debug_assert!(self.index_in_bucket < self.bucket_idx.capacity());
         // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
         // must be inbounds.
         let slot = unsafe { ptr.add(self.index_in_bucket) };
@@ -254,7 +230,7 @@ pub struct VecCache<K: Idx, V, I> {
     // ...
     // Bucket 19: 1073741824
     // Bucket 20: 2147483648
-    // The total number of entries if all buckets are initialized is u32::MAX-1.
+    // The total number of entries if all buckets are initialized is 2^32.
     buckets: [AtomicPtr<Slot<V>>; BUCKETS],
 
     // In the compiler's current usage these are only *read* during incremental and self-profiling.
@@ -289,7 +265,7 @@ unsafe impl<K: Idx, #[may_dangle] V, I> Drop for VecCache<K, V, I> {
         assert!(!std::mem::needs_drop::<K>());
         assert!(!std::mem::needs_drop::<V>());
 
-        for (idx, bucket) in self.buckets.iter().enumerate() {
+        for (idx, bucket) in BucketIndex::enumerate_buckets(&self.buckets) {
             let bucket = bucket.load(Ordering::Acquire);
             if !bucket.is_null() {
                 let layout = std::alloc::Layout::array::<Slot<V>>(ENTRIES_BY_BUCKET[idx]).unwrap();
@@ -299,7 +275,7 @@ unsafe impl<K: Idx, #[may_dangle] V, I> Drop for VecCache<K, V, I> {
             }
         }
 
-        for (idx, bucket) in self.present.iter().enumerate() {
+        for (idx, bucket) in BucketIndex::enumerate_buckets(&self.present) {
             let bucket = bucket.load(Ordering::Acquire);
             if !bucket.is_null() {
                 let layout = std::alloc::Layout::array::<Slot<()>>(ENTRIES_BY_BUCKET[idx]).unwrap();
@@ -341,7 +317,7 @@ where
         }
     }
 
-    pub fn iter(&self, f: &mut dyn FnMut(&K, &V, I)) {
+    pub fn for_each(&self, f: &mut dyn FnMut(&K, &V, I)) {
         for idx in 0..self.len.load(Ordering::Acquire) {
             let key = SlotIndex::from_index(idx as u32);
             match unsafe { key.get(&self.present) } {
@@ -365,5 +341,164 @@ where
     }
 }
 
-#[cfg(test)]
-mod tests;
+/// Index into an array of buckets.
+///
+/// Using an enum lets us tell the compiler that values range from 0 to 20,
+/// allowing array bounds checks to be optimized away,
+/// without having to resort to pattern types or other unstable features.
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(usize)]
+enum BucketIndex {
+    // tidy-alphabetical-start
+    Bucket00,
+    Bucket01,
+    Bucket02,
+    Bucket03,
+    Bucket04,
+    Bucket05,
+    Bucket06,
+    Bucket07,
+    Bucket08,
+    Bucket09,
+    Bucket10,
+    Bucket11,
+    Bucket12,
+    Bucket13,
+    Bucket14,
+    Bucket15,
+    Bucket16,
+    Bucket17,
+    Bucket18,
+    Bucket19,
+    Bucket20,
+    // tidy-alphabetical-end
+}
+
+impl Debug for BucketIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&self.to_usize(), f)
+    }
+}
+
+impl BucketIndex {
+    /// Capacity of bucket 0 (and also of bucket 1).
+    const BUCKET_0_CAPACITY: usize = 1 << (Self::NONZERO_BUCKET_SHIFT_ADJUST + 1);
+    /// Adjustment factor from the highest-set-bit-position of a flat index,
+    /// to its corresponding bucket number.
+    ///
+    /// For example, the first flat-index in bucket 2 is 8192.
+    /// Its highest-set-bit-position is `(8192).ilog2() == 13`, and subtracting
+    /// the adjustment factor of 11 gives the bucket number of 2.
+    const NONZERO_BUCKET_SHIFT_ADJUST: usize = 11;
+
+    #[inline(always)]
+    const fn to_usize(self) -> usize {
+        self as usize
+    }
+
+    #[inline(always)]
+    const fn from_raw(raw: usize) -> Self {
+        match raw {
+            // tidy-alphabetical-start
+            00 => Self::Bucket00,
+            01 => Self::Bucket01,
+            02 => Self::Bucket02,
+            03 => Self::Bucket03,
+            04 => Self::Bucket04,
+            05 => Self::Bucket05,
+            06 => Self::Bucket06,
+            07 => Self::Bucket07,
+            08 => Self::Bucket08,
+            09 => Self::Bucket09,
+            10 => Self::Bucket10,
+            11 => Self::Bucket11,
+            12 => Self::Bucket12,
+            13 => Self::Bucket13,
+            14 => Self::Bucket14,
+            15 => Self::Bucket15,
+            16 => Self::Bucket16,
+            17 => Self::Bucket17,
+            18 => Self::Bucket18,
+            19 => Self::Bucket19,
+            20 => Self::Bucket20,
+            // tidy-alphabetical-end
+            _ => panic!("bucket index out of range"),
+        }
+    }
+
+    /// Total number of slots in this bucket.
+    #[inline(always)]
+    const fn capacity(self) -> usize {
+        match self {
+            Self::Bucket00 => Self::BUCKET_0_CAPACITY,
+            // Bucket 1 has a capacity of `1 << (1 + 11) == pow(2, 12) == 4096`.
+            // Bucket 2 has a capacity of `1 << (2 + 11) == pow(2, 13) == 8192`.
+            _ => 1 << (self.to_usize() + Self::NONZERO_BUCKET_SHIFT_ADJUST),
+        }
+    }
+
+    /// Converts a flat index in the range `0..=u32::MAX` into a bucket index,
+    /// and a slot offset within that bucket.
+    ///
+    /// Panics if `flat > u32::MAX`.
+    #[inline(always)]
+    const fn from_flat_index(flat: usize) -> (Self, usize) {
+        if flat > u32::MAX as usize {
+            panic!();
+        }
+
+        // If the index is in bucket 0, the conversion is trivial.
+        // This also avoids calling `ilog2` when `flat == 0`.
+        if flat < Self::BUCKET_0_CAPACITY {
+            return (Self::Bucket00, flat);
+        }
+
+        // General-case conversion for a non-zero bucket index.
+        //
+        //              | bucket |   slot
+        // flat | ilog2 |  index | offset
+        // ------------------------------
+        // 4096 |    12 |      1 |      0
+        // 4097 |    12 |      1 |      1
+        // ...
+        // 8191 |    12 |      1 |   4095
+        // 8192 |    13 |      2 |      0
+        let highest_bit_pos = flat.ilog2() as usize;
+        let bucket_index =
+            BucketIndex::from_raw(highest_bit_pos - Self::NONZERO_BUCKET_SHIFT_ADJUST);
+
+        // Clear the highest-set bit (which selects the bucket) to get the
+        // slot offset within this bucket.
+        let slot_offset = flat - (1 << highest_bit_pos);
+
+        (bucket_index, slot_offset)
+    }
+
+    #[inline(always)]
+    fn iter_all() -> impl ExactSizeIterator<Item = Self> {
+        (0usize..BUCKETS).map(BucketIndex::from_raw)
+    }
+
+    #[inline(always)]
+    fn enumerate_buckets<T>(buckets: &[T; BUCKETS]) -> impl ExactSizeIterator<Item = (Self, &T)> {
+        BucketIndex::iter_all().zip(buckets)
+    }
+}
+
+impl<T> Index<BucketIndex> for [T; BUCKETS] {
+    type Output = T;
+
+    #[inline(always)]
+    fn index(&self, index: BucketIndex) -> &Self::Output {
+        // The optimizer should be able to see that see that a bucket index is
+        // always in-bounds, and omit the runtime bounds check.
+        &self[index.to_usize()]
+    }
+}
+
+impl<T> IndexMut<BucketIndex> for [T; BUCKETS] {
+    #[inline(always)]
+    fn index_mut(&mut self, index: BucketIndex) -> &mut Self::Output {
+        &mut self[index.to_usize()]
+    }
+}

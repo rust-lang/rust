@@ -1,6 +1,5 @@
 use crate::parse::cursor::{self, Capture, Cursor};
 use crate::parse::{ActiveLint, DeprecatedLint, Lint, LintData, LintName, ParseCx, RenamedLint};
-use crate::update_lints::generate_lint_files;
 use crate::utils::{
     ErrAction, FileUpdater, UpdateMode, UpdateStatus, Version, delete_dir_if_exists, delete_file_if_exists,
     expect_action, try_rename_dir, try_rename_file, walk_dir_no_dot_or_target,
@@ -40,7 +39,7 @@ pub fn deprecate<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, name
     };
 
     remove_lint_declaration(name, &prev_lint, &data, &mut FileUpdater::default());
-    generate_lint_files(UpdateMode::Change, &data);
+    data.gen_decls(UpdateMode::Change);
     println!("info: `{name}` has successfully been deprecated");
     println!("note: you must run `cargo uitest` to update the test results");
 }
@@ -74,7 +73,7 @@ pub fn uplift<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
             updater.update_file(e.path(), &mut update_fn);
         }
     }
-    generate_lint_files(UpdateMode::Change, &data);
+    data.gen_decls(UpdateMode::Change);
     println!("info: `{old_name}` has successfully been uplifted as `{new_name}`");
     println!("note: you must run `cargo uitest` to update the test results");
 }
@@ -151,7 +150,7 @@ pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
             updater.update_file(e.path(), &mut update_fn);
         }
     }
-    generate_lint_files(UpdateMode::Change, &data);
+    data.gen_decls(UpdateMode::Change);
 
     println!("Renamed `{old_name}` to `{new_name}`");
     println!("All code referencing the old name has been updated");
@@ -172,11 +171,11 @@ fn remove_lint_declaration(name: &str, lint: &ActiveLint<'_>, data: &LintData<'_
         delete_file_if_exists(lint.path.as_ref())
     } else {
         updater.update_file(&lint.path, &mut |_, src, dst| -> UpdateStatus {
-            let mut start = &src[..lint.declaration_range.start];
+            let mut start = &src[..lint.declaration_range.start as usize];
             if start.ends_with("\n\n") {
                 start = &start[..start.len() - 1];
             }
-            let mut end = &src[lint.declaration_range.end..];
+            let mut end = &src[lint.declaration_range.end as usize..];
             if end.starts_with("\n\n") {
                 end = &end[1..];
             }

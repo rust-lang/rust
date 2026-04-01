@@ -29,6 +29,7 @@ use crate::attributes::debugger::*;
 use crate::attributes::deprecation::*;
 use crate::attributes::diagnostic::do_not_recommend::*;
 use crate::attributes::diagnostic::on_const::*;
+use crate::attributes::diagnostic::on_move::*;
 use crate::attributes::diagnostic::on_unimplemented::*;
 use crate::attributes::doc::*;
 use crate::attributes::dummy::*;
@@ -149,6 +150,7 @@ attribute_parsers!(
         MacroUseParser,
         NakedParser,
         OnConstParser,
+        OnMoveParser,
         OnUnimplementedParser,
         RustcAlignParser,
         RustcAlignStaticParser,
@@ -281,9 +283,13 @@ attribute_parsers!(
         Single<WithoutArgs<RustcDenyExplicitImplParser>>,
         Single<WithoutArgs<RustcDoNotConstCheckParser>>,
         Single<WithoutArgs<RustcDumpDefParentsParser>>,
+        Single<WithoutArgs<RustcDumpInferredOutlivesParser>>,
         Single<WithoutArgs<RustcDumpItemBoundsParser>>,
+        Single<WithoutArgs<RustcDumpObjectLifetimeDefaultsParser>>,
         Single<WithoutArgs<RustcDumpPredicatesParser>>,
         Single<WithoutArgs<RustcDumpUserArgsParser>>,
+        Single<WithoutArgs<RustcDumpVariancesOfOpaquesParser>>,
+        Single<WithoutArgs<RustcDumpVariancesParser>>,
         Single<WithoutArgs<RustcDumpVtableParser>>,
         Single<WithoutArgs<RustcDynIncompatibleTraitParser>>,
         Single<WithoutArgs<RustcEffectiveVisibilityParser>>,
@@ -306,9 +312,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcNonConstTraitMethodParser>>,
         Single<WithoutArgs<RustcNonnullOptimizationGuaranteedParser>>,
         Single<WithoutArgs<RustcNounwindParser>>,
-        Single<WithoutArgs<RustcObjectLifetimeDefaultParser>>,
         Single<WithoutArgs<RustcOffloadKernelParser>>,
-        Single<WithoutArgs<RustcOutlivesParser>>,
         Single<WithoutArgs<RustcParenSugarParser>>,
         Single<WithoutArgs<RustcPassByValueParser>>,
         Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
@@ -323,8 +327,6 @@ attribute_parsers!(
         Single<WithoutArgs<RustcStrictCoherenceParser>>,
         Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
         Single<WithoutArgs<RustcUnsafeSpecializationMarkerParser>>,
-        Single<WithoutArgs<RustcVarianceOfOpaquesParser>>,
-        Single<WithoutArgs<RustcVarianceParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
         // tidy-alphabetical-end

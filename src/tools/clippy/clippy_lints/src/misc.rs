@@ -9,6 +9,27 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for the use of short circuit boolean conditions as
+    /// a
+    /// statement.
+    ///
+    /// ### Why is this bad?
+    /// Using a short circuit boolean condition as a statement
+    /// may hide the fact that the second part is executed or not depending on the
+    /// outcome of the first part.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// f() && g(); // We should write `if f() { g(); }`.
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub SHORT_CIRCUIT_STATEMENT,
+    complexity,
+    "using a short circuit boolean condition as a statement"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for the use of bindings with a single leading
     /// underscore.
     ///
@@ -72,31 +93,10 @@ declare_clippy_lint! {
     "using a item which is prefixed with an underscore"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for the use of short circuit boolean conditions as
-    /// a
-    /// statement.
-    ///
-    /// ### Why is this bad?
-    /// Using a short circuit boolean condition as a statement
-    /// may hide the fact that the second part is executed or not depending on the
-    /// outcome of the first part.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// f() && g(); // We should write `if f() { g(); }`.
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub SHORT_CIRCUIT_STATEMENT,
-    complexity,
-    "using a short circuit boolean condition as a statement"
-}
-
 declare_lint_pass!(LintPass => [
+    SHORT_CIRCUIT_STATEMENT,
     USED_UNDERSCORE_BINDING,
     USED_UNDERSCORE_ITEMS,
-    SHORT_CIRCUIT_STATEMENT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for LintPass {

@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 #[cfg(not(feature = "nightly"))]
 use std::mem;
-use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds, Shl};
+use std::ops::{Bound, Range, RangeBounds};
 use std::rc::Rc;
 use std::{fmt, iter, slice};
 
@@ -509,14 +509,20 @@ enum Chunk {
     /// to store the length, which would make this type larger. These excess
     /// words are always zero, as are any excess bits in the final in-use word.
     ///
-    /// The `ChunkSize` field is the count of 1s set in the chunk, and
-    /// must satisfy `0 < count < chunk_domain_size`.
-    ///
     /// The words are within an `Rc` because it's surprisingly common to
     /// duplicate an entire chunk, e.g. in `ChunkedBitSet::clone_from()`, or
     /// when a `Mixed` chunk is union'd into a `Zeros` chunk. When we do need
     /// to modify a chunk we use `Rc::make_mut`.
-    Mixed(ChunkSize, Rc<[Word; CHUNK_WORDS]>),
+    Mixed {
+        /// Count of set bits (1s) in this chunk's words.
+        ///
+        /// Invariant: `0 < ones_count < chunk_domain_size`.
+        ///
+        /// Tracking this separately allows individual insert/remove calls to
+        /// know that the chunk has become all-zeroes or all-ones, in O(1) time.
+        ones_count: ChunkSize,
+        words: Rc<[Word; CHUNK_WORDS]>,
+    },
 }
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -613,7 +619,7 @@ impl<T: Idx> ChunkedBitSet<T> {
         match &chunk {
             Zeros => false,
             Ones => true,
-            Mixed(_, words) => {
+            Mixed { ones_count: _, words } => {
                 let (word_index, mask) = chunk_word_index_and_mask(elem);
                 (words[word_index] & mask) != 0
             }
@@ -644,19 +650,19 @@ impl<T: Idx> ChunkedBitSet<T> {
 
                     let (word_index, mask) = chunk_word_index_and_mask(elem);
                     words_ref[word_index] |= mask;
-                    *chunk = Mixed(1, words);
+                    *chunk = Mixed { ones_count: 1, words };
                 } else {
                     *chunk = Ones;
                 }
                 true
             }
             Ones => false,
-            Mixed(ref mut count, ref mut words) => {
+            Mixed { ref mut ones_count, ref mut words } => {
                 // We skip all the work if the bit is already set.
                 let (word_index, mask) = chunk_word_index_and_mask(elem);
                 if (words[word_index] & mask) == 0 {
-                    *count += 1;
-                    if *count < chunk_domain_size {
+                    *ones_count += 1;
+                    if *ones_count < chunk_domain_size {
                         let words = Rc::make_mut(words);
                         words[word_index] |= mask;
                     } else {
@@ -702,18 +708,18 @@ impl<T: Idx> ChunkedBitSet<T> {
                     );
                     let (word_index, mask) = chunk_word_index_and_mask(elem);
                     words_ref[word_index] &= !mask;
-                    *chunk = Mixed(chunk_domain_size - 1, words);
+                    *chunk = Mixed { ones_count: chunk_domain_size - 1, words };
                 } else {
                     *chunk = Zeros;
                 }
                 true
             }
-            Mixed(ref mut count, ref mut words) => {
+            Mixed { ref mut ones_count, ref mut words } => {
                 // We skip all the work if the bit is already clear.
                 let (word_index, mask) = chunk_word_index_and_mask(elem);
                 if (words[word_index] & mask) != 0 {
-                    *count -= 1;
-                    if *count > 0 {
+                    *ones_count -= 1;
+                    if *ones_count > 0 {
                         let words = Rc::make_mut(words);
                         words[word_index] &= !mask;
                     } else {
@@ -732,7 +738,7 @@ impl<T: Idx> ChunkedBitSet<T> {
         match self.chunks.get(chunk_index) {
             Some(Zeros) => ChunkIter::Zeros,
             Some(Ones) => ChunkIter::Ones(0..chunk_domain_size as usize),
-            Some(Mixed(_, words)) => {
+            Some(Mixed { ones_count: _, words }) => {
                 let num_words = num_words(chunk_domain_size as usize);
                 ChunkIter::Mixed(BitIter::new(&words[0..num_words]))
             }
@@ -765,14 +771,14 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
 
             match (&mut self_chunk, &other_chunk) {
                 (_, Zeros) | (Ones, _) => {}
-                (Zeros, _) | (Mixed(..), Ones) => {
+                (Zeros, _) | (Mixed { .. }, Ones) => {
                     // `other_chunk` fully overwrites `self_chunk`
                     *self_chunk = other_chunk.clone();
                     changed = true;
                 }
                 (
-                    Mixed(self_chunk_count, self_chunk_words),
-                    Mixed(_other_chunk_count, other_chunk_words),
+                    Mixed { ones_count: self_chunk_ones, words: self_chunk_words },
+                    Mixed { ones_count: _, words: other_chunk_words },
                 ) => {
                     // First check if the operation would change
                     // `self_chunk.words`. If not, we can avoid allocating some
@@ -807,8 +813,8 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                         op,
                     );
                     debug_assert!(has_changed);
-                    *self_chunk_count = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
-                    if *self_chunk_count == chunk_domain_size {
+                    *self_chunk_ones = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
+                    if *self_chunk_ones == chunk_domain_size {
                         *self_chunk = Ones;
                     }
                     changed = true;
@@ -839,11 +845,11 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
 
             match (&mut self_chunk, &other_chunk) {
                 (Zeros, _) | (_, Zeros) => {}
-                (Ones | Mixed(..), Ones) => {
+                (Ones | Mixed { .. }, Ones) => {
                     changed = true;
                     *self_chunk = Zeros;
                 }
-                (Ones, Mixed(other_chunk_count, other_chunk_words)) => {
+                (Ones, Mixed { ones_count: other_chunk_ones, words: other_chunk_words }) => {
                     changed = true;
                     let num_words = num_words(chunk_domain_size as usize);
                     debug_assert!(num_words > 0 && num_words <= CHUNK_WORDS);
@@ -854,16 +860,17 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                         *word = !*word & tail_mask;
                         tail_mask = Word::MAX;
                     }
-                    let self_chunk_count = chunk_domain_size - *other_chunk_count;
+                    let self_chunk_ones = chunk_domain_size - *other_chunk_ones;
                     debug_assert_eq!(
-                        self_chunk_count,
+                        self_chunk_ones,
                         count_ones(&self_chunk_words[0..num_words]) as ChunkSize
                     );
-                    *self_chunk = Mixed(self_chunk_count, Rc::new(self_chunk_words));
+                    *self_chunk =
+                        Mixed { ones_count: self_chunk_ones, words: Rc::new(self_chunk_words) };
                 }
                 (
-                    Mixed(self_chunk_count, self_chunk_words),
-                    Mixed(_other_chunk_count, other_chunk_words),
+                    Mixed { ones_count: self_chunk_ones, words: self_chunk_words },
+                    Mixed { ones_count: _, words: other_chunk_words },
                 ) => {
                     // See `ChunkedBitSet::union` for details on what is happening here.
                     let num_words = num_words(chunk_domain_size as usize);
@@ -883,8 +890,8 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                         op,
                     );
                     debug_assert!(has_changed);
-                    *self_chunk_count = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
-                    if *self_chunk_count == 0 {
+                    *self_chunk_ones = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
+                    if *self_chunk_ones == 0 {
                         *self_chunk = Zeros;
                     }
                     changed = true;
@@ -915,13 +922,13 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
 
             match (&mut self_chunk, &other_chunk) {
                 (Zeros, _) | (_, Ones) => {}
-                (Ones, Zeros | Mixed(..)) | (Mixed(..), Zeros) => {
+                (Ones, Zeros | Mixed { .. }) | (Mixed { .. }, Zeros) => {
                     changed = true;
                     *self_chunk = other_chunk.clone();
                 }
                 (
-                    Mixed(self_chunk_count, self_chunk_words),
-                    Mixed(_other_chunk_count, other_chunk_words),
+                    Mixed { ones_count: self_chunk_ones, words: self_chunk_words },
+                    Mixed { ones_count: _, words: other_chunk_words },
                 ) => {
                     // See `ChunkedBitSet::union` for details on what is happening here.
                     let num_words = num_words(chunk_domain_size as usize);
@@ -941,8 +948,8 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                         op,
                     );
                     debug_assert!(has_changed);
-                    *self_chunk_count = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
-                    if *self_chunk_count == 0 {
+                    *self_chunk_ones = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
+                    if *self_chunk_ones == 0 {
                         *self_chunk = Zeros;
                     }
                     changed = true;
@@ -1023,11 +1030,11 @@ impl Chunk {
         assert!(chunk_domain_size as usize <= CHUNK_BITS);
         match *self {
             Zeros | Ones => {}
-            Mixed(count, ref words) => {
-                assert!(0 < count && count < chunk_domain_size);
+            Mixed { ones_count, ref words } => {
+                assert!(0 < ones_count && ones_count < chunk_domain_size);
 
                 // Check the number of set bits matches `count`.
-                assert_eq!(count_ones(words.as_slice()) as ChunkSize, count);
+                assert_eq!(count_ones(words.as_slice()) as ChunkSize, ones_count);
 
                 // Check the not-in-use words are all zeroed.
                 let num_words = num_words(chunk_domain_size as usize);
@@ -1043,7 +1050,7 @@ impl Chunk {
         match *self {
             Zeros => 0,
             Ones => chunk_domain_size as usize,
-            Mixed(count, _) => count as usize,
+            Mixed { ones_count, words: _ } => usize::from(ones_count),
         }
     }
 }
@@ -1316,11 +1323,27 @@ impl<T: Idx> GrowableBitSet<T> {
         self.bit_set.insert(elem)
     }
 
+    #[inline]
+    pub fn insert_range(&mut self, elems: Range<T>) {
+        self.ensure(elems.end.index());
+        self.bit_set.insert_range(elems);
+    }
+
     /// Returns `true` if the set has changed.
     #[inline]
     pub fn remove(&mut self, elem: T) -> bool {
         self.ensure(elem.index() + 1);
         self.bit_set.remove(elem)
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.bit_set.clear();
+    }
+
+    #[inline]
+    pub fn count(&self) -> usize {
+        self.bit_set.count()
     }
 
     #[inline]
@@ -1332,6 +1355,14 @@ impl<T: Idx> GrowableBitSet<T> {
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
         self.bit_set.words.get(word_index).is_some_and(|word| (word & mask) != 0)
+    }
+
+    #[inline]
+    pub fn contains_any(&self, elems: Range<T>) -> bool {
+        elems.start.index() < self.bit_set.domain_size
+            && self
+                .bit_set
+                .contains_any(elems.start..T::new(elems.end.index().min(self.bit_set.domain_size)))
     }
 
     #[inline]
@@ -1728,115 +1759,4 @@ fn max_bit(word: Word) -> usize {
 #[inline]
 fn count_ones(words: &[Word]) -> usize {
     words.iter().map(|word| word.count_ones() as usize).sum()
-}
-
-/// Integral type used to represent the bit set.
-pub trait FiniteBitSetTy:
-    BitAnd<Output = Self>
-    + BitAndAssign
-    + BitOrAssign
-    + Clone
-    + Copy
-    + Shl
-    + Not<Output = Self>
-    + PartialEq
-    + Sized
-{
-    /// Size of the domain representable by this type, e.g. 64 for `u64`.
-    const DOMAIN_SIZE: u32;
-
-    /// Value which represents the `FiniteBitSet` having every bit set.
-    const FILLED: Self;
-    /// Value which represents the `FiniteBitSet` having no bits set.
-    const EMPTY: Self;
-
-    /// Value for one as the integral type.
-    const ONE: Self;
-    /// Value for zero as the integral type.
-    const ZERO: Self;
-
-    /// Perform a checked left shift on the integral type.
-    fn checked_shl(self, rhs: u32) -> Option<Self>;
-    /// Perform a checked right shift on the integral type.
-    fn checked_shr(self, rhs: u32) -> Option<Self>;
-}
-
-impl FiniteBitSetTy for u32 {
-    const DOMAIN_SIZE: u32 = 32;
-
-    const FILLED: Self = Self::MAX;
-    const EMPTY: Self = Self::MIN;
-
-    const ONE: Self = 1u32;
-    const ZERO: Self = 0u32;
-
-    fn checked_shl(self, rhs: u32) -> Option<Self> {
-        self.checked_shl(rhs)
-    }
-
-    fn checked_shr(self, rhs: u32) -> Option<Self> {
-        self.checked_shr(rhs)
-    }
-}
-
-impl std::fmt::Debug for FiniteBitSet<u32> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:032b}", self.0)
-    }
-}
-
-/// A fixed-sized bitset type represented by an integer type. Indices outwith than the range
-/// representable by `T` are considered set.
-#[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub struct FiniteBitSet<T: FiniteBitSetTy>(pub T);
-
-impl<T: FiniteBitSetTy> FiniteBitSet<T> {
-    /// Creates a new, empty bitset.
-    pub fn new_empty() -> Self {
-        Self(T::EMPTY)
-    }
-
-    /// Sets the `index`th bit.
-    pub fn set(&mut self, index: u32) {
-        self.0 |= T::ONE.checked_shl(index).unwrap_or(T::ZERO);
-    }
-
-    /// Unsets the `index`th bit.
-    pub fn clear(&mut self, index: u32) {
-        self.0 &= !T::ONE.checked_shl(index).unwrap_or(T::ZERO);
-    }
-
-    /// Sets the `i`th to `j`th bits.
-    pub fn set_range(&mut self, range: Range<u32>) {
-        let bits = T::FILLED
-            .checked_shl(range.end - range.start)
-            .unwrap_or(T::ZERO)
-            .not()
-            .checked_shl(range.start)
-            .unwrap_or(T::ZERO);
-        self.0 |= bits;
-    }
-
-    /// Is the set empty?
-    pub fn is_empty(&self) -> bool {
-        self.0 == T::EMPTY
-    }
-
-    /// Returns the domain size of the bitset.
-    pub fn within_domain(&self, index: u32) -> bool {
-        index < T::DOMAIN_SIZE
-    }
-
-    /// Returns if the `index`th bit is set.
-    pub fn contains(&self, index: u32) -> Option<bool> {
-        self.within_domain(index)
-            .then(|| ((self.0.checked_shr(index).unwrap_or(T::ONE)) & T::ONE) == T::ONE)
-    }
-}
-
-impl<T: FiniteBitSetTy> Default for FiniteBitSet<T> {
-    fn default() -> Self {
-        Self::new_empty()
-    }
 }

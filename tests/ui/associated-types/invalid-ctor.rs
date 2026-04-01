@@ -15,7 +15,7 @@ impl Trait for () {
 
     fn mk() -> Self::Out {
         Self::Out(1)
-        //~^ ERROR no associated item named `Out` found for unit type `()`
+        //~^ ERROR no associated function or constant named `Out` found for unit type `()`
     }
 }
 

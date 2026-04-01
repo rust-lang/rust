@@ -736,14 +736,6 @@ pub(crate) enum CannotCaptureLateBound {
 }
 
 #[derive(Diagnostic)]
-#[diag("{$variances}")]
-pub(crate) struct VariancesOf {
-    #[primary_span]
-    pub span: Span,
-    pub variances: String,
-}
-
-#[derive(Diagnostic)]
 #[diag("{$ty}")]
 pub(crate) struct TypeOf<'tcx> {
     #[primary_span]
@@ -1815,6 +1807,13 @@ pub(crate) struct CmseImplTrait {
 pub(crate) struct BadReturnTypeNotation {
     #[primary_span]
     pub span: Span,
+    #[suggestion(
+        "furthermore, argument types not allowed with return type notation",
+        applicability = "maybe-incorrect",
+        code = "(..)",
+        style = "verbose"
+    )]
+    pub suggestion: Option<Span>,
 }
 
 #[derive(Diagnostic)]

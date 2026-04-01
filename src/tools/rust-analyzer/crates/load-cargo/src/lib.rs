@@ -42,6 +42,7 @@ pub struct LoadCargoConfig {
     pub load_out_dirs_from_check: bool,
     pub with_proc_macro_server: ProcMacroServerChoice,
     pub prefill_caches: bool,
+    pub num_worker_threads: usize,
     pub proc_macro_processes: usize,
 }
 
@@ -197,7 +198,7 @@ pub fn load_workspace_into_db(
     );
 
     if load_config.prefill_caches {
-        prime_caches::parallel_prime_caches(db, 1, &|_| ());
+        prime_caches::parallel_prime_caches(db, load_config.num_worker_threads, &|_| ());
     }
 
     Ok((vfs, proc_macro_server.and_then(Result::ok)))
@@ -638,7 +639,7 @@ impl ProcMacroExpander for Expander {
                     current_span = Span {
                         range: resolved.range,
                         anchor: SpanAnchor {
-                            file_id: resolved.file_id.editioned_file_id(db),
+                            file_id: resolved.file_id.span_file_id(db),
                             ast_id: span::ROOT_ERASED_FILE_AST_ID,
                         },
                         ctx: current_ctx,
@@ -652,7 +653,7 @@ impl ProcMacroExpander for Expander {
                 let resolved = db.resolve_span(current_span);
 
                 Ok(SubResponse::SpanSourceResult {
-                    file_id: resolved.file_id.editioned_file_id(db).as_u32(),
+                    file_id: resolved.file_id.span_file_id(db).as_u32(),
                     ast_id: span::ROOT_ERASED_FILE_AST_ID.into_raw(),
                     start: u32::from(resolved.range.start()),
                     end: u32::from(resolved.range.end()),
@@ -684,7 +685,7 @@ impl ProcMacroExpander for Expander {
                             .text_range();
 
                         let parent_span = Some(ParentSpan {
-                            file_id: editioned_file_id.editioned_file_id(db).as_u32(),
+                            file_id: editioned_file_id.span_file_id(db).as_u32(),
                             ast_id: span::ROOT_ERASED_FILE_AST_ID.into_raw(),
                             start: u32::from(range.start()),
                             end: u32::from(range.end()),
@@ -744,16 +745,26 @@ mod tests {
 
     #[test]
     fn test_loading_rust_analyzer() {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
+        let cargo_toml_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("Cargo.toml");
+        let cargo_toml_path = AbsPathBuf::assert_utf8(cargo_toml_path);
+        let manifest = ProjectManifest::from_manifest_file(cargo_toml_path).unwrap();
+
         let cargo_config = CargoConfig { set_test: true, ..CargoConfig::default() };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::None,
             prefill_caches: false,
+            num_worker_threads: 1,
             proc_macro_processes: 1,
         };
+        let workspace = ProjectWorkspace::load(manifest, &cargo_config, &|_| {}).unwrap();
         let (db, _vfs, _proc_macro) =
-            load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {}).unwrap();
+            load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config).unwrap();
 
         let n_crates = db.all_crates().len();
         // RA has quite a few crates, but the exact count doesn't matter

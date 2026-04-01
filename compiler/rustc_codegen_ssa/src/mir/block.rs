@@ -12,8 +12,7 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::Span;
-use rustc_span::source_map::Spanned;
+use rustc_span::{Span, Spanned};
 use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode};
 use tracing::{debug, info};
 
@@ -1019,10 +1018,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if let Some(hir_id) =
                             terminator.source_info.scope.lint_root(&self.mir.source_scopes)
                         {
-                            let msg = "tail calling a function marked with `#[track_caller]` has no special effect";
-                            bx.tcx().node_lint(TAIL_CALL_TRACK_CALLER, hir_id, |d| {
-                                _ = d.primary_message(msg).span(fn_span)
-                            });
+                            bx.tcx().emit_node_lint(TAIL_CALL_TRACK_CALLER, hir_id, rustc_errors::DiagDecorator(|d| {
+                                _ = d.primary_message("tail calling a function marked with `#[track_caller]` has no special effect").span(fn_span)
+                            }));
                         }
 
                         let instance = ty::Instance::resolve_for_fn_ptr(
@@ -1256,55 +1254,37 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
                 CallKind::Tail => {
-                    match fn_abi.args[i].mode {
-                        PassMode::Indirect { on_stack: false, .. } => {
-                            let Some(tmp) = tail_call_temporaries[i].take() else {
-                                span_bug!(
-                                    fn_span,
-                                    "missing temporary for indirect tail call argument #{i}"
-                                )
-                            };
-
-                            let local = self.mir.args_iter().nth(i).unwrap();
-
-                            match &self.locals[local] {
-                                LocalRef::Place(arg) => {
-                                    bx.typed_place_copy(arg.val, tmp.val, fn_abi.args[i].layout);
-                                    op.val = Ref(arg.val);
-                                }
-                                LocalRef::Operand(arg) => {
-                                    let Ref(place_value) = arg.val else {
-                                        bug!("only `Ref` should use `PassMode::Indirect`");
-                                    };
-                                    bx.typed_place_copy(
-                                        place_value,
-                                        tmp.val,
-                                        fn_abi.args[i].layout,
-                                    );
-                                    op.val = arg.val;
-                                }
-                                LocalRef::UnsizedPlace(_) => {
-                                    span_bug!(fn_span, "unsized types are not supported")
-                                }
-                                LocalRef::PendingOperand => {
-                                    span_bug!(fn_span, "argument local should not be pending")
-                                }
-                            };
-
-                            bx.lifetime_end(tmp.val.llval, tmp.layout.size);
-                        }
-                        PassMode::Indirect { on_stack: true, .. } => {
-                            // FIXME: some LLVM backends (notably x86) do not correctly pass byval
-                            // arguments to tail calls (as of LLVM 21). See also:
-                            //
-                            // - https://github.com/rust-lang/rust/pull/144232#discussion_r2218543841
-                            // - https://github.com/rust-lang/rust/issues/144855
+                    if let PassMode::Indirect { on_stack: false, .. } = fn_abi.args[i].mode {
+                        let Some(tmp) = tail_call_temporaries[i].take() else {
                             span_bug!(
                                 fn_span,
-                                "arguments using PassMode::Indirect {{ on_stack: true, .. }} are currently not supported for tail calls"
+                                "missing temporary for indirect tail call argument #{i}"
                             )
-                        }
-                        _ => (),
+                        };
+
+                        let local = self.mir.args_iter().nth(i).unwrap();
+
+                        match &self.locals[local] {
+                            LocalRef::Place(arg) => {
+                                bx.typed_place_copy(arg.val, tmp.val, fn_abi.args[i].layout);
+                                op.val = Ref(arg.val);
+                            }
+                            LocalRef::Operand(arg) => {
+                                let Ref(place_value) = arg.val else {
+                                    bug!("only `Ref` should use `PassMode::Indirect`");
+                                };
+                                bx.typed_place_copy(place_value, tmp.val, fn_abi.args[i].layout);
+                                op.val = arg.val;
+                            }
+                            LocalRef::UnsizedPlace(_) => {
+                                span_bug!(fn_span, "unsized types are not supported")
+                            }
+                            LocalRef::PendingOperand => {
+                                span_bug!(fn_span, "argument local should not be pending")
+                            }
+                        };
+
+                        bx.lifetime_end(tmp.val.llval, tmp.layout.size);
                     }
                 }
             }

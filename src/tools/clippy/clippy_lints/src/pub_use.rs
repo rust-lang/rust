@@ -35,6 +35,7 @@ declare_clippy_lint! {
     restriction,
     "restricts the usage of `pub use`"
 }
+
 declare_lint_pass!(PubUse => [PUB_USE]);
 
 impl EarlyLintPass for PubUse {

@@ -5,7 +5,6 @@
 #![feature(custom_test_frameworks)]
 #![feature(derive_const)]
 #![feature(where_clause_attrs)]
-#![allow(soft_unstable)]
 
 trait Trait {}
 

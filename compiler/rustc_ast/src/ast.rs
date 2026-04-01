@@ -30,8 +30,9 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 pub use rustc_span::AttrId;
-use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, respan, sym,
+};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::attr::data_structures::CfgEntry;
@@ -119,8 +120,8 @@ impl PartialEq<&[Symbol]> for Path {
     }
 }
 
-impl<CTX: rustc_span::HashStableContext> HashStable<CTX> for Path {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+impl<Hcx: rustc_span::HashStableContext> HashStable<Hcx> for Path {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
             segment.ident.hash_stable(hcx, hasher);
@@ -937,7 +938,7 @@ pub enum PatKind {
     Never,
 
     /// A guard pattern (e.g., `x if guard(x)`).
-    Guard(Box<Pat>, Box<Expr>),
+    Guard(Box<Pat>, Box<Guard>),
 
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(Box<Pat>),
@@ -1345,7 +1346,7 @@ pub struct Arm {
     /// Match arm pattern, e.g. `10` in `match foo { 10 => {}, _ => {} }`.
     pub pat: Box<Pat>,
     /// Match arm guard, e.g. `n > 10` in `match foo { n if n > 10 => {}, _ => {} }`.
-    pub guard: Option<Box<Expr>>,
+    pub guard: Option<Box<Guard>>,
     /// Match arm body. Omitted if the pattern is a never pattern.
     pub body: Option<Box<Expr>>,
     pub span: Span,
@@ -1724,6 +1725,12 @@ pub enum StructRest {
     Rest(Span),
     /// No trailing `..` or expression.
     None,
+    /// No trailing `..` or expression, and also, a parse error occurred inside the struct braces.
+    ///
+    /// This struct should be treated similarly to as if it had an `..` in it,
+    /// in particular rather than reporting missing fields, because the parse error
+    /// makes which fields the struct was intended to have not fully known.
+    NoneWithError(ErrorGuaranteed),
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -3547,6 +3554,19 @@ impl VisibilityKind {
     }
 }
 
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct ImplRestriction {
+    pub kind: RestrictionKind,
+    pub span: Span,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum RestrictionKind {
+    Unrestricted,
+    Restricted { path: Box<Path>, id: NodeId, shorthand: bool },
+}
+
 /// Field definition in a struct, variant or union.
 ///
 /// E.g., `bar: usize` as in `struct Foo { bar: usize }`.
@@ -3746,6 +3766,7 @@ pub struct Trait {
     pub constness: Const,
     pub safety: Safety,
     pub is_auto: IsAuto,
+    pub impl_restriction: ImplRestriction,
     pub ident: Ident,
     pub generics: Generics,
     #[visitable(extra = BoundKind::SuperTraits)]
@@ -3931,6 +3952,18 @@ pub struct ConstBlockItem {
 
 impl ConstBlockItem {
     pub const IDENT: Ident = Ident { name: kw::Underscore, span: DUMMY_SP };
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct Guard {
+    pub cond: Expr,
+    pub span_with_leading_if: Span,
+}
+
+impl Guard {
+    pub fn span(&self) -> Span {
+        self.cond.span
+    }
 }
 
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.

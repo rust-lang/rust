@@ -727,7 +727,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     is_stub: false,
                 },
                 extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
-                stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
+                stable_crate_id: tcx.stable_crate_id(LOCAL_CRATE),
                 required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
                 panic_in_drop_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
                 edition: tcx.sess.edition(),
@@ -2145,7 +2145,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.tcx
                 .stripped_cfg_items(LOCAL_CRATE)
                 .into_iter()
-                .map(|item| item.clone().map_mod_id(|def_id| def_id.index)),
+                .map(|item| item.clone().map_scope_id(|def_id| def_id.index)),
         )
     }
 
@@ -2443,7 +2443,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     if tcx.dep_graph.is_fully_enabled()
         && let work_product_id = WorkProductId::from_cgu_name("metadata")
         && let Some(work_product) = tcx.dep_graph.previous_work_product(&work_product_id)
-        && tcx.try_mark_green(&dep_node)
+        && tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some()
     {
         let saved_path = &work_product.saved_files["rmeta"];
         let incr_comp_session_dir = tcx.sess.incr_comp_session_dir_opt().unwrap();

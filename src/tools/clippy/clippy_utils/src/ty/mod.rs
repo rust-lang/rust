@@ -28,12 +28,8 @@ use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
-#[cfg(bootstrap)]
-use std::assert_matches::debug_assert_matches;
 use std::collections::hash_map::Entry;
-#[cfg(not(bootstrap))]
-use std::debug_assert_matches;
-use std::{iter, mem};
+use std::{debug_assert_matches, iter, mem};
 
 use crate::paths::{PathNS, lookup_path_str};
 use crate::res::{MaybeDef, MaybeQPath};

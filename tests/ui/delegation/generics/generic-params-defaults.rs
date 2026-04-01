@@ -9,6 +9,5 @@ trait Trait<'a, 'b, 'c, A = usize, B = u32, C = String, const N: usize = 123> {
 }
 
 reuse Trait::foo;
-//~^ ERROR: type annotations needed
 
 fn main() {}

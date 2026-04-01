@@ -1,3 +1,132 @@
+Version 1.94.1 (2026-03-26)
+===========================
+
+<a id="1.94.1"></a>
+
+* [Fix `std::thread::spawn` on wasm32-wasip1-threads](https://github.com/rust-lang/rust/pull/153634)
+* [Remove new methods added to `std::os::windows::fs::OpenOptionsExt`](https://github.com/rust-lang/rust/pull/153491)
+  The new methods were unstable, but the trait itself is not sealed and so
+  cannot be extended with non-default methods.
+* [Clippy: fix ICE in `match_same_arms`](https://github.com/rust-lang/rust-clippy/pull/16685)
+* [Cargo: update tar to 0.4.45](https://github.com/rust-lang/cargo/pull/16769)
+  This resolves CVE-2026-33055 and CVE-2026-33056. Users of crates.io are not affected.
+  See [blog](https://blog.rust-lang.org/2026/03/21/cve-2026-33056/) for more details.
+
+Version 1.94.0 (2026-03-05)
+==========================
+
+<a id="1.94.0-Language"></a>
+
+Language
+--------
+- [Impls and impl items inherit `dead_code` lint level of the corresponding traits and trait items](https://github.com/rust-lang/rust/pull/144113)
+- [Stabilize additional 29 RISC-V target features including large portions of the RVA22U64 / RVA23U64 profiles](https://github.com/rust-lang/rust/pull/145948)
+- [Add warn-by-default `unused_visibilities` lint for visibility on `const _` declarations](https://github.com/rust-lang/rust/pull/147136)
+- [Update to Unicode 17](https://github.com/rust-lang/rust/pull/148321)
+- [Avoid incorrect lifetime errors for closures](https://github.com/rust-lang/rust/pull/148329)
+
+<a id="1.94.0-Platform-Support"></a>
+
+Platform Support
+----------------
+
+- [Add `riscv64im-unknown-none-elf` as a tier 3 target](https://github.com/rust-lang/rust/pull/148790)
+
+Refer to Rust's [platform support page][platform-support-doc]
+for more information on Rust's tiered platform support.
+
+[platform-support-doc]: https://doc.rust-lang.org/rustc/platform-support.html
+
+<a id="1.94.0-Libraries"></a>
+
+Libraries
+---------
+
+- [Relax `T: Ord` bound for some `BinaryHeap<T>` methods.](https://github.com/rust-lang/rust/pull/149408)
+
+<a id="1.94.0-Stabilized-APIs"></a>
+
+Stabilized APIs
+---------------
+
+- [`<[T]>::array_windows`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.array_windows)
+- [`<[T]>::element_offset`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.element_offset)
+- [`LazyCell::get`](https://doc.rust-lang.org/stable/std/cell/struct.LazyCell.html#method.get)
+- [`LazyCell::get_mut`](https://doc.rust-lang.org/stable/std/cell/struct.LazyCell.html#method.get_mut)
+- [`LazyCell::force_mut`](https://doc.rust-lang.org/stable/std/cell/struct.LazyCell.html#method.force_mut)
+- [`LazyLock::get`](https://doc.rust-lang.org/stable/std/sync/struct.LazyLock.html#method.get)
+- [`LazyLock::get_mut`](https://doc.rust-lang.org/stable/std/sync/struct.LazyLock.html#method.get_mut)
+- [`LazyLock::force_mut`](https://doc.rust-lang.org/stable/std/sync/struct.LazyLock.html#method.force_mut)
+- [`impl TryFrom<char> for usize`](https://doc.rust-lang.org/stable/std/convert/trait.TryFrom.html#impl-TryFrom%3Cchar%3E-for-usize)
+- [`std::iter::Peekable::next_if_map`](https://doc.rust-lang.org/stable/std/iter/struct.Peekable.html#method.next_if_map)
+- [`std::iter::Peekable::next_if_map_mut`](https://doc.rust-lang.org/stable/std/iter/struct.Peekable.html#method.next_if_map_mut)
+- [x86 `avx512fp16` intrinsics](https://github.com/rust-lang/rust/issues/127213)
+  (excluding those that depend directly on the unstable `f16` type)
+- [AArch64 NEON fp16 intrinsics](https://github.com/rust-lang/rust/issues/136306)
+  (excluding those that depend directly on the unstable `f16` type)
+- [`f32::consts::EULER_GAMMA`](https://doc.rust-lang.org/stable/std/f32/consts/constant.EULER_GAMMA.html)
+- [`f64::consts::EULER_GAMMA`](https://doc.rust-lang.org/stable/std/f64/consts/constant.EULER_GAMMA.html)
+- [`f32::consts::GOLDEN_RATIO`](https://doc.rust-lang.org/stable/std/f32/consts/constant.GOLDEN_RATIO.html)
+- [`f64::consts::GOLDEN_RATIO`](https://doc.rust-lang.org/stable/std/f64/consts/constant.GOLDEN_RATIO.html)
+
+
+These previously stable APIs are now stable in const contexts:
+
+- [`f32::mul_add`](https://doc.rust-lang.org/stable/std/primitive.f32.html#method.mul_add)
+- [`f64::mul_add`](https://doc.rust-lang.org/stable/std/primitive.f64.html#method.mul_add)
+
+
+<a id="1.94.0-Cargo"></a>
+
+Cargo
+-----
+
+- Stabilize the config include key. The top-level include config key allows loading additional config files, enabling better organization, sharing, and management of Cargo configurations across projects and environments. [docs](https://doc.rust-lang.org/nightly/cargo/reference/config.html#including-extra-configuration-files) [#16284](https://github.com/rust-lang/cargo/pull/16284)
+- Stabilize the pubtime field in registry index. This records when a crate version was published and enables time-based dependency resolution in the future. Note that crates.io will gradually backfill existing packages when a new version is published. Not all crates have pubtime yet. [#16369](https://github.com/rust-lang/cargo/pull/16369) [#16372](https://github.com/rust-lang/cargo/pull/16372)
+- Cargo now parses [TOML v1.1](https://toml.io/en/v1.1.0) for manifests and configuration files. Note that using these features in Cargo.toml will raise your development MSRV, but the published manifest remains compatible with older parsers. [#16415](https://github.com/rust-lang/cargo/pull/16415)
+- [Make `CARGO_BIN_EXE_<crate>` available at runtime ](https://github.com/rust-lang/cargo/pull/16421/)
+
+<a id="1.94.0-Compatibility-Notes"></a>
+
+Compatibility Notes
+-------------------
+- [Forbid freely casting lifetime bounds of `dyn`-types](https://github.com/rust-lang/rust/pull/136776)
+- [Make closure capturing have consistent and correct behaviour around patterns](https://github.com/rust-lang/rust/pull/138961)
+  Some finer details of how precise closure captures get affected by pattern matching have been changed. In some cases, this can cause a non-move closure that was previously capturing an entire variable by move, to now capture only part of that variable by move, and other parts by borrow. This can cause the borrow checker to complain where it previously didn't, or cause `Drop` to run at a different point in time.
+- [Standard library macros are now imported via prelude, not via injected `#[macro_use]`](https://github.com/rust-lang/rust/pull/139493)
+  This will raise an error if macros of the same name are glob imported.
+  For example if a crate defines their own `matches` macro and then glob imports that,
+  it's now ambiguous whether the custom or standard library `matches` is meant and
+  an explicit import of the name is required to resolve the ambiguity.
+  One exception is `core::panic` and `std::panic`, if their import is ambiguous
+  a new warning ([`ambiguous_panic_imports`](https://github.com/rust-lang/rust/issues/147319)) is raised.
+  This may raise a new warning ([`ambiguous_panic_imports`](https://github.com/rust-lang/rust/issues/147319)) on `#![no_std]` code glob importing the std crate.
+  Both `core::panic!` and `std::panic!` are then in scope and which is used is ambiguous.
+- [Don't strip shebang in expression-context `include!(…)`s](https://github.com/rust-lang/rust/pull/146377)
+  This can cause previously working includes to no longer compile if they included files which started with a shebang.
+- [Ambiguous glob reexports are now also visible cross-crate](https://github.com/rust-lang/rust/pull/147984)
+  This unifies behavior between local and cross-crate errors on these exports, which may introduce new ambiguity errors.
+- [Don't normalize where-clauses before checking well-formedness](https://github.com/rust-lang/rust/pull/148477)
+- [Introduce a future compatibility warning on codegen attributes on body-free trait methods](https://github.com/rust-lang/rust/pull/148756)
+  These attributes currently have no effect in this position.
+- [On Windows `std::time::SystemTime::checked_sub_duration` will return `None` for times before the Windows epoch (1/1/1601)](https://github.com/rust-lang/rust/pull/148825)
+- [Lifetime identifiers such as `'a` are now NFC normalized](https://github.com/rust-lang/rust/pull/149192).
+- [Overhaul filename handling for cross-compiler consistency](https://github.com/rust-lang/rust/pull/149709)
+  Any paths emitted by compiler now always respect the relative-ness of the paths and `--remap-path-prefix` given originally.
+  One side-effect of this change is that paths emitted for local crates in Cargo (path dependencies and workspace members) are no longer absolute but relative when emitted as part of a diagnostic in a downstream crate.
+
+<a id="1.94.0-Internal-Changes"></a>
+
+Internal Changes
+----------------
+
+These changes do not affect any public interfaces of Rust, but they represent
+significant improvements to the performance or internals of rustc and related
+tools.
+
+- [Switch to `annotate-snippets` for error emission](https://github.com/rust-lang/rust/pull/150032)
+  This should preserve mostly the same outputs in rustc error messages.
+
 Version 1.93.1 (2026-02-12)
 ===========================
 

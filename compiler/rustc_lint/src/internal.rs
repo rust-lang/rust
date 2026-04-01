@@ -1,7 +1,9 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
+use rustc_ast as ast;
 use rustc_ast::{Pat, PatKind, Path};
+use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, HirId, find_attr};
@@ -9,7 +11,6 @@ use rustc_middle::ty::{self, GenericArgsRef, PredicatePolarity};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{Span, sym};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::lints::{
     AttributeKindInFindAttr, BadOptAccessDiag, DefaultHashTypesDiag,

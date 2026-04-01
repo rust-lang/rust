@@ -40,6 +40,8 @@ declare_clippy_lint! {
     @eval_always = true
 }
 
+impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
+
 pub struct CognitiveComplexity {
     limit: LimitStack,
 }
@@ -51,8 +53,6 @@ impl CognitiveComplexity {
         }
     }
 }
-
-impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
     fn check<'tcx>(

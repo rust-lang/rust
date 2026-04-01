@@ -285,14 +285,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let mut err = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
 
                         let trait_def_id = main_trait_predicate.def_id();
-                        if self.tcx.is_diagnostic_item(sym::From, trait_def_id)
-                            || self.tcx.is_diagnostic_item(sym::TryFrom, trait_def_id)
+                        let leaf_trait_def_id = leaf_trait_predicate.def_id();
+                        if (self.tcx.is_diagnostic_item(sym::From, trait_def_id)
+                            || self.tcx.is_diagnostic_item(sym::TryFrom, trait_def_id))
+                            && (self.tcx.is_diagnostic_item(sym::From, leaf_trait_def_id)
+                                || self.tcx.is_diagnostic_item(sym::TryFrom, leaf_trait_def_id))
                         {
                             let trait_ref = leaf_trait_predicate.skip_binder().trait_ref;
 
-                            // Defensive: next-solver may produce fewer args than expected.
-                            if trait_ref.args.len() > 1 {
-                                let found_ty = trait_ref.args.type_at(1);
+                            if let Some(found_ty) = trait_ref.args.get(1).and_then(|arg| arg.as_type())
+                            {
                                 let ty = main_trait_predicate.skip_binder().self_ty();
 
                                 if let Some(cast_ty) = self.find_explicit_cast_type(
@@ -755,11 +757,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     Err(guar) => return guar,
                 }
             }
-
-            SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id) => return self.report_opaque_type_auto_trait_leakage(
-                &obligation,
-                def_id,
-            ),
 
             SelectionError::TraitDynIncompatible(did) => {
                 let violations = self.tcx.dyn_compatibility_violations(did);
@@ -2256,6 +2253,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if candidates.is_empty() {
                 return false;
             }
+            let mut specific_candidates = candidates.clone();
+            specific_candidates.retain(|(tr, _)| {
+                tr.with_replaced_self_ty(self.tcx, trait_pred.skip_binder().self_ty())
+                    == trait_pred.skip_binder().trait_ref
+            });
+            if !specific_candidates.is_empty() {
+                // We have found a subset of impls that fully satisfy the expected trait, only
+                // mention those types.
+                candidates = specific_candidates;
+            }
             if let &[(cand, def_id)] = &candidates[..] {
                 if self.tcx.is_diagnostic_item(sym::FromResidual, cand.def_id)
                     && !self.tcx.features().enabled(sym::try_trait_v2)
@@ -2294,6 +2301,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // FIXME: this could use a better heuristic, like just checking
             // that args[1..] is the same.
             let all_traits_equal = traits.len() == 1;
+            let mut types: Vec<_> =
+                candidates.iter().map(|(c, _)| c.self_ty().to_string()).collect();
+            types.sort();
+            types.dedup();
+            let all_types_equal = types.len() == 1;
 
             let end = if candidates.len() <= 9 || self.tcx.sess.opts.verbose {
                 candidates.len()
@@ -2307,6 +2319,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 for (c, def_id) in &candidates {
                     let msg = if all_traits_equal {
                         format!("`{}`", self.tcx.short_string(c.self_ty(), err.long_ty_path()))
+                    } else if all_types_equal {
+                        format!(
+                            "`{}`",
+                            self.tcx.short_string(c.print_only_trait_path(), err.long_ty_path())
+                        )
                     } else {
                         format!(
                             "`{}` implements `{}`",
@@ -2316,13 +2333,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     };
                     span.push_span_label(self.tcx.def_span(*def_id), msg);
                 }
-                err.span_help(
-                    span,
+                let msg = if all_types_equal {
+                    format!(
+                        "`{}` implements trait `{}`",
+                        self.tcx.short_string(candidates[0].0.self_ty(), err.long_ty_path()),
+                        self.tcx.short_string(trait_ref.print_trait_sugared(), err.long_ty_path()),
+                    )
+                } else {
                     format!(
                         "the following {other}types implement trait `{}`",
-                        trait_ref.print_trait_sugared(),
-                    ),
-                );
+                        self.tcx.short_string(trait_ref.print_trait_sugared(), err.long_ty_path()),
+                    )
+                };
+                err.span_help(span, msg);
             } else {
                 let candidate_names: Vec<String> = candidates
                     .iter()
@@ -2331,6 +2354,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             format!(
                                 "\n  {}",
                                 self.tcx.short_string(c.self_ty(), err.long_ty_path())
+                            )
+                        } else if all_types_equal {
+                            format!(
+                                "\n  {}",
+                                self.tcx
+                                    .short_string(c.print_only_trait_path(), err.long_ty_path())
                             )
                         } else {
                             format!(
@@ -2342,9 +2371,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                     })
                     .collect();
+                let msg = if all_types_equal {
+                    format!(
+                        "`{}` implements trait `{}`",
+                        self.tcx.short_string(candidates[0].0.self_ty(), err.long_ty_path()),
+                        self.tcx.short_string(trait_ref.print_trait_sugared(), err.long_ty_path()),
+                    )
+                } else {
+                    format!(
+                        "the following {other}types implement trait `{}`",
+                        self.tcx.short_string(trait_ref.print_trait_sugared(), err.long_ty_path()),
+                    )
+                };
+
                 err.help(format!(
-                    "the following {other}types implement trait `{}`:{}{}",
-                    trait_ref.print_trait_sugared(),
+                    "{msg}:{}{}",
                     candidate_names[..end].join(""),
                     if candidates.len() > 9 && !self.tcx.sess.opts.verbose {
                         format!("\nand {} others", candidates.len() - 8)
@@ -2632,6 +2673,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             trait_def_id != def_id
                 && trait_name == self.tcx.item_name(def_id)
                 && trait_has_same_params(def_id)
+                // `PointeeSized` is removed during lowering.
+                && !self.tcx.is_lang_item(def_id, LangItem::PointeeSized)
                 && self.predicate_must_hold_modulo_regions(&Obligation::new(
                     self.tcx,
                     obligation.cause.clone(),
@@ -2835,6 +2878,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_predicate: ty::PolyTraitPredicate<'tcx>,
         root_obligation: &PredicateObligation<'tcx>,
     ) -> (PredicateObligation<'tcx>, ty::PolyTraitPredicate<'tcx>) {
+        if obligation.predicate.has_non_region_param() || obligation.has_non_region_infer() {
+            return (obligation.clone(), trait_predicate);
+        }
+
         let ocx = ObligationCtxt::new(self);
         let normalized_predicate = self.tcx.erase_and_anonymize_regions(
             self.tcx.instantiate_bound_regions_with_erased(trait_predicate),
@@ -3176,6 +3223,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             self.suggest_tuple_wrapping(err, root_obligation, obligation);
         }
+        self.suggest_shadowed_inherent_method(err, obligation, trait_predicate);
     }
 
     fn add_help_message_for_fn_trait(
@@ -3326,34 +3374,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             obligation.param_env,
             terr,
         )
-    }
-
-    fn report_opaque_type_auto_trait_leakage(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        def_id: DefId,
-    ) -> ErrorGuaranteed {
-        let name = match self.tcx.local_opaque_ty_origin(def_id.expect_local()) {
-            hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. } => {
-                "opaque type".to_string()
-            }
-            hir::OpaqueTyOrigin::TyAlias { .. } => {
-                format!("`{}`", self.tcx.def_path_debug_str(def_id))
-            }
-        };
-        let mut err = self.dcx().struct_span_err(
-            obligation.cause.span,
-            format!("cannot check whether the hidden type of {name} satisfies auto traits"),
-        );
-
-        err.note(
-            "fetching the hidden types of an opaque inside of the defining scope is not supported. \
-            You can try moving the opaque type and the item that actually registers a hidden type into a new submodule",
-        );
-        err.span_note(self.tcx.def_span(def_id), "opaque type is declared here");
-
-        self.note_obligation_cause(&mut err, &obligation);
-        self.dcx().try_steal_replace_and_emit_err(self.tcx.def_span(def_id), StashKey::Cycle, err)
     }
 
     fn report_signature_mismatch_error(

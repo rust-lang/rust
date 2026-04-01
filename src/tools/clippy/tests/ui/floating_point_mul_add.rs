@@ -113,3 +113,15 @@ fn _issue14897() {
     let _ = 1.0 * 2.0 + 0.5;
     //~^ suboptimal_flops
 }
+
+fn issue16573() {
+    let mut a = 3.0_f32;
+    let b = 4.0_f32;
+    let c = 7.0_f32;
+
+    a += b * c;
+    //~^ suboptimal_flops
+
+    a -= b * c;
+    //~^ suboptimal_flops
+}

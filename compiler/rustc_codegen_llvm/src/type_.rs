@@ -15,7 +15,7 @@ use rustc_target::callconv::{CastTarget, FnAbi};
 use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::common;
 use crate::context::{CodegenCx, GenericCx, SCx};
-use crate::llvm::{self, FALSE, Metadata, TRUE, ToGeneric, ToLlvmBool, Type, Value};
+use crate::llvm::{self, FALSE, TRUE, ToGeneric, ToLlvmBool, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 
 impl PartialEq for Type {
@@ -317,10 +317,6 @@ impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let typeid_metadata = self.create_metadata(typeid);
         let v = [llvm::LLVMValueAsMetadata(self.const_usize(0)), typeid_metadata];
         self.global_set_metadata_node(function, llvm::MD_type, &v);
-    }
-
-    fn typeid_metadata(&self, typeid: &[u8]) -> Option<&'ll Metadata> {
-        Some(self.create_metadata(typeid))
     }
 
     fn add_kcfi_type_metadata(&self, function: &'ll Value, kcfi_typeid: u32) {

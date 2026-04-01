@@ -1,17 +1,19 @@
+use rustc_ast as ast;
 use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{Diag, Diagnostic, MultiSpan, msg};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, MultiSpan, msg};
 use rustc_feature::{Features, GateIssue};
+use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
-    LevelAndSource, LintExpectation, LintLevelSource, ShallowLintLevelMap, diag_lint_level,
-    lint_level, reveal_actual_level,
+    LevelAndSource, LintExpectation, LintLevelSource, ShallowLintLevelMap, emit_lint_base,
+    reveal_actual_level,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
@@ -23,7 +25,6 @@ use rustc_session::lint::builtin::{
 use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::builtin::MISSING_DOCS;
 use crate::context::{CheckLintNameResult, LintStore};
@@ -948,22 +949,45 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             return true;
         };
 
-        if self.lint_added_lints {
-            let lint = builtin::UNKNOWN_LINTS;
-            let level = self.lint_level(builtin::UNKNOWN_LINTS);
-            lint_level(self.sess, lint, level, Some(span.into()), |lint| {
-                lint.primary_message(msg!("unknown lint: `{$name}`"));
-                lint.arg("name", lint_id.lint.name_lower());
-                lint.note(msg!("the `{$name}` lint is unstable"));
+        struct UnknownLint<'a> {
+            sess: &'a Session,
+            lint_id: LintId,
+            feature: Symbol,
+            lint_from_cli: bool,
+        }
+
+        impl<'a, 'b> Diagnostic<'a, ()> for UnknownLint<'b> {
+            fn into_diag(
+                self,
+                dcx: DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> Diag<'a, ()> {
+                let Self { sess, lint_id, feature, lint_from_cli } = self;
+                let mut lint = Diag::new(dcx, level, msg!("unknown lint: `{$name}`"))
+                    .with_arg("name", lint_id.lint.name_lower())
+                    .with_note(msg!("the `{$name}` lint is unstable"));
                 rustc_session::parse::add_feature_diagnostics_for_issue(
-                    lint,
-                    &self.sess,
+                    &mut lint,
+                    sess,
                     feature,
                     GateIssue::Language,
                     lint_from_cli,
                     None,
                 );
-            });
+                lint
+            }
+        }
+
+        if self.lint_added_lints {
+            let lint = builtin::UNKNOWN_LINTS;
+            let level = self.lint_level(builtin::UNKNOWN_LINTS);
+            emit_lint_base(
+                self.sess,
+                lint,
+                level,
+                Some(span.into()),
+                UnknownLint { sess: &self.sess, lint_id, feature, lint_from_cli },
+            );
         }
 
         false
@@ -981,23 +1005,10 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-    ) {
-        let level = self.lint_level(lint);
-        lint_level(self.sess, lint, level, span, decorate)
-    }
-
-    /// Used to emit a lint-related diagnostic based on the current state of
-    /// this lint context.
-    #[track_caller]
-    pub(crate) fn opt_span_diag_lint(
-        &self,
-        lint: &'static Lint,
-        span: Option<MultiSpan>,
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level(lint);
-        diag_lint_level(self.sess, lint, level, span, decorator)
+        emit_lint_base(self.sess, lint, level, span, decorator)
     }
 
     #[track_caller]
@@ -1008,13 +1019,13 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level(lint);
-        diag_lint_level(self.sess, lint, level, Some(span), decorator);
+        emit_lint_base(self.sess, lint, level, Some(span), decorator);
     }
 
     #[track_caller]
     pub fn emit_lint(&self, lint: &'static Lint, decorator: impl for<'a> Diagnostic<'a, ()>) {
         let level = self.lint_level(lint);
-        diag_lint_level(self.sess, lint, level, None, decorator);
+        emit_lint_base(self.sess, lint, level, None, decorator);
     }
 }
 

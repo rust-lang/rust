@@ -1,5 +1,4 @@
 #![feature(specialization, associated_type_defaults)]
-//~^ WARN the feature `specialization` is incomplete
 
 // Test that attempting to override a non-default method or one not in the
 // parent impl causes an error.

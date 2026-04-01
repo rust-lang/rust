@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::source::{IntoSpan as _, SpanRangeExt, snippet, snippet_block_with_applicability};
+use clippy_utils::source::{HasSession, IntoSpan as _, SpanRangeExt, snippet, snippet_block_with_applicability};
 use clippy_utils::{can_use_if_let_chains, span_contains_non_whitespace, sym, tokenize_with_text};
 use rustc_ast::{BinOpKind, MetaItemInner};
 use rustc_errors::Applicability;
@@ -9,40 +9,7 @@ use rustc_hir::{Block, Expr, ExprKind, StmtKind};
 use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::impl_lint_pass;
-use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Span, Symbol};
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for nested `if` statements which can be collapsed
-    /// by `&&`-combining their conditions.
-    ///
-    /// ### Why is this bad?
-    /// Each `if`-statement adds one level of nesting, which
-    /// makes code look more complex than it really is.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let (x, y) = (true, true);
-    /// if x {
-    ///     if y {
-    ///         // …
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let (x, y) = (true, true);
-    /// if x && y {
-    ///     // …
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub COLLAPSIBLE_IF,
-    style,
-    "nested `if`s that can be collapsed (e.g., `if x { if y { ... } }`"
-}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -80,6 +47,40 @@ declare_clippy_lint! {
     "nested `else`-`if` expressions that can be collapsed (e.g., `else { if x { ... } }`)"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for nested `if` statements which can be collapsed
+    /// by `&&`-combining their conditions.
+    ///
+    /// ### Why is this bad?
+    /// Each `if`-statement adds one level of nesting, which
+    /// makes code look more complex than it really is.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let (x, y) = (true, true);
+    /// if x {
+    ///     if y {
+    ///         // …
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let (x, y) = (true, true);
+    /// if x && y {
+    ///     // …
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub COLLAPSIBLE_IF,
+    style,
+    "nested `if`s that can be collapsed (e.g., `if x { if y { ... } }`"
+}
+
+impl_lint_pass!(CollapsibleIf => [COLLAPSIBLE_ELSE_IF, COLLAPSIBLE_IF]);
+
 pub struct CollapsibleIf {
     msrv: Msrv,
     lint_commented_code: bool,
@@ -109,10 +110,8 @@ impl CollapsibleIf {
                     let up_to_else = then_span.between(else_block.span);
                     let else_before_if = else_.span.shrink_to_lo().with_hi(else_if_cond.span.lo() - BytePos(1));
                     if self.lint_commented_code
-                        && let Some(else_keyword_span) =
-                            span_extract_keyword(cx.tcx.sess.source_map(), up_to_else, "else")
-                        && let Some(else_if_keyword_span) =
-                            span_extract_keyword(cx.tcx.sess.source_map(), else_before_if, "if")
+                        && let Some(else_keyword_span) = span_extract_keyword(cx, up_to_else, "else")
+                        && let Some(else_if_keyword_span) = span_extract_keyword(cx, else_before_if, "if")
                     {
                         let else_keyword_span = else_keyword_span.with_leading_whitespace(cx).into_span();
                         let else_open_bracket = else_block.span.split_at(1).0.with_leading_whitespace(cx).into_span();
@@ -137,7 +136,7 @@ impl CollapsibleIf {
                     }
 
                     // Peel off any parentheses.
-                    let (_, else_block_span, _) = peel_parens(cx.tcx.sess.source_map(), else_.span);
+                    let (_, else_block_span, _) = peel_parens(cx, else_.span);
 
                     // Prevent "elseif"
                     // Check that the "else" is followed by whitespace
@@ -185,7 +184,7 @@ impl CollapsibleIf {
                             .with_leading_whitespace(cx)
                             .into_span()
                     };
-                    let (paren_start, inner_if_span, paren_end) = peel_parens(cx.tcx.sess.source_map(), inner.span);
+                    let (paren_start, inner_if_span, paren_end) = peel_parens(cx, inner.span);
                     let inner_if = inner_if_span.split_at(2).0;
                     let mut sugg = vec![
                         // Remove the outer then block `{`
@@ -259,8 +258,6 @@ impl CollapsibleIf {
     }
 }
 
-impl_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF, COLLAPSIBLE_ELSE_IF]);
-
 impl LateLintPass<'_> for CollapsibleIf {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::If(cond, then, else_) = &expr.kind
@@ -320,33 +317,36 @@ pub(super) fn parens_around(expr: &Expr<'_>) -> Vec<(Span, String)> {
     }
 }
 
-fn span_extract_keyword(sm: &SourceMap, span: Span, keyword: &str) -> Option<Span> {
-    let snippet = sm.span_to_snippet(span).ok()?;
-    tokenize_with_text(&snippet)
-        .filter(|(t, s, _)| matches!(t, TokenKind::Ident if *s == keyword))
-        .map(|(_, _, inner)| {
-            span.split_at(u32::try_from(inner.start).unwrap())
-                .1
-                .split_at(u32::try_from(inner.end - inner.start).unwrap())
-                .0
-        })
-        .next()
+fn span_extract_keyword(cx: &impl HasSession, span: Span, keyword: &str) -> Option<Span> {
+    span.with_source_text(cx, |snippet| {
+        tokenize_with_text(snippet)
+            .filter(|(t, s, _)| matches!(t, TokenKind::Ident if *s == keyword))
+            .map(|(_, _, inner)| {
+                span.split_at(u32::try_from(inner.start).unwrap())
+                    .1
+                    .split_at(u32::try_from(inner.end - inner.start).unwrap())
+                    .0
+            })
+            .next()
+    })
+    .flatten()
 }
 
 /// Peel the parentheses from an `if` expression, e.g. `((if true {} else {}))`.
-pub(super) fn peel_parens(sm: &SourceMap, mut span: Span) -> (Span, Span, Span) {
+pub(super) fn peel_parens(cx: &impl HasSession, mut span: Span) -> (Span, Span, Span) {
     use crate::rustc_span::Pos;
 
     let start = span.shrink_to_lo();
     let end = span.shrink_to_hi();
 
-    let snippet = sm.span_to_snippet(span).unwrap();
-    if let Some((trim_start, _, trim_end)) = peel_parens_str(&snippet) {
-        let mut data = span.data();
-        data.lo = data.lo + BytePos::from_usize(trim_start);
-        data.hi = data.hi - BytePos::from_usize(trim_end);
-        span = data.span();
-    }
+    span.with_source_text(cx, |snippet| {
+        if let Some((trim_start, _, trim_end)) = peel_parens_str(snippet) {
+            let mut data = span.data();
+            data.lo = data.lo + BytePos::from_usize(trim_start);
+            data.hi = data.hi - BytePos::from_usize(trim_end);
+            span = data.span();
+        }
+    });
 
     (start.with_hi(span.lo()), span, end.with_lo(span.hi()))
 }

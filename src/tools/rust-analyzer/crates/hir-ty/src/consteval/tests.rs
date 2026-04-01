@@ -1,5 +1,5 @@
 use base_db::RootQueryDb;
-use hir_def::db::DefDatabase;
+use hir_def::signatures::ConstSignature;
 use hir_expand::EditionedFileId;
 use rustc_apfloat::{
     Float,
@@ -131,7 +131,11 @@ fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEv
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::ConstId(x) => {
-                if db.const_signature(x).name.as_ref()?.display(db, file_id.edition(db)).to_string()
+                if ConstSignature::of(db, x)
+                    .name
+                    .as_ref()?
+                    .display(db, file_id.edition(db))
+                    .to_string()
                     == "GOAL"
                 {
                     Some(x)

@@ -1,4 +1,4 @@
-error: unsupported operation: passing a non-#[repr(C)] struct over FFI: PassMe
+error: unsupported operation: unsupported argument type for native call: PassMe
   --> tests/native-lib/fail/struct_not_extern_c.rs:LL:CC
    |
 LL |     unsafe { pass_struct(pass_me) };

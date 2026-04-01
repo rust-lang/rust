@@ -164,7 +164,7 @@ pub(crate) fn make_lockfile_copy(
         major: 1,
         minor: 95,
         patch: 0,
-        pre: semver::Prerelease::new("nightly").unwrap(),
+        pre: semver::Prerelease::new("beta").unwrap(),
         build: semver::BuildMetadata::EMPTY,
     };
 

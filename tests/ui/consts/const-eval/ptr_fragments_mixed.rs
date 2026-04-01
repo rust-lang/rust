@@ -1,6 +1,6 @@
 //! This mixes fragments from different pointers, in a way that we should not accept.
 //! See <https://github.com/rust-lang/rust/issues/146291>.
-
+//@ ignore-parallel-frontend different alloc ids
 static A: u8 = 123;
 static B: u8 = 123;
 

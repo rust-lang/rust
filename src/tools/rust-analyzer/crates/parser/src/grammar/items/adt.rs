@@ -96,7 +96,9 @@ pub(crate) fn variant_list(p: &mut Parser<'_>) {
             // test variant_discriminant
             // enum E { X(i32) = 10 }
             if p.eat(T![=]) {
+                let m = p.start();
                 expressions::expr(p);
+                m.complete(p, CONST_ARG);
             }
             m.complete(p, VARIANT);
         } else {
@@ -139,7 +141,9 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
             // test record_field_default_values
             // struct S { f: f32 = 0.0 }
             if p.eat(T![=]) {
+                let m = p.start();
                 expressions::expr(p);
+                m.complete(p, CONST_ARG);
             }
             m.complete(p, RECORD_FIELD);
         } else {

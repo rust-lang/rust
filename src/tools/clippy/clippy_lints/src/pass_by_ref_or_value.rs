@@ -22,6 +22,39 @@ use std::iter;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for functions taking arguments by value, where
+    /// the argument type is `Copy` and large enough to be worth considering
+    /// passing by reference. Does not trigger if the function is being exported,
+    /// because that might induce API breakage, if the parameter is declared as mutable,
+    /// or if the argument is a `self`.
+    ///
+    /// ### Why is this bad?
+    /// Arguments passed by value might result in an unnecessary
+    /// shallow copy, taking up more space in the stack and requiring a call to
+    /// `memcpy`, which can be expensive.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[derive(Clone, Copy)]
+    /// struct TooLarge([u8; 2048]);
+    ///
+    /// fn foo(v: TooLarge) {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # #[derive(Clone, Copy)]
+    /// # struct TooLarge([u8; 2048]);
+    /// fn foo(v: &TooLarge) {}
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub LARGE_TYPES_PASSED_BY_VALUE,
+    pedantic,
+    "functions taking large arguments by value"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for functions taking arguments by reference, where
     /// the argument type is `Copy` and small enough to be more efficient to always
     /// pass by value.
@@ -68,38 +101,10 @@ declare_clippy_lint! {
     "functions taking small copyable arguments by reference"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for functions taking arguments by value, where
-    /// the argument type is `Copy` and large enough to be worth considering
-    /// passing by reference. Does not trigger if the function is being exported,
-    /// because that might induce API breakage, if the parameter is declared as mutable,
-    /// or if the argument is a `self`.
-    ///
-    /// ### Why is this bad?
-    /// Arguments passed by value might result in an unnecessary
-    /// shallow copy, taking up more space in the stack and requiring a call to
-    /// `memcpy`, which can be expensive.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[derive(Clone, Copy)]
-    /// struct TooLarge([u8; 2048]);
-    ///
-    /// fn foo(v: TooLarge) {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # #[derive(Clone, Copy)]
-    /// # struct TooLarge([u8; 2048]);
-    /// fn foo(v: &TooLarge) {}
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub LARGE_TYPES_PASSED_BY_VALUE,
-    pedantic,
-    "functions taking large arguments by value"
-}
+impl_lint_pass!(PassByRefOrValue => [
+    LARGE_TYPES_PASSED_BY_VALUE,
+    TRIVIALLY_COPY_PASS_BY_REF,
+]);
 
 pub struct PassByRefOrValue {
     ref_min_size: u64,
@@ -236,8 +241,6 @@ impl PassByRefOrValue {
         }
     }
 }
-
-impl_lint_pass!(PassByRefOrValue => [TRIVIALLY_COPY_PASS_BY_REF, LARGE_TYPES_PASSED_BY_VALUE]);
 
 impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {

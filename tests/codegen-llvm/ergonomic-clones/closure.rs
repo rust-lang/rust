@@ -1,7 +1,6 @@
 //@ compile-flags: -C no-prepopulate-passes -Copt-level=0 -Zmir-opt-level=0
 
 #![crate_type = "lib"]
-
 #![feature(ergonomic_clones)]
 #![allow(incomplete_features)]
 

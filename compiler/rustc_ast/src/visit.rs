@@ -15,8 +15,7 @@
 
 pub use rustc_ast_ir::visit::VisitorResult;
 pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{Ident, Span, Spanned, Symbol};
 use thin_vec::ThinVec;
 
 use crate::ast::*;
@@ -443,6 +442,7 @@ macro_rules! common_visitor_and_walkers {
             FormatArguments,
             FormatPlaceholder,
             GenericParamKind,
+            Guard,
             Impl,
             ImplPolarity,
             Inline,
@@ -467,6 +467,7 @@ macro_rules! common_visitor_and_walkers {
             RangeEnd,
             RangeSyntax,
             Recovered,
+            RestrictionKind,
             Safety,
             StaticItem,
             StrLit,
@@ -595,6 +596,7 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_poly_trait_ref(PolyTraitRef);
                 fn visit_precise_capturing_arg(PreciseCapturingArg);
                 fn visit_qself(QSelf);
+                fn visit_impl_restriction(ImplRestriction);
                 fn visit_trait_ref(TraitRef);
                 fn visit_ty_pat(TyPat);
                 fn visit_ty(Ty);
@@ -760,8 +762,7 @@ macro_rules! common_visitor_and_walkers {
         // This is only used by the MutVisitor. We include this symmetry here to make writing other
         // functions easier.
         $(${ignore($lt)}
-            #[cfg_attr(not(bootstrap), expect(unused, rustc::disallowed_pass_by_ref))]
-            #[cfg_attr(bootstrap, expect(unused, rustc::pass_by_value))]
+            #[expect(unused, rustc::disallowed_pass_by_ref)]
             #[inline]
         )?
         fn visit_span<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, span: &$($lt)? $($mut)? Span) -> V::Result {
@@ -1117,6 +1118,7 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_poly_trait_ref(PolyTraitRef);
             pub fn walk_precise_capturing_arg(PreciseCapturingArg);
             pub fn walk_qself(QSelf);
+            pub fn walk_impl_restriction(ImplRestriction);
             pub fn walk_trait_ref(TraitRef);
             pub fn walk_ty_pat(TyPat);
             pub fn walk_ty(Ty);

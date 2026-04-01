@@ -696,7 +696,7 @@ class RustBuild(object):
             for download_info in tarballs_download_info:
                 download_component(download_info)
 
-            # Unpack the tarballs in parallle.
+            # Unpack the tarballs in parallel.
             # In Python 2.7, Pool cannot be used as a context manager.
             pool_size = min(len(tarballs_download_info), get_cpus())
             if self.verbose:
@@ -1259,7 +1259,12 @@ class RustBuild(object):
 
 def parse_args(args):
     """Parse the command line arguments that the python script needs."""
-    parser = argparse.ArgumentParser(add_help=False)
+
+    # Pass allow_abbrev=False to remove support for inexact matches (e.g.,
+    # `--json` turning on `--json-output`). The argument list here is partial,
+    # most flags are matched in the Rust bootstrap code. This prevents the the
+    # default ambiguity checks in argparse from functioning correctly.
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("-h", "--help", action="store_true")
     parser.add_argument("--config")
     parser.add_argument("--build-dir")

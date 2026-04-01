@@ -31,12 +31,6 @@ impl<'tcx> ty::ValTreeKind<TyCtxt<'tcx>> {
 // recurses through
 pub struct ValTree<'tcx>(pub(crate) Interned<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>);
 
-impl<'tcx> rustc_type_ir::inherent::ValTree<TyCtxt<'tcx>> for ValTree<'tcx> {
-    fn kind(&self) -> &ty::ValTreeKind<TyCtxt<'tcx>> {
-        &self
-    }
-}
-
 impl<'tcx> ValTree<'tcx> {
     /// Returns the zero-sized valtree: `Branch([])`.
     pub fn zst(tcx: TyCtxt<'tcx>) -> Self {
@@ -44,7 +38,7 @@ impl<'tcx> ValTree<'tcx> {
     }
 
     pub fn is_zst(self) -> bool {
-        matches!(*self, ty::ValTreeKind::Branch(box []))
+        matches!(*self, ty::ValTreeKind::Branch(consts) if consts.is_empty())
     }
 
     pub fn from_raw_bytes(tcx: TyCtxt<'tcx>, bytes: &[u8]) -> Self {
@@ -58,7 +52,9 @@ impl<'tcx> ValTree<'tcx> {
         tcx: TyCtxt<'tcx>,
         branches: impl IntoIterator<Item = ty::Const<'tcx>>,
     ) -> Self {
-        tcx.intern_valtree(ty::ValTreeKind::Branch(branches.into_iter().collect()))
+        tcx.intern_valtree(ty::ValTreeKind::Branch(
+            tcx.mk_const_list_from_iter(branches.into_iter()),
+        ))
     }
 
     pub fn from_scalar_int(tcx: TyCtxt<'tcx>, i: ScalarInt) -> Self {
@@ -78,6 +74,14 @@ impl<'tcx> Deref for ValTree<'tcx> {
 impl fmt::Debug for ValTree<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::IntoKind for ty::ValTree<'tcx> {
+    type Kind = ty::ValTreeKind<TyCtxt<'tcx>>;
+
+    fn kind(self) -> Self::Kind {
+        *self.0
     }
 }
 
@@ -136,19 +140,24 @@ impl<'tcx> Value<'tcx> {
             ty::Ref(_, inner_ty, _) => match inner_ty.kind() {
                 // `&str` can be interpreted as raw bytes
                 ty::Str => {}
-                // `&[u8]` can be interpreted as raw bytes
-                ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {}
+                // `&[T]` can be interpreted as raw bytes if elements are `u8`
+                ty::Slice(_) => {}
                 // other `&_` can't be interpreted as raw bytes
                 _ => return None,
             },
-            // `[u8; N]` can be interpreted as raw bytes
-            ty::Array(array_ty, _) if *array_ty == tcx.types.u8 => {}
+            // `[T; N]` can be interpreted as raw bytes if elements are `u8`
+            ty::Array(_, _) => {}
             // Otherwise, type cannot be interpreted as raw bytes
             _ => return None,
         }
 
         // We create an iterator that yields `Option<u8>`
-        let iterator = self.to_branch().into_iter().map(|ct| Some(ct.try_to_leaf()?.to_u8()));
+        let iterator = self.to_branch().into_iter().map(|ct| {
+            (*ct)
+                .try_to_value()
+                .and_then(|value| (value.ty == tcx.types.u8).then_some(value))
+                .and_then(|value| value.try_to_leaf().map(|leaf| leaf.to_u8()))
+        });
         // If there is `None` in the iterator, then the array is not a valid array of u8s and we return `None`
         let bytes: Vec<u8> = iterator.collect::<Option<Vec<u8>>>()?;
 

@@ -1,4 +1,5 @@
 //@ needs-asm-support
+//@ reference: asm.attributes.supported-attributes
 
 use std::arch::asm;
 

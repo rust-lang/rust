@@ -4,7 +4,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::ParamKindOrd;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic};
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -671,7 +671,7 @@ pub(crate) struct MissingUnsafeOnExtern {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("extern blocks should be unsafe")]
 pub(crate) struct MissingUnsafeOnExternLint {
     #[suggestion(
@@ -1027,7 +1027,7 @@ pub(crate) struct MissingAbi {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`extern` declarations without an explicit ABI are deprecated")]
 pub(crate) struct MissingAbiSugg {
     #[suggestion(
@@ -1132,4 +1132,90 @@ pub(crate) struct AbiX86Interrupt {
 pub(crate) struct ScalableVectorNotTupleStruct {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("scalable vectors are not supported on this architecture")]
+pub(crate) struct ScalableVectorBadArch {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[track_caller]` can only be used with the Rust ABI", code = E0737)]
+pub(crate) struct RequiresRustAbi {
+    #[primary_span]
+    #[label("using `#[track_caller]` here")]
+    pub track_caller_span: Span,
+    #[label("not using the Rust ABI because of this")]
+    pub extern_abi_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("visibility qualifiers have no effect on `const _` declarations")]
+#[note("`const _` does not declare a name, so there is nothing for the qualifier to apply to")]
+pub(crate) struct UnusedVisibility {
+    #[suggestion(
+        "remove the qualifier",
+        style = "short",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "remove `mut` from the parameter",
+    code = "{ident}",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct PatternsInFnsWithoutBodySub {
+    #[primary_span]
+    pub span: Span,
+
+    pub ident: Ident,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum PatternsInFnsWithoutBody {
+    #[diag("patterns aren't allowed in foreign function declarations")]
+    Foreign {
+        #[subdiagnostic]
+        sub: PatternsInFnsWithoutBodySub,
+    },
+    #[diag("patterns aren't allowed in functions without bodies")]
+    Bodiless {
+        #[subdiagnostic]
+        sub: PatternsInFnsWithoutBodySub,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag("where clause not allowed here")]
+#[note("see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information")]
+pub(crate) struct DeprecatedWhereClauseLocation {
+    #[subdiagnostic]
+    pub suggestion: DeprecatedWhereClauseLocationSugg,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum DeprecatedWhereClauseLocationSugg {
+    #[multipart_suggestion(
+        "move it to the end of the type declaration",
+        applicability = "machine-applicable"
+    )]
+    MoveToEnd {
+        #[suggestion_part(code = "")]
+        left: Span,
+        #[suggestion_part(code = "{sugg}")]
+        right: Span,
+
+        sugg: String,
+    },
+    #[suggestion("remove this `where`", code = "", applicability = "machine-applicable")]
+    RemoveWhere {
+        #[primary_span]
+        span: Span,
+    },
 }

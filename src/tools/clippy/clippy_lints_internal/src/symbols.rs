@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for Symbols {
                     continue;
                 }
 
-                for item in cx.tcx.module_children(def_id) {
+                for item in cx.tcx.module_children(*def_id) {
                     if let Res::Def(DefKind::Const { .. }, item_def_id) = item.res
                         && let ty = cx.tcx.type_of(item_def_id).instantiate_identity()
                         && internal_paths::SYMBOL.matches_ty(cx, ty)

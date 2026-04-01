@@ -2,12 +2,12 @@
 
 use crate::io;
 
+pub mod conf;
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
 pub mod futex;
 #[cfg(target_os = "linux")]
 pub mod linux;
-pub mod os;
 pub mod stack_overflow;
 pub mod sync;
 pub mod thread_parking;

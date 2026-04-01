@@ -4,8 +4,7 @@ error[E0507]: cannot move out of a mutable reference
 LL |     let (a, mut b) = &mut p;
    |             -----    ^^^^^^
    |             |
-   |             data moved here
-   |             move occurs because `b` has type `U`, which does not implement the `Copy` trait
+   |             data moved here because `b` has type `U`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |

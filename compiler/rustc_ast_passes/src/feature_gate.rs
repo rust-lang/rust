@@ -1,5 +1,5 @@
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{self as ast, AttrVec, NodeId, PatKind, attr, token};
+use rustc_ast::{self as ast, AttrVec, GenericBound, NodeId, PatKind, attr, token};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features};
@@ -7,8 +7,7 @@ use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_warn};
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::errors;
@@ -150,7 +149,14 @@ impl<'a> PostExpansionVisitor<'a> {
         for param in params {
             if !param.bounds.is_empty() {
                 let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-                self.sess.dcx().emit_err(errors::ForbiddenBound { spans });
+                if param.bounds.iter().any(|bound| matches!(bound, GenericBound::Trait(_))) {
+                    // Issue #149695
+                    // Abort immediately otherwise items defined in complex bounds will be lowered into HIR,
+                    // which will cause ICEs when errors of the items visit unlowered parents.
+                    self.sess.dcx().emit_fatal(errors::ForbiddenBound { spans });
+                } else {
+                    self.sess.dcx().emit_err(errors::ForbiddenBound { spans });
+                }
             }
         }
     }
@@ -590,6 +596,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(coroutines, "coroutine syntax is experimental");
     gate_all!(const_block_items, "const block items are experimental");
     gate_all!(final_associated_functions, "`final` on trait functions is experimental");
+    gate_all!(impl_restriction, "`impl` restrictions are experimental");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {

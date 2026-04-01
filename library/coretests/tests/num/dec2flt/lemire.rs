@@ -1,5 +1,6 @@
-use core::num::dec2flt::float::RawFloat;
-use core::num::dec2flt::lemire::compute_float;
+use core::num::imp::{Float, dec2flt};
+
+use dec2flt::lemire::compute_float;
 
 #[cfg(target_has_reliable_f16)]
 fn compute_float16(q: i64, w: u64) -> (i32, u64) {

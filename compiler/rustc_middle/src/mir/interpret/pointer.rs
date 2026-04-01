@@ -241,6 +241,12 @@ impl<Prov: Provenance> fmt::Debug for Pointer<Prov> {
     }
 }
 
+impl<Prov: Provenance> fmt::Display for Pointer<Prov> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Provenance::fmt(self, f)
+    }
+}
+
 impl<Prov: Provenance> fmt::Debug for Pointer<Option<Prov>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.provenance {

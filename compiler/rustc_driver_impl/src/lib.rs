@@ -28,7 +28,7 @@ use std::{env, str};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CodegenErrors, CodegenResults};
+use rustc_codegen_ssa::{CodegenErrors, CompiledModules};
 use rustc_data_structures::profiling::{
     TimePassesFormat, get_resident_set_size, print_time_passes_entry,
 };
@@ -214,7 +214,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         file_loader: None,
         lint_caps: Default::default(),
         psess_created: None,
-        hash_untracked_state: None,
+        track_state: None,
         register_lints: None,
         override_queries: None,
         extra_symbols: Vec::new(),
@@ -338,7 +338,11 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 }
             }
 
-            Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
+            let linker = Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend);
+
+            tcx.report_unused_features();
+
+            Some(linker)
         });
 
         // Linking is done outside the `compiler.enter()` so that the
@@ -349,16 +353,16 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
     })
 }
 
-fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
-    let hash = tcxt.crate_hash(LOCAL_CRATE);
-    let crate_name = tcxt.crate_name(LOCAL_CRATE);
+fn dump_feature_usage_metrics(tcx: TyCtxt<'_>, metrics_dir: &Path) {
+    let hash = tcx.crate_hash(LOCAL_CRATE);
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
     let metrics_file_name = format!("unstable_feature_usage_metrics-{crate_name}-{hash}.json");
     let metrics_path = metrics_dir.join(metrics_file_name);
-    if let Err(error) = tcxt.features().dump_feature_usage_metrics(metrics_path) {
+    if let Err(error) = tcx.features().dump_feature_usage_metrics(metrics_path) {
         // FIXME(yaahc): once metrics can be enabled by default we will want "failure to emit
         // default metrics" to only produce a warning when metrics are enabled by default and emit
         // an error only when the user manually enables metrics
-        tcxt.dcx().emit_err(UnstableFeatureUsage { error });
+        tcx.dcx().emit_err(UnstableFeatureUsage { error });
     }
 }
 
@@ -556,9 +560,11 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
         let rlink_data = fs::read(file).unwrap_or_else(|err| {
             dcx.emit_fatal(RlinkUnableToRead { err });
         });
-        let (codegen_results, metadata, outputs) =
-            match CodegenResults::deserialize_rlink(sess, rlink_data) {
-                Ok((codegen, metadata, outputs)) => (codegen, metadata, outputs),
+        let (compiled_modules, crate_info, metadata, outputs) =
+            match CompiledModules::deserialize_rlink(sess, rlink_data) {
+                Ok((codegen, crate_info, metadata, outputs)) => {
+                    (codegen, crate_info, metadata, outputs)
+                }
                 Err(err) => {
                     match err {
                         CodegenErrors::WrongFileType => dcx.emit_fatal(RLinkWrongFileType),
@@ -583,7 +589,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                     };
                 }
             };
-        compiler.codegen_backend.link(sess, codegen_results, metadata, &outputs);
+        compiler.codegen_backend.link(sess, compiled_modules, crate_info, metadata, &outputs);
     } else {
         dcx.emit_fatal(RlinkNotAFile {});
     }

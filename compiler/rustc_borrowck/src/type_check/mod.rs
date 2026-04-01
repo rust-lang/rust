@@ -32,8 +32,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Spanned, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -375,10 +374,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.body
     }
 
-    fn unsized_feature_enabled(&self) -> bool {
-        self.tcx().features().unsized_fn_params()
-    }
-
     /// Equate the inferred type and the annotated type for user type annotations
     #[instrument(skip(self), level = "debug")]
     fn check_user_type_annotations(&mut self) {
@@ -661,7 +656,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
 
-                if !self.unsized_feature_enabled() {
+                if !self.tcx().features().unsized_fn_params() {
                     let trait_ref = ty::TraitRef::new(
                         tcx,
                         tcx.require_lang_item(LangItem::Sized, self.last_span),
@@ -937,9 +932,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
 
-        // When `unsized_fn_params` is enabled, only function calls
-        // and nullary ops are checked in `check_call_dest`.
-        if !self.unsized_feature_enabled() {
+        // When `unsized_fn_params` is enabled, this is checked in `check_call_dest`,
+        // and `hir_typeck` still forces all non-argument locals to be sized (i.e., we don't
+        // fully re-check what was already checked on HIR).
+        if !self.tcx().features().unsized_fn_params() {
             match self.body.local_kind(local) {
                 LocalKind::ReturnPointer | LocalKind::Arg => {
                     // return values of normal functions are required to be
@@ -1954,8 +1950,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             // When `unsized_fn_params` is not enabled,
-            // this check is done at `check_local`.
-            if self.unsized_feature_enabled() {
+            // this check is done at `visit_local_decl`.
+            if self.tcx().features().unsized_fn_params() {
                 let span = term.source_info.span;
                 self.ensure_place_sized(dest_ty, span);
             }

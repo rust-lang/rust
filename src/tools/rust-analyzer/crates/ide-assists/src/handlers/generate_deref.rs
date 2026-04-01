@@ -1,16 +1,15 @@
-use std::fmt::Display;
-
 use hir::{ModPath, ModuleDef};
-use ide_db::{RootDatabase, famous_defs::FamousDefs};
+use ide_db::{FileId, RootDatabase, famous_defs::FamousDefs};
 use syntax::{
-    AstNode, Edition, SyntaxNode,
-    ast::{self, HasName},
+    Edition,
+    ast::{self, AstNode, HasName, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
+    syntax_editor::Position,
 };
 
 use crate::{
     AssistId,
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
-    utils::generate_trait_impl_text_intransitive,
+    utils::generate_trait_impl_intransitive_with_item,
 };
 
 // Assist: generate_deref
@@ -64,6 +63,7 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     let field_type = field.ty()?;
     let field_name = field.name()?;
     let target = field.syntax().text_range();
+    let file_id = ctx.vfs_file_id();
     acc.add(
         AssistId::generate("generate_deref"),
         format!("Generate `{deref_type_to_generate:?}` impl using `{field_name}`"),
@@ -72,9 +72,10 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
             generate_edit(
                 ctx.db(),
                 edit,
+                file_id,
                 strukt,
-                field_type.syntax(),
-                field_name.syntax(),
+                field_type,
+                &field_name.to_string(),
                 deref_type_to_generate,
                 trait_path,
                 module.krate(ctx.db()).edition(ctx.db()),
@@ -105,6 +106,7 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
 
     let field_type = field.ty()?;
     let target = field.syntax().text_range();
+    let file_id = ctx.vfs_file_id();
     acc.add(
         AssistId::generate("generate_deref"),
         format!("Generate `{deref_type_to_generate:?}` impl using `{field}`"),
@@ -113,9 +115,10 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
             generate_edit(
                 ctx.db(),
                 edit,
+                file_id,
                 strukt,
-                field_type.syntax(),
-                field_list_index,
+                field_type,
+                &field_list_index.to_string(),
                 deref_type_to_generate,
                 trait_path,
                 module.krate(ctx.db()).edition(ctx.db()),
@@ -127,35 +130,81 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
 fn generate_edit(
     db: &RootDatabase,
     edit: &mut SourceChangeBuilder,
+    file_id: FileId,
     strukt: ast::Struct,
-    field_type_syntax: &SyntaxNode,
-    field_name: impl Display,
+    field_type: ast::Type,
+    field_name: &str,
     deref_type: DerefType,
     trait_path: ModPath,
     edition: Edition,
 ) {
-    let start_offset = strukt.syntax().text_range().end();
-    let impl_code = match deref_type {
-        DerefType::Deref => format!(
-            r#"    type Target = {field_type_syntax};
+    let make = SyntaxFactory::with_mappings();
+    let strukt_adt = ast::Adt::Struct(strukt.clone());
+    let trait_ty = make.ty(&trait_path.display(db, edition).to_string());
 
-    fn deref(&self) -> &Self::Target {{
-        &self.{field_name}
-    }}"#,
-        ),
-        DerefType::DerefMut => format!(
-            r#"    fn deref_mut(&mut self) -> &mut Self::Target {{
-        &mut self.{field_name}
-    }}"#,
-        ),
+    let assoc_items: Vec<ast::AssocItem> = match deref_type {
+        DerefType::Deref => {
+            let target_alias =
+                make.ty_alias([], "Target", None, None, None, Some((field_type, None)));
+            let ret_ty =
+                make.ty_ref(make.ty_path(make.path_from_text("Self::Target")).into(), false);
+            let field_expr = make.expr_field(make.expr_path(make.ident_path("self")), field_name);
+            let body = make.block_expr([], Some(make.expr_ref(field_expr.into(), false)));
+            let fn_ = make
+                .fn_(
+                    [],
+                    None,
+                    make.name("deref"),
+                    None,
+                    None,
+                    make.param_list(Some(make.self_param()), []),
+                    body,
+                    Some(make.ret_type(ret_ty)),
+                    false,
+                    false,
+                    false,
+                    false,
+                )
+                .indent(1.into());
+            vec![ast::AssocItem::TypeAlias(target_alias), ast::AssocItem::Fn(fn_)]
+        }
+        DerefType::DerefMut => {
+            let ret_ty =
+                make.ty_ref(make.ty_path(make.path_from_text("Self::Target")).into(), true);
+            let field_expr = make.expr_field(make.expr_path(make.ident_path("self")), field_name);
+            let body = make.block_expr([], Some(make.expr_ref(field_expr.into(), true)));
+            let fn_ = make
+                .fn_(
+                    [],
+                    None,
+                    make.name("deref_mut"),
+                    None,
+                    None,
+                    make.param_list(Some(make.mut_self_param()), []),
+                    body,
+                    Some(make.ret_type(ret_ty)),
+                    false,
+                    false,
+                    false,
+                    false,
+                )
+                .indent(1.into());
+            vec![ast::AssocItem::Fn(fn_)]
+        }
     };
-    let strukt_adt = ast::Adt::Struct(strukt);
-    let deref_impl = generate_trait_impl_text_intransitive(
-        &strukt_adt,
-        &trait_path.display(db, edition).to_string(),
-        &impl_code,
+
+    let body = make.assoc_item_list(assoc_items);
+    let indent = strukt.indent_level();
+    let impl_ = generate_trait_impl_intransitive_with_item(&make, &strukt_adt, trait_ty, body)
+        .indent(indent);
+
+    let mut editor = edit.make_editor(strukt.syntax());
+    editor.insert_all(
+        Position::after(strukt.syntax()),
+        vec![make.whitespace(&format!("\n\n{indent}")).into(), impl_.syntax().clone().into()],
     );
-    edit.insert(start_offset, deref_impl);
+    editor.add_mappings(make.finish_with_mappings());
+    edit.add_file_edits(file_id, editor);
 }
 
 fn existing_deref_impl(

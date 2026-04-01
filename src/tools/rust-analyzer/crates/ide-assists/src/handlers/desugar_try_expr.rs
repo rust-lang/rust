@@ -1,15 +1,11 @@
 use std::iter;
 
-use ide_db::{
-    assists::{AssistId, ExprFillDefaultMode},
-    ty_filter::TryEnum,
-};
+use ide_db::{assists::AssistId, ty_filter::TryEnum};
 use syntax::{
     AstNode, T,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make,
         syntax_factory::SyntaxFactory,
     },
 };
@@ -68,41 +64,39 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         AssistId::refactor_rewrite("desugar_try_expr_match"),
         "Replace try expression with match",
         target,
-        |edit| {
+        |builder| {
+            let make = SyntaxFactory::with_mappings();
+            let mut editor = builder.make_editor(try_expr.syntax());
+
             let sad_pat = match try_enum {
-                TryEnum::Option => make::path_pat(make::ext::ident_path("None")),
-                TryEnum::Result => make::tuple_struct_pat(
-                    make::ext::ident_path("Err"),
-                    iter::once(make::path_pat(make::ext::ident_path("err"))),
-                )
-                .into(),
-            };
-            let sad_expr = match try_enum {
-                TryEnum::Option => {
-                    make::expr_return(Some(make::expr_path(make::ext::ident_path("None"))))
-                }
-                TryEnum::Result => make::expr_return(Some(
-                    make::expr_call(
-                        make::expr_path(make::ext::ident_path("Err")),
-                        make::arg_list(iter::once(make::expr_path(make::ext::ident_path("err")))),
+                TryEnum::Option => make.path_pat(make.ident_path("None")),
+                TryEnum::Result => make
+                    .tuple_struct_pat(
+                        make.ident_path("Err"),
+                        iter::once(make.path_pat(make.ident_path("err"))),
                     )
                     .into(),
-                )),
             };
+            let sad_expr = make.expr_return(Some(sad_expr(try_enum, &make, || {
+                make.expr_path(make.ident_path("err"))
+            })));
 
-            let happy_arm = make::match_arm(
-                try_enum.happy_pattern(make::ident_pat(false, false, make::name("it")).into()),
+            let happy_arm = make.match_arm(
+                try_enum.happy_pattern(make.ident_pat(false, false, make.name("it")).into()),
                 None,
-                make::expr_path(make::ext::ident_path("it")),
+                make.expr_path(make.ident_path("it")),
             );
-            let sad_arm = make::match_arm(sad_pat, None, sad_expr);
+            let sad_arm = make.match_arm(sad_pat, None, sad_expr.into());
 
-            let match_arm_list = make::match_arm_list([happy_arm, sad_arm]);
+            let match_arm_list = make.match_arm_list([happy_arm, sad_arm]);
 
-            let expr_match = make::expr_match(expr.clone(), match_arm_list)
+            let expr_match = make
+                .expr_match(expr.clone(), match_arm_list)
                 .indent(IndentLevel::from_node(try_expr.syntax()));
 
-            edit.replace_ast::<ast::Expr>(try_expr.clone().into(), expr_match.into());
+            editor.replace(try_expr.syntax(), expr_match.syntax());
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );
 
@@ -119,48 +113,18 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 let mut editor = builder.make_editor(let_stmt.syntax());
 
                 let indent_level = IndentLevel::from_node(let_stmt.syntax());
+                let fill_expr = || crate::utils::expr_fill_default(ctx.config);
                 let new_let_stmt = make.let_else_stmt(
                     try_enum.happy_pattern(pat),
-                    let_stmt.ty(),
+                    let_stmt.ty().map(|ty| match try_enum {
+                        TryEnum::Option => make.ty_option(ty).into(),
+                        TryEnum::Result => make.ty_result(ty, make.ty_infer().into()).into(),
+                    }),
                     expr,
                     make.block_expr(
                         iter::once(
                             make.expr_stmt(
-                                make.expr_return(Some(match try_enum {
-                                    TryEnum::Option => make.expr_path(make.ident_path("None")),
-                                    TryEnum::Result => make
-                                        .expr_call(
-                                            make.expr_path(make.ident_path("Err")),
-                                            make.arg_list(iter::once(
-                                                match ctx.config.expr_fill_default {
-                                                    ExprFillDefaultMode::Todo => make
-                                                        .expr_macro(
-                                                            make.ident_path("todo"),
-                                                            make.token_tree(
-                                                                syntax::SyntaxKind::L_PAREN,
-                                                                [],
-                                                            ),
-                                                        )
-                                                        .into(),
-                                                    ExprFillDefaultMode::Underscore => {
-                                                        make.expr_underscore().into()
-                                                    }
-                                                    ExprFillDefaultMode::Default => make
-                                                        .expr_macro(
-                                                            make.ident_path("todo"),
-                                                            make.token_tree(
-                                                                syntax::SyntaxKind::L_PAREN,
-                                                                [],
-                                                            ),
-                                                        )
-                                                        .into(),
-                                                },
-                                            )),
-                                        )
-                                        .into(),
-                                }))
-                                .indent(indent_level + 1)
-                                .into(),
+                                make.expr_return(Some(sad_expr(try_enum, &make, fill_expr))).into(),
                             )
                             .into(),
                         ),
@@ -175,6 +139,15 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         );
     }
     Some(())
+}
+
+fn sad_expr(try_enum: TryEnum, make: &SyntaxFactory, err: impl Fn() -> ast::Expr) -> ast::Expr {
+    match try_enum {
+        TryEnum::Option => make.expr_path(make.ident_path("None")),
+        TryEnum::Result => make
+            .expr_call(make.expr_path(make.ident_path("Err")), make.arg_list(iter::once(err())))
+            .into(),
+    }
 }
 
 #[cfg(test)]
@@ -271,6 +244,48 @@ fn test() {
             r#"
 fn test() {
     let Ok(pat) = Ok(true) else {
+        return Err(todo!());
+    };
+}
+            "#,
+            "Replace try expression with let else",
+        );
+    }
+
+    #[test]
+    fn test_desugar_try_expr_option_let_else_with_type() {
+        check_assist_by_label(
+            desugar_try_expr,
+            r#"
+//- minicore: try, option
+fn test() {
+    let pat: bool = Some(true)$0?;
+}
+            "#,
+            r#"
+fn test() {
+    let Some(pat): Option<bool> = Some(true) else {
+        return None;
+    };
+}
+            "#,
+            "Replace try expression with let else",
+        );
+    }
+
+    #[test]
+    fn test_desugar_try_expr_result_let_else_with_type() {
+        check_assist_by_label(
+            desugar_try_expr,
+            r#"
+//- minicore: try, result
+fn test() {
+    let pat: bool = Ok(true)$0?;
+}
+            "#,
+            r#"
+fn test() {
+    let Ok(pat): Result<bool, _> = Ok(true) else {
         return Err(todo!());
     };
 }

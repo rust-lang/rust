@@ -1,4 +1,5 @@
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{find_attr, intravisit};
 use rustc_middle::hir::nested_filter;
@@ -27,7 +28,10 @@ pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
 
 pub(crate) fn predicates_and_item_bounds(tcx: TyCtxt<'_>) {
     for id in tcx.hir_crate_items(()).owners() {
-        if find_attr!(tcx, id, RustcDumpPredicates) {
+        #[expect(deprecated)] // we don't want to unnecessarily retrieve the attrs twice in a row.
+        let attrs = tcx.get_all_attrs(id);
+
+        if find_attr!(attrs, RustcDumpPredicates) {
             let preds = tcx.predicates_of(id).instantiate_identity(tcx).predicates;
             let span = tcx.def_span(id);
 
@@ -37,15 +41,26 @@ pub(crate) fn predicates_and_item_bounds(tcx: TyCtxt<'_>) {
             }
             diag.emit();
         }
-        if find_attr!(tcx, id, RustcDumpItemBounds) {
-            let bounds = tcx.item_bounds(id).instantiate_identity();
-            let span = tcx.def_span(id);
 
-            let mut diag = tcx.dcx().struct_span_err(span, sym::rustc_dump_item_bounds.as_str());
-            for bound in bounds {
-                diag.note(format!("{bound:?}"));
-            }
-            diag.emit();
+        if find_attr!(attrs, RustcDumpItemBounds) {
+            let name = sym::rustc_dump_item_bounds.as_str();
+
+            match tcx.def_kind(id) {
+                DefKind::AssocTy => {
+                    let bounds = tcx.item_bounds(id).instantiate_identity();
+                    let span = tcx.def_span(id);
+
+                    let mut diag = tcx.dcx().struct_span_err(span, name);
+                    for bound in bounds {
+                        diag.note(format!("{bound:?}"));
+                    }
+                    diag.emit()
+                }
+                kind => tcx.dcx().span_delayed_bug(
+                    tcx.def_span(id),
+                    format!("attr parsing didn't report an error for `#[{name}]` on {kind:?}"),
+                ),
+            };
         }
     }
 }

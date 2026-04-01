@@ -1,7 +1,7 @@
 #![feature(rustc_attrs)]
 
-#[rustc_outlives]
-union Foo<'b, U: Copy> { //~ ERROR rustc_outlives
+#[rustc_dump_inferred_outlives]
+union Foo<'b, U: Copy> { //~ ERROR rustc_dump_inferred_outlives
     bar: Bar<'b, U>
 }
 

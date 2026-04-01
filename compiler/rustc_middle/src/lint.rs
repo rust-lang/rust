@@ -2,7 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::{Diag, Diagnostic, MultiSpan};
+use rustc_errors::{Diag, DiagLocation, Diagnostic, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_lint_defs::EditionFcw;
 use rustc_macros::{Decodable, Encodable, HashStable};
@@ -293,209 +293,15 @@ fn explain_lint_level_source(
     }
 }
 
-/// The innermost function for emitting lints.
-///
-/// If you are looking to implement a lint, look for higher level functions,
-/// for example:
-/// - [`TyCtxt::emit_node_span_lint`]
-/// - [`TyCtxt::node_span_lint`]
-/// - [`TyCtxt::node_lint`]
-/// - `LintContext::opt_span_lint`
-///
-/// ## `decorate`
-///
-/// It is not intended to call `emit`/`cancel` on the `Diag` passed in the `decorate` callback.
-#[track_caller]
-pub fn lint_level(
-    sess: &Session,
-    lint: &'static Lint,
-    level: LevelAndSource,
-    span: Option<MultiSpan>,
-    decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-) {
-    // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
-    // the "real" work.
-    #[track_caller]
-    fn lint_level_impl(
-        sess: &Session,
-        lint: &'static Lint,
-        level: LevelAndSource,
-        span: Option<MultiSpan>,
-        decorate: Box<dyn '_ + for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>)>,
-    ) {
-        let LevelAndSource { level, lint_id, src } = level;
-
-        // Check for future incompatibility lints and issue a stronger warning.
-        let future_incompatible = lint.future_incompatible;
-
-        let has_future_breakage = future_incompatible.map_or(
-            // Default allow lints trigger too often for testing.
-            sess.opts.unstable_opts.future_incompat_test && lint.default_level != Level::Allow,
-            |incompat| incompat.report_in_deps,
-        );
-
-        // Convert lint level to error level.
-        let err_level = match level {
-            Level::Allow => {
-                if has_future_breakage {
-                    rustc_errors::Level::Allow
-                } else {
-                    return;
-                }
-            }
-            Level::Expect => {
-                // This case is special as we actually allow the lint itself in this context, but
-                // we can't return early like in the case for `Level::Allow` because we still
-                // need the lint diagnostic to be emitted to `rustc_error::DiagCtxtInner`.
-                //
-                // We can also not mark the lint expectation as fulfilled here right away, as it
-                // can still be cancelled in the decorate function. All of this means that we simply
-                // create a `Diag` and continue as we would for warnings.
-                rustc_errors::Level::Expect
-            }
-            Level::ForceWarn => rustc_errors::Level::ForceWarning,
-            Level::Warn => rustc_errors::Level::Warning,
-            Level::Deny | Level::Forbid => rustc_errors::Level::Error,
-        };
-        let mut err = Diag::new(sess.dcx(), err_level, "");
-        if let Some(span) = span {
-            err.span(span);
-        }
-        if let Some(lint_id) = lint_id {
-            err.lint_id(lint_id);
-        }
-
-        // If this code originates in a foreign macro, aka something that this crate
-        // did not itself author, then it's likely that there's nothing this crate
-        // can do about it. We probably want to skip the lint entirely.
-        if err.span.primary_spans().iter().any(|s| s.in_external_macro(sess.source_map())) {
-            // Any suggestions made here are likely to be incorrect, so anything we
-            // emit shouldn't be automatically fixed by rustfix.
-            err.disable_suggestions();
-
-            // If this is a future incompatible that is not an edition fixing lint
-            // it'll become a hard error, so we have to emit *something*. Also,
-            // if this lint occurs in the expansion of a macro from an external crate,
-            // allow individual lints to opt-out from being reported.
-            let incompatible = future_incompatible.is_some_and(|f| f.reason.edition().is_none());
-
-            // In rustc, for the find_attr macro, we want to always emit this.
-            // This completely circumvents normal lint checking, which usually doesn't happen for macros from other crates.
-            // However, we kind of want that when using find_attr from another rustc crate. So we cheat a little.
-            let is_in_find_attr = sess.enable_internal_lints()
-                && err.span.primary_spans().iter().any(|s| {
-                    s.source_callee().is_some_and(
-                    |i| matches!(i.kind, ExpnKind::Macro(_, name) if name.as_str() == "find_attr")
-                    )
-                });
-
-            if !incompatible && !lint.report_in_external_macro && !is_in_find_attr {
-                err.cancel();
-
-                // Don't continue further, since we don't want to have
-                // `diag_span_note_once` called for a diagnostic that isn't emitted.
-                return;
-            }
-        }
-
-        err.is_lint(lint.name_lower(), has_future_breakage);
-
-        // Lint diagnostics that are covered by the expect level will not be emitted outside
-        // the compiler. It is therefore not necessary to add any information for the user.
-        // This will therefore directly call the decorate function which will in turn emit
-        // the diagnostic.
-        if let Level::Expect = level {
-            decorate(&mut err);
-            err.emit();
-            return;
-        }
-
-        if let Some(future_incompatible) = future_incompatible {
-            let explanation = match future_incompatible.reason {
-                FutureIncompatibilityReason::FutureReleaseError(_) => {
-                    "this was previously accepted by the compiler but is being phased out; \
-                         it will become a hard error in a future release!"
-                        .to_owned()
-                }
-                FutureIncompatibilityReason::FutureReleaseSemanticsChange(_) => {
-                    "this will change its meaning in a future release!".to_owned()
-                }
-                FutureIncompatibilityReason::EditionError(EditionFcw { edition, .. }) => {
-                    let current_edition = sess.edition();
-                    format!(
-                        "this is accepted in the current edition (Rust {current_edition}) but is a hard error in Rust {edition}!"
-                    )
-                }
-                FutureIncompatibilityReason::EditionSemanticsChange(EditionFcw {
-                    edition, ..
-                }) => {
-                    format!("this changes meaning in Rust {edition}")
-                }
-                FutureIncompatibilityReason::EditionAndFutureReleaseError(EditionFcw {
-                    edition,
-                    ..
-                }) => {
-                    format!(
-                        "this was previously accepted by the compiler but is being phased out; \
-                         it will become a hard error in Rust {edition} and in a future release in all editions!"
-                    )
-                }
-                FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(
-                    EditionFcw { edition, .. },
-                ) => {
-                    format!(
-                        "this changes meaning in Rust {edition} and in a future release in all editions!"
-                    )
-                }
-                FutureIncompatibilityReason::Custom(reason, _) => reason.to_owned(),
-                FutureIncompatibilityReason::Unreachable => unreachable!(),
-            };
-
-            if future_incompatible.explain_reason {
-                err.warn(explanation);
-            }
-
-            let citation =
-                format!("for more information, see {}", future_incompatible.reason.reference());
-            err.note(citation);
-        }
-
-        // Finally, run `decorate`. `decorate` can call `trimmed_path_str` (directly or indirectly),
-        // so we need to make sure when we do call `decorate` that the diagnostic is eventually
-        // emitted or we'll get a `must_produce_diag` ICE.
-        //
-        // When is a diagnostic *eventually* emitted? Well, that is determined by 2 factors:
-        // 1. If the corresponding `rustc_errors::Level` is beyond warning, i.e. `ForceWarning(_)`
-        //    or `Error`, then the diagnostic will be emitted regardless of CLI options.
-        // 2. If the corresponding `rustc_errors::Level` is warning, then that can be affected by
-        //    `-A warnings` or `--cap-lints=xxx` on the command line. In which case, the diagnostic
-        //    will be emitted if `can_emit_warnings` is true.
-        let skip = err_level == rustc_errors::Level::Warning && !sess.dcx().can_emit_warnings();
-
-        if !skip {
-            decorate(&mut err);
-        }
-
-        explain_lint_level_source(sess, lint, level, src, &mut err);
-        err.emit()
-    }
-    lint_level_impl(sess, lint, level, span, Box::new(decorate))
-}
-
 /// The innermost function for emitting lints implementing the [`trait@Diagnostic`] trait.
 ///
 /// If you are looking to implement a lint, look for higher level functions,
 /// for example:
 ///
 /// - [`TyCtxt::emit_node_span_lint`]
-/// - [`TyCtxt::node_span_lint`]
-/// - [`TyCtxt::node_lint`]
 /// - `LintContext::opt_span_lint`
-///
-/// This function will replace `lint_level` once all `LintDiagnostic` items have been migrated to
-/// `Diagnostic`.
 #[track_caller]
-pub fn diag_lint_level<'a, D: Diagnostic<'a, ()> + 'a>(
+pub fn emit_lint_base<'a, D: Diagnostic<'a, ()> + 'a>(
     sess: &'a Session,
     lint: &'static Lint,
     level: LevelAndSource,
@@ -505,7 +311,7 @@ pub fn diag_lint_level<'a, D: Diagnostic<'a, ()> + 'a>(
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
     #[track_caller]
-    fn diag_lint_level_impl<'a>(
+    fn emit_lint_base_impl<'a>(
         sess: &'a Session,
         lint: &'static Lint,
         level: LevelAndSource,
@@ -602,6 +408,9 @@ pub fn diag_lint_level<'a, D: Diagnostic<'a, ()> + 'a>(
         } else {
             Diag::new(sess.dcx(), err_level, "")
         };
+        // FIXME: Find a nicer way to expose the `DiagLocation`
+        err.emitted_at = DiagLocation::caller();
+
         if let Some(span) = span
             && err.span.primary_span().is_none()
         {
@@ -686,7 +495,7 @@ pub fn diag_lint_level<'a, D: Diagnostic<'a, ()> + 'a>(
         explain_lint_level_source(sess, lint, level, src, &mut err);
         err.emit();
     }
-    diag_lint_level_impl(
+    emit_lint_base_impl(
         sess,
         lint,
         level,

@@ -6,7 +6,7 @@ use std::mem;
 use std::sync::LazyLock;
 
 use regex::Regex;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, DiagDecorator};
 use rustc_hir::HirId;
 use rustc_resolve::rustdoc::pulldown_cmark::{Event, Parser, Tag};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
@@ -24,30 +24,35 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         let maybe_sp = source_span_for_markdown_range(cx.tcx, dox, &range, &item.attrs.doc_strings)
             .map(|(sp, _)| sp);
         let sp = maybe_sp.unwrap_or_else(|| item.attr_span(cx.tcx));
-        cx.tcx.node_span_lint(crate::lint::BARE_URLS, hir_id, sp, |lint| {
-            lint.primary_message(msg)
-                .note("bare URLs are not automatically turned into clickable links");
-            // The fallback of using the attribute span is suitable for
-            // highlighting where the error is, but not for placing the < and >
-            if let Some(sp) = maybe_sp {
-                if let Some(without_brackets) = without_brackets {
-                    lint.multipart_suggestion(
-                        "use an automatic link instead",
-                        vec![(sp, format!("<{without_brackets}>"))],
-                        Applicability::MachineApplicable,
-                    );
-                } else {
-                    lint.multipart_suggestion(
-                        "use an automatic link instead",
-                        vec![
-                            (sp.shrink_to_lo(), "<".to_string()),
-                            (sp.shrink_to_hi(), ">".to_string()),
-                        ],
-                        Applicability::MachineApplicable,
-                    );
+        cx.tcx.emit_node_span_lint(
+            crate::lint::BARE_URLS,
+            hir_id,
+            sp,
+            DiagDecorator(|lint| {
+                lint.primary_message(msg)
+                    .note("bare URLs are not automatically turned into clickable links");
+                // The fallback of using the attribute span is suitable for
+                // highlighting where the error is, but not for placing the < and >
+                if let Some(sp) = maybe_sp {
+                    if let Some(without_brackets) = without_brackets {
+                        lint.multipart_suggestion(
+                            "use an automatic link instead",
+                            vec![(sp, format!("<{without_brackets}>"))],
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        lint.multipart_suggestion(
+                            "use an automatic link instead",
+                            vec![
+                                (sp.shrink_to_lo(), "<".to_string()),
+                                (sp.shrink_to_hi(), ">".to_string()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 }
-            }
-        });
+            }),
+        );
     };
 
     let mut p = Parser::new_ext(dox, main_body_opts()).into_offset_iter();

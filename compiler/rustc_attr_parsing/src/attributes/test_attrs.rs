@@ -7,7 +7,6 @@ pub(crate) struct IgnoreParser;
 
 impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
     const PATH: &[Symbol] = &[sym::ignore];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
@@ -41,7 +40,6 @@ pub(crate) struct ShouldPanicParser;
 
 impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
     const PATH: &[Symbol] = &[sym::should_panic];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
@@ -93,34 +91,11 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
     }
 }
 
-pub(crate) struct RustcVarianceParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcVarianceParser {
-    const PATH: &[Symbol] = &[sym::rustc_variance];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
-        Allow(Target::Enum),
-        Allow(Target::Union),
-    ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcVariance;
-}
-
-pub(crate) struct RustcVarianceOfOpaquesParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcVarianceOfOpaquesParser {
-    const PATH: &[Symbol] = &[sym::rustc_variance_of_opaques];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcVarianceOfOpaques;
-}
-
 pub(crate) struct ReexportTestHarnessMainParser;
 
 impl<S: Stage> SingleAttributeParser<S> for ReexportTestHarnessMainParser {
     const PATH: &[Symbol] = &[sym::reexport_test_harness_main];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
@@ -148,7 +123,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
     const PATH: &[Symbol] = &[sym::rustc_abi];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::debug, sym::assert_eq]);
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::TyAlias),
         Allow(Target::Fn),
@@ -215,25 +189,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcEvaluateWhereClausesParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEvaluateWhereClauses;
 }
 
-pub(crate) struct RustcOutlivesParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcOutlivesParser {
-    const PATH: &[Symbol] = &[sym::rustc_outlives];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
-        Allow(Target::Enum),
-        Allow(Target::Union),
-        Allow(Target::TyAlias),
-    ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOutlives;
-}
-
 pub(crate) struct TestRunnerParser;
 
 impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
     const PATH: &[Symbol] = &[sym::test_runner];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["path"]);
@@ -262,7 +221,6 @@ pub(crate) struct RustcTestMarkerParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcTestMarkerParser {
     const PATH: &[Symbol] = &[sym::rustc_test_marker];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Const),

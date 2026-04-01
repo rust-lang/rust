@@ -1,5 +1,5 @@
 error: invalid `sym` operand
-  --> $DIR/tainting-on-error.rs:9:13
+  --> $DIR/tainting-on-error.rs:10:13
    |
 LL |             sym None::<()>,
    |             ^^^^^^^^^^^^^^ is an `Option<()>`

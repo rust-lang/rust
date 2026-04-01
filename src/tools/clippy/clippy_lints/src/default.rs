@@ -69,13 +69,13 @@ declare_clippy_lint! {
     "binding initialized with Default should have its fields set in the initializer"
 }
 
+impl_lint_pass!(Default => [DEFAULT_TRAIT_ACCESS, FIELD_REASSIGN_WITH_DEFAULT]);
+
 #[derive(Default)]
 pub struct Default {
     // Spans linted by `field_reassign_with_default`.
     reassigned_linted: FxHashSet<Span>,
 }
-
-impl_lint_pass!(Default => [DEFAULT_TRAIT_ACCESS, FIELD_REASSIGN_WITH_DEFAULT]);
 
 impl<'tcx> LateLintPass<'tcx> for Default {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

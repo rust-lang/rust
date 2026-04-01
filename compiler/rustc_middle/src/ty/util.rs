@@ -402,7 +402,7 @@ impl<'tcx> TyCtxt<'tcx> {
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
-        self.ensure_ok().coherent_trait(drop_trait).ok()?;
+        self.ensure_result().coherent_trait(drop_trait).ok()?;
 
         let mut dtor_candidate = None;
         // `Drop` impls can only be written in the same crate as the adt, and cannot be blanket impls
@@ -449,7 +449,7 @@ impl<'tcx> TyCtxt<'tcx> {
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::AsyncDestructor> {
         let async_drop_trait = self.lang_items().async_drop_trait()?;
-        self.ensure_ok().coherent_trait(async_drop_trait).ok()?;
+        self.ensure_result().coherent_trait(async_drop_trait).ok()?;
 
         let mut dtor_candidate = None;
         // `AsyncDrop` impls can only be written in the same crate as the adt, and cannot be blanket impls
@@ -646,6 +646,20 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut def_id = def_id;
         while self.is_typeck_child(def_id) {
             def_id = self.parent(def_id);
+        }
+        def_id
+    }
+
+    /// Given the `LocalDefId`, returns the `LocalDefId` of the innermost item that
+    /// has its own type-checking context or "inference environment".
+    ///
+    /// For example, a closure has its own `LocalDefId`, but it is type-checked
+    /// with the containing item. Therefore, when we fetch the `typeck` of the closure,
+    /// for example, we really wind up fetching the `typeck` of the enclosing fn item.
+    pub fn typeck_root_def_id_local(self, def_id: LocalDefId) -> LocalDefId {
+        let mut def_id = def_id;
+        while self.is_typeck_child(def_id.to_def_id()) {
+            def_id = self.local_parent(def_id);
         }
         def_id
     }

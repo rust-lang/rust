@@ -94,10 +94,14 @@ impl DepKind {
 pub struct DepNode {
     pub kind: DepKind,
 
-    /// This is _typically_ a hash of the query key, but sometimes not.
+    /// If `kind` is a query method, then its "key fingerprint" is always a
+    /// stable hash of the query key.
     ///
-    /// For example, `anon` nodes have a fingerprint that is derived from their
-    /// dependencies instead of a key.
+    /// For non-query nodes, the content of this field varies:
+    /// - Some dep kinds always use a dummy `ZERO` fingerprint.
+    /// - Some dep kinds use the stable hash of some relevant key-like value.
+    /// - Some dep kinds use the `with_anon_task` mechanism, and set their key
+    ///   fingerprint to a hash derived from the task's dependencies.
     ///
     /// In some cases the key value can be reconstructed from this fingerprint;
     /// see [`KeyFingerprintStyle`].
@@ -121,7 +125,7 @@ impl DepNode {
 
         #[cfg(debug_assertions)]
         {
-            if !tcx.key_fingerprint_style(kind).reconstructible()
+            if !tcx.key_fingerprint_style(kind).is_maybe_recoverable()
                 && (tcx.sess.opts.unstable_opts.incremental_info
                     || tcx.sess.opts.unstable_opts.query_dep_graph)
             {
@@ -174,11 +178,6 @@ impl fmt::Debug for DepNode {
 /// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
 /// jump table instead of large matches.
 pub struct DepKindVTable<'tcx> {
-    /// Anonymous queries cannot be replayed from one compiler invocation to the next.
-    /// When their result is needed, it is recomputed. They are useful for fine-grained
-    /// dependency tracking, and caching within one compiler invocation.
-    pub is_anon: bool,
-
     /// Eval-always queries do not track their dependencies, and are always recomputed, even if
     /// their inputs have not changed since the last compiler invocation. The result is still
     /// cached within one compiler invocation.
@@ -225,12 +224,12 @@ pub struct DepKindVTable<'tcx> {
     /// with kind `mir_promoted`, we know that the key fingerprint of the `DepNode`
     /// is actually a `DefPathHash`, and can therefore just look up the corresponding
     /// `DefId` in `tcx.def_path_hash_to_def_id`.
-    pub force_from_dep_node: Option<
+    pub force_from_dep_node_fn: Option<
         fn(tcx: TyCtxt<'tcx>, dep_node: DepNode, prev_index: SerializedDepNodeIndex) -> bool,
     >,
 
     /// Invoke a query to put the on-disk cached value in memory.
-    pub try_load_from_on_disk_cache: Option<fn(TyCtxt<'tcx>, DepNode)>,
+    pub promote_from_disk_fn: Option<fn(TyCtxt<'tcx>, DepNode)>,
 }
 
 /// A "work product" corresponds to a `.o` (or other) file that we
@@ -252,10 +251,10 @@ impl WorkProductId {
         WorkProductId { hash: hasher.finish() }
     }
 }
-impl<HCX> ToStableHashKey<HCX> for WorkProductId {
+impl<Hcx> ToStableHashKey<Hcx> for WorkProductId {
     type KeyType = Fingerprint;
     #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+    fn to_stable_hash_key(&self, _: &Hcx) -> Self::KeyType {
         self.hash
     }
 }
@@ -270,18 +269,22 @@ impl StableOrd for WorkProductId {
 // Note: `$K` and `$V` are unused but present so this can be called by `rustc_with_all_queries`.
 macro_rules! define_dep_nodes {
     (
-        $(
-            $(#[$attr:meta])*
-            [$($modifiers:tt)*] fn $variant:ident($K:ty) -> $V:ty,
-        )*
-    ) => {
-
-        #[macro_export]
-        macro_rules! make_dep_kind_array {
-            ($mod:ident) => {[ $($mod::$variant()),* ]};
+        queries {
+            $(
+                $(#[$q_attr:meta])*
+                fn $q_name:ident($K:ty) -> $V:ty
+                // Search for (QMODLIST) to find all occurrences of this query modifier list.
+                // Query modifiers are currently not used here, so skip the whole list.
+                { $($modifiers:tt)* }
+            )*
         }
-
-        /// This enum serves as an index into arrays built by `make_dep_kind_array`.
+        non_queries {
+            $(
+                $(#[$nq_attr:meta])*
+                $nq_name:ident,
+            )*
+        }
+    ) => {
         // This enum has more than u8::MAX variants so we need some kind of multi-byte
         // encoding. The derived Encodable/Decodable uses leb128 encoding which is
         // dense when only considering this enum. But DepKind is encoded in a larger
@@ -290,14 +293,18 @@ macro_rules! define_dep_nodes {
         #[allow(non_camel_case_types)]
         #[repr(u16)] // Must be kept in sync with the rest of `DepKind`.
         pub enum DepKind {
-            $( $( #[$attr] )* $variant),*
+            $( $(#[$nq_attr])* $nq_name, )*
+            $( $(#[$q_attr])* $q_name, )*
         }
 
         // This computes the number of dep kind variants. Along the way, it sanity-checks that the
         // discriminants of the variants have been assigned consecutively from 0 so that they can
         // be used as a dense index, and that all discriminants fit in a `u16`.
         pub(crate) const DEP_KIND_NUM_VARIANTS: u16 = {
-            let deps = &[$(DepKind::$variant,)*];
+            let deps = &[
+                $(DepKind::$nq_name,)*
+                $(DepKind::$q_name,)*
+            ];
             let mut i = 0;
             while i < deps.len() {
                 if i != deps[i].as_usize() {
@@ -311,7 +318,8 @@ macro_rules! define_dep_nodes {
 
         pub(super) fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
             match label {
-                $( stringify!($variant) => Ok(self::DepKind::$variant), )*
+                $( stringify!($nq_name) => Ok(self::DepKind::$nq_name), )*
+                $( stringify!($q_name) => Ok(self::DepKind::$q_name), )*
                 _ => Err(()),
             }
         }
@@ -320,27 +328,14 @@ macro_rules! define_dep_nodes {
         /// DepNode groups for tests.
         #[expect(non_upper_case_globals)]
         pub mod label_strs {
-            $( pub const $variant: &str = stringify!($variant); )*
+            $( pub const $nq_name: &str = stringify!($nq_name); )*
+            $( pub const $q_name: &str = stringify!($q_name); )*
         }
     };
 }
 
-// Create various data structures for each query, and also for a few things
-// that aren't queries. The key and return types aren't used, hence the use of `()`.
-rustc_with_all_queries!(define_dep_nodes![
-    /// We use this for most things when incr. comp. is turned off.
-    [] fn Null(()) -> (),
-    /// We use this to create a forever-red node.
-    [] fn Red(()) -> (),
-    /// We use this to create a side effect node.
-    [] fn SideEffect(()) -> (),
-    /// We use this to create the anon node with zero dependencies.
-    [] fn AnonZeroDeps(()) -> (),
-    [] fn TraitSelect(()) -> (),
-    [] fn CompileCodegenUnit(()) -> (),
-    [] fn CompileMonoItem(()) -> (),
-    [] fn Metadata(()) -> (),
-]);
+// Create various data structures for each query, and also for a few things that aren't queries.
+crate::queries::rustc_with_all_queries! { define_dep_nodes! }
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
 // Be very careful changing this type signature!
@@ -417,9 +412,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(DepKind, 2);
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     static_assert_size!(DepNode, 18);
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-    static_assert_size!(DepNode, 24);
     // tidy-alphabetical-end
 }

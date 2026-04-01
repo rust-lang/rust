@@ -7,7 +7,6 @@
 
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]
-#![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 
 #![rustc_partition_codegened(module="struct_point-point", cfg="cfail2")]

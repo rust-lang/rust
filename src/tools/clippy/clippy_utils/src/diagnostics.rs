@@ -8,7 +8,7 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{Applicability, Diag, DiagMessage, MultiSpan};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, Level, MultiSpan};
 #[cfg(debug_assertions)]
 use rustc_errors::{EmissionGuarantee, SubstitutionPart, Suggestions};
 use rustc_hir::HirId;
@@ -240,15 +240,31 @@ where
     M: Into<DiagMessage>,
     F: FnOnce(&mut Diag<'_, ()>),
 {
-    #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, sp, |diag| {
-        diag.primary_message(msg);
-        f(diag);
-        docs_link(diag, lint);
+    struct ClippyDiag<F: FnOnce(&mut Diag<'_, ()>)>(F);
 
-        #[cfg(debug_assertions)]
-        validate_diag(diag);
-    });
+    impl<'a, F: FnOnce(&mut Diag<'_, ()>)> Diagnostic<'a, ()> for ClippyDiag<F> {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let mut lint = Diag::new(dcx, level, "");
+            (self.0)(&mut lint);
+            lint
+        }
+    }
+
+    let sp = sp.into();
+    #[expect(clippy::disallowed_methods)]
+    cx.emit_span_lint(
+        lint,
+        sp.clone(),
+        ClippyDiag(|diag: &mut Diag<'_, ()>| {
+            diag.primary_message(msg);
+            diag.span(sp);
+            f(diag);
+            docs_link(diag, lint);
+
+            #[cfg(debug_assertions)]
+            validate_diag(diag);
+        }),
+    );
 }
 
 /// Like [`span_lint`], but emits the lint at the node identified by the given `HirId`.
@@ -314,14 +330,19 @@ pub fn span_lint_hir_and_then(
     f: impl FnOnce(&mut Diag<'_, ()>),
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.tcx.node_span_lint(lint, hir_id, sp, |diag| {
-        diag.primary_message(msg);
-        f(diag);
-        docs_link(diag, lint);
+    cx.tcx.emit_node_span_lint(
+        lint,
+        hir_id,
+        sp,
+        rustc_errors::DiagDecorator(|diag| {
+            diag.primary_message(msg);
+            f(diag);
+            docs_link(diag, lint);
 
-        #[cfg(debug_assertions)]
-        validate_diag(diag);
-    });
+            #[cfg(debug_assertions)]
+            validate_diag(diag);
+        }),
+    );
 }
 
 /// Add a span lint with a suggestion on how to fix it.

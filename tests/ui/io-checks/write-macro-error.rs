@@ -4,7 +4,6 @@
 //@ run-pass
 //@ needs-unwind
 
-#![feature(io_error_uncategorized)]
 
 use std::fmt;
 use std::io::{self, Error, Write};

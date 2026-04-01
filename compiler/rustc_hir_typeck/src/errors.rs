@@ -14,8 +14,7 @@ use rustc_hir::ExprKind;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{Ident, Span, Spanned, Symbol};
 
 use crate::FnCtxt;
 
@@ -987,13 +986,17 @@ impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             CastUnknownPointerSub::To(span) => {
-                let msg = diag.eagerly_translate(msg!("needs more type information"));
+                let msg = msg!("needs more type information");
                 diag.span_label(span, msg);
-                let msg = diag.eagerly_translate(msg!("the type information given here is insufficient to check whether the pointer cast is valid"));
+                let msg = msg!(
+                    "the type information given here is insufficient to check whether the pointer cast is valid"
+                );
                 diag.note(msg);
             }
             CastUnknownPointerSub::From(span) => {
-                let msg = diag.eagerly_translate(msg!("the type information given here is insufficient to check whether the pointer cast is valid"));
+                let msg = msg!(
+                    "the type information given here is insufficient to check whether the pointer cast is valid"
+                );
                 diag.span_label(span, msg);
             }
         }

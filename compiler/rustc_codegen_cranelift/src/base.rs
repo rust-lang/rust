@@ -10,7 +10,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv as _};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::config::OutputFilenames;
 use rustc_span::Symbol;
@@ -924,19 +924,26 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                 count,
             }) => {
                 let dst = codegen_operand(fx, dst);
-                let pointee = dst
-                    .layout()
-                    .pointee_info_at(fx, rustc_abi::Size::ZERO)
-                    .expect("Expected pointer");
+
+                let &ty::RawPtr(pointee, _) = dst.layout().ty.kind() else {
+                    bug!("expected pointer")
+                };
+                let pointee_layout = fx
+                    .tcx
+                    .layout_of(fx.typing_env().as_query_input(pointee))
+                    .expect("expected pointee to have a layout");
+                let elem_size: u64 = pointee_layout.layout.size().bytes();
+
                 let dst = dst.load_scalar(fx);
                 let src = codegen_operand(fx, src).load_scalar(fx);
                 let count = codegen_operand(fx, count).load_scalar(fx);
-                let elem_size: u64 = pointee.size.bytes();
+
                 let bytes = if elem_size != 1 {
                     fx.bcx.ins().imul_imm(count, elem_size as i64)
                 } else {
                     count
                 };
+
                 fx.bcx.call_memcpy(fx.target_config, dst, src, bytes);
             }
         },

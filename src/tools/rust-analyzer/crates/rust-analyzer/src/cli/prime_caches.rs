@@ -38,6 +38,7 @@ impl flags::PrimeCaches {
             // we want to ensure that this command, not `load_workspace_at`,
             // is responsible for that work.
             prefill_caches: false,
+            num_worker_threads: 1,
             proc_macro_processes: config.proc_macro_num_processes(),
         };
 

@@ -76,7 +76,7 @@ impl Thread {
                     // multiple of the system page size. Because it's definitely
                     // >= PTHREAD_STACK_MIN, it must be an alignment issue.
                     // Round up to the nearest page and try again.
-                    let page_size = sys::os::page_size();
+                    let page_size = sys::pal::conf::page_size();
                     let stack_size =
                         (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
 
@@ -570,10 +570,10 @@ pub fn sleep(dur: Duration) {
     // nanosleep will fill in `ts` with the remaining time.
     unsafe {
         while secs > 0 || nsecs > 0 {
-            let mut ts = libc::timespec {
-                tv_sec: cmp::min(libc::time_t::MAX as u64, secs) as libc::time_t,
-                tv_nsec: nsecs,
-            };
+            let mut ts = libc::timespec::default();
+            ts.tv_sec = cmp::min(libc::time_t::MAX as u64, secs) as libc::time_t;
+            ts.tv_nsec = nsecs;
+
             secs -= ts.tv_sec as u64;
             let ts_ptr = &raw mut ts;
             let r = nanosleep(ts_ptr, ts_ptr);

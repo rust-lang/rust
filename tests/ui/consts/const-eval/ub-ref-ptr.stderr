@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
+error[E0080]: constructing invalid value of type &u16: encountered an unaligned reference (required 2 byte alignment but found 1)
   --> $DIR/ub-ref-ptr.rs:18:1
    |
 LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
@@ -9,7 +9,7 @@ LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
+error[E0080]: constructing invalid value of type Box<u16>: encountered an unaligned box (required 2 byte alignment but found 1)
   --> $DIR/ub-ref-ptr.rs:21:1
    |
 LL | const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
@@ -20,7 +20,7 @@ LL | const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered a null reference
+error[E0080]: constructing invalid value of type &u16: encountered a null reference
   --> $DIR/ub-ref-ptr.rs:24:1
    |
 LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
@@ -31,7 +31,7 @@ LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered a null box
+error[E0080]: constructing invalid value of type Box<u16>: encountered a null box
   --> $DIR/ub-ref-ptr.rs:27:1
    |
 LL | const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
@@ -42,7 +42,7 @@ LL | const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered a maybe-null box
+error[E0080]: constructing invalid value of type Box<()>: encountered a maybe-null box
   --> $DIR/ub-ref-ptr.rs:30:1
    |
 LL | const MAYBE_NULL_BOX: Box<()> = unsafe { mem::transmute({
@@ -92,7 +92,7 @@ note: erroneous constant encountered
 LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
    |                                                                                     ^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: constructing invalid value: encountered a dangling reference (0x539[noalloc] has no provenance)
+error[E0080]: constructing invalid value of type &u8: encountered a dangling reference (0x539[noalloc] has no provenance)
   --> $DIR/ub-ref-ptr.rs:48:1
    |
 LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
@@ -103,7 +103,7 @@ LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered a dangling box (0x539[noalloc] has no provenance)
+error[E0080]: constructing invalid value of type Box<u8>: encountered a dangling box (0x539[noalloc] has no provenance)
   --> $DIR/ub-ref-ptr.rs:51:1
    |
 LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
@@ -124,7 +124,7 @@ LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered null pointer, but expected a function pointer
+error[E0080]: constructing invalid value of type fn(): encountered null pointer, but expected a function pointer
   --> $DIR/ub-ref-ptr.rs:57:1
    |
 LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
@@ -145,7 +145,7 @@ LL | const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered 0xd[noalloc], but expected a function pointer
+error[E0080]: constructing invalid value of type fn(): encountered 0xd[noalloc], but expected a function pointer
   --> $DIR/ub-ref-ptr.rs:61:1
    |
 LL | const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
@@ -156,7 +156,7 @@ LL | const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered ALLOC3<imm>, but expected a function pointer
+error[E0080]: constructing invalid value of type fn(): encountered ALLOC3<imm>, but expected a function pointer
   --> $DIR/ub-ref-ptr.rs:63:1
    |
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
@@ -167,7 +167,7 @@ LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered ALLOC4+0xa, but expected a function pointer
+error[E0080]: constructing invalid value of type fn(): encountered ALLOC4+0xa, but expected a function pointer
   --> $DIR/ub-ref-ptr.rs:65:1
    |
 LL | const MAYBE_NULL_FN_PTR: fn() = unsafe { mem::transmute({
@@ -184,7 +184,7 @@ error[E0080]: accessing memory based on pointer with alignment 1, but alignment 
 LL |     ptr.read();
    |     ^^^^^^^^^^ evaluation of `UNALIGNED_READ` failed here
 
-error[E0080]: constructing invalid value: encountered a pointer with unknown absolute address, but expected something that is definitely greater or equal to 1000
+error[E0080]: constructing invalid value of type High: encountered a pointer with unknown absolute address, but expected something that is definitely greater or equal to 1000
   --> $DIR/ub-ref-ptr.rs:84:1
    |
 LL | const INVALID_VALUE_PTR: High = unsafe { mem::transmute(&S) };

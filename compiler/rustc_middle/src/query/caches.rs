@@ -28,8 +28,13 @@ pub trait QueryCache: Sized {
     /// value by executing the query or loading a cached value from disk.
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex);
 
-    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
+    /// Calls a closure on each entry in this cache.
+    fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
 
+    /// Returns the number of entries currently in this cache.
+    ///
+    /// Useful for reserving capacity in data structures that will hold the
+    /// output of a call to [`Self::for_each`].
     fn len(&self) -> usize;
 }
 
@@ -65,7 +70,7 @@ where
         self.cache.insert(key, (value, index));
     }
 
-    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+    fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
         for shard in self.cache.lock_shards() {
             for (k, v) in shard.iter() {
                 f(k, &v.0, v.1);
@@ -107,7 +112,7 @@ where
         self.cache.set((value, index)).ok();
     }
 
-    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+    fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
         if let Some(value) = self.cache.get() {
             f(&(), &value.0, value.1)
         }
@@ -160,11 +165,11 @@ where
         }
     }
 
-    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        self.local.iter(&mut |key, value, index| {
+    fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        self.local.for_each(&mut |key, value, index| {
             f(&DefId { krate: LOCAL_CRATE, index: *key }, value, index);
         });
-        self.foreign.iter(f);
+        self.foreign.for_each(f);
     }
 
     fn len(&self) -> usize {
@@ -190,8 +195,8 @@ where
         self.complete(key, value, index)
     }
 
-    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        self.iter(f)
+    fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        self.for_each(f)
     }
 
     fn len(&self) -> usize {

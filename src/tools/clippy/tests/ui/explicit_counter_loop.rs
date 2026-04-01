@@ -317,3 +317,18 @@ fn issue16612(v: Vec<u8>, s: i64) {
         j += 1;
     }
 }
+
+fn issue16640(x: &[u8]) {
+    struct Priority(u8);
+
+    impl core::ops::AddAssign<u8> for Priority {
+        fn add_assign(&mut self, rhs: u8) {
+            self.0 += rhs
+        }
+    }
+
+    let mut priority = Priority(1);
+    for _val in x {
+        priority += 1;
+    }
+}

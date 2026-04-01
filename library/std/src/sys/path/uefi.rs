@@ -5,17 +5,14 @@ use crate::path::{Path, PathBuf, Prefix};
 use crate::sys::pal::helpers;
 use crate::sys::unsupported_err;
 
+path_separator_bytes!(b'\\');
+
 const FORWARD_SLASH: u8 = b'/';
 const COLON: u8 = b':';
 
 #[inline]
-pub fn is_sep_byte(b: u8) -> bool {
-    b == b'\\'
-}
-
-#[inline]
-pub fn is_verbatim_sep(b: u8) -> bool {
-    b == b'\\'
+pub const fn is_verbatim_sep(b: u8) -> bool {
+    is_sep_byte(b)
 }
 
 pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
@@ -23,8 +20,6 @@ pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
 }
 
 pub const HAS_PREFIXES: bool = true;
-pub const MAIN_SEP_STR: &str = "\\";
-pub const MAIN_SEP: char = '\\';
 
 /// UEFI paths can be of 4 types:
 ///

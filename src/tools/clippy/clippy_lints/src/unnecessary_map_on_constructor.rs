@@ -31,7 +31,10 @@ declare_clippy_lint! {
     complexity,
     "using `map`/`map_err` on `Option` or `Result` constructors"
 }
-declare_lint_pass!(UnnecessaryMapOnConstructor => [UNNECESSARY_MAP_ON_CONSTRUCTOR]);
+
+declare_lint_pass!(UnnecessaryMapOnConstructor => [
+    UNNECESSARY_MAP_ON_CONSTRUCTOR,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {

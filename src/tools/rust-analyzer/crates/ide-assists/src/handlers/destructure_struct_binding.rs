@@ -1,19 +1,23 @@
-use hir::HasVisibility;
+use hir::{HasVisibility, Semantics};
 use ide_db::{
-    FxHashMap, FxHashSet,
+    FxHashMap, FxHashSet, RootDatabase,
     assists::AssistId,
     defs::Definition,
     helpers::mod_path_to_ast,
     search::{FileReference, SearchScope},
 };
 use itertools::Itertools;
-use syntax::ast::{HasName, syntax_factory::SyntaxFactory};
 use syntax::syntax_editor::SyntaxEditor;
 use syntax::{AstNode, Edition, SmolStr, SyntaxNode, ToSmolStr, ast};
+use syntax::{
+    SyntaxToken,
+    ast::{HasName, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    syntax_editor::Position,
+};
 
 use crate::{
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
-    utils::ref_field_expr::determine_ref_and_parens,
+    utils::{cover_edit_range, ref_field_expr::determine_ref_and_parens},
 };
 
 // Assist: destructure_struct_binding
@@ -44,17 +48,74 @@ use crate::{
 // }
 // ```
 pub(crate) fn destructure_struct_binding(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let ident_pat = ctx.find_node_at_offset::<ast::IdentPat>()?;
-    let data = collect_data(ident_pat, ctx)?;
+    let target = ctx.find_node_at_offset::<Target>()?;
+    let data = collect_data(target, ctx)?;
 
     acc.add(
         AssistId::refactor_rewrite("destructure_struct_binding"),
         "Destructure struct binding",
-        data.ident_pat.syntax().text_range(),
+        data.target.syntax().text_range(),
         |edit| destructure_struct_binding_impl(ctx, edit, &data),
     );
 
     Some(())
+}
+
+enum Target {
+    IdentPat(ast::IdentPat),
+    SelfParam { param: ast::SelfParam, insert_after: SyntaxToken },
+}
+
+impl Target {
+    fn ty<'db>(&self, sema: &Semantics<'db, RootDatabase>) -> Option<hir::Type<'db>> {
+        match self {
+            Target::IdentPat(pat) => sema.type_of_binding_in_pat(pat),
+            Target::SelfParam { param, .. } => sema.type_of_self(param),
+        }
+    }
+
+    fn is_ref(&self) -> bool {
+        match self {
+            Target::IdentPat(ident_pat) => ident_pat.ref_token().is_some(),
+            Target::SelfParam { .. } => false,
+        }
+    }
+
+    fn is_mut(&self) -> bool {
+        match self {
+            Target::IdentPat(ident_pat) => ident_pat.mut_token().is_some(),
+            Target::SelfParam { param, .. } => {
+                param.mut_token().is_some() && param.amp_token().is_none()
+            }
+        }
+    }
+}
+
+impl HasName for Target {}
+
+impl AstNode for Target {
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        if ast::IdentPat::can_cast(node.kind()) {
+            ast::IdentPat::cast(node).map(Self::IdentPat)
+        } else {
+            let param = ast::SelfParam::cast(node)?;
+            let param_list = param.syntax().parent().and_then(ast::ParamList::cast)?;
+            let block = param_list.syntax().parent()?.children().find_map(ast::BlockExpr::cast)?;
+            let insert_after = block.stmt_list()?.l_curly_token()?;
+            Some(Self::SelfParam { param, insert_after })
+        }
+    }
+
+    fn can_cast(kind: syntax::SyntaxKind) -> bool {
+        ast::IdentPat::can_cast(kind) || ast::SelfParam::can_cast(kind)
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Target::IdentPat(ident_pat) => ident_pat.syntax(),
+            Target::SelfParam { param, .. } => param.syntax(),
+        }
+    }
 }
 
 fn destructure_struct_binding_impl(
@@ -63,14 +124,14 @@ fn destructure_struct_binding_impl(
     data: &StructEditData,
 ) {
     let field_names = generate_field_names(ctx, data);
-    let mut editor = builder.make_editor(data.ident_pat.syntax());
+    let mut editor = builder.make_editor(data.target.syntax());
     destructure_pat(ctx, &mut editor, data, &field_names);
     update_usages(ctx, &mut editor, data, &field_names.into_iter().collect());
     builder.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
 struct StructEditData {
-    ident_pat: ast::IdentPat,
+    target: Target,
     name: ast::Name,
     kind: hir::StructKind,
     struct_def_path: hir::ModPath,
@@ -83,11 +144,44 @@ struct StructEditData {
     edition: Edition,
 }
 
-fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<StructEditData> {
-    let ty = ctx.sema.type_of_binding_in_pat(&ident_pat)?;
+impl StructEditData {
+    fn apply_to_destruct(
+        &self,
+        new_pat: ast::Pat,
+        editor: &mut SyntaxEditor,
+        make: &SyntaxFactory,
+    ) {
+        match &self.target {
+            Target::IdentPat(pat) => {
+                // If the binding is nested inside a record, we need to wrap the new
+                // destructured pattern in a non-shorthand record field
+                if self.need_record_field_name {
+                    let new_pat =
+                        make.record_pat_field(make.name_ref(&self.name.to_string()), new_pat);
+                    editor.replace(pat.syntax(), new_pat.syntax())
+                } else {
+                    editor.replace(pat.syntax(), new_pat.syntax())
+                }
+            }
+            Target::SelfParam { insert_after, .. } => {
+                let indent = IndentLevel::from_token(insert_after) + 1;
+                let newline = make.whitespace(&format!("\n{indent}"));
+                let initializer = make.expr_path(make.ident_path("self"));
+                let let_stmt = make.let_stmt(new_pat, None, Some(initializer));
+                editor.insert_all(
+                    Position::after(insert_after),
+                    vec![newline.into(), let_stmt.syntax().clone().into()],
+                );
+            }
+        }
+    }
+}
+
+fn collect_data(target: Target, ctx: &AssistContext<'_>) -> Option<StructEditData> {
+    let ty = target.ty(&ctx.sema)?;
     let hir::Adt::Struct(struct_type) = ty.strip_references().as_adt()? else { return None };
 
-    let module = ctx.sema.scope(ident_pat.syntax())?.module();
+    let module = ctx.sema.scope(target.syntax())?.module();
     let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(module.krate(ctx.db())));
     let struct_def = hir::ModuleDef::from(struct_type);
     let kind = struct_type.kind(ctx.db());
@@ -116,15 +210,17 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
     }
 
     let is_ref = ty.is_reference();
-    let need_record_field_name = ident_pat
+    let need_record_field_name = target
         .syntax()
         .parent()
         .and_then(ast::RecordPatField::cast)
         .is_some_and(|field| field.colon_token().is_none());
 
-    let usages = ctx
-        .sema
-        .to_def(&ident_pat)
+    let def = match &target {
+        Target::IdentPat(pat) => ctx.sema.to_def(pat),
+        Target::SelfParam { param, .. } => ctx.sema.to_def(param),
+    };
+    let usages = def
         .and_then(|def| {
             Definition::Local(def)
                 .usages(&ctx.sema)
@@ -136,11 +232,11 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
         })
         .unwrap_or_default();
 
-    let names_in_scope = get_names_in_scope(ctx, &ident_pat, &usages).unwrap_or_default();
+    let names_in_scope = get_names_in_scope(ctx, &target, &usages).unwrap_or_default();
 
     Some(StructEditData {
-        name: ident_pat.name()?,
-        ident_pat,
+        name: target.name()?,
+        target,
         kind,
         struct_def_path,
         usages,
@@ -155,7 +251,7 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
 
 fn get_names_in_scope(
     ctx: &AssistContext<'_>,
-    ident_pat: &ast::IdentPat,
+    target: &Target,
     usages: &[FileReference],
 ) -> Option<FxHashSet<SmolStr>> {
     fn last_usage(usages: &[FileReference]) -> Option<SyntaxNode> {
@@ -165,7 +261,7 @@ fn get_names_in_scope(
     // If available, find names visible to the last usage of the binding
     // else, find names visible to the binding itself
     let last_usage = last_usage(usages);
-    let node = last_usage.as_ref().unwrap_or(ident_pat.syntax());
+    let node = last_usage.as_ref().unwrap_or(target.syntax());
     let scope = ctx.sema.scope(node)?;
 
     let mut names = FxHashSet::default();
@@ -183,12 +279,9 @@ fn destructure_pat(
     data: &StructEditData,
     field_names: &[(SmolStr, SmolStr)],
 ) {
-    let ident_pat = &data.ident_pat;
-    let name = &data.name;
-
     let struct_path = mod_path_to_ast(&data.struct_def_path, data.edition);
-    let is_ref = ident_pat.ref_token().is_some();
-    let is_mut = ident_pat.mut_token().is_some();
+    let is_ref = data.target.is_ref();
+    let is_mut = data.target.is_mut();
 
     let make = SyntaxFactory::with_mappings();
     let new_pat = match data.kind {
@@ -221,16 +314,8 @@ fn destructure_pat(
         hir::StructKind::Unit => make.path_pat(struct_path),
     };
 
-    // If the binding is nested inside a record, we need to wrap the new
-    // destructured pattern in a non-shorthand record field
-    let destructured_pat = if data.need_record_field_name {
-        make.record_pat_field(make.name_ref(&name.to_string()), new_pat).syntax().clone()
-    } else {
-        new_pat.syntax().clone()
-    };
-
+    data.apply_to_destruct(new_pat, editor, &make);
     editor.add_mappings(make.finish_with_mappings());
-    editor.replace(data.ident_pat.syntax(), destructured_pat);
 }
 
 fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(SmolStr, SmolStr)> {
@@ -273,6 +358,7 @@ fn update_usages(
     data: &StructEditData,
     field_names: &FxHashMap<SmolStr, SmolStr>,
 ) {
+    let source = ctx.source_file().syntax();
     let make = SyntaxFactory::with_mappings();
     let edits = data
         .usages
@@ -281,7 +367,9 @@ fn update_usages(
         .collect_vec();
     editor.add_mappings(make.finish_with_mappings());
     for (old, new) in edits {
-        editor.replace(old, new);
+        if let Some(range) = ctx.sema.original_range_opt(&old) {
+            editor.replace_all(cover_edit_range(source, range.range), vec![new.into()]);
+        }
     }
 }
 
@@ -296,23 +384,20 @@ fn build_usage_edit(
         Some(field_expr) => Some({
             let field_name: SmolStr = field_expr.name_ref()?.to_string().into();
             let new_field_name = field_names.get(&field_name)?;
-            let new_expr = ast::make::expr_path(ast::make::ext::ident_path(new_field_name));
+            let new_expr = make.expr_path(make.ident_path(new_field_name));
 
             // If struct binding is a reference, we might need to deref field usages
             if data.is_ref {
                 let (replace_expr, ref_data) = determine_ref_and_parens(ctx, &field_expr);
-                (
-                    replace_expr.syntax().clone_for_update(),
-                    ref_data.wrap_expr(new_expr).syntax().clone_for_update(),
-                )
+                (replace_expr.syntax().clone(), ref_data.wrap_expr(new_expr, make).syntax().clone())
             } else {
-                (field_expr.syntax().clone(), new_expr.syntax().clone_for_update())
+                (field_expr.syntax().clone(), new_expr.syntax().clone())
             }
         }),
         None => Some((
             usage.name.syntax().as_node().unwrap().clone(),
             make.expr_macro(
-                ast::make::ext::ident_path("todo"),
+                make.ident_path("todo"),
                 make.token_tree(syntax::SyntaxKind::L_PAREN, []),
             )
             .syntax()
@@ -699,6 +784,84 @@ mod tests {
     }
 
     #[test]
+    fn mut_self_param() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(mut $0self) {
+                    self.bar = 5;
+                }
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(mut self) {
+                    let Foo { mut bar, mut baz } = self;
+                    bar = 5;
+                }
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn ref_mut_self_param() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(&mut $0self) {
+                    self.bar = 5;
+                }
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(&mut self) {
+                    let Foo { bar, baz } = self;
+                    *bar = 5;
+                }
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn ref_self_param() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(&$0self) -> &i32 {
+                    &self.bar
+                }
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(&self) -> &i32 {
+                    let Foo { bar, baz } = self;
+                    bar
+                }
+            }
+            "#,
+        )
+    }
+
+    #[test]
     fn ref_not_add_parenthesis_and_deref_record() {
         check_assist(
             destructure_struct_binding,
@@ -844,6 +1007,35 @@ mod tests {
             //- /main.rs crate:main deps:dep
             fn main($0foo: dep::Foo) {}
             "#,
+        )
+    }
+
+    #[test]
+    fn record_struct_usage_in_macro_call() {
+        // exact repro from #20716: struct field access inside write! must not panic
+        check_assist(
+            destructure_struct_binding,
+            r#"
+//- minicore: write, fmt
+use core::fmt::Write;
+struct Foo { y: i8 }
+
+fn main() {
+    let mut s = String::new();
+    let $0x = Foo { y: 8 };
+    write!(s, "{}", x.y).unwrap();
+}
+"#,
+            r#"
+use core::fmt::Write;
+struct Foo { y: i8 }
+
+fn main() {
+    let mut s = String::new();
+    let Foo { y } = Foo { y: 8 };
+    write!(s, "{}", y).unwrap();
+}
+"#,
         )
     }
 }

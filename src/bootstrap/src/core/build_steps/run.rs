@@ -180,6 +180,10 @@ impl Step for Miri {
         // Forward arguments. This may contain further arguments to the program
         // after another --, so this must be at the end.
         miri.args(builder.config.args());
+        // Add default edition for Miri tests (2021); defaulting to 2015 is often confusing.
+        if !builder.config.args().iter().any(|arg| arg.starts_with("--edition")) {
+            miri.arg("--edition=2021");
+        }
 
         miri.into_cmd().run(builder);
     }
@@ -358,6 +362,8 @@ impl Step for GenerateCompletions {
     }
 }
 
+/// The build step for generating the tables in `core/src/char/unicode/unicode_data.rs`
+/// and the tests in `library/coretests/tests/unicode/test_data.rs`.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct UnicodeTableGenerator;
 
@@ -375,7 +381,9 @@ impl Step for UnicodeTableGenerator {
 
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::UnicodeTableGenerator);
+        // Generated files that are checked into git:
         cmd.arg(builder.src.join("library/core/src/unicode/unicode_data.rs"));
+        cmd.arg(builder.src.join("library/coretests/tests/unicode/test_data.rs"));
         cmd.run(builder);
     }
 }

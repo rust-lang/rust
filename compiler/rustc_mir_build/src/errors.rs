@@ -932,13 +932,14 @@ pub(crate) struct IrrefutableLetPatternsIfLetGuard {
 )]
 #[note(
     "{$count ->
-    [one] this pattern
-    *[other] these patterns
-} will always match, so the `else` clause is useless"
+    [one] this pattern always matches, so the else clause is unreachable
+    *[other] these patterns always match, so the else clause is unreachable
+}"
 )]
-#[help("consider removing the `else` clause")]
 pub(crate) struct IrrefutableLetPatternsLetElse {
     pub(crate) count: usize,
+    #[help("remove this `else` block")]
+    pub(crate) else_span: Option<Span>,
 }
 
 #[derive(Diagnostic)]
@@ -1052,17 +1053,115 @@ pub(crate) struct TypeNotStructural<'tcx> {
     #[primary_span]
     #[label("constant of non-structural type")]
     pub(crate) span: Span,
-    #[label("`{$ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns")]
+    #[label(
+        "{$is_local ->
+        *[true] `{$ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+        [false] `{$ty}` is not usable in patterns
+    }"
+    )]
     pub(crate) ty_def_span: Span,
     pub(crate) ty: Ty<'tcx>,
     #[note(
-        "the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details"
+        "the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see \
+         https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details"
     )]
     pub(crate) manual_partialeq_impl_span: Option<Span>,
     #[note(
         "see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details"
     )]
     pub(crate) manual_partialeq_impl_note: bool,
+    #[subdiagnostic]
+    pub(crate) suggestion: Option<SuggestEq<'tcx>>,
+    pub(crate) is_local: bool,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum SuggestEq<'tcx> {
+    #[multipart_suggestion(
+        "{$manual_partialeq_impl ->
+            [false] if `{$ty}` manually implemented `PartialEq`, you could add
+            *[true] add
+        } a condition to the match arm checking for equality",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    AddIf {
+        #[suggestion_part(code = "binding")]
+        pat_span: Span,
+        #[suggestion_part(code = " if binding == {name}")]
+        if_span: Span,
+        name: String,
+        ty: Ty<'tcx>,
+        manual_partialeq_impl: bool,
+    },
+    #[multipart_suggestion(
+        "{$manual_partialeq_impl ->
+            [false] if `{$ty}` manually implemented `PartialEq`, you could add
+            *[true] add
+        } a check for equality to the condition of the match arm",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    AddToIf {
+        #[suggestion_part(code = "binding")]
+        pat_span: Span,
+        #[suggestion_part(code = " && binding == {name}")]
+        span: Span,
+        name: String,
+        ty: Ty<'tcx>,
+        manual_partialeq_impl: bool,
+    },
+    #[multipart_suggestion(
+        "{$manual_partialeq_impl ->
+            [false] if `{$ty}` manually implemented `PartialEq`, you could check
+            *[true] check
+        } for equality instead of pattern matching",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    AddToLetChain {
+        #[suggestion_part(code = "binding")]
+        pat_span: Span,
+        #[suggestion_part(code = " && binding == {name}")]
+        span: Span,
+        name: String,
+        ty: Ty<'tcx>,
+        manual_partialeq_impl: bool,
+    },
+    #[multipart_suggestion(
+        "{$manual_partialeq_impl ->
+            [false] if `{$ty}` manually implemented `PartialEq`, you could check
+            *[true] check
+        } for equality instead of pattern matching",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    ReplaceWithEq {
+        #[suggestion_part(code = "")]
+        removal: Span,
+        #[suggestion_part(code = " == ")]
+        eq: Span,
+        ty: Ty<'tcx>,
+        manual_partialeq_impl: bool,
+    },
+    #[multipart_suggestion(
+        "{$manual_partialeq_impl ->
+            [false] if `{$ty}` manually implemented `PartialEq`, you could check
+            *[true] check
+        } for equality instead of pattern matching",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    ReplaceLetElseWithIf {
+        #[suggestion_part(code = "if ")]
+        if_span: Span,
+        #[suggestion_part(code = " == ")]
+        eq: Span,
+        #[suggestion_part(code = " ")]
+        else_span: Span,
+        ty: Ty<'tcx>,
+        manual_partialeq_impl: bool,
+    },
 }
 
 #[derive(Diagnostic)]

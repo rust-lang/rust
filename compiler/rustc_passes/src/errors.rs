@@ -3,11 +3,9 @@ use std::path::{Path, PathBuf};
 
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, msg,
+    Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level, MultiSpan, msg,
 };
 use rustc_hir::Target;
-use rustc_hir::attrs::{MirDialect, MirPhase};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
@@ -237,15 +235,6 @@ pub(crate) struct ReprConflicting {
 }
 
 #[derive(Diagnostic)]
-#[diag("alignment must not be greater than `isize::MAX` bytes", code = E0589)]
-#[note("`isize::MAX` is {$size} for the current target")]
-pub(crate) struct InvalidReprAlignForTarget {
-    #[primary_span]
-    pub span: Span,
-    pub size: u64,
-}
-
-#[derive(Diagnostic)]
 #[diag("conflicting representation hints", code = E0566)]
 pub(crate) struct ReprConflictingLint;
 
@@ -310,7 +299,7 @@ pub(crate) enum UnusedNote {
     #[note("`default_method_body_is_const` has been replaced with `const` on traits")]
     DefaultMethodBodyConst,
     #[note(
-        "the `linker_messages` lint can only be controlled at the root of a crate that needs to be linked"
+        "the `linker_messages` and `linker_info` lints can only be controlled at the root of a crate that needs to be linked"
     )]
     LinkerMessagesBinaryCrateOnly,
 }
@@ -455,44 +444,6 @@ pub(crate) struct LangItemOnIncorrectTarget {
     pub name: Symbol,
     pub expected_target: Target,
     pub actual_target: Target,
-}
-
-pub(crate) struct InvalidAttrAtCrateLevel {
-    pub span: Span,
-    pub sugg_span: Option<Span>,
-    pub name: Symbol,
-    pub item: Option<ItemFollowingInnerAttr>,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) struct ItemFollowingInnerAttr {
-    pub span: Span,
-    pub kind: &'static str,
-}
-
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for InvalidAttrAtCrateLevel {
-    #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag =
-            Diag::new(dcx, level, msg!("`{$name}` attribute cannot be used at crate level"));
-        diag.span(self.span);
-        diag.arg("name", self.name);
-        // Only emit an error with a suggestion if we can create a string out
-        // of the attribute span
-        if let Some(span) = self.sugg_span {
-            diag.span_suggestion_verbose(
-                span,
-                msg!("perhaps you meant to use an outer attribute"),
-                String::new(),
-                Applicability::MachineApplicable,
-            );
-        }
-        if let Some(item) = self.item {
-            diag.arg("kind", item.kind);
-            diag.span_label(item.span, msg!("the inner attribute doesn't annotate this {$kind}"));
-        }
-        diag
-    }
 }
 
 #[derive(Diagnostic)]
@@ -815,14 +766,6 @@ pub(crate) struct UselessAssignment<'a> {
 pub(crate) struct InlineIgnoredForExported;
 
 #[derive(Diagnostic)]
-#[diag("{$repr}")]
-pub(crate) struct ObjectLifetimeErr {
-    #[primary_span]
-    pub span: Span,
-    pub repr: String,
-}
-
-#[derive(Diagnostic)]
 pub(crate) enum AttrApplication {
     #[diag("attribute should be applied to an enum", code = E0517)]
     Enum {
@@ -887,17 +830,6 @@ pub(crate) struct CannotStabilizeDeprecated {
     pub span: Span,
     #[label("the stability attribute annotates this item")]
     pub item_sp: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("can't mark as unstable using an already stable feature")]
-pub(crate) struct UnstableAttrForAlreadyStableFeature {
-    #[primary_span]
-    #[label("this feature is already stable")]
-    #[help("consider removing the attribute")]
-    pub attr_span: Span,
-    #[label("the stability attribute annotates this item")]
-    pub item_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1002,14 +934,6 @@ pub(crate) struct ImpliedFeatureNotExist {
     pub span: Span,
     pub feature: Symbol,
     pub implied_by: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag("the feature `{$feature}` has already been enabled", code = E0636)]
-pub(crate) struct DuplicateFeatureErr {
-    #[primary_span]
-    pub span: Span,
-    pub feature: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -1162,6 +1086,12 @@ pub(crate) struct ProcMacroBadSig {
 }
 
 #[derive(Diagnostic)]
+#[diag("the feature `{$feature}` has already been enabled")]
+pub(crate) struct DuplicateFeature {
+    pub feature: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(
     "the feature `{$feature}` has been stable since {$since} and no longer requires an attribute to enable"
 )]
@@ -1218,14 +1148,6 @@ pub(crate) struct SanitizeAttributeNotAllowed {
 pub(crate) struct RustcConstStableIndirectPairing {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("most attributes are not supported in `where` clauses")]
-#[help("only `#[cfg]` and `#[cfg_attr]` are supported")]
-pub(crate) struct UnsupportedAttributesInWhere {
-    #[primary_span]
-    pub span: MultiSpan,
 }
 
 #[derive(Diagnostic)]
@@ -1291,28 +1213,6 @@ pub(crate) struct ReprAlignShouldBeAlignStatic {
     #[help("use `#[rustc_align_static(...)]` instead")]
     pub span: Span,
     pub item: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag("`dialect` key required")]
-pub(crate) struct CustomMirPhaseRequiresDialect {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("`phase` argument requires a `dialect` argument")]
-    pub phase_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("the {$dialect} dialect is not compatible with the {$phase} phase")]
-pub(crate) struct CustomMirIncompatibleDialectAndPhase {
-    pub dialect: MirDialect,
-    pub phase: MirPhase,
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("this dialect...")]
-    pub dialect_span: Span,
-    #[label("... is not compatible with this phase")]
-    pub phase_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1450,4 +1350,11 @@ pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
     // `false` if we're in rustc_on_unimplemented, since its syntax is a lot more complex.
     #[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
     pub help: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
+pub(crate) struct OnMoveMalformedFormatLiterals {
+    pub name: Symbol,
 }

@@ -12,7 +12,7 @@
 //! constant.
 
 #![feature(rustc_attrs)]
-#![feature(generic_const_exprs)] //~ WARNING: the feature `generic_const_exprs` is incomplete
+#![feature(generic_const_exprs)]
 #![feature(trivial_bounds)]
 
 #![crate_type = "lib"]

@@ -365,6 +365,7 @@ impl<'a> State<'a> {
                 constness,
                 safety,
                 is_auto,
+                impl_restriction,
                 ident,
                 generics,
                 bounds,
@@ -375,6 +376,7 @@ impl<'a> State<'a> {
                 self.print_constness(*constness);
                 self.print_safety(*safety);
                 self.print_is_auto(*is_auto);
+                self.print_impl_restriction(impl_restriction);
                 self.word_nbsp("trait");
                 self.print_ident(*ident);
                 self.print_generic_params(&generics.params);
@@ -480,6 +482,20 @@ impl<'a> State<'a> {
                 }
             }
             ast::VisibilityKind::Inherited => {}
+        }
+    }
+
+    pub(crate) fn print_impl_restriction(&mut self, impl_restriction: &ast::ImplRestriction) {
+        match &impl_restriction.kind {
+            ast::RestrictionKind::Restricted { path, shorthand, .. } => {
+                let path = Self::to_string(|s| s.print_path(path, false, 0));
+                if *shorthand {
+                    self.word_nbsp(format!("impl({path})"))
+                } else {
+                    self.word_nbsp(format!("impl(in {path})"))
+                }
+            }
+            ast::RestrictionKind::Unrestricted => {}
         }
     }
 
@@ -865,7 +881,13 @@ impl<'a> State<'a> {
                 }
                 if items.is_empty() {
                     self.word("{}");
-                } else if let [(item, _)] = items.as_slice() {
+                } else if let [(item, _)] = items.as_slice()
+                    && !item
+                        .prefix
+                        .segments
+                        .first()
+                        .is_some_and(|seg| seg.ident.name == rustc_span::symbol::kw::SelfLower)
+                {
                     self.print_use_tree(item);
                 } else {
                     let cb = self.cbox(INDENT_UNIT);

@@ -1,0 +1,37 @@
+error[E0277]: the trait bound `(): SuperTrait` is not satisfied
+  --> $DIR/type-const-ice-issue-151631.rs:10:16
+   |
+LL | impl Trait for () {
+   |                ^^ the trait `SuperTrait` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/type-const-ice-issue-151631.rs:6:1
+   |
+LL | trait SuperTrait {}
+   | ^^^^^^^^^^^^^^^^
+note: required by a bound in `Trait`
+  --> $DIR/type-const-ice-issue-151631.rs:7:14
+   |
+LL | trait Trait: SuperTrait {
+   |              ^^^^^^^^^^ required by this bound in `Trait`
+
+error[E0277]: the trait bound `(): SuperTrait` is not satisfied
+  --> $DIR/type-const-ice-issue-151631.rs:17:5
+   |
+LL |     check(());
+   |     ^^^^^^^^^ the trait `SuperTrait` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/type-const-ice-issue-151631.rs:6:1
+   |
+LL | trait SuperTrait {}
+   | ^^^^^^^^^^^^^^^^
+note: required by a bound in `Trait`
+  --> $DIR/type-const-ice-issue-151631.rs:7:14
+   |
+LL | trait Trait: SuperTrait {
+   |              ^^^^^^^^^^ required by this bound in `Trait`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

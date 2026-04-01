@@ -2,7 +2,7 @@
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
 use std::intrinsics;
-
+//@ ignore-parallel-frontend different alloc ids
 const A: &u8 = unsafe {
     let ptr = intrinsics::const_allocate(1, 1);
     *ptr = 1;

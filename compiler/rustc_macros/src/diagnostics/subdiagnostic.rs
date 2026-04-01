@@ -227,9 +227,9 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
         quote! {
-            #diag.arg(
-                stringify!(#ident),
-                #field_binding
+            sub_args.insert(
+                stringify!(#ident).into(),
+                rustc_errors::IntoDiagArg::into_diag_arg(#field_binding, &mut #diag.long_ty_path)
             );
         }
     }
@@ -529,14 +529,25 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             }
         };
 
-        let span_field = self.span_field.value_ref();
+        let plain_args: TokenStream = self
+            .variant
+            .bindings()
+            .iter()
+            .filter(|binding| should_generate_arg(binding.ast()))
+            .map(|binding| self.generate_field_arg(binding))
+            .collect();
+        let plain_args = quote! {
+            let mut sub_args = rustc_errors::DiagArgMap::default();
+            #plain_args
+        };
 
+        let span_field = self.span_field.value_ref();
         let diag = &self.parent.diag;
         let mut calls = TokenStream::new();
         for (kind, messages) in kind_messages {
             let message = format_ident!("__message");
             let message_stream = messages.diag_message(Some(self.variant));
-            calls.extend(quote! { let #message = #diag.eagerly_translate(#message_stream); });
+            calls.extend(quote! { let #message = rustc_errors::format_diag_message(&#message_stream, &sub_args); });
 
             let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
             let call = match kind {
@@ -600,19 +611,6 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
             calls.extend(call);
         }
-        let store_args = quote! {
-            #diag.store_args();
-        };
-        let restore_args = quote! {
-            #diag.restore_args();
-        };
-        let plain_args: TokenStream = self
-            .variant
-            .bindings()
-            .iter()
-            .filter(|binding| should_generate_arg(binding.ast()))
-            .map(|binding| self.generate_field_arg(binding))
-            .collect();
 
         let formatting_init = &self.formatting_init;
 
@@ -626,10 +624,10 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             #init
             #formatting_init
             #attr_args
-            #store_args
+            // #store_args
             #plain_args
             #calls
-            #restore_args
+            // #restore_args
         })
     }
 }

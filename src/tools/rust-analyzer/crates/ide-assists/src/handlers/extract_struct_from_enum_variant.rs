@@ -1,7 +1,7 @@
 use std::iter;
 
 use either::Either;
-use hir::{HasCrate, Module, ModuleDef, Name, Variant};
+use hir::{EnumVariant, HasCrate, Module, ModuleDef, Name};
 use ide_db::{
     FxHashSet, RootDatabase,
     defs::Definition,
@@ -16,9 +16,7 @@ use syntax::{
     SyntaxKind::*,
     SyntaxNode, T,
     ast::{
-        self, AstNode, HasAttrs, HasGenericParams, HasName, HasVisibility,
-        edit::{AstNodeEdit, IndentLevel},
-        make,
+        self, AstNode, HasAttrs, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit, make,
     },
     match_ast, ted,
 };
@@ -63,7 +61,7 @@ pub(crate) fn extract_struct_from_enum_variant(
             let edition = enum_hir.krate(ctx.db()).edition(ctx.db());
             let variant_hir_name = variant_hir.name(ctx.db());
             let enum_module_def = ModuleDef::from(enum_hir);
-            let usages = Definition::Variant(variant_hir).usages(&ctx.sema).all();
+            let usages = Definition::EnumVariant(variant_hir).usages(&ctx.sema).all();
 
             let mut visited_modules_set = FxHashSet::default();
             let current_module = enum_hir.module(ctx.db());
@@ -163,7 +161,7 @@ fn extract_field_list_if_applicable(
     }
 }
 
-fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Variant) -> bool {
+fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &EnumVariant) -> bool {
     variant
         .parent_enum(db)
         .module(db)
@@ -175,7 +173,7 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
                 def,
                 ModuleDef::Module(_)
                     | ModuleDef::Adt(_)
-                    | ModuleDef::Variant(_)
+                    | ModuleDef::EnumVariant(_)
                     | ModuleDef::Trait(_)
                     | ModuleDef::TypeAlias(_)
                     | ModuleDef::BuiltinType(_)
@@ -290,7 +288,6 @@ fn create_struct_def(
             field_list.clone().into()
         }
     };
-    let field_list = field_list.indent(IndentLevel::single());
 
     let strukt = make::struct_(enum_vis, name, generics, field_list).clone_for_update();
 

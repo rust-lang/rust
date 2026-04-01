@@ -288,8 +288,8 @@ impl<T: PointeeSized> *mut T {
     ///     println!("We got back the value: {}!", ptr.as_ref_unchecked());
     /// }
     /// ```
-    #[stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ptr_as_ref_unchecked", since = "1.95.0")]
+    #[rustc_const_stable(feature = "ptr_as_ref_unchecked", since = "1.95.0")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_ref_unchecked<'a>(self) -> &'a T {
@@ -611,8 +611,8 @@ impl<T: PointeeSized> *mut T {
     /// # assert_eq!(s, [4, 2, 3]);
     /// println!("{s:?}"); // It'll print: "[4, 2, 3]".
     /// ```
-    #[stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ptr_as_ref_unchecked", since = "1.95.0")]
+    #[rustc_const_stable(feature = "ptr_as_ref_unchecked", since = "1.95.0")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_mut_unchecked<'a>(self) -> &'a mut T {

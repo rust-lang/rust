@@ -48,6 +48,7 @@ declare_clippy_lint! {
     restriction,
     "unions without a `#[repr(C)]` attribute"
 }
+
 declare_lint_pass!(DefaultUnionRepresentation => [DEFAULT_UNION_REPRESENTATION]);
 
 impl<'tcx> LateLintPass<'tcx> for DefaultUnionRepresentation {

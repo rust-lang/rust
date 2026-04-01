@@ -74,6 +74,8 @@ declare_clippy_lint! {
     "boolean expressions that contain terminals which can be eliminated"
 }
 
+impl_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, OVERLY_COMPLEX_BOOL_EXPR]);
+
 // For each pairs, both orders are considered.
 const METHODS_WITH_NEGATION: [(Option<RustcVersion>, Symbol, Symbol); 3] = [
     (None, sym::is_some, sym::is_none),
@@ -90,8 +92,6 @@ impl NonminimalBool {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, OVERLY_COMPLEX_BOOL_EXPR]);
 
 impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
     fn check_fn(

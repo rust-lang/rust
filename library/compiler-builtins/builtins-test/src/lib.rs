@@ -22,7 +22,7 @@ extern crate alloc;
 use compiler_builtins::float::Float;
 use compiler_builtins::int::{Int, MinInt};
 use rand_xoshiro::Xoshiro128StarStar;
-use rand_xoshiro::rand_core::{RngCore, SeedableRng};
+use rand_xoshiro::rand_core::{Rng, SeedableRng};
 
 /// Sets the number of fuzz iterations run for most tests. In practice, the vast majority of bugs
 /// are caught by the edge case testers. Most of the remaining bugs triggered by more complex

@@ -14,5 +14,9 @@ targets=(
 )
 for target in "${targets[@]}"; do
     # Only run the `mem` tests to avoid this taking too long.
-    cargo miri test --manifest-path builtins-test/Cargo.toml --features no-asm --target "$target" -- mem
+    cargo miri test \
+        --manifest-path builtins-test/Cargo.toml \
+        --features no-asm \
+        --target "$target" \
+        -- mem
 done

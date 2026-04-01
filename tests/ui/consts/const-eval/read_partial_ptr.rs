@@ -1,5 +1,5 @@
 //! Ensure we error when trying to load from a pointer whose provenance has been messed with.
-
+//@ ignore-parallel-frontend different alloc ids
 const PARTIAL_OVERWRITE: () = {
     let mut p = &42;
     // Overwrite one byte with a no-provenance value.

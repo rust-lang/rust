@@ -49,7 +49,7 @@ const BASE_FN: &[&str] = &[
     label_strs::type_of,
     // And a big part of compilation (that we eventually want to cache) is type inference
     // information:
-    label_strs::typeck,
+    label_strs::typeck_root,
 ];
 
 /// DepNodes for Hir, which is pretty much everything

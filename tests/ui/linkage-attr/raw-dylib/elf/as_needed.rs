@@ -15,7 +15,7 @@
 
 #![allow(incomplete_features)]
 #![feature(raw_dylib_elf)]
-#![feature(native_link_modifiers_as_needed)]
+#![cfg_attr(not(no_modifier), feature(native_link_modifiers_as_needed))]
 
 #[cfg_attr(
     as_needed,

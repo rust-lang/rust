@@ -1606,7 +1606,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--main-color);
 	background-color: var(--stab-background-color);
 	width: fit-content;
-	white-space: pre-wrap;
 	border-radius: 3px;
 	display: inline;
 	vertical-align: baseline;

@@ -5,6 +5,7 @@ use std::rc::Rc;
 use itertools::Itertools as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{Subdiagnostic, msg};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
@@ -524,31 +525,30 @@ struct LocalLabel<'a> {
 /// A custom `Subdiagnostic` implementation so that the notes are delivered in a specific order
 impl Subdiagnostic for LocalLabel<'_> {
     fn add_to_diag<G: rustc_errors::EmissionGuarantee>(self, diag: &mut rustc_errors::Diag<'_, G>) {
-        // Because parent uses this field , we need to remove it delay before adding it.
-        diag.remove_arg("name");
-        diag.arg("name", self.name);
-        diag.remove_arg("is_generated_name");
-        diag.arg("is_generated_name", self.is_generated_name);
-        diag.remove_arg("is_dropped_first_edition_2024");
-        diag.arg("is_dropped_first_edition_2024", self.is_dropped_first_edition_2024);
-        let msg = diag.eagerly_translate(msg!(
-            "{$is_generated_name ->
-                [true] this value will be stored in a temporary; let us call it `{$name}`
-                *[false] `{$name}` calls a custom destructor
-            }"
-        ));
-        diag.span_label(self.span, msg);
+        diag.span_label(
+            self.span,
+            msg!(
+                "{$is_generated_name ->
+                    [true] this value will be stored in a temporary; let us call it `{$name}`
+                    *[false] `{$name}` calls a custom destructor
+                }"
+            )
+            .arg("name", self.name)
+            .arg("is_generated_name", self.is_generated_name)
+            .format(),
+        );
         for dtor in self.destructors {
             dtor.add_to_diag(diag);
         }
-        let msg =
-            diag.eagerly_translate(msg!(
-                "{$is_dropped_first_edition_2024 ->
-                    [true] up until Edition 2021 `{$name}` is dropped last but will be dropped earlier in Edition 2024
-                    *[false] `{$name}` will be dropped later as of Edition 2024
-                }"
-            ));
-        diag.span_label(self.span, msg);
+        diag.span_label(self.span, msg!(
+            "{$is_dropped_first_edition_2024 ->
+                [true] up until Edition 2021 `{$name}` is dropped last but will be dropped earlier in Edition 2024
+                *[false] `{$name}` will be dropped later as of Edition 2024
+            }"
+        )
+            .arg("is_dropped_first_edition_2024", self.is_dropped_first_edition_2024)
+            .arg("name", self.name)
+            .format());
     }
 }
 

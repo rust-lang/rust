@@ -14,8 +14,6 @@ warning: `id` is ambiguous
 LL |     id();
    |     ^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `id` could refer to the function imported here
   --> $DIR/ambiguous-4-extern.rs:13:9
@@ -29,6 +27,8 @@ note: `id` could also refer to the function imported here
 LL | pub use handwritten::*;
    |         ^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `id` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
 note: the lint level is defined here
   --> $DIR/ambiguous-4-extern.rs:5:9
    |
@@ -44,8 +44,6 @@ warning: `id` is ambiguous
 LL |     id();
    |     ^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `id` could refer to the function imported here
   --> $DIR/ambiguous-4-extern.rs:13:9
@@ -59,6 +57,8 @@ note: `id` could also refer to the function imported here
 LL | pub use handwritten::*;
    |         ^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `id` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
 note: the lint level is defined here
   --> $DIR/ambiguous-4-extern.rs:5:9
    |

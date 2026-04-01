@@ -7,6 +7,7 @@ use hir_def::{
     TraitId, TypeOrConstParamId,
     attrs::{AttrFlags, Docs, IsInnerDoc},
     expr_store::path::Path,
+    hir::generics::GenericParams,
     item_scope::ItemInNs,
     per_ns::Namespace,
     resolver::{HasResolver, Resolver, TypeNs},
@@ -26,9 +27,9 @@ use intern::Symbol;
 use stdx::never;
 
 use crate::{
-    Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
-    Field, Function, GenericParam, HasCrate, Impl, LangItem, LifetimeParam, Macro, Module,
-    ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, EnumVariant,
+    ExternCrateDecl, Field, Function, GenericParam, HasCrate, Impl, LangItem, LifetimeParam, Macro,
+    Module, ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -199,7 +200,7 @@ macro_rules! impl_has_attrs {
 }
 
 impl_has_attrs![
-    (Variant, EnumVariantId),
+    (EnumVariant, EnumVariantId),
     (Static, StaticId),
     (Const, ConstId),
     (Trait, TraitId),
@@ -377,7 +378,7 @@ fn resolve_assoc_or_field(
     let ty = match base_def {
         TypeNs::SelfType(id) => Impl::from(id).self_ty(db),
         TypeNs::GenericParam(param) => {
-            let generic_params = db.generic_params(param.parent());
+            let generic_params = GenericParams::of(db, param.parent());
             if generic_params[param.local_id()].is_trait_self() {
                 // `Self::assoc` in traits should refer to the trait itself.
                 let parent_trait = |container| match container {
@@ -406,7 +407,7 @@ fn resolve_assoc_or_field(
         TypeNs::AdtId(id) | TypeNs::AdtSelfType(id) => Adt::from(id).ty(db),
         TypeNs::EnumVariantId(id) => {
             // Enum variants don't have path candidates.
-            let variant = Variant::from(id);
+            let variant = EnumVariant::from(id);
             return resolve_field(db, variant.into(), name, ns);
         }
         TypeNs::TypeAliasId(id) => {
@@ -443,7 +444,7 @@ fn resolve_assoc_or_field(
                 .id
                 .enum_variants(db)
                 .variant(&name)
-                .map(|variant| DocLinkDef::ModuleDef(ModuleDef::Variant(variant.into())));
+                .map(|variant| DocLinkDef::ModuleDef(ModuleDef::EnumVariant(variant.into())));
         }
     };
     resolve_field(db, variant_def, name, ns)
@@ -505,7 +506,7 @@ fn resolve_impl_trait_item<'db>(
 
 fn resolve_field(
     db: &dyn HirDatabase,
-    def: VariantDef,
+    def: Variant,
     name: Name,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
