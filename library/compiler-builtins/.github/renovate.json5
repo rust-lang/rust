@@ -10,10 +10,10 @@
       matchCategories: [
         "rust"
       ],
-      matchUpdateTypes: [
-        "patch"
+      matchJsonata: [
+        "isBreaking != true"
       ],
-      // Disable patch updates for single dependencies because patches
+      // Disable non-breaking change updates because they
       // are updated periodically with lockfile maintainance.
       enabled: false,
     },
