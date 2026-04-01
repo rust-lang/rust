@@ -2376,7 +2376,12 @@ fn clean_middle_opaque_bounds<'tcx>(
 }
 
 pub(crate) fn clean_field<'tcx>(field: &hir::FieldDef<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
-    clean_field_with_def_id(field.def_id.to_def_id(), field.ident.name, clean_ty(field.ty, cx), cx)
+    clean_field_with_def_id(
+        field.def_id.to_def_id(),
+        field.ident.name,
+        clean_ty(field.ty, cx),
+        cx.tcx,
+    )
 }
 
 pub(crate) fn clean_middle_field(field: &ty::FieldDef, cx: &mut DocContext<'_>) -> Item {
@@ -2389,7 +2394,7 @@ pub(crate) fn clean_middle_field(field: &ty::FieldDef, cx: &mut DocContext<'_>) 
             Some(field.did),
             None,
         ),
-        cx,
+        cx.tcx,
     )
 }
 
@@ -2397,9 +2402,9 @@ pub(crate) fn clean_field_with_def_id(
     def_id: DefId,
     name: Symbol,
     ty: Type,
-    cx: &mut DocContext<'_>,
+    tcx: TyCtxt<'_>,
 ) -> Item {
-    Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx.tcx)
+    Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), tcx)
 }
 
 pub(crate) fn clean_variant_def(variant: &ty::VariantDef, cx: &mut DocContext<'_>) -> Item {
@@ -2463,7 +2468,7 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
                         field.did,
                         field.name,
                         clean_middle_ty(ty::Binder::dummy(ty), cx, Some(field.did), None),
-                        cx,
+                        cx.tcx,
                     )
                 })
                 .collect(),
@@ -2488,7 +2493,7 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
                         field.did,
                         field.name,
                         clean_middle_ty(ty::Binder::dummy(ty), cx, Some(field.did), None),
-                        cx,
+                        cx.tcx,
                     )
                 })
                 .collect(),
