@@ -137,7 +137,7 @@ pub(crate) fn try_inline(
             })
         }
         Res::Def(DefKind::Macro(kinds), did) => {
-            let mac = build_macro(cx, did, name, kinds);
+            let mac = build_macro(cx.tcx, did, name, kinds);
 
             // FIXME: handle attributes and derives that aren't proc macros, and macros with
             // multiple kinds
@@ -769,17 +769,17 @@ fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::St
 }
 
 fn build_macro(
-    cx: &mut DocContext<'_>,
+    tcx: TyCtxt<'_>,
     def_id: DefId,
     name: Symbol,
     macro_kinds: MacroKinds,
 ) -> clean::ItemKind {
-    match CStore::from_tcx(cx.tcx).load_macro_untracked(cx.tcx, def_id) {
+    match CStore::from_tcx(tcx).load_macro_untracked(tcx, def_id) {
         // FIXME: handle attributes and derives that aren't proc macros, and macros with multiple
         // kinds
         LoadedMacro::MacroDef { def, .. } => match macro_kinds {
             MacroKinds::BANG => clean::MacroItem(clean::Macro {
-                source: utils::display_macro_source(cx.tcx, name, &def),
+                source: utils::display_macro_source(tcx, name, &def),
                 macro_rules: def.macro_rules,
             }),
             MacroKinds::DERIVE => clean::ProcMacroItem(clean::ProcMacro {
