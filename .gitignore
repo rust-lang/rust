@@ -107,3 +107,4 @@ flake.lock
 compile_commands.json
 .cache
 .clangd
+dialect.rs

@@ -15,10 +15,12 @@
  */
 
 use melior::Context;
+use melior::dialect::arith;
+use melior::dialect::ods::arith::{ConstantOperation, MaxSIOperation, MaximumFOperation};
 use melior::ir::attribute::DenseI32ArrayAttribute;
 use melior::ir::operation::OperationMutLike;
-use melior::ir::r#type::IntegerType;
-use melior::ir::{Attribute, Location, Operation, Type, TypeLike, Value};
+use melior::ir::r#type::{IntegerType, RankedTensorType};
+use melior::ir::{Attribute, Location, Operation, Type, TypeLike, Value, ValueLike};
 
 use crate::errors::Error;
 use crate::ffi::mlirCreateTritonPointerType;
@@ -94,6 +96,38 @@ pub fn store<'ctx>(
     mask: Value<'ctx, 'ctx>,
 ) -> Result<StoreOperation<'ctx>, Error> {
     Ok(StoreOperation::builder(context, location).ptr(ptr).value(value).mask(mask).build())
+}
+
+pub fn maximumf<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    a: Value<'ctx, 'ctx>,
+    b: Value<'ctx, 'ctx>,
+) -> Result<MaximumFOperation<'ctx>, Error> {
+    todo!()
+    // Ok(MaximumOperation::builder(context, location).a(a).b(b).build())
+}
+
+pub fn maxsi<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    a: Value<'ctx, 'ctx>,
+    b: Value<'ctx, 'ctx>,
+) -> Result<MaxSIOperation<'ctx>, Error> {
+    todo!()
+    // Ok(MaximumOperation::builder(context, location).a(a).b(b).build())
+}
+
+pub fn zeros_like<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, 'ctx>,
+) -> Result<ConstantOperation<'ctx>, Error> {
+    let ty: RankedTensorType<'ctx> = src
+        .r#type()
+        .try_into()
+        .map_err(|_| Error::InvalidType { msg: "Invalid tensor type".to_string() })?;
+    todo!()
 }
 
 #[cfg(test)]

@@ -491,7 +491,7 @@ impl<'a> TritonCodegen<'a> {
 
         let pointee_ty = match arg1_ty.kind() {
             TyKind::RawPtr(pointee_ty, _) => {
-                self.type_mapper.map_type(self.module.context(), &tcx, pointee_ty)
+                self.type_mapper.map_type(self.module.context(), &tcx, &pointee_ty)
             }
             _ => todo!("codegen_create_tensor: arg1_ty: {:?}", arg1_ty),
         };

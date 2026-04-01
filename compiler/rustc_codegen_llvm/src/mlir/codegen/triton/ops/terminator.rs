@@ -20,8 +20,8 @@ use melior::ir::operation::OperationLike;
 use melior::ir::r#type::TupleType;
 use melior::ir::{BlockLike, BlockRef, Location, Operation, TypeLike, Value};
 use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, Terminator, UnwindAction};
-use rustc_middle::ty::{self, EarlyBinder, Instance, TyCtxt, TyKind, TypingEnv};
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::{self, EarlyBinder, Instance, TyCtxt, TyKind, TypingEnv};
 use rustc_mlir::shared::cf::create_cf_br;
 use rustc_mlir::triton::call;
 use rustc_span::Span;
@@ -174,14 +174,20 @@ impl<'a> TritonCodegen<'a> {
         );
 
         let method: LocalCallHandler<'a, 'tcx> = match func_name.as_str() {
+            "core::ops::Mul::mul" => TritonCodegen::codegen_mul_call as LocalCallHandler<'a, 'tcx>,
+            "core::ops::Add::add" => TritonCodegen::codegen_add_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::program_id" => {
                 TritonCodegen::codegen_program_id as LocalCallHandler<'a, 'tcx>
             }
             "triton::Triton::arange" => TritonCodegen::codegen_arange as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::load" => TritonCodegen::codegen_load as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::store" => TritonCodegen::codegen_store as LocalCallHandler<'a, 'tcx>,
-            "core::ops::Mul::mul" => TritonCodegen::codegen_mul_call as LocalCallHandler<'a, 'tcx>,
-            "core::ops::Add::add" => TritonCodegen::codegen_add_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::maximum" => {
+                TritonCodegen::codegen_maximum as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::zeros_like" => {
+                TritonCodegen::codegen_zeros_like as LocalCallHandler<'a, 'tcx>
+            }
             "triton::types::Comparison::lt" => {
                 TritonCodegen::codegen_lt_call as LocalCallHandler<'a, 'tcx>
             }

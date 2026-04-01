@@ -24,6 +24,7 @@ use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_mlir::shared::arith::{Int, create_int_constant};
 use rustc_mlir::triton::program::{ProgramAxis, create_get_program_id};
 use rustc_mlir::triton::tensor::{add_ptr, arange, load, store};
+use rustc_mlir::triton::tensor::{maximumf, zeros_like};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 
@@ -212,5 +213,93 @@ impl<'a> TritonCodegen<'a> {
         mlir_block.append_operation(store_op);
 
         Ok(None)
+    }
+
+    pub fn codegen_maximum<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        target: &Option<BasicBlock>,
+        unwind: &UnwindAction,
+        call_source: &CallSource,
+        fn_span: &Span,
+        mlir_block: &BlockRef<'a, 'a>,
+        ssa_values: &mut SsaValues<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        println!(
+            "[DEBUG] TritonCodegen::codegen_maximum: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
+            func, args, destination, target, unwind, call_source, fn_span
+        );
+
+        debug_assert!(
+            args.len() == 2,
+            "TritonCodegen::codegen_maximum: args length must be 2: {:?}",
+            args
+        );
+
+        let arg0 = &args[0].node;
+        let arg1 = &args[1].node;
+
+        let x =
+            self.codegen_operand(tcx, instance, arg0, arg0.ty(mir, tcx), mlir_block, ssa_values)?;
+        let y =
+            self.codegen_operand(tcx, instance, arg1, arg1.ty(mir, tcx), mlir_block, ssa_values)?;
+
+        todo!()
+        // let maximum_op: Operation<'a> =
+        //     maximumf(self.module.context(), Location::unknown(self.module.context()), x, y)
+        //         .map_err(|e| MlirError::CreateOperation { err: e })?
+        //         .into();
+        // let result = maximum_op.result(0).expect("Maximum operation result not found");
+        // eprintln!("[DEBUG] AXM TritonCodegen::codegen_maximum: {:?}", maximum_op.to_string());
+        // mlir_block.append_operation(maximum_op);
+        // Ok(Some(result.into()))
+    }
+
+    pub fn codegen_zeros_like<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        target: &Option<BasicBlock>,
+        unwind: &UnwindAction,
+        call_source: &CallSource,
+        fn_span: &Span,
+        mlir_block: &BlockRef<'a, 'a>,
+        ssa_values: &mut SsaValues<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        println!(
+            "[DEBUG] TritonCodegen::codegen_zeros_like: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
+            func, args, destination, target, unwind, call_source, fn_span
+        );
+
+        debug_assert!(
+            args.len() == 1,
+            "TritonCodegen::codegen_zeros_like: args length must be 1: {:?}",
+            args
+        );
+
+        let arg0 = &args[0].node;
+        let tensor =
+            self.codegen_operand(tcx, instance, arg0, arg0.ty(mir, tcx), mlir_block, ssa_values)?;
+
+        todo!()
+        // let zeros_like_op: Operation<'a> =
+        //     zeros_like(self.module.context(), Location::unknown(self.module.context()), tensor)
+        //         .map_err(|e| MlirError::CreateOperation { err: e })?
+        //         .into();
+        // let result = zeros_like_op.result(0).expect("ZerosLike operation result not found");
+        // eprintln!("[DEBUG] AXM TritonCodegen::codegen_zeros_like: {:?}", zeros_like_op.to_string());
+        // mlir_block.append_operation(zeros_like_op);
+        // Ok(Some(result.into()))
     }
 }
