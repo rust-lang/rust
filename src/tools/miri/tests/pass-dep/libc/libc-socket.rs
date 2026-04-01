@@ -5,12 +5,18 @@
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
+#[path = "../../utils/mod.rs"]
+mod utils;
+
 use std::io::{self, ErrorKind};
 use std::time::Duration;
 #[allow(unused)]
 use std::{mem::MaybeUninit, thread};
 
 use libc_utils::*;
+use utils::check_nondet;
+
+const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
 fn main() {
     test_socket_close();
@@ -29,10 +35,12 @@ fn main() {
     }
     test_bind_ipv4_invalid_addr_len();
     test_bind_ipv6();
-
     test_listen();
 
     test_accept_connect();
+    test_send_peek_recv();
+    test_partial_send_recv();
+    test_write_read();
 
     test_getsockname_ipv4();
     test_getsockname_ipv4_random_port();
@@ -252,6 +260,244 @@ fn test_accept_connect() {
             size_of::<libc::sockaddr_in>() as libc::socklen_t,
         ));
     }
+
+    server_thread.join().unwrap();
+}
+
+/// Test sending bytes into a connected stream and then peeking and receiving
+/// them from the other end.
+/// We especially want to test that the peeking doesn't remove the bytes from
+/// the queue.
+fn test_send_peek_recv() {
+    let server_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+    let addr = net::ipv4_sock_addr(net::IPV4_LOCALHOST, 0);
+    unsafe {
+        errno_check(libc::bind(
+            server_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ));
+    }
+
+    unsafe {
+        errno_check(libc::listen(server_sockfd, 16));
+    }
+
+    // Retrieve actual listener address because we used a randomized port.
+    let (_, server_addr) =
+        sockname(|storage, len| unsafe { libc::getsockname(server_sockfd, storage, len) }).unwrap();
+
+    let LibcSocketAddr::V4(addr) = server_addr else {
+        // We bound an IPv4 address so we also expect
+        // an IPv4 address to be returned.
+        panic!()
+    };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _peer_addr) =
+            sockname(|storage, len| unsafe { libc::accept(server_sockfd, storage, len) }).unwrap();
+
+        // Write the bytes into the stream.
+        let bytes_written = unsafe {
+            errno_result(libc_utils::net::send_all(
+                peerfd,
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                0,
+            ))
+            .unwrap()
+        };
+        assert_eq!(bytes_written as usize, TEST_BYTES.len());
+    });
+
+    unsafe {
+        errno_check(libc::connect(
+            client_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ));
+    }
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    let bytes_read = unsafe {
+        errno_result(libc::recv(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc::MSG_PEEK,
+        ))
+        .unwrap()
+    } as usize;
+
+    // We cannot have "peek all" since peeks don't remove the bytes from the buffer.
+    // Thus, we only check that the bytes we read are a prefix of the bytes we wrote.
+    assert_eq!(&buffer[..bytes_read], &TEST_BYTES[..bytes_read]);
+
+    // Since the bytes aren't removed from the queue by peeking, we should be
+    // able to read the same bytes again into a new buffer.
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    let bytes_read = unsafe {
+        errno_result(libc_utils::net::recv_all(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            0,
+        ))
+        .unwrap()
+    };
+
+    assert_eq!(bytes_read as usize, TEST_BYTES.len());
+    assert_eq!(&buffer, TEST_BYTES);
+
+    server_thread.join().unwrap();
+}
+
+/// Test that we actually do partial sends and partial receives for sockets.
+fn test_partial_send_recv() {
+    let server_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+    let addr = net::ipv4_sock_addr(net::IPV4_LOCALHOST, 0);
+    unsafe {
+        errno_check(libc::bind(
+            server_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ));
+    }
+
+    unsafe {
+        errno_check(libc::listen(server_sockfd, 16));
+    }
+
+    // Retrieve actual listener address because we used a randomized port.
+    let (_, server_addr) =
+        sockname(|storage, len| unsafe { libc::getsockname(server_sockfd, storage, len) }).unwrap();
+
+    let LibcSocketAddr::V4(addr) = server_addr else {
+        // We bound an IPv4 address so we also expect
+        // an IPv4 address to be returned.
+        panic!()
+    };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _peer_addr) =
+            sockname(|storage, len| unsafe { libc::accept(server_sockfd, storage, len) }).unwrap();
+
+        // Yield back to client to test that we do incomplete writes.
+        thread::sleep(Duration::from_millis(10));
+
+        // We know the buffer contains enough bytes to test incomplete reads.
+
+        // Ensure we sometimes do incomplete reads.
+        check_nondet(|| {
+            let mut buffer = [0u8; 4];
+            let bytes_read =
+                unsafe { errno_result(libc::read(peerfd, buffer.as_mut_ptr().cast(), 4)).unwrap() };
+            bytes_read == 4
+        });
+    });
+
+    unsafe {
+        errno_result(libc::connect(
+            client_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ))
+        .unwrap();
+    };
+
+    // Ensure we sometimes do incomplete writes.
+    check_nondet(|| {
+        let bytes_written =
+            unsafe { errno_result(libc::write(client_sockfd, [0; 4].as_ptr().cast(), 4)).unwrap() };
+        bytes_written == 4
+    });
+
+    let buffer = [0u8; 100_000];
+    // Write a lot of bytes into the socket such that we can test
+    // incomplete reads.
+    let bytes_written = unsafe {
+        errno_result(libc_utils::write_all(client_sockfd, buffer.as_ptr().cast(), buffer.len()))
+            .unwrap()
+    };
+    assert_eq!(bytes_written as usize, buffer.len());
+
+    server_thread.join().unwrap();
+}
+
+/// Test writing bytes into a connected stream and then reading them
+/// from the other end.
+/// We want to test this because `write` and `read` should be the same as
+/// `send` and `recv` with zero flags.
+fn test_write_read() {
+    let server_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+    let addr = net::ipv4_sock_addr(net::IPV4_LOCALHOST, 0);
+    unsafe {
+        errno_check(libc::bind(
+            server_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ));
+    }
+
+    unsafe {
+        errno_check(libc::listen(server_sockfd, 16));
+    }
+
+    // Retrieve actual listener address because we used a randomized port.
+    let (_, server_addr) =
+        sockname(|storage, len| unsafe { libc::getsockname(server_sockfd, storage, len) }).unwrap();
+
+    let LibcSocketAddr::V4(addr) = server_addr else {
+        // We bound an IPv4 address so we also expect
+        // an IPv4 address to be returned.
+        panic!()
+    };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _peer_addr) =
+            sockname(|storage, len| unsafe { libc::accept(server_sockfd, storage, len) }).unwrap();
+
+        // Write some bytes into the stream.
+        let bytes_written = unsafe {
+            errno_result(libc_utils::write_all(
+                peerfd,
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+            ))
+            .unwrap()
+        };
+        assert_eq!(bytes_written as usize, TEST_BYTES.len());
+    });
+
+    unsafe {
+        errno_check(libc::connect(
+            client_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ));
+    }
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    let bytes_read = unsafe {
+        errno_result(libc_utils::read_all(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len()))
+            .unwrap()
+    };
+
+    assert_eq!(bytes_read as usize, TEST_BYTES.len());
+    assert_eq!(&buffer, TEST_BYTES);
 
     server_thread.join().unwrap();
 }
