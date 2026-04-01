@@ -291,9 +291,9 @@ impl<R: ?Sized> BufReader<R> {
 }
 
 // This is only used by a test which asserts that the initialization-tracking is correct.
-#[cfg(test)]
 impl<R: ?Sized> BufReader<R> {
-    #[allow(missing_docs)]
+    #[unstable(feature = "io_internals", issue = "none")]
+    #[doc(hidden)]
     pub fn initialized(&self) -> usize {
         self.buf.initialized()
     }

@@ -1,12 +1,5 @@
-use crate::io::{Error, ErrorKind, const_error};
-use crate::sys::io::{decode_error_kind, error_string};
-use crate::{error, fmt};
-
-// Make sure that all these are used even when running tests
-#[cfg(test)]
-const _: () = {
-    let _ = (crate::sys::io::errno, crate::sys::io::is_interrupted);
-};
+use alloc::io::{Error, ErrorKind, const_error};
+use core::{error, fmt};
 
 #[test]
 fn test_size() {
@@ -16,10 +9,12 @@ fn test_size() {
 #[test]
 fn test_debug_error() {
     let code = 6;
-    let msg = error_string(code);
-    let kind = decode_error_kind(code);
+    let err = Error::from_raw_os_error(code);
+    let mut msg = err.to_string();
+    msg.truncate(msg.find('(').unwrap() - 1);
+    let kind = err.kind();
 
-    let err = Error::new(ErrorKind::InvalidInput, Error::from_raw_os_error(code));
+    let err = Error::new(ErrorKind::InvalidInput, err);
 
     let expected = format!(
         "Custom {{ \
@@ -94,7 +89,7 @@ fn test_errorkind_packing() {
 
 #[test]
 fn test_simple_message_packing() {
-    use crate::io::ErrorKind::*;
+    use std::io::ErrorKind::*;
     macro_rules! check_simple_msg {
         ($err:expr, $kind:ident, $msg:literal) => {{
             let e = &$err;

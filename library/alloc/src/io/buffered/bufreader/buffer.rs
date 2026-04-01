@@ -72,7 +72,7 @@ impl Buffer {
     }
 
     // This is only used by a test which asserts that the initialization-tracking is correct.
-    #[cfg(test)]
+    #[inline]
     pub fn initialized(&self) -> usize {
         self.initialized
     }

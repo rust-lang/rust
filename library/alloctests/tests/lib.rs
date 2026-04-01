@@ -1,6 +1,11 @@
+#![feature(alloc_io)]
 #![feature(allocator_api)]
 #![feature(binary_heap_pop_if)]
+#![feature(buf_read_has_data_left)]
+#![feature(can_vector)]
 #![feature(const_heap)]
+#![feature(core_io_borrowed_buf)]
+#![feature(cursor_split)]
 #![feature(deque_extend_front)]
 #![feature(iter_array_chunks)]
 #![feature(cow_is_borrowed)]
@@ -22,6 +27,11 @@
 #![feature(slice_range)]
 #![feature(slice_partial_sort_unstable)]
 #![feature(inplace_iteration)]
+#![feature(io_const_error)]
+#![feature(io_error_internals)]
+#![feature(io_error_uncategorized)]
+#![feature(io_internals)]
+#![feature(io_slice_as_bytes)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(slice_partition_dedup)]
@@ -33,6 +43,9 @@
 #![feature(thin_box)]
 #![feature(drain_keep_rest)]
 #![feature(local_waker)]
+#![feature(read_buf)]
+#![feature(seek_io_take_position)]
+#![feature(seek_stream_len)]
 #![feature(str_as_str)]
 #![feature(strict_provenance_lints)]
 #![feature(string_replace_in_place)]
@@ -41,6 +54,7 @@
 #![feature(macro_metavar_expr_concat)]
 #![feature(vec_peek_mut)]
 #![feature(vec_try_remove)]
+#![feature(write_all_vectored)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -62,6 +76,7 @@ mod const_fns;
 mod cow_str;
 mod fmt;
 mod heap;
+mod io;
 mod linked_list;
 mod misc_tests;
 mod num;

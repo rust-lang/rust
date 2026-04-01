@@ -1,9 +1,6 @@
 use super::{Read, Result, Write};
 use crate::sys::io::{CopyState, kernel_copy};
 
-#[cfg(test)]
-mod tests;
-
 /// Copies the entire contents of a reader into a writer.
 ///
 /// This function will continuously read data from `reader` and then

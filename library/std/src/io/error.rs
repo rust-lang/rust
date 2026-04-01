@@ -1,10 +1,13 @@
 //! OS-dependent public methods of `Error`
 
-#[cfg(test)]
-mod tests;
-
 #[cfg(not(test))]
 use alloc::io::{Error, RawOsError};
+
+const _: () = {
+    let _ = crate::sys::io::error_string;
+    let _ = crate::sys::io::decode_error_kind;
+    let _ = crate::sys::io::is_interrupted;
+};
 
 // FIXME: for some reason, enabling these in `test` config makes them defined twice,
 // but it does not seem to be the case with other incoherent items.
