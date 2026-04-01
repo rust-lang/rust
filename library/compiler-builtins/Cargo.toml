@@ -53,7 +53,7 @@ libm-test = { path = "libm-test", default-features = false }
 libtest-mimic = "0.8.1"
 musl-math-sys = { path = "crates/musl-math-sys" }
 no-panic = "0.1.36"
-object = { version = "0.38.1", features = ["wasm"] }
+object = { version = "0.39.0", features = ["wasm"] }
 panic-handler = { path = "crates/panic-handler" }
 paste = "1.0.15"
 proc-macro2 = "1.0.106"

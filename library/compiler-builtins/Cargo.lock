@@ -754,14 +754,14 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.38.1"
+version = "0.39.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "271638cd5fa9cca89c4c304675ca658efc4e64a66c716b7cfe1afb4b9611dbbc"
+checksum = "63944c133d03f44e75866bbd160b95af0ec3f6a13d936d69d31c81078cbc5baf"
 dependencies = [
  "flate2",
  "memchr",
  "ruzstd",
- "wasmparser 0.243.0",
+ "wasmparser 0.245.1",
 ]
 
 [[package]]
@@ -1361,15 +1361,6 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.243.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6d8db401b0528ec316dfbe579e6ab4152d61739cfe076706d2009127970159d"
-dependencies = [
- "bitflags",
-]
-
-[[package]]
-name = "wasmparser"
 version = "0.244.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47b807c72e1bac69382b3a6fb3dbe8ea4c0ed87ff5629b8685ae6b9a611028fe"
@@ -1378,6 +1369,15 @@ dependencies = [
  "hashbrown 0.15.5",
  "indexmap",
  "semver",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.245.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f08c9adee0428b7bddf3890fc27e015ac4b761cc608c822667102b8bfd6995e"
+dependencies = [
+ "bitflags",
 ]
 
 [[package]]
