@@ -29,8 +29,10 @@ use base_db::Crate;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
-    HirFileId, InFile, Lookup,
+    AstId, ExpandTo, HirFileId, InFile, Lookup,
     attrs::{Meta, expand_cfg_attr, expand_cfg_attr_with_doc_comments},
+    mod_path::ModPath,
+    span_map::SpanMap,
 };
 use intern::Symbol;
 use itertools::Itertools;
@@ -38,6 +40,7 @@ use la_arena::ArenaMap;
 use rustc_abi::ReprOptions;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
+use span::AstIdMap;
 use syntax::{
     AstNode, AstToken, NodeOrToken, SmolStr, SourceFile, SyntaxNode, SyntaxToken, T,
     ast::{self, AttrDocCommentIter, HasAttrs, IsString, TokenTreeChildren},
@@ -49,7 +52,9 @@ use crate::{
     LocalFieldId, MacroId, ModuleId, TypeOrConstParamId, VariantId,
     db::DefDatabase,
     hir::generics::{GenericParams, LocalLifetimeParamId, LocalTypeOrConstParamId},
-    nameres::ModuleOrigin,
+    macro_call_as_call_id,
+    nameres::{MacroSubNs, ModuleOrigin, crate_def_map},
+    resolver::{HasResolver, Resolver},
     src::{HasChildSource, HasSource},
 };
 
@@ -398,6 +403,28 @@ fn attrs_source(
     (owner, None, None, krate)
 }
 
+fn resolver_for_attr_def_id(db: &dyn DefDatabase, owner: AttrDefId) -> Resolver<'_> {
+    match owner {
+        AttrDefId::ModuleId(id) => id.resolver(db),
+        AttrDefId::AdtId(AdtId::StructId(id)) => id.resolver(db),
+        AttrDefId::AdtId(AdtId::UnionId(id)) => id.resolver(db),
+        AttrDefId::AdtId(AdtId::EnumId(id)) => id.resolver(db),
+        AttrDefId::FunctionId(id) => id.resolver(db),
+        AttrDefId::EnumVariantId(id) => id.resolver(db),
+        AttrDefId::StaticId(id) => id.resolver(db),
+        AttrDefId::ConstId(id) => id.resolver(db),
+        AttrDefId::TraitId(id) => id.resolver(db),
+        AttrDefId::TypeAliasId(id) => id.resolver(db),
+        AttrDefId::MacroId(MacroId::Macro2Id(id)) => id.resolver(db),
+        AttrDefId::MacroId(MacroId::MacroRulesId(id)) => id.resolver(db),
+        AttrDefId::MacroId(MacroId::ProcMacroId(id)) => id.resolver(db),
+        AttrDefId::ImplId(id) => id.resolver(db),
+        AttrDefId::ExternBlockId(id) => id.resolver(db),
+        AttrDefId::ExternCrateId(id) => id.resolver(db),
+        AttrDefId::UseId(id) => id.resolver(db),
+    }
+}
+
 fn collect_attrs<BreakValue>(
     db: &dyn DefDatabase,
     owner: AttrDefId,
@@ -479,8 +506,9 @@ pub struct RustcLayoutScalarValidRange {
 struct DocsSourceMapLine {
     /// The offset in [`Docs::docs`].
     string_offset: TextSize,
-    /// The offset in the AST of the text.
-    ast_offset: TextSize,
+    /// The offset in the AST of the text. `None` for macro-expanded doc strings
+    /// where we cannot provide a faithful source mapping.
+    ast_offset: Option<TextSize>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -569,12 +597,14 @@ impl Docs {
             source_map.partition_point(|line| line.string_offset <= string_range.start()) - 1;
         let after_range = &source_map[after_range..];
         let line = after_range.first()?;
+        // Unmapped lines (from macro-expanded docs) cannot be mapped back to AST.
+        let ast_offset = line.ast_offset?;
         if after_range.get(1).is_some_and(|next_line| next_line.string_offset < string_range.end())
         {
             // The range is combined from two lines - cannot map it back.
             return None;
         }
-        let ast_range = string_range - line.string_offset + line.ast_offset;
+        let ast_range = string_range - line.string_offset + ast_offset;
         let is_inner = if inner_docs_start
             .is_some_and(|inner_docs_start| string_range.start() >= inner_docs_start)
         {
@@ -638,13 +668,28 @@ impl Docs {
         for line in doc.split('\n') {
             self.docs_source_map.push(DocsSourceMapLine {
                 string_offset: TextSize::of(&self.docs),
-                ast_offset: offset_in_ast,
+                ast_offset: Some(offset_in_ast),
             });
             offset_in_ast += TextSize::of(line) + TextSize::of("\n");
 
             let line = line.trim_end();
             if let Some(line_indent) = line.chars().position(|ch| !ch.is_whitespace()) {
                 // Empty lines are handled because `position()` returns `None` for them.
+                *indent = std::cmp::min(*indent, line_indent);
+            }
+            self.docs.push_str(line);
+            self.docs.push('\n');
+        }
+    }
+
+    fn extend_with_unmapped_doc_str(&mut self, doc: &str, indent: &mut usize) {
+        for line in doc.split('\n') {
+            self.docs_source_map.push(DocsSourceMapLine {
+                string_offset: TextSize::of(&self.docs),
+                ast_offset: None,
+            });
+            let line = line.trim_end();
+            if let Some(line_indent) = line.chars().position(|ch| !ch.is_whitespace()) {
                 *indent = std::cmp::min(*indent, line_indent);
             }
             self.docs.push_str(line);
@@ -721,7 +766,9 @@ impl Docs {
             // line should not get shifted (in general, the shift for the string offset is by the
             // number of lines until the current one, excluding the current one).
             line_source.string_offset -= accumulated_offset;
-            line_source.ast_offset += indent_size;
+            if let Some(ref mut ast_offset) = line_source.ast_offset {
+                *ast_offset += indent_size;
+            }
 
             accumulated_offset += indent_size;
         }
@@ -757,6 +804,20 @@ pub struct DeriveInfo {
     pub helpers: Box<[Symbol]>,
 }
 
+struct DocMacroExpander<'db> {
+    db: &'db dyn DefDatabase,
+    krate: Crate,
+    recursion_depth: usize,
+    recursion_limit: usize,
+}
+
+struct DocExprSourceCtx<'db> {
+    resolver: Resolver<'db>,
+    file_id: HirFileId,
+    ast_id_map: &'db AstIdMap,
+    span_map: SpanMap,
+}
+
 fn extract_doc_aliases(result: &mut Vec<Symbol>, attr: Meta) -> ControlFlow<Infallible> {
     if let Meta::TokenTree { path, tt } = attr
         && path.is1("doc")
@@ -785,7 +846,125 @@ fn extract_cfgs(result: &mut Vec<CfgExpr>, attr: Meta) -> ControlFlow<Infallible
     ControlFlow::Continue(())
 }
 
-fn extract_docs<'a>(
+fn expand_doc_expr_via_macro_pipeline<'db>(
+    expander: &mut DocMacroExpander<'db>,
+    source_ctx: &DocExprSourceCtx<'db>,
+    expr: ast::Expr,
+) -> Option<String> {
+    match expr {
+        ast::Expr::Literal(literal) => match literal.kind() {
+            ast::LiteralKind::String(string) => string.value().ok().map(Into::into),
+            _ => None,
+        },
+        ast::Expr::MacroExpr(macro_expr) => {
+            let macro_call = macro_expr.macro_call()?;
+            let (expr, new_source_ctx) = expand_doc_macro_call(expander, source_ctx, macro_call)?;
+            // After expansion, the expr lives in the expansion file; use its source context.
+            expand_doc_expr_via_macro_pipeline(expander, &new_source_ctx, expr)
+        }
+        _ => None,
+    }
+}
+
+fn expand_doc_macro_call<'db>(
+    expander: &mut DocMacroExpander<'db>,
+    source_ctx: &DocExprSourceCtx<'db>,
+    macro_call: ast::MacroCall,
+) -> Option<(ast::Expr, DocExprSourceCtx<'db>)> {
+    if expander.recursion_depth >= expander.recursion_limit {
+        return None;
+    }
+
+    let path = macro_call.path()?;
+    let mod_path = ModPath::from_src(expander.db, path, &mut |range| {
+        source_ctx.span_map.span_for_range(range).ctx
+    })?;
+    let call_site = source_ctx.span_map.span_for_range(macro_call.syntax().text_range());
+    let ast_id = AstId::new(source_ctx.file_id, source_ctx.ast_id_map.ast_id(&macro_call));
+    let call_id = macro_call_as_call_id(
+        expander.db,
+        ast_id,
+        &mod_path,
+        call_site.ctx,
+        ExpandTo::Expr,
+        expander.krate,
+        |path| {
+            source_ctx.resolver.resolve_path_as_macro_def(expander.db, path, Some(MacroSubNs::Bang))
+        },
+        &mut |_, _| (),
+    )
+    .ok()?
+    .value?;
+
+    expander.recursion_depth += 1;
+    let parse = expander.db.parse_macro_expansion(call_id).value.0;
+    let expr = parse.cast::<ast::Expr>().map(|parse| parse.tree())?;
+    expander.recursion_depth -= 1;
+
+    // Build a new source context for the expansion file so that any further
+    // recursive expansion (e.g. a user macro expanding to `concat!(...)`)
+    // correctly resolves AstIds and spans in the expansion.
+    let expansion_file_id: HirFileId = call_id.into();
+    let new_source_ctx = DocExprSourceCtx {
+        resolver: source_ctx.resolver.clone(),
+        file_id: expansion_file_id,
+        ast_id_map: expander.db.ast_id_map(expansion_file_id),
+        span_map: expander.db.span_map(expansion_file_id),
+    };
+    Some((expr, new_source_ctx))
+}
+
+fn extend_with_attrs<'a, 'db>(
+    result: &mut Docs,
+    node: &SyntaxNode,
+    expect_inner_attrs: bool,
+    indent: &mut usize,
+    get_cfg_options: &dyn Fn() -> &'a CfgOptions,
+    cfg_options: &mut Option<&'a CfgOptions>,
+    mut expander: Option<&mut DocMacroExpander<'db>>,
+    source_ctx: Option<&DocExprSourceCtx<'db>>,
+) {
+    expand_cfg_attr_with_doc_comments::<_, Infallible>(
+        AttrDocCommentIter::from_syntax_node(node).filter(|attr| match attr {
+            Either::Left(attr) => attr.kind().is_inner() == expect_inner_attrs,
+            Either::Right(comment) => comment
+                .kind()
+                .doc
+                .is_some_and(|kind| (kind == ast::CommentPlacement::Inner) == expect_inner_attrs),
+        }),
+        || *cfg_options.get_or_insert_with(get_cfg_options),
+        |attr| {
+            match attr {
+                Either::Right(doc_comment) => result.extend_with_doc_comment(doc_comment, indent),
+                Either::Left((attr, _, _, top_attr)) => match attr {
+                    Meta::NamedKeyValue { name: Some(name), value: Some(value), .. }
+                        if name.text() == "doc" =>
+                    {
+                        result.extend_with_doc_attr(value, indent);
+                    }
+                    Meta::NamedKeyValue { name: Some(name), value: None, .. }
+                        if name.text() == "doc" =>
+                    {
+                        if let (Some(expander), Some(source_ctx)) =
+                            (expander.as_deref_mut(), source_ctx)
+                            && let Some(expr) = top_attr.expr()
+                            && let Some(expanded) =
+                                expand_doc_expr_via_macro_pipeline(expander, source_ctx, expr)
+                        {
+                            result.extend_with_unmapped_doc_str(&expanded, indent);
+                        }
+                    }
+                    _ => {}
+                },
+            }
+            ControlFlow::Continue(())
+        },
+    );
+}
+
+fn extract_docs<'a, 'db>(
+    mut expander: Option<&mut DocMacroExpander<'db>>,
+    resolver: Option<&Resolver<'db>>,
     get_cfg_options: &dyn Fn() -> &'a CfgOptions,
     source: InFile<ast::AnyHasAttrs>,
     outer_mod_decl: Option<InFile<ast::Module>>,
@@ -802,49 +981,69 @@ fn extract_docs<'a>(
     };
 
     let mut cfg_options = None;
-    let mut extend_with_attrs =
-        |result: &mut Docs, node: &SyntaxNode, expect_inner_attrs, indent: &mut usize| {
-            expand_cfg_attr_with_doc_comments::<_, Infallible>(
-                AttrDocCommentIter::from_syntax_node(node).filter(|attr| match attr {
-                    Either::Left(attr) => attr.kind().is_inner() == expect_inner_attrs,
-                    Either::Right(comment) => comment.kind().doc.is_some_and(|kind| {
-                        (kind == ast::CommentPlacement::Inner) == expect_inner_attrs
-                    }),
-                }),
-                || cfg_options.get_or_insert_with(get_cfg_options),
-                |attr| {
-                    match attr {
-                        Either::Right(doc_comment) => {
-                            result.extend_with_doc_comment(doc_comment, indent)
-                        }
-                        Either::Left((attr, _, _, _)) => match attr {
-                            // FIXME: Handle macros: `#[doc = concat!("foo", "bar")]`.
-                            Meta::NamedKeyValue {
-                                name: Some(name), value: Some(value), ..
-                            } if name.text() == "doc" => {
-                                result.extend_with_doc_attr(value, indent);
-                            }
-                            _ => {}
-                        },
-                    }
-                    ControlFlow::Continue(())
-                },
-            );
-        };
 
     if let Some(outer_mod_decl) = outer_mod_decl {
         let mut indent = usize::MAX;
-        extend_with_attrs(&mut result, outer_mod_decl.value.syntax(), false, &mut indent);
+        let outer_source_ctx =
+            if let (Some(expander), Some(resolver)) = (expander.as_deref(), resolver) {
+                Some(DocExprSourceCtx {
+                    resolver: resolver.clone(),
+                    file_id: outer_mod_decl.file_id,
+                    ast_id_map: expander.db.ast_id_map(outer_mod_decl.file_id),
+                    span_map: expander.db.span_map(outer_mod_decl.file_id),
+                })
+            } else {
+                None
+            };
+        extend_with_attrs(
+            &mut result,
+            outer_mod_decl.value.syntax(),
+            false,
+            &mut indent,
+            get_cfg_options,
+            &mut cfg_options,
+            expander.as_deref_mut(),
+            outer_source_ctx.as_ref(),
+        );
         result.remove_indent(indent, 0);
         result.outline_mod = Some((outer_mod_decl.file_id, result.docs_source_map.len()));
     }
 
     let inline_source_map_start = result.docs_source_map.len();
     let mut indent = usize::MAX;
-    extend_with_attrs(&mut result, source.value.syntax(), false, &mut indent);
+    let inline_source_ctx =
+        if let (Some(expander), Some(resolver)) = (expander.as_deref(), resolver) {
+            Some(DocExprSourceCtx {
+                resolver: resolver.clone(),
+                file_id: source.file_id,
+                ast_id_map: expander.db.ast_id_map(source.file_id),
+                span_map: expander.db.span_map(source.file_id),
+            })
+        } else {
+            None
+        };
+    extend_with_attrs(
+        &mut result,
+        source.value.syntax(),
+        false,
+        &mut indent,
+        get_cfg_options,
+        &mut cfg_options,
+        expander.as_deref_mut(),
+        inline_source_ctx.as_ref(),
+    );
     if let Some(inner_attrs_node) = &inner_attrs_node {
         result.inline_inner_docs_start = Some(TextSize::of(&result.docs));
-        extend_with_attrs(&mut result, inner_attrs_node, true, &mut indent);
+        extend_with_attrs(
+            &mut result,
+            inner_attrs_node,
+            true,
+            &mut indent,
+            get_cfg_options,
+            &mut cfg_options,
+            expander.as_deref_mut(),
+            inline_source_ctx.as_ref(),
+        );
     }
     result.remove_indent(indent, inline_source_map_start);
 
@@ -1292,10 +1491,25 @@ impl AttrFlags {
     pub fn docs(db: &dyn DefDatabase, owner: AttrDefId) -> Option<Box<Docs>> {
         let (source, outer_mod_decl, _extra_crate_attrs, krate) = attrs_source(db, owner);
         let inner_attrs_node = source.value.inner_attributes_node();
+        let resolver = resolver_for_attr_def_id(db, owner);
+        let def_map = crate_def_map(db, krate);
+        let recursion_limit = if cfg!(test) {
+            std::cmp::min(32, def_map.recursion_limit() as usize)
+        } else {
+            def_map.recursion_limit() as usize
+        };
+        let mut expander = DocMacroExpander { db, krate, recursion_depth: 0, recursion_limit };
         // Note: we don't have to pass down `_extra_crate_attrs` here, since `extract_docs`
         // does not handle crate-level attributes related to docs.
         // See: https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html#at-the-crate-level
-        extract_docs(&|| krate.cfg_options(db), source, outer_mod_decl, inner_attrs_node)
+        extract_docs(
+            Some(&mut expander),
+            Some(&resolver),
+            &|| krate.cfg_options(db),
+            source,
+            outer_mod_decl,
+            inner_attrs_node,
+        )
     }
 
     #[inline]
@@ -1308,8 +1522,25 @@ impl AttrFlags {
             db: &dyn DefDatabase,
             variant: VariantId,
         ) -> ArenaMap<LocalFieldId, Option<Box<Docs>>> {
+            let krate = variant.module(db).krate(db);
+            let resolver = variant.resolver(db);
+            let def_map = crate_def_map(db, krate);
+            let recursion_limit = if cfg!(test) {
+                std::cmp::min(32, def_map.recursion_limit() as usize)
+            } else {
+                def_map.recursion_limit() as usize
+            };
             collect_field_attrs(db, variant, |cfg_options, field| {
-                extract_docs(&|| cfg_options, field, None, None)
+                let mut expander =
+                    DocMacroExpander { db, krate, recursion_depth: 0, recursion_limit };
+                extract_docs(
+                    Some(&mut expander),
+                    Some(&resolver),
+                    &|| cfg_options,
+                    field,
+                    None,
+                    None,
+                )
             })
         }
     }
@@ -1580,19 +1811,27 @@ mod tests {
             [
                 DocsSourceMapLine {
                     string_offset: 0,
-                    ast_offset: 123,
+                    ast_offset: Some(
+                        123,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 5,
-                    ast_offset: 128,
+                    ast_offset: Some(
+                        128,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 15,
-                    ast_offset: 261,
+                    ast_offset: Some(
+                        261,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 20,
-                    ast_offset: 267,
+                    ast_offset: Some(
+                        267,
+                    ),
                 },
             ]
         "#]]
@@ -1607,19 +1846,27 @@ mod tests {
             [
                 DocsSourceMapLine {
                     string_offset: 0,
-                    ast_offset: 124,
+                    ast_offset: Some(
+                        124,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 4,
-                    ast_offset: 129,
+                    ast_offset: Some(
+                        129,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 13,
-                    ast_offset: 262,
+                    ast_offset: Some(
+                        262,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 17,
-                    ast_offset: 268,
+                    ast_offset: Some(
+                        268,
+                    ),
                 },
             ]
         "#]]
@@ -1632,35 +1879,51 @@ mod tests {
             [
                 DocsSourceMapLine {
                     string_offset: 0,
-                    ast_offset: 124,
+                    ast_offset: Some(
+                        124,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 4,
-                    ast_offset: 129,
+                    ast_offset: Some(
+                        129,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 13,
-                    ast_offset: 262,
+                    ast_offset: Some(
+                        262,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 17,
-                    ast_offset: 268,
+                    ast_offset: Some(
+                        268,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 21,
-                    ast_offset: 124,
+                    ast_offset: Some(
+                        124,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 25,
-                    ast_offset: 129,
+                    ast_offset: Some(
+                        129,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 34,
-                    ast_offset: 262,
+                    ast_offset: Some(
+                        262,
+                    ),
                 },
                 DocsSourceMapLine {
                     string_offset: 38,
-                    ast_offset: 268,
+                    ast_offset: Some(
+                        268,
+                    ),
                 },
             ]
         "#]]
