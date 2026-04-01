@@ -332,7 +332,7 @@ macro_rules! impl_try_from_both_bounded {
 /// Implement `TryFrom<integer>` for `bool`
 macro_rules! impl_try_from_integer_for_bool {
     ($($int:ty)+) => {$(
-        #[stable(feature = "try_from", since = "1.34.0")]
+        #[stable(feature = "bool_try_from_int", since = "1.95.0")]
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
         impl const TryFrom<$int> for bool {
             type Error = TryFromIntError;
