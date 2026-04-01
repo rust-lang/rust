@@ -11406,23 +11406,26 @@ pub trait MyTrait {
 }
 
 #[test]
-fn test_hover_doc_attr_macro_generated_method() {
+fn test_hover_doc_attr_macro_generated_method_stringify_self_ty() {
     check(
         r#"
 #[rustc_builtin_macro]
 macro_rules! concat {}
 
+#[rustc_builtin_macro]
+macro_rules! stringify {}
+
 macro_rules! bar {
-    () => {
-        struct Bar;
-        impl Bar {
-            #[doc = concat!("Do", " the foo")]
+    ($SelfT:ident) => {
+        struct $SelfT;
+        impl $SelfT {
+            #[doc = concat!("Do the foo for ", stringify!($SelfT))]
             fn foo(&self) {}
         }
     }
 }
 
-bar!();
+bar!(Bar);
 
 fn foo() { let bar = Bar; bar.fo$0o(); }
 "#,
@@ -11439,7 +11442,7 @@ fn foo() { let bar = Bar; bar.fo$0o(); }
 
             ---
 
-            Do the foo
+            Do the foo for Bar
         "#]],
     );
 }
