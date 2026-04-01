@@ -11404,3 +11404,175 @@ pub trait MyTrait {
         "#]],
     );
 }
+
+#[test]
+fn test_hover_doc_attr_macro_generated_method() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+macro_rules! bar {
+    () => {
+        struct Bar;
+        impl Bar {
+            #[doc = concat!("Do", " the foo")]
+            fn foo(&self) {}
+        }
+    }
+}
+
+bar!();
+
+fn foo() { let bar = Bar; bar.fo$0o(); }
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture::Bar
+            ```
+
+            ```rust
+            fn foo(&self)
+            ```
+
+            ---
+
+            Do the foo
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_concat_macro() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+#[doc = concat!("Hello", " ", "World")]
+struct Ba$0r;
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Hello World
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_user_macro_returning_string() {
+    check(
+        r#"
+macro_rules! doc_str {
+    () => { "Documentation from macro" };
+}
+
+#[doc = doc_str!()]
+struct Ba$0r;
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Documentation from macro
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_mixed_literal_and_macro() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+/// First line
+#[doc = concat!("Second", " line")]
+struct Ba$0r;
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            First line
+            Second line
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_field_with_macro() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+struct Bar {
+    #[doc = concat!("field", " docs")]
+    ba$0z: i32,
+}
+"#,
+        expect![[r#"
+            *baz*
+
+            ```rust
+            ra_test_fixture::Bar
+            ```
+
+            ```rust
+            baz: i32
+            ```
+
+            ---
+
+            size = 4, align = 4, offset = 0, no Drop
+
+            ---
+
+            field docs
+        "#]],
+    );
+}
