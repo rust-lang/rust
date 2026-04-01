@@ -288,11 +288,14 @@ where
 // couldn't verify.
 #[inline]
 fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
+    #[allow_internal_unstable(non_exhaustive_omitted_patterns_lint)]
     macro_rules! from_prim {
         ($prim:expr => $Enum:ident { $($Variant:ident),* $(,)? }) => {{
             // Force a compile error if the list gets out of date.
+            #[deny(non_exhaustive_omitted_patterns)]
             const _: fn(e: $Enum) = |e: $Enum| match e {
-                $($Enum::$Variant => ()),*
+                $($Enum::$Variant => (),)*
+                _ => (),
             };
             match $prim {
                 $(v if v == ($Enum::$Variant as _) => Some($Enum::$Variant),)*
