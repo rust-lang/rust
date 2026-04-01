@@ -67,12 +67,6 @@ pub use layout::{FIRST_VARIANT, FieldIdx, LayoutCalculator, LayoutCalculatorErro
 #[cfg(feature = "nightly")]
 pub use layout::{Layout, TyAbiInterface, TyAndLayout};
 
-/// Requirements for a `StableHashingContext` to be used in this crate.
-/// This is a hack to allow using the `HashStable_Generic` derive macro
-/// instead of implementing everything in `rustc_middle`.
-#[cfg(feature = "nightly")]
-pub trait HashStableContext {}
-
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
     feature = "nightly",
