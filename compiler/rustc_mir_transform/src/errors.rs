@@ -218,9 +218,27 @@ pub(crate) struct UnusedVarAssignedOnly {
 pub(crate) struct UnusedAssign {
     pub name: Symbol,
     #[subdiagnostic]
+    pub overwrite: Option<UnusedAssignOverwrite>,
+    #[subdiagnostic]
     pub suggestion: Option<UnusedAssignSuggestion>,
     #[help("maybe it is overwritten before being read?")]
     pub help: bool,
+}
+
+pub(crate) struct UnusedAssignOverwrite {
+    pub assigned_span: Span,
+    pub overwrite_span: Span,
+    pub name: Symbol,
+}
+
+impl Subdiagnostic for UnusedAssignOverwrite {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        diag.span_label(self.assigned_span, "this value is reassigned later and never used");
+        diag.span_label(
+            self.overwrite_span,
+            format!("`{}` is overwritten here before the previous value is read", self.name),
+        );
+    }
 }
 
 #[derive(Subdiagnostic)]
