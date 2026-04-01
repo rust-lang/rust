@@ -44,6 +44,19 @@ fn via_ufcs(source: i32) {
     }
 }
 
+// Module-qualified free constant: multi-segment Resolved path, no binding label or suggestion.
+mod inner {
+    pub const C: (i32, i32) = (4, 2);
+}
+
+fn via_module_const(source: i32) {
+    match source {
+        inner::C => {}
+        //~^ ERROR mismatched types
+        _ => {}
+    }
+}
+
 // Free constant with single-segment path: should keep the label and suggestion.
 const FREE: (i32, i32) = (4, 2);
 
