@@ -1038,7 +1038,7 @@ impl fmt::Display for Error {
                 write!(fmt, "{detail} (os error {code})")
             }
             ErrorData::Custom(ref c) => c.error.fmt(fmt),
-            ErrorData::Simple(kind) => write!(fmt, "{}", kind.as_str()),
+            ErrorData::Simple(kind) => kind.fmt(fmt),
             ErrorData::SimpleMessage(msg) => msg.message.fmt(fmt),
         }
     }
