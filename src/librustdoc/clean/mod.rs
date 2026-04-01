@@ -1001,12 +1001,12 @@ fn clean_proc_macro<'tcx>(
     item: &hir::Item<'tcx>,
     name: &mut Symbol,
     kind: MacroKind,
-    cx: &mut DocContext<'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) -> ItemKind {
     if kind != MacroKind::Derive {
         return ProcMacroItem(ProcMacro { kind, helpers: vec![] });
     }
-    let attrs = cx.tcx.hir_attrs(item.hir_id());
+    let attrs = tcx.hir_attrs(item.hir_id());
     let Some((trait_name, helper_attrs)) = find_attr!(attrs, ProcMacroDerive { trait_name, helper_attrs, ..} => (*trait_name, helper_attrs))
     else {
         return ProcMacroItem(ProcMacro { kind, helpers: vec![] });
@@ -1037,7 +1037,7 @@ fn clean_fn_or_proc_macro<'tcx>(
     };
 
     match macro_kind {
-        Some(kind) => clean_proc_macro(item, name, kind, cx),
+        Some(kind) => clean_proc_macro(item, name, kind, cx.tcx),
         None => {
             let mut func = clean_function(cx, sig, generics, ParamsSrc::Body(body_id));
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
@@ -2865,10 +2865,10 @@ fn clean_maybe_renamed_item<'tcx>(
                 macro_rules: macro_def.macro_rules,
             }),
             ItemKind::Macro(_, _, MacroKinds::ATTR) => {
-                clean_proc_macro(item, &mut name, MacroKind::Attr, cx)
+                clean_proc_macro(item, &mut name, MacroKind::Attr, cx.tcx)
             }
             ItemKind::Macro(_, _, MacroKinds::DERIVE) => {
-                clean_proc_macro(item, &mut name, MacroKind::Derive, cx)
+                clean_proc_macro(item, &mut name, MacroKind::Derive, cx.tcx)
             }
             ItemKind::Macro(_, _, _) => todo!("Handle macros with multiple kinds"),
             // proc macros can have a name set by attributes
