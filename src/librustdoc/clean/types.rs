@@ -514,10 +514,10 @@ impl Item {
         def_id: DefId,
         name: Option<Symbol>,
         kind: ItemKind,
-        cx: &mut DocContext<'_>,
+        tcx: TyCtxt<'_>,
     ) -> Item {
         #[allow(deprecated)]
-        let hir_attrs = cx.tcx.get_all_attrs(def_id);
+        let hir_attrs = tcx.get_all_attrs(def_id);
 
         Self::from_def_id_and_attrs_and_parts(
             def_id,

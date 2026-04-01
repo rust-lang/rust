@@ -1248,7 +1248,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                 RequiredAssocTypeItem(generics, bounds)
             }
         };
-        Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx)
+        Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx.tcx)
     })
 }
 
@@ -1289,7 +1289,7 @@ pub(crate) fn clean_impl_item<'tcx>(
             }
         };
 
-        Item::from_def_id_and_parts(local_did, Some(impl_.ident.name), inner, cx)
+        Item::from_def_id_and_parts(local_did, Some(impl_.ident.name), inner, cx.tcx)
     })
 }
 
@@ -1517,7 +1517,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
         }
     };
 
-    Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name()), kind, cx)
+    Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name()), kind, cx.tcx)
 }
 
 fn first_non_private_clean_path<'tcx>(
@@ -2399,7 +2399,7 @@ pub(crate) fn clean_field_with_def_id(
     ty: Type,
     cx: &mut DocContext<'_>,
 ) -> Item {
-    Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx)
+    Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx.tcx)
 }
 
 pub(crate) fn clean_variant_def(variant: &ty::VariantDef, cx: &mut DocContext<'_>) -> Item {
@@ -2422,7 +2422,7 @@ pub(crate) fn clean_variant_def(variant: &ty::VariantDef, cx: &mut DocContext<'_
         variant.def_id,
         Some(variant.name),
         VariantItem(Variant { kind, discriminant }),
-        cx,
+        cx.tcx,
     )
 }
 
@@ -2499,7 +2499,7 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
         variant.def_id,
         Some(variant.name),
         VariantItem(Variant { kind, discriminant }),
-        cx,
+        cx.tcx,
     )
 }
 
@@ -2907,7 +2907,7 @@ fn clean_maybe_renamed_item<'tcx>(
 
 fn clean_variant<'tcx>(variant: &hir::Variant<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let kind = VariantItem(clean_variant_data(&variant.data, &variant.disr_expr, cx));
-    Item::from_def_id_and_parts(variant.def_id.to_def_id(), Some(variant.ident.name), kind, cx)
+    Item::from_def_id_and_parts(variant.def_id.to_def_id(), Some(variant.ident.name), kind, cx.tcx)
 }
 
 fn clean_impl<'tcx>(
@@ -2928,7 +2928,7 @@ fn clean_impl<'tcx>(
                     def_id.to_def_id(),
                     None,
                     PlaceholderImplItem,
-                    cx,
+                    tcx,
                 )];
             }
             Some(clean_trait_ref(&t.trait_ref, cx))
@@ -2983,7 +2983,7 @@ fn clean_impl<'tcx>(
             },
             is_deprecated,
         }));
-        Item::from_def_id_and_parts(def_id.to_def_id(), None, kind, cx)
+        Item::from_def_id_and_parts(def_id.to_def_id(), None, kind, tcx)
     };
     if let Some(type_alias) = type_alias {
         ret.push(make_item(trait_.clone(), type_alias, items.clone()));
@@ -3031,7 +3031,7 @@ fn clean_extern_crate<'tcx>(
         krate_owner_def_id.to_def_id(),
         Some(name),
         ExternCrateItem { src: orig_name },
-        cx,
+        cx.tcx,
     )]
 }
 
@@ -3160,14 +3160,14 @@ fn clean_use_statement_inner<'tcx>(
                 import_def_id.to_def_id(),
                 None,
                 ImportItem(Import::new_simple(name, resolve_use_source(cx, path), false)),
-                cx,
+                cx.tcx,
             ));
             return items;
         }
         Import::new_simple(name, resolve_use_source(cx, path), true)
     };
 
-    vec![Item::from_def_id_and_parts(import_def_id.to_def_id(), None, ImportItem(inner), cx)]
+    vec![Item::from_def_id_and_parts(import_def_id.to_def_id(), None, ImportItem(inner), cx.tcx)]
 }
 
 fn clean_maybe_renamed_foreign_item<'tcx>(

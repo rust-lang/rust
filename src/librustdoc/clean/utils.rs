@@ -72,14 +72,14 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
                 def_id,
                 Some(prim.as_sym()),
                 ItemKind::PrimitiveItem(prim),
-                cx,
+                cx.tcx,
             )
         }));
         m.items.extend(keywords.map(|(def_id, kw)| {
-            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem, cx)
+            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem, cx.tcx)
         }));
         m.items.extend(documented_attributes.into_iter().map(|(def_id, kw)| {
-            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::AttributeItem, cx)
+            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::AttributeItem, cx.tcx)
         }));
     }
 
