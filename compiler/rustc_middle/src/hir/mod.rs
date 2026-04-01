@@ -21,7 +21,7 @@ use rustc_hir::lints::DelayedLint;
 use rustc_hir::*;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::{ErrorGuaranteed, ExpnId, Span};
+use rustc_span::{ErrorGuaranteed, ExpnId, HashStableContext, Span};
 
 use crate::query::Providers;
 use crate::ty::{ResolverAstLowering, TyCtxt};

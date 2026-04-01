@@ -31,7 +31,8 @@ use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 pub use rustc_span::AttrId;
 use rustc_span::{
-    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, respan, sym,
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, HashStableContext, Ident, Span, Spanned, Symbol, kw,
+    respan, sym,
 };
 use thin_vec::{ThinVec, thin_vec};
 
@@ -120,7 +121,7 @@ impl PartialEq<&[Symbol]> for Path {
     }
 }
 
-impl<Hcx: rustc_span::HashStableContext> HashStable<Hcx> for Path {
+impl<Hcx: HashStableContext> HashStable<Hcx> for Path {
     fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
