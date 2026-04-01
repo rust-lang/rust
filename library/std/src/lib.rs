@@ -321,6 +321,7 @@
 #![feature(core_float_math)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]
+#![feature(core_io_error_kind)]
 #![feature(cstr_display)]
 #![feature(drop_guard)]
 #![feature(duration_constants)]
