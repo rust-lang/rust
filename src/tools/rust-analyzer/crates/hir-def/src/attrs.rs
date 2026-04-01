@@ -1041,7 +1041,7 @@ fn extract_docs<'a, 'db>(
             &mut indent,
             get_cfg_options,
             &mut cfg_options,
-            expander.as_deref_mut(),
+            expander,
             inline_source_ctx.as_ref(),
         );
     }
