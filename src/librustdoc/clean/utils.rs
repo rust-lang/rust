@@ -602,26 +602,21 @@ fn render_macro_arms<'a>(
     out
 }
 
-pub(super) fn display_macro_source(
-    cx: &mut DocContext<'_>,
-    name: Symbol,
-    def: &ast::MacroDef,
-) -> String {
+pub(super) fn display_macro_source(tcx: TyCtxt<'_>, name: Symbol, def: &ast::MacroDef) -> String {
     // Extract the spans of all matchers. They represent the "interface" of the macro.
     let matchers = def.body.tokens.chunks(4).map(|arm| &arm[0]);
 
     if def.macro_rules {
-        format!("macro_rules! {name} {{\n{arms}}}", arms = render_macro_arms(cx.tcx, matchers, ";"))
+        format!("macro_rules! {name} {{\n{arms}}}", arms = render_macro_arms(tcx, matchers, ";"))
     } else {
         if matchers.len() <= 1 {
             format!(
                 "macro {name}{matchers} {{\n    ...\n}}",
-                matchers = matchers
-                    .map(|matcher| render_macro_matcher(cx.tcx, matcher))
-                    .collect::<String>(),
+                matchers =
+                    matchers.map(|matcher| render_macro_matcher(tcx, matcher)).collect::<String>(),
             )
         } else {
-            format!("macro {name} {{\n{arms}}}", arms = render_macro_arms(cx.tcx, matchers, ","))
+            format!("macro {name} {{\n{arms}}}", arms = render_macro_arms(tcx, matchers, ","))
         }
     }
 }

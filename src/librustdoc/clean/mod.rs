@@ -2861,7 +2861,7 @@ fn clean_maybe_renamed_item<'tcx>(
             // FIXME: handle attributes and derives that aren't proc macros, and macros with
             // multiple kinds
             ItemKind::Macro(_, macro_def, MacroKinds::BANG) => MacroItem(Macro {
-                source: display_macro_source(cx, name, macro_def),
+                source: display_macro_source(cx.tcx, name, macro_def),
                 macro_rules: macro_def.macro_rules,
             }),
             ItemKind::Macro(_, _, MacroKinds::ATTR) => {

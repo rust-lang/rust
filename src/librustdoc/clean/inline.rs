@@ -779,7 +779,7 @@ fn build_macro(
         // kinds
         LoadedMacro::MacroDef { def, .. } => match macro_kinds {
             MacroKinds::BANG => clean::MacroItem(clean::Macro {
-                source: utils::display_macro_source(cx, name, &def),
+                source: utils::display_macro_source(cx.tcx, name, &def),
                 macro_rules: def.macro_rules,
             }),
             MacroKinds::DERIVE => clean::ProcMacroItem(clean::ProcMacro {
