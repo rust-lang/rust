@@ -71,7 +71,7 @@ impl CfgPropagator<'_, '_> {
         }
 
         let (_, cfg) = merge_attrs(
-            self.cx,
+            self.cx.tcx,
             item.attrs.other_attrs.as_slice(),
             Some((&attrs, None)),
             &mut self.cfg_info,

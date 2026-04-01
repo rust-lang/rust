@@ -416,7 +416,7 @@ pub(crate) fn build_impls(
 }
 
 pub(crate) fn merge_attrs(
-    cx: &mut DocContext<'_>,
+    tcx: TyCtxt<'_>,
     old_attrs: &[hir::Attribute],
     new_attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
     cfg_info: &mut CfgInfo,
@@ -434,13 +434,10 @@ pub(crate) fn merge_attrs(
             } else {
                 Attributes::from_hir(&both)
             },
-            extract_cfg_from_attrs(both.iter(), cx.tcx, cfg_info),
+            extract_cfg_from_attrs(both.iter(), tcx, cfg_info),
         )
     } else {
-        (
-            Attributes::from_hir(old_attrs),
-            extract_cfg_from_attrs(old_attrs.iter(), cx.tcx, cfg_info),
-        )
+        (Attributes::from_hir(old_attrs), extract_cfg_from_attrs(old_attrs.iter(), tcx, cfg_info))
     }
 }
 
@@ -624,7 +621,7 @@ pub(crate) fn build_impl(
     //
     // We need to pass this empty `CfgInfo` because `merge_attrs` is used when computing the `cfg`.
     let (merged_attrs, cfg) =
-        merge_attrs(cx, load_attrs(cx.tcx, did), attrs, &mut CfgInfo::default());
+        merge_attrs(cx.tcx, load_attrs(cx.tcx, did), attrs, &mut CfgInfo::default());
     trace!("merged_attrs={merged_attrs:?}");
 
     trace!(
