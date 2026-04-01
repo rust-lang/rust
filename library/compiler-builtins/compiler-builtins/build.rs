@@ -2,7 +2,7 @@ mod configure;
 
 use std::env;
 
-use configure::{Target, configure_aliases};
+use configure::{Target, configure_aliases, set_cfg};
 
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
@@ -76,35 +76,26 @@ fn main() {
     // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures. This
     // includes the old androideabi. It is deprecated but it is available as a
     // rustc target (arm-linux-androideabi).
-    if llvm_target[0] == "armv4t"
+    let kernel_user_helpers = llvm_target[0] == "armv4t"
         || llvm_target[0] == "armv5te"
-        || target.triple == "arm-linux-androideabi"
-    {
-        println!("cargo:rustc-cfg=kernel_user_helpers")
-    }
+        || target.triple == "arm-linux-androideabi";
+    set_cfg("kernel_user_helpers", kernel_user_helpers);
 }
 
 /// Run configuration for `libm` since it is included directly.
 ///
 /// Much of this is copied from `libm/configure.rs`.
 fn configure_libm(target: &Target) {
-    println!("cargo:rustc-check-cfg=cfg(intrinsics_enabled)");
-    println!("cargo:rustc-check-cfg=cfg(arch_enabled)");
-    println!("cargo:rustc-check-cfg=cfg(optimizations_enabled)");
     println!("cargo:rustc-check-cfg=cfg(feature, values(\"unstable-public-internals\"))");
 
     // Always use intrinsics
-    println!("cargo:rustc-cfg=intrinsics_enabled");
+    set_cfg("intrinsics_enabled", true);
 
     // The arch module may contain assembly.
-    if !cfg!(feature = "no-asm") {
-        println!("cargo:rustc-cfg=arch_enabled");
-    }
+    set_cfg("arch_enabled", !cfg!(feature = "no-asm"));
 
-    println!("cargo:rustc-check-cfg=cfg(optimizations_enabled)");
-    if !matches!(target.opt_level.as_str(), "0" | "1") {
-        println!("cargo:rustc-cfg=optimizations_enabled");
-    }
+    let opt = !matches!(target.opt_level.as_str(), "0" | "1");
+    set_cfg("optimizations_enabled", opt);
 
     println!(
         "cargo:rustc-env=CFG_CARGO_FEATURES={:?}",

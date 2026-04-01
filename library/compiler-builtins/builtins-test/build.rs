@@ -42,16 +42,6 @@ impl SetCfg {
             Self::NoSysF16 => "no_sys_f16",
         }
     }
-
-    fn warning(self) -> &'static str {
-        match self {
-            SetCfg::NoSysF128 => "using apfloat fallback for f128",
-            SetCfg::NoSysF128IntConvert => "using apfloat fallback for f128 <-> int conversions",
-            SetCfg::NoSysF16F64Convert => "using apfloat fallback for f16 <-> f64 conversions",
-            SetCfg::NoSysF16F128Convert => "using apfloat fallback for f16 <-> f128 conversions",
-            SetCfg::NoSysF16 => "using apfloat fallback for f16",
-        }
-    }
 }
 
 fn main() {
@@ -123,12 +113,7 @@ fn main() {
     );
 
     for cfg in SetCfg::ALL {
-        println!("cargo:rustc-check-cfg=cfg({})", cfg.name());
-    }
-
-    for cfg in to_set {
-        println!("cargo:warning={}", cfg.warning());
-        println!("cargo:rustc-cfg={}", cfg.name());
+        builtins_configure::set_cfg(cfg.name(), to_set.contains(cfg));
     }
 
     builtins_configure::configure_aliases(&target);

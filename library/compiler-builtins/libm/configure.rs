@@ -1,7 +1,12 @@
 // Configuration shared with both libm and libm-test
 
-use std::env;
+use std::env::{self, VarError};
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
+
+/// Read from env, print more debug output via `cargo:warning` if set.
+static VERBOSE_BUILD: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -24,6 +29,11 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Self {
+        println!("cargo:cargo::rerun-if-env-changed=LIBM_BUILD_VERBOSE");
+        if env_flag("LIBM_BUILD_VERBOSE") {
+            VERBOSE_BUILD.store(true, Relaxed);
+        }
+
         let target_triple = env::var("TARGET").unwrap();
         let target_families = env::var("CARGO_CFG_TARGET_FAMILY")
             .map(|feats| feats.split(',').map(ToOwned::to_owned).collect())
@@ -35,6 +45,11 @@ impl Config {
             .filter_map(|(name, _value)| name.strip_prefix("CARGO_FEATURE_").map(ToOwned::to_owned))
             .map(|s| s.to_lowercase().replace("_", "-"))
             .collect();
+        if VERBOSE_BUILD.load(Relaxed) {
+            for feature in &cargo_features {
+                println!("cargo:warning=feature `{feature}` enabled");
+            }
+        }
 
         Self {
             target_triple,
@@ -80,42 +95,31 @@ pub fn emit_test_config(cfg: &Config) {
 /// Simplify the feature logic for enabling intrinsics so code only needs to use
 /// `cfg(intrinsics_enabled)`.
 fn emit_intrinsics_cfg() {
-    println!("cargo:rustc-check-cfg=cfg(intrinsics_enabled)");
-
     // Disabled by default; `unstable-intrinsics` enables again; `force-soft-floats` overrides
     // to disable.
-    if cfg!(feature = "unstable-intrinsics") && !cfg!(feature = "force-soft-floats") {
-        println!("cargo:rustc-cfg=intrinsics_enabled");
-    }
+    let intrinsics = cfg!(feature = "unstable-intrinsics") && !cfg!(feature = "force-soft-floats");
+    set_cfg("intrinsics_enabled", intrinsics);
 }
 
 /// Simplify the feature logic for enabling arch-specific features so code only needs to use
 /// `cfg(arch_enabled)`.
 fn emit_arch_cfg() {
-    println!("cargo:rustc-check-cfg=cfg(arch_enabled)");
-
     // Enabled by default via the "arch" feature, `force-soft-floats` overrides to disable.
-    if cfg!(feature = "arch") && !cfg!(feature = "force-soft-floats") {
-        println!("cargo:rustc-cfg=arch_enabled");
-    }
+    let arch = cfg!(feature = "arch") && !cfg!(feature = "force-soft-floats");
+    set_cfg("arch_enabled", arch);
 }
 
 /// Some tests are extremely slow. Emit a config option based on optimization level.
 fn emit_optimization_cfg(cfg: &Config) {
-    println!("cargo:rustc-check-cfg=cfg(optimizations_enabled)");
-
-    if !matches!(cfg.opt_level.as_str(), "0" | "1") {
-        println!("cargo:rustc-cfg=optimizations_enabled");
-    }
+    let opt = !matches!(cfg.opt_level.as_str(), "0" | "1");
+    set_cfg("optimizations_enabled", opt);
 }
 
 /// Provide an alias for common longer config combinations.
 fn emit_cfg_shorthands(cfg: &Config) {
-    println!("cargo:rustc-check-cfg=cfg(x86_no_sse2)");
-    if cfg.target_arch == "x86" && !cfg.target_features.iter().any(|f| f == "sse2") {
-        // Shorthand to detect i586 targets
-        println!("cargo:rustc-cfg=x86_no_sse2");
-    }
+    // Shorthand to detect i586 targets
+    let x86_no_sse2 = cfg.target_arch == "x86" && !cfg.target_features.iter().any(|f| f == "sse2");
+    set_cfg("x86_no_sse2", x86_no_sse2);
 }
 
 /// Reemit config that we make use of for test logging.
@@ -133,23 +137,30 @@ fn emit_cfg_env(cfg: &Config) {
 
 /// Configure whether or not `f16` and `f128` support should be enabled.
 fn emit_f16_f128_cfg(cfg: &Config) {
-    println!("cargo:rustc-check-cfg=cfg(f16_enabled)");
-    println!("cargo:rustc-check-cfg=cfg(f128_enabled)");
+    // `unstable-float` enables these features. See the compiler-builtins file for their
+    // meaning.
+    let unstable_float = cfg!(feature = "unstable-float");
+    set_cfg("f16_enabled", unstable_float && cfg.reliable_f16);
+    set_cfg("f128_enabled", unstable_float && cfg.reliable_f128);
+}
 
-    // `unstable-float` enables these features.
-    if !cfg!(feature = "unstable-float") {
+pub fn set_cfg(name: &str, set: bool) {
+    println!("cargo:rustc-check-cfg=cfg({name})");
+    if !set {
         return;
     }
-
-    /* See the compiler-builtins configure file for info about the meaning of these options */
-
-    println!("cargo:rustc-check-cfg=cfg(f16_enabled)");
-    if cfg.reliable_f16 {
-        println!("cargo:rustc-cfg=f16_enabled");
+    if VERBOSE_BUILD.load(Relaxed) {
+        println!("cargo:warning=setting config `{name}`");
     }
+    println!("cargo:rustc-cfg={name}");
+}
 
-    println!("cargo:rustc-check-cfg=cfg(f128_enabled)");
-    if cfg.reliable_f128 {
-        println!("cargo:rustc-cfg=f128_enabled");
+/// Return true if the env is set to a value other than `0`.
+pub fn env_flag(key: &str) -> bool {
+    match env::var(key) {
+        Ok(x) if x == "0" => false,
+        Err(VarError::NotPresent) => false,
+        Err(VarError::NotUnicode(_)) => panic!("non-unicode var for `{key}`"),
+        Ok(_) => true,
     }
 }

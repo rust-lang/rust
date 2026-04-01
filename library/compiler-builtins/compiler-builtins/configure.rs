@@ -1,6 +1,12 @@
 // Configuration that is shared between `compiler_builtins` and `builtins_test`.
 
-use std::{env, str};
+use std::env::{self, VarError};
+use std::str;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
+
+/// Read from env, print more debug output via `cargo:warning` if set.
+static VERBOSE_BUILD: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -22,6 +28,11 @@ pub struct Target {
 
 impl Target {
     pub fn from_env() -> Self {
+        println!("cargo:cargo::rerun-if-env-changed=LIBM_BUILD_VERBOSE");
+        if env_flag("LIBM_BUILD_VERBOSE") {
+            VERBOSE_BUILD.store(true, Relaxed);
+        }
+
         let triple = env::var("TARGET").unwrap();
         let triple_split = triple.split('-').map(ToOwned::to_owned).collect();
         let little_endian = match env::var("CARGO_CFG_TARGET_ENDIAN").unwrap().as_str() {
@@ -33,6 +44,11 @@ impl Target {
             .filter_map(|(name, _value)| name.strip_prefix("CARGO_FEATURE_").map(ToOwned::to_owned))
             .map(|s| s.to_lowercase().replace("_", "-"))
             .collect();
+        if VERBOSE_BUILD.load(Relaxed) {
+            for feature in &cargo_features {
+                println!("cargo:warning=feature `{feature}` enabled");
+            }
+        }
 
         Self {
             triple,
@@ -68,25 +84,18 @@ impl Target {
 
 pub fn configure_aliases(target: &Target) {
     // To compile builtins-test-intrinsics for thumb targets, where there is no libc
-    println!("cargo::rustc-check-cfg=cfg(thumb)");
-    if target.triple_split[0].starts_with("thumb") {
-        println!("cargo:rustc-cfg=thumb")
-    }
+    let thumb = target.triple_split[0].starts_with("thumb");
+    set_cfg("thumb", thumb);
 
     // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
     // these targets do not have full Thumb-2 support but only original Thumb-1.
     // We have to cfg our code accordingly.
-    println!("cargo::rustc-check-cfg=cfg(thumb_1)");
-    if target.triple_split[0] == "thumbv6m" || target.triple_split[0] == "thumbv8m.base" {
-        println!("cargo:rustc-cfg=thumb_1")
-    }
+    let thumb_1 = target.triple_split[0] == "thumbv6m" || target.triple_split[0] == "thumbv8m.base";
+    set_cfg("thumb_1", thumb_1);
 
-    // Config shorthands
-    println!("cargo:rustc-check-cfg=cfg(x86_no_sse2)");
-    if target.arch == "x86" && !target.features.iter().any(|f| f == "sse2") {
-        // Shorthand to detect i586 targets
-        println!("cargo:rustc-cfg=x86_no_sse2");
-    }
+    // Shorthand to detect i586 targets
+    let x86_no_sse2 = target.arch == "x86" && !target.features.iter().any(|f| f == "sse2");
+    set_cfg("x86_no_sse2", x86_no_sse2);
 
     /* Not all backends support `f16` and `f128` to the same level on all architectures, so we
      * need to disable things if the compiler may crash. See configuration at:
@@ -95,13 +104,27 @@ pub fn configure_aliases(target: &Target) {
      * * https://github.com/rust-lang/rustc_codegen_cranelift/blob/c713ffab3c6e28ab4b4dd4e392330f786ea657ad/src/lib.rs#L196-L226
      */
 
-    println!("cargo::rustc-check-cfg=cfg(f16_enabled)");
-    if target.reliable_f16 {
-        println!("cargo::rustc-cfg=f16_enabled");
-    }
+    set_cfg("f16_enabled", target.reliable_f16);
+    set_cfg("f128_enabled", target.reliable_f128);
+}
 
-    println!("cargo::rustc-check-cfg=cfg(f128_enabled)");
-    if target.reliable_f128 {
-        println!("cargo::rustc-cfg=f128_enabled");
+pub fn set_cfg(name: &str, set: bool) {
+    println!("cargo:rustc-check-cfg=cfg({name})");
+    if !set {
+        return;
+    }
+    if VERBOSE_BUILD.load(Relaxed) {
+        println!("cargo:warning=setting config `{name}`");
+    }
+    println!("cargo:rustc-cfg={name}");
+}
+
+/// Return true if the env is set to a value other than `0`.
+pub fn env_flag(key: &str) -> bool {
+    match env::var(key) {
+        Ok(x) if x == "0" => false,
+        Err(VarError::NotPresent) => false,
+        Err(VarError::NotUnicode(_)) => panic!("non-unicode var for `{key}`"),
+        Ok(_) => true,
     }
 }

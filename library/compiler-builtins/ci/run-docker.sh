@@ -78,6 +78,7 @@ run() {
         -e CI \
         -e CARGO_TARGET_DIR=/builtins-target \
         -e CARGO_TERM_COLOR \
+        -e LIBM_BUILD_VERBOSE \
         -e MAY_SKIP_LIBM_CI \
         -e RUSTFLAGS \
         -e RUST_BACKTRACE \
