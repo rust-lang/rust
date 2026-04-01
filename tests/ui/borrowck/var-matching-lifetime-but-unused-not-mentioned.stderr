@@ -5,8 +5,6 @@ LL | fn foo<'a>(
    |        -- lifetime `'a` defined here
 LL |     used_arg: &'a u8,
    |     -------- `used_arg` is a reference that is only valid in the function body
-LL |     unused_arg: &'static u16, // Unused in closure. Must not appear in error.
-   |     ---------- `unused_arg` declared here, outside of the function body
 ...
 LL |     consume(c);
    |     ^^^^^^^^^^
