@@ -1,11 +1,11 @@
 error: lifetimes cannot use keyword names
-  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:8:18
+  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:5:18
    |
 LL | const fn add(a: &'self isize) -> usize {
    |                  ^^^^^
 
 error[E0261]: use of undeclared lifetime name `'self`
-  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:8:18
+  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:5:18
    |
 LL | const fn add(a: &'self isize) -> usize {
    |                  ^^^^^ undeclared lifetime
@@ -16,13 +16,13 @@ LL | const fn add<'self>(a: &'self isize) -> usize {
    |             +++++++
 
 error[E0425]: cannot find value `Qux` in this scope
-  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:11:5
+  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:8:5
    |
 LL |     Qux + y
    |     ^^^ not found in this scope
 
 error[E0425]: cannot find value `y` in this scope
-  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:11:11
+  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:8:11
    |
 LL |     Qux + y
    |           ^

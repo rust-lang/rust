@@ -1,7 +1,4 @@
-// #127423: ICE: assertion failed: sig.c_variadic || extra_args.is_empty()
-// Calling a const fn with the wrong number of arguments where the function has
-// an unresolved type should not trigger an ICE.
-// issue: rust-lang/rust#127423
+//! Regression test for https://github.com/rust-lang/rust/issues/127423
 
 #![allow(dead_code)]
 
