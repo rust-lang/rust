@@ -1648,65 +1648,86 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && e.suggestions.len() == 0
         {
             e.span_label(span, format!("{} defined here", res.descr()));
-            e.span_label(
-                pat_span,
-                format!(
-                    "`{}` is interpreted as {} {}, not a new binding",
-                    ident,
-                    res.article(),
-                    res.descr(),
-                ),
-            );
-            match self.tcx.parent_hir_node(hir_id) {
-                hir::Node::PatField(..) => {
-                    e.span_suggestion_verbose(
-                        ident.span.shrink_to_hi(),
-                        "bind the struct field to a different name instead",
-                        format!(": other_{}", ident.as_str().to_lowercase()),
-                        Applicability::HasPlaceholders,
-                    );
-                }
-                _ => {
-                    let (type_def_id, item_def_id) = match resolved_pat.ty.kind() {
-                        ty::Adt(def, _) => match res {
-                            Res::Def(DefKind::Const { .. }, def_id) => {
-                                (Some(def.did()), Some(def_id))
-                            }
-                            _ => (None, None),
-                        },
-                        _ => (None, None),
-                    };
 
-                    let is_range = matches!(
-                        type_def_id.and_then(|id| self.tcx.as_lang_item(id)),
-                        Some(
-                            LangItem::Range
-                                | LangItem::RangeFrom
-                                | LangItem::RangeTo
-                                | LangItem::RangeFull
-                                | LangItem::RangeInclusiveStruct
-                                | LangItem::RangeToInclusive,
-                        )
-                    );
-                    if is_range {
-                        if !self.maybe_suggest_range_literal(&mut e, item_def_id, *ident) {
-                            let msg = "constants only support matching by type, \
-                                if you meant to match against a range of values, \
-                                consider using a range pattern like `min ..= max` in the match block";
-                            e.note(msg);
-                        }
-                    } else {
-                        let msg = "introduce a new binding instead";
-                        let sugg = format!("other_{}", ident.as_str().to_lowercase());
+            // Check if the path as written in source is multi-segment (e.g., `Owner::K`).
+            // For `QPath::TypeRelative`, the `segments` only contains the final segment,
+            // so the single-segment check above passes even though the source path is
+            // multi-segment. In that case, the "interpreted as constant, not a new
+            // binding" label and the "introduce a new binding" suggestion are misleading
+            // since a multi-segment path is never a binding pattern.
+            let is_multi_segment_path = if let hir::Node::Pat(pat) = self.tcx.hir_node(hir_id)
+                && let PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), .. }) = pat.kind
+            {
+                matches!(qpath, hir::QPath::TypeRelative(..))
+                    || matches!(
+                        qpath,
+                        hir::QPath::Resolved(_, path) if path.segments.len() > 1
+                    )
+            } else {
+                false
+            };
+
+            if !is_multi_segment_path {
+                e.span_label(
+                    pat_span,
+                    format!(
+                        "`{}` is interpreted as {} {}, not a new binding",
+                        ident,
+                        res.article(),
+                        res.descr(),
+                    ),
+                );
+                match self.tcx.parent_hir_node(hir_id) {
+                    hir::Node::PatField(..) => {
                         e.span_suggestion_verbose(
-                            ident.span,
-                            msg,
-                            sugg,
+                            ident.span.shrink_to_hi(),
+                            "bind the struct field to a different name instead",
+                            format!(": other_{}", ident.as_str().to_lowercase()),
                             Applicability::HasPlaceholders,
                         );
                     }
-                }
-            };
+                    _ => {
+                        let (type_def_id, item_def_id) = match resolved_pat.ty.kind() {
+                            ty::Adt(def, _) => match res {
+                                Res::Def(DefKind::Const { .. }, def_id) => {
+                                    (Some(def.did()), Some(def_id))
+                                }
+                                _ => (None, None),
+                            },
+                            _ => (None, None),
+                        };
+
+                        let is_range = matches!(
+                            type_def_id.and_then(|id| self.tcx.as_lang_item(id)),
+                            Some(
+                                LangItem::Range
+                                    | LangItem::RangeFrom
+                                    | LangItem::RangeTo
+                                    | LangItem::RangeFull
+                                    | LangItem::RangeInclusiveStruct
+                                    | LangItem::RangeToInclusive,
+                            )
+                        );
+                        if is_range {
+                            if !self.maybe_suggest_range_literal(&mut e, item_def_id, *ident) {
+                                let msg = "constants only support matching by type, \
+                                    if you meant to match against a range of values, \
+                                    consider using a range pattern like `min ..= max` in the match block";
+                                e.note(msg);
+                            }
+                        } else {
+                            let msg = "introduce a new binding instead";
+                            let sugg = format!("other_{}", ident.as_str().to_lowercase());
+                            e.span_suggestion_verbose(
+                                ident.span,
+                                msg,
+                                sugg,
+                                Applicability::HasPlaceholders,
+                            );
+                        }
+                    }
+                };
+            }
         }
         e.emit();
     }

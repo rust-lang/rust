@@ -1,0 +1,72 @@
+error[E0308]: mismatched types
+  --> $DIR/assoc-const-type-mismatch-no-binding-suggestion.rs:24:9
+   |
+LL |     const K: (i32, i32) = (4, 2);
+   |     ------------------- associated constant defined here
+...
+LL |     match source {
+   |           ------ this expression has type `i32`
+LL |         Owner::K => {}
+   |         ^^^^^^^^ expected `i32`, found `(i32, i32)`
+   |
+   = note: expected type `i32`
+             found tuple `(i32, i32)`
+
+error[E0308]: mismatched types
+  --> $DIR/assoc-const-type-mismatch-no-binding-suggestion.rs:41:9
+   |
+LL |     match source {
+   |           ------ this expression has type `i32`
+LL |         <Owner as Trait>::J => {}
+   |         ^^^^^^^^^^^^^^^^^^^ expected `i32`, found `(i32, i32)`
+   |
+   = note: expected type `i32`
+             found tuple `(i32, i32)`
+
+error[E0308]: mismatched types
+  --> $DIR/assoc-const-type-mismatch-no-binding-suggestion.rs:52:9
+   |
+LL | const FREE: (i32, i32) = (4, 2);
+   | ---------------------- constant defined here
+...
+LL |     match source {
+   |           ------ this expression has type `i32`
+LL |         FREE => {}
+   |         ^^^^
+   |         |
+   |         expected `i32`, found `(i32, i32)`
+   |         `FREE` is interpreted as a constant, not a new binding
+   |
+   = note: expected type `i32`
+             found tuple `(i32, i32)`
+help: introduce a new binding instead
+   |
+LL -         FREE => {}
+LL +         other_free => {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/assoc-const-type-mismatch-no-binding-suggestion.rs:64:9
+   |
+LL |     const J: (i32, i32);
+   |     ------------------- associated constant defined here
+...
+LL |     match source {
+   |           ------ this expression has type `i32`
+LL |         J => {}
+   |         ^
+   |         |
+   |         expected `i32`, found `(i32, i32)`
+   |         `J` is interpreted as an associated constant, not a new binding
+   |
+   = note: expected type `i32`
+             found tuple `(i32, i32)`
+help: introduce a new binding instead
+   |
+LL -         J => {}
+LL +         other_j => {}
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
