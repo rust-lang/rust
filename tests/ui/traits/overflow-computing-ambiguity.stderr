@@ -4,6 +4,11 @@ error[E0283]: type annotations needed
 LL |     hello();
    |     ^^^^^ cannot infer type of the type parameter `T` declared on the function `hello`
    |
+note: type must be known for type parameter in this
+  --> $DIR/overflow-computing-ambiguity.rs:12:1
+   |
+LL | fn hello<T: Hello>() {}
+   | ^^^^^^^^^^^^^^^^^^^^
    = note: the type must implement `Hello`
 help: the following types implement trait `Hello`
   --> $DIR/overflow-computing-ambiguity.rs:8:1

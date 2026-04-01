@@ -4,6 +4,12 @@ error[E0282]: type annotations needed
 LL |     with_closure(|x: u32, y| {});
    |                           ^
    |
+note: type must be known for type parameter in this
+  --> $DIR/expect-two-infer-vars-supply-ty-with-bound-region.rs:1:1
+   |
+LL | / fn with_closure<F, A, B>(_: F)
+LL | |     where F: FnOnce(A, B)
+   | |_________________________^
 help: consider giving this closure parameter an explicit type
    |
 LL |     with_closure(|x: u32, y: /* Type */| {});

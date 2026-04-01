@@ -6,6 +6,8 @@ LL |         .get(&"key".into())
    |          |
    |          cannot infer type of the type parameter `Q` declared on the method `get`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
    = note: multiple `impl`s satisfying `String: Borrow<_>` found in the following crates: `alloc`, `core`:
            - impl Borrow<str> for String;
            - impl<T> Borrow<T> for T

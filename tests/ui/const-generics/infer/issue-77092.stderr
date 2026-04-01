@@ -4,6 +4,11 @@ error[E0284]: type annotations needed
 LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
    |                          ^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `take_array_from_mut`
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-77092.rs:3:1
+   |
+LL | fn take_array_from_mut<T, const N: usize>(data: &mut [T], start: usize) -> &mut [T; N] {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a const generic parameter in `take_array_from_mut`
   --> $DIR/issue-77092.rs:3:27
    |

@@ -4,6 +4,8 @@ error[E0282]: type annotations needed for `Option<_>`
 LL |     let n = None;
    |         ^   ---- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 help: consider giving `n` an explicit type, where the type for type parameter `T` is specified
    |
 LL |     let n: Option<T> = None;

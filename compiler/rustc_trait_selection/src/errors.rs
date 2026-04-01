@@ -192,6 +192,8 @@ pub struct AnnotationRequired<'a> {
     pub span: Span,
     pub source_kind: &'static str,
     pub source_name: &'a str,
+    #[note("type must be known for type parameter in this")]
+    pub source_span: Option<Span>,
     #[label("type must be known at this point")]
     pub failure_span: Option<Span>,
     #[subdiagnostic]
@@ -214,6 +216,8 @@ pub struct AmbiguousImpl<'a> {
     pub span: Span,
     pub source_kind: &'static str,
     pub source_name: &'a str,
+    #[note("type must be known for type parameter in this")]
+    pub source_span: Option<Span>,
     #[label("type must be known at this point")]
     pub failure_span: Option<Span>,
     #[subdiagnostic]
@@ -236,6 +240,8 @@ pub struct AmbiguousReturn<'a> {
     pub span: Span,
     pub source_kind: &'static str,
     pub source_name: &'a str,
+    #[note("type must be known for type parameter in this")]
+    pub source_span: Option<Span>,
     #[label("type must be known at this point")]
     pub failure_span: Option<Span>,
     #[subdiagnostic]

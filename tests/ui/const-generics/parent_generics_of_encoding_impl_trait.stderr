@@ -4,6 +4,11 @@ error[E0284]: type annotations needed
 LL |     generics_of_parent_impl_trait::foo([()]);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `N` declared on the function `foo`
    |
+note: type must be known for type parameter in this
+  --> $DIR/auxiliary/generics_of_parent_impl_trait.rs:5:1
+   |
+LL | pub fn foo<const N: usize>(foo: impl Into<[(); N + 1]>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a const generic parameter in `foo`
   --> $DIR/auxiliary/generics_of_parent_impl_trait.rs:5:12
    |

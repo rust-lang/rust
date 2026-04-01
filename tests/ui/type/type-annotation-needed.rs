@@ -1,6 +1,7 @@
 fn foo<T: Into<String>>(x: i32) {}
 //~^ NOTE required by
 //~| NOTE required by
+//~| NOTE type must be known for type parameter in this
 
 fn main() {
     foo(42);

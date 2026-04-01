@@ -4,6 +4,8 @@ error[E0282]: type annotations needed for `B<_>`
 LL |     let foo = B(marker::PhantomData);
    |         ^^^     ------------------- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
 help: consider giving `foo` an explicit type, where the type for type parameter `T` is specified
    |
 LL |     let foo: B<T> = B(marker::PhantomData);

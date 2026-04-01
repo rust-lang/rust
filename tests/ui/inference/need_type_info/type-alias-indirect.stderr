@@ -3,6 +3,12 @@ error[E0282]: type annotations needed
    |
 LL |     IndirectAlias::new();
    |     ^^^^^^^^^^^^^ cannot infer type for type parameter `T` declared on the type alias `IndirectAlias`
+   |
+note: type must be known for type parameter in this
+  --> $DIR/type-alias-indirect.rs:12:1
+   |
+LL | type IndirectAlias<T> = Ty<Box<T>>;
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

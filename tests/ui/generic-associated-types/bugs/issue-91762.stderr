@@ -4,6 +4,11 @@ error[E0284]: type annotations needed
 LL |         ret = <Self::Base as Functor>::fmap(arg);
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the associated function `fmap`
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-91762.rs:13:5
+   |
+LL |     fn fmap<T, U>(this: Self::With<T>) -> Self::With<U>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: cannot satisfy `<<Self as FunctorExt<T>>::Base as Functor>::With<_> == Self`
 help: consider specifying the generic arguments
    |

@@ -4,6 +4,13 @@ error[E0284]: type annotations needed
 LL |     bar();
    |     ^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
    |
+note: type must be known for type parameter in this
+  --> $DIR/unify_with_nested_expr.rs:12:1
+   |
+LL | / fn bar<const N: usize>()
+LL | | where
+LL | |     [(); N + 1]:,
+   | |_________________^
 note: required by a const generic parameter in `bar`
   --> $DIR/unify_with_nested_expr.rs:12:8
    |

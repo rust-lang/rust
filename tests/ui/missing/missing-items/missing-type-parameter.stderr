@@ -4,6 +4,11 @@ error[E0282]: type annotations needed
 LL |     foo();
    |     ^^^ cannot infer type of the type parameter `X` declared on the function `foo`
    |
+note: type must be known for type parameter in this
+  --> $DIR/missing-type-parameter.rs:1:1
+   |
+LL | fn foo<X>() { }
+   | ^^^^^^^^^^^
 help: consider specifying the generic argument
    |
 LL |     foo::<X>();

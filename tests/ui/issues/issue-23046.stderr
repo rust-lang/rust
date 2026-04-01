@@ -4,6 +4,12 @@ error[E0282]: type annotations needed for `Expr<'_, _>`
 LL |     let ex = |x| {
    |               ^
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-23046.rs:11:1
+   |
+LL | / pub fn let_<'var, VAR, F: for<'v> Fn(Expr<'v, VAR>) -> Expr<'v, VAR>>
+LL | |                        (a: Expr<'var, VAR>, b: F) -> Expr<'var, VAR> {
+   | |____________________________________________________________________^
 help: consider giving this closure parameter an explicit type, where the type for type parameter `VAR` is specified
    |
 LL |     let ex = |x: Expr<'_, VAR>| {

@@ -7,6 +7,11 @@ LL |
 LL |     let b /* : [String; ?x] */ = ["string".to_string(); _];
    |                                   -------------------- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/copy-check-inference-side-effects.rs:10:1
+   |
+LL | fn unify<const N: usize>(_: &[Foo<N>; 2], _: &[String; N]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider giving `a` an explicit type, where the value of const parameter `N` is specified
    |
 LL |     let a: [Foo<N>; 2] /* : [Foo<?x>; 2] */ = [Foo::<_>; 2];
@@ -18,6 +23,11 @@ error[E0282]: type annotations needed for `[String; _]`
 LL |     let b /* : [String; ?x] */ = ["string".to_string(); _];
    |         ^                         -------------------- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/copy-check-inference-side-effects.rs:10:1
+   |
+LL | fn unify<const N: usize>(_: &[Foo<N>; 2], _: &[String; N]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider giving `b` an explicit type, where the value of const parameter `N` is specified
    |
 LL |     let b: [_; N] /* : [String; ?x] */ = ["string".to_string(); _];

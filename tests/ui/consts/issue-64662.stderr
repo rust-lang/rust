@@ -4,6 +4,11 @@ error[E0282]: type annotations needed
 LL |     A = foo(),
    |         ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-64662.rs:6:1
+   |
+LL | const fn foo<T>() -> isize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider specifying the generic argument
    |
 LL |     A = foo::<T>(),
@@ -15,6 +20,11 @@ error[E0282]: type annotations needed
 LL |     B = foo(),
    |         ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-64662.rs:6:1
+   |
+LL | const fn foo<T>() -> isize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider specifying the generic argument
    |
 LL |     B = foo::<T>(),

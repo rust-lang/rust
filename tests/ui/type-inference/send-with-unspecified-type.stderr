@@ -4,6 +4,8 @@ error[E0282]: type annotations needed
 LL |         tx.send(Foo{ foo: PhantomData });
    |                           ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `PhantomData`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
 help: consider specifying the generic argument
    |
 LL |         tx.send(Foo{ foo: PhantomData::<T> });

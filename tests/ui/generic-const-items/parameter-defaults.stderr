@@ -16,6 +16,11 @@ error[E0282]: type annotations needed for `Option<_>`
 LL | fn body0() { let _ = NONE; }
    |                  ^   ---- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/parameter-defaults.rs:10:1
+   |
+LL | const NONE<T = ()>: Option<T> = None::<T>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider giving this pattern a type, where the type for type parameter `T` is specified
    |
 LL | fn body0() { let _: Option<T> = NONE; }
@@ -27,6 +32,11 @@ error[E0282]: type annotations needed for `Option<_>`
 LL | fn body1() { let _ = Host::NADA; }
    |                  ^   ---------- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/parameter-defaults.rs:14:5
+   |
+LL |     const NADA<T = ()>: Option<T> = None::<T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider giving this pattern a type, where the type for type parameter `T` is specified
    |
 LL | fn body1() { let _: Option<T> = Host::NADA; }
