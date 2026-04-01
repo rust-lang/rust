@@ -211,10 +211,6 @@ struct Custom {
 /// This list is intended to grow over time and it is not recommended to
 /// exhaustively match against it.
 ///
-/// It is used with the [`io::Error`] type.
-///
-/// [`io::Error`]: Error
-///
 /// # Handling errors and matching on `ErrorKind`
 ///
 /// In application code, use `match` for the `ErrorKind` values you are
@@ -329,13 +325,12 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     TimedOut,
     /// An error returned when an operation could not be completed because a
-    /// call to [`write`] returned [`Ok(0)`].
+    /// call to an underlying writer returned [`Ok(0)`].
     ///
     /// This typically means that an operation could only succeed if it wrote a
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
     ///
-    /// [`write`]: crate::io::Write::write
     /// [`Ok(0)`]: Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
@@ -434,7 +429,7 @@ pub enum ErrorKind {
     //
     /// A custom error that does not fall under any other I/O error kind.
     ///
-    /// This can be used to construct your own [`Error`]s that do not match any
+    /// This can be used to construct your own errors that do not match any
     /// [`ErrorKind`].
     ///
     /// This [`ErrorKind`] is not used by the standard library.
@@ -510,14 +505,6 @@ impl ErrorKind {
 #[stable(feature = "io_errorkind_display", since = "1.60.0")]
 impl fmt::Display for ErrorKind {
     /// Shows a human-readable description of the `ErrorKind`.
-    ///
-    /// This is similar to `impl Display for Error`, but doesn't require first converting to Error.
-    ///
-    /// # Examples
-    /// ```
-    /// use std::io::ErrorKind;
-    /// assert_eq!("entity not found", ErrorKind::NotFound.to_string());
-    /// ```
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.write_str(self.as_str())
     }
