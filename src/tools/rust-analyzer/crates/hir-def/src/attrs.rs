@@ -852,6 +852,9 @@ fn expand_doc_expr_via_macro_pipeline<'db>(
     expr: ast::Expr,
 ) -> Option<String> {
     match expr {
+        ast::Expr::ParenExpr(paren_expr) => {
+            expand_doc_expr_via_macro_pipeline(expander, source_ctx, paren_expr.expr()?)
+        }
         ast::Expr::Literal(literal) => match literal.kind() {
             ast::LiteralKind::String(string) => string.value().ok().map(Into::into),
             _ => None,
