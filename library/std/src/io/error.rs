@@ -31,13 +31,12 @@ use crate::{error, fmt, result, sys};
 /// While usual Rust style is to import types directly, aliases of [`Result`]
 /// often are not, to make it easier to distinguish between them. [`Result`] is
 /// generally assumed to be [`std::result::Result`][`Result`], and so users of this alias
-/// will generally use `io::Result` instead of shadowing the [prelude]'s import
+/// will generally use `io::Result` instead of shadowing the prelude's import
 /// of [`std::result::Result`][`Result`].
 ///
 /// [`std::io`]: crate::io
 /// [`io::Error`]: Error
 /// [`Result`]: crate::result::Result
-/// [prelude]: crate::prelude
 ///
 /// # Examples
 ///
@@ -58,16 +57,11 @@ use crate::{error, fmt, result, sys};
 #[doc(search_unbox)]
 pub type Result<T> = result::Result<T, Error>;
 
-/// The error type for I/O operations of the [`Read`], [`Write`], [`Seek`], and
-/// associated traits.
+/// The error type for I/O operations.
 ///
 /// Errors mostly originate from the underlying OS, but custom instances of
 /// `Error` can be created with crafted error messages and a particular value of
 /// [`ErrorKind`].
-///
-/// [`Read`]: crate::io::Read
-/// [`Write`]: crate::io::Write
-/// [`Seek`]: crate::io::Seek
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Error {
     repr: Repr,
@@ -137,7 +131,7 @@ enum ErrorData<C> {
     Custom(C),
 }
 
-/// The type of raw OS error codes returned by [`Error::raw_os_error`].
+/// The type of raw OS error codes.
 ///
 /// This is an [`i32`] on all currently supported platforms, but platforms
 /// added in the future (such as UEFI) may use a different primitive type like
@@ -329,13 +323,12 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     TimedOut,
     /// An error returned when an operation could not be completed because a
-    /// call to [`write`] returned [`Ok(0)`].
+    /// call to `write` returned [`Ok(0)`].
     ///
     /// This typically means that an operation could only succeed if it wrote a
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
     ///
-    /// [`write`]: crate::io::Write::write
     /// [`Ok(0)`]: Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
