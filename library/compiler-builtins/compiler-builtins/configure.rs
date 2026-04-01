@@ -10,36 +10,30 @@ static VERBOSE_BUILD: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug)]
 #[allow(dead_code)]
-pub struct Target {
-    pub triple: String,
-    pub triple_split: Vec<String>,
-    pub opt_level: String,
+pub struct Config {
     pub cargo_features: Vec<String>,
-    pub os: String,
-    pub arch: String,
-    pub vendor: String,
-    pub env: String,
-    pub pointer_width: u8,
-    pub little_endian: bool,
-    pub features: Vec<String>,
+    pub opt_level: String,
     pub reliable_f128: bool,
     pub reliable_f16: bool,
+    pub target_arch: String,
+    pub target_env: String,
+    pub target_features: Vec<String>,
+    pub target_os: String,
+    pub target_pointer_width: u8,
+    pub target_triple: String,
+    pub target_triple_split: Vec<String>,
+    pub target_vendor: String,
 }
 
-impl Target {
+impl Config {
     pub fn from_env() -> Self {
         println!("cargo:cargo::rerun-if-env-changed=LIBM_BUILD_VERBOSE");
         if env_flag("LIBM_BUILD_VERBOSE") {
             VERBOSE_BUILD.store(true, Relaxed);
         }
 
-        let triple = env::var("TARGET").unwrap();
-        let triple_split = triple.split('-').map(ToOwned::to_owned).collect();
-        let little_endian = match env::var("CARGO_CFG_TARGET_ENDIAN").unwrap().as_str() {
-            "little" => true,
-            "big" => false,
-            x => panic!("unknown endian {x}"),
-        };
+        let target_triple = env::var("TARGET").unwrap();
+        let target_triple_split = target_triple.split('-').map(ToOwned::to_owned).collect();
         let cargo_features = env::vars()
             .filter_map(|(name, _value)| name.strip_prefix("CARGO_FEATURE_").map(ToOwned::to_owned))
             .map(|s| s.to_lowercase().replace("_", "-"))
@@ -51,20 +45,19 @@ impl Target {
         }
 
         Self {
-            triple,
-            triple_split,
-            os: env::var("CARGO_CFG_TARGET_OS").unwrap(),
+            target_triple,
+            target_triple_split,
+            target_os: env::var("CARGO_CFG_TARGET_OS").unwrap(),
             opt_level: env::var("OPT_LEVEL").unwrap(),
             cargo_features,
-            arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
-            vendor: env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
-            env: env::var("CARGO_CFG_TARGET_ENV").unwrap(),
-            pointer_width: env::var("CARGO_CFG_TARGET_POINTER_WIDTH")
+            target_arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
+            target_vendor: env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
+            target_env: env::var("CARGO_CFG_TARGET_ENV").unwrap(),
+            target_pointer_width: env::var("CARGO_CFG_TARGET_POINTER_WIDTH")
                 .unwrap()
                 .parse()
                 .unwrap(),
-            little_endian,
-            features: env::var("CARGO_CFG_TARGET_FEATURE")
+            target_features: env::var("CARGO_CFG_TARGET_FEATURE")
                 .unwrap_or_default()
                 .split(",")
                 .map(ToOwned::to_owned)
@@ -77,24 +70,26 @@ impl Target {
     }
 
     #[allow(dead_code)]
-    pub fn has_feature(&self, feature: &str) -> bool {
-        self.features.iter().any(|f| f == feature)
+    pub fn has_target_feature(&self, feature: &str) -> bool {
+        self.target_features.iter().any(|f| f == feature)
     }
 }
 
-pub fn configure_aliases(target: &Target) {
+pub fn configure_aliases(cfg: &Config) {
+    let triple_split = &cfg.target_triple_split;
+
     // To compile builtins-test-intrinsics for thumb targets, where there is no libc
-    let thumb = target.triple_split[0].starts_with("thumb");
+    let thumb = triple_split[0].starts_with("thumb");
     set_cfg("thumb", thumb);
 
     // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
     // these targets do not have full Thumb-2 support but only original Thumb-1.
     // We have to cfg our code accordingly.
-    let thumb_1 = target.triple_split[0] == "thumbv6m" || target.triple_split[0] == "thumbv8m.base";
+    let thumb_1 = triple_split[0] == "thumbv6m" || triple_split[0] == "thumbv8m.base";
     set_cfg("thumb_1", thumb_1);
 
     // Shorthand to detect i586 targets
-    let x86_no_sse2 = target.arch == "x86" && !target.features.iter().any(|f| f == "sse2");
+    let x86_no_sse2 = cfg.target_arch == "x86" && !cfg.target_features.iter().any(|f| f == "sse2");
     set_cfg("x86_no_sse2", x86_no_sse2);
 
     /* Not all backends support `f16` and `f128` to the same level on all architectures, so we
@@ -104,8 +99,8 @@ pub fn configure_aliases(target: &Target) {
      * * https://github.com/rust-lang/rustc_codegen_cranelift/blob/c713ffab3c6e28ab4b4dd4e392330f786ea657ad/src/lib.rs#L196-L226
      */
 
-    set_cfg("f16_enabled", target.reliable_f16);
-    set_cfg("f128_enabled", target.reliable_f128);
+    set_cfg("f16_enabled", cfg.reliable_f16);
+    set_cfg("f128_enabled", cfg.reliable_f128);
 }
 
 pub fn set_cfg(name: &str, set: bool) {

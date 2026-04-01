@@ -47,32 +47,32 @@ impl SetCfg {
 fn main() {
     println!("cargo::rerun-if-changed=../configure.rs");
 
-    let target = builtins_configure::Target::from_env();
+    let cfg = builtins_configure::Config::from_env();
     let mut to_set = HashSet::new();
 
     // These platforms do not have f128 symbols available in their system libraries, so
     // skip related tests.
-    if target.arch == "arm"
-        || target.vendor == "apple"
-        || target.env == "msvc"
+    if cfg.target_arch == "arm"
+        || cfg.target_vendor == "apple"
+        || cfg.target_env == "msvc"
         // GCC and LLVM disagree on the ABI of `f16` and `f128` with MinGW. See
         // <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>.
-        || (target.os == "windows" && target.env == "gnu")
+        || (cfg.target_os == "windows" && cfg.target_env == "gnu")
         // FIXME(llvm): There is an ABI incompatibility between GCC and Clang on 32-bit x86.
         // See <https://github.com/llvm/llvm-project/issues/77401>.
-        || target.arch == "x86"
+        || cfg.target_arch == "x86"
         // 32-bit PowerPC and 64-bit LE gets code generated that Qemu cannot handle. See
         // <https://github.com/rust-lang/compiler-builtins/pull/606#issuecomment-2105635926>.
-        || target.arch == "powerpc"
-        || target.arch == "powerpc64le"
+        || cfg.target_arch == "powerpc"
+        || cfg.target_arch == "powerpc64le"
         // FIXME: We get different results from the builtin functions. See
         // <https://github.com/rust-lang/compiler-builtins/pull/606#issuecomment-2105657287>.
-        || target.arch == "powerpc64"
+        || cfg.target_arch == "powerpc64"
     {
         to_set.insert(SetCfg::NoSysF128);
     }
 
-    if target.arch == "x86" {
+    if cfg.target_arch == "x86" {
         // 32-bit x86 does not have `__fixunstfti`/`__fixtfti` but does have everything else
         to_set.insert(SetCfg::NoSysF128IntConvert);
         // FIXME: 32-bit x86 has a bug in `f128 -> f16` system libraries
@@ -81,25 +81,25 @@ fn main() {
 
     // These platforms do not have f16 symbols available in their system libraries, so
     // skip related tests. Most of these are missing `f16 <-> f32` conversion routines.
-    if (target.arch == "aarch64" && target.os == "linux")
-        || target.arch.starts_with("arm")
-        || target.arch == "powerpc"
-        || target.arch == "powerpc64"
-        || target.arch == "powerpc64le"
-        || target.arch == "loongarch64"
-        || (target.arch == "x86" && !target.has_feature("sse"))
-        || target.os == "windows"
+    if (cfg.target_arch == "aarch64" && cfg.target_os == "linux")
+        || cfg.target_arch.starts_with("arm")
+        || cfg.target_arch == "powerpc"
+        || cfg.target_arch == "powerpc64"
+        || cfg.target_arch == "powerpc64le"
+        || cfg.target_arch == "loongarch64"
+        || (cfg.target_arch == "x86" && !cfg.has_target_feature("sse"))
+        || cfg.target_os == "windows"
         // Linking says "error: function signature mismatch: __extendhfsf2" and seems to
         // think the signature is either `(i32) -> f32` or `(f32) -> f32`. See
         // <https://github.com/llvm/llvm-project/issues/96438>.
-        || target.arch == "wasm32"
-        || target.arch == "wasm64"
+        || cfg.target_arch == "wasm32"
+        || cfg.target_arch == "wasm64"
     {
         to_set.insert(SetCfg::NoSysF16);
     }
 
     // These platforms are missing either `__extendhfdf2` or `__truncdfhf2`.
-    if target.vendor == "apple" || target.os == "windows" {
+    if cfg.target_vendor == "apple" || cfg.target_os == "windows" {
         to_set.insert(SetCfg::NoSysF16F64Convert);
     }
 
@@ -116,5 +116,5 @@ fn main() {
         builtins_configure::set_cfg(cfg.name(), to_set.contains(cfg));
     }
 
-    builtins_configure::configure_aliases(&target);
+    builtins_configure::configure_aliases(&cfg);
 }
