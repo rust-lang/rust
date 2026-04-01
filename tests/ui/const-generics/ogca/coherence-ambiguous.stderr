@@ -1,0 +1,20 @@
+error[E0119]: conflicting implementations of trait `Trait` for type `[(); FOO::<1>]`
+  --> $DIR/coherence-ambiguous.rs:13:1
+   |
+LL | impl Trait for [(); FOO::<1>] {}
+   | ----------------------------- first implementation here
+LL | impl Trait for [(); BAR::<1>] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `[(); FOO::<1>]`
+
+error[E0119]: conflicting implementations of trait `Trait` for type `[(); FOO::<1>]`
+  --> $DIR/coherence-ambiguous.rs:15:1
+   |
+LL | impl Trait for [(); FOO::<1>] {}
+   | ----------------------------- first implementation here
+...
+LL | impl Trait for [(); BAR::<2>] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `[(); FOO::<1>]`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

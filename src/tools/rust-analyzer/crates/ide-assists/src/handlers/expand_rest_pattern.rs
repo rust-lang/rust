@@ -102,7 +102,7 @@ fn expand_tuple_struct_rest_pattern(
     let fields = match ctx.sema.type_of_pat(&pat.clone().into())?.original.as_adt()? {
         hir::Adt::Struct(s) if s.kind(ctx.sema.db) == StructKind::Tuple => s.fields(ctx.sema.db),
         hir::Adt::Enum(_) => match ctx.sema.resolve_path(&path)? {
-            PathResolution::Def(hir::ModuleDef::Variant(v))
+            PathResolution::Def(hir::ModuleDef::EnumVariant(v))
                 if v.kind(ctx.sema.db) == StructKind::Tuple =>
             {
                 v.fields(ctx.sema.db)

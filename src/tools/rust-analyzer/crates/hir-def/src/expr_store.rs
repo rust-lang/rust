@@ -9,10 +9,7 @@ pub mod scope;
 #[cfg(test)]
 mod tests;
 
-use std::{
-    ops::{Deref, Index},
-    sync::LazyLock,
-};
+use std::ops::{Deref, Index};
 
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
@@ -23,11 +20,10 @@ use smallvec::SmallVec;
 use span::{Edition, SyntaxContext};
 use syntax::{AstPtr, SyntaxNodePtr, ast};
 use thin_vec::ThinVec;
-use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
-    BlockId, SyntheticSyntax,
+    AdtId, BlockId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax,
     db::DefDatabase,
     expr_store::path::Path,
     hir::{
@@ -35,6 +31,7 @@ use crate::{
         PatId, RecordFieldPat, RecordSpread, Statement,
     },
     nameres::{DefMap, block_def_map},
+    signatures::VariantFields,
     type_ref::{LifetimeRef, LifetimeRefId, PathId, TypeRef, TypeRefId},
 };
 
@@ -94,9 +91,26 @@ pub type TypeSource = InFile<TypePtr>;
 pub type LifetimePtr = AstPtr<ast::Lifetime>;
 pub type LifetimeSource = InFile<LifetimePtr>;
 
+/// Describes where a const expression originated from.
+///
+/// Used by signature/body inference to determine the expected type for each
+/// const expression root.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RootExprOrigin {
+    /// Array length expression: `[T; <expr>]` — expected type is `usize`.
+    ArrayLength,
+    /// Const parameter default value: `const N: usize = <expr>`.
+    ConstParam(crate::hir::generics::LocalTypeOrConstParamId),
+    /// Const generic argument in a path: `SomeType::<{ <expr> }>` or `some_fn::<{ <expr> }>()`.
+    /// Determining the expected type requires path resolution, so it is deferred.
+    GenericArgsPath,
+    /// The root expression of a body.
+    BodyRoot,
+}
+
 // We split the store into types-only and expressions, because most stores (e.g. generics)
 // don't store any expressions and this saves memory. Same thing for the source map.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ExpressionOnlyStore {
     exprs: Arena<Expr>,
     pats: Arena<Pat>,
@@ -113,9 +127,12 @@ struct ExpressionOnlyStore {
     /// Expressions (and destructuing patterns) that can be recorded here are single segment path, although not all single segments path refer
     /// to variables and have hygiene (some refer to items, we don't know at this stage).
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
+
+    /// Maps expression roots to their origin.
+    expr_roots: SmallVec<[(ExprId, RootExprOrigin); 1]>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpressionStore {
     expr_only: Option<Box<ExpressionOnlyStore>>,
     pub types: Arena<TypeRef>,
@@ -226,6 +243,7 @@ pub struct ExpressionStoreBuilder {
     pub types: Arena<TypeRef>,
     block_scopes: Vec<BlockId>,
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
+    pub inference_roots: Option<SmallVec<[(ExprId, RootExprOrigin); 1]>>,
 
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
@@ -297,6 +315,7 @@ impl ExpressionStoreBuilder {
             mut bindings,
             mut binding_owners,
             mut ident_hygiene,
+            inference_roots: mut expr_roots,
             mut types,
             mut lifetimes,
 
@@ -356,6 +375,9 @@ impl ExpressionStoreBuilder {
 
         let store = {
             let expr_only = if has_exprs {
+                if let Some(const_expr_origins) = &mut expr_roots {
+                    const_expr_origins.shrink_to_fit();
+                }
                 Some(Box::new(ExpressionOnlyStore {
                     exprs,
                     pats,
@@ -364,6 +386,7 @@ impl ExpressionStoreBuilder {
                     binding_owners,
                     block_scopes: block_scopes.into_boxed_slice(),
                     ident_hygiene,
+                    expr_roots: expr_roots.unwrap_or_default(),
                 }))
             } else {
                 None
@@ -404,13 +427,108 @@ impl ExpressionStoreBuilder {
 }
 
 impl ExpressionStore {
-    pub fn empty_singleton() -> (Arc<ExpressionStore>, Arc<ExpressionStoreSourceMap>) {
-        static EMPTY: LazyLock<(Arc<ExpressionStore>, Arc<ExpressionStoreSourceMap>)> =
-            LazyLock::new(|| {
-                let (store, source_map) = ExpressionStoreBuilder::default().finish();
-                (Arc::new(store), Arc::new(source_map))
-            });
-        EMPTY.clone()
+    pub fn of(db: &dyn DefDatabase, def: ExpressionStoreOwnerId) -> &ExpressionStore {
+        match def {
+            ExpressionStoreOwnerId::Signature(def) => {
+                use crate::signatures::{
+                    ConstSignature, EnumSignature, FunctionSignature, ImplSignature,
+                    StaticSignature, StructSignature, TraitSignature, TypeAliasSignature,
+                    UnionSignature,
+                };
+                match def {
+                    GenericDefId::AdtId(AdtId::EnumId(id)) => &EnumSignature::of(db, id).store,
+                    GenericDefId::AdtId(AdtId::StructId(id)) => &StructSignature::of(db, id).store,
+                    GenericDefId::AdtId(AdtId::UnionId(id)) => &UnionSignature::of(db, id).store,
+                    GenericDefId::ConstId(id) => &ConstSignature::of(db, id).store,
+                    GenericDefId::FunctionId(id) => &FunctionSignature::of(db, id).store,
+                    GenericDefId::ImplId(id) => &ImplSignature::of(db, id).store,
+                    GenericDefId::StaticId(id) => &StaticSignature::of(db, id).store,
+                    GenericDefId::TraitId(id) => &TraitSignature::of(db, id).store,
+                    GenericDefId::TypeAliasId(id) => &TypeAliasSignature::of(db, id).store,
+                }
+            }
+            ExpressionStoreOwnerId::Body(body) => &Body::of(db, body).store,
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                &VariantFields::of(db, variant_id).store
+            }
+        }
+    }
+
+    pub fn with_source_map(
+        db: &dyn DefDatabase,
+        def: ExpressionStoreOwnerId,
+    ) -> (&ExpressionStore, &ExpressionStoreSourceMap) {
+        match def {
+            ExpressionStoreOwnerId::Signature(def) => {
+                use crate::signatures::{
+                    ConstSignature, EnumSignature, FunctionSignature, ImplSignature,
+                    StaticSignature, StructSignature, TraitSignature, TypeAliasSignature,
+                    UnionSignature,
+                };
+                match def {
+                    GenericDefId::AdtId(AdtId::EnumId(id)) => {
+                        let sig = EnumSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::AdtId(AdtId::StructId(id)) => {
+                        let sig = StructSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::AdtId(AdtId::UnionId(id)) => {
+                        let sig = UnionSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::ConstId(id) => {
+                        let sig = ConstSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::FunctionId(id) => {
+                        let sig = FunctionSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::ImplId(id) => {
+                        let sig = ImplSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::StaticId(id) => {
+                        let sig = StaticSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::TraitId(id) => {
+                        let sig = TraitSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                    GenericDefId::TypeAliasId(id) => {
+                        let sig = TypeAliasSignature::with_source_map(db, id);
+                        (&sig.0.store, &sig.1)
+                    }
+                }
+            }
+            ExpressionStoreOwnerId::Body(body) => {
+                let (store, sm) = Body::with_source_map(db, body);
+                (&store.store, &sm.store)
+            }
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                let (store, sm) = VariantFields::with_source_map(db, variant_id);
+                (&store.store, sm)
+            }
+        }
+    }
+
+    /// Returns all expression root `ExprId`s found in this store.
+    pub fn expr_roots(&self) -> impl Iterator<Item = ExprId> {
+        self.const_expr_origins().iter().map(|&(id, _)| id)
+    }
+
+    /// Like [`Self::signature_const_expr_roots`], but also returns the origin
+    /// of each expression.
+    pub fn expr_roots_with_origins(&self) -> impl Iterator<Item = (ExprId, RootExprOrigin)> {
+        self.const_expr_origins().iter().map(|&(id, origin)| (id, origin))
+    }
+
+    /// Returns the map of const expression roots to their origins.
+    pub fn const_expr_origins(&self) -> &[(ExprId, RootExprOrigin)] {
+        self.expr_only.as_ref().map_or(&[], |it| &it.expr_roots)
     }
 
     /// Returns an iterator over all block expressions in this store that define inner items.

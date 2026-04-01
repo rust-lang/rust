@@ -1,5 +1,4 @@
-// FIXME(ogca): this should ERROR not pass!!
-//@ check-pass
+//@ check-fail
 
 #![feature(generic_const_items, min_generic_const_args, opaque_generic_const_args)]
 #![expect(incomplete_features)]
@@ -12,8 +11,8 @@ trait Trait {}
 
 impl Trait for [(); FOO::<1>] {}
 impl Trait for [(); BAR::<1>] {}
-// FIXME(ogca): this should ERROR!
+//~^ ERROR conflicting implementations of trait `Trait` for type `[(); FOO::<1>]`
 impl Trait for [(); BAR::<2>] {}
-// FIXME(ogca): this should ERROR!
+//~^ ERROR conflicting implementations of trait `Trait` for type `[(); FOO::<1>]`
 
 fn main() {}

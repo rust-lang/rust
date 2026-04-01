@@ -64,14 +64,14 @@ impl CfgPropagator<'_, '_> {
             && let Some(mut next_def_id) = item.item_id.as_local_def_id()
         {
             while let Some(parent_def_id) = self.cx.tcx.opt_local_parent(next_def_id) {
-                let x = load_attrs(self.cx, parent_def_id.to_def_id());
+                let x = load_attrs(self.cx.tcx, parent_def_id.to_def_id());
                 add_only_cfg_attributes(&mut attrs, x);
                 next_def_id = parent_def_id;
             }
         }
 
         let (_, cfg) = merge_attrs(
-            self.cx,
+            self.cx.tcx,
             item.attrs.other_attrs.as_slice(),
             Some((&attrs, None)),
             &mut self.cfg_info,

@@ -34,6 +34,7 @@ impl Space for [u8; 1] {
             223..227 'iter': IntoIter<u8>
             230..231 'a': Vec<u8>
             230..243 'a.into_iter()': IntoIter<u8>
+            322..323 '1': usize
         "#]],
     );
 }
@@ -472,6 +473,8 @@ fn foo() {
             249..257 'to_bytes': fn to_bytes() -> [u8; _]
             249..259 'to_bytes()': [u8; _]
             249..268 'to_byt..._vec()': Vec<<[u8; _] as Foo>::Item>
+            205..206 '_': usize
+            156..157 'N': usize
         "#]],
     );
 }
@@ -541,6 +544,11 @@ fn test_at_most() {
             617..620 'num': Between<0, 1, char>
             623..626 ''9'': char
             623..641 ''9'.at...:<1>()': Between<0, 1, char>
+            320..335 '{ Consts::MAX }': usize
+            322..333 'Consts::MAX': usize
+            421..422 '0': i32
+            144..159 '{ Consts::MAX }': usize
+            146..157 'Consts::MAX': usize
         "#]],
     );
 }

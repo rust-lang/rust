@@ -209,7 +209,7 @@ fn module_def_to_hl_tag(db: &dyn HirDatabase, def: Definition) -> HlTag {
         Definition::Adt(hir::Adt::Struct(_)) => SymbolKind::Struct,
         Definition::Adt(hir::Adt::Enum(_)) => SymbolKind::Enum,
         Definition::Adt(hir::Adt::Union(_)) => SymbolKind::Union,
-        Definition::Variant(_) => SymbolKind::Variant,
+        Definition::EnumVariant(_) => SymbolKind::Variant,
         Definition::Const(_) => SymbolKind::Const,
         Definition::Static(_) => SymbolKind::Static,
         Definition::Trait(_) => SymbolKind::Trait,

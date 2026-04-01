@@ -894,7 +894,7 @@ impl AttrFlags {
         def: GenericDefId,
     ) -> &(ArenaMap<LocalLifetimeParamId, AttrFlags>, ArenaMap<LocalTypeOrConstParamId, AttrFlags>)
     {
-        let generic_params = GenericParams::new(db, def);
+        let generic_params = GenericParams::of(db, def);
         let params_count_excluding_self =
             generic_params.len() - usize::from(generic_params.trait_self_param().is_some());
         if params_count_excluding_self == 0 {

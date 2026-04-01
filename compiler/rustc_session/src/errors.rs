@@ -530,3 +530,7 @@ pub(crate) struct UnexpectedBuiltinCfg {
 #[derive(Diagnostic)]
 #[diag("ThinLTO is not supported by the codegen backend, using fat LTO instead")]
 pub(crate) struct ThinLtoNotSupportedByBackend;
+
+#[derive(Diagnostic)]
+#[diag("`-Zpacked-stack` is only supported on s390x")]
+pub(crate) struct UnsupportedPackedStack;

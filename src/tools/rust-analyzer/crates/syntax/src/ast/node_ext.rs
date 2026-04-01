@@ -717,6 +717,10 @@ impl ast::Type {
             None
         }
     }
+
+    pub fn needs_angles_in_path(&self) -> bool {
+        !matches!(self, ast::Type::PathType(_)) || self.generic_arg_list().is_some()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

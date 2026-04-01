@@ -4,6 +4,7 @@
 use base_db::target::{self, TargetData};
 use hir_def::{
     EnumId, EnumVariantId, FunctionId, Lookup, TraitId, attrs::AttrFlags, lang_item::LangItems,
+    signatures::FunctionSignature,
 };
 use intern::sym;
 use rustc_abi::TargetDataLayout;
@@ -79,7 +80,7 @@ pub fn is_fn_unsafe_to_call(
     call_edition: Edition,
     target_feature_is_safe: TargetFeatureIsSafeInTarget,
 ) -> Unsafety {
-    let data = db.function_signature(func);
+    let data = FunctionSignature::of(db, func);
     if data.is_unsafe() {
         return Unsafety::Unsafe;
     }

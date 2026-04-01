@@ -64,20 +64,20 @@ fn missing_record_expr_field_fixes(
     let module;
     let def_file_id;
     let record_fields = match def_id {
-        hir::VariantDef::Struct(s) => {
+        hir::Variant::Struct(s) => {
             module = s.module(sema.db);
             let source = s.source(sema.db)?;
             def_file_id = source.file_id;
             let fields = source.value.field_list()?;
             record_field_list(fields)?
         }
-        hir::VariantDef::Union(u) => {
+        hir::Variant::Union(u) => {
             module = u.module(sema.db);
             let source = u.source(sema.db)?;
             def_file_id = source.file_id;
             source.value.record_field_list()?
         }
-        hir::VariantDef::Variant(e) => {
+        hir::Variant::EnumVariant(e) => {
             module = e.module(sema.db);
             let source = e.source(sema.db)?;
             def_file_id = source.file_id;
@@ -116,7 +116,7 @@ fn missing_record_expr_field_fixes(
 
     let mut new_field = new_field.to_string();
     // FIXME: check submodule instead of FileId
-    if usage_file_id != def_file_id && !matches!(def_id, hir::VariantDef::Variant(_)) {
+    if usage_file_id != def_file_id && !matches!(def_id, hir::Variant::EnumVariant(_)) {
         new_field = format!("pub(crate) {new_field}");
     }
     new_field = format!("\n{indent}{new_field}{postfix}");

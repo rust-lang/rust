@@ -47,7 +47,7 @@ pub enum Conflict {
 pub fn trait_ref_is_knowable<Infcx, I, E>(
     infcx: &Infcx,
     trait_ref: ty::TraitRef<I>,
-    mut lazily_normalize_ty: impl FnMut(I::Ty) -> Result<I::Ty, E>,
+    mut lazily_normalize_ty: impl FnMut(ty::Ty<I>) -> Result<ty::Ty<I>, E>,
 ) -> Result<Result<(), Conflict>, E>
 where
     Infcx: InferCtxtLike<Interner = I>,
@@ -115,14 +115,14 @@ impl From<bool> for IsFirstInputType {
 
 #[derive_where(Debug; I: Interner, T: Debug)]
 pub enum OrphanCheckErr<I: Interner, T> {
-    NonLocalInputType(Vec<(I::Ty, IsFirstInputType)>),
+    NonLocalInputType(Vec<(ty::Ty<I>, IsFirstInputType)>),
     UncoveredTyParams(UncoveredTyParams<I, T>),
 }
 
 #[derive_where(Debug; I: Interner, T: Debug)]
 pub struct UncoveredTyParams<I: Interner, T> {
     pub uncovered: T,
-    pub local_ty: Option<I::Ty>,
+    pub local_ty: Option<ty::Ty<I>>,
 }
 
 /// Checks whether a trait-ref is potentially implementable by a crate.
@@ -222,8 +222,8 @@ pub fn orphan_check_trait_ref<Infcx, I, E: Debug>(
     infcx: &Infcx,
     trait_ref: ty::TraitRef<I>,
     in_crate: InCrate,
-    lazily_normalize_ty: impl FnMut(I::Ty) -> Result<I::Ty, E>,
-) -> Result<Result<(), OrphanCheckErr<I, I::Ty>>, E>
+    lazily_normalize_ty: impl FnMut(ty::Ty<I>) -> Result<ty::Ty<I>, E>,
+) -> Result<Result<(), OrphanCheckErr<I, ty::Ty<I>>>, E>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -262,14 +262,14 @@ struct OrphanChecker<'a, Infcx, I: Interner, F> {
     lazily_normalize_ty: F,
     /// Ignore orphan check failures and exclusively search for the first local type.
     search_first_local_ty: bool,
-    non_local_tys: Vec<(I::Ty, IsFirstInputType)>,
+    non_local_tys: Vec<(ty::Ty<I>, IsFirstInputType)>,
 }
 
 impl<'a, Infcx, I, F, E> OrphanChecker<'a, Infcx, I, F>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    F: FnOnce(I::Ty) -> Result<I::Ty, E>,
+    F: FnOnce(ty::Ty<I>) -> Result<ty::Ty<I>, E>,
 {
     fn new(infcx: &'a Infcx, in_crate: InCrate, lazily_normalize_ty: F) -> Self {
         OrphanChecker {
@@ -282,12 +282,15 @@ where
         }
     }
 
-    fn found_non_local_ty(&mut self, t: I::Ty) -> ControlFlow<OrphanCheckEarlyExit<I, E>> {
+    fn found_non_local_ty(&mut self, t: ty::Ty<I>) -> ControlFlow<OrphanCheckEarlyExit<I, E>> {
         self.non_local_tys.push((t, self.in_self_ty.into()));
         ControlFlow::Continue(())
     }
 
-    fn found_uncovered_ty_param(&mut self, ty: I::Ty) -> ControlFlow<OrphanCheckEarlyExit<I, E>> {
+    fn found_uncovered_ty_param(
+        &mut self,
+        ty: ty::Ty<I>,
+    ) -> ControlFlow<OrphanCheckEarlyExit<I, E>> {
         if self.search_first_local_ty {
             return ControlFlow::Continue(());
         }
@@ -305,15 +308,15 @@ where
 
 enum OrphanCheckEarlyExit<I: Interner, E> {
     NormalizationFailure(E),
-    UncoveredTyParam(I::Ty),
-    LocalTy(I::Ty),
+    UncoveredTyParam(ty::Ty<I>),
+    LocalTy(ty::Ty<I>),
 }
 
 impl<'a, Infcx, I, F, E> TypeVisitor<I> for OrphanChecker<'a, Infcx, I, F>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    F: FnMut(I::Ty) -> Result<I::Ty, E>,
+    F: FnMut(ty::Ty<I>) -> Result<ty::Ty<I>, E>,
 {
     type Result = ControlFlow<OrphanCheckEarlyExit<I, E>>;
 
@@ -321,7 +324,7 @@ where
         ControlFlow::Continue(())
     }
 
-    fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
+    fn visit_ty(&mut self, ty: ty::Ty<I>) -> Self::Result {
         let ty = self.infcx.shallow_resolve(ty);
         let ty = match (self.lazily_normalize_ty)(ty) {
             Ok(norm_ty) if norm_ty.is_ty_var() => ty,

@@ -421,6 +421,8 @@ fn infer_pattern_match_byte_string_literal() {
             254..256 '&v': &'? [u8; 3]
             255..256 'v': [u8; 3]
             257..259 '{}': ()
+            199..200 '3': usize
+            62..63 'N': usize
         "#]],
     );
 }

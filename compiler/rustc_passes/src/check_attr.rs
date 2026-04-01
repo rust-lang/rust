@@ -1188,7 +1188,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             html_no_source: _,
             // already checked in attr_parsing
             issue_tracker_base_url: _,
-            rust_logo,
+            // already checked in attr_parsing
+            rust_logo: _,
             // allowed anywhere
             test_attrs: _,
             // already checked in attr_parsing
@@ -1216,18 +1217,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
 
         self.check_doc_inline(hir_id, target, inline);
-
-        if let Some(span) = rust_logo
-            && !self.tcx.features().rustdoc_internals()
-        {
-            feature_err(
-                &self.tcx.sess,
-                sym::rustdoc_internals,
-                *span,
-                msg!("the `#[doc(rust_logo)]` attribute is used for Rust branding"),
-            )
-            .emit();
-        }
 
         if let Some(span) = masked {
             self.check_doc_masked(*span, hir_id, target);

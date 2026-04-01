@@ -1337,7 +1337,7 @@ impl ast::HasName for RecordField {}
 impl ast::HasVisibility for RecordField {}
 impl RecordField {
     #[inline]
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn default_val(&self) -> Option<ConstArg> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     #[inline]
@@ -1896,7 +1896,7 @@ impl ast::HasName for Variant {}
 impl ast::HasVisibility for Variant {}
 impl Variant {
     #[inline]
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn const_arg(&self) -> Option<ConstArg> { support::child(&self.syntax) }
     #[inline]
     pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
     #[inline]

@@ -1,10 +1,11 @@
 use hir::next_solver::{DbInterner, TypingMode};
 use ide_db::{RootDatabase, famous_defs::FamousDefs};
-use syntax::ast::{self, AstNode, HasName};
+use syntax::ast::{self, AstNode, HasName, edit::AstNodeEdit, syntax_factory::SyntaxFactory};
+use syntax::syntax_editor::Position;
 
 use crate::{
     AssistContext, AssistId, Assists,
-    utils::{generate_trait_impl_text_intransitive, is_selected},
+    utils::{generate_trait_impl_intransitive_with_item, is_selected},
 };
 
 // Assist: generate_from_impl_for_enum
@@ -33,39 +34,72 @@ pub(crate) fn generate_from_impl_for_enum(
     let variants = selected_variants(ctx, &variant)?;
 
     let target = variant.syntax().text_range();
+    let file_id = ctx.vfs_file_id();
     acc.add(
         AssistId::generate("generate_from_impl_for_enum"),
         "Generate `From` impl for this enum variant(s)",
         target,
         |edit| {
-            let start_offset = variant.parent_enum().syntax().text_range().end();
-            let from_impl = variants
-                .into_iter()
-                .map(|variant_info| {
-                    let from_trait = format!("From<{}>", variant_info.ty);
-                    let impl_code = generate_impl_code(variant_info);
-                    generate_trait_impl_text_intransitive(&adt, &from_trait, &impl_code)
-                })
-                .collect::<String>();
-            edit.insert(start_offset, from_impl);
+            let make = SyntaxFactory::with_mappings();
+            let indent = adt.indent_level();
+            let mut elements = Vec::new();
+
+            for variant_info in variants {
+                let impl_ = build_from_impl(&make, &adt, variant_info).indent(indent);
+                elements.push(make.whitespace(&format!("\n\n{indent}")).into());
+                elements.push(impl_.syntax().clone().into());
+            }
+
+            let mut editor = edit.make_editor(adt.syntax());
+            editor.insert_all(Position::after(adt.syntax()), elements);
+            editor.add_mappings(make.finish_with_mappings());
+            edit.add_file_edits(file_id, editor);
         },
     )
 }
 
-fn generate_impl_code(VariantInfo { name, field_name, ty }: VariantInfo) -> String {
-    if let Some(field) = field_name {
-        format!(
-            r#"    fn from({field}: {ty}) -> Self {{
-        Self::{name} {{ {field} }}
-    }}"#
-        )
+fn build_from_impl(make: &SyntaxFactory, adt: &ast::Adt, variant_info: VariantInfo) -> ast::Impl {
+    let VariantInfo { name, field_name, ty } = variant_info;
+    let trait_ty = make.ty(&format!("From<{ty}>"));
+    let ret_ty = make.ret_type(make.ty_path(make.ident_path("Self")).into());
+
+    let (params, body_expr) = if let Some(field) = field_name {
+        let field_str = field.to_string();
+        let param = make.param(make.ident_pat(false, false, make.name(&field_str)).into(), ty);
+        let field_item = make.record_expr_field(make.name_ref(&field_str), None);
+        let record = make.record_expr(
+            make.path_from_text(&format!("Self::{name}")),
+            make.record_expr_field_list([field_item]),
+        );
+        (make.param_list(None, [param]), ast::Expr::from(record))
     } else {
-        format!(
-            r#"    fn from(v: {ty}) -> Self {{
-        Self::{name}(v)
-    }}"#
+        let param = make.param(make.ident_pat(false, false, make.name("v")).into(), ty);
+        let call = make.expr_call(
+            make.expr_path(make.path_from_text(&format!("Self::{name}"))),
+            make.arg_list([make.expr_path(make.ident_path("v"))]),
+        );
+        (make.param_list(None, [param]), ast::Expr::from(call))
+    };
+
+    let from_fn = make
+        .fn_(
+            [],
+            None,
+            make.name("from"),
+            None,
+            None,
+            params,
+            make.block_expr([], Some(body_expr)),
+            Some(ret_ty),
+            false,
+            false,
+            false,
+            false,
         )
-    }
+        .indent(1.into());
+
+    let body = make.assoc_item_list([ast::AssocItem::Fn(from_fn)]);
+    generate_trait_impl_intransitive_with_item(make, adt, trait_ty, body)
 }
 
 struct VariantInfo {

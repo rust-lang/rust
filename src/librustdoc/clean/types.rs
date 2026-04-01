@@ -514,10 +514,10 @@ impl Item {
         def_id: DefId,
         name: Option<Symbol>,
         kind: ItemKind,
-        cx: &mut DocContext<'_>,
+        tcx: TyCtxt<'_>,
     ) -> Item {
         #[allow(deprecated)]
-        let hir_attrs = cx.tcx.get_all_attrs(def_id);
+        let hir_attrs = tcx.get_all_attrs(def_id);
 
         Self::from_def_id_and_attrs_and_parts(
             def_id,
@@ -1119,20 +1119,20 @@ impl GenericBound {
         matches!(self, Self::TraitBound(..))
     }
 
-    pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
-        self.is_bounded_by_lang_item(cx, LangItem::Sized)
+    pub(crate) fn is_sized_bound(&self, tcx: TyCtxt<'_>) -> bool {
+        self.is_bounded_by_lang_item(tcx, LangItem::Sized)
     }
 
-    pub(crate) fn is_meta_sized_bound(&self, cx: &DocContext<'_>) -> bool {
-        self.is_bounded_by_lang_item(cx, LangItem::MetaSized)
+    pub(crate) fn is_meta_sized_bound(&self, tcx: TyCtxt<'_>) -> bool {
+        self.is_bounded_by_lang_item(tcx, LangItem::MetaSized)
     }
 
-    fn is_bounded_by_lang_item(&self, cx: &DocContext<'_>, lang_item: LangItem) -> bool {
+    fn is_bounded_by_lang_item(&self, tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
         if let GenericBound::TraitBound(
             PolyTrait { ref trait_, .. },
             rustc_hir::TraitBoundModifiers::NONE,
         ) = *self
-            && cx.tcx.is_lang_item(trait_.def_id(), lang_item)
+            && tcx.is_lang_item(trait_.def_id(), lang_item)
         {
             return true;
         }
