@@ -93,6 +93,7 @@
 #![feature(async_iterator)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(case_ignorable)]
 #![feature(cast_maybe_uninit)]
 #![feature(cell_get_cloned)]
 #![feature(char_internals)]
