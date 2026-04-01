@@ -762,7 +762,7 @@ impl<'a> AstValidator<'a> {
         match fn_ctxt {
             FnCtxt::Foreign => return,
             FnCtxt::Free | FnCtxt::Assoc(_) => {
-                if !self.sess.target.arch.supports_c_variadic_definitions() {
+                if !self.sess.target.supports_c_variadic_definitions() {
                     self.dcx().emit_err(errors::CVariadicNotSupported {
                         variadic_span: variadic_param.span,
                         target: &*self.sess.target.llvm_target,
