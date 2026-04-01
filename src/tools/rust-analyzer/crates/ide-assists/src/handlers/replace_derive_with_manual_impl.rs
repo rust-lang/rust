@@ -12,8 +12,8 @@ use crate::{
     AssistConfig, AssistId,
     assist_context::{AssistContext, Assists},
     utils::{
-        DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl_with_factory,
-        filter_assoc_items, gen_trait_fn_body, generate_trait_impl, generate_trait_impl_with_item,
+        DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl, filter_assoc_items,
+        gen_trait_fn_body, generate_trait_impl, generate_trait_impl_with_item,
     },
 };
 
@@ -211,7 +211,7 @@ fn impl_def_from_trait(
     let trait_ty: ast::Type = make.ty_path(trait_path.clone()).into();
     let impl_def = generate_trait_impl(&make, impl_is_unsafe, adt, trait_ty.clone());
 
-    let assoc_items = add_trait_assoc_items_to_impl_with_factory(
+    let assoc_items = add_trait_assoc_items_to_impl(
         &make,
         sema,
         config,
