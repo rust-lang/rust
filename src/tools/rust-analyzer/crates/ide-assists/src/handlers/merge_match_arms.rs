@@ -160,8 +160,11 @@ fn get_arm_types<'db>(
                     }
                 }
                 ast::Pat::IdentPat(ident_pat) => {
-                    if let Some(name) = ident_pat.name() {
+                    if let Some(name) = ident_pat.name()
+                        && ctx.sema.to_def(ident_pat).is_some()
+                    {
                         let pat_type = ctx.sema.type_of_binding_in_pat(ident_pat);
+
                         map.insert(name.text().to_string(), pat_type);
                     }
                 }
@@ -206,6 +209,40 @@ fn main() {
     let y = match x {
         X::A | X::B => { 1i32 },
         X::C => { 2i32 }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn merge_match_arms_ambiguous_ident_patterns() {
+        check_assist(
+            merge_match_arms,
+            r#"
+#[derive(Debug)]
+enum X { A, B, C }
+use X::*;
+
+fn main() {
+    let x = A;
+    let y = match x {
+        A => { 1i32$0 }
+        B => { 1i32 }
+        C => { 2i32 }
+    }
+}
+"#,
+            r#"
+#[derive(Debug)]
+enum X { A, B, C }
+use X::*;
+
+fn main() {
+    let x = A;
+    let y = match x {
+        A | B => { 1i32 },
+        C => { 2i32 }
     }
 }
 "#,

@@ -8,8 +8,8 @@
         [
             FileSymbol {
                 name: "A",
-                def: Variant(
-                    Variant {
+                def: EnumVariant(
+                    EnumVariant {
                         id: EnumVariantId(
                             7c00,
                         ),
@@ -80,8 +80,8 @@
             },
             FileSymbol {
                 name: "B",
-                def: Variant(
-                    Variant {
+                def: EnumVariant(
+                    EnumVariant {
                         id: EnumVariantId(
                             7c01,
                         ),

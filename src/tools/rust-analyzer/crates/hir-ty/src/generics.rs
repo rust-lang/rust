@@ -20,24 +20,23 @@ use hir_def::{
     },
 };
 use itertools::chain;
-use triomphe::Arc;
 
-pub fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
+pub fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics<'_> {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
-    let (params, store) = db.generic_params_and_store(def);
+    let (params, store) = GenericParams::with_store(db, def);
     let has_trait_self_param = params.trait_self_param().is_some();
     Generics { def, params, parent_generics, has_trait_self_param, store }
 }
 #[derive(Clone, Debug)]
-pub struct Generics {
+pub struct Generics<'db> {
     def: GenericDefId,
-    params: Arc<GenericParams>,
-    store: Arc<ExpressionStore>,
-    parent_generics: Option<Box<Generics>>,
+    params: &'db GenericParams,
+    store: &'db ExpressionStore,
+    parent_generics: Option<Box<Generics<'db>>>,
     has_trait_self_param: bool,
 }
 
-impl<T> ops::Index<T> for Generics
+impl<T> ops::Index<T> for Generics<'_>
 where
     GenericParams: ops::Index<T>,
 {
@@ -47,13 +46,13 @@ where
     }
 }
 
-impl Generics {
+impl<'db> Generics<'db> {
     pub(crate) fn def(&self) -> GenericDefId {
         self.def
     }
 
     pub(crate) fn store(&self) -> &ExpressionStore {
-        &self.store
+        self.store
     }
 
     pub(crate) fn where_predicates(&self) -> impl Iterator<Item = &WherePredicate> {
@@ -97,7 +96,7 @@ impl Generics {
     ) -> impl Iterator<Item = ((GenericParamId, GenericParamDataRef<'_>), &ExpressionStore)> + '_
     {
         self.iter_parent()
-            .zip(self.parent_generics().into_iter().flat_map(|it| std::iter::repeat(&*it.store)))
+            .zip(self.parent_generics().into_iter().flat_map(|it| std::iter::repeat(it.store)))
     }
 
     /// Iterate over the params without parent params.
@@ -185,7 +184,7 @@ impl Generics {
         if param.parent == self.def {
             let idx = param.local_id.into_raw().into_u32() as usize;
             debug_assert!(
-                idx <= self.params.len_type_or_consts(),
+                idx < self.params.len_type_or_consts(),
                 "idx: {} len: {}",
                 idx,
                 self.params.len_type_or_consts()
@@ -219,7 +218,7 @@ impl Generics {
         }
     }
 
-    pub(crate) fn parent_generics(&self) -> Option<&Generics> {
+    pub(crate) fn parent_generics(&self) -> Option<&Generics<'db>> {
         self.parent_generics.as_deref()
     }
 }
@@ -243,7 +242,7 @@ pub(crate) fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Opt
 }
 
 fn from_toc_id<'a>(
-    it: &'a Generics,
+    it: &'a Generics<'a>,
 ) -> impl Fn(
     (LocalTypeOrConstParamId, &'a TypeOrConstParamData),
 ) -> (GenericParamId, GenericParamDataRef<'a>) {
@@ -263,7 +262,7 @@ fn from_toc_id<'a>(
 }
 
 fn from_lt_id<'a>(
-    it: &'a Generics,
+    it: &'a Generics<'a>,
 ) -> impl Fn((LocalLifetimeParamId, &'a LifetimeParamData)) -> (GenericParamId, GenericParamDataRef<'a>)
 {
     move |(local_id, p): (_, _)| {

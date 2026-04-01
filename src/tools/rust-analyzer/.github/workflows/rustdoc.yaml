@@ -1,8 +1,8 @@
 name: rustdoc
 on:
   push:
-   branches:
-   - master
+    branches:
+      - master
 
 env:
   CARGO_INCREMENTAL: 0
@@ -10,6 +10,7 @@ env:
   RUSTFLAGS: "-D warnings -W unreachable-pub"
   RUSTDOCFLAGS: "-D warnings"
   RUSTUP_MAX_RETRIES: 10
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
   rustdoc:
@@ -17,19 +18,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-    - name: Install Rust toolchain
-      run: rustup update --no-self-update stable
+      - name: Install Rust toolchain
+        run: rustup update --no-self-update stable
 
-    - name: Build Documentation
-      run: cargo doc --all --no-deps --document-private-items
+      - name: Build Documentation
+        run: cargo doc --all --no-deps --document-private-items
 
-    - name: Deploy Docs
-      uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4.0.0
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_branch: gh-pages
-        publish_dir: ./target/doc
-        force_orphan: true
+      - name: Deploy Docs
+        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./target/doc
+          force_orphan: true

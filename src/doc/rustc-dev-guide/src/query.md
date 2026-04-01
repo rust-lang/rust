@@ -275,8 +275,9 @@ This looks something like:
 rustc_queries! {
     /// Records the type of every item.
     query type_of(key: DefId) -> Ty<'tcx> {
-        cache_on_disk_if { key.is_local() }
         desc { |tcx| "computing the type of `{}`", tcx.def_path_str(key) }
+        cache_on_disk
+        separate_provide_extern
     }
     ...
 }

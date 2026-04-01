@@ -2812,13 +2812,13 @@ pub trait HashStableContext {
     fn assert_default_hashing_controls(&self, msg: &str);
 }
 
-impl<CTX> HashStable<CTX> for Span
+impl<Hcx> HashStable<Hcx> for Span
 where
-    CTX: HashStableContext,
+    Hcx: HashStableContext,
 {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // `span_hash_stable` does all the work.
-        ctx.span_hash_stable(*self, hasher)
+        hcx.span_hash_stable(*self, hasher)
     }
 }
 

@@ -205,7 +205,7 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
         Definition::Adt(Adt::Struct(..)) => Struct,
         Definition::Adt(Adt::Union(..)) => Union,
         Definition::Adt(Adt::Enum(..)) => Enum,
-        Definition::Variant(..) => EnumMember,
+        Definition::EnumVariant(..) => EnumMember,
         Definition::Const(..) => Constant,
         Definition::Static(..) => StaticVariable,
         Definition::Trait(..) => Trait,

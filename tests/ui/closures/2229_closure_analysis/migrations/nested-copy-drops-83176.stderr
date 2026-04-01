@@ -1,5 +1,5 @@
 warning: irrefutable `if let` pattern
-  --> $DIR/issue-78720.rs:7:8
+  --> $DIR/nested-copy-drops-83176.rs:8:8
    |
 LL |     if let a = "" {
    |        ^^^^^^^^^^

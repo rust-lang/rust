@@ -10,7 +10,6 @@ use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::format_to;
-use triomphe::Arc;
 
 use crate::{
     AssocItemId, AttrDefId, Complete, FxIndexMap, ModuleDefId, ModuleId, TraitId,
@@ -63,6 +62,14 @@ enum IsTraitAssocItem {
 
 type ImportMapIndex = FxIndexMap<ItemInNs, (SmallVec<[ImportInfo; 1]>, IsTraitAssocItem)>;
 
+#[salsa::tracked]
+impl ImportMap {
+    #[salsa::tracked(returns(ref))]
+    pub fn of(db: &dyn DefDatabase, krate: Crate) -> Self {
+        Self::import_map_query_impl(db, krate)
+    }
+}
+
 impl ImportMap {
     pub fn dump(&self, db: &dyn DefDatabase) -> String {
         let mut out = String::new();
@@ -76,7 +83,7 @@ impl ImportMap {
         out
     }
 
-    pub(crate) fn import_map_query(db: &dyn DefDatabase, krate: Crate) -> Arc<Self> {
+    fn import_map_query_impl(db: &dyn DefDatabase, krate: Crate) -> Self {
         let _p = tracing::info_span!("import_map_query").entered();
 
         let map = Self::collect_import_map(db, krate);
@@ -120,7 +127,7 @@ impl ImportMap {
         }
 
         let importables = importables.into_iter().map(|(item, _, idx)| (item, idx)).collect();
-        Arc::new(ImportMap { item_to_info_map: map, fst: builder.into_map(), importables })
+        ImportMap { item_to_info_map: map, fst: builder.into_map(), importables }
     }
 
     pub fn import_info_for(&self, item: ItemInNs) -> Option<&[ImportInfo]> {
@@ -424,7 +431,7 @@ pub fn search_dependencies(
     let _p = tracing::info_span!("search_dependencies", ?query).entered();
 
     let import_maps: Vec<_> =
-        krate.data(db).dependencies.iter().map(|dep| db.import_map(dep.crate_id)).collect();
+        krate.data(db).dependencies.iter().map(|dep| ImportMap::of(db, dep.crate_id)).collect();
 
     let mut op = fst::map::OpBuilder::new();
 
@@ -458,7 +465,7 @@ pub fn search_dependencies(
 
 fn search_maps(
     _db: &dyn DefDatabase,
-    import_maps: &[Arc<ImportMap>],
+    import_maps: &[&ImportMap],
     mut stream: fst::map::Union<'_>,
     query: &Query,
 ) -> FxHashSet<(ItemInNs, Complete)> {
@@ -467,7 +474,7 @@ fn search_maps(
         for &IndexedValue { index: import_map_idx, value } in indexed_values {
             let end = (value & 0xFFFF_FFFF) as usize;
             let start = (value >> 32) as usize;
-            let ImportMap { item_to_info_map, importables, .. } = &*import_maps[import_map_idx];
+            let ImportMap { item_to_info_map, importables, .. } = import_maps[import_map_idx];
             let importables = &importables[start..end];
 
             let iter = importables
@@ -546,9 +553,9 @@ mod tests {
             .into_iter()
             .filter_map(|(dependency, _)| {
                 let dependency_krate = dependency.krate(&db)?;
-                let dependency_imports = db.import_map(dependency_krate);
+                let dependency_imports = ImportMap::of(&db, dependency_krate);
 
-                let (path, mark) = match assoc_item_path(&db, &dependency_imports, dependency) {
+                let (path, mark) = match assoc_item_path(&db, dependency_imports, dependency) {
                     Some(assoc_item_path) => (assoc_item_path, "a"),
                     None => (
                         render_path(&db, &dependency_imports.import_info_for(dependency)?[0]),
@@ -618,7 +625,7 @@ mod tests {
                 let cdata = &krate.extra_data(&db);
                 let name = cdata.display_name.as_ref()?;
 
-                let map = db.import_map(krate);
+                let map = ImportMap::of(&db, krate);
 
                 Some(format!("{name}:\n{}\n", map.fmt_for_test(&db)))
             })

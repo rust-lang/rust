@@ -1,5 +1,6 @@
 //! Missing batteries for standard libraries.
 
+use std::borrow::Cow;
 use std::io as sio;
 use std::process::Command;
 use std::{cmp::Ordering, ops, time::Instant};
@@ -246,6 +247,24 @@ pub fn dedent_by(spaces: usize, text: &str) -> String {
         .map(|line| {
             let trimmed = line.trim_start_matches(' ');
             if line.len() - trimmed.len() <= spaces { trimmed } else { &line[spaces..] }
+        })
+        .collect()
+}
+
+/// Indent non empty lines, including the first line
+#[must_use]
+pub fn indent_string(s: &str, indent_level: u8) -> String {
+    if indent_level == 0 || s.is_empty() {
+        return s.to_owned();
+    }
+    let indent_str = "    ".repeat(indent_level as usize);
+    s.split_inclusive("\n")
+        .map(|line| {
+            if line.trim_end().is_empty() {
+                Cow::Borrowed(line)
+            } else {
+                format!("{indent_str}{line}").into()
+            }
         })
         .collect()
 }

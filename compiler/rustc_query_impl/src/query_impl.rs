@@ -125,6 +125,20 @@ macro_rules! define_queries {
                     }
                 }
 
+                fn will_cache_on_disk_for_key<'tcx>(
+                    _key: rustc_middle::queries::$name::Key<'tcx>,
+                ) -> bool {
+                    cfg_select! {
+                        // If a query has both `cache_on_disk` and `separate_provide_extern`, only
+                        // disk-cache values for "local" keys, i.e. things in the current crate.
+                        all($cache_on_disk, $separate_provide_extern) => {
+                            AsLocalQueryKey::as_local_key(&_key).is_some()
+                        }
+                        all($cache_on_disk, not($separate_provide_extern)) => true,
+                        not($cache_on_disk) => false,
+                    }
+                }
+
                 pub(crate) fn make_query_vtable<'tcx>(incremental: bool)
                     -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>>
                 {
@@ -141,18 +155,15 @@ macro_rules! define_queries {
 
                         invoke_provider_fn: self::invoke_provider_fn::__rust_begin_short_backtrace,
 
-                        #[cfg($cache_on_disk)]
                         will_cache_on_disk_for_key_fn:
-                            rustc_middle::queries::_cache_on_disk_if_fns::$name,
-                        #[cfg(not($cache_on_disk))]
-                        will_cache_on_disk_for_key_fn: |_, _| false,
+                            $crate::query_impl::$name::will_cache_on_disk_for_key,
 
                         #[cfg($cache_on_disk)]
                         try_load_from_disk_fn: |tcx, key, prev_index, index| {
                             use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
 
-                            // Check the `cache_on_disk_if` condition for this key.
-                            if !rustc_middle::queries::_cache_on_disk_if_fns::$name(tcx, key) {
+                            // Check the cache-on-disk condition for this key.
+                            if !$crate::query_impl::$name::will_cache_on_disk_for_key(key) {
                                 return None;
                             }
 

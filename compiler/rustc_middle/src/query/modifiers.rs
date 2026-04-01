@@ -18,11 +18,15 @@
 /// The query plumbing takes care of the arenas and the type manipulations.
 pub(crate) struct arena_cache;
 
-/// # `cache_on_disk_if { ... }` query modifier
+/// # `cache_on_disk` query modifier
 ///
-/// Cache the query result to disk if the provided block evaluates to true. The query key
-/// identifier is available for use within the block, as is `tcx`.
-pub(crate) struct cache_on_disk_if;
+/// The query's return values are cached to disk, and can be loaded by subsequent
+/// sessions if the corresponding dep node is green.
+///
+/// If the [`separate_provide_extern`] modifier is also present, values will only
+/// be cached to disk for "local" keys, because values for external crates should
+/// be loadable from crate metadata instead.
+pub(crate) struct cache_on_disk;
 
 /// # `depth_limit` query modifier
 ///
@@ -73,6 +77,8 @@ pub(crate) struct no_hash;
 /// # `separate_provide_extern` query modifier
 ///
 /// Use separate query provider functions for local and extern crates.
+///
+/// Also affects the [`cache_on_disk`] modifier.
 pub(crate) struct separate_provide_extern;
 
 // tidy-alphabetical-end

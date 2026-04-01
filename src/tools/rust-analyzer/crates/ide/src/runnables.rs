@@ -494,7 +494,7 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
         Definition::Module(it) => it.attrs(db),
         Definition::Function(it) => it.attrs(db),
         Definition::Adt(it) => it.attrs(db),
-        Definition::Variant(it) => it.attrs(db),
+        Definition::EnumVariant(it) => it.attrs(db),
         Definition::Const(it) => it.attrs(db),
         Definition::Static(it) => it.attrs(db),
         Definition::Trait(it) => it.attrs(db),

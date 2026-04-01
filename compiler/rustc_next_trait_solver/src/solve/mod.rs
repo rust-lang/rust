@@ -24,7 +24,7 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, TyVid, TypingMode};
+use rustc_type_ir::{self as ty, Interner, Ty, TyVid, TypingMode};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -88,7 +88,7 @@ where
     #[instrument(level = "trace", skip(self))]
     fn compute_type_outlives_goal(
         &mut self,
-        goal: Goal<I, ty::OutlivesPredicate<I, I::Ty>>,
+        goal: Goal<I, ty::OutlivesPredicate<I, Ty<I>>>,
     ) -> QueryResult<I> {
         let ty::OutlivesPredicate(ty, lt) = goal.predicate;
         self.register_ty_outlives(ty, lt);
@@ -205,7 +205,7 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     fn compute_const_arg_has_type_goal(
         &mut self,
-        goal: Goal<I, (I::Const, I::Ty)>,
+        goal: Goal<I, (I::Const, Ty<I>)>,
     ) -> QueryResult<I> {
         let (ct, ty) = goal.predicate;
         let ct = self.structurally_normalize_const(goal.param_env, ct)?;
@@ -315,8 +315,8 @@ where
     fn structurally_normalize_ty(
         &mut self,
         param_env: I::ParamEnv,
-        ty: I::Ty,
-    ) -> Result<I::Ty, NoSolution> {
+        ty: Ty<I>,
+    ) -> Result<Ty<I>, NoSolution> {
         self.structurally_normalize_term(param_env, ty.into()).map(|term| term.expect_ty())
     }
 

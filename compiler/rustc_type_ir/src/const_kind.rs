@@ -117,8 +117,8 @@ impl fmt::Debug for InferConst {
 }
 
 #[cfg(feature = "nightly")]
-impl<CTX> HashStable<CTX> for InferConst {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+impl<Hcx> HashStable<Hcx> for InferConst {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             InferConst::Var(_) => {
                 panic!("const variables should not be hashed: {self:?}")

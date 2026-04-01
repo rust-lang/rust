@@ -112,9 +112,10 @@ warning: value assigned to `e` is never read
   --> $DIR/liveness-upvars.rs:82:13
    |
 LL |             e = Some("e1");
-   |             ^^^^^^^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |             ^^^^^^^^^^^^^^ this value is reassigned later and never used
+LL |
+LL |             e = Some("e2");
+   |             -------------- `e` is overwritten here before the previous value is read
 
 warning: value assigned to `e` is never read
   --> $DIR/liveness-upvars.rs:84:13
@@ -128,9 +129,9 @@ warning: value assigned to `d` is never read
   --> $DIR/liveness-upvars.rs:78:13
    |
 LL |             d = Some("d1");
-   |             ^^^^^^^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |             ^^^^^^^^^^^^^^ this value is reassigned later and never used
+LL |             d = Some("d2");
+   |             -------------- `d` is overwritten here before the previous value is read
 
 warning: value assigned to `v` is never read
   --> $DIR/liveness-upvars.rs:92:13
@@ -176,9 +177,10 @@ warning: value assigned to `state` is never read
   --> $DIR/liveness-upvars.rs:131:9
    |
 LL |         state = 4;
-   |         ^^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |         ^^^^^^^^^ this value is reassigned later and never used
+...
+LL |         state = 5;
+   |         --------- `state` is overwritten here before the previous value is read
 
 warning: value assigned to `state` is never read
   --> $DIR/liveness-upvars.rs:134:9
@@ -192,17 +194,17 @@ warning: value assigned to `s` is never read
   --> $DIR/liveness-upvars.rs:143:9
    |
 LL |         s = 1;
-   |         ^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |         ^^^^^ this value is reassigned later and never used
+LL |         yield (s = 2);
+   |               ------- `s` is overwritten here before the previous value is read
 
 warning: value assigned to `s` is never read
   --> $DIR/liveness-upvars.rs:145:9
    |
 LL |         s = yield ();
-   |         ^^^^^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |         ^^^^^^^^^^^^ this value is reassigned later and never used
+LL |         s = 3;
+   |         ----- `s` is overwritten here before the previous value is read
 
 warning: 25 warnings emitted
 
