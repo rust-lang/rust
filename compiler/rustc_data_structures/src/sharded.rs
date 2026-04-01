@@ -201,60 +201,6 @@ impl<K: Eq + Hash, V> ShardedHashMap<K, V> {
     }
 }
 
-impl<K: Eq + Hash + Copy> ShardedHashMap<K, ()> {
-    #[inline]
-    pub fn intern_ref<Q: ?Sized>(&self, value: &Q, make: impl FnOnce() -> K) -> K
-    where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
-    {
-        let hash = make_hash(value);
-        let mut shard = self.lock_shard_by_hash(hash);
-
-        match table_entry(&mut shard, hash, value) {
-            Entry::Occupied(e) => e.get().0,
-            Entry::Vacant(e) => {
-                let v = make();
-                e.insert((v, ()));
-                v
-            }
-        }
-    }
-
-    #[inline]
-    pub fn intern<Q>(&self, value: Q, make: impl FnOnce(Q) -> K) -> K
-    where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
-    {
-        let hash = make_hash(&value);
-        let mut shard = self.lock_shard_by_hash(hash);
-
-        match table_entry(&mut shard, hash, &value) {
-            Entry::Occupied(e) => e.get().0,
-            Entry::Vacant(e) => {
-                let v = make(value);
-                e.insert((v, ()));
-                v
-            }
-        }
-    }
-}
-
-pub trait IntoPointer {
-    /// Returns a pointer which outlives `self`.
-    fn into_pointer(&self) -> *const ();
-}
-
-impl<K: Eq + Hash + Copy + IntoPointer> ShardedHashMap<K, ()> {
-    pub fn contains_pointer_to<T: Hash + IntoPointer>(&self, value: &T) -> bool {
-        let hash = make_hash(&value);
-        let shard = self.lock_shard_by_hash(hash);
-        let value = value.into_pointer();
-        shard.find(hash, |(k, ())| k.into_pointer() == value).is_some()
-    }
-}
-
 #[inline]
 pub fn make_hash<K: Hash + ?Sized>(val: &K) -> u64 {
     let mut state = FxHasher::default();
