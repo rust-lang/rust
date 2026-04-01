@@ -77,6 +77,7 @@ rayon = "1.2"
 fnv = "1.0.7"
 serde_test = "1.0"
 bumpalo = { version = "3.13.0", features = ["allocator-api2"] }
+criterion = { version = "0.7", features = ["html_reports"] }
 
 [target.'cfg(unix)'.dev-dependencies]
 libc = "0.2.155"
@@ -115,6 +116,22 @@ default-hasher = ["dep:foldhash"]
 # crate. This may lead to a performance increase but often comes at a compile
 # time cost.
 inline-more = []
+
+[[bench]]
+name = "bench"
+harness = false
+
+[[bench]]
+name = "set_ops"
+harness = false
+
+[[bench]]
+name = "insert_unique_unchecked"
+harness = false
+
+[[bench]]
+name = "with_capacity"
+harness = false
 
 [package.metadata.docs.rs]
 features = ["nightly", "rayon", "serde", "raw-entry"]
