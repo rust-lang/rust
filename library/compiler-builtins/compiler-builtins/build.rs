@@ -46,13 +46,11 @@ fn main() {
     }
 
     // These targets have hardware unaligned access support.
-    if target.arch.contains("x86_64")
+    let mem_unaligned = target.arch.contains("x86_64")
         || target.arch.contains("x86")
         || target.arch.contains("aarch64")
-        || target.arch.contains("bpf")
-    {
-        println!("cargo:rustc-cfg=feature=\"mem-unaligned\"");
-    }
+        || target.arch.contains("bpf");
+    set_cfg("mem_unaligned", mem_unaligned);
 
     // NOTE we are going to assume that llvm-target, what determines our codegen option, matches the
     // target triple. This is usually correct for our built-in targets but can break in presence of
