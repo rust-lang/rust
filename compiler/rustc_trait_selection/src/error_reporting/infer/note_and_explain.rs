@@ -105,7 +105,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         if !sp.contains(p_span) {
                             diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
-                        let parent = p_def_id.as_local().and_then(|id| {
+                        let param_def_id = match *proj.self_ty().kind() {
+                            ty::Param(param) => {
+                                tcx.generics_of(body_owner_def_id).type_param(param, tcx).def_id
+                            }
+                            _ => p_def_id,
+                        };
+                        let parent = param_def_id.as_local().and_then(|id| {
                             let local_id = tcx.local_def_id_to_hir_id(id);
                             let generics = tcx.parent_hir_node(local_id).generics()?;
                             Some((id, generics))
