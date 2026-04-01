@@ -1657,7 +1657,7 @@ class DocSearch {
             traitParent: raw[5] === 0 ? null : raw[5] - 1,
             deprecated: raw[6] === 1 ? true : false,
             unstable: raw[7] === 1 ? true : false,
-            associatedItemDisambiguator: raw.length === 8 ? null : raw[8],
+            associatedItemDisambiguatorOrExternCrateUrl: raw.length === 8 ? null : raw[8],
         };
     }
 
@@ -2176,7 +2176,12 @@ class DocSearch {
                     "/" + type + "." + name + ".html";
             } else if (type === "externcrate") {
                 displayPath = "";
-                href = this.rootPath + name + "/index.html";
+                let base = this.rootPath + name;
+                if (item.entry && item.entry.associatedItemDisambiguatorOrExternCrateUrl) {
+                    base = item.entry.associatedItemDisambiguatorOrExternCrateUrl;
+                }
+
+                href = base + "/index.html";
             } else if (item.parent) {
                 const myparent = item.parent;
                 let anchor = type + "." + name;
@@ -2201,8 +2206,8 @@ class DocSearch {
                 } else {
                     displayPath = path + "::" + myparent.name + "::";
                 }
-                if (item.entry && item.entry.associatedItemDisambiguator !== null) {
-                    anchor = item.entry.associatedItemDisambiguator + "/" + anchor;
+                if (item.entry && item.entry.associatedItemDisambiguatorOrExternCrateUrl !== null) {
+                    anchor = item.entry.associatedItemDisambiguatorOrExternCrateUrl + "/" + anchor;
                 }
                 href = this.rootPath + path.replace(/::/g, "/") +
                     "/" + pageType +
