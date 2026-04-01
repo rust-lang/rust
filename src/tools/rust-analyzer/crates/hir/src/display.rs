@@ -76,7 +76,7 @@ fn write_builtin_derive_impl_method<'db>(
 
         let predicates =
             hir_ty::builtin_derive::predicates(db, impl_).explicit_predicates().skip_binder();
-        write_params_bounds(f, predicates)?;
+        write_params_bounds(f, &Vec::from_iter(predicates))?;
     }
 
     Ok(())
@@ -578,7 +578,7 @@ impl<'db> HirDisplay<'db> for TypeParam {
         let ty = self.ty(f.db).ty;
         let predicates = GenericPredicates::query_all(f.db, self.id.parent());
         let predicates = predicates
-            .iter_identity_copied()
+            .iter_identity()
             .filter(|wc| match wc.kind().skip_binder() {
                 ClauseKind::Trait(tr) => tr.self_ty() == ty,
                 ClauseKind::Projection(proj) => proj.self_ty() == ty,
