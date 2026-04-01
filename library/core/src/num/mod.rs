@@ -43,6 +43,7 @@ mod int_macros; // import int_impl!
 #[macro_use]
 mod uint_macros; // import uint_impl!
 
+mod complex;
 mod error;
 mod int_bits;
 mod int_log10;
@@ -57,6 +58,8 @@ mod wrapping;
 #[doc(hidden)]
 pub mod niche_types;
 
+#[unstable(feature = "complex_numbers", issue = "154023")]
+pub use complex::Complex;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;

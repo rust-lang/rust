@@ -13,6 +13,7 @@
 #![feature(char_internals)]
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
+#![feature(complex_numbers)]
 #![feature(const_array)]
 #![feature(const_bool)]
 #![feature(const_cell_traits)]

@@ -23,6 +23,7 @@ mod u8;
 
 mod bignum;
 mod carryless_mul;
+mod complex;
 mod const_from;
 mod dec2flt;
 mod float_iter_sum_identity;
