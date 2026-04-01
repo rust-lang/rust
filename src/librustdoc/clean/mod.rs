@@ -184,7 +184,8 @@ fn generate_item_with_correct_attrs(
     import_ids: &[LocalDefId],
     renamed: Option<Symbol>,
 ) -> Item {
-    let target_attrs = inline::load_attrs(cx.tcx, def_id);
+    let tcx = cx.tcx;
+    let target_attrs = inline::load_attrs(tcx, def_id);
     let attrs = if !import_ids.is_empty() {
         let mut attrs = Vec::with_capacity(import_ids.len());
         let mut is_inline = false;
@@ -196,11 +197,11 @@ fn generate_item_with_correct_attrs(
             // cfgs on the path up until the glob can be removed, and only cfgs on the globbed item
             // itself matter), for non-inlined re-exports see #85043.
             let import_is_inline = find_attr!(
-                inline::load_attrs(cx.tcx, import_id.to_def_id()),
+                inline::load_attrs(tcx, import_id.to_def_id()),
                 Doc(d)
                 if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
-            ) || (is_glob_import(cx.tcx, import_id)
-                && (cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id)));
+            ) || (is_glob_import(tcx, import_id)
+                && (cx.document_hidden() || !tcx.is_doc_hidden(def_id)));
             attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
             is_inline = is_inline || import_is_inline;
         }
@@ -1458,7 +1459,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 bounds.retain(|b| {
                     // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
                     // is shown and none of the new sizedness traits leak into documentation.
-                    !b.is_meta_sized_bound(cx.tcx)
+                    !b.is_meta_sized_bound(tcx)
                 });
 
                 // Our Sized/?Sized bound didn't get handled when creating the generics
@@ -1466,7 +1467,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 // (some of them may have come from the trait). If we do have a sized
                 // bound, we remove it, and if we don't then we add the `?Sized` bound
                 // at the end.
-                match bounds.iter().position(|b| b.is_sized_bound(cx.tcx)) {
+                match bounds.iter().position(|b| b.is_sized_bound(tcx)) {
                     Some(i) => {
                         bounds.remove(i);
                     }
@@ -1516,7 +1517,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
         }
     };
 
-    Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name()), kind, cx.tcx)
+    Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name()), kind, tcx)
 }
 
 fn first_non_private_clean_path<'tcx>(
@@ -2767,12 +2768,8 @@ fn clean_maybe_renamed_item<'tcx>(
     import_ids: &[LocalDefId],
 ) -> Vec<Item> {
     use hir::ItemKind;
-    fn get_name(
-        cx: &DocContext<'_>,
-        item: &hir::Item<'_>,
-        renamed: Option<Symbol>,
-    ) -> Option<Symbol> {
-        renamed.or_else(|| cx.tcx.hir_opt_name(item.hir_id()))
+    fn get_name(tcx: TyCtxt<'_>, item: &hir::Item<'_>, renamed: Option<Symbol>) -> Option<Symbol> {
+        renamed.or_else(|| tcx.hir_opt_name(item.hir_id()))
     }
 
     let def_id = item.owner_id.to_def_id();
@@ -2789,7 +2786,7 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Use(path, kind) => {
                 return clean_use_statement(
                     item,
-                    get_name(cx, item, renamed),
+                    get_name(cx.tcx, item, renamed),
                     path,
                     kind,
                     cx,
@@ -2799,7 +2796,7 @@ fn clean_maybe_renamed_item<'tcx>(
             _ => {}
         }
 
-        let mut name = get_name(cx, item, renamed).unwrap();
+        let mut name = get_name(cx.tcx, item, renamed).unwrap();
 
         let kind = match item.kind {
             ItemKind::Static(mutability, _, ty, body_id) => StaticItem(Static {
