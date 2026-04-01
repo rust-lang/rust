@@ -925,7 +925,7 @@ fn clean_ty_generics_inner<'tcx>(
         if let Some(proj) = impl_trait_proj.remove(&idx) {
             for (trait_did, name, rhs) in proj {
                 let rhs = clean_middle_term(rhs, cx);
-                simplify::merge_bounds(cx, &mut bounds, trait_did, name, &rhs);
+                simplify::merge_bounds(cx.tcx, &mut bounds, trait_did, name, &rhs);
             }
         }
 
@@ -939,7 +939,7 @@ fn clean_ty_generics_inner<'tcx>(
 
     let mut generics = Generics { params, where_predicates };
     simplify::sized_bounds(cx, &mut generics);
-    generics.where_predicates = simplify::where_clauses(cx, generics.where_predicates);
+    generics.where_predicates = simplify::where_clauses(cx.tcx, generics.where_predicates);
     generics
 }
 
