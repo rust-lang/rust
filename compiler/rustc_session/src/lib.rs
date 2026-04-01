@@ -11,28 +11,24 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-pub mod errors;
-
-pub mod utils;
+pub use getopts;
 pub use lint::{declare_lint, declare_lint_pass, declare_tool_lint, impl_lint_pass};
 pub use rustc_lint_defs as lint;
-pub mod parse;
+pub use session::*;
 
 pub mod code_stats;
+pub mod errors;
+pub mod parse;
+pub mod utils;
 #[macro_use]
 pub mod config;
 pub mod cstore;
 pub mod filesearch;
 mod macros;
 mod options;
-pub mod search_paths;
-
-mod session;
-pub use session::*;
-
 pub mod output;
-
-pub use getopts;
+pub mod search_paths;
+mod session;
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
