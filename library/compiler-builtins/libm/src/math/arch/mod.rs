@@ -7,7 +7,7 @@
 
 // Most implementations should be defined here, to ensure they are not made available when
 // soft floats are required.
-#[cfg(arch_enabled)]
+#[cfg(feature = "arch")]
 cfg_if! {
     if #[cfg(all(target_arch = "wasm32", intrinsics_enabled))] {
         mod wasm32;
@@ -41,7 +41,7 @@ cfg_if! {
 }
 
 // There are certain architecture-specific implementations that are needed for correctness
-// even with `force-soft-float`. These are configured here.
+// even with `arch` disabled. These are configured here.
 cfg_if! {
     if #[cfg(x86_no_sse2)] {
         mod i586;

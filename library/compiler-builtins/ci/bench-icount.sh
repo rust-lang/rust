@@ -34,7 +34,7 @@ function run_icount_benchmarks() {
         "--target" "$target"
         "--bench" "*icount*"
         "--no-default-features"
-        "--features" "unstable,unstable-float,icount"
+        "--features" "unstable unstable-float icount"
         # Enable unmangled-names so our compiler-builtins gets used for
         # intrinsics. This makes performance impacts of c-b changes show up
         # in libm benchmarks and gives us a better idea of what will happen
@@ -78,7 +78,7 @@ function run_icount_benchmarks() {
 }
 
 # Run once with softfloats, once with arch instructions enabled
-run_icount_benchmarks --features force-soft-floats -- --save-baseline=softfloat
+run_icount_benchmarks -- --save-baseline=softfloat
 run_icount_benchmarks --features arch -- --save-baseline=hardfloat
 
 if [ "$failed" != "0" ]; then

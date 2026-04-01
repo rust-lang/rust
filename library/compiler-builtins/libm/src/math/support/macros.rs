@@ -46,7 +46,7 @@ macro_rules! cfg_if {
 /// These live in the `math::arch::some_target_arch` module.
 ///
 /// Specify a `use_arch_required` meta field if something architecture-specific must be used
-/// regardless of feature configuration (`force-soft-floats`).
+/// regardless of feature configuration (`arch`).
 ///
 /// The passed meta options do not need to account for the `arch` target feature.
 macro_rules! select_implementation {
@@ -71,8 +71,8 @@ macro_rules! select_implementation {
             }
         }
 
-        // By default, never use arch-specific implementations if we have force-soft-floats
-        #[cfg(arch_enabled)]
+        // By default, never use arch-specific implementations if `arch` is disabled.
+        #[cfg(feature = "arch")]
         select_implementation! {
             @cfg $($use_arch)?;
             // Wrap in `if true` to avoid unused warnings

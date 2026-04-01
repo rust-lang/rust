@@ -14,7 +14,15 @@ set -x
 test_cmd=(
     cargo test
     --package libm-test
-    --features "build-mpfr,libm/unstable,libm/force-soft-floats"
+    --no-default-features
+    # Don't enable `arch` for extensive tests. Usually anything in asm is
+    # only a single instruction or a small sequence, and we rely on the
+    # vendors to test that for us.
+    #
+    # libm/unstable enables libm/unstable-intrinsics, which means we usually
+    # get the single-instruction ops anyway when we aren't specifically
+    # testing for them.
+    --features "libm-test/build-mpfr libm-test/unstable-float libm/unstable"
     --profile release-checked
 )
 

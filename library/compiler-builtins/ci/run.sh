@@ -128,9 +128,6 @@ mflags=()
 # We enumerate features manually.
 mflags+=(--no-default-features)
 
-# Enable arch-specific routines when available.
-mflags+=(--features arch)
-
 # Always enable `unstable-float` since it expands available API but does not
 # change any implementations.
 mflags+=(--features unstable-float)
@@ -198,15 +195,15 @@ else
     cmd+=(--exclude util --exclude libm-macros)
 
     # Test once with intrinsics enabled
-    "${cmd[@]}" --features unstable-intrinsics
-    "${cmd[@]}" --features unstable-intrinsics --benches
+    "${cmd[@]}" --features arch,unstable-intrinsics
+    "${cmd[@]}" --features arch,unstable-intrinsics --benches
 
     # Test the same in release mode, which also increases coverage. Also ensure
     # the soft float routines are checked.
     "${cmd[@]}" "$profile_flag" release-checked
-    "${cmd[@]}" "$profile_flag" release-checked --features force-soft-floats
-    "${cmd[@]}" "$profile_flag" release-checked --features unstable-intrinsics
-    "${cmd[@]}" "$profile_flag" release-checked --features unstable-intrinsics --benches
+    "${cmd[@]}" "$profile_flag" release-checked --features arch
+    "${cmd[@]}" "$profile_flag" release-checked --features arch,unstable-intrinsics
+    "${cmd[@]}" "$profile_flag" release-checked --features arch,unstable-intrinsics --benches
 
     # Ensure that the routines do not panic.
     #

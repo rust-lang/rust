@@ -76,7 +76,6 @@ impl Config {
 #[allow(dead_code)]
 pub fn emit_libm_config(cfg: &Config) {
     emit_intrinsics_cfg();
-    emit_arch_cfg();
     emit_optimization_cfg(cfg);
     emit_cfg_shorthands(cfg);
     emit_cfg_env(cfg);
@@ -97,16 +96,8 @@ pub fn emit_test_config(cfg: &Config) {
 fn emit_intrinsics_cfg() {
     // Disabled by default; `unstable-intrinsics` enables again; `force-soft-floats` overrides
     // to disable.
-    let intrinsics = cfg!(feature = "unstable-intrinsics") && !cfg!(feature = "force-soft-floats");
+    let intrinsics = cfg!(feature = "unstable-intrinsics") && cfg!(feature = "arch");
     set_cfg("intrinsics_enabled", intrinsics);
-}
-
-/// Simplify the feature logic for enabling arch-specific features so code only needs to use
-/// `cfg(arch_enabled)`.
-fn emit_arch_cfg() {
-    // Enabled by default via the "arch" feature, `force-soft-floats` overrides to disable.
-    let arch = cfg!(feature = "arch") && !cfg!(feature = "force-soft-floats");
-    set_cfg("arch_enabled", arch);
 }
 
 /// Some tests are extremely slow. Emit a config option based on optimization level.
