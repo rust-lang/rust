@@ -350,9 +350,9 @@ pub(crate) fn clean_middle_const<'tcx>(
 
 pub(crate) fn clean_middle_region<'tcx>(
     region: ty::Region<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) -> Option<Lifetime> {
-    region.get_name(cx.tcx).map(Lifetime)
+    region.get_name(tcx).map(Lifetime)
 }
 
 fn clean_where_predicate<'tcx>(
@@ -436,9 +436,9 @@ fn clean_region_outlives_predicate<'tcx>(
     let ty::OutlivesPredicate(a, b) = pred;
 
     WherePredicate::RegionPredicate {
-        lifetime: clean_middle_region(a, cx).expect("failed to clean lifetime"),
+        lifetime: clean_middle_region(a, cx.tcx).expect("failed to clean lifetime"),
         bounds: vec![GenericBound::Outlives(
-            clean_middle_region(b, cx).expect("failed to clean bounds"),
+            clean_middle_region(b, cx.tcx).expect("failed to clean bounds"),
         )],
     }
 }
@@ -452,7 +452,7 @@ fn clean_type_outlives_predicate<'tcx>(
     WherePredicate::BoundPredicate {
         ty: clean_middle_ty(pred.rebind(ty), cx, None, None),
         bounds: vec![GenericBound::Outlives(
-            clean_middle_region(lt, cx).expect("failed to clean lifetimes"),
+            clean_middle_region(lt, cx.tcx).expect("failed to clean lifetimes"),
         )],
         bound_params: Vec::new(),
     }
@@ -2067,7 +2067,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             RawPointer(mutbl, Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None)))
         }
         ty::Ref(r, ty, mutbl) => BorrowedRef {
-            lifetime: clean_middle_region(r, cx),
+            lifetime: clean_middle_region(r, cx.tcx),
             mutability: mutbl,
             type_: Box::new(clean_middle_ty(
                 bound_ty.rebind(ty),
@@ -2301,7 +2301,7 @@ fn clean_middle_opaque_bounds<'tcx>(
             let trait_ref = match bound_predicate.skip_binder() {
                 ty::ClauseKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
                 ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
-                    return clean_middle_region(reg, cx).map(GenericBound::Outlives);
+                    return clean_middle_region(reg, cx.tcx).map(GenericBound::Outlives);
                 }
                 _ => return None,
             };
