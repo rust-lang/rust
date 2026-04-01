@@ -11480,6 +11480,42 @@ struct Ba$0r;
 }
 
 #[test]
+fn test_hover_doc_attr_include_str_macro() {
+    check(
+        r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include_str {}
+
+#[doc = include_str!("docs.md")]
+struct Ba$0r;
+
+//- /docs.md
+Included docs from file.
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Included docs from file.
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_doc_attr_user_macro_returning_string() {
     check(
         r#"
