@@ -898,10 +898,10 @@ fn clean_ty_generics_inner<'tcx>(
     for (idx, mut bounds) in impl_trait {
         let mut has_sized = false;
         bounds.retain(|b| {
-            if b.is_sized_bound(cx) {
+            if b.is_sized_bound(cx.tcx) {
                 has_sized = true;
                 false
-            } else if b.is_meta_sized_bound(cx) {
+            } else if b.is_meta_sized_bound(cx.tcx) {
                 // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
                 // is shown and none of the new sizedness traits leak into documentation.
                 false
@@ -1459,7 +1459,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 bounds.retain(|b| {
                     // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
                     // is shown and none of the new sizedness traits leak into documentation.
-                    !b.is_meta_sized_bound(cx)
+                    !b.is_meta_sized_bound(cx.tcx)
                 });
 
                 // Our Sized/?Sized bound didn't get handled when creating the generics
@@ -1467,7 +1467,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 // (some of them may have come from the trait). If we do have a sized
                 // bound, we remove it, and if we don't then we add the `?Sized` bound
                 // at the end.
-                match bounds.iter().position(|b| b.is_sized_bound(cx)) {
+                match bounds.iter().position(|b| b.is_sized_bound(cx.tcx)) {
                     Some(i) => {
                         bounds.remove(i);
                     }

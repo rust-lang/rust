@@ -289,7 +289,7 @@ pub(crate) fn build_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
     supertrait_bounds.retain(|b| {
         // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
         // is shown and none of the new sizedness traits leak into documentation.
-        !b.is_meta_sized_bound(cx)
+        !b.is_meta_sized_bound(cx.tcx)
     });
 
     clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
@@ -302,7 +302,7 @@ fn build_trait_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::TraitAlias {
     bounds.retain(|b| {
         // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
         // is shown and none of the new sizedness traits leak into documentation.
-        !b.is_meta_sized_bound(cx)
+        !b.is_meta_sized_bound(cx.tcx)
     });
 
     clean::TraitAlias { generics, bounds }
