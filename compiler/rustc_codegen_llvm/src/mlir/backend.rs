@@ -169,6 +169,8 @@ fn compile_codegen_unit_impl(
 
     eprintln!("MLIR module post-cleanup: {}", mlir_module.llmod().as_operation());
 
+    mlir_module.mlir_source = Some(mlir_module.llmod().as_operation().to_string());
+
     compile_module(&mut mlir_module).expect("Triton passes failed");
 
     eprintln!("MLIR module post-triton: {}", mlir_module.llmod().as_operation());
@@ -324,6 +326,18 @@ impl WriteBackendMethods for MlirCodegenBackend {
         std::fs::write(&out_path, ptx.as_bytes())
             .unwrap_or_else(|e| panic!("Failed to write PTX to {}: {}", out_path.display(), e));
         info!("PTX written to {} ({} bytes)", out_path.display(), ptx.len());
+
+        if let Some(mlir_src) = module.module_llvm.mlir_source.as_deref() {
+            let mlir_path = cgcx
+                .output_filenames
+                .path(rustc_session::config::OutputType::Object)
+                .as_path()
+                .with_extension("mlir");
+            std::fs::write(&mlir_path, mlir_src.as_bytes()).unwrap_or_else(|e| {
+                panic!("Failed to write MLIR to {}: {}", mlir_path.display(), e)
+            });
+            info!("MLIR written to {} ({} bytes)", mlir_path.display(), mlir_src.len());
+        }
 
         CompiledModule {
             name: module.name,

@@ -34,6 +34,8 @@ pub struct MlirModule<'c> {
     /// PTX produced by Triton. Populated in compile_codegen_unit_impl and
     /// threaded through the thin-LTO pass-through so codegen can write it.
     pub ptx_asm: Option<String>,
+    /// MLIR source captured after cleanup passes, before Triton passes run.
+    pub mlir_source: Option<String>,
 }
 
 unsafe impl<'c> Send for MlirModule<'c> {}
@@ -49,7 +51,7 @@ impl<'c> MlirModule<'c> {
         let compiler = TritonCompiler::new(context.to_raw(), "cuda", &options)
             .expect("Failed to create Triton compiler");
 
-        Self { name: mod_name.to_string(), mlir: module, compiler, context, ptx_asm: None }
+        Self { name: mod_name.to_string(), mlir: module, compiler, context, ptx_asm: None, mlir_source: None }
     }
 
     pub fn context(&self) -> &Context {
@@ -75,6 +77,7 @@ impl<'c> MlirModule<'c> {
             mlir: module,
             compiler,
             ptx_asm: None,
+            mlir_source: None,
         }
     }
 
