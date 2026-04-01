@@ -77,8 +77,8 @@ impl<'hir> Crate<'hir> {
     }
 }
 
-impl<HirCtx: HashStableContext> HashStable<HirCtx> for Crate<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+impl<Hcx: HashStableContext> HashStable<Hcx> for Crate<'_> {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let Crate { opt_hir_hash, .. } = self;
         opt_hir_hash.unwrap().hash_stable(hcx, hasher)
     }
