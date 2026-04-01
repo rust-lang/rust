@@ -1,0 +1,85 @@
+// ignore-tidy-linelength
+// This test ensures that the items declaration content overflow is handled inside the <pre> directly.
+
+// We need to disable this check because
+// `trait.impl/test_docs/trait.ALongNameBecauseItHelpsTestingTheCurrentProblem.js`
+// doesn't exist.
+fail-on-request-error: false
+
+go-to: "file://" + |DOC_PATH| + "/lib2/long_trait/trait.ALongNameBecauseItHelpsTestingTheCurrentProblem.html"
+// We set a fixed size so there is no chance of "random" resize.
+set-window-size: (710, 800)
+// Logically, the <body> scroll width should be the width of the window.
+assert-property: ("body", {"scrollWidth": "710"})
+// We now check that the section width hasn't grown because of it.
+assert-property: ("#main-content", {"scrollWidth": "450"})
+// However, since there is overflow in the type declaration, its scroll width is bigger that "#main-content".
+assert-property: ("pre.item-decl", {"scrollWidth": "585"})
+
+// In the table-ish view on the module index, the name should not be wrapped more than necessary.
+go-to: "file://" + |DOC_PATH| + "/lib2/too_long/index.html"
+
+// We'll ensure that items with short documentation have the same width.
+store-property: ("//*[@class='item-table']//*[@class='struct']/..", {"offsetWidth": offset_width})
+assert: |offset_width| == "149"
+assert-property: ("//*[@class='item-table']//*[@class='constant']/..", {"offsetWidth": |offset_width|})
+
+// We now make the same check on type declaration...
+go-to: "file://" + |DOC_PATH| + "/lib2/too_long/type.ReallyLongTypeNameLongLongLong.html"
+assert-property: ("body", {"scrollWidth": "710"})
+// Getting the width of the "<main>" element.
+assert-property: ("main", {"scrollWidth": "510"})
+// We now check that the section width hasn't grown because of it.
+assert-property: ("#main-content", {"scrollWidth": "450"})
+// And now checking that it has scrollable content.
+assert-property: ("pre.item-decl", {"scrollWidth": "1103"})
+
+// ... and constant.
+// On a sidenote, it also checks that the (very) long title isn't changing the docblock width.
+go-to: "file://" + |DOC_PATH| + "/lib2/too_long/constant.ReallyLongTypeNameLongLongLongConstBecauseWhyNotAConstRightGigaGigaSupraLong.html"
+assert-property: ("body", {"scrollWidth": "710"})
+// We now check that the section width hasn't grown because of it.
+assert-property: ("#main-content", {"scrollWidth": "450"})
+// And now checking that it has scrollable content.
+assert-property: ("pre.item-decl", {"scrollWidth": "950"})
+
+// On mobile:
+set-window-size: (600, 600)
+go-to: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
+// It shouldn't have an overflow in the topbar either.
+store-property: ("rustdoc-topbar", {"scrollWidth": scrollWidth})
+assert-property: ("rustdoc-topbar", {"clientWidth": |scrollWidth|}, NEAR)
+assert-css: ("rustdoc-topbar h2", {"overflow-x": "hidden"})
+
+// Check that main heading and toolbar go side-by-side, both on desktop and on mobile.
+set-window-size: (1100, 800)
+go-to: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", {"x": 300})
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", {"x": 300})
+
+// On mobile, they always wrap.
+set-window-size: (600, 600)
+go-to: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", {"x": 200})
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", {"x": 200})
+
+// Now we will check that the scrolling is working.
+// First on an item with "hidden methods".
+go-to: "file://" + |DOC_PATH| + "/lib2/scroll_traits/trait.Iterator.html"
+
+click: ".item-decl .type-contents-toggle"
+assert-property: ("pre.item-decl", {"scrollLeft": 0})
+scroll-to: "//*[@class='rust item-decl']//details/a[text()='String']"
+assert-property-false: ("pre.item-decl", {"scrollLeft": 0})
+
+// Then on an item without "hidden methods".
+go-to: "file://" + |DOC_PATH| + "/lib2/scroll_traits/trait.TraitWithLongItemsName.html"
+assert-property: ("pre.item-decl", {"scrollLeft": 0})
+scroll-to: "//*[@class='rust item-decl']//code/a[text()='String']"
+assert-property-false: ("pre.item-decl", {"scrollLeft": 0})

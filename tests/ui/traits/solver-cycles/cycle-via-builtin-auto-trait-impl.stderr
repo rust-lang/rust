@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Database` for type `RootDatabase`
+  --> $DIR/cycle-via-builtin-auto-trait-impl.rs:19:1
+   |
+LL | impl<T: RefUnwindSafe> Database for T {
+   | ------------------------------------- first implementation here
+...
+LL | impl Database for RootDatabase {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `RootDatabase`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

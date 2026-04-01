@@ -1,0 +1,42 @@
+error: manually filling a slice
+  --> tests/ui/manual_slice_fill.rs:25:5
+   |
+LL | /     for i in 0..some_slice.len() {
+LL | |
+LL | |         some_slice[i] = 0;
+LL | |     }
+   | |_____^ help: try: `some_slice.fill(0);`
+   |
+   = note: `-D clippy::manual-slice-fill` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_slice_fill)]`
+
+error: manually filling a slice
+  --> tests/ui/manual_slice_fill.rs:31:5
+   |
+LL | /     for i in 0..some_slice.len() {
+LL | |
+LL | |         some_slice[i] = x;
+LL | |     }
+   | |_____^ help: try: `some_slice.fill(x);`
+
+error: manually filling a slice
+  --> tests/ui/manual_slice_fill.rs:36:5
+   |
+LL | /     for i in &mut some_slice {
+LL | |
+LL | |         *i = 0;
+LL | |     }
+   | |_____^ help: try: `some_slice.fill(0);`
+
+error: manually filling a slice
+  --> tests/ui/manual_slice_fill.rs:43:5
+   |
+LL | /     for i in 0..some_slice.len() {
+LL | |
+LL | |         some_slice[i] = 0;
+LL | |         // foo
+LL | |     }
+   | |_____^ help: try: `some_slice.fill(0);`
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,55 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/fn-item-check-type-params.rs:31:5
+   |
+LL | pub fn test_call<'a>(val: &'a str) {
+   |                  --  --- `val` is a reference that is only valid in the function body
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     extend_lt(val);
+   |     ^^^^^^^^^^^^^^
+   |     |
+   |     `val` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/fn-item-check-type-params.rs:39:31
+   |
+LL | pub fn test_coercion<'a>() {
+   |                      -- lifetime `'a` defined here
+LL |     let _: fn(&'a str) -> _ = extend_lt;
+   |                               ^^^^^^^^^ coercion requires that `'a` must outlive `'static`
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/fn-item-check-type-params.rs:48:11
+   |
+LL |     want(&String::new(), extend_lt);
+   |     ------^^^^^^^^^^^^^------------- temporary value is freed at the end of this statement
+   |     |     |
+   |     |     creates a temporary value which is freed while still in use
+   |     argument requires that borrow lasts for `'static`
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/fn-item-check-type-params.rs:47:33
+   |
+LL |     fn want<I, O>(_: I, _: impl Fn(I) -> O) {}
+   |                                 ^^^^^^^^^^
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/fn-item-check-type-params.rs:54:26
+   |
+LL |     let val = extend_lt(&String::from("blah blah blah"));
+   |               -----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- temporary value is freed at the end of this statement
+   |               |          |
+   |               |          creates a temporary value which is freed while still in use
+   |               argument requires that borrow lasts for `'static`
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/fn-item-check-type-params.rs:22:21
+   |
+LL |     (T, Option<U>): Displayable,
+   |                     ^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0521, E0716.
+For more information about an error, try `rustc --explain E0521`.

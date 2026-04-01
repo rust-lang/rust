@@ -1,0 +1,274 @@
+{
+  "files": {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "directories": [],
+                        "files": [
+                          "analyzer-decls.h",
+                          "malloc-macro.h",
+                          "sarif-path-role.h"
+                        ],
+                        "license": {
+                          "copyright": [
+                            "2000-2024 Free Software Foundation, Inc"
+                          ],
+                          "spdx": "GPL-2.0-only"
+                        },
+                        "type": "group"
+                      }
+                    ],
+                    "license": {
+                      "copyright": [
+                        "2007-2011 Atheros Communications Inc",
+                        "2011-2012,2017 Qualcomm Atheros, Inc",
+                        "2016-2017 Erik Stromdahl <erik.stromdahl@gmail.com>"
+                      ],
+                      "spdx": "ISC"
+                    },
+                    "name": "c-c++-common/analyzer",
+                    "type": "directory"
+                  }
+                ],
+                "license": {
+                  "copyright": [
+                    "2000-2024 Free Software Foundation, Inc"
+                  ],
+                  "spdx": "GPL-2.0-only"
+                },
+                "name": "gcc/testsuite",
+                "type": "directory"
+              },
+              {
+                "license": {
+                  "copyright": [
+                    "2000-2024 Free Software Foundation, Inc"
+                  ],
+                  "spdx": "GCC-exception-3.1"
+                },
+                "name": "libstdc++-v3/config/os/aix/os_defines.h",
+                "type": "file"
+              }
+            ],
+            "license": {
+              "copyright": [
+                "1997-2024 Free Software Foundation, Inc"
+              ],
+              "spdx": "GPL-3.0-or-later"
+            },
+            "name": "src/gcc",
+            "type": "directory"
+          },
+          {
+            "children": [
+              {
+                "license": {
+                  "copyright": [
+                    "The Rust Project Developers (see https://thanks.rust-lang.org)"
+                  ],
+                  "spdx": "Apache-2.0 OR MIT"
+                },
+                "name": "noscript.css",
+                "type": "file"
+              },
+              {
+                "license": {
+                  "copyright": [
+                    "Nicolas Gallagher and Jonathan Neal"
+                  ],
+                  "spdx": "MIT"
+                },
+                "name": "normalize.css",
+                "type": "file"
+              }
+            ],
+            "license": {
+              "copyright": [
+                "2016 Ike Ku, Jessica Stokes and Leon Guan",
+                "The Rust Project Developers (see https://thanks.rust-lang.org)"
+              ],
+              "spdx": "Apache-2.0 OR MIT"
+            },
+            "name": "src/librustdoc/html/static/css",
+            "type": "directory"
+          },
+          {
+            "children": [
+              {
+                "license": {
+                  "copyright": [
+                    "The Rust Project Developers (see https://thanks.rust-lang.org)"
+                  ],
+                  "spdx": "Apache-2.0 OR MIT"
+                },
+                "name": "README.txt",
+                "type": "file"
+              },
+              {
+                "directories": [],
+                "files": [
+                  "FiraMono-Medium.woff2",
+                  "FiraMono-Regular.woff2",
+                  "FiraSans-Italic.woff2",
+                  "FiraSans-LICENSE.txt",
+                  "FiraSans-Medium.woff2",
+                  "FiraSans-MediumItalic.woff2",
+                  "FiraSans-Regular.woff2"
+                ],
+                "license": {
+                  "copyright": [
+                    "2014, Mozilla Foundation",
+                    "2014, Telefonica S.A"
+                  ],
+                  "spdx": "OFL-1.1"
+                },
+                "type": "group"
+              },
+              {
+                "directories": [],
+                "files": [
+                  "NanumBarunGothic-LICENSE.txt",
+                  "NanumBarunGothic.ttf.woff2"
+                ],
+                "license": {
+                  "copyright": [
+                    "2010 NAVER Corporation"
+                  ],
+                  "spdx": "OFL-1.1"
+                },
+                "type": "group"
+              }
+            ],
+            "license": {
+              "copyright": [
+                "2010, 2012, 2014-2023, Adobe Systems Incorporated"
+              ],
+              "spdx": "OFL-1.1"
+            },
+            "name": "src/librustdoc/html/static/fonts",
+            "type": "directory"
+          },
+          {
+            "license": {
+              "copyright": [
+                "2003-2019 University of Illinois at Urbana-Champaign",
+                "The Rust Project Developers (see https://thanks.rust-lang.org)"
+              ],
+              "spdx": "Apache-2.0 WITH LLVM-exception AND (Apache-2.0 OR MIT)"
+            },
+            "name": "compiler/rustc_llvm/llvm-wrapper/SymbolWrapper.cpp",
+            "type": "file"
+          },
+          {
+            "children": [],
+            "license": {
+              "copyright": [
+                "2014 Alex Crichton",
+                "The Rust Project Developers (see https://thanks.rust-lang.org)"
+              ],
+              "spdx": "Apache-2.0 OR MIT"
+            },
+            "name": "library/backtrace",
+            "type": "directory"
+          },
+          {
+            "license": {
+              "copyright": [
+                "1991-2024 Unicode, Inc"
+              ],
+              "spdx": "Unicode-3.0"
+            },
+            "name": "library/core/src/unicode/unicode_data.rs",
+            "type": "file"
+          },
+          {
+            "children": [],
+            "license": {
+              "copyright": [
+                "2019 The Crossbeam Project Developers",
+                "The Rust Project Developers (see https://thanks.rust-lang.org)"
+              ],
+              "spdx": "Apache-2.0 OR MIT"
+            },
+            "name": "library/std/src/sync/mpmc",
+            "type": "directory"
+          },
+          {
+            "license": {
+              "copyright": [
+                "2016 The Fuchsia Authors",
+                "The Rust Project Developers (see https://thanks.rust-lang.org)"
+              ],
+              "spdx": "BSD-2-Clause AND (Apache-2.0 OR MIT)"
+            },
+            "name": "library/std/src/sys/sync/mutex/fuchsia.rs",
+            "type": "file"
+          },
+          {
+            "children": [],
+            "license": {
+              "copyright": [
+                "Rust on Embedded Devices Working Group",
+                "The Rust Project Developers (see https://thanks.rust-lang.org)"
+              ],
+              "spdx": "Apache-2.0 OR CC-BY-SA-4.0 OR MIT"
+            },
+            "name": "src/doc/embedded-book",
+            "type": "directory"
+          },
+          {
+            "children": [],
+            "license": {
+              "copyright": [
+                "2014 Jorge Aparicio",
+                "The Rust Project Developers (see https://thanks.rust-lang.org)"
+              ],
+              "spdx": "Apache-2.0 OR MIT"
+            },
+            "name": "src/doc/rust-by-example",
+            "type": "directory"
+          },
+          {
+            "license": {
+              "copyright": [
+                "2014-2021 Knut Sveidqvist"
+              ],
+              "spdx": "MIT"
+            },
+            "name": "src/doc/rustc-dev-guide/mermaid.min.js",
+            "type": "file"
+          },
+          {
+            "children": [],
+            "license": {
+              "copyright": [
+                "2003-2019 University of Illinois at Urbana-Champaign",
+                "2003-2019 by the contributors listed in CREDITS.TXT (https://github.com/rust-lang/llvm-project/blob/7738295178045041669876bf32b0543ec8319a5c/llvm/CREDITS.TXT)",
+                "2010 Apple Inc"
+              ],
+              "spdx": "Apache-2.0 WITH LLVM-exception AND NCSA"
+            },
+            "name": "src/llvm-project",
+            "type": "directory"
+          }
+        ],
+        "license": {
+          "copyright": [
+            "The Rust Project Developers (see https://thanks.rust-lang.org)"
+          ],
+          "spdx": "Apache-2.0 OR MIT"
+        },
+        "name": ".",
+        "type": "directory"
+      }
+    ],
+    "type": "root"
+  }
+}

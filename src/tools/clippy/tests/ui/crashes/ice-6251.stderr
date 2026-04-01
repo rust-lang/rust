@@ -1,0 +1,35 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> tests/ui/crashes/ice-6251.rs:4:48
+   |
+LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
+   |                                                ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = help: unsized fn params are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed slices always have a known size
+   |
+LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: &[u8]| x }]> {
+   |                                                +
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> tests/ui/crashes/ice-6251.rs:4:54
+   |
+LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
+   |                                                      ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = note: the return type of a function must have a statically known size
+
+error[E0308]: mismatched types
+  --> tests/ui/crashes/ice-6251.rs:4:44
+   |
+LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
+   |                                            ^^^^^^^^^^^ expected `usize`, found closure
+   |
+   = note: expected type `usize`
+           found closure `{closure@tests/ui/crashes/ice-6251.rs:4:44: 4:53}`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

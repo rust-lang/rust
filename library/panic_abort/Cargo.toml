@@ -1,0 +1,21 @@
+[package]
+name = "panic_abort"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+description = "Implementation of Rust panics via process aborts"
+edition = "2024"
+
+[lib]
+test = false
+bench = false
+doc = false
+
+[dependencies]
+core = { path = "../rustc-std-workspace-core", package = "rustc-std-workspace-core" }
+
+[target.'cfg(target_os = "android")'.dependencies]
+libc = { version = "0.2", default-features = false }
+
+[target.'cfg(any(target_os = "android", target_os = "zkvm"))'.dependencies]
+alloc = { path = "../alloc" }

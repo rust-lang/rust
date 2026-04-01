@@ -1,0 +1,25 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-64662.rs:2:9
+   |
+LL |     A = foo(),
+   |         ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
+   |
+help: consider specifying the generic argument
+   |
+LL |     A = foo::<T>(),
+   |            +++++
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-64662.rs:3:9
+   |
+LL |     B = foo(),
+   |         ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
+   |
+help: consider specifying the generic argument
+   |
+LL |     B = foo::<T>(),
+   |            +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

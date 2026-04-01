@@ -1,0 +1,92 @@
+[workspace]
+resolver = "2"
+members = [
+    "builtins-shim",
+    "builtins-test",
+    "crates/libm-macros",
+    "crates/musl-math-sys",
+    "crates/panic-handler",
+    "crates/symbol-check",
+    "crates/util",
+    "libm",
+    "libm-test",
+]
+
+default-members = [
+    "builtins-shim",
+    "builtins-test",
+    "crates/libm-macros",
+    "libm",
+    "libm-test",
+]
+
+exclude = [
+    # `builtins-test-intrinsics` needs the feature `compiler-builtins` enabled
+    # and `mangled-names` disabled, which is the opposite of what is needed for
+    # other tests, so it makes sense to keep it out of the workspace.
+    "builtins-test-intrinsics",
+    # We test via the `builtins-shim` crate, so exclude the `compiler-builtins`
+    # that has a dependency on `core`. See `builtins-shim/Cargo.toml` for more
+    # details.
+    "compiler-builtins",
+]
+
+[workspace.dependencies]
+anyhow = "1.0.101"
+assert_cmd = "2.1.2"
+cc = "1.2.56"
+cfg-if = "1.0.4"
+compiler_builtins = { path = "builtins-shim", default-features = false }
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+getopts = "0.2.24"
+getrandom = "0.4.1"
+gmp-mpfr-sys = { version = "1.6.8", default-features = false }
+gungraun = "0.17.2"
+heck = "0.5.0"
+indicatif = { version = "0.18.3", default-features = false }
+libm = { path = "libm", default-features = false }
+libm-macros = { path = "crates/libm-macros" }
+libm-test = { path = "libm-test", default-features = false }
+libtest-mimic = "0.8.1"
+musl-math-sys = { path = "crates/musl-math-sys" }
+no-panic = "0.1.36"
+object = { version = "0.38.1", features = ["wasm"] }
+panic-handler = { path = "crates/panic-handler" }
+paste = "1.0.15"
+proc-macro2 = "1.0.106"
+quote = "1.0.44"
+rand = "0.10.0"
+rand_chacha = "0.10.0"
+rand_xoshiro = "0.8"
+rayon = "1.11.0"
+regex = "1.12.3"
+rug = { version = "1.28.1", default-features = false, features = ["float", "integer", "std"] }
+rustc_apfloat = "0.2.3"
+serde_json = "1.0.149"
+syn = "2.0.115"
+tempfile = "3.25.0"
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"
+
+# Release mode with debug assertions
+[profile.release-checked]
+inherits = "release"
+debug-assertions = true
+overflow-checks = true
+
+# Release with maximum optimizations, which is very slow to build. This is also
+# what is needed to check `no-panic`.
+[profile.release-opt]
+inherits = "release"
+codegen-units = 1
+lto = "fat"
+
+[profile.bench]
+codegen-units = 1
+# Required for gungraun
+debug = true
+strip = false

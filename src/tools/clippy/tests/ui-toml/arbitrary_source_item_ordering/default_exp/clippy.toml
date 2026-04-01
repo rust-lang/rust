@@ -1,0 +1,12 @@
+trait-assoc-item-kinds-order = ["const", "type", "fn"]
+source-item-ordering = ["enum", "impl", "module", "struct", "trait"]
+module-item-order-groupings = [
+    ["modules", ["extern_crate", "mod", "foreign_mod"]],
+    ["use", ["use"]],
+    ["macros", ["macro"]],
+    ["global_asm", ["global_asm"]],
+    ["UPPER_SNAKE_CASE", ["static", "const"]],
+    ["PascalCase", ["ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl"]],
+    ["lower_snake_case", ["fn"]]
+]
+module-items-ordered-within-groupings = "none"

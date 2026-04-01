@@ -1,0 +1,14 @@
+error[E0107]: missing generics for struct `Box`
+  --> $DIR/box-missing-generics-14092.rs:3:11
+   |
+LL | fn fn1(0: Box) {}
+   |           ^^^ expected at least 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | fn fn1(0: Box<T>) {}
+   |              +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

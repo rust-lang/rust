@@ -1,0 +1,36 @@
+//@ edition:2024
+//@ run-rustfix
+
+#![allow(irrefutable_let_patterns)]
+
+fn test_where_left_is_not_let() {
+    let y = 2;
+    if let _ = 1 && true && y == 2 {};
+    //~^ ERROR expected expression, found `let` statement
+    //~| NOTE only supported directly in conditions of `if` and `while` expressions
+    //~| ERROR mismatched types
+    //~| NOTE expected `bool`, found integer
+    //~| NOTE you are add-assigning the right-hand side expression to the result of this let-chain
+    //~| NOTE expected because this is `bool`
+    //~| ERROR binary assignment operation `+=` cannot be used in a let chain
+    //~| NOTE cannot use `+=` in a let chain
+    //~| HELP you might have meant to compare with `==` instead of assigning with `+=`
+}
+
+fn test_where_left_is_let() {
+    let y = 2;
+    if let _ = 1 && y == 2 {};
+    //~^ ERROR expected expression, found `let` statement
+    //~| NOTE only supported directly in conditions of `if` and `while` expressions
+    //~| ERROR mismatched types
+    //~| NOTE expected `bool`, found integer
+    //~| NOTE you are add-assigning the right-hand side expression to the result of this let-chain
+    //~| ERROR binary assignment operation `+=` cannot be used in a let chain
+    //~| NOTE cannot use `+=` in a let chain
+    //~| HELP you might have meant to compare with `==` instead of assigning with `+=`
+}
+
+fn main() {
+    test_where_left_is_let();
+    test_where_left_is_not_let()
+}

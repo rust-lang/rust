@@ -1,0 +1,45 @@
+error[E0308]: mismatched types
+  --> $DIR/similar_paths_primitive.rs:10:9
+   |
+LL |     foo(true);
+   |     --- ^^^^ expected `bool`, found a different `bool`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: `bool` and `bool` have similar names, but are actually distinct types
+   = note: one `bool` is a primitive defined by the language
+note: the other `bool` is defined in the current crate
+  --> $DIR/similar_paths_primitive.rs:3:1
+   |
+LL | struct bool;
+   | ^^^^^^^^^^^
+note: function defined here
+  --> $DIR/similar_paths_primitive.rs:6:4
+   |
+LL | fn foo(_: bool) {}
+   |    ^^^ -------
+
+error[E0308]: mismatched types
+  --> $DIR/similar_paths_primitive.rs:16:9
+   |
+LL |     bar("hello");
+   |     --- ^^^^^^^ expected `str`, found a different `str`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: `str` and `str` have similar names, but are actually distinct types
+   = note: one `str` is a primitive defined by the language
+note: the other `str` is defined in the current crate
+  --> $DIR/similar_paths_primitive.rs:4:1
+   |
+LL | struct str;
+   | ^^^^^^^^^^
+note: function defined here
+  --> $DIR/similar_paths_primitive.rs:7:4
+   |
+LL | fn bar(_: &str) {}
+   |    ^^^ -------
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

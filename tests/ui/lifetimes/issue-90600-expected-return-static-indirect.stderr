@@ -1,0 +1,36 @@
+error[E0597]: `foo` does not live long enough
+  --> $DIR/issue-90600-expected-return-static-indirect.rs:7:32
+   |
+LL | fn inner(mut foo: &[u8]) {
+   |          ------- binding `foo` declared here
+LL |     let refcell = RefCell::new(&mut foo);
+   |                                ^^^^^^^^ borrowed value does not live long enough
+...
+LL |     read_thing(read);
+   |     ---------------- argument requires that `foo` is borrowed for `'static`
+LL |
+LL | }
+   |  - `foo` dropped here while still borrowed
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/issue-90600-expected-return-static-indirect.rs:11:5
+   |
+LL | fn inner(mut foo: &[u8]) {
+   |          -------  - let's call the lifetime of this reference `'1`
+   |          |
+   |          `foo` is a reference that is only valid in the function body
+...
+LL |     read_thing(read);
+   |     ^^^^^^^^^^^^^^^^
+   |     |
+   |     `foo` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+   = note: requirement occurs because of the type `RefCell<(dyn std::io::Read + 'static)>`, which makes the generic argument `(dyn std::io::Read + 'static)` invariant
+   = note: the struct `RefCell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0521, E0597.
+For more information about an error, try `rustc --explain E0521`.

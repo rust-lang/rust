@@ -1,0 +1,23 @@
+error: first doc comment paragraph is too long
+  --> tests/ui/too_long_first_doc_paragraph-fix.rs:3:1
+   |
+LL | / /// A very short summary.
+LL | |
+LL | | /// A much longer explanation that goes into a lot more detail about
+LL | | /// how the thing works, possibly with doclinks and so one,
+LL | | /// and probably spanning a many rows. Blablabla, it needs to be over
+LL | | /// 200 characters so I needed to write something longeeeeeeer.
+   | |_^
+   |
+   = note: `-D clippy::too-long-first-doc-paragraph` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_long_first_doc_paragraph)]`
+help: add an empty line
+   |
+LL | /// A very short summary.
+LL |
+LL + ///
+LL +
+   |
+
+error: aborting due to 1 previous error
+

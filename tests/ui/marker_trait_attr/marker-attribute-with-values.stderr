@@ -1,0 +1,30 @@
+error[E0565]: malformed `marker` attribute input
+  --> $DIR/marker-attribute-with-values.rs:3:1
+   |
+LL | #[marker(always)]
+   | ^^^^^^^^--------^
+   | |       |
+   | |       didn't expect any arguments here
+   | help: must be of the form: `#[marker]`
+
+error[E0565]: malformed `marker` attribute input
+  --> $DIR/marker-attribute-with-values.rs:6:1
+   |
+LL | #[marker("never")]
+   | ^^^^^^^^---------^
+   | |       |
+   | |       didn't expect any arguments here
+   | help: must be of the form: `#[marker]`
+
+error[E0565]: malformed `marker` attribute input
+  --> $DIR/marker-attribute-with-values.rs:9:1
+   |
+LL | #[marker(key = "value")]
+   | ^^^^^^^^---------------^
+   | |       |
+   | |       didn't expect any arguments here
+   | help: must be of the form: `#[marker]`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0565`.

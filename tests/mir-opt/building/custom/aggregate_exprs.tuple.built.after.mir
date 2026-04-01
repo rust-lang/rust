@@ -1,0 +1,10 @@
+// MIR for `tuple` after built
+
+fn tuple() -> (i32, bool) {
+    let mut _0: (i32, bool);
+
+    bb0: {
+        _0 = (const 1_i32, const true);
+        return;
+    }
+}

@@ -1,0 +1,31 @@
+error: expected expression, found keyword `else`
+  --> $DIR/else-attrs.rs:4:15
+   |
+LL |     } #[attr] else if false {
+   |               ^^^^ expected expression
+
+error: outer attributes are not allowed on `if` and `else` branches
+  --> $DIR/else-attrs.rs:11:12
+   |
+LL |       } else #[attr] if false {
+   |  _______----_^^^^^^^_-
+   | |       |
+   | |       the branch belongs to this `else`
+LL | |     } else {
+LL | |     }
+   | |_____- the attributes are attached to this branch
+   |
+help: remove the attributes
+   |
+LL -     } else #[attr] if false {
+LL +     } else if false {
+   |
+
+error: expected expression, found keyword `else`
+  --> $DIR/else-attrs.rs:20:15
+   |
+LL |     } #[attr] else {
+   |               ^^^^ expected expression
+
+error: aborting due to 3 previous errors
+

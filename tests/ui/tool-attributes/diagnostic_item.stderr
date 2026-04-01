@@ -1,0 +1,12 @@
+error[E0658]: use of an internal attribute
+  --> $DIR/diagnostic_item.rs:1:1
+   |
+LL | #[rustc_diagnostic_item = "foomp"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_diagnostic_item]` attribute allows the compiler to reference types from the standard library for diagnostic purposes
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

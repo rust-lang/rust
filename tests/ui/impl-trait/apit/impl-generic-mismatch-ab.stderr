@@ -1,0 +1,26 @@
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/impl-generic-mismatch-ab.rs:8:32
+   |
+LL |     fn foo<B: Debug>(&self, a: &impl Debug, b: &B) { }
+   |            -                   ^^^^^^^^^^^ expected type parameter `B`, found type parameter `impl Debug`
+   |            |
+   |            expected type parameter
+   |
+note: type in trait
+  --> $DIR/impl-generic-mismatch-ab.rs:4:32
+   |
+LL |     fn foo<A: Debug>(&self, a: &A, b: &impl Debug);
+   |                                ^^
+   = note: expected signature `fn(&(), &B, &impl Debug)`
+              found signature `fn(&(), &impl Debug, &B)`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+help: change the parameter type to match the trait
+   |
+LL -     fn foo<B: Debug>(&self, a: &impl Debug, b: &B) { }
+LL +     fn foo<B: Debug>(&self, a: &B, b: &B) { }
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.

@@ -1,0 +1,5 @@
+error: invalid `--check-cfg` argument: `cfg(foo,values(),values())`
+   |
+   = note: `values()` cannot be specified multiple times
+   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
+

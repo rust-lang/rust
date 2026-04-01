@@ -1,0 +1,220 @@
+error: approximate value of `f{32, 64}::consts::E` found
+  --> tests/ui/approx_const.rs:3:16
+   |
+LL |     let my_e = 2.7182;
+   |                ^^^^^^
+   |
+   = help: consider using the constant directly
+   = note: `-D clippy::approx-constant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::approx_constant)]`
+
+error: approximate value of `f{32, 64}::consts::E` found
+  --> tests/ui/approx_const.rs:6:20
+   |
+LL |     let almost_e = 2.718;
+   |                    ^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_1_PI` found
+  --> tests/ui/approx_const.rs:11:24
+   |
+LL |     let my_1_frac_pi = 0.3183;
+   |                        ^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found
+  --> tests/ui/approx_const.rs:16:28
+   |
+LL |     let my_frac_1_sqrt_2 = 0.70710678;
+   |                            ^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found
+  --> tests/ui/approx_const.rs:19:32
+   |
+LL |     let almost_frac_1_sqrt_2 = 0.70711;
+   |                                ^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_2_PI` found
+  --> tests/ui/approx_const.rs:24:24
+   |
+LL |     let my_frac_2_pi = 0.63661977;
+   |                        ^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_2_SQRT_PI` found
+  --> tests/ui/approx_const.rs:29:27
+   |
+LL |     let my_frac_2_sq_pi = 1.128379;
+   |                           ^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_PI_2` found
+  --> tests/ui/approx_const.rs:34:24
+   |
+LL |     let my_frac_pi_2 = 1.57079632679;
+   |                        ^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_PI_3` found
+  --> tests/ui/approx_const.rs:39:24
+   |
+LL |     let my_frac_pi_3 = 1.04719755119;
+   |                        ^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_PI_4` found
+  --> tests/ui/approx_const.rs:44:24
+   |
+LL |     let my_frac_pi_4 = 0.785398163397;
+   |                        ^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_PI_6` found
+  --> tests/ui/approx_const.rs:49:24
+   |
+LL |     let my_frac_pi_6 = 0.523598775598;
+   |                        ^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_PI_8` found
+  --> tests/ui/approx_const.rs:54:24
+   |
+LL |     let my_frac_pi_8 = 0.3926990816987;
+   |                        ^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LN_10` found
+  --> tests/ui/approx_const.rs:59:20
+   |
+LL |     let my_ln_10 = 2.302585092994046;
+   |                    ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LN_2` found
+  --> tests/ui/approx_const.rs:64:19
+   |
+LL |     let my_ln_2 = 0.6931471805599453;
+   |                   ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LOG10_E` found
+  --> tests/ui/approx_const.rs:69:22
+   |
+LL |     let my_log10_e = 0.4342944819032518;
+   |                      ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LOG2_E` found
+  --> tests/ui/approx_const.rs:74:21
+   |
+LL |     let my_log2_e = 1.4426950408889634;
+   |                     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> tests/ui/approx_const.rs:79:19
+   |
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LOG10_2` found
+  --> tests/ui/approx_const.rs:84:19
+   |
+LL |     let log10_2 = 0.301029995663981;
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::PI` found
+  --> tests/ui/approx_const.rs:89:17
+   |
+LL |     let my_pi = 3.1415;
+   |                 ^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::PI` found
+  --> tests/ui/approx_const.rs:92:21
+   |
+LL |     let almost_pi = 3.14;
+   |                     ^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::SQRT_2` found
+  --> tests/ui/approx_const.rs:97:18
+   |
+LL |     let my_sq2 = 1.4142;
+   |                  ^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::TAU` found
+  --> tests/ui/approx_const.rs:102:18
+   |
+LL |     let my_tau = 6.2832;
+   |                  ^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::TAU` found
+  --> tests/ui/approx_const.rs:105:22
+   |
+LL |     let almost_tau = 6.28;
+   |                      ^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::PI` found
+  --> tests/ui/approx_const.rs:112:18
+   |
+LL |     let x: f64 = 3.1415926535897932384626433832;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::PI` found
+  --> tests/ui/approx_const.rs:116:18
+   |
+LL |     let _: f64 = 003.14159265358979311599796346854418516159057617187500;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found
+  --> tests/ui/approx_const.rs:119:32
+   |
+LL |     let almost_frac_1_sqrt_2 = 00.70711;
+   |                                ^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found
+  --> tests/ui/approx_const.rs:122:32
+   |
+LL |     let almost_frac_1_sqrt_2 = 00.707_11;
+   |                                ^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: aborting due to 27 previous errors
+

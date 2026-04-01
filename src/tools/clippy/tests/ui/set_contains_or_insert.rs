@@ -1,0 +1,181 @@
+#![allow(unused)]
+#![allow(clippy::nonminimal_bool)]
+#![allow(clippy::needless_borrow)]
+#![warn(clippy::set_contains_or_insert)]
+
+use std::collections::{BTreeSet, HashSet};
+
+fn should_warn_hashset() {
+    let mut set = HashSet::new();
+    let value = 5;
+
+    if !set.contains(&value) {
+        //~^ set_contains_or_insert
+        set.insert(value);
+        println!("Just a comment");
+    }
+
+    if set.contains(&value) {
+        //~^ set_contains_or_insert
+        set.insert(value);
+        println!("Just a comment");
+    }
+
+    if !set.contains(&value) {
+        //~^ set_contains_or_insert
+        set.insert(value);
+    }
+
+    if !!set.contains(&value) {
+        //~^ set_contains_or_insert
+        set.insert(value);
+        println!("Just a comment");
+    }
+
+    if (&set).contains(&value) {
+        //~^ set_contains_or_insert
+        set.insert(value);
+    }
+
+    let borrow_value = &6;
+    if !set.contains(borrow_value) {
+        //~^ set_contains_or_insert
+        set.insert(*borrow_value);
+    }
+
+    let borrow_set = &mut set;
+    if !borrow_set.contains(&value) {
+        //~^ set_contains_or_insert
+        borrow_set.insert(value);
+    }
+}
+
+fn should_not_warn_hashset() {
+    let mut set = HashSet::new();
+    let value = 5;
+    let another_value = 6;
+
+    if !set.contains(&value) {
+        set.insert(another_value);
+    }
+
+    if !set.contains(&value) {
+        println!("Just a comment");
+    }
+
+    if simply_true() {
+        set.insert(value);
+    }
+
+    if !set.contains(&value) {
+        set.replace(value); //it is not insert
+        println!("Just a comment");
+    }
+
+    if set.contains(&value) {
+        println!("value is already in set");
+    } else {
+        set.insert(value);
+    }
+}
+
+fn should_warn_btreeset() {
+    let mut set = BTreeSet::new();
+    let value = 5;
+
+    if !set.contains(&value) {
+        //~^ set_contains_or_insert
+        set.insert(value);
+        println!("Just a comment");
+    }
+
+    if set.contains(&value) {
+        //~^ set_contains_or_insert
+        set.insert(value);
+        println!("Just a comment");
+    }
+
+    if !set.contains(&value) {
+        //~^ set_contains_or_insert
+        set.insert(value);
+    }
+
+    if !!set.contains(&value) {
+        //~^ set_contains_or_insert
+        set.insert(value);
+        println!("Just a comment");
+    }
+
+    if (&set).contains(&value) {
+        //~^ set_contains_or_insert
+        set.insert(value);
+    }
+
+    let borrow_value = &6;
+    if !set.contains(borrow_value) {
+        //~^ set_contains_or_insert
+        set.insert(*borrow_value);
+    }
+
+    let borrow_set = &mut set;
+    if !borrow_set.contains(&value) {
+        //~^ set_contains_or_insert
+        borrow_set.insert(value);
+    }
+}
+
+fn should_not_warn_btreeset() {
+    let mut set = BTreeSet::new();
+    let value = 5;
+    let another_value = 6;
+
+    if !set.contains(&value) {
+        set.insert(another_value);
+    }
+
+    if !set.contains(&value) {
+        println!("Just a comment");
+    }
+
+    if simply_true() {
+        set.insert(value);
+    }
+
+    if !set.contains(&value) {
+        set.replace(value); //it is not insert
+        println!("Just a comment");
+    }
+
+    if set.contains(&value) {
+        println!("value is already in set");
+    } else {
+        set.insert(value);
+    }
+}
+
+fn simply_true() -> bool {
+    true
+}
+
+fn main() {}
+
+fn issue15990(s: &mut HashSet<usize>, v: usize) {
+    if !s.contains(&v) {
+        s.clear();
+        s.insert(v);
+    }
+
+    fn borrow_as_mut(v: usize, s: &mut HashSet<usize>) {
+        s.clear();
+    }
+    if !s.contains(&v) {
+        borrow_as_mut(v, s);
+        s.insert(v);
+    }
+
+    if !s.contains(&v) {
+        //~^ set_contains_or_insert
+        let _readonly_access = s.contains(&v);
+        s.insert(v);
+    }
+}

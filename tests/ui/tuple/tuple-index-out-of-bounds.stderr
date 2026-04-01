@@ -1,0 +1,19 @@
+error[E0609]: no field `2` on type `Point`
+  --> $DIR/tuple-index-out-of-bounds.rs:7:12
+   |
+LL |     origin.2;
+   |            ^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `2` on type `({integer}, {integer})`
+  --> $DIR/tuple-index-out-of-bounds.rs:12:11
+   |
+LL |     tuple.2;
+   |           ^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

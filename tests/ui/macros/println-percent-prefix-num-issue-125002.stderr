@@ -1,0 +1,28 @@
+error: argument never used
+  --> $DIR/println-percent-prefix-num-issue-125002.rs:2:25
+   |
+LL |     println!("%100000", 1);
+   |                         ^ argument never used
+   |
+note: format specifiers use curly braces, and the conversion specifier `1` is unknown or unsupported
+  --> $DIR/println-percent-prefix-num-issue-125002.rs:2:15
+   |
+LL |     println!("%100000", 1);
+   |               ^^
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+
+error: argument never used
+  --> $DIR/println-percent-prefix-num-issue-125002.rs:4:29
+   |
+LL |     println!("%     65536", 1);
+   |                             ^ argument never used
+   |
+note: format specifiers use curly braces, and the conversion specifier ` ` is unknown or unsupported
+  --> $DIR/println-percent-prefix-num-issue-125002.rs:4:15
+   |
+LL |     println!("%     65536", 1);
+   |               ^^
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+
+error: aborting due to 2 previous errors
+

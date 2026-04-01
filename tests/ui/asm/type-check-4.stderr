@@ -1,0 +1,26 @@
+error[E0506]: cannot assign to `a` because it is borrowed
+  --> $DIR/type-check-4.rs:13:9
+   |
+LL |         let p = &a;
+   |                 -- `a` is borrowed here
+LL |         asm!("{}", out(reg) a);
+   |         ^^^^^^^^^^^^^^^^^^^^^^ `a` is assigned to here but it was already borrowed
+LL |
+LL |         println!("{}", p);
+   |                        - borrow later used here
+
+error[E0503]: cannot use `a` because it was mutably borrowed
+  --> $DIR/type-check-4.rs:21:28
+   |
+LL |         let p = &mut a;
+   |                 ------ `a` is borrowed here
+LL |         asm!("{}", in(reg) a);
+   |                            ^ use of borrowed `a`
+LL |
+LL |         println!("{}", p);
+   |                        - borrow later used here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0503, E0506.
+For more information about an error, try `rustc --explain E0503`.

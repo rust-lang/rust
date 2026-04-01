@@ -1,0 +1,8 @@
+error: cannot use register `r8`: high registers (r8+) can only be used as clobbers in Thumb-1 code
+  --> $DIR/issue-99071.rs:15:18
+   |
+LL |         asm!("", in("r8") 0);
+   |                  ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

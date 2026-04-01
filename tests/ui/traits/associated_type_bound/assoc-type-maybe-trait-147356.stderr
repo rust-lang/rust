@@ -1,0 +1,21 @@
+error[E0404]: expected trait, found derive macro `Debug`
+  --> $DIR/assoc-type-maybe-trait-147356.rs:4:26
+   |
+LL |     <T as FromStr>::Err: Debug,
+   |                          ^^^^^ not a trait
+   |
+help: consider importing this trait instead
+   |
+LL + use std::fmt::Debug;
+   |
+
+error[E0405]: cannot find trait `some_unknown_name` in this scope
+  --> $DIR/assoc-type-maybe-trait-147356.rs:11:26
+   |
+LL |     <T as FromStr>::Err: some_unknown_name,
+   |                          ^^^^^^^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0404, E0405.
+For more information about an error, try `rustc --explain E0404`.

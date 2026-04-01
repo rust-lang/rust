@@ -1,0 +1,28 @@
+error[E0560]: struct `S` has no field named `0b1`
+  --> $DIR/numeric-fields.rs:4:15
+   |
+LL | struct S(u8, u16);
+   |        - `S` defined here
+...
+LL |     let s = S{0b1: 10, 0: 11};
+   |               ^^^ field does not exist
+   |
+help: `S` is a tuple struct, use the appropriate syntax
+   |
+LL -     let s = S{0b1: 10, 0: 11};
+LL +     let s = S(/* u8 */, /* u16 */);
+   |
+
+error[E0026]: struct `S` does not have a field named `0x1`
+  --> $DIR/numeric-fields.rs:7:17
+   |
+LL |         S{0: a, 0x1: b, ..} => {}
+   |                 ^^^
+   |                 |
+   |                 struct `S` does not have this field
+   |                 help: `S` has a field named `1`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0026, E0560.
+For more information about an error, try `rustc --explain E0026`.

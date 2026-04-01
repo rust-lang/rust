@@ -1,0 +1,136 @@
+error[E0061]: this function takes 0 arguments but 2 arguments were supplied
+  --> $DIR/issue-109425.rs:10:5
+   |
+LL |     f(0, 1,);        // f()
+   |     ^ -  - unexpected argument #2 of type `{integer}`
+   |       |
+   |       unexpected argument #1 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/issue-109425.rs:3:4
+   |
+LL | fn f() {}
+   |    ^
+help: remove the extra arguments
+   |
+LL -     f(0, 1,);        // f()
+LL +     f();        // f()
+   |
+
+error[E0061]: this function takes 1 argument but 3 arguments were supplied
+  --> $DIR/issue-109425.rs:12:5
+   |
+LL |     i(0, 1, 2,);     // i(0,)
+   |     ^    -  - unexpected argument #3 of type `{integer}`
+   |          |
+   |          unexpected argument #2 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/issue-109425.rs:4:4
+   |
+LL | fn i(_: u32) {}
+   |    ^
+help: remove the extra arguments
+   |
+LL -     i(0, 1, 2,);     // i(0,)
+LL +     i(0,);     // i(0,)
+   |
+
+error[E0061]: this function takes 1 argument but 3 arguments were supplied
+  --> $DIR/issue-109425.rs:14:5
+   |
+LL |     i(0, 1, 2);      // i(0)
+   |     ^    -  - unexpected argument #3 of type `{integer}`
+   |          |
+   |          unexpected argument #2 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/issue-109425.rs:4:4
+   |
+LL | fn i(_: u32) {}
+   |    ^
+help: remove the extra arguments
+   |
+LL -     i(0, 1, 2);      // i(0)
+LL +     i(0);      // i(0)
+   |
+
+error[E0061]: this function takes 2 arguments but 4 arguments were supplied
+  --> $DIR/issue-109425.rs:16:5
+   |
+LL |     is(0, 1, 2, ""); // is(0, "")
+   |     ^^    -  - unexpected argument #3 of type `{integer}`
+   |           |
+   |           unexpected argument #2 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/issue-109425.rs:5:4
+   |
+LL | fn is(_: u32, _: &str) {}
+   |    ^^
+help: remove the extra arguments
+   |
+LL -     is(0, 1, 2, ""); // is(0, "")
+LL +     is(0, ""); // is(0, "")
+   |
+
+error[E0061]: this function takes 2 arguments but 4 arguments were supplied
+  --> $DIR/issue-109425.rs:18:5
+   |
+LL |     is((), 1, "", ());
+   |     ^^ --         -- unexpected argument #4 of type `()`
+   |        |
+   |        unexpected argument #1 of type `()`
+   |
+note: function defined here
+  --> $DIR/issue-109425.rs:5:4
+   |
+LL | fn is(_: u32, _: &str) {}
+   |    ^^
+help: remove the extra arguments
+   |
+LL -     is((), 1, "", ());
+LL +     is(1, "");
+   |
+
+error[E0061]: this function takes 2 arguments but 4 arguments were supplied
+  --> $DIR/issue-109425.rs:20:5
+   |
+LL |     is(1, (), "", ());
+   |     ^^    --      -- unexpected argument #4 of type `()`
+   |           |
+   |           unexpected argument #2 of type `()`
+   |
+note: function defined here
+  --> $DIR/issue-109425.rs:5:4
+   |
+LL | fn is(_: u32, _: &str) {}
+   |    ^^
+help: remove the extra arguments
+   |
+LL -     is(1, (), "", ());
+LL +     is(1, "");
+   |
+
+error[E0061]: this function takes 1 argument but 3 arguments were supplied
+  --> $DIR/issue-109425.rs:22:5
+   |
+LL |     s(0, 1, "");     // s("")
+   |     ^ -  - unexpected argument #2 of type `{integer}`
+   |       |
+   |       unexpected argument #1 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/issue-109425.rs:6:4
+   |
+LL | fn s(_: &str) {}
+   |    ^
+help: remove the extra arguments
+   |
+LL -     s(0, 1, "");     // s("")
+LL +     s("");     // s("")
+   |
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

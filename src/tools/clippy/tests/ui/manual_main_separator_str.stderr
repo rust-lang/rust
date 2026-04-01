@@ -1,0 +1,29 @@
+error: taking a reference on `std::path::MAIN_SEPARATOR` conversion to `String`
+  --> tests/ui/manual_main_separator_str.rs:21:19
+   |
+LL |     let _: &str = &MAIN_SEPARATOR.to_string();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::path::MAIN_SEPARATOR_STR`
+   |
+   = note: `-D clippy::manual-main-separator-str` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_main_separator_str)]`
+
+error: taking a reference on `std::path::MAIN_SEPARATOR` conversion to `String`
+  --> tests/ui/manual_main_separator_str.rs:23:17
+   |
+LL |     let _ = len(&MAIN_SEPARATOR.to_string());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::path::MAIN_SEPARATOR_STR`
+
+error: taking a reference on `std::path::MAIN_SEPARATOR` conversion to `String`
+  --> tests/ui/manual_main_separator_str.rs:25:23
+   |
+LL |     let _: Vec<u16> = MAIN_SEPARATOR.to_string().encode_utf16().collect();
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::path::MAIN_SEPARATOR_STR`
+
+error: taking a reference on `std::path::MAIN_SEPARATOR` conversion to `String`
+  --> tests/ui/manual_main_separator_str.rs:30:12
+   |
+LL |         f: &MAIN_SEPARATOR.to_string(),
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::path::MAIN_SEPARATOR_STR`
+
+error: aborting due to 4 previous errors
+

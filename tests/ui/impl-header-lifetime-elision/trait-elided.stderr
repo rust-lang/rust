@@ -1,0 +1,14 @@
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/trait-elided.rs:5:6
+   |
+LL | impl MyTrait for u32 {}
+   |      ^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL | impl MyTrait<'_> for u32 {}
+   |             ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0726`.

@@ -1,0 +1,28 @@
+error[E0275]: overflow evaluating the requirement `<T as B>::Type == <T as B>::Type`
+  --> $DIR/impl-wf-cycle-3.rs:7:1
+   |
+LL | / impl<T> B for T
+LL | | where
+LL | |     T: A<Self::Type>,
+   | |_____________________^
+LL |   {
+LL |       type Type = bool;
+   |       --------- associated type `<T as B>::Type` is specified here
+   |
+note: required for `T` to implement `B`
+  --> $DIR/impl-wf-cycle-3.rs:7:9
+   |
+LL | impl<T> B for T
+   |         ^     ^
+LL | where
+LL |     T: A<Self::Type>,
+   |        ------------- unsatisfied trait bound introduced here
+help: replace the associated type with the type specified in this `impl`
+   |
+LL -     T: A<Self::Type>,
+LL +     T: A<bool>,
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

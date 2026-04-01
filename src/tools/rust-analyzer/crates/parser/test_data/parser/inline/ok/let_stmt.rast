@@ -1,0 +1,59 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "x"
+          COLON ":"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "i32"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "92"
+          SEMICOLON ";"
+        WHITESPACE " "
+        LET_STMT
+          SUPER_KW "super"
+          WHITESPACE " "
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "y"
+          SEMICOLON ";"
+        WHITESPACE " "
+        EXPR_STMT
+          PATH_EXPR
+            PATH
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    SUPER_KW "super"
+              COLON2 "::"
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "foo"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

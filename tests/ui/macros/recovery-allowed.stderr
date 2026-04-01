@@ -1,0 +1,14 @@
+error: unexpected `1` after identifier
+  --> $DIR/recovery-allowed.rs:5:23
+   |
+LL | please_recover! { not 1 }
+   |                       ^
+   |
+help: use `!` to perform bitwise not
+   |
+LL - please_recover! { not 1 }
+LL + please_recover! { !1 }
+   |
+
+error: aborting due to 1 previous error
+

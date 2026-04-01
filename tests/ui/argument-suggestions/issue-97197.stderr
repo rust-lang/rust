@@ -1,0 +1,19 @@
+error[E0061]: this function takes 6 arguments but 2 arguments were supplied
+  --> $DIR/issue-97197.rs:2:5
+   |
+LL |     g((), ());
+   |     ^-------- multiple arguments are missing
+   |
+note: function defined here
+  --> $DIR/issue-97197.rs:6:8
+   |
+LL | pub fn g(a1: (), a2: bool, a3: bool, a4: bool, a5: bool, a6: ()) -> () {}
+   |        ^         --------  --------  --------  --------
+help: provide the arguments
+   |
+LL |     g((), /* bool */, /* bool */, /* bool */, /* bool */, ());
+   |           +++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

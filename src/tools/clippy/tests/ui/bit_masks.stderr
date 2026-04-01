@@ -1,0 +1,112 @@
+error: &-masking with zero
+  --> tests/ui/bit_masks.rs:14:5
+   |
+LL |     x & 0 == 0;
+   |     ^^^^^^^^^^
+   |
+   = note: `-D clippy::bad-bit-mask` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bad_bit_mask)]`
+
+error: this operation will always return zero. This is likely not the intended outcome
+  --> tests/ui/bit_masks.rs:14:5
+   |
+LL |     x & 0 == 0;
+   |     ^^^^^
+   |
+   = note: `#[deny(clippy::erasing_op)]` on by default
+
+error: incompatible bit mask: `_ & 2` can never be equal to `1`
+  --> tests/ui/bit_masks.rs:20:5
+   |
+LL |     x & 2 == 1;
+   |     ^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 3` can never be equal to `2`
+  --> tests/ui/bit_masks.rs:26:5
+   |
+LL |     x | 3 == 2;
+   |     ^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 1` will never be higher than `1`
+  --> tests/ui/bit_masks.rs:29:5
+   |
+LL |     x & 1 > 1;
+   |     ^^^^^^^^^
+
+error: incompatible bit mask: `_ | 2` will always be higher than `1`
+  --> tests/ui/bit_masks.rs:35:5
+   |
+LL |     x | 2 > 1;
+   |     ^^^^^^^^^
+
+error: incompatible bit mask: `_ & 7` can never be equal to `8`
+  --> tests/ui/bit_masks.rs:44:5
+   |
+LL |     x & THREE_BITS == 8;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 7` will never be lower than `7`
+  --> tests/ui/bit_masks.rs:47:5
+   |
+LL |     x | EVEN_MORE_REDIRECTION < 7;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: &-masking with zero
+  --> tests/ui/bit_masks.rs:50:5
+   |
+LL |     0 & x == 0;
+   |     ^^^^^^^^^^
+
+error: this operation will always return zero. This is likely not the intended outcome
+  --> tests/ui/bit_masks.rs:50:5
+   |
+LL |     0 & x == 0;
+   |     ^^^^^
+
+error: incompatible bit mask: `_ | 2` will always be higher than `1`
+  --> tests/ui/bit_masks.rs:57:5
+   |
+LL |     1 < 2 | x;
+   |     ^^^^^^^^^
+
+error: incompatible bit mask: `_ | 3` can never be equal to `2`
+  --> tests/ui/bit_masks.rs:60:5
+   |
+LL |     2 == 3 | x;
+   |     ^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 2` can never be equal to `1`
+  --> tests/ui/bit_masks.rs:63:5
+   |
+LL |     1 == x & 2;
+   |     ^^^^^^^^^^
+
+error: ineffective bit mask: `x | 1` compared to `3`, is the same as x compared directly
+  --> tests/ui/bit_masks.rs:75:5
+   |
+LL |     x | 1 > 3;
+   |     ^^^^^^^^^
+   |
+   = note: `-D clippy::ineffective-bit-mask` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ineffective_bit_mask)]`
+
+error: ineffective bit mask: `x | 1` compared to `4`, is the same as x compared directly
+  --> tests/ui/bit_masks.rs:78:5
+   |
+LL |     x | 1 < 4;
+   |     ^^^^^^^^^
+
+error: ineffective bit mask: `x | 1` compared to `3`, is the same as x compared directly
+  --> tests/ui/bit_masks.rs:81:5
+   |
+LL |     x | 1 <= 3;
+   |     ^^^^^^^^^^
+
+error: ineffective bit mask: `x | 1` compared to `8`, is the same as x compared directly
+  --> tests/ui/bit_masks.rs:84:5
+   |
+LL |     x | 1 >= 8;
+   |     ^^^^^^^^^^
+
+error: aborting due to 17 previous errors
+

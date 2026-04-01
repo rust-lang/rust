@@ -1,0 +1,52 @@
+error: unnecessary closure used to substitute value for `Result::Err`
+  --> tests/ui/unnecessary_lazy_eval_unfixable.rs:13:13
+   |
+LL |     let _ = Ok(1).unwrap_or_else(|()| 2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-lazy-evaluations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_lazy_evaluations)]`
+help: use `unwrap_or` instead
+   |
+LL -     let _ = Ok(1).unwrap_or_else(|()| 2);
+LL +     let _ = Ok(1).unwrap_or(2);
+   |
+
+error: unnecessary closure used to substitute value for `Result::Err`
+  --> tests/ui/unnecessary_lazy_eval_unfixable.rs:19:13
+   |
+LL |     let _ = Ok(1).unwrap_or_else(|e::E| 2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `unwrap_or` instead
+   |
+LL -     let _ = Ok(1).unwrap_or_else(|e::E| 2);
+LL +     let _ = Ok(1).unwrap_or(2);
+   |
+
+error: unnecessary closure used to substitute value for `Result::Err`
+  --> tests/ui/unnecessary_lazy_eval_unfixable.rs:22:13
+   |
+LL |     let _ = Ok(1).unwrap_or_else(|SomeStruct { .. }| 2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `unwrap_or` instead
+   |
+LL -     let _ = Ok(1).unwrap_or_else(|SomeStruct { .. }| 2);
+LL +     let _ = Ok(1).unwrap_or(2);
+   |
+
+error: unnecessary closure used with `bool::then`
+  --> tests/ui/unnecessary_lazy_eval_unfixable.rs:32:13
+   |
+LL |     let _ = true.then(|| -> &[u8] { &[] });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `then_some` instead
+   |
+LL -     let _ = true.then(|| -> &[u8] { &[] });
+LL +     let _ = true.then_some({ &[] });
+   |
+
+error: aborting due to 4 previous errors
+

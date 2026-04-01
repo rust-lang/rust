@@ -1,0 +1,12 @@
+warning: `extern` fn uses type `char`, which is not FFI-safe
+  --> $DIR/naked-functions-ffi.rs:8:28
+   |
+LL | pub extern "C" fn naked(p: char) -> u128 {
+   |                            ^^^^ not FFI-safe
+   |
+   = help: consider using `u32` or `libc::wchar_t` instead
+   = note: the `char` type has no C equivalent
+   = note: `#[warn(improper_ctypes_definitions)]` on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,14 @@
+error: missing `enum` for enum definition
+  --> $DIR/track4.rs:LL:CC
+   |
+LL | pub onion {
+   | ^^^^^^^^^
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_parse/src/parser/item.rs:LL:CC
+help: add `enum` here to parse `onion` as an enum
+   |
+LL | pub enum onion {
+   |     ++++
+
+error: aborting due to 1 previous error
+

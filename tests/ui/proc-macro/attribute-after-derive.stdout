@@ -1,0 +1,194 @@
+PRINT-ATTR INPUT (DISPLAY): #[derive(Print)] struct AttributeDerive { #[cfg(false)] field: u8, }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[derive(Print)] struct AttributeDerive { #[cfg(false)] field : u8, }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: $DIR/attribute-after-derive.rs:15:1: 15:2 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "derive",
+                span: $DIR/attribute-after-derive.rs:15:3: 15:9 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Ident {
+                        ident: "Print",
+                        span: $DIR/attribute-after-derive.rs:15:10: 15:15 (#0),
+                    },
+                ],
+                span: $DIR/attribute-after-derive.rs:15:9: 15:16 (#0),
+            },
+        ],
+        span: $DIR/attribute-after-derive.rs:15:2: 15:17 (#0),
+    },
+    Ident {
+        ident: "struct",
+        span: $DIR/attribute-after-derive.rs:16:1: 16:7 (#0),
+    },
+    Ident {
+        ident: "AttributeDerive",
+        span: $DIR/attribute-after-derive.rs:16:8: 16:23 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Alone,
+                span: $DIR/attribute-after-derive.rs:17:5: 17:6 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "cfg",
+                        span: $DIR/attribute-after-derive.rs:17:7: 17:10 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "false",
+                                span: $DIR/attribute-after-derive.rs:17:11: 17:16 (#0),
+                            },
+                        ],
+                        span: $DIR/attribute-after-derive.rs:17:10: 17:17 (#0),
+                    },
+                ],
+                span: $DIR/attribute-after-derive.rs:17:6: 17:18 (#0),
+            },
+            Ident {
+                ident: "field",
+                span: $DIR/attribute-after-derive.rs:18:5: 18:10 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/attribute-after-derive.rs:18:10: 18:11 (#0),
+            },
+            Ident {
+                ident: "u8",
+                span: $DIR/attribute-after-derive.rs:18:12: 18:14 (#0),
+            },
+            Punct {
+                ch: ',',
+                spacing: Alone,
+                span: $DIR/attribute-after-derive.rs:18:14: 18:15 (#0),
+            },
+        ],
+        span: $DIR/attribute-after-derive.rs:16:24: 19:2 (#0),
+    },
+]
+PRINT-DERIVE INPUT (DISPLAY): struct AttributeDerive {}
+PRINT-DERIVE INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/attribute-after-derive.rs:16:1: 16:7 (#0),
+    },
+    Ident {
+        ident: "AttributeDerive",
+        span: $DIR/attribute-after-derive.rs:16:8: 16:23 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [],
+        span: $DIR/attribute-after-derive.rs:16:24: 19:2 (#0),
+    },
+]
+PRINT-DERIVE INPUT (DISPLAY): #[print_attr] struct DeriveAttribute {}
+PRINT-DERIVE INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: $DIR/attribute-after-derive.rs:22:1: 22:2 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "print_attr",
+                span: $DIR/attribute-after-derive.rs:22:3: 22:13 (#0),
+            },
+        ],
+        span: $DIR/attribute-after-derive.rs:22:2: 22:14 (#0),
+    },
+    Ident {
+        ident: "struct",
+        span: $DIR/attribute-after-derive.rs:23:1: 23:7 (#0),
+    },
+    Ident {
+        ident: "DeriveAttribute",
+        span: $DIR/attribute-after-derive.rs:23:8: 23:23 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [],
+        span: $DIR/attribute-after-derive.rs:23:24: 26:2 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): struct DeriveAttribute { #[cfg(false)] field: u8, }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): struct DeriveAttribute { #[cfg(false)] field : u8, }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/attribute-after-derive.rs:23:1: 23:7 (#0),
+    },
+    Ident {
+        ident: "DeriveAttribute",
+        span: $DIR/attribute-after-derive.rs:23:8: 23:23 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Alone,
+                span: $DIR/attribute-after-derive.rs:24:5: 24:6 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "cfg",
+                        span: $DIR/attribute-after-derive.rs:24:7: 24:10 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "false",
+                                span: $DIR/attribute-after-derive.rs:24:11: 24:16 (#0),
+                            },
+                        ],
+                        span: $DIR/attribute-after-derive.rs:24:10: 24:17 (#0),
+                    },
+                ],
+                span: $DIR/attribute-after-derive.rs:24:6: 24:18 (#0),
+            },
+            Ident {
+                ident: "field",
+                span: $DIR/attribute-after-derive.rs:25:5: 25:10 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/attribute-after-derive.rs:25:10: 25:11 (#0),
+            },
+            Ident {
+                ident: "u8",
+                span: $DIR/attribute-after-derive.rs:25:12: 25:14 (#0),
+            },
+            Punct {
+                ch: ',',
+                spacing: Alone,
+                span: $DIR/attribute-after-derive.rs:25:14: 25:15 (#0),
+            },
+        ],
+        span: $DIR/attribute-after-derive.rs:23:24: 26:2 (#0),
+    },
+]

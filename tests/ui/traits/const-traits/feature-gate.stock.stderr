@@ -1,0 +1,73 @@
+error[E0658]: const trait impls are experimental
+  --> $DIR/feature-gate.rs:8:1
+   |
+LL | const trait T {}
+   | ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/feature-gate.rs:9:6
+   |
+LL | impl const T for S {}
+   |      ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/feature-gate.rs:12:15
+   |
+LL | const fn f<A: [const] T>() {}
+   |               ^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/feature-gate.rs:13:9
+   |
+LL | fn g<A: const T>() {}
+   |         ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/feature-gate.rs:15:15
+   |
+LL | #[cfg(false)] const trait Trait {}
+   |               ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/feature-gate.rs:19:17
+   |
+LL | discard! { impl [const] T }
+   |                 ^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/feature-gate.rs:20:17
+   |
+LL | discard! { impl const T }
+   |                 ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

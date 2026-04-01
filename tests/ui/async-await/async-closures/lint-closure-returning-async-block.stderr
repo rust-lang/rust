@@ -1,0 +1,67 @@
+error: closure returning async block can be made into an async closure
+  --> $DIR/lint-closure-returning-async-block.rs:6:13
+   |
+LL |     let x = || async {};
+   |             ^^ ----- this async block can be removed, and the closure can be turned into an async closure
+   |
+note: the lint level is defined here
+  --> $DIR/lint-closure-returning-async-block.rs:3:9
+   |
+LL | #![deny(closure_returning_async_block)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: turn this into an async closure
+   |
+LL -     let x = || async {};
+LL +     let x = async || {};
+   |
+
+error: closure returning async block can be made into an async closure
+  --> $DIR/lint-closure-returning-async-block.rs:9:13
+   |
+LL |     let x = || async move {};
+   |             ^^ ---------- this async block can be removed, and the closure can be turned into an async closure
+   |
+help: turn this into an async closure
+   |
+LL -     let x = || async move {};
+LL +     let x = async || {};
+   |
+
+error: closure returning async block can be made into an async closure
+  --> $DIR/lint-closure-returning-async-block.rs:12:13
+   |
+LL |     let x = move || async move {};
+   |             ^^^^^^^ ---------- this async block can be removed, and the closure can be turned into an async closure
+   |
+help: turn this into an async closure
+   |
+LL -     let x = move || async move {};
+LL +     let x = async move || {};
+   |
+
+error: closure returning async block can be made into an async closure
+  --> $DIR/lint-closure-returning-async-block.rs:15:13
+   |
+LL |     let x = move || async {};
+   |             ^^^^^^^ ----- this async block can be removed, and the closure can be turned into an async closure
+   |
+help: turn this into an async closure
+   |
+LL -     let x = move || async {};
+LL +     let x = async move || {};
+   |
+
+error: closure returning async block can be made into an async closure
+  --> $DIR/lint-closure-returning-async-block.rs:18:13
+   |
+LL |     let x = || {{ async {} }};
+   |             ^^    ----- this async block can be removed, and the closure can be turned into an async closure
+   |
+help: turn this into an async closure
+   |
+LL -     let x = || {{ async {} }};
+LL +     let x = async || {{ {} }};
+   |
+
+error: aborting due to 5 previous errors
+

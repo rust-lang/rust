@@ -1,0 +1,43 @@
+error[E0382]: assign of moved value: `t`
+  --> $DIR/borrowck-partial-reinit-1.rs:27:5
+   |
+LL |     let mut t = Test2 { b: None };
+   |         ----- move occurs because `t` has type `Test2`, which does not implement the `Copy` trait
+LL |     let u = Test;
+LL |     drop(t);
+   |          - value moved here
+LL |     t.b = Some(u);
+   |     ^^^ value assigned here after move
+   |
+note: if `Test2` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-partial-reinit-1.rs:3:1
+   |
+LL | struct Test2 {
+   | ^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(t);
+   |          - you could clone this value
+
+error[E0382]: assign of moved value: `t`
+  --> $DIR/borrowck-partial-reinit-1.rs:33:5
+   |
+LL |     let mut t = Test3(None);
+   |         ----- move occurs because `t` has type `Test3`, which does not implement the `Copy` trait
+LL |     let u = Test;
+LL |     drop(t);
+   |          - value moved here
+LL |     t.0 = Some(u);
+   |     ^^^ value assigned here after move
+   |
+note: if `Test3` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-partial-reinit-1.rs:7:1
+   |
+LL | struct Test3(Option<Test>);
+   | ^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(t);
+   |          - you could clone this value
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

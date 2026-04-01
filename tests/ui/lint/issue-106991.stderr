@@ -1,0 +1,14 @@
+error[E0271]: expected `foo` to return `i32`, but it returns `()`
+  --> $DIR/issue-106991.rs:5:13
+   |
+LL | fn bar() -> impl Iterator<Item = i32> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `()`
+...
+LL |     x.iter_mut().map(foo)
+   |     --------------------- return type was inferred to be `Map<std::slice::IterMut<'_, Vec<u8>>, for<'a> fn(&'a mut Vec<u8>) {foo}>` here
+   |
+   = note: required for `Map<std::slice::IterMut<'_, Vec<u8>>, for<'a> fn(&'a mut Vec<u8>) {foo}>` to implement `Iterator`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

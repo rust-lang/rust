@@ -1,0 +1,24 @@
+error[E0425]: cannot find value `bar` in this scope
+  --> $DIR/not_wf_param_in_rpitit.rs:3:34
+   |
+LL | trait Trait<const N: dyn Trait = bar> {
+   |                                  ^^^ not found in this scope
+
+error[E0391]: cycle detected when computing type of `Trait::N`
+  --> $DIR/not_wf_param_in_rpitit.rs:3:26
+   |
+LL | trait Trait<const N: dyn Trait = bar> {
+   |                          ^^^^^
+   |
+   = note: ...which immediately requires computing type of `Trait::N` again
+note: cycle used when checking that `Trait` is well-formed
+  --> $DIR/not_wf_param_in_rpitit.rs:3:1
+   |
+LL | trait Trait<const N: dyn Trait = bar> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0391, E0425.
+For more information about an error, try `rustc --explain E0391`.

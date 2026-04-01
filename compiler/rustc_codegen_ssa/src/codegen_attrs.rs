@@ -1,0 +1,633 @@
+use rustc_abi::{Align, ExternAbi};
+use rustc_hir::attrs::{
+    AttributeKind, EiiImplResolution, InlineAttr, Linkage, RtsanSetting, UsedBy,
+};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
+use rustc_hir::{self as hir, Attribute, find_attr};
+use rustc_macros::Diagnostic;
+use rustc_middle::middle::codegen_fn_attrs::{
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
+};
+use rustc_middle::mir::mono::Visibility;
+use rustc_middle::query::Providers;
+use rustc_middle::ty::{self as ty, TyCtxt};
+use rustc_session::lint;
+use rustc_session::parse::feature_err;
+use rustc_span::{Span, sym};
+use rustc_target::spec::Os;
+
+use crate::errors;
+use crate::target_features::{
+    check_target_feature_trait_unsafe, check_tied_features, from_target_feature_attr,
+};
+
+/// In some cases, attributes are only valid on functions, but it's the `check_attr`
+/// pass that checks that they aren't used anywhere else, rather than this module.
+/// In these cases, we bail from performing further checks that are only meaningful for
+/// functions (such as calling `fn_sig`, which ICEs if given a non-function). We also
+/// report a delayed bug, just in case `check_attr` isn't doing its job.
+fn try_fn_sig<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    did: LocalDefId,
+    attr_span: Span,
+) -> Option<ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>>> {
+    use DefKind::*;
+
+    let def_kind = tcx.def_kind(did);
+    if let Fn | AssocFn | Variant | Ctor(..) = def_kind {
+        Some(tcx.fn_sig(did))
+    } else {
+        tcx.dcx().span_delayed_bug(attr_span, "this attribute can only be applied to functions");
+        None
+    }
+}
+
+/// Spans that are collected when processing built-in attributes,
+/// that are useful for emitting diagnostics later.
+#[derive(Default)]
+struct InterestingAttributeDiagnosticSpans {
+    link_ordinal: Option<Span>,
+    sanitize: Option<Span>,
+    inline: Option<Span>,
+    no_mangle: Option<Span>,
+}
+
+/// Process the builtin attrs ([`hir::Attribute`]) on the item.
+/// Many of them directly translate to codegen attrs.
+fn process_builtin_attrs(
+    tcx: TyCtxt<'_>,
+    did: LocalDefId,
+    attrs: &[Attribute],
+    codegen_fn_attrs: &mut CodegenFnAttrs,
+) -> InterestingAttributeDiagnosticSpans {
+    let mut interesting_spans = InterestingAttributeDiagnosticSpans::default();
+    let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
+
+    let parsed_attrs = attrs
+        .iter()
+        .filter_map(|attr| if let hir::Attribute::Parsed(attr) = attr { Some(attr) } else { None });
+    for attr in parsed_attrs {
+        match attr {
+            AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
+            AttributeKind::ExportName { name, .. } => codegen_fn_attrs.symbol_name = Some(*name),
+            AttributeKind::Inline(inline, span) => {
+                codegen_fn_attrs.inline = *inline;
+                interesting_spans.inline = Some(*span);
+            }
+            AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
+            AttributeKind::RustcAlign { align, .. } => codegen_fn_attrs.alignment = Some(*align),
+            AttributeKind::LinkName { name, .. } => {
+                // FIXME Remove check for foreign functions once #[link_name] on non-foreign
+                // functions is a hard error
+                if tcx.is_foreign_item(did) {
+                    codegen_fn_attrs.symbol_name = Some(*name);
+                }
+            }
+            AttributeKind::LinkOrdinal { ordinal, span } => {
+                codegen_fn_attrs.link_ordinal = Some(*ordinal);
+                interesting_spans.link_ordinal = Some(*span);
+            }
+            AttributeKind::LinkSection { name, .. } => codegen_fn_attrs.link_section = Some(*name),
+            AttributeKind::NoMangle(attr_span) => {
+                interesting_spans.no_mangle = Some(*attr_span);
+                if tcx.opt_item_name(did.to_def_id()).is_some() {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+                } else {
+                    tcx.dcx()
+                        .span_delayed_bug(*attr_span, "no_mangle should be on a named function");
+                }
+            }
+            AttributeKind::Optimize(optimize, _) => codegen_fn_attrs.optimize = *optimize,
+            AttributeKind::TargetFeature { features, attr_span, was_forced } => {
+                let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
+                    tcx.dcx().span_delayed_bug(*attr_span, "target_feature applied to non-fn");
+                    continue;
+                };
+                let safe_target_features =
+                    matches!(sig.header.safety, hir::HeaderSafety::SafeTargetFeatures);
+                codegen_fn_attrs.safe_target_features = safe_target_features;
+                if safe_target_features && !was_forced {
+                    if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
+                        // The `#[target_feature]` attribute is allowed on
+                        // WebAssembly targets on all functions. Prior to stabilizing
+                        // the `target_feature_11` feature, `#[target_feature]` was
+                        // only permitted on unsafe functions because on most targets
+                        // execution of instructions that are not supported is
+                        // considered undefined behavior. For WebAssembly which is a
+                        // 100% safe target at execution time it's not possible to
+                        // execute undefined instructions, and even if a future
+                        // feature was added in some form for this it would be a
+                        // deterministic trap. There is no undefined behavior when
+                        // executing WebAssembly so `#[target_feature]` is allowed
+                        // on safe functions (but again, only for WebAssembly)
+                        //
+                        // Note that this is also allowed if `actually_rustdoc` so
+                        // if a target is documenting some wasm-specific code then
+                        // it's not spuriously denied.
+                        //
+                        // Now that `#[target_feature]` is permitted on safe functions,
+                        // this exception must still exist for allowing the attribute on
+                        // `main`, `start`, and other functions that are not usually
+                        // allowed.
+                    } else {
+                        check_target_feature_trait_unsafe(tcx, did, *attr_span);
+                    }
+                }
+                from_target_feature_attr(
+                    tcx,
+                    did,
+                    features,
+                    *was_forced,
+                    rust_target_features,
+                    &mut codegen_fn_attrs.target_features,
+                );
+            }
+            AttributeKind::TrackCaller(attr_span) => {
+                let is_closure = tcx.is_closure_like(did.to_def_id());
+
+                if !is_closure
+                    && let Some(fn_sig) = try_fn_sig(tcx, did, *attr_span)
+                    && fn_sig.skip_binder().abi() != ExternAbi::Rust
+                {
+                    // This error is already reported in `rustc_ast_passes/src/ast_validation.rs`.
+                    tcx.dcx().delayed_bug("`#[track_caller]` requires the Rust ABI");
+                }
+                if is_closure
+                    && !tcx.features().closure_track_caller()
+                    && !attr_span.allows_unstable(sym::closure_track_caller)
+                {
+                    feature_err(
+                        &tcx.sess,
+                        sym::closure_track_caller,
+                        *attr_span,
+                        "`#[track_caller]` on closures is currently unstable",
+                    )
+                    .emit();
+                }
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
+            }
+            AttributeKind::Used { used_by, .. } => match used_by {
+                UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
+                UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
+                UsedBy::Default => {
+                    let used_form = if tcx.sess.target.os == Os::Illumos {
+                        // illumos' `ld` doesn't support a section header that would represent
+                        // `#[used(linker)]`, see
+                        // https://github.com/rust-lang/rust/issues/146169. For that target,
+                        // downgrade as if `#[used(compiler)]` was requested and hope for the
+                        // best.
+                        CodegenFnAttrFlags::USED_COMPILER
+                    } else {
+                        CodegenFnAttrFlags::USED_LINKER
+                    };
+                    codegen_fn_attrs.flags |= used_form;
+                }
+            },
+            AttributeKind::FfiConst(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST,
+            AttributeKind::FfiPure(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
+            AttributeKind::RustcStdInternalSymbol(_) => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
+            }
+            AttributeKind::Linkage(linkage, span) => {
+                let linkage = Some(*linkage);
+
+                if tcx.is_foreign_item(did) {
+                    codegen_fn_attrs.import_linkage = linkage;
+
+                    if tcx.is_mutable_static(did.into()) {
+                        let mut diag = tcx.dcx().struct_span_err(
+                            *span,
+                            "extern mutable statics are not allowed with `#[linkage]`",
+                        );
+                        diag.note(
+                            "marking the extern static mutable would allow changing which \
+                            symbol the static references rather than make the target of the \
+                            symbol mutable",
+                        );
+                        diag.emit();
+                    }
+                } else {
+                    codegen_fn_attrs.linkage = linkage;
+                }
+            }
+            AttributeKind::Sanitize { span, .. } => {
+                interesting_spans.sanitize = Some(*span);
+            }
+            AttributeKind::RustcObjcClass { classname, .. } => {
+                codegen_fn_attrs.objc_class = Some(*classname);
+            }
+            AttributeKind::RustcObjcSelector { methname, .. } => {
+                codegen_fn_attrs.objc_selector = Some(*methname);
+            }
+            AttributeKind::RustcEiiForeignItem => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
+            }
+            AttributeKind::EiiImpls(impls) => {
+                for i in impls {
+                    let foreign_item = match i.resolution {
+                        EiiImplResolution::Macro(def_id) => {
+                            let Some(extern_item) = find_attr!(tcx, def_id, EiiDeclaration(target) => target.foreign_item
+                            ) else {
+                                tcx.dcx().span_delayed_bug(
+                                    i.span,
+                                    "resolved to something that's not an EII",
+                                );
+                                continue;
+                            };
+                            extern_item
+                        }
+                        EiiImplResolution::Known(decl) => decl.foreign_item,
+                        EiiImplResolution::Error(_eg) => continue,
+                    };
+
+                    // this is to prevent a bug where a single crate defines both the default and explicit implementation
+                    // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
+                    // what happens, either rustc deduplicates the symbol or llvm, or it's random/order-dependent.
+                    // However, the fact that the default one of has weak linkage isn't considered and you sometimes get that
+                    // the default implementation is used while an explicit implementation is given.
+                    if
+                    // if this is a default impl
+                    i.is_default
+                        // iterate over all implementations *in the current crate*
+                        // (this is ok since we generate codegen fn attrs in the local crate)
+                        // if any of them is *not default* then don't emit the alias.
+                        && tcx.externally_implementable_items(LOCAL_CRATE).get(&foreign_item).expect("at least one").1.iter().any(|(_, imp)| !imp.is_default)
+                    {
+                        continue;
+                    }
+
+                    codegen_fn_attrs.foreign_item_symbol_aliases.push((
+                        foreign_item,
+                        if i.is_default { Linkage::LinkOnceAny } else { Linkage::External },
+                        Visibility::Default,
+                    ));
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
+                }
+            }
+            AttributeKind::ThreadLocal => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL
+            }
+            AttributeKind::InstructionSet(instruction_set) => {
+                codegen_fn_attrs.instruction_set = Some(*instruction_set)
+            }
+            AttributeKind::RustcAllocator => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR
+            }
+            AttributeKind::RustcDeallocator => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR
+            }
+            AttributeKind::RustcReallocator => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR
+            }
+            AttributeKind::RustcAllocatorZeroed => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
+            }
+            AttributeKind::RustcNounwind => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND
+            }
+            AttributeKind::RustcOffloadKernel => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::OFFLOAD_KERNEL
+            }
+            AttributeKind::PatchableFunctionEntry { prefix, entry } => {
+                codegen_fn_attrs.patchable_function_entry =
+                    Some(PatchableFunctionEntry::from_prefix_and_entry(*prefix, *entry));
+            }
+            _ => {}
+        }
+    }
+
+    interesting_spans
+}
+
+/// Applies overrides for codegen fn attrs. These often have a specific reason why they're necessary.
+/// Please comment why when adding a new one!
+fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut CodegenFnAttrs) {
+    // Apply the minimum function alignment here. This ensures that a function's alignment is
+    // determined by the `-C` flags of the crate it is defined in, not the `-C` flags of the crate
+    // it happens to be codegen'd (or const-eval'd) in.
+    codegen_fn_attrs.alignment =
+        Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
+
+    // Passed in sanitizer settings are always the default.
+    assert!(codegen_fn_attrs.sanitizers == SanitizerFnAttrs::default());
+    // Replace with #[sanitize] value
+    codegen_fn_attrs.sanitizers = tcx.sanitizer_settings_for(did);
+    // On trait methods, inherit the `#[align]` of the trait's method prototype.
+    codegen_fn_attrs.alignment = Ord::max(codegen_fn_attrs.alignment, tcx.inherited_align(did));
+
+    // naked function MUST NOT be inlined! This attribute is required for the rust compiler itself,
+    // but not for the code generation backend because at that point the naked function will just be
+    // a declaration, with a definition provided in global assembly.
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+        codegen_fn_attrs.inline = InlineAttr::Never;
+    }
+
+    // #73631: closures inherit `#[target_feature]` annotations
+    //
+    // If this closure is marked `#[inline(always)]`, simply skip adding `#[target_feature]`.
+    //
+    // At this point, `unsafe` has already been checked and `#[target_feature]` only affects codegen.
+    // Due to LLVM limitations, emitting both `#[inline(always)]` and `#[target_feature]` is *unsound*:
+    // the function may be inlined into a caller with fewer target features. Also see
+    // <https://github.com/rust-lang/rust/issues/116573>.
+    //
+    // Using `#[inline(always)]` implies that this closure will most likely be inlined into
+    // its parent function, which effectively inherits the features anyway. Boxing this closure
+    // would result in this closure being compiled without the inherited target features, but this
+    // is probably a poor usage of `#[inline(always)]` and easily avoided by not using the attribute.
+    if tcx.is_closure_like(did.to_def_id()) && codegen_fn_attrs.inline != InlineAttr::Always {
+        let owner_id = tcx.parent(did.to_def_id());
+        if tcx.def_kind(owner_id).has_codegen_attrs() {
+            codegen_fn_attrs
+                .target_features
+                .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied());
+        }
+    }
+
+    // When `no_builtins` is applied at the crate level, we should add the
+    // `no-builtins` attribute to each function to ensure it takes effect in LTO.
+    let no_builtins = find_attr!(tcx, crate, NoBuiltins);
+    if no_builtins {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_BUILTINS;
+    }
+
+    // inherit track-caller properly
+    if tcx.should_inherit_track_caller(did) {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
+    }
+
+    // Foreign items by default use no mangling for their symbol name.
+    if tcx.is_foreign_item(did) {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::FOREIGN_ITEM;
+
+        // There's a few exceptions to this rule though:
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
+            // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way
+            //   both for exports and imports through foreign items. This is handled further,
+            //   during symbol mangling logic.
+        } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM)
+        {
+            // * externally implementable items keep their mangled symbol name.
+            //   multiple EIIs can have the same name, so not mangling them would be a bug.
+            //   Implementing an EII does the appropriate name resolution to make sure the implementations
+            //   get the same symbol name as the *mangled* foreign item they refer to so that's all good.
+        } else if codegen_fn_attrs.symbol_name.is_some() {
+            // * This can be overridden with the `#[link_name]` attribute
+        } else {
+            // NOTE: there's one more exception that we cannot apply here. On wasm,
+            // some items cannot be `no_mangle`.
+            // However, we don't have enough information here to determine that.
+            // As such, no_mangle foreign items on wasm that have the same defid as some
+            // import will *still* be mangled despite this.
+            //
+            // if none of the exceptions apply; apply no_mangle
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+        }
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag("non-default `sanitize` will have no effect after inlining")]
+struct SanitizeOnInline {
+    #[note("inlining requested here")]
+    inline_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("the async executor can run blocking code, without realtime sanitizer catching it")]
+struct AsyncBlocking;
+
+fn check_result(
+    tcx: TyCtxt<'_>,
+    did: LocalDefId,
+    interesting_spans: InterestingAttributeDiagnosticSpans,
+    codegen_fn_attrs: &CodegenFnAttrs,
+) {
+    // If a function uses `#[target_feature]` it can't be inlined into general
+    // purpose functions as they wouldn't have the right target features
+    // enabled. For that reason we also forbid `#[inline(always)]` as it can't be
+    // respected.
+    //
+    // `#[rustc_force_inline]` doesn't need to be prohibited here, only
+    // `#[inline(always)]`, as forced inlining is implemented entirely within
+    // rustc (and so the MIR inliner can do any necessary checks for compatible target
+    // features).
+    //
+    // This sidesteps the LLVM blockers in enabling `target_features` +
+    // `inline(always)` to be used together (see rust-lang/rust#116573 and
+    // llvm/llvm-project#70563).
+    if !codegen_fn_attrs.target_features.is_empty()
+        && matches!(codegen_fn_attrs.inline, InlineAttr::Always)
+        && !tcx.features().target_feature_inline_always()
+        && let Some(span) = interesting_spans.inline
+    {
+        feature_err(
+            tcx.sess,
+            sym::target_feature_inline_always,
+            span,
+            "cannot use `#[inline(always)]` with `#[target_feature]`",
+        )
+        .emit();
+    }
+
+    // warn that inline has no effect when no_sanitize is present
+    if codegen_fn_attrs.sanitizers != SanitizerFnAttrs::default()
+        && codegen_fn_attrs.inline.always()
+        && let (Some(sanitize_span), Some(inline_span)) =
+            (interesting_spans.sanitize, interesting_spans.inline)
+    {
+        let hir_id = tcx.local_def_id_to_hir_id(did);
+        tcx.emit_node_span_lint(
+            lint::builtin::INLINE_NO_SANITIZE,
+            hir_id,
+            sanitize_span,
+            SanitizeOnInline { inline_span },
+        )
+    }
+
+    // warn for nonblocking async functions, blocks and closures.
+    // This doesn't behave as expected, because the executor can run blocking code without the sanitizer noticing.
+    if codegen_fn_attrs.sanitizers.rtsan_setting == RtsanSetting::Nonblocking
+        && let Some(sanitize_span) = interesting_spans.sanitize
+        // async fn
+        && (tcx.asyncness(did).is_async()
+            // async block
+            || tcx.is_coroutine(did.into())
+            // async closure
+            || (tcx.is_closure_like(did.into())
+                && tcx.hir_node_by_def_id(did).expect_closure().kind
+                    != rustc_hir::ClosureKind::Closure))
+    {
+        let hir_id = tcx.local_def_id_to_hir_id(did);
+        tcx.emit_node_span_lint(
+            lint::builtin::RTSAN_NONBLOCKING_ASYNC,
+            hir_id,
+            sanitize_span,
+            AsyncBlocking,
+        );
+    }
+
+    // error when specifying link_name together with link_ordinal
+    if let Some(_) = codegen_fn_attrs.symbol_name
+        && let Some(_) = codegen_fn_attrs.link_ordinal
+    {
+        let msg = "cannot use `#[link_name]` with `#[link_ordinal]`";
+        if let Some(span) = interesting_spans.link_ordinal {
+            tcx.dcx().span_err(span, msg);
+        } else {
+            tcx.dcx().err(msg);
+        }
+    }
+
+    if let Some(features) = check_tied_features(
+        tcx.sess,
+        &codegen_fn_attrs
+            .target_features
+            .iter()
+            .map(|features| (features.name.as_str(), true))
+            .collect(),
+    ) {
+        let span = find_attr!(tcx, did, TargetFeature{attr_span: span, ..} => *span)
+            .unwrap_or_else(|| tcx.def_span(did));
+
+        tcx.dcx()
+            .create_err(errors::TargetFeatureDisableOrEnable {
+                features,
+                span: Some(span),
+                missing_features: Some(errors::MissingFeatures),
+            })
+            .emit();
+    }
+}
+
+fn handle_lang_items(
+    tcx: TyCtxt<'_>,
+    did: LocalDefId,
+    interesting_spans: &InterestingAttributeDiagnosticSpans,
+    attrs: &[Attribute],
+    codegen_fn_attrs: &mut CodegenFnAttrs,
+) {
+    let lang_item = find_attr!(attrs, Lang(lang, _) => lang);
+
+    // Weak lang items have the same semantics as "std internal" symbols in the
+    // sense that they're preserved through all our LTO passes and only
+    // strippable by the linker.
+    //
+    // Additionally weak lang items have predetermined symbol names.
+    if let Some(lang_item) = lang_item
+        && let Some(link_name) = lang_item.link_name()
+    {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+        codegen_fn_attrs.symbol_name = Some(link_name);
+    }
+
+    // error when using no_mangle on a lang item item
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+        && codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
+    {
+        let mut err = tcx
+            .dcx()
+            .struct_span_err(
+                interesting_spans.no_mangle.unwrap_or_default(),
+                "`#[no_mangle]` cannot be used on internal language items",
+            )
+            .with_note("Rustc requires this item to have a specific mangled name.")
+            .with_span_label(tcx.def_span(did), "should be the internal language item");
+        if let Some(lang_item) = lang_item
+            && let Some(link_name) = lang_item.link_name()
+        {
+            err = err
+                .with_note("If you are trying to prevent mangling to ease debugging, many")
+                .with_note(format!("debuggers support a command such as `rbreak {link_name}` to"))
+                .with_note(format!(
+                    "match `.*{link_name}.*` instead of `break {link_name}` on a specific name"
+                ))
+        }
+        err.emit();
+    }
+}
+
+/// Generate the [`CodegenFnAttrs`] for an item (identified by the [`LocalDefId`]).
+///
+/// This happens in 4 stages:
+/// - apply built-in attributes that directly translate to codegen attributes.
+/// - handle lang items. These have special codegen attrs applied to them.
+/// - apply overrides, like minimum requirements for alignment and other settings that don't rely directly the built-in attrs on the item.
+///   overrides come after applying built-in attributes since they may only apply when certain attributes were already set in the stage before.
+/// - check that the result is valid. There's various ways in which this may not be the case, such as certain combinations of attrs.
+fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
+    if cfg!(debug_assertions) {
+        let def_kind = tcx.def_kind(did);
+        assert!(
+            def_kind.has_codegen_attrs(),
+            "unexpected `def_kind` in `codegen_fn_attrs`: {def_kind:?}",
+        );
+    }
+
+    let mut codegen_fn_attrs = CodegenFnAttrs::new();
+    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(did));
+
+    let interesting_spans = process_builtin_attrs(tcx, did, attrs, &mut codegen_fn_attrs);
+    handle_lang_items(tcx, did, &interesting_spans, attrs, &mut codegen_fn_attrs);
+    apply_overrides(tcx, did, &mut codegen_fn_attrs);
+    check_result(tcx, did, interesting_spans, &codegen_fn_attrs);
+
+    codegen_fn_attrs
+}
+
+fn sanitizer_settings_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerFnAttrs {
+    // Backtrack to the crate root.
+    let mut settings = match tcx.opt_local_parent(did) {
+        // Check the parent (recursively).
+        Some(parent) => tcx.sanitizer_settings_for(parent),
+        // We reached the crate root without seeing an attribute, so
+        // there is no sanitizers to exclude.
+        None => SanitizerFnAttrs::default(),
+    };
+
+    // Check for a sanitize annotation directly on this def.
+    if let Some((on_set, off_set, rtsan)) =
+        find_attr!(tcx, did, Sanitize {on_set, off_set, rtsan, ..} => (on_set, off_set, rtsan))
+    {
+        // the on set is the set of sanitizers explicitly enabled.
+        // we mask those out since we want the set of disabled sanitizers here
+        settings.disabled &= !*on_set;
+        // the off set is the set of sanitizers explicitly disabled.
+        // we or those in here.
+        settings.disabled |= *off_set;
+        // the on set and off set are distjoint since there's a third option: unset.
+        // a node may not set the sanitizer setting in which case it inherits from parents.
+        // the code above in this function does this backtracking
+
+        // if rtsan was specified here override the parent
+        if let Some(rtsan) = rtsan {
+            settings.rtsan_setting = *rtsan;
+        }
+    }
+    settings
+}
+
+/// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller
+/// applied to the method prototype.
+fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    tcx.trait_item_of(def_id).is_some_and(|id| {
+        tcx.codegen_fn_attrs(id).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER)
+    })
+}
+
+/// If the provided DefId is a method in a trait impl, return the value of the `#[align]`
+/// attribute on the method prototype (if any).
+fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
+    tcx.codegen_fn_attrs(tcx.trait_item_of(def_id)?).alignment
+}
+
+pub(crate) fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        codegen_fn_attrs,
+        should_inherit_track_caller,
+        inherited_align,
+        sanitizer_settings_for,
+        ..*providers
+    };
+}

@@ -1,0 +1,23 @@
+error[E0658]: generic const items are experimental
+  --> $DIR/mismatched-types-with-generic-in-ace-no-feature-gate.rs:2:12
+   |
+LL |     const C<const N: u32>: u32 = N;
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
+   = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: associated const equality is incomplete
+  --> $DIR/mismatched-types-with-generic-in-ace-no-feature-gate.rs:7:38
+   |
+LL | fn take0<const N: u64>(_: impl Owner<C<N> = { N }>) {}
+   |                                      ^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

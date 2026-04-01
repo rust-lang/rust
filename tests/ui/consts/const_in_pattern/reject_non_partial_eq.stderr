@@ -1,0 +1,16 @@
+error: constant of non-structural type `Option<NoPartialEq>` in a pattern
+  --> $DIR/reject_non_partial_eq.rs:28:9
+   |
+LL | struct NoPartialEq(u32);
+   | ------------------ must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+...
+LL | const NO_PARTIAL_EQ_NONE: Option<NoPartialEq> = None;
+   | --------------------------------------------- constant defined here
+...
+LL |         NO_PARTIAL_EQ_NONE => println!("NO_PARTIAL_EQ_NONE"),
+   |         ^^^^^^^^^^^^^^^^^^ constant of non-structural type
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+
+error: aborting due to 1 previous error
+

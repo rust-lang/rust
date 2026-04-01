@@ -1,0 +1,76 @@
+// MIR for `box_new` after CleanupPostBorrowck
+
+fn box_new(_1: T) -> Box<[T; 1024]> {
+    debug x => _1;
+    let mut _0: std::boxed::Box<[T; 1024]>;
+    let mut _2: std::boxed::Box<std::mem::MaybeUninit<[T; 1024]>>;
+    let mut _4: &mut std::mem::MaybeUninit<[T; 1024]>;
+    let mut _5: &mut std::mem::MaybeUninit<[T; 1024]>;
+    let _6: ();
+    let mut _7: *mut [T; 1024];
+    let mut _8: T;
+    let mut _9: std::boxed::Box<std::mem::MaybeUninit<[T; 1024]>>;
+    scope 1 {
+        debug b => _2;
+        let _3: *mut [T; 1024];
+        scope 2 {
+            debug ptr => _3;
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        _2 = Box::<[T; 1024]>::new_uninit() -> [return: bb1, unwind: bb7];
+    }
+
+    bb1: {
+        nop;
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = &mut (*_2);
+        _4 = &mut (*_5);
+        _3 = MaybeUninit::<[T; 1024]>::as_mut_ptr(move _4) -> [return: bb2, unwind: bb6];
+    }
+
+    bb2: {
+        StorageDead(_4);
+        nop;
+        StorageDead(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = copy _3;
+        StorageLive(_8);
+        _8 = copy _1;
+        (*_7) = [move _8; 1024];
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageLive(_9);
+        _9 = move _2;
+        _0 = Box::<MaybeUninit<[T; 1024]>>::assume_init(move _9) -> [return: bb3, unwind: bb5];
+    }
+
+    bb3: {
+        StorageDead(_9);
+        StorageDead(_3);
+        drop(_2) -> [return: bb4, unwind: bb7];
+    }
+
+    bb4: {
+        StorageDead(_2);
+        return;
+    }
+
+    bb5 (cleanup): {
+        drop(_9) -> [return: bb6, unwind terminate(cleanup)];
+    }
+
+    bb6 (cleanup): {
+        drop(_2) -> [return: bb7, unwind terminate(cleanup)];
+    }
+
+    bb7 (cleanup): {
+        resume;
+    }
+}

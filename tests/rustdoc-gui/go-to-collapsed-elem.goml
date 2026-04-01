@@ -1,0 +1,40 @@
+// This test ensures that when clicking on a link which leads to an item inside a collapsed element,
+// the collapsed element will be expanded.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+// We check that the implementors block is expanded.
+assert-property: ("#implementations-list .implementors-toggle", {"open": "true"})
+// We now collapse the implementors block.
+set-property: ("#implementations-list .implementors-toggle", {"open": "false"})
+// And now we click on the link to the method to ensure it'll expand the implementors block.
+click: "//*[@class='sidebar']//a[@href='#method.must_use']"
+assert-property: ("#implementations-list .implementors-toggle", {"open": "true"})
+
+define-function: ("collapsed-from-search", [], block {
+    // Now we do the same through search result.
+    // First we reload the page without the anchor in the URL.
+    go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+    // Then we collapse the section again...
+    set-property: ("#implementations-list .implementors-toggle", {"open": "false"})
+    // Then we run the search.
+    write-into: (".search-input", "foo::must_use")
+    wait-for: "//*[@id='search']//a[@href='../test_docs/struct.Foo.html#method.must_use']"
+    click: "//*[@id='search']//a[@href='../test_docs/struct.Foo.html#method.must_use']"
+    assert-property: ("#implementations-list .implementors-toggle", {"open": "true"})
+})
+
+call-function: ("collapsed-from-search", {})
+
+// Now running the same check but with mobile.
+set-window-size: (600, 600)
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+// We check that the implementors block is expanded.
+assert-property: ("#implementations-list .implementors-toggle", {"open": "true"})
+// We now collapse the implementors block.
+set-property: ("#implementations-list .implementors-toggle", {"open": "false"})
+// First we expand the mobile menu.
+click: ".sidebar-menu-toggle"
+// Then we click on the link to the method to ensure it'll expand the implementors block.
+click: "//*[@class='sidebar shown']//a[@href='#method.must_use']"
+assert-property: ("#implementations-list .implementors-toggle", {"open": "true"})
+
+call-function: ("collapsed-from-search", {})

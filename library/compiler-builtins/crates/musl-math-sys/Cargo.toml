@@ -1,0 +1,12 @@
+[package]
+name = "musl-math-sys"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[dev-dependencies]
+libm.workspace = true
+
+[build-dependencies]
+cc.workspace = true

@@ -1,0 +1,43 @@
+warning: unexpected `cfg` condition name: `has_foo`
+  --> $DIR/cargo-build-script.rs:10:7
+   |
+LL | #[cfg(has_foo)]
+   |       ^^^^^^^
+   |
+   = help: expected names are: `has_bar` and 31 more
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(has_foo)'] }
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `has_foo`
+  --> $DIR/cargo-build-script.rs:14:7
+   |
+LL | #[cfg(has_foo = "yes")]
+   |       ^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(has_foo, values("yes"))'] }
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `yes`
+  --> $DIR/cargo-build-script.rs:18:7
+   |
+LL | #[cfg(has_bar = "yes")]
+   |       ^^^^^^^--------
+   |              |
+   |              help: remove the value
+   |
+   = note: no expected value for `has_bar`
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(has_bar, values("yes"))'] }
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: 3 warnings emitted
+

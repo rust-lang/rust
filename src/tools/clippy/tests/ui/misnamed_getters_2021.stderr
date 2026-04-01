@@ -1,0 +1,16 @@
+error: getter function appears to return the wrong field
+  --> tests/ui/misnamed_getters_2021.rs:15:5
+   |
+LL | /     unsafe fn a(&self) -> &u8 {
+LL | |
+LL | |
+LL | |         &self.b
+   | |         ------- help: consider using: `&self.a`
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::misnamed-getters` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::misnamed_getters)]`
+
+error: aborting due to 1 previous error
+

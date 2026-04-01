@@ -1,0 +1,94 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          RANGE_PAT
+            LITERAL_PAT
+              LITERAL
+                INT_NUMBER "0"
+            WHITESPACE " "
+            DOT2 ".."
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "1u32"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          RANGE_PAT
+            LITERAL_PAT
+              LITERAL
+                INT_NUMBER "0"
+            DOT2 ".."
+          COLON ":"
+          WHITESPACE " "
+          INFER_TYPE
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "1u32"
+          SEMICOLON ";"
+        WHITESPACE "\n\n    "
+        MATCH_EXPR
+          MATCH_KW "match"
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "42"
+          WHITESPACE " "
+          MATCH_ARM_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            MATCH_ARM
+              RANGE_PAT
+                LITERAL_PAT
+                  LITERAL
+                    INT_NUMBER "0"
+                WHITESPACE " "
+                DOT2 ".."
+              WHITESPACE " "
+              MATCH_GUARD
+                IF_KW "if"
+                WHITESPACE " "
+                LITERAL
+                  TRUE_KW "true"
+              WHITESPACE " "
+              FAT_ARROW "=>"
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+              COMMA ","
+            WHITESPACE "\n        "
+            MATCH_ARM
+              WILDCARD_PAT
+                UNDERSCORE "_"
+              WHITESPACE " "
+              FAT_ARROW "=>"
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+              COMMA ","
+            WHITESPACE "\n    "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

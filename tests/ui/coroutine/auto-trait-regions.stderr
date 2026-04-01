@@ -1,0 +1,53 @@
+error[E0626]: borrow may still be in use when coroutine yields
+  --> $DIR/auto-trait-regions.rs:45:19
+   |
+LL |     let generator = #[coroutine] move || {
+   |                                  ------- within this coroutine
+LL |         let a = A(&mut true, &mut true, No);
+   |                   ^^^^^^^^^
+...
+LL |         yield;
+   |         ----- possible yield occurs here
+   |
+help: add `static` to mark this coroutine as unmovable
+   |
+LL |     let generator = #[coroutine] static move || {
+   |                                  ++++++
+
+error[E0626]: borrow may still be in use when coroutine yields
+  --> $DIR/auto-trait-regions.rs:45:30
+   |
+LL |     let generator = #[coroutine] move || {
+   |                                  ------- within this coroutine
+LL |         let a = A(&mut true, &mut true, No);
+   |                              ^^^^^^^^^
+...
+LL |         yield;
+   |         ----- possible yield occurs here
+   |
+help: add `static` to mark this coroutine as unmovable
+   |
+LL |     let generator = #[coroutine] static move || {
+   |                                  ++++++
+
+error: implementation of `Foo` is not general enough
+  --> $DIR/auto-trait-regions.rs:31:5
+   |
+LL |     assert_foo(generator);
+   |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |
+   = note: `&'0 OnlyFooIfStaticRef` must implement `Foo`, for any lifetime `'0`...
+   = note: ...but `Foo` is actually implemented for the type `&'static OnlyFooIfStaticRef`
+
+error: implementation of `Foo` is not general enough
+  --> $DIR/auto-trait-regions.rs:51:5
+   |
+LL |     assert_foo(generator);
+   |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |
+   = note: `Foo` would have to be implemented for the type `A<'0, '1>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Foo` is actually implemented for the type `A<'_, '2>`, for some specific lifetime `'2`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0626`.

@@ -1,0 +1,82 @@
+error[E0308]: mismatched types
+  --> $DIR/long-E0308.rs:45:9
+   |
+LL |        let x: Atype<
+   |  _____________-
+LL | |        Btype<
+LL | |          Ctype<
+LL | |            Atype<
+...  |
+LL | |        i32
+LL | |      > = Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok...
+   | | _____-___^
+   | ||_____|
+   |  |     expected due to this
+LL |  |         Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok...
+LL |  |             Ok("")
+LL |  |         ))))))))))))))))))))))))))))))
+LL |  |     ))))))))))))))))))))))))))))));
+   |  |__________________________________^ expected `Atype<Btype<Ctype<..., i32>, i32>, i32>`, found `Result<Result<Result<..., _>, _>, _>`
+   |
+   = note: expected struct `Atype<Btype<..., i32>, i32>`
+                found enum `Result<Result<..., _>, _>`
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0308.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error[E0308]: mismatched types
+  --> $DIR/long-E0308.rs:58:26
+   |
+LL |       ))))))))))))))))) == Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(O...
+   |  __________________________^
+LL | |         Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(...
+LL | |             Ok(Ok(Ok(Ok(Ok(Ok(Ok("")))))))
+LL | |         ))))))))))))))))))))))))))))))
+LL | |     ))))))))))))))))))))))));
+   | |____________________________^ expected `Option<Result<Option<Option<...>>, _>>`, found `Result<Result<Result<..., _>, _>, _>`
+   |
+   = note: expected enum `Option<Result<Option<...>, _>>`
+              found enum `Result<Result<..., _>, _>`
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0308.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error[E0308]: mismatched types
+  --> $DIR/long-E0308.rs:89:9
+   |
+LL |       let x: Atype<
+   |  ____________-
+LL | |       Btype<
+LL | |         Ctype<
+LL | |           Atype<
+...  |
+LL | |       i32
+LL | |     > = ();
+   | |     -   ^^ expected `Atype<Btype<Ctype<..., i32>, i32>, i32>`, found `()`
+   | |_____|
+   |       expected due to this
+   |
+   = note: expected struct `Atype<Btype<..., i32>, i32>`
+           found unit type `()`
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0308.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error[E0308]: mismatched types
+  --> $DIR/long-E0308.rs:92:17
+   |
+LL |       let _: () = Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(O...
+   |  ____________--___^
+   | |            |
+   | |            expected due to this
+LL | |         Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(...
+LL | |             Ok(Ok(Ok(Ok(Ok(Ok(Ok("")))))))
+LL | |         ))))))))))))))))))))))))))))))
+LL | |     ))))))))))))))))))))))));
+   | |____________________________^ expected `()`, found `Result<Result<Result<..., _>, _>, _>`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<Result<..., _>, _>`
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0308.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

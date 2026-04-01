@@ -1,0 +1,69 @@
+// MIR for `main::{closure#0}` 0 coroutine_drop
+
+fn main::{closure#0}(_1: *mut {coroutine@$DIR/coroutine_drop_cleanup.rs:12:5: 12:7}) -> () {
+    let mut _0: ();
+    let mut _2: ();
+    let _3: std::string::String;
+    let _4: ();
+    let mut _5: ();
+    let mut _6: ();
+    let mut _7: u32;
+    scope 1 {
+        debug _s => (((*_1) as variant#3).0: std::string::String);
+    }
+
+    bb0: {
+        _7 = discriminant((*_1));
+        switchInt(move _7) -> [0: bb7, 3: bb10, otherwise: bb11];
+    }
+
+    bb1: {
+        StorageDead(_5);
+        StorageDead(_4);
+        drop((((*_1) as variant#3).0: std::string::String)) -> [return: bb2, unwind: bb5];
+    }
+
+    bb2: {
+        nop;
+        goto -> bb8;
+    }
+
+    bb3: {
+        return;
+    }
+
+    bb4 (cleanup): {
+        resume;
+    }
+
+    bb5 (cleanup): {
+        nop;
+        goto -> bb4;
+    }
+
+    bb6: {
+        return;
+    }
+
+    bb7: {
+        goto -> bb9;
+    }
+
+    bb8: {
+        goto -> bb3;
+    }
+
+    bb9: {
+        goto -> bb6;
+    }
+
+    bb10: {
+        StorageLive(_4);
+        StorageLive(_5);
+        goto -> bb1;
+    }
+
+    bb11: {
+        return;
+    }
+}

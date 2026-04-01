@@ -1,0 +1,62 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=branch
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|      3|fn print_size<T>() {
+   LL|      3|    if std::mem::size_of::<T>() > 4 {
+  ------------------
+  |  Branch (LL:8): [True: 0, False: 1]
+  |  Branch (LL:8): [True: 0, False: 1]
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
+   LL|      1|        println!("size > 4");
+   LL|      2|    } else {
+   LL|      2|        println!("size <= 4");
+   LL|      2|    }
+   LL|      3|}
+  ------------------
+  | generics::print_size::<()>:
+  |   LL|      1|fn print_size<T>() {
+  |   LL|      1|    if std::mem::size_of::<T>() > 4 {
+  |  ------------------
+  |  |  Branch (LL:8): [True: 0, False: 1]
+  |  ------------------
+  |   LL|      0|        println!("size > 4");
+  |   LL|      1|    } else {
+  |   LL|      1|        println!("size <= 4");
+  |   LL|      1|    }
+  |   LL|      1|}
+  ------------------
+  | generics::print_size::<u32>:
+  |   LL|      1|fn print_size<T>() {
+  |   LL|      1|    if std::mem::size_of::<T>() > 4 {
+  |  ------------------
+  |  |  Branch (LL:8): [True: 0, False: 1]
+  |  ------------------
+  |   LL|      0|        println!("size > 4");
+  |   LL|      1|    } else {
+  |   LL|      1|        println!("size <= 4");
+  |   LL|      1|    }
+  |   LL|      1|}
+  ------------------
+  | generics::print_size::<u64>:
+  |   LL|      1|fn print_size<T>() {
+  |   LL|      1|    if std::mem::size_of::<T>() > 4 {
+  |  ------------------
+  |  |  Branch (LL:8): [True: 1, False: 0]
+  |  ------------------
+  |   LL|      1|        println!("size > 4");
+  |   LL|      1|    } else {
+  |   LL|      0|        println!("size <= 4");
+  |   LL|      0|    }
+  |   LL|      1|}
+  ------------------
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    print_size::<()>();
+   LL|       |    print_size::<u32>();
+   LL|       |    print_size::<u64>();
+   LL|       |}
+

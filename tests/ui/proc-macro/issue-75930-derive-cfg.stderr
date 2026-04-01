@@ -1,0 +1,68 @@
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/issue-75930-derive-cfg.rs:46:3
+   |
+LL | #[print_helper(a)]
+   |   ^^^^^^^^^^^^
+...
+LL | #[derive(Print)]
+   |          ----- the attribute is introduced here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+note: the lint level is defined here
+  --> $DIR/issue-75930-derive-cfg.rs:9:9
+   |
+LL | #![warn(legacy_derive_helpers)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/issue-75930-derive-cfg.rs:46:3
+   |
+LL | #[print_helper(a)]
+   |   ^^^^^^^^^^^^
+...
+LL | #[derive(Print)]
+   |          ----- the attribute is introduced here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: 2 warnings emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/issue-75930-derive-cfg.rs:46:3
+   |
+LL | #[print_helper(a)]
+   |   ^^^^^^^^^^^^
+...
+LL | #[derive(Print)]
+   |          ----- the attribute is introduced here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+note: the lint level is defined here
+  --> $DIR/issue-75930-derive-cfg.rs:9:9
+   |
+LL | #![warn(legacy_derive_helpers)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/issue-75930-derive-cfg.rs:46:3
+   |
+LL | #[print_helper(a)]
+   |   ^^^^^^^^^^^^
+...
+LL | #[derive(Print)]
+   |          ----- the attribute is introduced here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+note: the lint level is defined here
+  --> $DIR/issue-75930-derive-cfg.rs:9:9
+   |
+LL | #![warn(legacy_derive_helpers)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+

@@ -1,0 +1,14 @@
+error[E0072]: recursive type `ExplicitlyPadded` has infinite size
+  --> $DIR/transmute_infinitely_recursive_type.rs:20:5
+   |
+LL |     struct ExplicitlyPadded(ExplicitlyPadded);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ ---------------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     struct ExplicitlyPadded(Box<ExplicitlyPadded>);
+   |                             ++++                +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0072`.

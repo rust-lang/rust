@@ -1,0 +1,12 @@
+error[E0539]: malformed `cfi_encoding` attribute input
+  --> $DIR/invalid-attr-encoding.rs:10:1
+   |
+LL | #[cfi_encoding]
+   | ^^^^^^^^^^^^^^^
+   | |
+   | expected this to be of the form `cfi_encoding = "..."`
+   | help: must be of the form: `#[cfi_encoding = "encoding"]`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0539`.

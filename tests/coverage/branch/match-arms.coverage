@@ -1,0 +1,105 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=branch
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|       |// Tests for branch coverage of various kinds of match arms.
+   LL|       |
+   LL|       |// Helper macro to prevent start-of-function spans from being merged into
+   LL|       |// spans on the lines we care about.
+   LL|       |macro_rules! no_merge {
+   LL|       |    () => {
+   LL|       |        for _ in 0..1 {}
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|       |#[derive(Clone, Copy, Debug)]
+   LL|       |enum Enum {
+   LL|       |    A(u32),
+   LL|       |    B(u32),
+   LL|       |    C(u32),
+   LL|       |    D(u32),
+   LL|       |}
+   LL|       |
+   LL|     15|fn match_arms(value: Enum) {
+   LL|     15|    no_merge!();
+   LL|       |
+   LL|     15|    match value {
+   LL|      8|        Enum::D(d) => consume(d),
+   LL|      4|        Enum::C(c) => consume(c),
+   LL|      2|        Enum::B(b) => consume(b),
+   LL|      1|        Enum::A(a) => consume(a),
+   LL|       |    }
+   LL|       |
+   LL|     15|    consume(0);
+   LL|     15|}
+   LL|       |
+   LL|     15|fn or_patterns(value: Enum) {
+   LL|     15|    no_merge!();
+   LL|       |
+   LL|     15|    match value {
+   LL|     12|        Enum::D(x) | Enum::C(x) => consume(x),
+                              ^8           ^4
+   LL|      3|        Enum::B(y) | Enum::A(y) => consume(y),
+                              ^2           ^1
+   LL|       |    }
+   LL|       |
+   LL|     15|    consume(0);
+   LL|     15|}
+   LL|       |
+   LL|     45|fn guards(value: Enum, cond: bool) {
+   LL|     45|    no_merge!();
+   LL|       |
+   LL|      3|    match value {
+   LL|      8|        Enum::D(d) if cond => consume(d),
+  ------------------
+  |  Branch (LL:23): [True: 8, False: 16]
+  ------------------
+   LL|      4|        Enum::C(c) if cond => consume(c),
+  ------------------
+  |  Branch (LL:23): [True: 4, False: 8]
+  ------------------
+   LL|      2|        Enum::B(b) if cond => consume(b),
+  ------------------
+  |  Branch (LL:23): [True: 2, False: 4]
+  ------------------
+   LL|      1|        Enum::A(a) if cond => consume(a),
+  ------------------
+  |  Branch (LL:23): [True: 1, False: 2]
+  ------------------
+   LL|     30|        _ => consume(0),
+   LL|       |    }
+   LL|       |
+   LL|     45|    consume(0);
+   LL|     45|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn consume<T>(x: T) {
+   LL|       |    core::hint::black_box(x);
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    #[coverage(off)]
+   LL|       |    fn call_everything(e: Enum) {
+   LL|       |        match_arms(e);
+   LL|       |        or_patterns(e);
+   LL|       |        for cond in [false, false, true] {
+   LL|       |            guards(e, cond);
+   LL|       |        }
+   LL|       |    }
+   LL|       |
+   LL|       |    call_everything(Enum::A(0));
+   LL|       |    for b in 0..2 {
+   LL|       |        call_everything(Enum::B(b));
+   LL|       |    }
+   LL|       |    for c in 0..4 {
+   LL|       |        call_everything(Enum::C(c));
+   LL|       |    }
+   LL|       |    for d in 0..8 {
+   LL|       |        call_everything(Enum::D(d));
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |// FIXME(#124118) Actually instrument match arms for branch coverage.
+

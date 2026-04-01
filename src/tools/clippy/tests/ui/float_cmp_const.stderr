@@ -1,0 +1,53 @@
+error: strict comparison of `f32` or `f64` constant
+  --> tests/ui/float_cmp_const.rs:15:5
+   |
+LL |     1f32 == ONE;
+   |     ^^^^^^^^^^^ help: consider comparing them within some margin of error: `(1f32 - ONE).abs() < error_margin`
+   |
+   = note: `-D clippy::float-cmp-const` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::float_cmp_const)]`
+
+error: strict comparison of `f32` or `f64` constant
+  --> tests/ui/float_cmp_const.rs:18:5
+   |
+LL |     TWO == ONE;
+   |     ^^^^^^^^^^ help: consider comparing them within some margin of error: `(TWO - ONE).abs() < error_margin`
+
+error: strict comparison of `f32` or `f64` constant
+  --> tests/ui/float_cmp_const.rs:21:5
+   |
+LL |     TWO != ONE;
+   |     ^^^^^^^^^^ help: consider comparing them within some margin of error: `(TWO - ONE).abs() > error_margin`
+
+error: strict comparison of `f32` or `f64` constant
+  --> tests/ui/float_cmp_const.rs:24:5
+   |
+LL |     ONE + ONE == TWO;
+   |     ^^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(ONE + ONE - TWO).abs() < error_margin`
+
+error: strict comparison of `f32` or `f64` constant
+  --> tests/ui/float_cmp_const.rs:28:5
+   |
+LL |     x as f32 == ONE;
+   |     ^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(x as f32 - ONE).abs() < error_margin`
+
+error: strict comparison of `f32` or `f64` constant
+  --> tests/ui/float_cmp_const.rs:32:5
+   |
+LL |     v == ONE;
+   |     ^^^^^^^^ help: consider comparing them within some margin of error: `(v - ONE).abs() < error_margin`
+
+error: strict comparison of `f32` or `f64` constant
+  --> tests/ui/float_cmp_const.rs:35:5
+   |
+LL |     v != ONE;
+   |     ^^^^^^^^ help: consider comparing them within some margin of error: `(v - ONE).abs() > error_margin`
+
+error: strict comparison of `f32` or `f64` constant arrays
+  --> tests/ui/float_cmp_const.rs:68:5
+   |
+LL |     NON_ZERO_ARRAY == NON_ZERO_ARRAY2;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

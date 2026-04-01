@@ -1,0 +1,95 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        BLOCK_EXPR
+          UNSAFE_KW "unsafe"
+          WHITESPACE " "
+          STMT_LIST
+            L_CURLY "{"
+            WHITESPACE " "
+            R_CURLY "}"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        BLOCK_EXPR
+          CONST_KW "const"
+          WHITESPACE " "
+          STMT_LIST
+            L_CURLY "{"
+            WHITESPACE " "
+            R_CURLY "}"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        BLOCK_EXPR
+          ASYNC_KW "async"
+          WHITESPACE " "
+          STMT_LIST
+            L_CURLY "{"
+            WHITESPACE " "
+            R_CURLY "}"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        BLOCK_EXPR
+          ASYNC_KW "async"
+          WHITESPACE " "
+          MOVE_KW "move"
+          WHITESPACE " "
+          STMT_LIST
+            L_CURLY "{"
+            WHITESPACE " "
+            R_CURLY "}"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

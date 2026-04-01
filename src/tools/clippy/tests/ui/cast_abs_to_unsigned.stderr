@@ -1,0 +1,113 @@
+error: casting the result of `i32::abs()` to u32
+  --> tests/ui/cast_abs_to_unsigned.rs:6:18
+   |
+LL |     let y: u32 = x.abs() as u32;
+   |                  ^^^^^^^^^^^^^^ help: replace with: `x.unsigned_abs()`
+   |
+   = note: `-D clippy::cast-abs-to-unsigned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_abs_to_unsigned)]`
+
+error: casting the result of `i32::abs()` to usize
+  --> tests/ui/cast_abs_to_unsigned.rs:11:20
+   |
+LL |     let _: usize = a.abs() as usize;
+   |                    ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `i32::abs()` to usize
+  --> tests/ui/cast_abs_to_unsigned.rs:13:20
+   |
+LL |     let _: usize = a.abs() as _;
+   |                    ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `i32::abs()` to usize
+  --> tests/ui/cast_abs_to_unsigned.rs:15:13
+   |
+LL |     let _ = a.abs() as usize;
+   |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `i64::abs()` to usize
+  --> tests/ui/cast_abs_to_unsigned.rs:19:13
+   |
+LL |     let _ = a.abs() as usize;
+   |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `i64::abs()` to u8
+  --> tests/ui/cast_abs_to_unsigned.rs:21:13
+   |
+LL |     let _ = a.abs() as u8;
+   |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `i64::abs()` to u16
+  --> tests/ui/cast_abs_to_unsigned.rs:23:13
+   |
+LL |     let _ = a.abs() as u16;
+   |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `i64::abs()` to u32
+  --> tests/ui/cast_abs_to_unsigned.rs:25:13
+   |
+LL |     let _ = a.abs() as u32;
+   |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `i64::abs()` to u64
+  --> tests/ui/cast_abs_to_unsigned.rs:27:13
+   |
+LL |     let _ = a.abs() as u64;
+   |             ^^^^^^^^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `i64::abs()` to u128
+  --> tests/ui/cast_abs_to_unsigned.rs:29:13
+   |
+LL |     let _ = a.abs() as u128;
+   |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `isize::abs()` to usize
+  --> tests/ui/cast_abs_to_unsigned.rs:33:13
+   |
+LL |     let _ = a.abs() as usize;
+   |             ^^^^^^^^^^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `isize::abs()` to u8
+  --> tests/ui/cast_abs_to_unsigned.rs:35:13
+   |
+LL |     let _ = a.abs() as u8;
+   |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `isize::abs()` to u16
+  --> tests/ui/cast_abs_to_unsigned.rs:37:13
+   |
+LL |     let _ = a.abs() as u16;
+   |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `isize::abs()` to u32
+  --> tests/ui/cast_abs_to_unsigned.rs:39:13
+   |
+LL |     let _ = a.abs() as u32;
+   |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `isize::abs()` to u64
+  --> tests/ui/cast_abs_to_unsigned.rs:41:13
+   |
+LL |     let _ = a.abs() as u64;
+   |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `isize::abs()` to u128
+  --> tests/ui/cast_abs_to_unsigned.rs:43:13
+   |
+LL |     let _ = a.abs() as u128;
+   |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
+
+error: casting the result of `i64::abs()` to u32
+  --> tests/ui/cast_abs_to_unsigned.rs:46:13
+   |
+LL |     let _ = (x as i64 - y as i64).abs() as u32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `(x as i64 - y as i64).unsigned_abs()`
+
+error: casting the result of `i32::abs()` to u32
+  --> tests/ui/cast_abs_to_unsigned.rs:59:23
+   |
+LL |     assert_eq!(10u32, x.abs() as u32);
+   |                       ^^^^^^^^^^^^^^ help: replace with: `x.unsigned_abs()`
+
+error: aborting due to 18 previous errors
+

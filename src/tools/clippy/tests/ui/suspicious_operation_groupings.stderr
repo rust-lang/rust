@@ -1,0 +1,161 @@
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:17:9
+   |
+LL |         self.x == other.y && self.y == other.y && self.z == other.z
+   |         ^^^^^^^^^^^^^^^^^ help: did you mean: `self.x == other.x`
+   |
+   = note: `-D clippy::suspicious-operation-groupings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_operation_groupings)]`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:31:20
+   |
+LL |     s1.a < s2.a && s1.a < s2.b
+   |                    ^^^^^^^^^^^ help: did you mean: `s1.b < s2.b`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:80:33
+   |
+LL |     s1.a * s2.a + s1.b * s2.b + s1.c * s2.b + s1.d * s2.d
+   |                                 ^^^^^^^^^^^ help: did you mean: `s1.c * s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:86:19
+   |
+LL |     s1.a * s2.a + s1.b * s2.c + s1.c * s2.c
+   |                   ^^^^^^^^^^^ help: did you mean: `s1.b * s2.b`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:86:19
+   |
+LL |     s1.a * s2.a + s1.b * s2.c + s1.c * s2.c
+   |                   ^^^^^^^^^^^ help: did you mean: `s1.b * s2.b`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:93:19
+   |
+LL |     s1.a * s2.a + s2.b * s2.b + s1.c * s2.c
+   |                   ^^^^^^^^^^^ help: did you mean: `s1.b * s2.b`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:99:19
+   |
+LL |     s1.a * s2.a + s1.b * s1.b + s1.c * s2.c
+   |                   ^^^^^^^^^^^ help: did you mean: `s1.b * s2.b`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:105:5
+   |
+LL |     s1.a * s1.a + s1.b * s2.b + s1.c * s2.c
+   |     ^^^^^^^^^^^ help: did you mean: `s1.a * s2.a`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:111:33
+   |
+LL |     s1.a * s2.a + s1.b * s2.b + s1.c * s1.c
+   |                                 ^^^^^^^^^^^ help: did you mean: `s1.c * s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:125:20
+   |
+LL |     (s1.a * s2.a + s1.b * s1.b)
+   |                    ^^^^^^^^^^^ help: did you mean: `s1.b * s2.b`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:131:34
+   |
+LL |     (s1.a * s2.a + s1.b * s2.b + s1.c * s2.b + s1.d * s2.d)
+   |                                  ^^^^^^^^^^^ help: did you mean: `s1.c * s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:137:38
+   |
+LL |     (s1.a * s2.a) + (s1.b * s2.b) + (s1.c * s2.b) + (s1.d * s2.d)
+   |                                      ^^^^^^^^^^^ help: did you mean: `s1.c * s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:143:39
+   |
+LL |     ((s1.a * s2.a) + (s1.b * s2.b) + (s1.c * s2.b) + (s1.d * s2.d))
+   |                                       ^^^^^^^^^^^ help: did you mean: `s1.c * s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:149:42
+   |
+LL |     (((s1.a * s2.a) + (s1.b * s2.b)) + ((s1.c * s2.b) + (s1.d * s2.d)))
+   |                                          ^^^^^^^^^^^ help: did you mean: `s1.c * s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:149:42
+   |
+LL |     (((s1.a * s2.a) + (s1.b * s2.b)) + ((s1.c * s2.b) + (s1.d * s2.d)))
+   |                                          ^^^^^^^^^^^ help: did you mean: `s1.c * s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:156:40
+   |
+LL |     (((s1.a * s2.a) + (s1.b * s2.b) + (s1.c * s2.b)) + (s1.d * s2.d))
+   |                                        ^^^^^^^^^^^ help: did you mean: `s1.c * s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:162:40
+   |
+LL |     ((s1.a * s2.a) + ((s1.b * s2.b) + (s1.c * s2.b) + (s1.d * s2.d)))
+   |                                        ^^^^^^^^^^^ help: did you mean: `s1.c * s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:168:20
+   |
+LL |     (s1.a * s2.a + s2.b * s2.b) / 2
+   |                    ^^^^^^^^^^^ help: did you mean: `s1.b * s2.b`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:174:35
+   |
+LL |     i32::swap_bytes(s1.a * s2.a + s2.b * s2.b)
+   |                                   ^^^^^^^^^^^ help: did you mean: `s1.b * s2.b`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:180:29
+   |
+LL |     s1.a > 0 && s1.b > 0 && s1.d == s2.c && s1.d == s2.d
+   |                             ^^^^^^^^^^^^ help: did you mean: `s1.c == s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:186:17
+   |
+LL |     s1.a > 0 && s1.d == s2.c && s1.b > 0 && s1.d == s2.d
+   |                 ^^^^^^^^^^^^ help: did you mean: `s1.c == s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:196:77
+   |
+LL |     (n1.inner.0).0 == (n2.inner.0).0 && (n1.inner.1).0 == (n2.inner.1).0 && (n1.inner.2).0 == (n2.inner.1).0
+   |                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `(n1.inner.2).0 == (n2.inner.2).0`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:211:25
+   |
+LL |         s1.a <= s2.a && s1.a <= s2.b
+   |                         ^^^^^^^^^^^^ help: did you mean: `s1.b <= s2.b`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:218:23
+   |
+LL |     if s1.a < s2.a && s1.a < s2.b {
+   |                       ^^^^^^^^^^^ help: did you mean: `s1.b < s2.b`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:226:48
+   |
+LL |     -(-(-s1.a * -s2.a) + (-(-s1.b * -s2.b) + -(-s1.c * -s2.b) + -(-s1.d * -s2.d)))
+   |                                                ^^^^^^^^^^^^^ help: did you mean: `-s1.c * -s2.c`
+
+error: this sequence of operators looks suspiciously like a bug
+  --> tests/ui/suspicious_operation_groupings.rs:232:27
+   |
+LL |     -(if -s1.a < -s2.a && -s1.a < -s2.b { s1.c } else { s2.a })
+   |                           ^^^^^^^^^^^^^ help: did you mean: `-s1.b < -s2.b`
+
+error: aborting due to 26 previous errors
+

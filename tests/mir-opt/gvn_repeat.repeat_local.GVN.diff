@@ -1,0 +1,17 @@
+- // MIR for `repeat_local` before GVN
++ // MIR for `repeat_local` after GVN
+  
+  fn repeat_local(_1: usize, _2: usize, _3: i32) -> i32 {
+      let mut _0: i32;
+      let mut _4: [i32; 5];
+      let mut _5: &i32;
+  
+      bb0: {
+          _4 = [copy _3; 5];
+          _5 = &_4[_1];
+          _1 = copy _2;
+          _0 = copy (*_5);
+          return;
+      }
+  }
+  

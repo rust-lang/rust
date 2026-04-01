@@ -1,0 +1,68 @@
+error: non-glob import of `rustc_type_ir::inherent`
+  --> $DIR/non_glob_import_of_type_ir_inherent.rs:16:9
+   |
+LL |     use rustc_type_ir::inherent::Predicate;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^---------
+   |                                  |
+   |                                  help: try using a glob import instead: `*`
+   |
+note: the lint level is defined here
+  --> $DIR/non_glob_import_of_type_ir_inherent.rs:3:9
+   |
+LL | #![deny(rustc::non_glob_import_of_type_ir_inherent)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: non-glob import of `rustc_type_ir::inherent`
+  --> $DIR/non_glob_import_of_type_ir_inherent.rs:17:35
+   |
+LL |     use rustc_type_ir::inherent::{AdtDef, Ty};
+   |                                   ^^^^^^ help: try using a glob import instead: `*`
+
+error: non-glob import of `rustc_type_ir::inherent`
+  --> $DIR/non_glob_import_of_type_ir_inherent.rs:17:43
+   |
+LL |     use rustc_type_ir::inherent::{AdtDef, Ty};
+   |                                           ^^ help: try using a glob import instead: `*`
+
+error: non-glob import of `rustc_type_ir::inherent`
+  --> $DIR/non_glob_import_of_type_ir_inherent.rs:20:9
+   |
+LL |     use rustc_type_ir::inherent::ParamEnv as _;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^-------------
+   |                                  |
+   |                                  help: try using a glob import instead: `*`
+
+error: non-glob import of `rustc_type_ir::inherent`
+  --> $DIR/non_glob_import_of_type_ir_inherent.rs:24:9
+   |
+LL |     use rustc_type_ir::inherent;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^- help: try using a glob import instead: `::*`
+
+error: non-glob import of `rustc_type_ir::inherent`
+  --> $DIR/non_glob_import_of_type_ir_inherent.rs:25:9
+   |
+LL |     use rustc_type_ir::inherent as inh;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^------- help: try using a glob import instead: `::*`
+
+error: non-glob import of `rustc_type_ir::inherent`
+  --> $DIR/non_glob_import_of_type_ir_inherent.rs:26:25
+   |
+LL |     use rustc_type_ir::{inherent as _};
+   |                         ^^^^^^^^----- help: try using a glob import instead: `::*`
+
+error: non-glob import of `rustc_type_ir::inherent`
+  --> $DIR/non_glob_import_of_type_ir_inherent.rs:33:35
+   |
+LL |     use rustc_type_ir::inherent::{self};
+   |                                   ^^^^ help: try using a glob import instead: `*`
+
+error: non-glob import of `rustc_type_ir::inherent`
+  --> $DIR/non_glob_import_of_type_ir_inherent.rs:34:35
+   |
+LL |     use rustc_type_ir::inherent::{self as innate};
+   |                                   ^^^^----------
+   |                                   |
+   |                                   help: try using a glob import instead: `*`
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,21 @@
+warning: use of deprecated module `allowed_through_unstable_core::unstable_module`: use the new path instead
+  --> $DIR/allowed-through-unstable.rs:8:53
+   |
+LL | use allowed_through_unstable_core::unstable_module::OldStableTraitAllowedThoughUnstable;
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/allowed-through-unstable.rs:9:5
+   |
+LL | use allowed_through_unstable_core::unstable_module::NewStableTraitNotAllowedThroughUnstable;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0658`.

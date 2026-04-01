@@ -1,0 +1,32 @@
+error: `for<...>` expected after `dyn`, not before
+  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:5:21
+   |
+LL | fn test(_: &for<'a> dyn Trait) {}
+   |                     ^^^
+   |
+help: move `dyn` before the `for<...>`
+   |
+LL - fn test(_: &for<'a> dyn Trait) {}
+LL + fn test(_: &dyn for<'a> Trait) {}
+   |
+
+error: `for<...>` expected after `impl`, not before
+  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:8:21
+   |
+LL | fn test2(_: for<'a> impl Trait) {}
+   |                     ^^^^
+   |
+help: move `impl` before the `for<...>`
+   |
+LL - fn test2(_: for<'a> impl Trait) {}
+LL + fn test2(_: impl for<'a> Trait) {}
+   |
+
+error: expected identifier, found `>`
+  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:12:24
+   |
+LL | type A2 = dyn<for<> dyn>;
+   |                        ^ expected identifier
+
+error: aborting due to 3 previous errors
+

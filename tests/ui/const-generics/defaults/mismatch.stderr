@@ -1,0 +1,58 @@
+error[E0308]: mismatched types
+  --> $DIR/mismatch.rs:9:26
+   |
+LL |     let e: Example<13> = ();
+   |            -----------   ^^ expected `Example`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Example`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatch.rs:12:32
+   |
+LL |     let e: Example2<u32, 13> = ();
+   |            -----------------   ^^ expected `Example2`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Example2`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatch.rs:15:32
+   |
+LL |     let e: Example3<13, u32> = ();
+   |            -----------------   ^^ expected `Example3`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Example3`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatch.rs:18:26
+   |
+LL |     let e: Example3<7> = ();
+   |            -----------   ^^ expected `Example3<7>`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Example3<7>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatch.rs:21:26
+   |
+LL |     let e: Example4<7> = ();
+   |            -----------   ^^ expected `Example4<7>`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Example4<7>`
+           found unit type `()`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,23 @@
+error[E0507]: cannot move out of `x` which is behind a mutable reference
+  --> $DIR/closure-shim-borrowck-error.rs:11:18
+   |
+LL | fn hello(x: Ty) {
+   |             -- move occurs because `x` has type `Ty`, which does not implement the `Copy` trait
+LL |     needs_fn_mut(async || {
+   |                  ^^^^^^^^ `x` is moved here
+LL |
+LL |         x.hello();
+   |         - variable moved due to use in coroutine
+   |
+note: if `Ty` implemented `Clone`, you could clone the value
+  --> $DIR/closure-shim-borrowck-error.rs:17:1
+   |
+LL |         x.hello();
+   |         - you could clone this value
+...
+LL | struct Ty;
+   | ^^^^^^^^^ consider implementing `Clone` for this type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

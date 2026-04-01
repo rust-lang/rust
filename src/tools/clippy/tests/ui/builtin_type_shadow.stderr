@@ -1,0 +1,27 @@
+error: this generic shadows the built-in type `u32`
+  --> tests/ui/builtin_type_shadow.rs:4:8
+   |
+LL | fn foo<u32>(a: u32) -> u32 {
+   |        ^^^
+   |
+   = note: `-D clippy::builtin-type-shadow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::builtin_type_shadow)]`
+
+error[E0308]: mismatched types
+  --> tests/ui/builtin_type_shadow.rs:6:5
+   |
+LL | fn foo<u32>(a: u32) -> u32 {
+   |        ---             --- expected `u32` because of return type
+   |        |
+   |        expected this type parameter
+LL |
+LL |     42
+   |     ^^ expected type parameter `u32`, found integer
+   |
+   = note: expected type parameter `u32`
+                        found type `{integer}`
+   = note: the caller chooses a type for `u32` which can be different from `i32`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

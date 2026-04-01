@@ -1,0 +1,12 @@
+error: boxed return of the sized type `[u8; 64]`
+  --> tests/ui-toml/unnecessary_box_returns/unnecessary_box_returns.rs:3:11
+   |
+LL | fn f() -> Box<[u8; 64]> {
+   |           ^^^^^^^^^^^^^ help: try: `[u8; 64]`
+   |
+   = help: changing this also requires a change to the return expressions in this function
+   = note: `-D clippy::unnecessary-box-returns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_box_returns)]`
+
+error: aborting due to 1 previous error
+

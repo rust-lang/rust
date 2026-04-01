@@ -1,0 +1,363 @@
+//! Utility module for converting between hir_def ids and code_model wrappers.
+//!
+//! It's unclear if we need this long-term, but it's definitely useful while we
+//! are splitting the hir.
+
+use hir_def::{
+    AdtId, AssocItemId, BuiltinDeriveImplId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId,
+    FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, ModuleDefId, VariantId,
+    hir::{BindingId, LabelId},
+};
+use hir_ty::next_solver::AnyImplId;
+
+use crate::{
+    Adt, AnyFunctionId, AssocItem, BuiltinType, DefWithBody, EnumVariant, ExpressionStoreOwner,
+    Field, Function, GenericDef, GenericParam, Impl, ItemInNs, Label, Local, ModuleDef, Variant,
+};
+
+macro_rules! from_id {
+    ($(($id:path, $ty:path)),* $(,)?) => {$(
+        impl From<$id> for $ty {
+            fn from(id: $id) -> $ty {
+                $ty { id }
+            }
+        }
+        impl From<$ty> for $id {
+            fn from(ty: $ty) -> $id {
+                ty.id
+            }
+        }
+    )*}
+}
+
+from_id![
+    (base_db::Crate, crate::Crate),
+    (hir_def::ModuleId, crate::Module),
+    (hir_def::StructId, crate::Struct),
+    (hir_def::UnionId, crate::Union),
+    (hir_def::EnumId, crate::Enum),
+    (hir_def::TypeAliasId, crate::TypeAlias),
+    (hir_def::TraitId, crate::Trait),
+    (hir_def::StaticId, crate::Static),
+    (hir_def::ConstId, crate::Const),
+    (crate::AnyFunctionId, crate::Function),
+    (hir_ty::next_solver::AnyImplId, crate::Impl),
+    (hir_def::TypeOrConstParamId, crate::TypeOrConstParam),
+    (hir_def::TypeParamId, crate::TypeParam),
+    (hir_def::ConstParamId, crate::ConstParam),
+    (hir_def::LifetimeParamId, crate::LifetimeParam),
+    (hir_def::MacroId, crate::Macro),
+    (hir_def::ExternCrateId, crate::ExternCrateDecl),
+    (hir_def::ExternBlockId, crate::ExternBlock),
+];
+
+impl From<AdtId> for Adt {
+    fn from(id: AdtId) -> Self {
+        match id {
+            AdtId::StructId(it) => Adt::Struct(it.into()),
+            AdtId::UnionId(it) => Adt::Union(it.into()),
+            AdtId::EnumId(it) => Adt::Enum(it.into()),
+        }
+    }
+}
+
+impl From<Adt> for AdtId {
+    fn from(id: Adt) -> Self {
+        match id {
+            Adt::Struct(it) => AdtId::StructId(it.id),
+            Adt::Union(it) => AdtId::UnionId(it.id),
+            Adt::Enum(it) => AdtId::EnumId(it.id),
+        }
+    }
+}
+
+impl From<VariantId> for Variant {
+    fn from(v: VariantId) -> Self {
+        match v {
+            VariantId::EnumVariantId(it) => Variant::EnumVariant(it.into()),
+            VariantId::StructId(it) => Variant::Struct(it.into()),
+            VariantId::UnionId(it) => Variant::Union(it.into()),
+        }
+    }
+}
+impl From<GenericParamId> for GenericParam {
+    fn from(id: GenericParamId) -> Self {
+        match id {
+            GenericParamId::TypeParamId(it) => GenericParam::TypeParam(it.into()),
+            GenericParamId::ConstParamId(it) => GenericParam::ConstParam(it.into()),
+            GenericParamId::LifetimeParamId(it) => GenericParam::LifetimeParam(it.into()),
+        }
+    }
+}
+
+impl From<GenericParam> for GenericParamId {
+    fn from(id: GenericParam) -> Self {
+        match id {
+            GenericParam::LifetimeParam(it) => GenericParamId::LifetimeParamId(it.id),
+            GenericParam::ConstParam(it) => GenericParamId::ConstParamId(it.id),
+            GenericParam::TypeParam(it) => GenericParamId::TypeParamId(it.id),
+        }
+    }
+}
+
+impl From<EnumVariantId> for EnumVariant {
+    fn from(id: EnumVariantId) -> Self {
+        EnumVariant { id }
+    }
+}
+
+impl From<EnumVariant> for EnumVariantId {
+    fn from(def: EnumVariant) -> Self {
+        def.id
+    }
+}
+
+impl From<ModuleDefId> for ModuleDef {
+    fn from(id: ModuleDefId) -> Self {
+        match id {
+            ModuleDefId::ModuleId(it) => ModuleDef::Module(it.into()),
+            ModuleDefId::FunctionId(it) => ModuleDef::Function(it.into()),
+            ModuleDefId::AdtId(it) => ModuleDef::Adt(it.into()),
+            ModuleDefId::EnumVariantId(it) => ModuleDef::EnumVariant(it.into()),
+            ModuleDefId::ConstId(it) => ModuleDef::Const(it.into()),
+            ModuleDefId::StaticId(it) => ModuleDef::Static(it.into()),
+            ModuleDefId::TraitId(it) => ModuleDef::Trait(it.into()),
+            ModuleDefId::TypeAliasId(it) => ModuleDef::TypeAlias(it.into()),
+            ModuleDefId::BuiltinType(it) => ModuleDef::BuiltinType(it.into()),
+            ModuleDefId::MacroId(it) => ModuleDef::Macro(it.into()),
+        }
+    }
+}
+
+impl TryFrom<ModuleDef> for ModuleDefId {
+    type Error = ();
+    fn try_from(id: ModuleDef) -> Result<Self, Self::Error> {
+        Ok(match id {
+            ModuleDef::Module(it) => ModuleDefId::ModuleId(it.into()),
+            ModuleDef::Function(it) => match it.id {
+                AnyFunctionId::FunctionId(it) => it.into(),
+                AnyFunctionId::BuiltinDeriveImplMethod { .. } => return Err(()),
+            },
+            ModuleDef::Adt(it) => ModuleDefId::AdtId(it.into()),
+            ModuleDef::EnumVariant(it) => ModuleDefId::EnumVariantId(it.into()),
+            ModuleDef::Const(it) => ModuleDefId::ConstId(it.into()),
+            ModuleDef::Static(it) => ModuleDefId::StaticId(it.into()),
+            ModuleDef::Trait(it) => ModuleDefId::TraitId(it.into()),
+            ModuleDef::TypeAlias(it) => ModuleDefId::TypeAliasId(it.into()),
+            ModuleDef::BuiltinType(it) => ModuleDefId::BuiltinType(it.into()),
+            ModuleDef::Macro(it) => ModuleDefId::MacroId(it.into()),
+        })
+    }
+}
+
+impl TryFrom<DefWithBody> for DefWithBodyId {
+    type Error = ();
+    fn try_from(def: DefWithBody) -> Result<Self, ()> {
+        Ok(match def {
+            DefWithBody::Function(it) => match it.id {
+                AnyFunctionId::FunctionId(it) => it.into(),
+                AnyFunctionId::BuiltinDeriveImplMethod { .. } => return Err(()),
+            },
+            DefWithBody::Static(it) => DefWithBodyId::StaticId(it.id),
+            DefWithBody::Const(it) => DefWithBodyId::ConstId(it.id),
+            DefWithBody::EnumVariant(it) => DefWithBodyId::VariantId(it.into()),
+        })
+    }
+}
+
+impl From<DefWithBodyId> for DefWithBody {
+    fn from(def: DefWithBodyId) -> Self {
+        match def {
+            DefWithBodyId::FunctionId(it) => DefWithBody::Function(it.into()),
+            DefWithBodyId::StaticId(it) => DefWithBody::Static(it.into()),
+            DefWithBodyId::ConstId(it) => DefWithBody::Const(it.into()),
+            DefWithBodyId::VariantId(it) => DefWithBody::EnumVariant(it.into()),
+        }
+    }
+}
+
+impl From<AssocItemId> for AssocItem {
+    fn from(def: AssocItemId) -> Self {
+        match def {
+            AssocItemId::FunctionId(it) => AssocItem::Function(it.into()),
+            AssocItemId::TypeAliasId(it) => AssocItem::TypeAlias(it.into()),
+            AssocItemId::ConstId(it) => AssocItem::Const(it.into()),
+        }
+    }
+}
+
+impl TryFrom<GenericDef> for GenericDefId {
+    type Error = ();
+
+    fn try_from(def: GenericDef) -> Result<Self, Self::Error> {
+        def.id().ok_or(())
+    }
+}
+
+impl From<GenericDefId> for GenericDef {
+    fn from(def: GenericDefId) -> Self {
+        match def {
+            GenericDefId::FunctionId(it) => GenericDef::Function(it.into()),
+            GenericDefId::AdtId(it) => GenericDef::Adt(it.into()),
+            GenericDefId::TraitId(it) => GenericDef::Trait(it.into()),
+            GenericDefId::TypeAliasId(it) => GenericDef::TypeAlias(it.into()),
+            GenericDefId::ImplId(it) => GenericDef::Impl(it.into()),
+            GenericDefId::ConstId(it) => GenericDef::Const(it.into()),
+            GenericDefId::StaticId(it) => GenericDef::Static(it.into()),
+        }
+    }
+}
+
+impl From<Adt> for GenericDefId {
+    fn from(id: Adt) -> Self {
+        match id {
+            Adt::Struct(it) => it.id.into(),
+            Adt::Union(it) => it.id.into(),
+            Adt::Enum(it) => it.id.into(),
+        }
+    }
+}
+
+impl From<Variant> for VariantId {
+    fn from(def: Variant) -> Self {
+        match def {
+            Variant::Struct(it) => VariantId::StructId(it.id),
+            Variant::EnumVariant(it) => VariantId::EnumVariantId(it.into()),
+            Variant::Union(it) => VariantId::UnionId(it.id),
+        }
+    }
+}
+
+impl From<Field> for FieldId {
+    fn from(def: Field) -> Self {
+        FieldId { parent: def.parent.into(), local_id: def.id }
+    }
+}
+
+impl From<FieldId> for Field {
+    fn from(def: FieldId) -> Self {
+        Field { parent: def.parent.into(), id: def.local_id }
+    }
+}
+
+impl TryFrom<AssocItem> for GenericDefId {
+    type Error = ();
+    fn try_from(item: AssocItem) -> Result<Self, Self::Error> {
+        Ok(match item {
+            AssocItem::Function(f) => match f.id {
+                AnyFunctionId::FunctionId(it) => it.into(),
+                AnyFunctionId::BuiltinDeriveImplMethod { .. } => return Err(()),
+            },
+            AssocItem::Const(c) => c.id.into(),
+            AssocItem::TypeAlias(t) => t.id.into(),
+        })
+    }
+}
+
+impl From<(ExpressionStoreOwnerId, BindingId)> for Local {
+    fn from((parent, binding_id): (ExpressionStoreOwnerId, BindingId)) -> Self {
+        Local { parent, binding_id }
+    }
+}
+impl From<(DefWithBodyId, BindingId)> for Local {
+    fn from((parent, binding_id): (DefWithBodyId, BindingId)) -> Self {
+        Local { parent: parent.into(), binding_id }
+    }
+}
+
+impl From<(ExpressionStoreOwnerId, LabelId)> for Label {
+    fn from((parent, label_id): (ExpressionStoreOwnerId, LabelId)) -> Self {
+        Label { parent, label_id }
+    }
+}
+
+impl From<hir_def::item_scope::ItemInNs> for ItemInNs {
+    fn from(it: hir_def::item_scope::ItemInNs) -> Self {
+        match it {
+            hir_def::item_scope::ItemInNs::Types(it) => ItemInNs::Types(it.into()),
+            hir_def::item_scope::ItemInNs::Values(it) => ItemInNs::Values(it.into()),
+            hir_def::item_scope::ItemInNs::Macros(it) => ItemInNs::Macros(it.into()),
+        }
+    }
+}
+
+impl TryFrom<ItemInNs> for hir_def::item_scope::ItemInNs {
+    type Error = ();
+    fn try_from(it: ItemInNs) -> Result<Self, Self::Error> {
+        Ok(match it {
+            ItemInNs::Types(it) => Self::Types(it.try_into()?),
+            ItemInNs::Values(it) => Self::Values(it.try_into()?),
+            ItemInNs::Macros(it) => Self::Macros(it.into()),
+        })
+    }
+}
+
+impl From<hir_def::builtin_type::BuiltinType> for BuiltinType {
+    fn from(inner: hir_def::builtin_type::BuiltinType) -> Self {
+        Self { inner }
+    }
+}
+
+impl From<BuiltinType> for hir_def::builtin_type::BuiltinType {
+    fn from(it: BuiltinType) -> Self {
+        it.inner
+    }
+}
+
+impl From<hir_def::ImplId> for crate::Impl {
+    fn from(value: hir_def::ImplId) -> Self {
+        crate::Impl { id: AnyImplId::ImplId(value) }
+    }
+}
+
+impl From<BuiltinDeriveImplId> for crate::Impl {
+    fn from(value: BuiltinDeriveImplId) -> Self {
+        crate::Impl { id: AnyImplId::BuiltinDeriveImplId(value) }
+    }
+}
+
+impl From<hir_def::FunctionId> for crate::Function {
+    fn from(value: hir_def::FunctionId) -> Self {
+        crate::Function { id: AnyFunctionId::FunctionId(value) }
+    }
+}
+
+impl TryFrom<ExpressionStoreOwner> for ExpressionStoreOwnerId {
+    type Error = ();
+
+    fn try_from(v: ExpressionStoreOwner) -> Result<Self, Self::Error> {
+        match v {
+            ExpressionStoreOwner::Signature(generic_def_id) => {
+                Ok(Self::Signature(generic_def_id.try_into()?))
+            }
+            ExpressionStoreOwner::Body(def_with_body_id) => {
+                Ok(Self::Body(def_with_body_id.try_into()?))
+            }
+            ExpressionStoreOwner::VariantFields(variant_id) => {
+                Ok(Self::VariantFields(variant_id.into()))
+            }
+        }
+    }
+}
+
+impl TryFrom<Function> for FunctionId {
+    type Error = ();
+
+    fn try_from(v: Function) -> Result<Self, Self::Error> {
+        match v.id {
+            AnyFunctionId::FunctionId(id) => Ok(id),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<Impl> for ImplId {
+    type Error = ();
+
+    fn try_from(v: Impl) -> Result<Self, Self::Error> {
+        match v.id {
+            AnyImplId::ImplId(id) => Ok(id),
+            _ => Err(()),
+        }
+    }
+}

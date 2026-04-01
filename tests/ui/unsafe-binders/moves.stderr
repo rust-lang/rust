@@ -1,0 +1,44 @@
+error[E0382]: use of moved value: `base`
+  --> $DIR/moves.rs:14:14
+   |
+LL |         let base = NotCopy::default();
+   |             ---- move occurs because `base` has type `ManuallyDrop<NotCopyInner>`, which does not implement the `Copy` trait
+LL |         let binder: unsafe<> NotCopy = wrap_binder!(base);
+   |                                                     ---- value moved here
+LL |         drop(base);
+   |              ^^^^ value used here after move
+   |
+note: if `NotCopyInner` implemented `Clone`, you could clone the value
+  --> $DIR/moves.rs:7:1
+   |
+LL | struct NotCopyInner;
+   | ^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let binder: unsafe<> NotCopy = wrap_binder!(base);
+   |                                                     ---- you could clone this value
+
+error[E0382]: use of moved value: `binder`
+  --> $DIR/moves.rs:23:14
+   |
+LL |         drop(unwrap_binder!(binder));
+   |              ---------------------- value moved here
+LL |         drop(unwrap_binder!(binder));
+   |              ^^^^^^^^^^^^^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `binder` has type `ManuallyDrop<NotCopyInner>`, which does not implement the `Copy` trait
+   = note: this error originates in the macro `unwrap_binder` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0382]: use of moved value: `binder.0`
+  --> $DIR/moves.rs:35:14
+   |
+LL |         drop(unwrap_binder!(binder).0);
+   |              ------------------------ value moved here
+...
+LL |         drop(unwrap_binder!(binder).0);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `binder.0` has type `ManuallyDrop<NotCopyInner>`, which does not implement the `Copy` trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

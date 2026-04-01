@@ -1,0 +1,269 @@
+#![warn(clippy::needless_type_cast)]
+#![allow(clippy::no_effect, clippy::unnecessary_cast, unused)]
+
+fn takes_i32(x: i32) -> i32 {
+    x
+}
+
+fn generic<T>(x: T) -> T {
+    x
+}
+
+fn returns_u8() -> u8 {
+    10
+}
+
+fn main() {
+    let a: u8 = 10;
+    //~^ needless_type_cast
+    let _ = a as i32 + 5;
+    let _ = a as i32 * 2;
+
+    let b: u16 = 20;
+    let _ = b;
+    let _ = b as u32;
+
+    let c: u8 = 5;
+    let _ = c as u16;
+    let _ = c as u32;
+
+    let d: i32 = 100;
+    let _ = d + 1;
+
+    let e = 42u8;
+    let _ = e as i64;
+    let _ = e as i64 + 10;
+
+    let f: u8 = 1;
+    //~^ needless_type_cast
+    let _ = f as usize;
+}
+
+fn test_function_call() {
+    let a: u8 = 10;
+    //~^ needless_type_cast
+    let _ = takes_i32(a as i32);
+    let _ = takes_i32(a as i32);
+}
+
+fn test_generic_call() {
+    let a: u8 = 10;
+    let _ = generic(a as i32);
+    let _ = generic(a as i32);
+}
+
+fn test_method_on_cast() {
+    let a: u8 = 10;
+    //~^ needless_type_cast
+    let _ = (a as i32).checked_add(5);
+    let _ = (a as i32).saturating_mul(2);
+}
+
+fn test_iterator_sum() {
+    let a: u8 = 10;
+    //~^ needless_type_cast
+    let arr = [a as i32, a as i32];
+    let _: i32 = arr.iter().copied().sum();
+}
+
+fn test_closure() {
+    let a: u8 = 10;
+    //~^ needless_type_cast
+    let _: i32 = [1i32, 2].iter().map(|x| x + a as i32).sum();
+}
+
+fn test_struct_field() {
+    struct S {
+        x: i32,
+        y: i32,
+    }
+
+    let a: u8 = 10;
+    //~^ needless_type_cast
+    let _ = S {
+        x: a as i32,
+        y: a as i32,
+    };
+}
+
+fn test_option() {
+    let a: u8 = 10;
+    let _: Option<i32> = Some(a as i32);
+    let _: Option<i32> = Some(a as i32);
+}
+
+fn test_mixed_context() {
+    let a: u8 = 10;
+    let _ = takes_i32(a as i32);
+    let _ = generic(a as i32);
+}
+
+fn test_nested_block() {
+    if true {
+        let a: u8 = 10;
+        //~^ needless_type_cast
+        let _ = a as i32 + 1;
+        let _ = a as i32 * 2;
+    }
+}
+
+fn test_match_expr() {
+    let a: u8 = 10;
+    //~^ needless_type_cast
+    let _ = match 1 {
+        1 => a as i32,
+        _ => a as i32,
+    };
+}
+
+fn test_return_expr() -> i32 {
+    let a: u8 = 10;
+    //~^ needless_type_cast
+    a as i32
+}
+
+fn test_closure_always_cast() {
+    let a: u8 = 10;
+    //~^ needless_type_cast
+    let _ = [1, 2].iter().map(|_| a as i32).sum::<i32>();
+    let _ = a as i32;
+}
+
+fn test_closure_mixed_usage() {
+    let a: u8 = 10;
+    let _ = [1, 2].iter().map(|_| a as i32).sum::<i32>();
+    let _ = a + 1;
+}
+
+fn test_nested_generic_call() {
+    let a: u8 = 10;
+    let _ = generic(takes_i32(a as i32));
+    let _ = generic(takes_i32(a as i32));
+}
+
+fn test_generic_initializer() {
+    // Should not lint: changing type would affect what generic() returns
+    let a: u8 = generic(10u8);
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_unsafe_transmute() {
+    // Should not lint: initializer contains unsafe block
+    #[allow(clippy::useless_transmute)]
+    let x: u32 = unsafe { std::mem::transmute(0u32) };
+    let _ = x as u64;
+}
+
+fn test_if_with_generic() {
+    // Should not lint: one branch has generic return type
+    let x: u8 = if true { generic(1) } else { 2 };
+    let _ = x as i32;
+}
+
+fn test_match_with_generic() {
+    // Should not lint: one branch has generic return type
+    let x: u8 = match 1 {
+        1 => generic(1),
+        _ => 2,
+    };
+    let _ = x as i32;
+}
+
+fn test_default() {
+    // Should not lint: Default::default() has generic return type
+    let x: u8 = Default::default();
+    let _ = x as i32;
+}
+
+fn test_loop_with_generic() {
+    // Should not lint: loop break has generic return type
+    #[allow(clippy::never_loop)]
+    let x: u8 = loop {
+        break generic(1);
+    };
+    let _ = x as i32;
+}
+
+fn test_size_of_cast() {
+    use std::mem::size_of;
+    // Should lint: suggest casting the initializer
+    let size: usize = size_of::<u32>();
+    //~^ needless_type_cast
+    let _ = size as u64;
+    let _ = size as u64;
+}
+
+fn test_suffixed_literal_cast() {
+    // Should lint: suggest casting the initializer
+    let a: u8 = 10u8;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_negative_literal() {
+    // Negative literal - should just change type, not add cast
+    let a: i8 = -10;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_suffixed_negative_literal() {
+    // Suffixed negative - needs cast
+    let a: i8 = -10i8;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_binary_op() {
+    // Binary op needs parens in cast
+    let a: u8 = 10 + 5;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_fn_return_as_init() {
+    let a: u8 = returns_u8();
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_method_as_init() {
+    let a: u8 = 2u8.saturating_add(3);
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_const_as_init() {
+    const X: u8 = 10;
+    let a: u8 = X;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_single_use_fn_call() {
+    // Should not lint: only one use, and fixing would just move the cast
+    // to the initializer rather than eliminating it
+    let a: u8 = returns_u8();
+    let _ = a as i32;
+}
+
+fn test_single_use_suffixed_literal() {
+    // Should not lint: only one use with a suffixed literal
+    let a: u8 = 10u8;
+    let _ = a as i32;
+}
+
+fn test_single_use_binary_op() {
+    // Should lint: binary op of unsuffixed literals can be coerced
+    let a: u8 = 10 + 5;
+    //~^ needless_type_cast
+    let _ = a as i32;
+}

@@ -1,0 +1,26 @@
+error: ['a: *, 'a: o]
+  --> $DIR/variance.rs:11:36
+   |
+LL | fn not_captured_early<'a: 'a>() -> impl Sized {}
+   |                                    ^^^^^^^^^^
+
+error: ['a: *, 'a: o]
+  --> $DIR/variance.rs:15:32
+   |
+LL | fn captured_early<'a: 'a>() -> impl Sized + Captures<'a> {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: o]
+  --> $DIR/variance.rs:17:40
+   |
+LL | fn not_captured_late<'a>(_: &'a ()) -> impl Sized {}
+   |                                        ^^^^^^^^^^
+
+error: ['a: o]
+  --> $DIR/variance.rs:21:36
+   |
+LL | fn captured_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {}
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

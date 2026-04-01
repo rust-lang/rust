@@ -1,0 +1,13 @@
+error: expected one of `!`, `(`, `+`, `,`, `::`, `<`, or `>`, found `)`
+  --> tests/ui/non_expressive_names_error_recovery.rs:6:19
+   |
+LL | fn aa(a: Aa<String) {
+   |                   ^ expected one of 7 possible tokens
+   |
+help: you might have meant to end the type parameters here
+   |
+LL | fn aa(a: Aa<String>) {
+   |                   +
+
+error: aborting due to 1 previous error
+

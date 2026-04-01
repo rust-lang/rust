@@ -1,0 +1,22 @@
+error: delegation to C-variadic functions is not allowed
+  --> $DIR/fn-header-variadic.rs:12:17
+   |
+LL |     pub unsafe extern "C" fn variadic_fn(n: usize, mut args: ...) {}
+   |     ------------------------------------------------------------- callee defined here
+...
+LL | reuse to_reuse::variadic_fn;
+   |                 ^^^^^^^^^^^
+
+error: delegation to C-variadic functions is not allowed
+  --> $DIR/fn-header-variadic.rs:14:22
+   |
+LL | reuse fn_header_aux::variadic_fn_extern;
+   |                      ^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/fn-header-aux.rs:7:1
+   |
+LL | pub unsafe extern "C" fn variadic_fn_extern(n: usize, mut args: ...) {}
+   | -------------------------------------------------------------------- callee defined here
+
+error: aborting due to 2 previous errors
+

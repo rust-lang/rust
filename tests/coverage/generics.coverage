@@ -1,0 +1,67 @@
+   LL|       |#![allow(unused_assignments)]
+   LL|       |//@ failure-status: 1
+   LL|       |
+   LL|       |struct Firework<T: Copy + std::fmt::Display> {
+   LL|       |    strength: T,
+   LL|       |}
+   LL|       |
+   LL|       |impl<T: Copy + std::fmt::Display> Firework<T> {
+   LL|       |    #[inline(always)]
+   LL|      3|    fn set_strength(&mut self, new_strength: T) {
+   LL|      3|        self.strength = new_strength;
+   LL|      3|    }
+  ------------------
+  | <generics::Firework<f64>>::set_strength:
+  |   LL|      2|    fn set_strength(&mut self, new_strength: T) {
+  |   LL|      2|        self.strength = new_strength;
+  |   LL|      2|    }
+  ------------------
+  | <generics::Firework<i32>>::set_strength:
+  |   LL|      1|    fn set_strength(&mut self, new_strength: T) {
+  |   LL|      1|        self.strength = new_strength;
+  |   LL|      1|    }
+  ------------------
+   LL|       |}
+   LL|       |
+   LL|       |impl<T: Copy + std::fmt::Display> Drop for Firework<T> {
+   LL|       |    #[inline(always)]
+   LL|      2|    fn drop(&mut self) {
+   LL|      2|        println!("BOOM times {}!!!", self.strength);
+   LL|      2|    }
+  ------------------
+  | <generics::Firework<f64> as core::ops::drop::Drop>::drop:
+  |   LL|      1|    fn drop(&mut self) {
+  |   LL|      1|        println!("BOOM times {}!!!", self.strength);
+  |   LL|      1|    }
+  ------------------
+  | <generics::Firework<i32> as core::ops::drop::Drop>::drop:
+  |   LL|      1|    fn drop(&mut self) {
+  |   LL|      1|        println!("BOOM times {}!!!", self.strength);
+  |   LL|      1|    }
+  ------------------
+   LL|       |}
+   LL|       |
+   LL|      1|fn main() -> Result<(), u8> {
+   LL|      1|    let mut firecracker = Firework { strength: 1 };
+   LL|      1|    firecracker.set_strength(2);
+   LL|       |
+   LL|      1|    let mut tnt = Firework { strength: 100.1 };
+   LL|      1|    tnt.set_strength(200.1);
+   LL|      1|    tnt.set_strength(300.3);
+   LL|       |
+   LL|      1|    if true {
+   LL|      1|        println!("Exiting with error...");
+   LL|      1|        return Err(1);
+   LL|      0|    }
+   LL|       |
+   LL|      0|    let _ = Firework { strength: 1000 };
+   LL|       |
+   LL|      0|    Ok(())
+   LL|      1|}
+   LL|       |
+   LL|       |// Expected program output:
+   LL|       |//   Exiting with error...
+   LL|       |//   BOOM times 100!!!
+   LL|       |//   BOOM times 1!!!
+   LL|       |//   Error: 1
+

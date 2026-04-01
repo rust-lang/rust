@@ -1,0 +1,109 @@
+error: this `match` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match2.rs:13:34
+   |
+LL |               Ok(val) if make() => match val {
+   |  __________________________________^
+LL | |
+LL | |                 Some(n) => foo(n),
+LL | |                 _ => return,
+LL | |             },
+   | |_____________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match2.rs:13:16
+   |
+LL |             Ok(val) if make() => match val {
+   |                ^^^ replace this binding
+LL |
+LL |                 Some(n) => foo(n),
+   |                 ^^^^^^^ with this pattern
+   = note: `-D clippy::collapsible-match` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_match)]`
+
+error: this `match` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match2.rs:21:24
+   |
+LL |               Ok(val) => match val {
+   |  ________________________^
+LL | |
+LL | |                 Some(n) => foo(n),
+LL | |                 _ => return,
+LL | |             },
+   | |_____________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match2.rs:21:16
+   |
+LL |             Ok(val) => match val {
+   |                ^^^ replace this binding
+LL |
+LL |                 Some(n) => foo(n),
+   |                 ^^^^^^^ with this pattern
+
+error: this `match` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match2.rs:36:29
+   |
+LL |                       $pat => match $e {
+   |  _____________________________^
+LL | |
+LL | |                         $inner_pat => $then,
+LL | |                         _ => return,
+LL | |                     },
+   | |_____________________^
+...
+LL |           mac!(res_opt => Ok(val), val => Some(n), foo(n));
+   |           ------------------------------------------------ in this macro invocation
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match2.rs:49:28
+   |
+LL |         mac!(res_opt => Ok(val), val => Some(n), foo(n));
+   |                            ^^^          ^^^^^^^ with this pattern
+   |                            |
+   |                            replace this binding
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: this `match` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match2.rs:54:20
+   |
+LL |           Some(s) => match *s {
+   |  ____________________^
+LL | |
+LL | |             [n] => foo(n),
+LL | |             _ => (),
+LL | |         },
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match2.rs:54:14
+   |
+LL |     match Some(&[1]) {
+   |           ---------- use: `Some(&[1]).copied()`
+LL |         Some(s) => match *s {
+   |              ^ replace this binding
+LL |
+LL |             [n] => foo(n),
+   |             ^^^ with this pattern
+
+error: this `match` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match2.rs:64:24
+   |
+LL |           Some(ref s) => match s {
+   |  ________________________^
+LL | |
+LL | |             [n] => foo(n),
+LL | |             _ => (),
+LL | |         },
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match2.rs:64:14
+   |
+LL |         Some(ref s) => match s {
+   |              ^^^^^ replace this binding
+LL |
+LL |             [n] => foo(n),
+   |             ^^^ with this pattern
+
+error: aborting due to 5 previous errors
+

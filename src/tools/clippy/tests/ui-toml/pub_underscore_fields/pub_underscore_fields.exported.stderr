@@ -1,0 +1,12 @@
+error: field marked as public but also inferred as unused because it's prefixed with `_`
+  --> tests/ui-toml/pub_underscore_fields/pub_underscore_fields.rs:15:9
+   |
+LL |         pub _b: u8,
+   |         ^^^^^^
+   |
+   = help: consider removing the underscore, or making the field private
+   = note: `-D clippy::pub-underscore-fields` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::pub_underscore_fields)]`
+
+error: aborting due to 1 previous error
+

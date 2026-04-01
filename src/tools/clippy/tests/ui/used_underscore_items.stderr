@@ -1,0 +1,112 @@
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:43:5
+   |
+LL |     _foo1();
+   |     ^^^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:22:1
+   |
+LL | fn _foo1() {}
+   | ^^^^^^^^^^
+   = note: `-D clippy::used-underscore-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::used_underscore_items)]`
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:45:13
+   |
+LL |     let _ = _foo2();
+   |             ^^^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:24:1
+   |
+LL | fn _foo2() -> i32 {
+   | ^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:47:5
+   |
+LL |     a::b::c::_foo3();
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:31:13
+   |
+LL |             pub fn _foo3() {}
+   |             ^^^^^^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:49:14
+   |
+LL |     let _ = &_FooStruct {};
+   |              ^^^^^^^^^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:16:1
+   |
+LL | struct _FooStruct {}
+   | ^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:51:13
+   |
+LL |     let _ = _FooStruct {};
+   |             ^^^^^^^^^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:16:1
+   |
+LL | struct _FooStruct {}
+   | ^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:54:22
+   |
+LL |     let foo_struct = _FooStruct {};
+   |                      ^^^^^^^^^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:16:1
+   |
+LL | struct _FooStruct {}
+   | ^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:56:5
+   |
+LL |     foo_struct._method_call();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:19:5
+   |
+LL |     fn _method_call(self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:59:23
+   |
+LL |     let foo_struct2 = a::b::c::_FooStruct2 {};
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:33:13
+   |
+LL |             pub struct _FooStruct2 {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:61:5
+   |
+LL |     foo_struct2._method_call();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:36:17
+   |
+LL |                 pub fn _method_call(self) {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

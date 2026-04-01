@@ -1,0 +1,14 @@
+error: you might have meant to write `impl` instead of `fn`
+  --> $DIR/issue-105366.rs:6:1
+   |
+LL | fn From<i32> for Foo {
+   | ^^
+   |
+help: replace `fn` with `impl` here
+   |
+LL - fn From<i32> for Foo {
+LL + impl From<i32> for Foo {
+   |
+
+error: aborting due to 1 previous error
+

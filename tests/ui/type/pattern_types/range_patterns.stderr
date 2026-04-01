@@ -1,0 +1,486 @@
+error: layout_of(NonZero<u32>) = Layout {
+           size: Size(4 bytes),
+           align: AbiAlign {
+               abi: Align(4 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 1..=4294967295,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 1..=4294967295,
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/range_patterns.rs:11:1
+   |
+LL | type X = std::num::NonZeroU32;
+   | ^^^^^^
+
+error: layout_of((u32) is 1..) = Layout {
+           size: Size(4 bytes),
+           align: AbiAlign {
+               abi: Align(4 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 1..=4294967295,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 1..=4294967295,
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/range_patterns.rs:13:1
+   |
+LL | type Y = pattern_type!(u32 is 1..);
+   | ^^^^^^
+
+error: layout_of(Option<(u32) is 1..>) = Layout {
+           size: Size(4 bytes),
+           align: AbiAlign {
+               abi: Align(4 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: (..=0) | (1..),
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: None,
+           uninhabited: false,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: (..=0) | (1..),
+               },
+               tag_encoding: Niche {
+                   untagged_variant: 1,
+                   niche_variants: 0..=0,
+                   niche_start: 0,
+               },
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(0 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           in_memory_order: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
+                   },
+                   Layout {
+                       size: Size(4 bytes),
+                       align: AbiAlign {
+                           abi: Align(4 bytes),
+                       },
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I32,
+                                   false,
+                               ),
+                               valid_range: 1..=4294967295,
+                           },
+                       ),
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                           ],
+                           in_memory_order: [
+                               0,
+                           ],
+                       },
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(0 bytes),
+                               value: Int(
+                                   I32,
+                                   false,
+                               ),
+                               valid_range: 1..=4294967295,
+                           },
+                       ),
+                       uninhabited: false,
+                       variants: Single {
+                           index: 1,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/range_patterns.rs:15:1
+   |
+LL | type Z = Option<pattern_type!(u32 is 1..)>;
+   | ^^^^^^
+
+error: layout_of(Option<NonZero<u32>>) = Layout {
+           size: Size(4 bytes),
+           align: AbiAlign {
+               abi: Align(4 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: (..=0) | (1..),
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: None,
+           uninhabited: false,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: (..=0) | (1..),
+               },
+               tag_encoding: Niche {
+                   untagged_variant: 1,
+                   niche_variants: 0..=0,
+                   niche_start: 0,
+               },
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(0 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           in_memory_order: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
+                   },
+                   Layout {
+                       size: Size(4 bytes),
+                       align: AbiAlign {
+                           abi: Align(4 bytes),
+                       },
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I32,
+                                   false,
+                               ),
+                               valid_range: 1..=4294967295,
+                           },
+                       ),
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                           ],
+                           in_memory_order: [
+                               0,
+                           ],
+                       },
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(0 bytes),
+                               value: Int(
+                                   I32,
+                                   false,
+                               ),
+                               valid_range: 1..=4294967295,
+                           },
+                       ),
+                       uninhabited: false,
+                       variants: Single {
+                           index: 1,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/range_patterns.rs:17:1
+   |
+LL | type A = Option<std::num::NonZeroU32>;
+   | ^^^^^^
+
+error: layout_of(NonZeroU32New) = Layout {
+           size: Size(4 bytes),
+           align: AbiAlign {
+               abi: Align(4 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 1..=4294967295,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 1..=4294967295,
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/range_patterns.rs:19:1
+   |
+LL | struct NonZeroU32New(pattern_type!(u32 is 1..));
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: pattern type ranges cannot wrap: 1..=0
+
+error: the type has an unknown layout
+  --> $DIR/range_patterns.rs:22:1
+   |
+LL | type EMPTY = pattern_type!(u32 is 1..1);
+   | ^^^^^^^^^^
+
+error[E0080]: evaluation panicked: exclusive range end at minimum value of type
+  --> $DIR/range_patterns.rs:25:37
+   |
+LL | type WRAP = pattern_type!(u32 is 1..0);
+   |                                     ^ evaluation of `WRAP::{constant#1}` failed here
+
+error: the type has an unknown layout
+  --> $DIR/range_patterns.rs:25:1
+   |
+LL | type WRAP = pattern_type!(u32 is 1..0);
+   | ^^^^^^^^^
+
+error: pattern type ranges cannot wrap: 5..=1
+
+error: the type has an unknown layout
+  --> $DIR/range_patterns.rs:29:1
+   |
+LL | type WRAP2 = pattern_type!(u32 is 5..2);
+   | ^^^^^^^^^^
+
+error: layout_of((i8) is -10..=10) = Layout {
+           size: Size(1 bytes),
+           align: AbiAlign {
+               abi: Align(1 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: (..=10) | (246..),
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: (..=10) | (246..),
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/range_patterns.rs:32:1
+   |
+LL | type SIGN = pattern_type!(i8 is -10..=10);
+   | ^^^^^^^^^
+
+error: layout_of((i8) is i8::MIN..=0) = Layout {
+           size: Size(1 bytes),
+           align: AbiAlign {
+               abi: Align(1 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: (..=0) | (128..),
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: (..=0) | (128..),
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/range_patterns.rs:35:1
+   |
+LL | type MIN = pattern_type!(i8 is -128..=0);
+   | ^^^^^^^^
+
+error: pattern type ranges cannot wrap: 120..=-120
+
+error: the type has an unknown layout
+  --> $DIR/range_patterns.rs:38:1
+   |
+LL | type SignedWrap = pattern_type!(i8 is 120..=-120);
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

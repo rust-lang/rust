@@ -1,0 +1,44 @@
+error: item does not constrain `OneTy::{opaque#0}`
+  --> $DIR/generic_nondefining_use.rs:20:4
+   |
+LL | fn concrete_ty() -> OneTy<u32> {
+   |    ^^^^^^^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/generic_nondefining_use.rs:11:17
+   |
+LL | type OneTy<T> = impl Debug;
+   |                 ^^^^^^^^^^
+note: this use of `OneTy<u32>` does not have unique universal generic arguments
+  --> $DIR/generic_nondefining_use.rs:23:5
+   |
+LL |     5u32
+   |     ^^^^
+
+error: non-defining use of `OneLifetime<'_>` in the defining scope
+  --> $DIR/generic_nondefining_use.rs:27:1
+   |
+LL | fn concrete_lifetime() -> OneLifetime<'static> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item does not constrain `OneConst::{opaque#0}`
+  --> $DIR/generic_nondefining_use.rs:35:4
+   |
+LL | fn concrete_const() -> OneConst<{ 123 }> {
+   |    ^^^^^^^^^^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/generic_nondefining_use.rs:15:33
+   |
+LL | type OneConst<const X: usize> = impl Debug;
+   |                                 ^^^^^^^^^^
+note: this use of `OneConst<123>` does not have unique universal generic arguments
+  --> $DIR/generic_nondefining_use.rs:38:5
+   |
+LL |     7u32
+   |     ^^^^
+
+error: aborting due to 3 previous errors
+

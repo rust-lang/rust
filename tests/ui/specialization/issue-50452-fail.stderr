@@ -1,0 +1,14 @@
+error[E0520]: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
+  --> $DIR/issue-50452-fail.rs:9:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^ cannot specialize default item `foo`
+...
+LL | impl<T> Foo for T {
+   | ----------------- parent `impl` is here
+   |
+   = note: to specialize, `foo` in the parent `impl` must be marked `default`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0520`.

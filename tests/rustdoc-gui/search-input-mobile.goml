@@ -1,0 +1,14 @@
+// Test to ensure that you can click on the search input, whatever the width.
+// The PR which fixed it is: https://github.com/rust-lang/rust/pull/81592
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+set-window-size: (463, 700)
+click: "#search-button"
+wait-for: ".search-input"
+assert: "input.search-input:focus"
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+reload:
+set-window-size: (750, 700)
+click: "#search-button"
+wait-for: ".search-input"
+assert: "input.search-input:focus"

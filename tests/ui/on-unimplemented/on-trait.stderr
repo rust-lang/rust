@@ -1,0 +1,39 @@
+error[E0277]: the trait bound `Option<Vec<u8>>: MyFromIterator<&u8>` is not satisfied
+  --> $DIR/on-trait.rs:28:30
+   |
+LL |     let y: Option<Vec<u8>> = collect(x.iter()); // this should give approximately the same error for x.iter().collect()
+   |                              ^^^^^^^^^^^^^^^^^ a collection of type `Option<Vec<u8>>` cannot be built from an iterator over elements of type `&u8`
+   |
+   = help: the trait `MyFromIterator<&u8>` is not implemented for `Option<Vec<u8>>`
+help: this trait has no implementations, consider adding one
+  --> $DIR/on-trait.rs:17:1
+   |
+LL | trait MyFromIterator<A> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `collect`
+  --> $DIR/on-trait.rs:22:39
+   |
+LL | fn collect<A, I: Iterator<Item=A>, B: MyFromIterator<A>>(it: I) -> B {
+   |                                       ^^^^^^^^^^^^^^^^^ required by this bound in `collect`
+
+error[E0277]: the trait bound `String: Foo<u8, _, u32>` is not satisfied
+  --> $DIR/on-trait.rs:31:21
+   |
+LL |     let x: String = foobar();
+   |                     ^^^^^^^^ test error `String` with `u8` `_` `u32` in `Foo`
+   |
+   = help: the trait `Foo<u8, _, u32>` is not implemented for `String`
+help: this trait has no implementations, consider adding one
+  --> $DIR/on-trait.rs:7:3
+   |
+LL |   pub trait Foo<Bar, Baz, Quux> {}
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `foobar`
+  --> $DIR/on-trait.rs:12:24
+   |
+LL | fn foobar<U: Clone, T: Foo<u8, U, u32>>() -> T {
+   |                        ^^^^^^^^^^^^^^^ required by this bound in `foobar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

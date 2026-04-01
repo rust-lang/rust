@@ -1,0 +1,34 @@
+[package]
+name = "syntax-bridge"
+version = "0.0.0"
+repository.workspace = true
+description = "Conversions between syntax nodes and token trees for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+rustc-hash.workspace = true
+
+# local deps
+syntax.workspace = true
+parser.workspace = true
+tt.workspace = true
+stdx.workspace = true
+# span = {workspace = true, default-features = false} does not work
+span = { path = "../span", version = "0.0.0", default-features = false}
+intern.workspace = true
+
+[dev-dependencies]
+test-utils.workspace = true
+
+[features]
+in-rust-tree = ["parser/in-rust-tree", "tt/in-rust-tree", "syntax/in-rust-tree"]
+
+[lints]
+workspace = true

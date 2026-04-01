@@ -1,0 +1,26 @@
+error[E0170]: pattern binding `Nil` is named the same as one of the variants of the type `Stack`
+  --> $DIR/issue-30302.rs:13:9
+   |
+LL |         Nil => true,
+   |         ^^^ help: to match on the variant, qualify the path: `Stack::Nil`
+   |
+   = note: `#[deny(bindings_with_variant_name)]` on by default
+
+error: unreachable pattern
+  --> $DIR/issue-30302.rs:15:9
+   |
+LL |         Nil => true,
+   |         --- matches any value
+LL |
+LL |         _ => false
+   |         ^ no value can reach this
+   |
+note: the lint level is defined here
+  --> $DIR/issue-30302.rs:4:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0170`.

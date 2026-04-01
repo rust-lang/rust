@@ -1,0 +1,50 @@
+- // MIR for `h` before Inline
++ // MIR for `h` after Inline
+  
+  fn h() -> () {
+      let mut _0: ();
+      let _1: (!, !);
++     let mut _2: fn() -> ! {sleep};
++     let mut _7: ();
++     let mut _8: ();
++     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) {
++         debug f => _2;
++         let mut _3: &fn() -> ! {sleep};
++         let _4: !;
++         let mut _5: &fn() -> ! {sleep};
++         scope 2 {
++             debug a => _4;
++             let _6: !;
++             scope 3 {
++                 debug b => _6;
++             }
++             scope 6 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) {
++                 scope 7 (inlined sleep) {
++                 }
++             }
++         }
++         scope 4 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) {
++             scope 5 (inlined sleep) {
++             }
++         }
++     }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep) -> unwind unreachable;
++         StorageLive(_2);
++         _2 = sleep;
++         StorageLive(_4);
++         StorageLive(_6);
++         StorageLive(_3);
++         _3 = &_2;
++         StorageLive(_7);
++         _7 = const ();
++         goto -> bb1;
++     }
++ 
++     bb1: {
++         goto -> bb1;
+      }
+  }
+  

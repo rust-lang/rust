@@ -1,0 +1,57 @@
+error: unions cannot have zero fields
+  --> $DIR/eval-error.rs:14:1
+   |
+LL | union Foo2 {}
+   | ^^^^^^^^^^^^^
+
+error[E0517]: attribute should be applied to a struct or union
+  --> $DIR/eval-error.rs:24:12
+   |
+LL |   #[repr(u8, packed)]
+   |              ^^^^^^
+LL |
+LL | / enum Foo3 {
+LL | |     A
+LL | | }
+   | |_- not a struct or union
+
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/eval-error.rs:2:5
+   |
+LL |     a: str,
+   |     ^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     a: std::mem::ManuallyDrop<str>,
+   |        +++++++++++++++++++++++   +
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/eval-error.rs:2:8
+   |
+LL |     a: str,
+   |        ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: no field of a union may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     a: &str,
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     a: Box<str>,
+   |        ++++   +
+
+error[E0080]: the type `Foo` has an unknown layout
+  --> $DIR/eval-error.rs:9:30
+   |
+LL |         let _: Option<Foo> = None;
+   |                              ^^^^ evaluation of `Bar::Boo::{constant#0}` failed here
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0080, E0277, E0517, E0740.
+For more information about an error, try `rustc --explain E0080`.

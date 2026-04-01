@@ -1,0 +1,15 @@
+SOURCE_FILE
+  ERROR
+    ABI
+      EXTERN_KW "extern"
+      WHITESPACE " "
+      STRING "\"C\""
+  WHITESPACE " "
+  ERROR
+    ABI
+      EXTERN_KW "extern"
+      WHITESPACE " "
+      STRING "\"C\""
+  WHITESPACE "\n"
+error 10: expected fn, trait or impl
+error 21: expected fn, trait or impl

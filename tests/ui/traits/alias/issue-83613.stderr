@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `AnotherTrait`
+  --> $DIR/issue-83613.rs:11:1
+   |
+LL | impl<T: Send> AnotherTrait for T {}
+   | -------------------------------- first implementation here
+LL | impl AnotherTrait for OpaqueType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

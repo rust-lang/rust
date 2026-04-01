@@ -1,0 +1,31 @@
+error[E0792]: expected generic lifetime parameter, found `'static`
+  --> $DIR/non-defining-use-lifetimes.rs:13:16
+   |
+LL |     fn foo<'a>(_: Lt<'a>) -> impl Sized + 'a {
+   |                                           -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+LL |         let _: () = foo(Lt::<'static>::None);
+   |                ^^
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/non-defining-use-lifetimes.rs:22:16
+   |
+LL |     fn foo<'a>(_: Lt<'a>) -> impl Sized + 'a {
+   |                                           -- this generic parameter must be used with a generic lifetime parameter
+LL |         let _: () = foo(Lt::<'_>::None);
+   |                ^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/non-defining-use-lifetimes.rs:32:16
+   |
+LL |         let _: () = foo(Lt::<'a>::None, Lt::<'a>::None);
+   |                ^^
+   |
+note: lifetime used multiple times
+  --> $DIR/non-defining-use-lifetimes.rs:31:58
+   |
+LL |     fn foo<'a, 'b>(_: Lt<'a>, _: Lt<'b>) -> impl Sized + 'a + 'b {
+   |                                                          ^^   ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0792`.

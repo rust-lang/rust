@@ -1,0 +1,14 @@
+error[E0499]: cannot borrow `self.iter` as mutable more than once at a time
+  --> $DIR/filtering-lending-iterator-issue-92985.rs:49:32
+   |
+LL |     fn next(&mut self) -> Option<I::Item<'_>> {
+   |             - let's call the lifetime of this reference `'1`
+LL |         while let Some(item) = self.iter.next() {
+   |                                ^^^^^^^^^ `self.iter` was mutably borrowed here in the previous iteration of the loop
+LL |             if (self.predicate)(&item) {
+LL |                 return Some(item);
+   |                        ---------- returning this value requires that `self.iter` is borrowed for `'1`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

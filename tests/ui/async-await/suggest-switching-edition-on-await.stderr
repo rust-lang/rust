@@ -1,0 +1,48 @@
+error[E0609]: no field `await` on type `await_on_struct_missing::S`
+  --> $DIR/suggest-switching-edition-on-await.rs:10:7
+   |
+LL |     x.await;
+   |       ^^^^^ unknown field
+   |
+   = note: to `.await` a `Future`, switch to Rust 2018 or later
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0609]: no field `await` on type `await_on_struct_similar::S`
+  --> $DIR/suggest-switching-edition-on-await.rs:23:7
+   |
+LL |     x.await;
+   |       ^^^^^ unknown field
+   |
+   = note: to `.await` a `Future`, switch to Rust 2018 or later
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+help: a field with a similar name exists
+   |
+LL -     x.await;
+LL +     x.awai;
+   |
+
+error[E0609]: no field `await` on type `Pin<&mut dyn Future<Output = ()>>`
+  --> $DIR/suggest-switching-edition-on-await.rs:33:7
+   |
+LL |     x.await;
+   |       ^^^^^ unknown field
+   |
+   = note: to `.await` a `Future`, switch to Rust 2018 or later
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0609]: no field `await` on type `impl Future<Output = ()>`
+  --> $DIR/suggest-switching-edition-on-await.rs:42:7
+   |
+LL |     x.await;
+   |       ^^^^^ unknown field
+   |
+   = note: to `.await` a `Future`, switch to Rust 2018 or later
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

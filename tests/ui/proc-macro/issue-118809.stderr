@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-118809.rs:7:10
+   |
+LL | #[derive(Deserialize)]
+   |          ^^^^^^^^^^^
+   |          |
+   |          expected `u64`, found `u32`
+   |          arguments to this enum variant are incorrect
+   |
+help: the type constructed contains `u32` due to the type of the argument passed
+  --> $DIR/issue-118809.rs:7:10
+   |
+LL | #[derive(Deserialize)]
+   |          ^^^^^^^^^^^ this argument influences the type of `Some`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

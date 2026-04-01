@@ -1,0 +1,16 @@
+error[E0004]: non-exhaustive patterns: `(X::A, Some(X::A))`, `(X::A, Some(X::B))`, `(X::B, Some(X::B))` and 2 more not covered
+  --> $DIR/issue-72377.rs:8:11
+   |
+LL |     match (x, y) {
+   |           ^^^^^^ patterns `(X::A, Some(X::A))`, `(X::A, Some(X::B))`, `(X::B, Some(X::B))` and 2 more not covered
+   |
+   = note: the matched value is of type `(X, Option<X>)`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+   |
+LL ~         (X::A, Some(X::C)) | (X::C, Some(X::A)) => false,
+LL ~         _ => todo!(),
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0004`.

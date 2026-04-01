@@ -1,0 +1,27 @@
+error[E0308]: mismatched types
+  --> $DIR/foreign-fn.rs:17:30
+   |
+LL |     let _: extern "C" fn() = default_unsafe_foo;
+   |            ---------------   ^^^^^^^^^^^^^^^^^^ expected safe fn, found unsafe fn
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `extern "C" fn()`
+                 found fn item `unsafe extern "C" fn() {default_unsafe_foo}`
+   = note: unsafe functions cannot be coerced into safe function pointers
+
+error[E0308]: mismatched types
+  --> $DIR/foreign-fn.rs:19:30
+   |
+LL |     let _: extern "C" fn() = unsafe_foo;
+   |            ---------------   ^^^^^^^^^^ expected safe fn, found unsafe fn
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `extern "C" fn()`
+                 found fn item `unsafe extern "C" fn() {unsafe_foo}`
+   = note: unsafe functions cannot be coerced into safe function pointers
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,294 @@
+error[E0271]: type mismatch resolving `<A as Trait>::Associated == ()`
+  --> $DIR/issue-87261.rs:56:19
+   |
+LL |     accepts_trait(a);
+   |     ------------- ^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<A as Trait>::Associated`
+note: required by a bound in `accepts_trait`
+  --> $DIR/issue-87261.rs:43:27
+   |
+LL | fn accepts_trait<T: Trait<Associated = ()>>(_: T) {}
+   |                           ^^^^^^^^^^^^^^^ required by this bound in `accepts_trait`
+help: consider constraining the associated type `<A as Trait>::Associated` to `()`
+   |
+LL |     A: Trait<Associated = ()> + 'static,
+   |             +++++++++++++++++
+
+error[E0271]: type mismatch resolving `<B as Trait>::Associated == ()`
+  --> $DIR/issue-87261.rs:59:19
+   |
+LL |     accepts_trait(b);
+   |     ------------- ^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<B as Trait>::Associated`
+   = help: consider constraining the associated type `<B as Trait>::Associated` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: required by a bound in `accepts_trait`
+  --> $DIR/issue-87261.rs:43:27
+   |
+LL | fn accepts_trait<T: Trait<Associated = ()>>(_: T) {}
+   |                           ^^^^^^^^^^^^^^^ required by this bound in `accepts_trait`
+
+error[E0271]: type mismatch resolving `<C as Trait>::Associated == ()`
+  --> $DIR/issue-87261.rs:62:19
+   |
+LL |     accepts_trait(c);
+   |     ------------- ^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<C as Trait>::Associated`
+note: required by a bound in `accepts_trait`
+  --> $DIR/issue-87261.rs:43:27
+   |
+LL | fn accepts_trait<T: Trait<Associated = ()>>(_: T) {}
+   |                           ^^^^^^^^^^^^^^^ required by this bound in `accepts_trait`
+help: consider constraining the associated type `<C as Trait>::Associated` to `()`
+   |
+LL |     C: Trait<Associated = ()> + Foo,
+   |             +++++++++++++++++
+
+error[E0271]: type mismatch resolving `<D as Trait>::Associated == ()`
+  --> $DIR/issue-87261.rs:65:19
+   |
+LL |     accepts_trait(d);
+   |     ------------- ^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<D as Trait>::Associated`
+   = help: consider constraining the associated type `<D as Trait>::Associated` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: required by a bound in `accepts_trait`
+  --> $DIR/issue-87261.rs:43:27
+   |
+LL | fn accepts_trait<T: Trait<Associated = ()>>(_: T) {}
+   |                           ^^^^^^^^^^^^^^^ required by this bound in `accepts_trait`
+
+error[E0271]: type mismatch resolving `<E as GenericTrait<()>>::Associated == ()`
+  --> $DIR/issue-87261.rs:68:27
+   |
+LL |     accepts_generic_trait(e);
+   |     --------------------- ^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<E as GenericTrait<()>>::Associated`
+note: required by a bound in `accepts_generic_trait`
+  --> $DIR/issue-87261.rs:44:46
+   |
+LL | fn accepts_generic_trait<T: GenericTrait<(), Associated = ()>>(_: T) {}
+   |                                              ^^^^^^^^^^^^^^^ required by this bound in `accepts_generic_trait`
+help: consider constraining the associated type `<E as GenericTrait<()>>::Associated` to `()`
+   |
+LL |     E: GenericTrait<(), Associated = ()> + 'static,
+   |                       +++++++++++++++++
+
+error[E0271]: type mismatch resolving `<F as GenericTrait<()>>::Associated == ()`
+  --> $DIR/issue-87261.rs:71:27
+   |
+LL |     accepts_generic_trait(f);
+   |     --------------------- ^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<F as GenericTrait<()>>::Associated`
+note: required by a bound in `accepts_generic_trait`
+  --> $DIR/issue-87261.rs:44:46
+   |
+LL | fn accepts_generic_trait<T: GenericTrait<(), Associated = ()>>(_: T) {}
+   |                                              ^^^^^^^^^^^^^^^ required by this bound in `accepts_generic_trait`
+help: consider constraining the associated type `<F as GenericTrait<()>>::Associated` to `()`
+   |
+LL |     F: GenericTrait<(), Associated = ()> + Foo,
+   |                       +++++++++++++++++
+
+error[E0271]: type mismatch resolving `<G as GenericTrait<()>>::Associated == ()`
+  --> $DIR/issue-87261.rs:74:27
+   |
+LL |     accepts_generic_trait(g);
+   |     --------------------- ^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<G as GenericTrait<()>>::Associated`
+   = help: consider constraining the associated type `<G as GenericTrait<()>>::Associated` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: required by a bound in `accepts_generic_trait`
+  --> $DIR/issue-87261.rs:44:46
+   |
+LL | fn accepts_generic_trait<T: GenericTrait<(), Associated = ()>>(_: T) {}
+   |                                              ^^^^^^^^^^^^^^^ required by this bound in `accepts_generic_trait`
+
+error[E0271]: type mismatch resolving `<impl Trait as Trait>::Associated == ()`
+  --> $DIR/issue-87261.rs:79:19
+   |
+LL | fn returns_opaque() -> impl Trait + 'static {
+   |                        -------------------- the found opaque type
+...
+LL |     accepts_trait(returns_opaque());
+   |     ------------- ^^^^^^^^^^^^^^^^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<impl Trait + 'static as Trait>::Associated`
+note: required by a bound in `accepts_trait`
+  --> $DIR/issue-87261.rs:43:27
+   |
+LL | fn accepts_trait<T: Trait<Associated = ()>>(_: T) {}
+   |                           ^^^^^^^^^^^^^^^ required by this bound in `accepts_trait`
+help: consider constraining the associated type `<impl Trait + 'static as Trait>::Associated` to `()`
+   |
+LL | fn returns_opaque() -> impl Trait<Associated = ()> + 'static {
+   |                                  +++++++++++++++++
+
+error[E0271]: type mismatch resolving `<impl DerivedTrait as Trait>::Associated == ()`
+  --> $DIR/issue-87261.rs:82:19
+   |
+LL | fn returns_opaque_derived() -> impl DerivedTrait + 'static {
+   |                                --------------------------- the found opaque type
+...
+LL |     accepts_trait(returns_opaque_derived());
+   |     ------------- ^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<impl DerivedTrait + 'static as Trait>::Associated`
+note: required by a bound in `accepts_trait`
+  --> $DIR/issue-87261.rs:43:27
+   |
+LL | fn accepts_trait<T: Trait<Associated = ()>>(_: T) {}
+   |                           ^^^^^^^^^^^^^^^ required by this bound in `accepts_trait`
+help: consider constraining the associated type `<impl DerivedTrait + 'static as Trait>::Associated` to `()`
+   |
+LL | fn returns_opaque_derived() -> impl DerivedTrait<Associated = ()> + 'static {
+   |                                                 +++++++++++++++++
+
+error[E0271]: type mismatch resolving `<impl Trait + Foo as Trait>::Associated == ()`
+  --> $DIR/issue-87261.rs:85:19
+   |
+LL | fn returns_opaque_foo() -> impl Trait + Foo {
+   |                            ---------------- the found opaque type
+...
+LL |     accepts_trait(returns_opaque_foo());
+   |     ------------- ^^^^^^^^^^^^^^^^^^^^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<impl Trait + Foo as Trait>::Associated`
+note: required by a bound in `accepts_trait`
+  --> $DIR/issue-87261.rs:43:27
+   |
+LL | fn accepts_trait<T: Trait<Associated = ()>>(_: T) {}
+   |                           ^^^^^^^^^^^^^^^ required by this bound in `accepts_trait`
+help: consider constraining the associated type `<impl Trait + Foo as Trait>::Associated` to `()`
+   |
+LL | fn returns_opaque_foo() -> impl Trait<Associated = ()> + Foo {
+   |                                      +++++++++++++++++
+
+error[E0271]: type mismatch resolving `<impl DerivedTrait + Foo as Trait>::Associated == ()`
+  --> $DIR/issue-87261.rs:88:19
+   |
+LL | fn returns_opaque_derived_foo() -> impl DerivedTrait + Foo {
+   |                                    ----------------------- the found opaque type
+...
+LL |     accepts_trait(returns_opaque_derived_foo());
+   |     ------------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<impl DerivedTrait + Foo as Trait>::Associated`
+   = help: consider constraining the associated type `<impl DerivedTrait + Foo as Trait>::Associated` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: required by a bound in `accepts_trait`
+  --> $DIR/issue-87261.rs:43:27
+   |
+LL | fn accepts_trait<T: Trait<Associated = ()>>(_: T) {}
+   |                           ^^^^^^^^^^^^^^^ required by this bound in `accepts_trait`
+
+error[E0271]: type mismatch resolving `<impl GenericTrait<()> as GenericTrait<()>>::Associated == ()`
+  --> $DIR/issue-87261.rs:91:27
+   |
+LL | fn returns_opaque_generic() -> impl GenericTrait<()> + 'static {
+   |                                ------------------------------- the found opaque type
+...
+LL |     accepts_generic_trait(returns_opaque_generic());
+   |     --------------------- ^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<impl GenericTrait<()> + 'static as GenericTrait<()>>::Associated`
+note: required by a bound in `accepts_generic_trait`
+  --> $DIR/issue-87261.rs:44:46
+   |
+LL | fn accepts_generic_trait<T: GenericTrait<(), Associated = ()>>(_: T) {}
+   |                                              ^^^^^^^^^^^^^^^ required by this bound in `accepts_generic_trait`
+help: consider constraining the associated type `<impl GenericTrait<()> + 'static as GenericTrait<()>>::Associated` to `()`
+   |
+LL | fn returns_opaque_generic() -> impl GenericTrait<(), Associated = ()> + 'static {
+   |                                                    +++++++++++++++++
+
+error[E0271]: type mismatch resolving `<impl GenericTrait<()> + Foo as GenericTrait<()>>::Associated == ()`
+  --> $DIR/issue-87261.rs:94:27
+   |
+LL | fn returns_opaque_generic_foo() -> impl GenericTrait<()> + Foo {
+   |                                    --------------------------- the found opaque type
+...
+LL |     accepts_generic_trait(returns_opaque_generic_foo());
+   |     --------------------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<impl GenericTrait<()> + Foo as GenericTrait<()>>::Associated`
+note: required by a bound in `accepts_generic_trait`
+  --> $DIR/issue-87261.rs:44:46
+   |
+LL | fn accepts_generic_trait<T: GenericTrait<(), Associated = ()>>(_: T) {}
+   |                                              ^^^^^^^^^^^^^^^ required by this bound in `accepts_generic_trait`
+help: consider constraining the associated type `<impl GenericTrait<()> + Foo as GenericTrait<()>>::Associated` to `()`
+   |
+LL | fn returns_opaque_generic_foo() -> impl GenericTrait<(), Associated = ()> + Foo {
+   |                                                        +++++++++++++++++
+
+error[E0271]: type mismatch resolving `<impl GenericTrait<()> + GenericTrait<u8> as GenericTrait<()>>::Associated == ()`
+  --> $DIR/issue-87261.rs:97:27
+   |
+LL | fn returns_opaque_generic_duplicate() -> impl GenericTrait<()> + GenericTrait<u8> {
+   |                                          ---------------------------------------- the found opaque type
+...
+LL |     accepts_generic_trait(returns_opaque_generic_duplicate());
+   |     --------------------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:    expected unit type `()`
+           found associated type `<impl GenericTrait<()> + GenericTrait<u8> as GenericTrait<()>>::Associated`
+   = help: consider constraining the associated type `<impl GenericTrait<()> + GenericTrait<u8> as GenericTrait<()>>::Associated` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: required by a bound in `accepts_generic_trait`
+  --> $DIR/issue-87261.rs:44:46
+   |
+LL | fn accepts_generic_trait<T: GenericTrait<(), Associated = ()>>(_: T) {}
+   |                                              ^^^^^^^^^^^^^^^ required by this bound in `accepts_generic_trait`
+
+error: aborting due to 14 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

@@ -1,0 +1,15 @@
+error[E0405]: cannot find trait `Foo` in this scope
+  --> $DIR/avoid-getting-associated-items-of-undefined-trait.rs:8:22
+   |
+LL |     let _: dyn Tr + ?Foo<Assoc = ()>;
+   |                      ^^^ not found in this scope
+
+error: relaxed bounds are not permitted in trait object types
+  --> $DIR/avoid-getting-associated-items-of-undefined-trait.rs:8:21
+   |
+LL |     let _: dyn Tr + ?Foo<Assoc = ()>;
+   |                     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0405`.

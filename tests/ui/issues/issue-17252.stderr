@@ -1,0 +1,41 @@
+error[E0391]: cycle detected when checking if `FOO` is a trivial const
+  --> $DIR/issue-17252.rs:1:1
+   |
+LL | const FOO: usize = FOO;
+   | ^^^^^^^^^^^^^^^^
+   |
+note: ...which requires building MIR for `FOO`...
+  --> $DIR/issue-17252.rs:1:1
+   |
+LL | const FOO: usize = FOO;
+   | ^^^^^^^^^^^^^^^^
+   = note: ...which again requires checking if `FOO` is a trivial const, completing the cycle
+note: cycle used when simplifying constant for the type system `FOO`
+  --> $DIR/issue-17252.rs:1:1
+   |
+LL | const FOO: usize = FOO;
+   | ^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when checking if `main::BAR` is a trivial const
+  --> $DIR/issue-17252.rs:6:9
+   |
+LL |         const BAR: usize = BAR;
+   |         ^^^^^^^^^^^^^^^^
+   |
+note: ...which requires building MIR for `main::BAR`...
+  --> $DIR/issue-17252.rs:6:9
+   |
+LL |         const BAR: usize = BAR;
+   |         ^^^^^^^^^^^^^^^^
+   = note: ...which again requires checking if `main::BAR` is a trivial const, completing the cycle
+note: cycle used when simplifying constant for the type system `main::BAR`
+  --> $DIR/issue-17252.rs:6:9
+   |
+LL |         const BAR: usize = BAR;
+   |         ^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

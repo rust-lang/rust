@@ -1,0 +1,239 @@
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:17:13
+   |
+LL |     let _ = !true;
+   |             ^^^^^ help: try: `false`
+   |
+   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:20:13
+   |
+LL |     let _ = !false;
+   |             ^^^^^^ help: try: `true`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:23:13
+   |
+LL |     let _ = !!a;
+   |             ^^^ help: try: `a`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:26:13
+   |
+LL |     let _ = false || a;
+   |             ^^^^^^^^^^ help: try: `a`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:32:13
+   |
+LL |     let _ = !(!a && b);
+   |             ^^^^^^^^^^ help: try: `a || !b`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:35:13
+   |
+LL |     let _ = !(!a || b);
+   |             ^^^^^^^^^^ help: try: `a && !b`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:38:13
+   |
+LL |     let _ = !a && !(b && c);
+   |             ^^^^^^^^^^^^^^^ help: try: `!(a || b && c)`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:47:13
+   |
+LL |     let _ = a == b && c == 5 && a == b;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = a == b && c == 5 && a == b;
+LL +     let _ = !(a != b || c != 5);
+   |
+LL -     let _ = a == b && c == 5 && a == b;
+LL +     let _ = a == b && c == 5;
+   |
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:50:13
+   |
+LL |     let _ = a == b || c == 5 || a == b;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = a == b || c == 5 || a == b;
+LL +     let _ = !(a != b && c != 5);
+   |
+LL -     let _ = a == b || c == 5 || a == b;
+LL +     let _ = a == b || c == 5;
+   |
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:53:13
+   |
+LL |     let _ = a == b && c == 5 && b == a;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = a == b && c == 5 && b == a;
+LL +     let _ = !(a != b || c != 5);
+   |
+LL -     let _ = a == b && c == 5 && b == a;
+LL +     let _ = a == b && c == 5;
+   |
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:56:13
+   |
+LL |     let _ = a != b || !(a != b || c == d);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = a != b || !(a != b || c == d);
+LL +     let _ = !(a == b && c == d);
+   |
+LL -     let _ = a != b || !(a != b || c == d);
+LL +     let _ = a != b || c != d;
+   |
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:59:13
+   |
+LL |     let _ = a != b && !(a != b && c == d);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = a != b && !(a != b && c == d);
+LL +     let _ = !(a == b || c == d);
+   |
+LL -     let _ = a != b && !(a != b && c == d);
+LL +     let _ = a != b && c != d;
+   |
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:90:8
+   |
+LL |     if matches!(true, true) && true {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(true, true)`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:171:8
+   |
+LL |     if !(12 == a) {}
+   |        ^^^^^^^^^^ help: try: `(12 != a)`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:173:8
+   |
+LL |     if !(a == 12) {}
+   |        ^^^^^^^^^^ help: try: `(a != 12)`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:175:8
+   |
+LL |     if !(12 != a) {}
+   |        ^^^^^^^^^^ help: try: `(12 == a)`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:177:8
+   |
+LL |     if !(a != 12) {}
+   |        ^^^^^^^^^^ help: try: `(a == 12)`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:182:8
+   |
+LL |     if !b == true {}
+   |        ^^^^^^^^^^ help: try: `b != true`
+
+error: equality checks against true are unnecessary
+  --> tests/ui/nonminimal_bool.rs:182:8
+   |
+LL |     if !b == true {}
+   |        ^^^^^^^^^^ help: try: `!b`
+   |
+   = note: `-D clippy::bool-comparison` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bool_comparison)]`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:185:8
+   |
+LL |     if !b != true {}
+   |        ^^^^^^^^^^ help: try: `b == true`
+
+error: inequality checks against true can be replaced by a negation
+  --> tests/ui/nonminimal_bool.rs:185:8
+   |
+LL |     if !b != true {}
+   |        ^^^^^^^^^^ help: try: `b`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:188:8
+   |
+LL |     if true == !b {}
+   |        ^^^^^^^^^^ help: try: `true != b`
+
+error: equality checks against true are unnecessary
+  --> tests/ui/nonminimal_bool.rs:188:8
+   |
+LL |     if true == !b {}
+   |        ^^^^^^^^^^ help: try: `!b`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:191:8
+   |
+LL |     if true != !b {}
+   |        ^^^^^^^^^^ help: try: `true == b`
+
+error: inequality checks against true can be replaced by a negation
+  --> tests/ui/nonminimal_bool.rs:191:8
+   |
+LL |     if true != !b {}
+   |        ^^^^^^^^^^ help: try: `b`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:194:8
+   |
+LL |     if !b == !c {}
+   |        ^^^^^^^^ help: try: `b == c`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:196:8
+   |
+LL |     if !b != !c {}
+   |        ^^^^^^^^ help: try: `b != c`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:212:8
+   |
+LL |     if !(a < 2.0 && !b) {
+   |        ^^^^^^^^^^^^^^^^ help: try: `a >= 2.0 || b`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:231:12
+   |
+LL |         if !(matches!(ty, TyKind::Ref(_, _, _)) && !is_mutable(&expr)) {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!matches!(ty, TyKind::Ref(_, _, _)) || is_mutable(&expr)`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:251:8
+   |
+LL |     if !S != true {}
+   |        ^^^^^^^^^^ help: try: `S == true`
+
+error: inequality checks against true can be replaced by a negation
+  --> tests/ui/nonminimal_bool.rs:251:8
+   |
+LL |     if !S != true {}
+   |        ^^^^^^^^^^ help: try: `!!S`
+
+error: aborting due to 31 previous errors
+

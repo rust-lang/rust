@@ -1,0 +1,10 @@
+error: the constant `fn_item` is not of type `usize`
+  --> $DIR/unexpected-fn-item-in-array.rs:7:6
+   |
+LL | impl A<[usize; fn_item]> for () {}
+   |      ^^^^^^^^^^^^^^^^^^^ expected `usize`, found fn item
+   |
+   = note: the length of array `[usize; fn_item]` must be type `usize`
+
+error: aborting due to 1 previous error
+

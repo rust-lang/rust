@@ -1,0 +1,21 @@
+
+# Content that triggers the lint goes here
+
+[package]
+name = "feature_name"
+version = "0.1.0"
+publish = false
+
+[workspace]
+
+[features]
+use-qwq = []
+use_qwq = []
+with-owo = []
+with_owo = []
+qvq-support = []
+qvq_support = []
+no-qaq = []
+no_qaq = []
+not-orz = []
+not_orz = []

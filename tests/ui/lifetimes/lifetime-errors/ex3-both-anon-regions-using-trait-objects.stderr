@@ -1,0 +1,32 @@
+error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
+  --> $DIR/ex3-both-anon-regions-using-trait-objects.rs:2:3
+   |
+LL |   y.push(z);
+   |   ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL | fn foo(x:Box<dyn Fn(&u8, &u8)> , mut y: Vec<&u8>, z: &u8) {
+   |                                  +++
+
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-using-trait-objects.rs:2:3
+   |
+LL | fn foo(x:Box<dyn Fn(&u8, &u8)> , y: Vec<&u8>, z: &u8) {
+   |                                         -        - let's call the lifetime of this reference `'1`
+   |                                         |
+   |                                         let's call the lifetime of this reference `'2`
+LL |   y.push(z);
+   |   ^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `Vec<&u8>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(x:Box<dyn Fn(&u8, &u8)> , y: Vec<&'a u8>, z: &'a u8) {
+   |       ++++                                   ++          ++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

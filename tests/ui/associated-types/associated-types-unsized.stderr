@@ -1,0 +1,16 @@
+error[E0277]: the size for values of type `<T as Get>::Value` cannot be known at compilation time
+  --> $DIR/associated-types-unsized.rs:10:9
+   |
+LL |     let x = t.get();
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `<T as Get>::Value`
+   = note: all local variables must have a statically known size
+help: consider further restricting the associated type
+   |
+LL | fn foo<T:Get>(t: T) where <T as Get>::Value: Sized {
+   |                     ++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

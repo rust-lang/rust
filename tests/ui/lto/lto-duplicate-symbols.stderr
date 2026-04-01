@@ -1,0 +1,6 @@
+warning: Linking globals named 'foo': symbol multiply defined!
+
+error: failed to load bitcode of module "lto-duplicate-symbols2.lto_duplicate_symbols2.HASH-cgu.0.rcgu.o": 
+
+error: aborting due to 1 previous error; 1 warning emitted
+

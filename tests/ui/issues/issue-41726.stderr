@@ -1,0 +1,16 @@
+error[E0596]: cannot borrow data in an index of `HashMap<String, Vec<String>>` as mutable
+  --> $DIR/issue-41726.rs:5:9
+   |
+LL |         things[src.as_str()].sort();
+   |         ^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<String, Vec<String>>`
+help: to modify a `HashMap<String, Vec<String>>` use `.get_mut()`
+   |
+LL -         things[src.as_str()].sort();
+LL +         if let Some(val) = things.get_mut(src.as_str()) { val.sort(); };
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

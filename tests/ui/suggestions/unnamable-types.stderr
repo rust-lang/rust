@@ -1,0 +1,69 @@
+error: missing type for `const` item
+  --> $DIR/unnamable-types.rs:6:8
+   |
+LL | const A = 5;
+   |        ^ help: provide a type for the constant: `: i32`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
+  --> $DIR/unnamable-types.rs:10:11
+   |
+LL | static B: _ = "abc";
+   |           ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL - static B: _ = "abc";
+LL + static B: &str = "abc";
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/unnamable-types.rs:17:10
+   |
+LL | const C: _ = || 42;
+   |          ^ not allowed in type signatures
+   |
+note: however, the inferred type `{closure@unnamable-types.rs:17:14}` cannot be named
+  --> $DIR/unnamable-types.rs:17:14
+   |
+LL | const C: _ = || 42;
+   |              ^^^^^
+
+error: missing type for `const` item
+  --> $DIR/unnamable-types.rs:23:8
+   |
+LL | const D = S { t: { let i = 0; move || -> i32 { i } } };
+   |        ^
+   |
+note: however, the inferred type `S<{closure@unnamable-types.rs:23:31}>` cannot be named
+  --> $DIR/unnamable-types.rs:23:11
+   |
+LL | const D = S { t: { let i = 0; move || -> i32 { i } } };
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing type for `const` item
+  --> $DIR/unnamable-types.rs:29:8
+   |
+LL | const E = foo;
+   |        ^ help: provide a type for the constant: `: fn() -> i32`
+
+error: missing type for `const` item
+  --> $DIR/unnamable-types.rs:32:8
+   |
+LL | const F = S { t: foo };
+   |        ^ help: provide a type for the constant: `: S<fn() -> i32>`
+
+error: missing type for `const` item
+  --> $DIR/unnamable-types.rs:37:8
+   |
+LL | const G = #[coroutine] || -> i32 { yield 0; return 1; };
+   |        ^
+   |
+note: however, the inferred type `{coroutine@$DIR/unnamable-types.rs:37:24: 37:33}` cannot be named
+  --> $DIR/unnamable-types.rs:37:24
+   |
+LL | const G = #[coroutine] || -> i32 { yield 0; return 1; };
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

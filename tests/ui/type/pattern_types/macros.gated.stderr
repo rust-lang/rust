@@ -1,0 +1,10 @@
+error: `$t:ty` is followed by `is`, which is not allowed for `ty` fragments
+  --> $DIR/macros.rs:10:12
+   |
+LL |     ($t:ty is $p:pat) => {};
+   |            ^^ not allowed after `ty` fragments
+   |
+   = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,314 @@
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:25:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         Foo { bar: 42 };
+LL | |         0..10;
+LL | |         ..;
+...  |
+LL | |         foo();
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:33:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         Foo { bar: 42 };
+LL | |         0..10;
+LL | |         ..;
+...  |
+LL | |         foo();
+LL | |     }
+   | |_____^
+   = note: `-D clippy::if-same-then-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::if_same_then_else)]`
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:69:21
+   |
+LL |     let _ = if true { 0.0 } else { 0.0 };
+   |                     ^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:69:34
+   |
+LL |     let _ = if true { 0.0 } else { 0.0 };
+   |                                  ^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:72:21
+   |
+LL |     let _ = if true { -0.0 } else { -0.0 };
+   |                     ^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:72:35
+   |
+LL |     let _ = if true { -0.0 } else { -0.0 };
+   |                                   ^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:84:21
+   |
+LL |     let _ = if true { 42 } else { 42 };
+   |                     ^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:84:33
+   |
+LL |     let _ = if true { 42 } else { 42 };
+   |                                 ^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:87:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         let bar = if true { 42 } else { 43 };
+LL | |
+LL | |         while foo() {
+...  |
+LL | |         bar + 1;
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:94:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         let bar = if true { 42 } else { 43 };
+LL | |
+LL | |         while foo() {
+...  |
+LL | |         bar + 1;
+LL | |     }
+   | |_____^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:228:14
+   |
+LL |           if x {
+   |  ______________^
+LL | |             0_u8.is_power_of_two()
+LL | |         } else {
+   | |_________^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:230:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |             0_u8.is_power_of_two()
+LL | |         }
+   | |_________^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:257:14
+   |
+LL |     _ = if x { a == b } else { b == a };
+   |              ^^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:257:30
+   |
+LL |     _ = if x { a == b } else { b == a };
+   |                              ^^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:259:14
+   |
+LL |     _ = if x { a != b } else { b != a };
+   |              ^^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:259:30
+   |
+LL |     _ = if x { a != b } else { b != a };
+   |                              ^^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:263:14
+   |
+LL |     _ = if x { a < b } else { b > a };
+   |              ^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:263:29
+   |
+LL |     _ = if x { a < b } else { b > a };
+   |                             ^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:265:14
+   |
+LL |     _ = if x { a <= b } else { b >= a };
+   |              ^^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:265:30
+   |
+LL |     _ = if x { a <= b } else { b >= a };
+   |                              ^^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:267:14
+   |
+LL |     _ = if x { a > b } else { b < a };
+   |              ^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:267:29
+   |
+LL |     _ = if x { a > b } else { b < a };
+   |                             ^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:269:14
+   |
+LL |     _ = if x { a >= b } else { b <= a };
+   |              ^^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:269:30
+   |
+LL |     _ = if x { a >= b } else { b <= a };
+   |                              ^^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:282:14
+   |
+LL |     _ = if x { a * b } else { b * a };
+   |              ^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:282:29
+   |
+LL |     _ = if x { a * b } else { b * a };
+   |                             ^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:284:14
+   |
+LL |     _ = if x { a + b } else { b + a };
+   |              ^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:284:29
+   |
+LL |     _ = if x { a + b } else { b + a };
+   |                             ^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:286:14
+   |
+LL |     _ = if x { a & b } else { b & a };
+   |              ^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:286:29
+   |
+LL |     _ = if x { a & b } else { b & a };
+   |                             ^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:288:14
+   |
+LL |     _ = if x { a ^ b } else { b ^ a };
+   |              ^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:288:29
+   |
+LL |     _ = if x { a ^ b } else { b ^ a };
+   |                             ^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:290:14
+   |
+LL |     _ = if x { a | b } else { b | a };
+   |              ^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:290:29
+   |
+LL |     _ = if x { a | b } else { b | a };
+   |                             ^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:294:14
+   |
+LL |     _ = if x { a == b } else { b == a };
+   |              ^^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:294:30
+   |
+LL |     _ = if x { a == b } else { b == a };
+   |                              ^^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:296:14
+   |
+LL |     _ = if x { a != b } else { b != a };
+   |              ^^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:296:30
+   |
+LL |     _ = if x { a != b } else { b != a };
+   |                              ^^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:300:14
+   |
+LL |     _ = if x { a < b } else { b > a };
+   |              ^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:300:29
+   |
+LL |     _ = if x { a < b } else { b > a };
+   |                             ^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:302:14
+   |
+LL |     _ = if x { a <= b } else { b >= a };
+   |              ^^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:302:30
+   |
+LL |     _ = if x { a <= b } else { b >= a };
+   |                              ^^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:304:14
+   |
+LL |     _ = if x { a > b } else { b < a };
+   |              ^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:304:29
+   |
+LL |     _ = if x { a > b } else { b < a };
+   |                             ^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:306:14
+   |
+LL |     _ = if x { a >= b } else { b <= a };
+   |              ^^^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:306:30
+   |
+LL |     _ = if x { a >= b } else { b <= a };
+   |                              ^^^^^^^^^^
+
+error: aborting due to 23 previous errors
+

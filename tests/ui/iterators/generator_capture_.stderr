@@ -1,0 +1,25 @@
+error[E0382]: use of moved value: `f`
+  --> $DIR/generator_capture_.rs:21:17
+   |
+LL |     let f = {
+   |         - move occurs because `f` has type `{gen closure@$DIR/generator_capture_.rs:10:17: 10:24}`, which does not implement the `Copy` trait
+...
+LL |     let mut i = f();
+   |                 --- `f` moved due to this call
+...
+LL |     let mut i = f();
+   |                 ^ value used here after move
+   |
+note: this value implements `FnOnce`, which causes it to be moved when called
+  --> $DIR/generator_capture_.rs:16:17
+   |
+LL |     let mut i = f();
+   |                 ^
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let mut i = f.clone()();
+   |                  ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

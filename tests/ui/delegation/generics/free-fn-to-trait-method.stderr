@@ -1,0 +1,47 @@
+error[E0277]: the trait bound `S: Copy` is not satisfied
+  --> $DIR/free-fn-to-trait-method.rs:39:18
+   |
+LL |     bounds(&0u8, S, U);
+   |     ------       ^ the trait `Copy` is not implemented for `S`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `bounds`
+  --> $DIR/free-fn-to-trait-method.rs:23:54
+   |
+LL |         fn foo<U: Clone>(&self, t: T, u: U) where T: Copy {}
+   |                                                      ^^^^ required by this bound in `bounds`
+...
+LL | reuse bounds::Trait::foo as bounds;
+   |                             ------ required by a bound in this function
+help: consider annotating `S` with `#[derive(Copy)]`
+   |
+LL +     #[derive(Copy)]
+LL |     struct S;
+   |
+
+error[E0277]: the trait bound `U: Clone` is not satisfied
+  --> $DIR/free-fn-to-trait-method.rs:39:21
+   |
+LL |     bounds(&0u8, S, U);
+   |     ------          ^ the trait `Clone` is not implemented for `U`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `bounds`
+  --> $DIR/free-fn-to-trait-method.rs:23:19
+   |
+LL |         fn foo<U: Clone>(&self, t: T, u: U) where T: Copy {}
+   |                   ^^^^^ required by this bound in `bounds`
+...
+LL | reuse bounds::Trait::foo as bounds;
+   |                             ------ required by a bound in this function
+help: consider annotating `U` with `#[derive(Clone)]`
+   |
+LL +     #[derive(Clone)]
+LL |     struct U;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

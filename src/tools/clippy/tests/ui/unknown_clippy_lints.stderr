@@ -1,0 +1,71 @@
+error: unknown lint: `clippy::All`
+  --> tests/ui/unknown_clippy_lints.rs:3:10
+   |
+LL | #![allow(clippy::All)]
+   |          ^^^^^^^^^^^ help: did you mean: `clippy::all`
+   |
+   = note: `-D unknown-lints` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unknown_lints)]`
+
+error: unknown lint: `clippy::CMP_OWNED`
+  --> tests/ui/unknown_clippy_lints.rs:5:9
+   |
+LL | #![warn(clippy::CMP_OWNED)]
+   |         ^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::cmp_owned`
+
+error: unknown lint: `clippy::if_not_els`
+  --> tests/ui/unknown_clippy_lints.rs:9:8
+   |
+LL | #[warn(clippy::if_not_els)]
+   |        ^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::if_not_else`
+
+error: unknown lint: `clippy::UNNecsaRy_cAst`
+  --> tests/ui/unknown_clippy_lints.rs:11:8
+   |
+LL | #[warn(clippy::UNNecsaRy_cAst)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::unnecessary_cast`
+
+error: unknown lint: `clippy::useles_transute`
+  --> tests/ui/unknown_clippy_lints.rs:13:8
+   |
+LL | #[warn(clippy::useles_transute)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::useless_transmute`
+
+error: unknown lint: `clippy::dead_cod`
+  --> tests/ui/unknown_clippy_lints.rs:16:8
+   |
+LL | #[warn(clippy::dead_cod)]
+   |        ^^^^^^^^^^^^^^^^
+   |
+help: a lint with a similar name exists in `rustc` lints
+   |
+LL - #[warn(clippy::dead_cod)]
+LL + #[warn(dead_code)]
+   |
+
+error: unknown lint: `clippy::unused_colle`
+  --> tests/ui/unknown_clippy_lints.rs:19:8
+   |
+LL | #[warn(clippy::unused_colle)]
+   |        ^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::unused_self`
+
+error: unknown lint: `clippy::const_static_lifetim`
+  --> tests/ui/unknown_clippy_lints.rs:22:8
+   |
+LL | #[warn(clippy::const_static_lifetim)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::redundant_static_lifetimes`
+
+error: unknown lint: `clippy::missing_docs`
+  --> tests/ui/unknown_clippy_lints.rs:25:8
+   |
+LL | #[warn(clippy::missing_docs)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+help: a lint with a similar name exists in `rustc` lints
+   |
+LL - #[warn(clippy::missing_docs)]
+LL + #[warn(missing_docs)]
+   |
+
+error: aborting due to 9 previous errors
+

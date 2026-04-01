@@ -1,0 +1,14 @@
+error: anonymous constants with inferred types are not yet supported
+  --> $DIR/bad_inference.rs:12:25
+   |
+LL |     let a = foo::<_, _, { [12_u8; 2] }>();
+   |                         ^^^^^^^^^^^^^^
+
+error: anonymous constants with inferred types are not yet supported
+  --> $DIR/bad_inference.rs:16:34
+   |
+LL |     let b: [u8; 2] = foo::<_, _, { [12; _] }>();
+   |                                  ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,68 @@
+warning: named argument `f` is not used by name
+  --> $DIR/issue-99907.rs:5:30
+   |
+LL |     println!("Hello {:.1}!", f = 0.02f32);
+   |                     -----    ^ this named argument is referred to by position in formatting string
+   |                     |
+   |                     this formatting argument uses named argument `f` by position
+   |
+   = note: `#[warn(named_arguments_used_positionally)]` on by default
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     println!("Hello {f:.1}!", f = 0.02f32);
+   |                      +
+
+warning: named argument `f` is not used by name
+  --> $DIR/issue-99907.rs:9:31
+   |
+LL |     println!("Hello {:1.1}!", f = 0.02f32);
+   |                     ------    ^ this named argument is referred to by position in formatting string
+   |                     |
+   |                     this formatting argument uses named argument `f` by position
+   |
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     println!("Hello {f:1.1}!", f = 0.02f32);
+   |                      +
+
+warning: named argument `f` is not used by name
+  --> $DIR/issue-99907.rs:13:27
+   |
+LL |     println!("Hello {}!", f = 0.02f32);
+   |                     --    ^ this named argument is referred to by position in formatting string
+   |                     |
+   |                     this formatting argument uses named argument `f` by position
+   |
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     println!("Hello {f}!", f = 0.02f32);
+   |                      +
+
+warning: named argument `f` is not used by name
+  --> $DIR/issue-99907.rs:17:28
+   |
+LL |     println!("Hello { }!", f = 0.02f32);
+   |                     ---    ^ this named argument is referred to by position in formatting string
+   |                     |
+   |                     this formatting argument uses named argument `f` by position
+   |
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     println!("Hello {f}!", f = 0.02f32);
+   |                      +
+
+warning: named argument `f` is not used by name
+  --> $DIR/issue-99907.rs:21:29
+   |
+LL |     println!("Hello {  }!", f = 0.02f32);
+   |                     ----    ^ this named argument is referred to by position in formatting string
+   |                     |
+   |                     this formatting argument uses named argument `f` by position
+   |
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     println!("Hello {f}!", f = 0.02f32);
+   |                      +
+
+warning: 5 warnings emitted
+

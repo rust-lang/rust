@@ -1,0 +1,32 @@
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
+  --> $DIR/homogeneous-aggr-transparent.rs:25:1
+   |
+LL | pub type Test0 = Tuple;
+   | ^^^^^^^^^^^^^^
+
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
+  --> $DIR/homogeneous-aggr-transparent.rs:29:1
+   |
+LL | pub type Test1 = Wrapper1<Tuple>;
+   | ^^^^^^^^^^^^^^
+
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
+  --> $DIR/homogeneous-aggr-transparent.rs:33:1
+   |
+LL | pub type Test2 = Wrapper2<Tuple>;
+   | ^^^^^^^^^^^^^^
+
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
+  --> $DIR/homogeneous-aggr-transparent.rs:37:1
+   |
+LL | pub type Test3 = Wrapper3<Tuple>;
+   | ^^^^^^^^^^^^^^
+
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
+  --> $DIR/homogeneous-aggr-transparent.rs:41:1
+   |
+LL | pub type Test4 = WrapperUnion<Tuple>;
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

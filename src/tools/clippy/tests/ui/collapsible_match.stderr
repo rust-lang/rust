@@ -1,0 +1,340 @@
+error: this `match` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match.rs:15:20
+   |
+LL |           Ok(val) => match val {
+   |  ____________________^
+LL | |
+LL | |             Some(n) => foo(n),
+LL | |             _ => return,
+LL | |         },
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:15:12
+   |
+LL |         Ok(val) => match val {
+   |            ^^^ replace this binding
+LL |
+LL |             Some(n) => foo(n),
+   |             ^^^^^^^ with this pattern
+   = note: `-D clippy::collapsible-match` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_match)]`
+
+error: this `match` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match.rs:25:20
+   |
+LL |           Ok(val) => match val {
+   |  ____________________^
+LL | |
+LL | |             Some(n) => foo(n),
+LL | |             _ => return,
+LL | |         },
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:25:12
+   |
+LL |         Ok(val) => match val {
+   |            ^^^ replace this binding
+LL |
+LL |             Some(n) => foo(n),
+   |             ^^^^^^^ with this pattern
+
+error: this `if let` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:35:9
+   |
+LL | /         if let Some(n) = val {
+LL | |
+LL | |
+LL | |             take(n);
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:34:15
+   |
+LL |     if let Ok(val) = res_opt {
+   |               ^^^ replace this binding
+LL |         if let Some(n) = val {
+   |                ^^^^^^^ with this pattern
+
+error: this `if let` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:44:9
+   |
+LL | /         if let Some(n) = val {
+LL | |
+LL | |
+LL | |             take(n);
+LL | |         } else {
+LL | |             return;
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:43:15
+   |
+LL |     if let Ok(val) = res_opt {
+   |               ^^^ replace this binding
+LL |         if let Some(n) = val {
+   |                ^^^^^^^ with this pattern
+
+error: this `match` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:57:9
+   |
+LL | /         match val {
+LL | |
+LL | |             Some(n) => foo(n),
+LL | |             _ => (),
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:56:15
+   |
+LL |     if let Ok(val) = res_opt {
+   |               ^^^ replace this binding
+...
+LL |             Some(n) => foo(n),
+   |             ^^^^^^^ with this pattern
+
+error: this `if let` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match.rs:67:13
+   |
+LL | /             if let Some(n) = val {
+LL | |
+LL | |
+LL | |                 take(n);
+LL | |             }
+   | |_____________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:66:12
+   |
+LL |         Ok(val) => {
+   |            ^^^ replace this binding
+LL |             if let Some(n) = val {
+   |                    ^^^^^^^ with this pattern
+
+error: this `match` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:78:9
+   |
+LL | /         match val {
+LL | |
+LL | |             Some(n) => foo(n),
+LL | |             _ => return,
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:77:15
+   |
+LL |     if let Ok(val) = res_opt {
+   |               ^^^ replace this binding
+...
+LL |             Some(n) => foo(n),
+   |             ^^^^^^^ with this pattern
+
+error: this `if let` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match.rs:90:13
+   |
+LL | /             if let Some(n) = val {
+LL | |
+LL | |
+LL | |                 take(n);
+LL | |             } else {
+LL | |                 return;
+LL | |             }
+   | |_____________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:89:12
+   |
+LL |         Ok(val) => {
+   |            ^^^ replace this binding
+LL |             if let Some(n) = val {
+   |                    ^^^^^^^ with this pattern
+
+error: this `match` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match.rs:103:20
+   |
+LL |           Ok(val) => match val {
+   |  ____________________^
+LL | |
+LL | |             Some(n) => foo(n),
+LL | |             None => return,
+LL | |         },
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:103:12
+   |
+LL |         Ok(val) => match val {
+   |            ^^^ replace this binding
+LL |
+LL |             Some(n) => foo(n),
+   |             ^^^^^^^ with this pattern
+
+error: this `match` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match.rs:113:22
+   |
+LL |           Some(val) => match val {
+   |  ______________________^
+LL | |
+LL | |             Some(n) => foo(n),
+LL | |             _ => return,
+LL | |         },
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:113:14
+   |
+LL |         Some(val) => match val {
+   |              ^^^ replace this binding
+LL |
+LL |             Some(n) => foo(n),
+   |             ^^^^^^^ with this pattern
+
+error: this `match` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match.rs:257:22
+   |
+LL |           Some(val) => match val {
+   |  ______________________^
+LL | |
+LL | |             E::A(val) | E::B(val) => foo(val),
+LL | |             _ => return,
+LL | |         },
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:257:14
+   |
+LL |         Some(val) => match val {
+   |              ^^^ replace this binding
+LL |
+LL |             E::A(val) | E::B(val) => foo(val),
+   |             ^^^^^^^^^^^^^^^^^^^^^ with this pattern
+
+error: this `if let` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:289:9
+   |
+LL | /         if let Some(u) = a {
+LL | |
+LL | |
+LL | |             println!("{u:?}")
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:288:27
+   |
+LL |     if let Issue9647::A { a, .. } = x {
+   |                           ^ replace this binding
+LL |         if let Some(u) = a {
+   |                ^^^^^^^ with this pattern, prefixed by `a: `
+
+error: this `if let` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:299:9
+   |
+LL | /         if let Some(u) = a {
+LL | |
+LL | |
+LL | |             println!("{u}")
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:298:35
+   |
+LL |     if let Issue9647::A { a: Some(a), .. } = x {
+   |                                   ^ replace this binding
+LL |         if let Some(u) = a {
+   |                ^^^^^^^ with this pattern
+
+error: this `if let` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:320:13
+   |
+LL | /             if let Some(Token::Name) = token {
+LL | |
+LL | |                 println!("token used as a ref");
+LL | |             }
+   | |_____________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:319:29
+   |
+LL |         if let Some(Error { ref token, .. }) = err {
+   |                             ^^^^^^^^^ replace this binding
+LL |             if let Some(Token::Name) = token {
+   |                    ^^^^^^^^^^^^^^^^^ with this pattern, prefixed by `token: `
+
+error: this `match` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:331:9
+   |
+LL | /         match *last {
+LL | |
+LL | |             "a" | "b" => {
+LL | |                 unimplemented!()
+LL | |             },
+LL | |             _ => (),
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:330:17
+   |
+LL |     if let Some(last) = arr.last() {
+   |                 ^^^^    ---------- use: `arr.last().copied()`
+   |                 |
+   |                 replace this binding
+...
+LL |             "a" | "b" => {
+   |             ^^^^^^^^^ with this pattern
+
+error: this `match` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:341:9
+   |
+LL | /         match &last {
+LL | |
+LL | |             &&"a" | &&"b" => {
+LL | |                 unimplemented!()
+LL | |             },
+LL | |             _ => (),
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:340:17
+   |
+LL |     if let Some(last) = arr.last() {
+   |                 ^^^^    ---------- use: `arr.last().as_ref()`
+   |                 |
+   |                 replace this binding
+...
+LL |             &&"a" | &&"b" => {
+   |             ^^^^^^^^^^^^^ with this pattern
+
+error: this `match` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:351:9
+   |
+LL | /         match &mut last {
+LL | |
+LL | |             &mut &mut "a" | &mut &mut "b" => {
+LL | |                 unimplemented!()
+LL | |             },
+LL | |             _ => (),
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:350:17
+   |
+LL |     if let Some(mut last) = arr.last_mut() {
+   |                 ^^^^^^^^    -------------- use: `arr.last_mut().as_mut()`
+   |                 |
+   |                 replace this binding
+...
+LL |             &mut &mut "a" | &mut &mut "b" => {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ with this pattern
+
+error: aborting due to 17 previous errors
+

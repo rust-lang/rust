@@ -1,0 +1,138 @@
+error[E0382]: use of moved value: `a`
+  --> $DIR/dbg-issue-120327.rs:8:12
+   |
+LL |     let a = String::new();
+   |         - move occurs because `a` has type `String`, which does not implement the `Copy` trait
+LL |     dbg!(a);
+   |          - value moved here
+LL |     return a;
+   |            ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     dbg!(a.clone());
+   |           ++++++++
+help: consider borrowing instead of transferring ownership
+   |
+LL |     dbg!(&a);
+   |          +
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/dbg-issue-120327.rs:14:12
+   |
+LL |     let a = String::new();
+   |         - move occurs because `a` has type `String`, which does not implement the `Copy` trait
+LL |     dbg!(1, 2, a, 1, 2);
+   |                - value moved here
+LL |     return a;
+   |            ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     dbg!(1, 2, a.clone(), 1, 2);
+   |                 ++++++++
+help: consider borrowing instead of transferring ownership
+   |
+LL |     dbg!(1, 2, &a, 1, 2);
+   |                +
+
+error[E0382]: use of moved value: `b`
+  --> $DIR/dbg-issue-120327.rs:20:12
+   |
+LL |     let b: String = "".to_string();
+   |         - move occurs because `b` has type `String`, which does not implement the `Copy` trait
+LL |     dbg!(a, b);
+   |             - value moved here
+LL |     return b;
+   |            ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     dbg!(a, b.clone());
+   |              ++++++++
+help: consider borrowing instead of transferring ownership
+   |
+LL |     dbg!(a, &b);
+   |             +
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/dbg-issue-120327.rs:26:12
+   |
+LL | fn x(a: String) -> String {
+   |      - move occurs because `a` has type `String`, which does not implement the `Copy` trait
+LL |     let b: String = "".to_string();
+LL |     dbg!(a, b);
+   |          - value moved here
+LL |     return a;
+   |            ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     dbg!(a.clone(), b);
+   |           ++++++++
+help: consider borrowing instead of transferring ownership
+   |
+LL |     dbg!(&a, b);
+   |          +
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/dbg-issue-120327.rs:30:13
+   |
+LL | fn two_of_them(a: String) -> String {
+   |                - move occurs because `a` has type `String`, which does not implement the `Copy` trait
+LL |     dbg!(a, a);
+   |          -  ^ value used here after move
+   |          |
+   |          value moved here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     dbg!(a.clone(), a);
+   |           ++++++++
+help: consider borrowing instead of transferring ownership
+   |
+LL |     dbg!(&a, a);
+   |          +
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/dbg-issue-120327.rs:33:12
+   |
+LL | fn two_of_them(a: String) -> String {
+   |                - move occurs because `a` has type `String`, which does not implement the `Copy` trait
+LL |     dbg!(a, a);
+   |             - value moved here
+...
+LL |     return a;
+   |            ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     dbg!(a, a.clone());
+   |              ++++++++
+help: consider borrowing instead of transferring ownership
+   |
+LL |     dbg!(a, &a);
+   |             +
+
+error[E0382]: borrow of moved value: `a`
+  --> $DIR/dbg-issue-120327.rs:42:14
+   |
+LL |     let a: String = "".to_string();
+   |         - move occurs because `a` has type `String`, which does not implement the `Copy` trait
+LL |     let _res = get_expr(dbg!(a));
+   |                              - value moved here
+LL |     let _l = a.len();
+   |              ^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _res = get_expr(dbg!(a.clone()));
+   |                               ++++++++
+help: consider borrowing instead of transferring ownership
+   |
+LL |     let _res = get_expr(dbg!(&a));
+   |                              +
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

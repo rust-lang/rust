@@ -1,0 +1,52 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: i32;
+      let mut _2: i32;
+      let mut _3: std::option::Option<bool>;
+      let mut _4: isize;
+      scope 1 {
+          debug x => _1;
+      }
+      scope 2 {
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+-         _3 = Option::<bool>::Some(const true);
+-         _4 = discriminant(_3);
+-         switchInt(move _4) -> [1: bb1, otherwise: bb3];
++         _3 = const Option::<bool>::Some(true);
++         _4 = const 1_isize;
++         switchInt(const 1_isize) -> [1: bb1, otherwise: bb3];
+      }
+  
+      bb1: {
+-         switchInt(copy ((_3 as Some).0: bool)) -> [0: bb3, otherwise: bb2];
++         switchInt(const true) -> [0: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+          _2 = const 42_i32;
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _2 = const 10_i32;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          _1 = Add(move _2, const 0_i32);
+          StorageDead(_2);
+          StorageDead(_3);
+          _0 = const ();
+          StorageDead(_1);
+          return;
+      }
+  }
+  

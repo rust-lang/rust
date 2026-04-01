@@ -1,0 +1,177 @@
+//@require-annotations-for-level: ERROR
+#![warn(clippy::map_identity)]
+#![allow(clippy::needless_return, clippy::disallowed_names)]
+
+fn main() {
+    let x: [u16; 3] = [1, 2, 3];
+    // should lint
+    let _: Vec<_> = x.iter().map(not_identity).collect();
+    //~^ map_identity
+    let _: Vec<_> = x.iter().collect();
+    //~^ map_identity
+    //~| map_identity
+    let _: Option<u8> = Some(3);
+    //~^ map_identity
+    let _: Result<i8, f32> = Ok(-3);
+    // should not lint
+    let _: Vec<_> = x.iter().map(|x| 2 * x).collect();
+    let _: Vec<_> = x.iter().map(not_identity).map(|x| return x - 4).collect();
+    let _: Option<u8> = None.map(|x: u8| x - 1);
+    let _: Result<i8, f32> = Err(2.3).map(|x: i8| {
+        return x + 3;
+    });
+    let _: Result<u32, u32> = Ok(1);
+    //~^ map_identity
+    let _: Result<u32, u32> = Ok(1).map_err(|a: u32| a * 42);
+    // : u32 guides type inference
+    let _ = Ok(1).map_err(|a: u32| a);
+    let _ = Ok(1).map_err(std::convert::identity::<u32>);
+}
+
+fn issue7189() {
+    // should lint
+    let x = [(1, 2), (3, 4)].iter().copied();
+    let _ = x.clone();
+    //~^ map_identity
+    let _ = x.clone();
+    let _ = x.clone();
+    //~^ map_identity
+
+    let y = [(1, 2, (3, (4,))), (5, 6, (7, (8,)))].iter().copied();
+    let _ = y.clone();
+    //~^ map_identity
+
+    // should not lint
+    let _ = x.clone().map(|(x, y)| (x, y, y));
+    let _ = x.clone().map(|(x, _y)| (x,));
+    let _ = x.clone().map(|(x, _)| (x,));
+    let _ = x.clone().map(|(x, ..)| (x,));
+    let _ = y.clone().map(|(x, y, (z, _))| (x, y, (z, z)));
+    let _ = y
+        .clone()
+        .map(|(x, y, (z, _)): (i32, i32, (i32, (i32,)))| (x, y, (z, z)));
+    let _ = y
+        .clone()
+        .map(|(x, y, (z, (w,))): (i32, i32, (i32, (i32,)))| (x, y, (z, (w,))));
+}
+
+fn not_identity(x: &u16) -> u16 {
+    *x
+}
+
+fn issue11764() {
+    let x = [(1, 2), (3, 4)];
+    // don't lint: this is an `Iterator<Item = &(i32, i32)>`
+    // match ergonomics makes the binding patterns into references
+    // so that its type changes to `Iterator<Item = (&i32, &i32)>`
+    let _ = x.iter().map(|(x, y)| (x, y));
+    let _ = x.iter().map(|x| (x.0,)).map(|(x,)| x);
+
+    // no match ergonomics for `(i32, i32)`
+    let _ = x.iter().copied();
+    //~^ map_identity
+}
+
+fn issue13904() {
+    // lint, but there's a catch:
+    // when we remove the `.map()`, `it.next()` would require `it` to be mutable
+    // therefore, include that in the suggestion as well
+    let mut it = [1, 2, 3].into_iter();
+    let _ = it.next();
+    //~^ map_identity
+    //~| HELP: remove the call to `map`, and make `it` mutable
+
+    // lint
+    let mut index = [1, 2, 3].into_iter();
+    let mut subindex = (index.by_ref().take(3), 42);
+    let _ = subindex.0.next();
+    //~^ map_identity
+    //~| HELP: remove the call to `map`, and make `subindex` mutable
+
+    // lint
+    #[allow(unused_mut)]
+    let mut it = [1, 2, 3].into_iter();
+    let _ = it.next();
+    //~^ map_identity
+    //~| HELP: remove the call to `map`
+
+    // lint
+    let it = [1, 2, 3].into_iter();
+    let _ = { it }.next();
+    //~^ map_identity
+    //~| HELP: remove the call to `map`
+}
+
+// same as `issue11764`, but for arrays
+fn issue15198() {
+    let x = [[1, 2], [3, 4]];
+    // don't lint: `&[i32; 2]` becomes `[&i32; 2]`
+    let _ = x.iter().map(|[x, y]| [x, y]);
+    let _ = x.iter().map(|x| [x[0]]).map(|[x]| x);
+
+    // no match ergonomics for `[i32, i32]`
+    let _ = x.iter().copied();
+    //~^ map_identity
+}
+
+mod foo {
+    #[derive(Clone, Copy)]
+    pub struct Foo {
+        pub foo: u8,
+        pub bar: u8,
+    }
+
+    #[derive(Clone, Copy)]
+    pub struct Foo2(pub u8, pub u8);
+}
+use foo::{Foo, Foo2};
+
+struct Bar {
+    foo: u8,
+    bar: u8,
+}
+
+struct Bar2(u8, u8);
+
+fn structs() {
+    let x = [Foo { foo: 0, bar: 0 }];
+
+    let _ = x.into_iter();
+    //~^ map_identity
+
+    // still lint when different paths are used for the same struct
+    let _ = x.into_iter();
+    //~^ map_identity
+
+    // don't lint: same fields but different structs
+    let _ = x.into_iter().map(|Foo { foo, bar }| Bar { foo, bar });
+
+    // still lint with redundant field names
+    #[allow(clippy::redundant_field_names)]
+    let _ = x.into_iter();
+    //~^ map_identity
+
+    // still lint with field order change
+    let _ = x.into_iter();
+    //~^ map_identity
+
+    // don't lint: switched field assignment
+    let _ = x.into_iter().map(|Foo { foo, bar }| Foo { foo: bar, bar: foo });
+}
+
+fn tuple_structs() {
+    let x = [Foo2(0, 0)];
+
+    let _ = x.into_iter();
+    //~^ map_identity
+
+    // still lint when different paths are used for the same struct
+    let _ = x.into_iter();
+    //~^ map_identity
+
+    // don't lint: same fields but different structs
+    let _ = x.into_iter().map(|Foo2(foo, bar)| Bar2(foo, bar));
+
+    // don't lint: switched field assignment
+    let _ = x.into_iter().map(|Foo2(foo, bar)| Foo2(bar, foo));
+}

@@ -1,0 +1,112 @@
+- // MIR for `test` before GVN
++ // MIR for `test` after GVN
+  
+  fn test() -> () {
+      let mut _0: ();
+      let _1: &std::boxed::Box<()>;
+      let _2: &std::boxed::Box<()>;
+      let _3: std::boxed::Box<()>;
+      let mut _4: ();
+      let mut _7: *const ();
+      let mut _9: *const [()];
+      let mut _10: std::boxed::Box<()>;
+      let mut _11: *const ();
+      let mut _14: usize;
+      scope 1 {
+          debug vp_ctx => _1;
+          let _5: *const ();
+          scope 2 {
+              debug slf => _5;
+              let _6: *const [()];
+              scope 3 {
+                  debug bytes => _6;
+                  let _8: *mut ();
+                  scope 4 {
+                      debug _x => _8;
+                  }
+                  scope 9 (inlined foo) {
+                      let mut _15: *const [()];
+                  }
+              }
+              scope 7 (inlined slice_from_raw_parts::<()>) {
+                  scope 8 (inlined std::ptr::from_raw_parts::<[()], ()>) {
+                  }
+              }
+          }
+      }
+      scope 5 (inlined Box::<()>::new) {
+          let mut _12: *mut ();
+          let mut _13: *mut u8;
+          scope 6 {
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+-         _4 = ();
++         _4 = const ();
+          StorageLive(_12);
+          StorageLive(_13);
+-         _13 = boxed::box_new_uninit(const <() as std::mem::SizedTypeProperties>::LAYOUT) -> [return: bb2, unwind unreachable];
++         _13 = boxed::box_new_uninit(const Layout {{ size: 0_usize, align: std::mem::Alignment {{ _inner_repr_trick: mem::alignment::AlignmentEnum::_Align1Shl0 }} }}) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  
+      bb2: {
+          _12 = copy _13 as *mut () (PtrToPtr);
+-         (*_12) = move _4;
++         (*_12) = const ();
+          _3 = copy _13 as std::boxed::Box<()> (Transmute);
+          StorageDead(_13);
+          StorageDead(_12);
+          StorageDead(_4);
+          _2 = &_3;
+          _1 = &(*_2);
+          StorageDead(_2);
+-         StorageLive(_5);
++         nop;
+          _10 = copy (*_1);
+          _11 = copy ((_10.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
+          _5 = &raw const (*_11);
+-         StorageLive(_6);
++         nop;
+          StorageLive(_7);
+          _7 = copy _5;
+          StorageLive(_14);
+          _14 = const 1_usize;
+-         _6 = *const [()] from (copy _7, copy _14);
++         _6 = *const [()] from (copy _5, const 1_usize);
+          StorageDead(_14);
+          StorageDead(_7);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = copy _6;
+          StorageLive(_15);
+-         _15 = copy _9;
+-         _8 = copy _9 as *mut () (PtrToPtr);
++         _15 = copy _6;
++         _8 = copy _5 as *mut () (PtrToPtr);
+          StorageDead(_15);
+          StorageDead(_9);
+          _0 = const ();
+          StorageDead(_8);
+-         StorageDead(_6);
+-         StorageDead(_5);
++         nop;
++         nop;
+          drop(_3) -> [return: bb1, unwind unreachable];
+      }
++ }
++ 
++ ALLOC0 (size: 8, align: 4) {
++     01 00 00 00 00 00 00 00                         │ ........
+  }
+  

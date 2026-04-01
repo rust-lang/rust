@@ -1,0 +1,101 @@
+// WARNING: This is highly experimental output it's intended for rustc_public developers only.
+// If you find a bug or want to improve the output open a issue at https://github.com/rust-lang/project-stable-mir.
+fn foo() -> () {
+    let mut _0: ();
+    let  _1: i32;
+    let  _2: {async closure@$DIR/async-closure.rs:9:13: 9:21};
+    let mut _3: &i32;
+    debug y => _1;
+    debug x => _2;
+    bb0: {
+        StorageLive(_1);
+        _1 = 0_i32;
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = &_1;
+        _2 = {coroutine-closure@$DIR/async-closure.rs:9:13: 9:21}(move _3);
+        StorageDead(_3);
+        _0 = ();
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+}
+fn foo::{closure#0}(_1: &{async closure@$DIR/async-closure.rs:9:13: 9:21}) -> {async closure body@$DIR/async-closure.rs:9:22: 11:6} {
+    let mut _0: {async closure body@$DIR/async-closure.rs:9:22: 11:6};
+    let mut _2: &i32;
+    let mut _3: &i32;
+    debug y => (*((*_1).0: &i32));
+    bb0: {
+        StorageLive(_2);
+        _3 = ((*_1).0: &i32);
+        _2 = &(*_3);
+        _0 = {coroutine@$DIR/async-closure.rs:9:22: 11:6}(move _2);
+        StorageDead(_2);
+        return;
+    }
+}
+fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}>, _2: &mut Context<'_>) -> Poll<()> {
+    let mut _0: Poll<()>;
+    let  _3: i32;
+    let mut _4: &i32;
+    let mut _5: ();
+    let mut _6: u32;
+    let mut _7: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6};
+    debug _task_context => _2;
+    debug y => (*((*_7).0: &i32));
+    debug y => _3;
+    bb0: {
+        _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
+        _6 = discriminant((*_7));
+        switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];
+    }
+    bb1: {
+        StorageLive(_3);
+        _4 = ((*_7).0: &i32);
+        _3 = (*_4);
+        _5 = ();
+        StorageDead(_3);
+        _0 = Poll::Ready(move _5);
+        discriminant((*_7)) = 1;
+        return;
+    }
+    bb2: {
+        assert(false, `async fn` resumed after completion) -> [success: bb2, unwind unreachable];
+    }
+    bb3: {
+        unreachable;
+    }
+}
+fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}>, _2: &mut Context<'_>) -> Poll<()> {
+    let mut _0: Poll<()>;
+    let  _3: i32;
+    let mut _4: &i32;
+    let mut _5: ();
+    let mut _6: u32;
+    let mut _7: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6};
+    debug _task_context => _2;
+    debug y => (*((*_7).0: &i32));
+    debug y => _3;
+    bb0: {
+        _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
+        _6 = discriminant((*_7));
+        switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];
+    }
+    bb1: {
+        StorageLive(_3);
+        _4 = ((*_7).0: &i32);
+        _3 = (*_4);
+        _5 = ();
+        StorageDead(_3);
+        _0 = Poll::Ready(move _5);
+        discriminant((*_7)) = 1;
+        return;
+    }
+    bb2: {
+        assert(false, `async fn` resumed after completion) -> [success: bb2, unwind unreachable];
+    }
+    bb3: {
+        unreachable;
+    }
+}

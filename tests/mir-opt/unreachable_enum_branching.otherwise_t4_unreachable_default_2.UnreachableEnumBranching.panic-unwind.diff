@@ -1,0 +1,95 @@
+- // MIR for `otherwise_t4_unreachable_default_2` before UnreachableEnumBranching
++ // MIR for `otherwise_t4_unreachable_default_2` after UnreachableEnumBranching
+  
+  fn otherwise_t4_unreachable_default_2() -> () {
+      let mut _0: ();
+      let _1: &str;
+      let mut _2: Test4;
+      let mut _3: isize;
+      let _4: &str;
+      let _5: &str;
+      let _6: &str;
+      let _7: &str;
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = Test4::C;
+          _3 = discriminant(_2);
+-         switchInt(move _3) -> [0: bb2, 1: bb4, 2: bb3, otherwise: bb1];
++         switchInt(move _3) -> [0: bb2, 1: bb4, 2: bb3, 3: bb1, otherwise: bb8];
+      }
+  
+      bb1: {
+          StorageLive(_7);
+          _7 = const "A(other)D";
+          _1 = &(*_7);
+          StorageDead(_7);
+          goto -> bb7;
+      }
+  
+      bb2: {
+          switchInt(copy ((_2 as A).0: i32)) -> [1: bb6, 2: bb5, otherwise: bb1];
+      }
+  
+      bb3: {
+          StorageLive(_6);
+          _6 = const "C";
+          _1 = &(*_6);
+          StorageDead(_6);
+          goto -> bb7;
+      }
+  
+      bb4: {
+          StorageLive(_5);
+          _5 = const "B(i32)";
+          _1 = &(*_5);
+          StorageDead(_5);
+          goto -> bb7;
+      }
+  
+      bb5: {
+          StorageLive(_4);
+          _4 = const "A(2)";
+          _1 = &(*_4);
+          StorageDead(_4);
+          goto -> bb7;
+      }
+  
+      bb6: {
+          _1 = const "A(1)";
+          goto -> bb7;
+      }
+  
+      bb7: {
+          StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
++     }
++ 
++     bb8: {
++         unreachable;
+      }
+  }
+  
+  ALLOC0 (size: 9, align: 1) {
+      41 28 6f 74 68 65 72 29 44                      │ A(other)D
+  }
+  
+  ALLOC1 (size: 4, align: 1) {
+      41 28 32 29                                     │ A(2)
+  }
+  
+  ALLOC2 (size: 4, align: 1) {
+      41 28 31 29                                     │ A(1)
+  }
+  
+  ALLOC3 (size: 6, align: 1) {
+      42 28 69 33 32 29                               │ B(i32)
+  }
+  
+  ALLOC4 (size: 1, align: 1) {
+      43                                              │ C
+  }
+  

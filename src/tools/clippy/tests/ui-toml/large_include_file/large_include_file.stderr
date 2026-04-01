@@ -1,0 +1,28 @@
+error: attempted to include a large file
+  --> tests/ui-toml/large_include_file/large_include_file.rs:19:1
+   |
+LL | #[doc = include_str!("too_big.txt")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the configuration allows a maximum size of 600 bytes
+   = note: `-D clippy::large-include-file` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_include_file)]`
+
+error: attempted to include a large file
+  --> tests/ui-toml/large_include_file/large_include_file.rs:14:43
+   |
+LL | const TOO_BIG_INCLUDE_BYTES: &[u8; 654] = include_bytes!("too_big.txt");
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the configuration allows a maximum size of 600 bytes
+
+error: attempted to include a large file
+  --> tests/ui-toml/large_include_file/large_include_file.rs:16:35
+   |
+LL | const TOO_BIG_INCLUDE_STR: &str = include_str!("too_big.txt");
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the configuration allows a maximum size of 600 bytes
+
+error: aborting due to 3 previous errors
+

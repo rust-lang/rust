@@ -1,0 +1,16 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/implied-bounds-on-trait-hierarchy-1.rs:34:23
+   |
+LL |         let x = "Hello World".to_string();
+   |             - binding `x` declared here
+LL |         subs_to_soup((x.as_str(), &mut d));
+   |                       ^ borrowed value does not live long enough
+LL |
+LL |     }
+   |     - `x` dropped here while still borrowed
+LL |     println!("{}", d);
+   |                    - borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

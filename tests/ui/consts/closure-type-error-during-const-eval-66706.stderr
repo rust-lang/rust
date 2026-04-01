@@ -1,0 +1,45 @@
+error: expected one of `,` or `|`, found `&`
+  --> $DIR/closure-type-error-during-const-eval-66706.rs:3:16
+   |
+LL |     [0; [|_: _ &_| ()].len()]
+   |               -^ expected one of `,` or `|`
+   |               |
+   |               help: missing `,`
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/closure-type-error-during-const-eval-66706.rs:9:20
+   |
+LL |     [0; [|f @ &ref _| {} ; 0 ].len() ];
+   |                    ^ expected identifier, found reserved identifier
+
+error: expected one of `,` or `|`, found `&`
+  --> $DIR/closure-type-error-during-const-eval-66706.rs:14:17
+   |
+LL |     [0; [|&_: _ &_| {}; 0 ].len()]
+   |                -^ expected one of `,` or `|`
+   |                |
+   |                help: missing `,`
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/closure-type-error-during-const-eval-66706.rs:20:26
+   |
+LL |     [0; match [|f @ &ref _| () ] {} ]
+   |         -----            ^ expected identifier, found reserved identifier
+   |         |
+   |         while parsing this `match` expression
+
+error[E0282]: type annotations needed
+  --> $DIR/closure-type-error-during-const-eval-66706.rs:3:14
+   |
+LL |     [0; [|_: _ &_| ()].len()]
+   |              ^ cannot infer type
+
+error[E0282]: type annotations needed
+  --> $DIR/closure-type-error-during-const-eval-66706.rs:14:11
+   |
+LL |     [0; [|&_: _ &_| {}; 0 ].len()]
+   |           ^^^^^ cannot infer type
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

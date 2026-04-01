@@ -1,0 +1,38 @@
+error: unopened HTML tag `TD`
+  --> $DIR/invalid-html-tags-ice-146890.rs:12:5
+   |
+LL |   /// </TD
+   |  _____^
+LL | |
+LL | | /// >
+   | |_____^
+   |
+note: the lint level is defined here
+  --> $DIR/invalid-html-tags-ice-146890.rs:3:8
+   |
+LL | #[deny(rustdoc::invalid_html_tags)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unopened HTML tag `TD`
+  --> $DIR/invalid-html-tags-ice-146890.rs:18:5
+   |
+LL |   /// </TD
+   |  _____^
+LL | |
+LL | | /// >
+   | |_____^
+
+error: unclosed HTML tag `TH`
+  --> $DIR/invalid-html-tags-ice-146890.rs:9:5
+   |
+LL | /// <TH
+   |     ^^^
+
+error: unclosed HTML tag `TH`
+  --> $DIR/invalid-html-tags-ice-146890.rs:15:5
+   |
+LL | /// <TH
+   |     ^^^
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,14 @@
+error: expected type, found constant
+  --> $DIR/shadowed-const.rs:19:20
+   |
+LL |   const QUX: Self::BAR;
+   |                    ^^^ unexpected constant
+   |
+note: the associated constant is defined here
+  --> $DIR/shadowed-const.rs:18:3
+   |
+LL |   const BAR: usize;
+   |   ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

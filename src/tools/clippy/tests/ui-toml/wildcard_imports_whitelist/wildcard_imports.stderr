@@ -1,0 +1,11 @@
+error: usage of wildcard import
+  --> tests/ui-toml/wildcard_imports_whitelist/wildcard_imports.rs:19:5
+   |
+LL | use utils_plus::*;
+   |     ^^^^^^^^^^^^^ help: try: `utils_plus::do_something`
+   |
+   = note: `-D clippy::wildcard-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::wildcard_imports)]`
+
+error: aborting due to 1 previous error
+

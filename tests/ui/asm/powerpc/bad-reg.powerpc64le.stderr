@@ -1,0 +1,866 @@
+error: invalid register `sp`: the stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:38:18
+   |
+LL |         asm!("", out("sp") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `r2`: r2 is a system reserved register and cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:40:18
+   |
+LL |         asm!("", out("r2") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `r30`: r30 is used internally by LLVM and cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:46:18
+   |
+LL |         asm!("", out("r30") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `fp`: the frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:48:18
+   |
+LL |         asm!("", out("fp") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `vrsave`: the vrsave register cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:50:18
+   |
+LL |         asm!("", out("vrsave") _);
+   |                  ^^^^^^^^^^^^^^^
+
+error: register class `cr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:139:18
+   |
+LL |         asm!("", in("cr") x);
+   |                  ^^^^^^^^^^
+
+error: register class `cr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:142:18
+   |
+LL |         asm!("", out("cr") x);
+   |                  ^^^^^^^^^^^
+
+error: register class `cr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:145:26
+   |
+LL |         asm!("/* {} */", in(cr) x);
+   |                          ^^^^^^^^
+
+error: register class `cr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:148:26
+   |
+LL |         asm!("/* {} */", out(cr) _);
+   |                          ^^^^^^^^^
+
+error: register class `ctr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:152:18
+   |
+LL |         asm!("", in("ctr") x);
+   |                  ^^^^^^^^^^^
+
+error: register class `ctr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:155:18
+   |
+LL |         asm!("", out("ctr") x);
+   |                  ^^^^^^^^^^^^
+
+error: register class `ctr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:158:26
+   |
+LL |         asm!("/* {} */", in(ctr) x);
+   |                          ^^^^^^^^^
+
+error: register class `ctr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:161:26
+   |
+LL |         asm!("/* {} */", out(ctr) _);
+   |                          ^^^^^^^^^^
+
+error: register class `lr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:165:18
+   |
+LL |         asm!("", in("lr") x);
+   |                  ^^^^^^^^^^
+
+error: register class `lr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:168:18
+   |
+LL |         asm!("", out("lr") x);
+   |                  ^^^^^^^^^^^
+
+error: register class `lr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:171:26
+   |
+LL |         asm!("/* {} */", in(lr) x);
+   |                          ^^^^^^^^
+
+error: register class `lr` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:174:26
+   |
+LL |         asm!("/* {} */", out(lr) _);
+   |                          ^^^^^^^^^
+
+error: register class `xer` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:178:18
+   |
+LL |         asm!("", in("xer") x);
+   |                  ^^^^^^^^^^^
+
+error: register class `xer` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:181:18
+   |
+LL |         asm!("", out("xer") x);
+   |                  ^^^^^^^^^^^^
+
+error: register class `xer` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:184:26
+   |
+LL |         asm!("/* {} */", in(xer) x);
+   |                          ^^^^^^^^^
+
+error: register class `xer` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:187:26
+   |
+LL |         asm!("/* {} */", out(xer) _);
+   |                          ^^^^^^^^^^
+
+error: register `cr0` conflicts with register `cr`
+  --> $DIR/bad-reg.rs:191:31
+   |
+LL |         asm!("", out("cr") _, out("cr0") _);
+   |                  -----------  ^^^^^^^^^^^^ register `cr0`
+   |                  |
+   |                  register `cr`
+
+error: register `cr1` conflicts with register `cr`
+  --> $DIR/bad-reg.rs:193:31
+   |
+LL |         asm!("", out("cr") _, out("cr1") _);
+   |                  -----------  ^^^^^^^^^^^^ register `cr1`
+   |                  |
+   |                  register `cr`
+
+error: register `cr2` conflicts with register `cr`
+  --> $DIR/bad-reg.rs:195:31
+   |
+LL |         asm!("", out("cr") _, out("cr2") _);
+   |                  -----------  ^^^^^^^^^^^^ register `cr2`
+   |                  |
+   |                  register `cr`
+
+error: register `cr3` conflicts with register `cr`
+  --> $DIR/bad-reg.rs:197:31
+   |
+LL |         asm!("", out("cr") _, out("cr3") _);
+   |                  -----------  ^^^^^^^^^^^^ register `cr3`
+   |                  |
+   |                  register `cr`
+
+error: register `cr4` conflicts with register `cr`
+  --> $DIR/bad-reg.rs:199:31
+   |
+LL |         asm!("", out("cr") _, out("cr4") _);
+   |                  -----------  ^^^^^^^^^^^^ register `cr4`
+   |                  |
+   |                  register `cr`
+
+error: register `cr5` conflicts with register `cr`
+  --> $DIR/bad-reg.rs:201:31
+   |
+LL |         asm!("", out("cr") _, out("cr5") _);
+   |                  -----------  ^^^^^^^^^^^^ register `cr5`
+   |                  |
+   |                  register `cr`
+
+error: register `cr6` conflicts with register `cr`
+  --> $DIR/bad-reg.rs:203:31
+   |
+LL |         asm!("", out("cr") _, out("cr6") _);
+   |                  -----------  ^^^^^^^^^^^^ register `cr6`
+   |                  |
+   |                  register `cr`
+
+error: register `cr7` conflicts with register `cr`
+  --> $DIR/bad-reg.rs:205:31
+   |
+LL |         asm!("", out("cr") _, out("cr7") _);
+   |                  -----------  ^^^^^^^^^^^^ register `cr7`
+   |                  |
+   |                  register `cr`
+
+error: register `vs0` conflicts with register `f0`
+  --> $DIR/bad-reg.rs:208:31
+   |
+LL |         asm!("", out("f0") _, out("vs0") _);
+   |                  -----------  ^^^^^^^^^^^^ register `vs0`
+   |                  |
+   |                  register `f0`
+
+error: register `vs1` conflicts with register `f1`
+  --> $DIR/bad-reg.rs:210:31
+   |
+LL |         asm!("", out("f1") _, out("vs1") _);
+   |                  -----------  ^^^^^^^^^^^^ register `vs1`
+   |                  |
+   |                  register `f1`
+
+error: register `vs2` conflicts with register `f2`
+  --> $DIR/bad-reg.rs:212:31
+   |
+LL |         asm!("", out("f2") _, out("vs2") _);
+   |                  -----------  ^^^^^^^^^^^^ register `vs2`
+   |                  |
+   |                  register `f2`
+
+error: register `vs3` conflicts with register `f3`
+  --> $DIR/bad-reg.rs:214:31
+   |
+LL |         asm!("", out("f3") _, out("vs3") _);
+   |                  -----------  ^^^^^^^^^^^^ register `vs3`
+   |                  |
+   |                  register `f3`
+
+error: register `vs4` conflicts with register `f4`
+  --> $DIR/bad-reg.rs:216:31
+   |
+LL |         asm!("", out("f4") _, out("vs4") _);
+   |                  -----------  ^^^^^^^^^^^^ register `vs4`
+   |                  |
+   |                  register `f4`
+
+error: register `vs5` conflicts with register `f5`
+  --> $DIR/bad-reg.rs:218:31
+   |
+LL |         asm!("", out("f5") _, out("vs5") _);
+   |                  -----------  ^^^^^^^^^^^^ register `vs5`
+   |                  |
+   |                  register `f5`
+
+error: register `vs6` conflicts with register `f6`
+  --> $DIR/bad-reg.rs:220:31
+   |
+LL |         asm!("", out("f6") _, out("vs6") _);
+   |                  -----------  ^^^^^^^^^^^^ register `vs6`
+   |                  |
+   |                  register `f6`
+
+error: register `vs7` conflicts with register `f7`
+  --> $DIR/bad-reg.rs:222:31
+   |
+LL |         asm!("", out("f7") _, out("vs7") _);
+   |                  -----------  ^^^^^^^^^^^^ register `vs7`
+   |                  |
+   |                  register `f7`
+
+error: register `vs8` conflicts with register `f8`
+  --> $DIR/bad-reg.rs:224:31
+   |
+LL |         asm!("", out("f8") _, out("vs8") _);
+   |                  -----------  ^^^^^^^^^^^^ register `vs8`
+   |                  |
+   |                  register `f8`
+
+error: register `vs9` conflicts with register `f9`
+  --> $DIR/bad-reg.rs:226:31
+   |
+LL |         asm!("", out("f9") _, out("vs9") _);
+   |                  -----------  ^^^^^^^^^^^^ register `vs9`
+   |                  |
+   |                  register `f9`
+
+error: register `vs10` conflicts with register `f10`
+  --> $DIR/bad-reg.rs:228:32
+   |
+LL |         asm!("", out("f10") _, out("vs10") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs10`
+   |                  |
+   |                  register `f10`
+
+error: register `vs11` conflicts with register `f11`
+  --> $DIR/bad-reg.rs:230:32
+   |
+LL |         asm!("", out("f11") _, out("vs11") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs11`
+   |                  |
+   |                  register `f11`
+
+error: register `vs12` conflicts with register `f12`
+  --> $DIR/bad-reg.rs:232:32
+   |
+LL |         asm!("", out("f12") _, out("vs12") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs12`
+   |                  |
+   |                  register `f12`
+
+error: register `vs13` conflicts with register `f13`
+  --> $DIR/bad-reg.rs:234:32
+   |
+LL |         asm!("", out("f13") _, out("vs13") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs13`
+   |                  |
+   |                  register `f13`
+
+error: register `vs14` conflicts with register `f14`
+  --> $DIR/bad-reg.rs:236:32
+   |
+LL |         asm!("", out("f14") _, out("vs14") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs14`
+   |                  |
+   |                  register `f14`
+
+error: register `vs15` conflicts with register `f15`
+  --> $DIR/bad-reg.rs:238:32
+   |
+LL |         asm!("", out("f15") _, out("vs15") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs15`
+   |                  |
+   |                  register `f15`
+
+error: register `vs16` conflicts with register `f16`
+  --> $DIR/bad-reg.rs:240:32
+   |
+LL |         asm!("", out("f16") _, out("vs16") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs16`
+   |                  |
+   |                  register `f16`
+
+error: register `vs17` conflicts with register `f17`
+  --> $DIR/bad-reg.rs:242:32
+   |
+LL |         asm!("", out("f17") _, out("vs17") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs17`
+   |                  |
+   |                  register `f17`
+
+error: register `vs18` conflicts with register `f18`
+  --> $DIR/bad-reg.rs:244:32
+   |
+LL |         asm!("", out("f18") _, out("vs18") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs18`
+   |                  |
+   |                  register `f18`
+
+error: register `vs19` conflicts with register `f19`
+  --> $DIR/bad-reg.rs:246:32
+   |
+LL |         asm!("", out("f19") _, out("vs19") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs19`
+   |                  |
+   |                  register `f19`
+
+error: register `vs20` conflicts with register `f20`
+  --> $DIR/bad-reg.rs:248:32
+   |
+LL |         asm!("", out("f20") _, out("vs20") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs20`
+   |                  |
+   |                  register `f20`
+
+error: register `vs21` conflicts with register `f21`
+  --> $DIR/bad-reg.rs:250:32
+   |
+LL |         asm!("", out("f21") _, out("vs21") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs21`
+   |                  |
+   |                  register `f21`
+
+error: register `vs22` conflicts with register `f22`
+  --> $DIR/bad-reg.rs:252:32
+   |
+LL |         asm!("", out("f22") _, out("vs22") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs22`
+   |                  |
+   |                  register `f22`
+
+error: register `vs23` conflicts with register `f23`
+  --> $DIR/bad-reg.rs:254:32
+   |
+LL |         asm!("", out("f23") _, out("vs23") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs23`
+   |                  |
+   |                  register `f23`
+
+error: register `vs24` conflicts with register `f24`
+  --> $DIR/bad-reg.rs:256:32
+   |
+LL |         asm!("", out("f24") _, out("vs24") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs24`
+   |                  |
+   |                  register `f24`
+
+error: register `vs25` conflicts with register `f25`
+  --> $DIR/bad-reg.rs:258:32
+   |
+LL |         asm!("", out("f25") _, out("vs25") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs25`
+   |                  |
+   |                  register `f25`
+
+error: register `vs26` conflicts with register `f26`
+  --> $DIR/bad-reg.rs:260:32
+   |
+LL |         asm!("", out("f26") _, out("vs26") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs26`
+   |                  |
+   |                  register `f26`
+
+error: register `vs27` conflicts with register `f27`
+  --> $DIR/bad-reg.rs:262:32
+   |
+LL |         asm!("", out("f27") _, out("vs27") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs27`
+   |                  |
+   |                  register `f27`
+
+error: register `vs28` conflicts with register `f28`
+  --> $DIR/bad-reg.rs:264:32
+   |
+LL |         asm!("", out("f28") _, out("vs28") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs28`
+   |                  |
+   |                  register `f28`
+
+error: register `vs29` conflicts with register `f29`
+  --> $DIR/bad-reg.rs:266:32
+   |
+LL |         asm!("", out("f29") _, out("vs29") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs29`
+   |                  |
+   |                  register `f29`
+
+error: register `vs30` conflicts with register `f30`
+  --> $DIR/bad-reg.rs:268:32
+   |
+LL |         asm!("", out("f30") _, out("vs30") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs30`
+   |                  |
+   |                  register `f30`
+
+error: register `vs31` conflicts with register `f31`
+  --> $DIR/bad-reg.rs:270:32
+   |
+LL |         asm!("", out("f31") _, out("vs31") _);
+   |                  ------------  ^^^^^^^^^^^^^ register `vs31`
+   |                  |
+   |                  register `f31`
+
+error: register `v0` conflicts with register `vs32`
+  --> $DIR/bad-reg.rs:272:33
+   |
+LL |         asm!("", out("vs32") _, out("v0") _);
+   |                  -------------  ^^^^^^^^^^^ register `v0`
+   |                  |
+   |                  register `vs32`
+
+error: register `v1` conflicts with register `vs33`
+  --> $DIR/bad-reg.rs:274:33
+   |
+LL |         asm!("", out("vs33") _, out("v1") _);
+   |                  -------------  ^^^^^^^^^^^ register `v1`
+   |                  |
+   |                  register `vs33`
+
+error: register `v2` conflicts with register `vs34`
+  --> $DIR/bad-reg.rs:276:33
+   |
+LL |         asm!("", out("vs34") _, out("v2") _);
+   |                  -------------  ^^^^^^^^^^^ register `v2`
+   |                  |
+   |                  register `vs34`
+
+error: register `v3` conflicts with register `vs35`
+  --> $DIR/bad-reg.rs:278:33
+   |
+LL |         asm!("", out("vs35") _, out("v3") _);
+   |                  -------------  ^^^^^^^^^^^ register `v3`
+   |                  |
+   |                  register `vs35`
+
+error: register `v4` conflicts with register `vs36`
+  --> $DIR/bad-reg.rs:280:33
+   |
+LL |         asm!("", out("vs36") _, out("v4") _);
+   |                  -------------  ^^^^^^^^^^^ register `v4`
+   |                  |
+   |                  register `vs36`
+
+error: register `v5` conflicts with register `vs37`
+  --> $DIR/bad-reg.rs:282:33
+   |
+LL |         asm!("", out("vs37") _, out("v5") _);
+   |                  -------------  ^^^^^^^^^^^ register `v5`
+   |                  |
+   |                  register `vs37`
+
+error: register `v6` conflicts with register `vs38`
+  --> $DIR/bad-reg.rs:284:33
+   |
+LL |         asm!("", out("vs38") _, out("v6") _);
+   |                  -------------  ^^^^^^^^^^^ register `v6`
+   |                  |
+   |                  register `vs38`
+
+error: register `v7` conflicts with register `vs39`
+  --> $DIR/bad-reg.rs:286:33
+   |
+LL |         asm!("", out("vs39") _, out("v7") _);
+   |                  -------------  ^^^^^^^^^^^ register `v7`
+   |                  |
+   |                  register `vs39`
+
+error: register `v8` conflicts with register `vs40`
+  --> $DIR/bad-reg.rs:288:33
+   |
+LL |         asm!("", out("vs40") _, out("v8") _);
+   |                  -------------  ^^^^^^^^^^^ register `v8`
+   |                  |
+   |                  register `vs40`
+
+error: register `v9` conflicts with register `vs41`
+  --> $DIR/bad-reg.rs:290:33
+   |
+LL |         asm!("", out("vs41") _, out("v9") _);
+   |                  -------------  ^^^^^^^^^^^ register `v9`
+   |                  |
+   |                  register `vs41`
+
+error: register `v10` conflicts with register `vs42`
+  --> $DIR/bad-reg.rs:292:33
+   |
+LL |         asm!("", out("vs42") _, out("v10") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v10`
+   |                  |
+   |                  register `vs42`
+
+error: register `v11` conflicts with register `vs43`
+  --> $DIR/bad-reg.rs:294:33
+   |
+LL |         asm!("", out("vs43") _, out("v11") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v11`
+   |                  |
+   |                  register `vs43`
+
+error: register `v12` conflicts with register `vs44`
+  --> $DIR/bad-reg.rs:296:33
+   |
+LL |         asm!("", out("vs44") _, out("v12") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v12`
+   |                  |
+   |                  register `vs44`
+
+error: register `v13` conflicts with register `vs45`
+  --> $DIR/bad-reg.rs:298:33
+   |
+LL |         asm!("", out("vs45") _, out("v13") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v13`
+   |                  |
+   |                  register `vs45`
+
+error: register `v14` conflicts with register `vs46`
+  --> $DIR/bad-reg.rs:300:33
+   |
+LL |         asm!("", out("vs46") _, out("v14") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v14`
+   |                  |
+   |                  register `vs46`
+
+error: register `v15` conflicts with register `vs47`
+  --> $DIR/bad-reg.rs:302:33
+   |
+LL |         asm!("", out("vs47") _, out("v15") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v15`
+   |                  |
+   |                  register `vs47`
+
+error: register `v16` conflicts with register `vs48`
+  --> $DIR/bad-reg.rs:304:33
+   |
+LL |         asm!("", out("vs48") _, out("v16") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v16`
+   |                  |
+   |                  register `vs48`
+
+error: register `v17` conflicts with register `vs49`
+  --> $DIR/bad-reg.rs:306:33
+   |
+LL |         asm!("", out("vs49") _, out("v17") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v17`
+   |                  |
+   |                  register `vs49`
+
+error: register `v18` conflicts with register `vs50`
+  --> $DIR/bad-reg.rs:308:33
+   |
+LL |         asm!("", out("vs50") _, out("v18") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v18`
+   |                  |
+   |                  register `vs50`
+
+error: register `v19` conflicts with register `vs51`
+  --> $DIR/bad-reg.rs:310:33
+   |
+LL |         asm!("", out("vs51") _, out("v19") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v19`
+   |                  |
+   |                  register `vs51`
+
+error: register `v20` conflicts with register `vs52`
+  --> $DIR/bad-reg.rs:312:33
+   |
+LL |         asm!("", out("vs52") _, out("v20") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v20`
+   |                  |
+   |                  register `vs52`
+
+error: register `v21` conflicts with register `vs53`
+  --> $DIR/bad-reg.rs:314:33
+   |
+LL |         asm!("", out("vs53") _, out("v21") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v21`
+   |                  |
+   |                  register `vs53`
+
+error: register `v22` conflicts with register `vs54`
+  --> $DIR/bad-reg.rs:316:33
+   |
+LL |         asm!("", out("vs54") _, out("v22") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v22`
+   |                  |
+   |                  register `vs54`
+
+error: register `v23` conflicts with register `vs55`
+  --> $DIR/bad-reg.rs:318:33
+   |
+LL |         asm!("", out("vs55") _, out("v23") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v23`
+   |                  |
+   |                  register `vs55`
+
+error: register `v24` conflicts with register `vs56`
+  --> $DIR/bad-reg.rs:320:33
+   |
+LL |         asm!("", out("vs56") _, out("v24") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v24`
+   |                  |
+   |                  register `vs56`
+
+error: register `v25` conflicts with register `vs57`
+  --> $DIR/bad-reg.rs:322:33
+   |
+LL |         asm!("", out("vs57") _, out("v25") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v25`
+   |                  |
+   |                  register `vs57`
+
+error: register `v26` conflicts with register `vs58`
+  --> $DIR/bad-reg.rs:324:33
+   |
+LL |         asm!("", out("vs58") _, out("v26") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v26`
+   |                  |
+   |                  register `vs58`
+
+error: register `v27` conflicts with register `vs59`
+  --> $DIR/bad-reg.rs:326:33
+   |
+LL |         asm!("", out("vs59") _, out("v27") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v27`
+   |                  |
+   |                  register `vs59`
+
+error: register `v28` conflicts with register `vs60`
+  --> $DIR/bad-reg.rs:328:33
+   |
+LL |         asm!("", out("vs60") _, out("v28") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v28`
+   |                  |
+   |                  register `vs60`
+
+error: register `v29` conflicts with register `vs61`
+  --> $DIR/bad-reg.rs:330:33
+   |
+LL |         asm!("", out("vs61") _, out("v29") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v29`
+   |                  |
+   |                  register `vs61`
+
+error: register `v30` conflicts with register `vs62`
+  --> $DIR/bad-reg.rs:332:33
+   |
+LL |         asm!("", out("vs62") _, out("v30") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v30`
+   |                  |
+   |                  register `vs62`
+
+error: register `v31` conflicts with register `vs63`
+  --> $DIR/bad-reg.rs:334:33
+   |
+LL |         asm!("", out("vs63") _, out("v31") _);
+   |                  -------------  ^^^^^^^^^^^^ register `v31`
+   |                  |
+   |                  register `vs63`
+
+error: register class `spe_acc` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:340:26
+   |
+LL |         asm!("/* {} */", out(spe_acc) _);
+   |                          ^^^^^^^^^^^^^^
+
+error: cannot use register `r13`: r13 is a reserved register on this target
+  --> $DIR/bad-reg.rs:42:18
+   |
+LL |         asm!("", out("r13") _);
+   |                  ^^^^^^^^^^^^
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:65:27
+   |
+LL |         asm!("", in("v0") x); // FIXME: should be ok if vsx is available
+   |                           ^
+   |
+   = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, f32, f64, i64x2, f64x2
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:68:28
+   |
+LL |         asm!("", out("v0") x); // FIXME: should be ok if vsx is available
+   |                            ^
+   |
+   = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, f32, f64, i64x2, f64x2
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:76:35
+   |
+LL |         asm!("/* {} */", in(vreg) x); // FIXME: should be ok if vsx is available
+   |                                   ^
+   |
+   = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, f32, f64, i64x2, f64x2
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:106:28
+   |
+LL |         asm!("", in("vs0") x); // FIXME: should be ok if vsx is available
+   |                            ^
+   |
+   = note: register class `vsreg` supports these types: f32, f64, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:109:29
+   |
+LL |         asm!("", out("vs0") x); // FIXME: should be ok if vsx is available
+   |                             ^
+   |
+   = note: register class `vsreg` supports these types: f32, f64, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:116:36
+   |
+LL |         asm!("/* {} */", in(vsreg) x); // FIXME: should be ok if vsx is available
+   |                                    ^
+   |
+   = note: register class `vsreg` supports these types: f32, f64, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:139:27
+   |
+LL |         asm!("", in("cr") x);
+   |                           ^
+   |
+   = note: register class `cr` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:142:28
+   |
+LL |         asm!("", out("cr") x);
+   |                            ^
+   |
+   = note: register class `cr` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:145:33
+   |
+LL |         asm!("/* {} */", in(cr) x);
+   |                                 ^
+   |
+   = note: register class `cr` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:152:28
+   |
+LL |         asm!("", in("ctr") x);
+   |                            ^
+   |
+   = note: register class `ctr` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:155:29
+   |
+LL |         asm!("", out("ctr") x);
+   |                             ^
+   |
+   = note: register class `ctr` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:158:34
+   |
+LL |         asm!("/* {} */", in(ctr) x);
+   |                                  ^
+   |
+   = note: register class `ctr` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:165:27
+   |
+LL |         asm!("", in("lr") x);
+   |                           ^
+   |
+   = note: register class `lr` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:168:28
+   |
+LL |         asm!("", out("lr") x);
+   |                            ^
+   |
+   = note: register class `lr` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:171:33
+   |
+LL |         asm!("/* {} */", in(lr) x);
+   |                                 ^
+   |
+   = note: register class `lr` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:178:28
+   |
+LL |         asm!("", in("xer") x);
+   |                            ^
+   |
+   = note: register class `xer` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:181:29
+   |
+LL |         asm!("", out("xer") x);
+   |                             ^
+   |
+   = note: register class `xer` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:184:34
+   |
+LL |         asm!("/* {} */", in(xer) x);
+   |                                  ^
+   |
+   = note: register class `xer` supports these types: 
+
+error: cannot use register `spe_acc`: spe_acc is only available on spe targets
+  --> $DIR/bad-reg.rs:338:18
+   |
+LL |         asm!("", out("spe_acc") _);
+   |                  ^^^^^^^^^^^^^^^^
+
+error: aborting due to 114 previous errors
+

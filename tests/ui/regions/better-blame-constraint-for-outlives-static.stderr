@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/better-blame-constraint-for-outlives-static.rs:9:12
+   |
+LL | fn deserialize_simple_string(buf: &[u8]) -> (Bytes, &[u8]) {
+   |                                   - let's call the lifetime of this reference `'1`
+...
+LL |     (Bytes(s), rest)
+   |            ^ this usage requires that `'1` must outlive `'static`
+
+error: aborting due to 1 previous error
+

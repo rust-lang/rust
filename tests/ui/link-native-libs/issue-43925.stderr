@@ -1,0 +1,23 @@
+error[E0658]: link cfg is unstable
+  --> $DIR/issue-43925.rs:1:22
+   |
+LL | #[link(name = "foo", cfg("rlib"))]
+   |                      ^^^^^^^^^^^
+   |
+   = help: add `#![feature(link_cfg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/issue-43925.rs:1:1
+   |
+LL | #[link(name = "foo", cfg("rlib"))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^------^^^
+   |                          |
+   |                          expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0539, E0658.
+For more information about an error, try `rustc --explain E0539`.

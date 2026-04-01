@@ -1,0 +1,17 @@
+error: `.map().collect()` can be replaced with `.try_for_each()`
+  --> tests/ui/map_collect_result_unit.rs:5:17
+   |
+LL |         let _ = (0..3).map(|t| Err(t + 1)).collect::<Result<(), _>>();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(0..3).try_for_each(|t| Err(t + 1))`
+   |
+   = note: `-D clippy::map-collect-result-unit` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_collect_result_unit)]`
+
+error: `.map().collect()` can be replaced with `.try_for_each()`
+  --> tests/ui/map_collect_result_unit.rs:7:32
+   |
+LL |         let _: Result<(), _> = (0..3).map(|t| Err(t + 1)).collect();
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(0..3).try_for_each(|t| Err(t + 1))`
+
+error: aborting due to 2 previous errors
+

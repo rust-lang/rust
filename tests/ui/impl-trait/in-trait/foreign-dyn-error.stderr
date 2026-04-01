@@ -1,0 +1,17 @@
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/foreign-dyn-error.rs:6:17
+   |
+LL |     let _: &dyn rpitit::Foo = todo!();
+   |                 ^^^^^^^^^^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/auxiliary/rpitit.rs:4:21
+   |
+LL |     fn bar(self) -> impl Deref<Target = impl Sized>;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait is not dyn compatible because method `bar` references an `impl Trait` type in its return type
+   = help: only type `rpitit::Foreign` implements `Foo`; consider using it directly instead.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

@@ -1,0 +1,15 @@
+[package]
+name = "profiler_builtins"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+test = false
+bench = false
+doc = false
+
+[dependencies]
+
+[build-dependencies]
+# Pinned so `cargo update` bumps don't cause breakage
+cc = "=1.2.0"

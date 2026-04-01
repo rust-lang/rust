@@ -1,0 +1,15 @@
+error[E0603]: macro `mac` is private
+  --> $DIR/decl-macro.rs:8:8
+   |
+LL |     m::mac!();
+   |        ^^^ private macro
+   |
+note: the macro `mac` is defined here
+  --> $DIR/decl-macro.rs:4:5
+   |
+LL |     macro mac() {}
+   |     ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

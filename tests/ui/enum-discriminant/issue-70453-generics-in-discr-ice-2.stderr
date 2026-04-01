@@ -1,0 +1,10 @@
+error: generic parameters may not be used in enum discriminant values
+  --> $DIR/issue-70453-generics-in-discr-ice-2.rs:9:35
+   |
+LL |     Some(T) = std::mem::size_of::<T>(),
+   |                                   ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in enum discriminant values
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,49 @@
+- // MIR for `test` before SimplifyComparisonIntegral
++ // MIR for `test` after SimplifyComparisonIntegral
+  
+  fn test(_1: T) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: &[T];
+      let _3: &[T; 3];
+      let _4: [T; 3];
+      let mut _8: !;
+      scope 1 {
+          debug v => _2;
+          let _5: &T;
+          let _6: &T;
+          let _7: &T;
+          scope 2 {
+              debug v1 => _5;
+              debug v2 => _6;
+              debug v3 => _7;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_4);
+          _4 = [copy _1, copy _1, copy _1];
+          _3 = &_4;
+          _2 = copy _3 as &[T] (PointerCoercion(Unsize, Implicit));
+          goto -> bb2;
+      }
+  
+      bb1: {
+          _8 = core::panicking::panic(const "internal error: entered unreachable code") -> unwind continue;
+      }
+  
+      bb2: {
+          // DBG: _5 = &(*_2)[0 of 3];
+          // DBG: _6 = &(*_2)[1 of 3];
+          // DBG: _7 = &(*_2)[2 of 3];
+          StorageDead(_4);
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 40, align: 1) {
+      0x00 │ 69 6e 74 65 72 6e 61 6c 20 65 72 72 6f 72 3a 20 │ internal error: 
+      0x10 │ 65 6e 74 65 72 65 64 20 75 6e 72 65 61 63 68 61 │ entered unreacha
+      0x20 │ 62 6c 65 20 63 6f 64 65                         │ ble code
+  }
+  

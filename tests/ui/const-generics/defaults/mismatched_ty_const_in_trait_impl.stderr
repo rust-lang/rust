@@ -1,0 +1,68 @@
+error[E0053]: associated function `foo` has an incompatible generic parameter for trait `Trait`
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:5:12
+   |
+LL | trait Trait {
+   |       -----
+LL |     fn foo<U>() {}
+   |            - expected type parameter
+LL | }
+LL | impl Trait for () {
+   | -----------------
+LL |     fn foo<const M: u64>() {}
+   |            ^^^^^^^^^^^^ found const parameter of type `u64`
+
+error[E0053]: associated function `bar` has an incompatible generic parameter for trait `Other`
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:13:12
+   |
+LL | trait Other {
+   |       -----
+LL |     fn bar<const M: u8>() {}
+   |            ----------- expected const parameter of type `u8`
+LL | }
+LL | impl Other for () {
+   | -----------------
+LL |     fn bar<T>() {}
+   |            ^ found type parameter
+
+error[E0053]: associated function `baz` has an incompatible generic parameter for trait `Uwu`
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:21:12
+   |
+LL | trait Uwu {
+   |       ---
+LL |     fn baz<const N: u32>() {}
+   |            ------------ expected const parameter of type `u32`
+LL | }
+LL | impl Uwu for () {
+   | ---------------
+LL |     fn baz<const N: i32>() {}
+   |            ^^^^^^^^^^^^ found const parameter of type `i32`
+
+error[E0053]: associated function `bbbb` has an incompatible generic parameter for trait `Aaaaaa`
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:29:13
+   |
+LL | trait Aaaaaa {
+   |       ------
+LL |     fn bbbb<const N: u32, T>() {}
+   |             ------------ expected const parameter of type `u32`
+LL | }
+LL | impl Aaaaaa for () {
+   | ------------------
+LL |     fn bbbb<T, const N: u32>() {}
+   |             ^ found type parameter
+
+error[E0053]: associated function `abcd` has an incompatible generic parameter for trait `Names`
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:37:13
+   |
+LL | trait Names {
+   |       -----
+LL |     fn abcd<T, const N: u32>() {}
+   |             - expected type parameter
+LL | }
+LL | impl Names for () {
+   | -----------------
+LL |     fn abcd<const N: u32, T>() {}
+   |             ^^^^^^^^^^^^ found const parameter of type `u32`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

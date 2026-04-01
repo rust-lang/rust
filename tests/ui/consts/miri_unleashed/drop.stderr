@@ -1,0 +1,20 @@
+error[E0080]: calling non-const function `<Vec<i32> as Drop>::drop`
+  --> $DIR/drop.rs:16:1
+   |
+LL | };
+   | ^ evaluation of `TEST_BAD` failed inside this call
+   |
+note: inside `drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/drop.rs:15:9
+   |
+LL |     let _v: Vec<i32> = Vec::new();
+   |         ^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

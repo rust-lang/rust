@@ -1,0 +1,30 @@
+error[E0391]: cycle detected when evaluating type-level constant
+  --> $DIR/const-size_of-cycle.rs:2:17
+   |
+LL |     bytes: [u8; std::mem::size_of::<Foo>()]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires const-evaluating + checking `Foo::bytes::{constant#0}`...
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+note: ...which requires simplifying constant for the type system `core::mem::SizedTypeProperties::SIZE`...
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+note: ...which requires const-evaluating + checking `core::mem::SizedTypeProperties::SIZE`...
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   = note: ...which requires computing layout of `Foo`...
+   = note: ...which requires computing layout of `[u8; std::mem::size_of::<Foo>()]`...
+note: ...which requires normalizing `[u8; std::mem::size_of::<Foo>()]`...
+  --> $DIR/const-size_of-cycle.rs:2:17
+   |
+LL |     bytes: [u8; std::mem::size_of::<Foo>()]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires evaluating type-level constant, completing the cycle
+note: cycle used when checking that `Foo` is well-formed
+  --> $DIR/const-size_of-cycle.rs:2:17
+   |
+LL |     bytes: [u8; std::mem::size_of::<Foo>()]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

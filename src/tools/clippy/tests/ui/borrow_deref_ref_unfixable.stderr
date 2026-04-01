@@ -1,0 +1,20 @@
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref_unfixable.rs:9:23
+   |
+LL |         let x: &str = &*s;
+   |                       ^^^
+   |
+   = note: `-D clippy::borrow-deref-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::borrow_deref_ref)]`
+help: if you would like to reborrow, try removing `&*`
+   |
+LL -         let x: &str = &*s;
+LL +         let x: &str = s;
+   |
+help: if you would like to deref, try using `&**`
+   |
+LL |         let x: &str = &**s;
+   |                         +
+
+error: aborting due to 1 previous error
+

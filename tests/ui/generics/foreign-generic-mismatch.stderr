@@ -1,0 +1,35 @@
+error[E0107]: function takes 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/foreign-generic-mismatch.rs:6:31
+   |
+LL |     foreign_generic_mismatch::const_arg::<()>();
+   |                               ^^^^^^^^^   -- supplied 1 generic argument
+   |                               |
+   |                               expected 2 generic arguments
+   |
+note: function defined here, with 2 generic parameters: `N`, `T`
+  --> $DIR/auxiliary/foreign-generic-mismatch.rs:1:8
+   |
+LL | pub fn const_arg<const N: usize, T>() {}
+   |        ^^^^^^^^^ --------------  -
+help: add missing generic argument
+   |
+LL |     foreign_generic_mismatch::const_arg::<(), T>();
+   |                                             +++
+
+error[E0107]: function takes 1 lifetime argument but 2 lifetime arguments were supplied
+  --> $DIR/foreign-generic-mismatch.rs:8:31
+   |
+LL |     foreign_generic_mismatch::lt_arg::<'static, 'static>();
+   |                               ^^^^^^          --------- help: remove the lifetime argument
+   |                               |
+   |                               expected 1 lifetime argument
+   |
+note: function defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/auxiliary/foreign-generic-mismatch.rs:3:8
+   |
+LL | pub fn lt_arg<'a: 'a>() {}
+   |        ^^^^^^ --
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

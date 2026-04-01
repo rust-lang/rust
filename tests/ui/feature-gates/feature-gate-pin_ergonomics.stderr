@@ -1,0 +1,322 @@
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:10:19
+   |
+LL |     fn foo_sugar(&pin mut self) {}
+   |                   ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:11:25
+   |
+LL |     fn foo_sugar_const(&pin const self) {}
+   |                         ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:17:14
+   |
+LL |     let _y: &pin mut Foo = x;
+   |              ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:21:14
+   |
+LL |     let _y: &pin const Foo = x;
+   |              ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:24:18
+   |
+LL | fn foo_sugar(_: &pin mut Foo) {}
+   |                  ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:36:18
+   |
+LL | fn baz_sugar(_: &pin const Foo) {}
+   |                  ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:39:31
+   |
+LL |     let mut x: Pin<&mut _> = &pin mut Foo;
+   |                               ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:44:23
+   |
+LL |     let x: Pin<&_> = &pin const Foo;
+   |                       ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:51:6
+   |
+LL |     &pin mut x: &pin mut i32,
+   |      ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:51:18
+   |
+LL |     &pin mut x: &pin mut i32,
+   |                  ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:54:6
+   |
+LL |     &pin const y: &'a pin const i32,
+   |      ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:54:23
+   |
+LL |     &pin const y: &'a pin const i32,
+   |                       ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:57:9
+   |
+LL |     ref pin mut z: i32,
+   |         ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:58:9
+   |
+LL |     ref pin const w: i32,
+   |         ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:70:23
+   |
+LL |         fn foo_sugar(&pin mut self) {}
+   |                       ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:71:29
+   |
+LL |         fn foo_sugar_const(&pin const self) {}
+   |                             ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:77:18
+   |
+LL |         let _y: &pin mut Foo = x;
+   |                  ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:80:22
+   |
+LL |     fn foo_sugar(_: &pin mut Foo) {}
+   |                      ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:92:22
+   |
+LL |     fn baz_sugar(_: &pin const Foo) {}
+   |                      ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:95:35
+   |
+LL |         let mut x: Pin<&mut _> = &pin mut Foo;
+   |                                   ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:100:27
+   |
+LL |         let x: Pin<&_> = &pin const Foo;
+   |                           ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:107:10
+   |
+LL |         &pin mut x: &pin mut i32,
+   |          ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:107:22
+   |
+LL |         &pin mut x: &pin mut i32,
+   |                      ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:110:10
+   |
+LL |         &pin const y: &'a pin const i32,
+   |          ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:110:27
+   |
+LL |         &pin const y: &'a pin const i32,
+   |                           ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:113:13
+   |
+LL |         ref pin mut z: i32,
+   |             ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:114:13
+   |
+LL |         ref pin const w: i32,
+   |             ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `#[pin_v2]` attribute is an experimental feature
+  --> $DIR/feature-gate-pin_ergonomics.rs:5:1
+   |
+LL | #[pin_v2]
+   | ^^^^^^^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/feature-gate-pin_ergonomics.rs:28:9
+   |
+LL | fn bar(x: Pin<&mut Foo>) {
+   |        - move occurs because `x` has type `Pin<&mut Foo>`, which does not implement the `Copy` trait
+LL |     foo(x);
+   |         - value moved here
+LL |     foo(x);
+   |         ^ value used here after move
+   |
+note: consider changing this parameter type in function `foo` to borrow instead if owning the value isn't necessary
+  --> $DIR/feature-gate-pin_ergonomics.rs:14:15
+   |
+LL | fn foo(mut x: Pin<&mut Foo>) {
+   |    ---        ^^^^^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/feature-gate-pin_ergonomics.rs:33:5
+   |
+LL | fn baz(mut x: Pin<&mut Foo>) {
+   |        ----- move occurs because `x` has type `Pin<&mut Foo>`, which does not implement the `Copy` trait
+LL |     x.foo();
+   |       ----- `x` moved due to this method call
+LL |     x.foo();
+   |     ^ value used here after move
+   |
+note: `Foo::foo` takes ownership of the receiver `self`, which moves `x`
+  --> $DIR/feature-gate-pin_ergonomics.rs:9:12
+   |
+LL |     fn foo(self: Pin<&mut Self>) {}
+   |            ^^^^
+help: consider reborrowing the `Pin` instead of moving it
+   |
+LL |     x.as_mut().foo();
+   |      +++++++++
+
+error: aborting due to 30 previous errors
+
+Some errors have detailed explanations: E0382, E0658.
+For more information about an error, try `rustc --explain E0382`.

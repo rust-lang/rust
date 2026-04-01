@@ -1,0 +1,8 @@
+error: only trait impls can be reused
+  --> $DIR/impl-reuse-non-trait-impl-cfg-false.rs:7:1
+   |
+LL | reuse impl Trait { self.0 }
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

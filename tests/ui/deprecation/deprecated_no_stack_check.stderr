@@ -1,0 +1,11 @@
+error[E0557]: feature has been removed
+  --> $DIR/deprecated_no_stack_check.rs:2:12
+   |
+LL | #![feature(no_stack_check)]
+   |            ^^^^^^^^^^^^^^ feature has been removed
+   |
+   = note: removed in 1.0.0; see <https://github.com/rust-lang/rust/pull/40110> for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0557`.

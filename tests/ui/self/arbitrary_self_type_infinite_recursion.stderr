@@ -1,0 +1,47 @@
+error[E0055]: reached the recursion limit while auto-dereferencing `MySmartPtr<Content>`
+  --> $DIR/arbitrary_self_type_infinite_recursion.rs:12:19
+   |
+LL |   fn method(self: MySmartPtr<Self>) { // note self type
+   |                   ^^^^^^^^^^^^^^^^ deref recursion limit reached
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`arbitrary_self_type_infinite_recursion`)
+
+error[E0055]: reached the recursion limit while auto-dereferencing `MySmartPtr<Content>`
+  --> $DIR/arbitrary_self_type_infinite_recursion.rs:12:19
+   |
+LL |   fn method(self: MySmartPtr<Self>) { // note self type
+   |                   ^^^^^^^^^^^^^^^^ deref recursion limit reached
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`arbitrary_self_type_infinite_recursion`)
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0307]: invalid `self` parameter type: `MySmartPtr<Content>`
+  --> $DIR/arbitrary_self_type_infinite_recursion.rs:12:19
+   |
+LL |   fn method(self: MySmartPtr<Self>) { // note self type
+   |                   ^^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or some type implementing `Receiver`
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+error[E0055]: reached the recursion limit while auto-dereferencing `MySmartPtr<Content>`
+  --> $DIR/arbitrary_self_type_infinite_recursion.rs:21:5
+   |
+LL |   p.method();
+   |     ^^^^^^ deref recursion limit reached
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`arbitrary_self_type_infinite_recursion`)
+
+error[E0599]: no method named `method` found for struct `MySmartPtr<T>` in the current scope
+  --> $DIR/arbitrary_self_type_infinite_recursion.rs:21:5
+   |
+LL | struct MySmartPtr<T>(T);
+   | -------------------- method `method` not found for this struct
+...
+LL |   p.method();
+   |     ^^^^^^ method not found in `MySmartPtr<Content>`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0055, E0307, E0599.
+For more information about an error, try `rustc --explain E0055`.

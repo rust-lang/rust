@@ -1,0 +1,26 @@
+error[E0277]: the trait bound `T: Trait` is not satisfied
+  --> $DIR/projection-trait-ref.rs:8:12
+   |
+LL |     let x: <T as Trait>::Assoc = ();
+   |            ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
+   |
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL | fn test_poly<T: Trait>() {
+   |               +++++++
+
+error[E0277]: the trait bound `i32: Trait` is not satisfied
+  --> $DIR/projection-trait-ref.rs:13:12
+   |
+LL |     let x: <i32 as Trait>::Assoc = ();
+   |            ^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `i32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/projection-trait-ref.rs:3:1
+   |
+LL | trait Trait {
+   | ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

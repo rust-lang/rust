@@ -1,0 +1,5 @@
+error: unknown print request: `xxx`
+  |
+  = help: valid print requests are: `calling-conventions`, `cfg`, `code-models`, `crate-name`, `deployment-target`, `file-names`, `host-tuple`, `link-args`, `native-static-libs`, `relocation-models`, `split-debuginfo`, `stack-protector-strategies`, `sysroot`, `target-cpus`, `target-features`, `target-libdir`, `target-list`, `tls-models`
+  = help: for more information, see the rustc book: https://doc.rust-lang.org/rustc/command-line-arguments.html#--print-print-compiler-information
+

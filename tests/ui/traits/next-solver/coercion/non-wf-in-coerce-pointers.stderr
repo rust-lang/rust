@@ -1,0 +1,39 @@
+error[E0277]: the trait bound `(): Wf` is not satisfied
+  --> $DIR/non-wf-in-coerce-pointers.rs:8:8
+   |
+LL |     f: &'static <() as Wf>::Assoc,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Wf` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/non-wf-in-coerce-pointers.rs:3:1
+   |
+LL | trait Wf {
+   | ^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/non-wf-in-coerce-pointers.rs:14:18
+   |
+LL |     let y: &() = x.f;
+   |            ---   ^^^ types differ
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&()`
+              found reference `&'static <() as Wf>::Assoc`
+
+error[E0277]: the trait bound `(): Wf` is not satisfied
+  --> $DIR/non-wf-in-coerce-pointers.rs:14:18
+   |
+LL |     let y: &() = x.f;
+   |                  ^^^ the trait `Wf` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/non-wf-in-coerce-pointers.rs:3:1
+   |
+LL | trait Wf {
+   | ^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

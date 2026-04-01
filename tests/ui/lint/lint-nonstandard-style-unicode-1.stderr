@@ -1,0 +1,50 @@
+error: type `χa` should have an upper camel case name
+  --> $DIR/lint-nonstandard-style-unicode-1.rs:14:8
+   |
+LL | struct χa;
+   |        ^^ help: convert the identifier to upper camel case: `Χa`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-nonstandard-style-unicode-1.rs:3:11
+   |
+LL | #![forbid(non_camel_case_types)]
+   |           ^^^^^^^^^^^^^^^^^^^^
+
+error: type `__χa` should have an upper camel case name
+  --> $DIR/lint-nonstandard-style-unicode-1.rs:22:8
+   |
+LL | struct __χa;
+   |        ^^^^ help: convert the identifier to upper camel case: `Χa`
+
+error: type `对__否` should have an upper camel case name
+  --> $DIR/lint-nonstandard-style-unicode-1.rs:27:8
+   |
+LL | struct 对__否;
+   |        ^^^^^^ help: convert the identifier to upper camel case: `对_否`
+
+error: type `ヒ__χ` should have an upper camel case name
+  --> $DIR/lint-nonstandard-style-unicode-1.rs:30:8
+   |
+LL | struct ヒ__χ;
+   |        ^^^^^ help: convert the identifier to upper camel case: `ヒΧ`
+
+error: type `Hello_你好` should have an upper camel case name
+  --> $DIR/lint-nonstandard-style-unicode-1.rs:36:8
+   |
+LL | struct Hello_你好;
+   |        ^^^^^^^^^^ help: convert the identifier to upper camel case: `Hello你好`
+
+error: type `Hello_World` should have an upper camel case name
+  --> $DIR/lint-nonstandard-style-unicode-1.rs:39:8
+   |
+LL | struct Hello_World;
+   |        ^^^^^^^^^^^ help: convert the identifier to upper camel case: `HelloWorld`
+
+error: type `你_ӟ` should have an upper camel case name
+  --> $DIR/lint-nonstandard-style-unicode-1.rs:42:8
+   |
+LL | struct 你_ӟ;
+   |        ^^^^ help: convert the identifier to upper camel case: `你Ӟ`
+
+error: aborting due to 7 previous errors
+

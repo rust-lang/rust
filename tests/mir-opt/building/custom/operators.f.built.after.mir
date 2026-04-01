@@ -1,0 +1,30 @@
+// MIR for `f` after built
+
+fn f(_1: i32, _2: bool) -> i32 {
+    let mut _0: i32;
+    let mut _3: (i32, bool);
+
+    bb0: {
+        _1 = Neg(copy _1);
+        _2 = Not(copy _2);
+        _1 = Add(copy _1, copy _1);
+        _1 = Sub(copy _1, copy _1);
+        _1 = Mul(copy _1, copy _1);
+        _1 = Div(copy _1, copy _1);
+        _1 = Rem(copy _1, copy _1);
+        _1 = BitXor(copy _1, copy _1);
+        _1 = BitAnd(copy _1, copy _1);
+        _1 = Shl(copy _1, copy _1);
+        _1 = Shr(copy _1, copy _1);
+        _2 = Eq(copy _1, copy _1);
+        _2 = Lt(copy _1, copy _1);
+        _2 = Le(copy _1, copy _1);
+        _2 = Ge(copy _1, copy _1);
+        _2 = Gt(copy _1, copy _1);
+        _3 = AddWithOverflow(copy _1, copy _1);
+        _2 = copy (_3.1: bool);
+        _1 = copy (_3.0: i32);
+        _0 = copy _1;
+        return;
+    }
+}

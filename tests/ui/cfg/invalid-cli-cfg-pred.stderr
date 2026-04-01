@@ -1,0 +1,7 @@
+error: invalid suffix `x` for number literal
+  |
+  = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+  = note: this occurred on the command line: `--cfg=foo=1x`
+
+error: invalid `--cfg` argument: `foo=1x` (expected `key` or `key="value"`, ensure escaping is appropriate for your shell, try 'key="value"' or key=\"value\")
+

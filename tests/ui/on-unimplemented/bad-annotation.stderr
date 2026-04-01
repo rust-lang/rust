@@ -1,0 +1,148 @@
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:29:26
+   |
+LL | #[rustc_on_unimplemented(lorem = "")]
+   |                          ^^^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:35:26
+   |
+LL | #[rustc_on_unimplemented(lorem(ipsum(dolor)))]
+   |                          ^^^^^^^^^^^^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:41:41
+   |
+LL | #[rustc_on_unimplemented(message = "x", message = "y")]
+   |                                         ^^^^^^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: invalid flag in `on`-clause
+  --> $DIR/bad-annotation.rs:47:44
+   |
+LL | #[rustc_on_unimplemented(message = "x", on(desugared, message = "y"))]
+   |                                            ^^^^^^^^^ expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `desugared`
+
+error[E0232]: empty `on`-clause in `#[rustc_on_unimplemented]`
+  --> $DIR/bad-annotation.rs:52:26
+   |
+LL | #[rustc_on_unimplemented(on(), message = "y")]
+   |                          ^^^^ empty `on`-clause here
+
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:57:26
+   |
+LL | #[rustc_on_unimplemented(on = "x", message = "y")]
+   |                          ^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:63:26
+   |
+LL | #[rustc_on_unimplemented(on(Self = "y"), message = "y")]
+   |                          ^^^^^^^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:69:46
+   |
+LL | #[rustc_on_unimplemented(on(from_desugaring, on(from_desugaring, message = "x")), message = "y")]
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: literals inside `on`-clauses are not supported
+  --> $DIR/bad-annotation.rs:75:29
+   |
+LL | #[rustc_on_unimplemented(on("y", message = "y"))]
+   |                             ^^^ unexpected literal here
+
+error[E0232]: literals inside `on`-clauses are not supported
+  --> $DIR/bad-annotation.rs:80:29
+   |
+LL | #[rustc_on_unimplemented(on(42, message = "y"))]
+   |                             ^^ unexpected literal here
+
+error[E0232]: expected a single predicate in `not(..)`
+  --> $DIR/bad-annotation.rs:85:32
+   |
+LL | #[rustc_on_unimplemented(on(not(a, b), message = "y"))]
+   |                                ^^^^^^ unexpected quantity of predicates here
+
+error[E0232]: expected a single predicate in `not(..)`
+  --> $DIR/bad-annotation.rs:90:32
+   |
+LL | #[rustc_on_unimplemented(on(not(), message = "y"))]
+   |                                ^^ unexpected quantity of predicates here
+
+error[E0232]: expected an identifier inside this `on`-clause
+  --> $DIR/bad-annotation.rs:95:29
+   |
+LL | #[rustc_on_unimplemented(on(thing::What, message = "y"))]
+   |                             ^^^^^^^^^^^ expected an identifier here, not `thing::What`
+
+error[E0232]: expected an identifier inside this `on`-clause
+  --> $DIR/bad-annotation.rs:100:29
+   |
+LL | #[rustc_on_unimplemented(on(thing::What = "value", message = "y"))]
+   |                             ^^^^^^^^^^^ expected an identifier here, not `thing::What`
+
+error[E0232]: this predicate is invalid
+  --> $DIR/bad-annotation.rs:105:29
+   |
+LL | #[rustc_on_unimplemented(on(aaaaaaaaaaaaaa(a, b), message = "y"))]
+   |                             ^^^^^^^^^^^^^^ expected one of `any`, `all` or `not` here, not `aaaaaaaaaaaaaa`
+
+error[E0232]: invalid flag in `on`-clause
+  --> $DIR/bad-annotation.rs:110:29
+   |
+LL | #[rustc_on_unimplemented(on(something, message = "y"))]
+   |                             ^^^^^^^^^ expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `something`
+
+warning: there is no parameter `C` on trait `ParameterNotPresent`
+  --> $DIR/bad-annotation.rs:20:90
+   |
+LL | #[rustc_on_unimplemented(label = "Unimplemented error on `{Self}` with params `<{A},{B},{C}>`")]
+   |                                                                                          ^
+   |
+   = note: `#[warn(malformed_diagnostic_format_literals)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: there is no parameter `_Self` on trait `InvalidName`
+  --> $DIR/bad-annotation.rs:115:29
+   |
+LL | #[rustc_on_unimplemented(on(_Self = "y", message = "y"))]
+   |                             ^^^^^^^^^^^
+
+warning: there is no parameter `abc` on trait `InvalidName2`
+  --> $DIR/bad-annotation.rs:119:29
+   |
+LL | #[rustc_on_unimplemented(on(abc = "y", message = "y"))]
+   |                             ^^^^^^^^^
+
+warning: missing options for `on_unimplemented` attribute
+  --> $DIR/bad-annotation.rs:15:1
+   |
+LL | #[rustc_on_unimplemented]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: at least one of the `message`, `note` and `label` options are expected
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: positional format arguments are not allowed here
+  --> $DIR/bad-annotation.rs:25:90
+   |
+LL | #[rustc_on_unimplemented(label = "Unimplemented error on `{Self}` with params `<{A},{B},{}>`")]
+   |                                                                                          ^
+   |
+   = help: only named format arguments with the name of one of the generic types are allowed in this context
+
+error: aborting due to 16 previous errors; 5 warnings emitted
+
+For more information about this error, try `rustc --explain E0232`.

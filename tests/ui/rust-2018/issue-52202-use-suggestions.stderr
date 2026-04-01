@@ -1,0 +1,21 @@
+error[E0422]: cannot find struct, variant or union type `Drain` in this scope
+  --> $DIR/issue-52202-use-suggestions.rs:11:14
+   |
+LL |     let _d = Drain {};
+   |              ^^^^^ not found in this scope
+   |
+help: consider importing one of these structs
+   |
+LL + use crate::plumbing::Drain;
+   |
+LL + use std::collections::binary_heap::Drain;
+   |
+LL + use std::collections::hash_map::Drain;
+   |
+LL + use std::collections::hash_set::Drain;
+   |
+   = and 3 other candidates
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0422`.

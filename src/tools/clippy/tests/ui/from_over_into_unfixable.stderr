@@ -1,0 +1,38 @@
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into_unfixable.rs:11:1
+   |
+LL | impl Into<InMacro> for String {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace the `Into` implementation with `From<std::string::String>`
+   = note: `-D clippy::from-over-into` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::from_over_into)]`
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into_unfixable.rs:21:1
+   |
+LL | impl Into<WeirdUpperSelf> for &'static [u8] {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace the `Into` implementation with `From<&'static [u8]>`
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into_unfixable.rs:32:1
+   |
+LL | impl Into<u8> for ContainsVal {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
+           https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
+   = help: replace the `Into` implementation with `From<ContainsVal>`
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into_unfixable.rs:45:1
+   |
+LL | impl<T> Into<Rval<Self>> for Lval<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace the `Into` implementation with `From<Lval<T>>`
+
+error: aborting due to 4 previous errors
+

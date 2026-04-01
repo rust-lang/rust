@@ -1,0 +1,60 @@
+error[E0557]: feature has been removed
+  --> $DIR/gated-bad-feature.rs:8:12
+   |
+LL | #![feature(test_removed_feature)]
+   |            ^^^^^^^^^^^^^^^^^^^^ feature has been removed
+   |
+   = note: removed in 1.0.0
+
+error[E0565]: malformed `feature` attribute input
+  --> $DIR/gated-bad-feature.rs:1:1
+   |
+LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^-----^^^^^^^^^^^^^^^^^^^^
+   | |                          |
+   | |                          didn't expect any arguments here
+   | help: must be of the form: `#![feature(feature1, feature2, ...)]`
+
+error[E0565]: malformed `feature` attribute input
+  --> $DIR/gated-bad-feature.rs:1:1
+   |
+LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^
+   | |                                     |
+   | |                                     didn't expect any arguments here
+   | help: must be of the form: `#![feature(feature1, feature2, ...)]`
+
+error[E0539]: malformed `feature` attribute input
+  --> $DIR/gated-bad-feature.rs:6:1
+   |
+LL | #![feature]
+   | ^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#![feature(feature1, feature2, ...)]`
+
+error[E0539]: malformed `feature` attribute input
+  --> $DIR/gated-bad-feature.rs:7:1
+   |
+LL | #![feature = "foo"]
+   | ^^^^^^^^^^^-------^
+   | |          |
+   | |          expected this to be a list
+   | help: must be of the form: `#![feature(feature1, feature2, ...)]`
+
+error[E0635]: unknown feature `foo_bar_baz`
+  --> $DIR/gated-bad-feature.rs:1:12
+   |
+LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+   |            ^^^^^^^^^^^
+
+error[E0635]: unknown feature `foo`
+  --> $DIR/gated-bad-feature.rs:1:48
+   |
+LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+   |                                                ^^^
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0539, E0557, E0565, E0635.
+For more information about an error, try `rustc --explain E0539`.

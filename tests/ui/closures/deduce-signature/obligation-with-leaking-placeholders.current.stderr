@@ -1,0 +1,15 @@
+error: implementation of `Foo` is not general enough
+  --> $DIR/obligation-with-leaking-placeholders.rs:18:5
+   |
+LL | /     needs_foo(|x| {
+LL | |
+LL | |
+LL | |         x.to_string();
+LL | |     });
+   | |______^ implementation of `Foo` is not general enough
+   |
+   = note: `Wrap<{closure@$DIR/obligation-with-leaking-placeholders.rs:18:15: 18:18}>` must implement `Foo<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Foo<'1>`, for some specific lifetime `'1`
+
+error: aborting due to 1 previous error
+

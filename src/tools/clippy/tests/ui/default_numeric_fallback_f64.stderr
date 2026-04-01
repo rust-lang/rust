@@ -1,0 +1,145 @@
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:21:17
+   |
+LL |         let x = 0.12;
+   |                 ^^^^ help: consider adding suffix: `0.12_f64`
+   |
+   = note: `-D clippy::default-numeric-fallback` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::default_numeric_fallback)]`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:23:18
+   |
+LL |         let x = [1., 2., 3.];
+   |                  ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:23:22
+   |
+LL |         let x = [1., 2., 3.];
+   |                      ^^ help: consider adding suffix: `2.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:23:26
+   |
+LL |         let x = [1., 2., 3.];
+   |                          ^^ help: consider adding suffix: `3.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:27:28
+   |
+LL |         let x = if true { (1., 2.) } else { (3., 4.) };
+   |                            ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:27:32
+   |
+LL |         let x = if true { (1., 2.) } else { (3., 4.) };
+   |                                ^^ help: consider adding suffix: `2.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:27:46
+   |
+LL |         let x = if true { (1., 2.) } else { (3., 4.) };
+   |                                              ^^ help: consider adding suffix: `3.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:27:50
+   |
+LL |         let x = if true { (1., 2.) } else { (3., 4.) };
+   |                                                  ^^ help: consider adding suffix: `4.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:32:23
+   |
+LL |         let x = match 1. {
+   |                       ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:34:18
+   |
+LL |             _ => 1.,
+   |                  ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:54:21
+   |
+LL |             let y = 1.;
+   |                     ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:63:21
+   |
+LL |             let y = 1.;
+   |                     ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:70:21
+   |
+LL |             let y = 1.;
+   |                     ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:79:21
+   |
+LL |             let y = 1.;
+   |                     ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:96:27
+   |
+LL |         let f = || -> _ { 1. };
+   |                           ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:101:29
+   |
+LL |         let f = || -> f64 { 1. };
+   |                             ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:116:21
+   |
+LL |         generic_arg(1.);
+   |                     ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:120:32
+   |
+LL |         let x: _ = generic_arg(1.);
+   |                                ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:139:28
+   |
+LL |         GenericStruct { x: 1. };
+   |                            ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:143:36
+   |
+LL |         let _ = GenericStruct { x: 1. };
+   |                                    ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:162:24
+   |
+LL |         GenericEnum::X(1.);
+   |                        ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:183:23
+   |
+LL |         s.generic_arg(1.);
+   |                       ^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> tests/ui/default_numeric_fallback_f64.rs:194:25
+   |
+LL |         inline!(let x = 22.;);
+   |                         ^^^ help: consider adding suffix: `22.0_f64`
+   |
+   = note: this error originates in the macro `__inline_mac_fn_internal` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 23 previous errors
+

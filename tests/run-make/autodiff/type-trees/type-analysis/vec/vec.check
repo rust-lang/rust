@@ -1,0 +1,18 @@
+// CHECK: callee - {[-1]:Float@float} |{[-1]:Pointer}:{}
+// CHECK: ptr %{{[0-9]+}}: {[-1]:Pointer}
+// CHECK-DAG: %{{[0-9]+}} = getelementptr inbounds nuw i8, ptr %{{[0-9]+}}, i64 8, !dbg !{{[0-9]+}}: {[-1]:Pointer}
+// CHECK-DAG: %{{[0-9]+}} = load ptr, ptr %{{[0-9]+}}, align 8, !dbg !{{[0-9]+}}, !nonnull !{{[0-9]+}}, !noundef !{{[0-9]+}}: {}
+// CHECK-DAG: %{{[0-9]+}} = getelementptr inbounds nuw i8, ptr %{{[0-9]+}}, i64 16, !dbg !{{[0-9]+}}: {[-1]:Pointer}
+// CHECK-DAG: %{{[0-9]+}} = load i64, ptr %{{[0-9]+}}, align 8, !dbg !{{[0-9]+}}, !noundef !{{[0-9]+}}: {}
+// CHECK-DAG: %{{[0-9]+}} = icmp eq i64 %{{[0-9]+}}, 0, !dbg !{{[0-9]+}}: {[-1]:Integer}
+// CHECK-DAG: br i1 %{{[0-9]+}}, label %{{[0-9]+}}, label %{{[0-9]+}}, !dbg !{{[0-9]+}}: {}
+// CHECK-DAG: %{{[0-9]+}} = phi i64 [ %{{[0-9]+}}, %{{[0-9]+}} ], [ 0, %{{[0-9]+}} ], !dbg !{{[0-9]+}}: {[-1]:Integer}
+// CHECK-DAG: %{{[0-9]+}} = phi float [ %{{[0-9]+}}, %{{[0-9]+}} ], [ -0.000000e+00, %{{[0-9]+}} ], !dbg !{{[0-9]+}}: {[-1]:Float@float}
+// CHECK-DAG: %{{[0-9]+}} = getelementptr inbounds nuw float, ptr %{{[0-9]+}}, i64 %{{[0-9]+}}, !dbg !{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Float@float}
+// CHECK-DAG: %{{[0-9]+}} = load float, ptr %{{[0-9]+}}, align 4, !dbg !{{[0-9]+}}, !noundef !{{[0-9]+}}: {[-1]:Float@float}
+// CHECK-DAG: %{{[0-9]+}} = fadd float %{{[0-9]+}}, %{{[0-9]+}}, !dbg !{{[0-9]+}}: {[-1]:Float@float}
+// CHECK-DAG: %{{[0-9]+}} = add nuw i64 %{{[0-9]+}}, 1, !dbg !{{[0-9]+}}: {[-1]:Integer}
+// CHECK-DAG: %{{[0-9]+}} = icmp eq i64 %{{[0-9]+}}, %{{[0-9]+}}, !dbg !{{[0-9]+}}: {[-1]:Integer}
+// CHECK-DAG: br i1 %{{[0-9]+}}, label %{{[0-9]+}}, label %{{[0-9]+}}, !dbg !{{[0-9]+}}: {}
+// CHECK-DAG: %{{[0-9]+}} = phi float [ -0.000000e+00, %{{[0-9]+}} ], [ %{{[0-9]+}}, %{{[0-9]+}} ], !dbg !{{[0-9]+}}: {[-1]:Float@float}
+// CHECK-DAG: ret float %{{[0-9]+}}, !dbg !{{[0-9]+}}: {}

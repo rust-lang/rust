@@ -1,0 +1,13 @@
+SOURCE_FILE
+  ERROR
+    ABI
+      EXTERN_KW "extern"
+  WHITESPACE " "
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 6: expected fn, trait or impl

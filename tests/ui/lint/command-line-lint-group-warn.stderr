@@ -1,0 +1,11 @@
+warning: variable `_InappropriateCamelCasing` should have a snake case name
+  --> $DIR/command-line-lint-group-warn.rs:5:9
+   |
+LL |     let _InappropriateCamelCasing = true;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `_inappropriate_camel_casing`
+   |
+   = note: `-W non-snake-case` implied by `-W bad-style`
+   = help: to override `-W bad-style` add `#[allow(non_snake_case)]`
+
+warning: 1 warning emitted
+

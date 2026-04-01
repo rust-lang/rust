@@ -1,0 +1,11 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/multiple-def-uses-in-one-fn2.rs:10:63
+   |
+LL | fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>) {
+   |                                                               ^^^^^^^^^^^^^^^^^^
+   |                                                               |
+   |                                                               expected `A`, got `B`
+   |                                                               this expression supplies two conflicting concrete types for the same opaque type
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,107 @@
+use rustc_hir as hir;
+use rustc_index::Idx;
+use rustc_middle::middle::region;
+use rustc_middle::thir::*;
+use tracing::debug;
+
+use crate::thir::cx::ThirBuildCx;
+
+impl<'tcx> ThirBuildCx<'tcx> {
+    pub(crate) fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> BlockId {
+        // We have to eagerly lower the "spine" of the statements
+        // in order to get the lexical scoping correctly.
+        let stmts = self.mirror_stmts(block.hir_id.local_id, block.stmts);
+        let block = Block {
+            targeted_by_break: block.targeted_by_break,
+            region_scope: region::Scope {
+                local_id: block.hir_id.local_id,
+                data: region::ScopeData::Node,
+            },
+            span: block.span,
+            stmts,
+            expr: block.expr.map(|expr| self.mirror_expr(expr)),
+            safety_mode: match block.rules {
+                hir::BlockCheckMode::DefaultBlock => BlockSafety::Safe,
+                hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated) => {
+                    BlockSafety::BuiltinUnsafe
+                }
+                hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::UserProvided) => {
+                    BlockSafety::ExplicitUnsafe(block.hir_id)
+                }
+            },
+        };
+
+        self.thir.blocks.push(block)
+    }
+
+    fn mirror_stmts(
+        &mut self,
+        block_id: hir::ItemLocalId,
+        stmts: &'tcx [hir::Stmt<'tcx>],
+    ) -> Box<[StmtId]> {
+        stmts
+            .iter()
+            .enumerate()
+            .filter_map(|(index, stmt)| {
+                let hir_id = stmt.hir_id;
+                match stmt.kind {
+                    hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr) => {
+                        let stmt = Stmt {
+                            kind: StmtKind::Expr {
+                                scope: region::Scope {
+                                    local_id: hir_id.local_id,
+                                    data: region::ScopeData::Node,
+                                },
+                                expr: self.mirror_expr(expr),
+                            },
+                        };
+                        Some(self.thir.stmts.push(stmt))
+                    }
+                    hir::StmtKind::Item(..) => {
+                        // ignore for purposes of the MIR
+                        None
+                    }
+                    hir::StmtKind::Let(local) => {
+                        let remainder_scope = region::Scope {
+                            local_id: block_id,
+                            data: region::ScopeData::Remainder(region::FirstStatementIndex::new(
+                                index,
+                            )),
+                        };
+
+                        let else_block = local.els.map(|els| self.mirror_block(els));
+
+                        let pattern = self.pattern_from_hir_with_annotation(local.pat, local.ty);
+                        debug!(?pattern);
+
+                        let span = match local.init {
+                            Some(init)
+                                if let Some(init_span) =
+                                    init.span.find_ancestor_inside_same_ctxt(local.span) =>
+                            {
+                                local.span.with_hi(init_span.hi())
+                            }
+                            Some(_) | None => local.span,
+                        };
+                        let initializer = local.init.map(|init| self.mirror_expr(init));
+                        let stmt = Stmt {
+                            kind: StmtKind::Let {
+                                remainder_scope,
+                                init_scope: region::Scope {
+                                    local_id: hir_id.local_id,
+                                    data: region::ScopeData::Node,
+                                },
+                                pattern,
+                                initializer,
+                                else_block,
+                                hir_id: local.hir_id,
+                                span,
+                            },
+                        };
+                        Some(self.thir.stmts.push(stmt))
+                    }
+                }
+            })
+            .collect()
+    }
+}

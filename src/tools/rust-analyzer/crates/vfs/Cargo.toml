@@ -1,0 +1,27 @@
+[package]
+name = "vfs"
+version = "0.0.0"
+repository.workspace = true
+description = "A virtual file system for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+rustc-hash.workspace = true
+tracing.workspace = true
+fst = "0.4.7"
+indexmap.workspace = true
+nohash-hasher.workspace = true
+crossbeam-channel.workspace = true
+
+paths.workspace = true
+stdx.workspace = true
+
+[lints]
+workspace = true

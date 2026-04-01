@@ -1,0 +1,30 @@
+error[E0038]: the trait `issue_3907::Foo` is not dyn compatible
+  --> $DIR/issue-3907-2.rs:11:12
+   |
+LL | fn bar(_x: Foo) {}
+   |            ^^^ `issue_3907::Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/auxiliary/issue-3907.rs:2:8
+   |
+LL |     fn bar();
+   |        ^^^ the trait is not dyn compatible because associated function `bar` has no `self` parameter
+
+error[E0277]: the size for values of type `(dyn issue_3907::Foo + 'static)` cannot be known at compilation time
+  --> $DIR/issue-3907-2.rs:11:12
+   |
+LL | fn bar(_x: Foo) {}
+   |            ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn issue_3907::Foo + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn bar(_x: &Foo) {}
+   |            +
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.

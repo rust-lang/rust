@@ -1,0 +1,47 @@
+error[E0597]: `c` does not live long enough
+  --> $DIR/fns.rs:23:29
+   |
+LL |     let c = 66;
+   |         - binding `c` declared here
+LL |     some_fn::<&'static u32>(&c);
+   |     ------------------------^^-
+   |     |                       |
+   |     |                       borrowed value does not live long enough
+   |     argument requires that `c` is borrowed for `'static`
+LL | }
+   | - `c` dropped here while still borrowed
+
+error[E0597]: `c` does not live long enough
+  --> $DIR/fns.rs:28:24
+   |
+LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
+   |                                   -- lifetime `'a` defined here
+LL |     let c = 66;
+   |         - binding `c` declared here
+LL |     some_fn::<&'a u32>(&c);
+   |     -------------------^^-
+   |     |                  |
+   |     |                  borrowed value does not live long enough
+   |     argument requires that `c` is borrowed for `'a`
+LL | }
+   | - `c` dropped here while still borrowed
+
+error[E0597]: `c` does not live long enough
+  --> $DIR/fns.rs:38:28
+   |
+LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
+   |                                              -- lifetime `'a` defined here
+LL |     let _closure = || {
+LL |         let c = 66;
+   |             - binding `c` declared here
+LL |         some_fn::<&'a u32>(&c);
+   |         -------------------^^-
+   |         |                  |
+   |         |                  borrowed value does not live long enough
+   |         argument requires that `c` is borrowed for `'a`
+LL |     };
+   |     - `c` dropped here while still borrowed
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc: Trait`
+  --> $DIR/normalize-param-env-4.rs:19:26
+   |
+LL |     <T as Trait>::Assoc: Trait,
+   |                          ^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

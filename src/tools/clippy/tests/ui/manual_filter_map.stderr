@@ -1,0 +1,282 @@
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:9:19
+   |
+LL |     let _ = (0..).filter(|n| to_opt(*n).is_some()).map(|a| to_opt(a).unwrap());
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter_map(|a| to_opt(a))`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> tests/ui/manual_filter_map.rs:9:30
+   |
+LL |     let _ = (0..).filter(|n| to_opt(*n).is_some()).map(|a| to_opt(a).unwrap());
+   |                              ^^^^^^^^^^
+   = note: `-D clippy::manual-filter-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_filter_map)]`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:13:19
+   |
+LL |     let _ = (0..).filter(|&n| to_opt(n).is_some()).map(|a| to_opt(a).expect("hi"));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter_map(|a| to_opt(a))`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> tests/ui/manual_filter_map.rs:13:31
+   |
+LL |     let _ = (0..).filter(|&n| to_opt(n).is_some()).map(|a| to_opt(a).expect("hi"));
+   |                               ^^^^^^^^^
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:17:19
+   |
+LL |     let _ = (0..).filter(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter_map(|a| to_res(a).ok())`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> tests/ui/manual_filter_map.rs:17:31
+   |
+LL |     let _ = (0..).filter(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
+   |                               ^^^^^^^^^
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:21:10
+   |
+LL |           .filter(|&x| to_ref(to_opt(x)).is_some())
+   |  __________^
+LL | |
+LL | |         .map(|y| to_ref(to_opt(y)).unwrap());
+   | |____________________________________________^ help: try: `filter_map(|y| *to_ref(to_opt(y)))`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> tests/ui/manual_filter_map.rs:21:22
+   |
+LL |         .filter(|&x| to_ref(to_opt(x)).is_some())
+   |                      ^^^^^^^^^^^^^^^^^
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:25:10
+   |
+LL |           .filter(|x| to_ref(to_opt(*x)).is_some())
+   |  __________^
+LL | |
+LL | |         .map(|y| to_ref(to_opt(y)).unwrap());
+   | |____________________________________________^ help: try: `filter_map(|y| *to_ref(to_opt(y)))`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> tests/ui/manual_filter_map.rs:25:21
+   |
+LL |         .filter(|x| to_ref(to_opt(*x)).is_some())
+   |                     ^^^^^^^^^^^^^^^^^^
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:30:10
+   |
+LL |           .filter(|&x| to_ref(to_res(x)).is_ok())
+   |  __________^
+LL | |
+LL | |         .map(|y| to_ref(to_res(y)).unwrap());
+   | |____________________________________________^ help: try: `filter_map(|y| to_ref(to_res(y)).ok())`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> tests/ui/manual_filter_map.rs:30:22
+   |
+LL |         .filter(|&x| to_ref(to_res(x)).is_ok())
+   |                      ^^^^^^^^^^^^^^^^^
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:34:10
+   |
+LL |           .filter(|x| to_ref(to_res(*x)).is_ok())
+   |  __________^
+LL | |
+LL | |         .map(|y| to_ref(to_res(y)).unwrap());
+   | |____________________________________________^ help: try: `filter_map(|y| to_ref(to_res(y)).ok())`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> tests/ui/manual_filter_map.rs:34:21
+   |
+LL |         .filter(|x| to_ref(to_res(*x)).is_ok())
+   |                     ^^^^^^^^^^^^^^^^^^
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> tests/ui/manual_filter_map.rs:41:27
+   |
+LL |     iter::<Option<&u8>>().find(|x| x.is_some()).map(|x| x.cloned().unwrap());
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned())`
+   |
+   = note: `-D clippy::manual-find-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_find_map)]`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> tests/ui/manual_filter_map.rs:43:28
+   |
+LL |     iter::<&Option<&u8>>().find(|x| x.is_some()).map(|x| x.cloned().unwrap());
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> tests/ui/manual_filter_map.rs:45:31
+   |
+LL |     iter::<&Option<String>>().find(|x| x.is_some()).map(|x| x.as_deref().unwrap());
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.as_deref())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> tests/ui/manual_filter_map.rs:47:31
+   |
+LL |     iter::<Option<&String>>().find(|&x| to_ref(x).is_some()).map(|y| to_ref(y).cloned().unwrap());
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|y| to_ref(y).cloned())`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> tests/ui/manual_filter_map.rs:47:41
+   |
+LL |     iter::<Option<&String>>().find(|&x| to_ref(x).is_some()).map(|y| to_ref(y).cloned().unwrap());
+   |                                         ^^^^^^^^^
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> tests/ui/manual_filter_map.rs:50:30
+   |
+LL |     iter::<Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> tests/ui/manual_filter_map.rs:52:31
+   |
+LL |     iter::<&Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> tests/ui/manual_filter_map.rs:54:32
+   |
+LL |     iter::<&&Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> tests/ui/manual_filter_map.rs:56:31
+   |
+LL |     iter::<Result<&u8, ()>>().find(|x| x.is_ok()).map(|x| x.cloned().unwrap());
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned().ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> tests/ui/manual_filter_map.rs:58:32
+   |
+LL |     iter::<&Result<&u8, ()>>().find(|x| x.is_ok()).map(|x| x.cloned().unwrap());
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned().ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> tests/ui/manual_filter_map.rs:60:35
+   |
+LL |     iter::<&Result<String, ()>>().find(|x| x.is_ok()).map(|x| x.as_deref().unwrap());
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.as_deref().ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> tests/ui/manual_filter_map.rs:62:35
+   |
+LL |     iter::<Result<&String, ()>>().find(|&x| to_ref(x).is_ok()).map(|y| to_ref(y).cloned().unwrap());
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|y| to_ref(y).cloned().ok())`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> tests/ui/manual_filter_map.rs:62:45
+   |
+LL |     iter::<Result<&String, ()>>().find(|&x| to_ref(x).is_ok()).map(|y| to_ref(y).cloned().unwrap());
+   |                                             ^^^^^^^^^
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:111:10
+   |
+LL |           .filter(|f| f.option_field.is_some())
+   |  __________^
+LL | |
+LL | |         .map(|f| f.option_field.clone().unwrap());
+   | |_________________________________________________^ help: try: `filter_map(|f| f.option_field.clone())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:117:10
+   |
+LL |           .filter(|f| f.ref_field.is_some())
+   |  __________^
+LL | |
+LL | |         .map(|f| f.ref_field.cloned().unwrap());
+   | |_______________________________________________^ help: try: `filter_map(|f| f.ref_field.cloned())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:123:10
+   |
+LL |           .filter(|f| f.ref_field.is_some())
+   |  __________^
+LL | |
+LL | |         .map(|f| f.ref_field.copied().unwrap());
+   | |_______________________________________________^ help: try: `filter_map(|f| f.ref_field.copied())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:129:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |
+LL | |         .map(|f| f.result_field.clone().unwrap());
+   | |_________________________________________________^ help: try: `filter_map(|f| f.result_field.clone().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:135:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |
+LL | |         .map(|f| f.result_field.as_ref().unwrap());
+   | |__________________________________________________^ help: try: `filter_map(|f| f.result_field.as_ref().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:141:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |
+LL | |         .map(|f| f.result_field.as_deref().unwrap());
+   | |____________________________________________________^ help: try: `filter_map(|f| f.result_field.as_deref().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:147:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |
+LL | |         .map(|f| f.result_field.as_mut().unwrap());
+   | |__________________________________________________^ help: try: `filter_map(|f| f.result_field.as_mut().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:153:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |
+LL | |         .map(|f| f.result_field.as_deref_mut().unwrap());
+   | |________________________________________________________^ help: try: `filter_map(|f| f.result_field.as_deref_mut().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:159:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |
+LL | |         .map(|f| f.result_field.to_owned().unwrap());
+   | |____________________________________________________^ help: try: `filter_map(|f| f.result_field.to_owned().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:173:27
+   |
+LL |       let _x = iter.clone().filter(|x| matches!(x, Enum::A(_))).map(|x| match x {
+   |  ___________________________^
+LL | |
+LL | |         Enum::A(s) => s,
+LL | |         _ => unreachable!(),
+LL | |     });
+   | |______^ help: try: `filter_map(|x| match x { Enum::A(s) => Some(s), _ => None })`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> tests/ui/manual_filter_map.rs:184:10
+   |
+LL |           .filter(|x| matches!(x, Enum::A(_)))
+   |  __________^
+LL | |
+LL | |         .map(|x| if let Enum::A(s) = x { s } else { unreachable!() });
+   | |_____________________________________________________________________^ help: try: `filter_map(|x| match x { Enum::A(s) => Some(s), _ => None })`
+
+error: aborting due to 29 previous errors
+

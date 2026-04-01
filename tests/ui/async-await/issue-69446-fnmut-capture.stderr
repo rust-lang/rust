@@ -1,0 +1,19 @@
+error: captured variable cannot escape `FnMut` closure body
+  --> $DIR/issue-69446-fnmut-capture.rs:19:17
+   |
+LL |       let mut x = Foo;
+   |           ----- variable defined here
+LL |       bar(move || async {
+   |  _______________-_^
+   | |               |
+   | |               inferred to be a `FnMut` closure
+LL | |         x.foo();
+   | |         - variable captured here
+LL | |     });
+   | |_____^ returns an `async` block that contains a reference to a captured variable, which then escapes the closure body
+   |
+   = note: `FnMut` closures only have access to their captured variables while they are executing...
+   = note: ...therefore, they cannot allow references to captured variables to escape
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,81 @@
+- // MIR for `flat` before ScalarReplacementOfAggregates
++ // MIR for `flat` after ScalarReplacementOfAggregates
+  
+  fn flat() -> () {
+      let mut _0: ();
+      let _1: u8;
+      let _2: ();
+      let _3: &str;
+      let _4: std::option::Option<isize>;
+      let mut _5: Foo;
+      let mut _6: ();
+      let mut _7: std::option::Option<isize>;
++     let mut _8: u8;
++     let mut _9: ();
++     let mut _10: &str;
++     let mut _11: std::option::Option<isize>;
+      scope 1 {
+          debug a => _1;
+          debug b => _2;
+          debug c => _3;
+          debug d => _4;
+          scope 2 {
+              scope 3 {
+                  scope 4 {
+                      scope 5 {
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_5);
++         StorageLive(_8);
++         StorageLive(_9);
++         StorageLive(_10);
++         StorageLive(_11);
++         nop;
+          StorageLive(_6);
+          _6 = ();
+          StorageLive(_7);
+          _7 = Option::<isize>::Some(const -4_isize);
+-         _5 = Foo { a: const 5_u8, b: move _6, c: const "a", d: move _7 };
++         _8 = const 5_u8;
++         _9 = move _6;
++         _10 = const "a";
++         _11 = move _7;
++         nop;
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageLive(_1);
+-         _1 = copy (_5.0: u8);
++         _1 = copy _8;
+          StorageLive(_2);
+-         _2 = copy (_5.1: ());
++         _2 = copy _9;
+          StorageLive(_3);
+-         _3 = copy (_5.2: &str);
++         _3 = copy _10;
+          StorageLive(_4);
+-         _4 = copy (_5.3: std::option::Option<isize>);
+-         StorageDead(_5);
++         _4 = copy _11;
++         StorageDead(_8);
++         StorageDead(_9);
++         StorageDead(_10);
++         StorageDead(_11);
++         nop;
+          _0 = const ();
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 1, align: 1) {
+      61                                              │ a
+  }
+  

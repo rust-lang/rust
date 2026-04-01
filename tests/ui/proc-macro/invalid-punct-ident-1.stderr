@@ -1,0 +1,10 @@
+error: proc macro panicked
+  --> $DIR/invalid-punct-ident-1.rs:7:1
+   |
+LL | invalid_punct!();
+   | ^^^^^^^^^^^^^^^^
+   |
+   = help: message: unsupported character `'`'`
+
+error: aborting due to 1 previous error
+

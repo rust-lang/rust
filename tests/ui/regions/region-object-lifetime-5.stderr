@@ -1,0 +1,12 @@
+error[E0515]: cannot return value referencing local data `*x`
+  --> $DIR/region-object-lifetime-5.rs:11:5
+   |
+LL |     x.borrowed()
+   |     -^^^^^^^^^^^
+   |     |
+   |     returns a value referencing data owned by the current function
+   |     `*x` is borrowed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

@@ -1,0 +1,33 @@
+warning: irrefutable `let...else` pattern
+  --> $DIR/let-else-irrefutable.rs:4:5
+   |
+LL |     let x = 1 else { return };
+   |     ^^^^^^^^^
+   |
+   = note: this pattern always matches, so the else clause is unreachable
+help: remove this `else` block
+  --> $DIR/let-else-irrefutable.rs:4:20
+   |
+LL |     let x = 1 else { return };
+   |                    ^^^^^^^^^^
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/let-else-irrefutable.rs:7:5
+   |
+LL |     let x = 1 else {
+   |     ^^^^^^^^^
+   |
+   = note: this pattern always matches, so the else clause is unreachable
+help: remove this `else` block
+  --> $DIR/let-else-irrefutable.rs:7:20
+   |
+LL |       let x = 1 else {
+   |  ____________________^
+LL | |         eprintln!("problem case encountered");
+LL | |         return
+LL | |     };
+   | |_____^
+
+warning: 2 warnings emitted
+

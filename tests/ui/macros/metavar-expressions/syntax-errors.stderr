@@ -1,0 +1,222 @@
+error: unexpected token: $
+  --> $DIR/syntax-errors.rs:9:8
+   |
+LL |     ( $$ $a:ident ) => {
+   |        ^
+
+note: `$$` and meta-variable expressions are not allowed inside macro parameter definitions
+  --> $DIR/syntax-errors.rs:9:8
+   |
+LL |     ( $$ $a:ident ) => {
+   |        ^
+
+error: unexpected token: {
+  --> $DIR/syntax-errors.rs:15:8
+   |
+LL |     ( ${ len() } ) => {
+   |        ^^^^^^^^^
+
+note: `$$` and meta-variable expressions are not allowed inside macro parameter definitions
+  --> $DIR/syntax-errors.rs:15:8
+   |
+LL |     ( ${ len() } ) => {
+   |        ^^^^^^^^^
+
+error: expected one of: `*`, `+`, or `?`
+  --> $DIR/syntax-errors.rs:15:8
+   |
+LL |     ( ${ len() } ) => {
+   |        ^^^^^^^^^
+
+error: meta-variables within meta-variable expressions must be referenced using a dollar sign
+  --> $DIR/syntax-errors.rs:22:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ ignore() } };
+   |                                 ^^^^^^
+
+error: only unsuffixes integer literals are supported in meta-variable expressions
+  --> $DIR/syntax-errors.rs:27:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ index(1u32) } };
+   |                                 ^^^^^
+
+error: expected `(`
+  --> $DIR/syntax-errors.rs:32:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ count } };
+   |                                 ^^^^^- help: try adding parentheses: `( /* ... */ )`
+   |                                 |
+   |                                 for this this metavariable expression
+   |
+   = note: metavariable expressions use function-like parentheses syntax
+
+error: expected `(`
+  --> $DIR/syntax-errors.rs:49:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ count $i ($i) } };
+   |                                 ^^^^^ - unexpected token
+   |                                 |
+   |                                 for this this metavariable expression
+   |
+   = note: metavariable expressions use function-like parentheses syntax
+
+error: expected `(`
+  --> $DIR/syntax-errors.rs:54:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
+   |                                 ^^^^^ for this this metavariable expression
+   |
+   = note: metavariable expressions use function-like parentheses syntax
+
+error: expected identifier, found `123`
+  --> $DIR/syntax-errors.rs:59:23
+   |
+LL |     () => { ${ignore($123)} }
+   |                       ^^^ help: try removing `123`
+
+error: unexpected trailing tokens
+  --> $DIR/syntax-errors.rs:71:19
+   |
+LL |         ${count() a b c}
+   |           -----   ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
+
+error: unexpected trailing tokens
+  --> $DIR/syntax-errors.rs:73:20
+   |
+LL |         ${count($i a b c)}
+   |           -----    ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
+   |
+   = note: the `count` metavariable expression takes between 1 and 2 arguments
+
+error: unexpected trailing tokens
+  --> $DIR/syntax-errors.rs:75:23
+   |
+LL |         ${count($i, 1 a b c)}
+   |           -----       ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
+   |
+   = note: the `count` metavariable expression takes between 1 and 2 arguments
+
+error: unexpected trailing tokens
+  --> $DIR/syntax-errors.rs:77:21
+   |
+LL |         ${count($i) a b c}
+   |           -----     ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
+
+error: unexpected trailing tokens
+  --> $DIR/syntax-errors.rs:80:22
+   |
+LL |         ${ignore($i) a b c}
+   |           ------     ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
+
+error: unexpected trailing tokens
+  --> $DIR/syntax-errors.rs:82:21
+   |
+LL |         ${ignore($i a b c)}
+   |           ------    ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
+   |
+   = note: the `ignore` metavariable expression takes a single argument
+
+error: unexpected trailing tokens
+  --> $DIR/syntax-errors.rs:85:19
+   |
+LL |         ${index() a b c}
+   |           -----   ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
+
+error: unexpected trailing tokens
+  --> $DIR/syntax-errors.rs:87:19
+   |
+LL |         ${index(1 a b c)}
+   |           -----   ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
+   |
+   = note: the `index` metavariable expression takes between 0 and 1 arguments
+
+error: unexpected trailing tokens
+  --> $DIR/syntax-errors.rs:90:19
+   |
+LL |         ${index() a b c}
+   |           -----   ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
+
+error: unexpected trailing tokens
+  --> $DIR/syntax-errors.rs:92:19
+   |
+LL |         ${index(1 a b c)}
+   |           -----   ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
+   |
+   = note: the `index` metavariable expression takes between 0 and 1 arguments
+
+error: unexpected trailing tokens
+  --> $DIR/syntax-errors.rs:94:18
+   |
+LL |         ${index(1, a b c)}
+   |           -----  ^^^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
+   |
+   = note: the `index` metavariable expression takes between 0 and 1 arguments
+
+error: meta-variable expression depth must be a literal
+  --> $DIR/syntax-errors.rs:101:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ index(IDX) } };
+   |                                 ^^^^^
+
+error: meta-variables within meta-variable expressions must be referenced using a dollar sign
+  --> $DIR/syntax-errors.rs:107:11
+   |
+LL |         ${count(foo)}
+   |           ^^^^^
+
+error: meta-variables within meta-variable expressions must be referenced using a dollar sign
+  --> $DIR/syntax-errors.rs:114:11
+   |
+LL |         ${ignore(bar)}
+   |           ^^^^^^
+
+error: unrecognized metavariable expression
+  --> $DIR/syntax-errors.rs:120:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
+   |                                 ^^^^^^^^^^^^^^ not a valid metavariable expression
+   |
+   = note: valid metavariable expressions are `count`, `ignore`, `index`, `len`, and `concat`
+
+error: expected identifier or string literal
+  --> $DIR/syntax-errors.rs:38:14
+   |
+LL |     () => { ${} };
+   |              ^^
+
+error: expected identifier, found `"hi"`
+  --> $DIR/syntax-errors.rs:44:17
+   |
+LL |      () => { ${ "hi" } };
+   |                 ^^^^ help: try removing `"hi"`
+
+error: expected identifier or string literal
+  --> $DIR/syntax-errors.rs:65:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ {} } };
+   |                                 ^^
+
+error: aborting due to 27 previous errors
+

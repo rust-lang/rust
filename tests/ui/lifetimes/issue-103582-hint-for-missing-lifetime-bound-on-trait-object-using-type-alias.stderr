@@ -1,0 +1,15 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-103582-hint-for-missing-lifetime-bound-on-trait-object-using-type-alias.rs:33:9
+   |
+LL |     pub fn get(&self, i: usize) -> BoxedGreeter {
+   |                - let's call the lifetime of this reference `'1`
+LL |         (Box::new(FixedGreeter(&self.0[i])), Box::new(FixedGreeter(&self.0[i])))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+   |
+help: to declare that the trait object captures data from argument `self`, you can add a lifetime parameter `'a` in the type alias
+   |
+LL | type BoxedGreeter<'a> = (Box<dyn Greeter0 + 'a>, Box<dyn Greeter1 + 'a>);
+   |                  ++++                     ++++                    ++++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,44 @@
+note: no external requirements
+  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:35:47
+   |
+LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+   |                                               ^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: supply::{closure#0} with closure args [
+               i16,
+               for<Region(BrAnon), Region(BrAnon), Region(BrAnon), Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 std::cell::Cell<&'^1 &'?1 u32>, &'^2 std::cell::Cell<&'^3 u32>, &'^4 std::cell::Cell<&'^1 u32>)),
+               (),
+           ]
+   = note: late-bound region is '?4
+   = note: late-bound region is '?5
+   = note: late-bound region is '?6
+   = note: late-bound region is '?7
+   = note: late-bound region is '?8
+   = note: late-bound region is '?2
+   = note: late-bound region is '?3
+
+error: lifetime may not live long enough
+  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:37:9
+   |
+LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+   |                                                ---------  - has type `&'?6 Cell<&'1 u32>`
+   |                                                |
+   |                                                has type `&'?4 Cell<&'2 &'?1 u32>`
+LL |         // Only works if 'x: 'y:
+LL |         demand_y(x, y, x.get())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `Cell<&'?37 u32>`, which makes the generic argument `&'?37 u32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+note: no external requirements
+  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:34:1
+   |
+LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: supply
+
+error: aborting due to 1 previous error
+

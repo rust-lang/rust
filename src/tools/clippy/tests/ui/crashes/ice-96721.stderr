@@ -1,0 +1,10 @@
+error: malformed `path` attribute input
+  --> tests/ui/crashes/ice-96721.rs:7:1
+   |
+LL | #[path = foo!()]
+   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[path = "file"]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute>
+
+error: aborting due to 1 previous error
+

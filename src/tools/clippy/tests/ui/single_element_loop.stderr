@@ -1,0 +1,110 @@
+error: for loop over a single element
+  --> tests/ui/single_element_loop.rs:8:5
+   |
+LL | /     for item in &[item1] {
+LL | |
+LL | |         dbg!(item);
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::single-element-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_element_loop)]`
+help: try
+   |
+LL ~     {
+LL +         let item = &item1;
+LL +
+LL +         dbg!(item);
+LL +     }
+   |
+
+error: for loop over a single element
+  --> tests/ui/single_element_loop.rs:13:5
+   |
+LL | /     for item in [item1].iter() {
+LL | |
+LL | |         dbg!(item);
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     {
+LL +         let item = &item1;
+LL +
+LL +         dbg!(item);
+LL +     }
+   |
+
+error: this loops only once with `item` being `0..5`
+  --> tests/ui/single_element_loop.rs:18:17
+   |
+LL |     for item in &[0..5] {
+   |                 ^^^^^^^ help: did you mean to iterate over the range instead?: `0..5`
+
+error: this loops only once with `item` being `0..5`
+  --> tests/ui/single_element_loop.rs:23:17
+   |
+LL |     for item in [0..5].iter_mut() {
+   |                 ^^^^^^^^^^^^^^^^^ help: did you mean to iterate over the range instead?: `0..5`
+
+error: this loops only once with `item` being `0..5`
+  --> tests/ui/single_element_loop.rs:28:17
+   |
+LL |     for item in [0..5] {
+   |                 ^^^^^^ help: did you mean to iterate over the range instead?: `0..5`
+
+error: this loops only once with `item` being `0..5`
+  --> tests/ui/single_element_loop.rs:33:17
+   |
+LL |     for item in [0..5].into_iter() {
+   |                 ^^^^^^^^^^^^^^^^^^ help: did you mean to iterate over the range instead?: `0..5`
+
+error: for loop over a single element
+  --> tests/ui/single_element_loop.rs:53:5
+   |
+LL | /     for _ in [42] {
+LL | |
+LL | |         let _f = |n: u32| {
+LL | |             for i in 0..n {
+...  |
+LL | |         };
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     {
+LL +         let _ = 42;
+LL +
+LL +         let _f = |n: u32| {
+LL +             for i in 0..n {
+LL +                 if i > 10 {
+LL +                     dbg!(i);
+LL +                     break;
+LL +                 }
+LL +             }
+LL +         };
+LL +     }
+   |
+
+error: for loop over a single element
+  --> tests/ui/single_element_loop.rs:68:5
+   |
+LL | /     for (Ok(mut _x) | Err(mut _x)) in [res_void] {
+LL | |
+LL | |         let ptr: *const bool = std::ptr::null();
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     {
+LL +         let (Ok(mut _x) | Err(mut _x)) = res_void;
+LL +
+LL +         let ptr: *const bool = std::ptr::null();
+LL +     }
+   |
+
+error: aborting due to 8 previous errors
+

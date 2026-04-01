@@ -1,0 +1,13 @@
+error[E0252]: the name `mem` is defined multiple times
+  --> $DIR/use-paths-as-items.rs:7:5
+   |
+LL | use std::{mem, ptr};
+   |           --- previous import of the module `mem` here
+LL | use std::mem;
+   |     ^^^^^^^^ `mem` reimported here
+   |
+   = note: `mem` must be defined only once in the type namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0252`.

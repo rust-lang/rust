@@ -1,0 +1,23 @@
+error[E0277]: the size for values of type `(dyn Fn() + 'static)` cannot be known at compilation time
+  --> $DIR/dyn-trait-size-error-23281.rs:4:27
+   |
+LL |     pub fn function(funs: Vec<dyn Fn() -> ()>) {}
+   |                           ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Fn() + 'static)`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $DIR/dyn-trait-size-error-23281.rs:8:12
+   |
+LL | struct Vec<T> {
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Vec`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/dyn-trait-size-error-23281.rs:8:12
+   |
+LL | struct Vec<T> {
+   |            ^ this could be changed to `T: ?Sized`...
+LL |     t: T,
+   |        - ...if indirection were used here: `Box<T>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,102 @@
+error: First Pass analysis includes:
+  --> $DIR/capture-enums.rs:18:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         if let Info::Point(_, _, str) = point {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing point[] -> Immutable
+  --> $DIR/capture-enums.rs:21:41
+   |
+LL |         if let Info::Point(_, _, str) = point {
+   |                                         ^^^^^
+note: Capturing point[] -> Immutable
+  --> $DIR/capture-enums.rs:21:41
+   |
+LL |         if let Info::Point(_, _, str) = point {
+   |                                         ^^^^^
+note: Capturing point[(2, 0)] -> ByValue
+  --> $DIR/capture-enums.rs:21:41
+   |
+LL |         if let Info::Point(_, _, str) = point {
+   |                                         ^^^^^
+note: Capturing meta[] -> Immutable
+  --> $DIR/capture-enums.rs:29:35
+   |
+LL |         if let Info::Meta(_, v) = meta {
+   |                                   ^^^^
+note: Capturing meta[] -> Immutable
+  --> $DIR/capture-enums.rs:29:35
+   |
+LL |         if let Info::Meta(_, v) = meta {
+   |                                   ^^^^
+note: Capturing meta[(1, 1)] -> ByValue
+  --> $DIR/capture-enums.rs:29:35
+   |
+LL |         if let Info::Meta(_, v) = meta {
+   |                                   ^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/capture-enums.rs:18:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         if let Info::Point(_, _, str) = point {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture point[] -> ByValue
+  --> $DIR/capture-enums.rs:21:41
+   |
+LL |         if let Info::Point(_, _, str) = point {
+   |                                         ^^^^^
+note: Min Capture meta[] -> ByValue
+  --> $DIR/capture-enums.rs:29:35
+   |
+LL |         if let Info::Meta(_, v) = meta {
+   |                                   ^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/capture-enums.rs:49:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let SingleVariant::Point(_, _, str) = point;
+...  |
+LL | |         println!("{}", str);
+LL | |     };
+   | |_____^
+   |
+note: Capturing point[(2, 0)] -> ByValue
+  --> $DIR/capture-enums.rs:52:47
+   |
+LL |         let SingleVariant::Point(_, _, str) = point;
+   |                                               ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/capture-enums.rs:49:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let SingleVariant::Point(_, _, str) = point;
+...  |
+LL | |         println!("{}", str);
+LL | |     };
+   | |_____^
+   |
+note: Min Capture point[(2, 0)] -> ByValue
+  --> $DIR/capture-enums.rs:52:47
+   |
+LL |         let SingleVariant::Point(_, _, str) = point;
+   |                                               ^^^^^
+
+error: aborting due to 4 previous errors
+

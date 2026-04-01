@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `crate::unresolved`
+  --> $DIR/unresolved-import-recovery.rs:4:13
+   |
+LL |     pub use crate::unresolved;
+   |             ^^^^^^^^^^^^^^^^^ no `unresolved` in the root
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

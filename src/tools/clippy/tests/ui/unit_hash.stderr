@@ -1,0 +1,28 @@
+error: this call to `hash` on the unit type will do nothing
+  --> tests/ui/unit_hash.rs:19:23
+   |
+LL |         Foo::Empty => ().hash(&mut state),
+   |                       ^^^^^^^^^^^^^^^^^^^ help: remove the call to `hash` or consider using: `0_u8.hash(&mut state)`
+   |
+   = note: the implementation of `Hash` for `()` is a no-op
+   = note: `-D clippy::unit-hash` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unit_hash)]`
+
+error: this call to `hash` on the unit type will do nothing
+  --> tests/ui/unit_hash.rs:25:5
+   |
+LL |     res.hash(&mut state);
+   |     ^^^^^^^^^^^^^^^^^^^^ help: remove the call to `hash` or consider using: `0_u8.hash(&mut state)`
+   |
+   = note: the implementation of `Hash` for `()` is a no-op
+
+error: this call to `hash` on the unit type will do nothing
+  --> tests/ui/unit_hash.rs:29:5
+   |
+LL |     do_nothing().hash(&mut state);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `hash` or consider using: `0_u8.hash(&mut state)`
+   |
+   = note: the implementation of `Hash` for `()` is a no-op
+
+error: aborting due to 3 previous errors
+

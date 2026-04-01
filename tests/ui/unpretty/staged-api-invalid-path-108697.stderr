@@ -1,0 +1,8 @@
+error: couldn't read `$DIR/lol`: $FILE_NOT_FOUND_MSG (os error 2)
+  --> $DIR/staged-api-invalid-path-108697.rs:8:1
+   |
+LL | mod foo;
+   | ^^^^^^^^
+
+error: aborting due to 1 previous error
+

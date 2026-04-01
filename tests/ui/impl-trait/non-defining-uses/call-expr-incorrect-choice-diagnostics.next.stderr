@@ -1,0 +1,57 @@
+error[E0382]: use of moved value: `var`
+  --> $DIR/call-expr-incorrect-choice-diagnostics.rs:14:9
+   |
+LL |         let mut var = item_bound_is_too_weak();
+   |             ------- move occurs because `var` has type `{closure@$DIR/call-expr-incorrect-choice-diagnostics.rs:19:5: 19:12}`, which does not implement the `Copy` trait
+LL |         var();
+   |         ----- `var` moved due to this call
+LL |         var();
+   |         ^^^ value used here after move
+   |
+note: this value implements `FnOnce`, which causes it to be moved when called
+  --> $DIR/call-expr-incorrect-choice-diagnostics.rs:13:9
+   |
+LL |         var();
+   |         ^^^
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         var.clone()();
+   |            ++++++++
+
+error[E0618]: expected function, found `_`
+  --> $DIR/call-expr-incorrect-choice-diagnostics.rs:24:9
+   |
+LL | fn opaque_type_no_impl_fn() -> impl Sized {
+   | ----------------------------------------- `opaque_type_no_impl_fn` defined here returns `_`
+LL |     if false {
+LL |         opaque_type_no_impl_fn()();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^--
+   |         |
+   |         call expression requires function
+
+error[E0618]: expected function, found `_`
+  --> $DIR/call-expr-incorrect-choice-diagnostics.rs:34:9
+   |
+LL | fn opaque_type_no_impl_fn_incorrect() -> impl Sized {
+   | --------------------------------------------------- `opaque_type_no_impl_fn_incorrect` defined here returns `_`
+LL |     if false {
+LL |         opaque_type_no_impl_fn_incorrect()();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--
+   |         |
+   |         call expression requires function
+
+error[E0618]: expected function, found `_`
+  --> $DIR/call-expr-incorrect-choice-diagnostics.rs:44:9
+   |
+LL | fn opaque_type_deref_no_impl_fn() -> impl Deref<Target = impl Sized> {
+   | -------------------------------------------------------------------- `opaque_type_deref_no_impl_fn` defined here returns `_`
+LL |     if false {
+LL |         opaque_type_deref_no_impl_fn()();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--
+   |         |
+   |         call expression requires function
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0382, E0618.
+For more information about an error, try `rustc --explain E0382`.

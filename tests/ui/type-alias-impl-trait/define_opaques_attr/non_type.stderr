@@ -1,0 +1,9 @@
+error[E0573]: expected type alias or associated type with opaqaue types, found function `foo`
+  --> $DIR/non_type.rs:5:17
+   |
+LL | #[define_opaque(foo)]
+   |                 ^^^ not a type alias or associated type with opaqaue types
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0573`.

@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `crate::a::x`
+  --> $DIR/import-loop-2.rs:6:13
+   |
+LL |     pub use crate::a::x;
+   |             ^^^^^^^^^^^ no `x` in `a`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

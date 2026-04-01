@@ -1,0 +1,40 @@
+note: no external requirements
+  --> $DIR/escape-argument.rs:26:38
+   |
+LL |         let mut closure = expect_sig(|p, y| *p = y);
+   |                                      ^^^^^^
+   |
+   = note: defining type: test::{closure#0} with closure args [
+               i16,
+               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 mut &'^1 i32, &'^1 i32)),
+               (),
+           ]
+   = note: late-bound region is '?1
+   = note: late-bound region is '?2
+
+note: no external requirements
+  --> $DIR/escape-argument.rs:20:1
+   |
+LL | fn test() {
+   | ^^^^^^^^^
+   |
+   = note: defining type: test
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/escape-argument.rs:27:25
+   |
+LL |         let y = 22;
+   |             - binding `y` declared here
+LL |         let mut closure = expect_sig(|p, y| *p = y);
+LL |         closure(&mut p, &y);
+   |                         ^^ borrowed value does not live long enough
+LL |
+LL |     }
+   |     - `y` dropped here while still borrowed
+LL |
+LL |     deref(p);
+   |           - borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

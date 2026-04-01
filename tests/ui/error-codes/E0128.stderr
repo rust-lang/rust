@@ -1,0 +1,9 @@
+error[E0128]: generic parameter defaults cannot reference parameters before they are declared
+  --> $DIR/E0128.rs:1:14
+   |
+LL | struct Foo<T=U, U=()> {
+   |              ^ cannot reference `U` before it is declared
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0128`.

@@ -1,0 +1,13 @@
+error: `#[foo]` is unsafe to implement
+  --> $DIR/unsafe_impl_err.rs:16:1
+   |
+LL | #[foo]
+   | ^^^^^^
+   |
+help: wrap the attribute in `unsafe(...)`
+   |
+LL | #[unsafe(foo)]
+   |   +++++++   +
+
+error: aborting due to 1 previous error
+

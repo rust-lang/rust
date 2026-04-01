@@ -1,0 +1,18 @@
+warning: unreachable expression
+  --> $DIR/issue-46519.rs:9:5
+   |
+LL |     FontLanguageOverride::system_font(SystemFont::new());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------^
+   |     |                                 |
+   |     |                                 any code following this expression is unreachable
+   |     unreachable expression
+   |
+note: this expression has type `SystemFont`, which is uninhabited
+  --> $DIR/issue-46519.rs:9:39
+   |
+LL |     FontLanguageOverride::system_font(SystemFont::new());
+   |                                       ^^^^^^^^^^^^^^^^^
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

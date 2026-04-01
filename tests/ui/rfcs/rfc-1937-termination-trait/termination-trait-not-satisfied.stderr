@@ -1,0 +1,15 @@
+error[E0277]: `main` has invalid return type `ReturnType`
+  --> $DIR/termination-trait-not-satisfied.rs:3:14
+   |
+LL | fn main() -> ReturnType {
+   |              ^^^^^^^^^^ `main` can only return types that implement `Termination`
+   |
+help: consider using `()`, or a `Result`
+  --> $DIR/termination-trait-not-satisfied.rs:1:1
+   |
+LL | struct ReturnType {}
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

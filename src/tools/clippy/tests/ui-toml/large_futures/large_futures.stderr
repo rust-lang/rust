@@ -1,0 +1,11 @@
+error: large future with a size of 1026 bytes
+  --> tests/ui-toml/large_futures/large_futures.rs:18:5
+   |
+LL |     should_warn().await;
+   |     ^^^^^^^^^^^^^ help: consider `Box::pin` on it: `Box::pin(should_warn())`
+   |
+   = note: `-D clippy::large-futures` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_futures)]`
+
+error: aborting due to 1 previous error
+

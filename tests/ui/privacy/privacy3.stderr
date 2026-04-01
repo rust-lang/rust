@@ -1,0 +1,39 @@
+error[E0432]: unresolved import `bar::gpriv`
+  --> $DIR/privacy3.rs:23:9
+   |
+LL |     use bar::gpriv;
+   |         ^^^^^^^^^^ no `gpriv` in `bar`
+
+error: requires `sized` lang_item
+  --> $DIR/privacy3.rs:13:20
+   |
+LL |         fn gpriv() {}
+   |                    ^^
+
+error: requires `sized` lang_item
+  --> $DIR/privacy3.rs:18:14
+   |
+LL | pub fn foo() {}
+   |              ^^
+
+error: requires `sized` lang_item
+  --> $DIR/privacy3.rs:21:12
+   |
+LL |   fn test1() {
+   |  ____________^
+LL | |
+LL | |     use bar::gpriv;
+...  |
+LL | |     gpriv();
+LL | | }
+   | |_^
+
+error: requires `sized` lang_item
+  --> $DIR/privacy3.rs:32:11
+   |
+LL | fn main() {}
+   |           ^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

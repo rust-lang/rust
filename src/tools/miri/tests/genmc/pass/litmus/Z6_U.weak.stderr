@@ -1,0 +1,24 @@
+Running GenMC Verification...
+a=2, b=1, X=1, Y=3
+a=4, b=1, X=1, Y=4
+a=4, b=0, X=1, Y=4
+a=3, b=1, X=1, Y=3
+a=2, b=1, X=1, Y=2
+a=2, b=0, X=1, Y=2
+a=1, b=1, X=1, Y=1
+a=1, b=0, X=1, Y=1
+a=4, b=1, X=1, Y=1
+a=4, b=0, X=1, Y=1
+a=1, b=1, X=1, Y=3
+a=1, b=0, X=1, Y=3
+a=3, b=1, X=1, Y=3
+a=3, b=0, X=1, Y=3
+a=1, b=1, X=1, Y=1
+a=1, b=0, X=1, Y=1
+a=3, b=1, X=1, Y=1
+a=3, b=0, X=1, Y=1
+a=1, b=1, X=1, Y=3
+a=1, b=0, X=1, Y=3
+a=1, b=1, X=1, Y=1
+a=1, b=0, X=1, Y=1
+Verification complete with 22 executions. No errors found.

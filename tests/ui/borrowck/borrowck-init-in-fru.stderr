@@ -1,0 +1,16 @@
+error[E0381]: used binding `origin` isn't initialized
+  --> $DIR/borrowck-init-in-fru.rs:9:14
+   |
+LL |     let mut origin: Point;
+   |         ---------- binding declared here but left uninitialized
+LL |     origin = Point { x: 10, ..origin };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ `origin.y` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let mut origin: Point = /* value */;
+   |                           +++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0381`.

@@ -1,0 +1,17 @@
+error: `#[inline]` attribute cannot be used on structs
+  --> $DIR/issue-31769.rs:2:5
+   |
+LL |     #[inline] struct Foo;
+   |     ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-31769.rs:3:12
+   |
+LL |     #[repr(C)] fn foo() {}
+   |            ^   ----------- not a struct, enum, or union
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0517`.

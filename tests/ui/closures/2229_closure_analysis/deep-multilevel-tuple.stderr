@@ -1,0 +1,60 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/deep-multilevel-tuple.rs:8:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: First Pass analysis includes:
+  --> $DIR/deep-multilevel-tuple.rs:12:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = &t.0.0.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),(0, 0),(0, 0)] -> Immutable
+  --> $DIR/deep-multilevel-tuple.rs:15:18
+   |
+LL |         let x = &t.0.0.0;
+   |                  ^^^^^^^
+note: Capturing t[(1, 0),(1, 0),(1, 0)] -> Mutable
+  --> $DIR/deep-multilevel-tuple.rs:17:9
+   |
+LL |         t.1.1.1 = 9;
+   |         ^^^^^^^
+note: Capturing t[] -> Immutable
+  --> $DIR/deep-multilevel-tuple.rs:20:26
+   |
+LL |         println!("{:?}", t);
+   |                          ^
+
+error: Min Capture analysis includes:
+  --> $DIR/deep-multilevel-tuple.rs:12:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = &t.0.0.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[] -> Mutable
+  --> $DIR/deep-multilevel-tuple.rs:17:9
+   |
+LL |         t.1.1.1 = 9;
+   |         ^^^^^^^ t[] captured as Mutable here
+...
+LL |         println!("{:?}", t);
+   |                          ^ t[] used here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

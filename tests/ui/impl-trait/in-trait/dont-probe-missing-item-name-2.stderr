@@ -1,0 +1,24 @@
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/dont-probe-missing-item-name-2.rs:8:12
+   |
+LL | fn test<T: Foo<i32, Assoc = i32>>() {}
+   |            ^^^------------------ help: remove the unnecessary generics
+   |            |
+   |            expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/dont-probe-missing-item-name-2.rs:1:7
+   |
+LL | trait Foo {
+   |       ^^^
+
+error[E0220]: associated type `Assoc` not found for `Foo`
+  --> $DIR/dont-probe-missing-item-name-2.rs:8:21
+   |
+LL | fn test<T: Foo<i32, Assoc = i32>>() {}
+   |                     ^^^^^ associated type `Assoc` not found
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0220.
+For more information about an error, try `rustc --explain E0107`.

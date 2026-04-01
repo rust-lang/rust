@@ -1,0 +1,22 @@
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/issue-54954.rs:5:5
+   |
+LL |     const fn const_val<T: Sized>() -> usize {
+   |     ^^^^^-
+   |     |
+   |     functions in traits cannot be const
+   |     help: remove the `const`
+
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/issue-54954.rs:1:24
+   |
+LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+...
+LL |     const fn const_val<T: Sized>() -> usize {
+   |     --------------------------------------- `Tt::const_val` defined here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0379, E0790.
+For more information about an error, try `rustc --explain E0379`.

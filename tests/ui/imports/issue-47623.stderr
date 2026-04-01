@@ -1,0 +1,8 @@
+error: imports need to be explicitly named
+  --> $DIR/issue-47623.rs:1:5
+   |
+LL | use self;
+   |     ^^^^
+
+error: aborting due to 1 previous error
+

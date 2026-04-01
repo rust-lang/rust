@@ -1,0 +1,25 @@
+
+running 1 test
+test $DIR/doctest-output-include-fail.md - (line 3) ... FAILED
+
+failures:
+
+---- $DIR/doctest-output-include-fail.md - (line 3) stdout ----
+error: expected `;`, found `}`
+  --> $DIR/doctest-output-include-fail.md:5:16
+   |
+LL |     let x = 234 // no semicolon here! oh no!
+   |                ^ help: add `;` here
+LL | }
+   | - unexpected token
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    $DIR/doctest-output-include-fail.md - (line 3)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+all doctests ran in $TIME; merged doctests compilation took $TIME

@@ -1,0 +1,32 @@
+error: unnecessary parentheses around type
+  --> $DIR/issue-105061-should-lint.rs:11:13
+   |
+LL |     for<'b> (for<'a> fn(Inv<'a>)): Trait<'b>,
+   |             ^                   ^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-105061-should-lint.rs:2:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(unused_parens)]` implied by `#[deny(warnings)]`
+help: remove these parentheses
+   |
+LL -     for<'b> (for<'a> fn(Inv<'a>)): Trait<'b>,
+LL +     for<'b> for<'a> fn(Inv<'a>): Trait<'b>,
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/issue-105061-should-lint.rs:17:15
+   |
+LL |     dyn Hello<(for<'b> fn(&'b ()))>: Hello<T>
+   |               ^                  ^
+   |
+help: remove these parentheses
+   |
+LL -     dyn Hello<(for<'b> fn(&'b ()))>: Hello<T>
+LL +     dyn Hello<for<'b> fn(&'b ())>: Hello<T>
+   |
+
+error: aborting due to 2 previous errors
+

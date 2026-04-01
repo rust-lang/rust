@@ -1,0 +1,175 @@
+SOURCE_FILE
+  MACRO_DEF
+    MACRO_KW "macro"
+    WHITESPACE " "
+    NAME
+      IDENT "parse_use_trees"
+    TOKEN_TREE
+      L_PAREN "("
+      DOLLAR "$"
+      TOKEN_TREE
+        L_PAREN "("
+        DOLLAR "$"
+        IDENT "s"
+        COLON ":"
+        IDENT "expr"
+        R_PAREN ")"
+      COMMA ","
+      STAR "*"
+      WHITESPACE " "
+      DOLLAR "$"
+      TOKEN_TREE
+        L_PAREN "("
+        COMMA ","
+        R_PAREN ")"
+      STAR "*"
+      R_PAREN ")"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      IDENT "vec"
+      BANG "!"
+      TOKEN_TREE
+        L_BRACK "["
+        WHITESPACE "\n        "
+        DOLLAR "$"
+        TOKEN_TREE
+          L_PAREN "("
+          IDENT "parse_use_tree"
+          TOKEN_TREE
+            L_PAREN "("
+            DOLLAR "$"
+            IDENT "s"
+            R_PAREN ")"
+          COMMA ","
+          R_PAREN ")"
+        STAR "*"
+        WHITESPACE "\n    "
+        R_BRACK "]"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    ATTR
+      POUND "#"
+      L_BRACK "["
+      META
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "test"
+      R_BRACK "]"
+    WHITESPACE "\n"
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "test_use_tree_merge"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        MACRO_DEF
+          MACRO_KW "macro"
+          WHITESPACE " "
+          NAME
+            IDENT "test_merge"
+          TOKEN_TREE
+            L_PAREN "("
+            TOKEN_TREE
+              L_BRACK "["
+              DOLLAR "$"
+              TOKEN_TREE
+                L_PAREN "("
+                DOLLAR "$"
+                IDENT "input"
+                COLON ":"
+                IDENT "expr"
+                R_PAREN ")"
+              COMMA ","
+              STAR "*"
+              WHITESPACE " "
+              DOLLAR "$"
+              TOKEN_TREE
+                L_PAREN "("
+                COMMA ","
+                R_PAREN ")"
+              STAR "*"
+              R_BRACK "]"
+            COMMA ","
+            WHITESPACE " "
+            TOKEN_TREE
+              L_BRACK "["
+              DOLLAR "$"
+              TOKEN_TREE
+                L_PAREN "("
+                DOLLAR "$"
+                IDENT "output"
+                COLON ":"
+                IDENT "expr"
+                R_PAREN ")"
+              COMMA ","
+              STAR "*"
+              WHITESPACE " "
+              DOLLAR "$"
+              TOKEN_TREE
+                L_PAREN "("
+                COMMA ","
+                R_PAREN ")"
+              STAR "*"
+              R_BRACK "]"
+            R_PAREN ")"
+          WHITESPACE " "
+          TOKEN_TREE
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            IDENT "assert_eq"
+            BANG "!"
+            TOKEN_TREE
+              L_PAREN "("
+              WHITESPACE "\n            "
+              IDENT "merge_use_trees"
+              TOKEN_TREE
+                L_PAREN "("
+                IDENT "parse_use_trees"
+                BANG "!"
+                TOKEN_TREE
+                  L_PAREN "("
+                  DOLLAR "$"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    DOLLAR "$"
+                    IDENT "input"
+                    COMMA ","
+                    R_PAREN ")"
+                  STAR "*"
+                  R_PAREN ")"
+                R_PAREN ")"
+              COMMA ","
+              WHITESPACE "\n            "
+              IDENT "parse_use_trees"
+              BANG "!"
+              TOKEN_TREE
+                L_PAREN "("
+                DOLLAR "$"
+                TOKEN_TREE
+                  L_PAREN "("
+                  DOLLAR "$"
+                  IDENT "output"
+                  COMMA ","
+                  R_PAREN ")"
+                STAR "*"
+                R_PAREN ")"
+              COMMA ","
+              WHITESPACE "\n        "
+              R_PAREN ")"
+            SEMICOLON ";"
+            WHITESPACE "\n    "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

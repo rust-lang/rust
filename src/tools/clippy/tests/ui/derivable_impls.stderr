@@ -1,0 +1,214 @@
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:22:1
+   |
+LL | / impl std::default::Default for FooDefault<'_> {
+LL | |
+LL | |     fn default() -> Self {
+LL | |         Self {
+...  |
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::derivable-impls` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::derivable_impls)]`
+help: replace the manual implementation with a derive attribute
+   |
+LL + #[derive(Default)]
+LL | struct FooDefault<'a> {
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:44:1
+   |
+LL | / impl std::default::Default for TupleDefault {
+LL | |
+LL | |     fn default() -> Self {
+LL | |         Self(false, 0, 0u64)
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: replace the manual implementation with a derive attribute
+   |
+LL + #[derive(Default)]
+LL | struct TupleDefault(bool, i32, u64);
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:97:1
+   |
+LL | / impl Default for StrDefault<'_> {
+LL | |
+LL | |     fn default() -> Self {
+LL | |         Self("")
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: replace the manual implementation with a derive attribute
+   |
+LL + #[derive(Default)]
+LL | struct StrDefault<'a>(&'a str);
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:124:1
+   |
+LL | / impl Default for Y {
+LL | |
+LL | |     fn default() -> Self {
+LL | |         Self(mac!())
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: replace the manual implementation with a derive attribute
+   |
+LL + #[derive(Default)]
+LL | struct Y(u32);
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:164:1
+   |
+LL | / impl Default for WithoutSelfCurly {
+LL | |
+LL | |     fn default() -> Self {
+LL | |         WithoutSelfCurly { a: false }
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: replace the manual implementation with a derive attribute
+   |
+LL + #[derive(Default)]
+LL | struct WithoutSelfCurly {
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:173:1
+   |
+LL | / impl Default for WithoutSelfParan {
+LL | |
+LL | |     fn default() -> Self {
+LL | |         WithoutSelfParan(false)
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: replace the manual implementation with a derive attribute
+   |
+LL + #[derive(Default)]
+LL | struct WithoutSelfParan(bool);
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:196:1
+   |
+LL | / impl Default for DirectDefaultDefaultCall {
+LL | |
+LL | |     fn default() -> Self {
+...  |
+LL | | }
+   | |_^
+   |
+help: replace the manual implementation with a derive attribute
+   |
+LL + #[derive(Default)]
+LL | pub struct DirectDefaultDefaultCall {
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:208:1
+   |
+LL | / impl Default for EquivalentToDefaultDefaultCallVec {
+LL | |
+LL | |     fn default() -> Self {
+...  |
+LL | | }
+   | |_^
+   |
+help: replace the manual implementation with a derive attribute
+   |
+LL + #[derive(Default)]
+LL | pub struct EquivalentToDefaultDefaultCallVec {
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:236:1
+   |
+LL | / impl Default for EquivalentToDefaultDefaultCallLocal {
+LL | |
+LL | |     fn default() -> Self {
+...  |
+LL | | }
+   | |_^
+   |
+help: replace the manual implementation with a derive attribute
+   |
+LL + #[derive(Default)]
+LL | pub struct EquivalentToDefaultDefaultCallLocal {
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:276:1
+   |
+LL | / impl Default for RepeatDefault1 {
+LL | |
+LL | |     fn default() -> Self {
+LL | |         RepeatDefault1 { a: [0; 32] }
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: replace the manual implementation with a derive attribute
+   |
+LL + #[derive(Default)]
+LL | pub struct RepeatDefault1 {
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:311:1
+   |
+LL | / impl Default for SimpleEnum {
+LL | |
+LL | |     fn default() -> Self {
+LL | |         SimpleEnum::Bar
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: replace the manual implementation with a derive attribute and mark the default variant
+   |
+LL + #[derive(Default)]
+LL | pub enum SimpleEnum {
+LL |     Foo,
+LL ~     #[default]
+LL ~     Bar,
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:432:5
+   |
+LL | /     impl Default for Bar {
+LL | |
+LL | |         fn default() -> Self {
+LL | |             Self::A
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: replace the manual implementation with a derive attribute and mark the default variant
+   |
+LL ~     #[derive(Default)]
+LL ~     enum Bar {
+LL ~         #[default]
+LL ~         A,
+LL |         B,
+LL |     }
+LL |
+LL ~     
+   |
+
+error: aborting due to 12 previous errors
+

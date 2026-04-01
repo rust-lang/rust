@@ -1,0 +1,51 @@
+error[E0038]: the trait `Qiz` is not dyn compatible
+  --> $DIR/issue-19380.rs:11:29
+   |
+LL |   foos: &'static [&'static (dyn Qiz + 'static)]
+   |                             ^^^^^^^^^^^^^^^^^ `Qiz` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-19380.rs:2:6
+   |
+LL | trait Qiz {
+   |       --- this trait is not dyn compatible...
+LL |   fn qiz();
+   |      ^^^ ...because associated function `qiz` has no `self` parameter
+   = help: only type `Foo` implements `Qiz`; consider using it directly instead.
+help: consider turning `qiz` into a method by giving it a `&self` argument
+   |
+LL |   fn qiz(&self);
+   |          +++++
+help: alternatively, consider constraining `qiz` so it does not apply to trait objects
+   |
+LL |   fn qiz() where Self: Sized;
+   |            +++++++++++++++++
+
+error[E0038]: the trait `Qiz` is not dyn compatible
+  --> $DIR/issue-19380.rs:16:31
+   |
+LL | const BAR : Bar = Bar { foos: &[&FOO]};
+   |                               ^^^^^^^ `Qiz` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-19380.rs:2:6
+   |
+LL | trait Qiz {
+   |       --- this trait is not dyn compatible...
+LL |   fn qiz();
+   |      ^^^ ...because associated function `qiz` has no `self` parameter
+   = help: only type `Foo` implements `Qiz`; consider using it directly instead.
+help: consider turning `qiz` into a method by giving it a `&self` argument
+   |
+LL |   fn qiz(&self);
+   |          +++++
+help: alternatively, consider constraining `qiz` so it does not apply to trait objects
+   |
+LL |   fn qiz() where Self: Sized;
+   |            +++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

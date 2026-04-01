@@ -1,0 +1,36 @@
+// MIR for `std::ptr::drop_in_place` before AddMovesForPackedDrops
+
+fn drop_in_place(_1: *mut Vec<i32>) -> () {
+    let mut _0: ();
+    let mut _2: &mut std::vec::Vec<i32>;
+    let mut _3: ();
+
+    bb0: {
+        goto -> bb6;
+    }
+
+    bb1: {
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4 (cleanup): {
+        drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> [return: bb2, unwind terminate(cleanup)];
+    }
+
+    bb5: {
+        drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> [return: bb3, unwind: bb2];
+    }
+
+    bb6: {
+        _2 = &mut (*_1);
+        _3 = <Vec<i32> as Drop>::drop(move _2) -> [return: bb5, unwind: bb4];
+    }
+}

@@ -1,0 +1,10 @@
+error: `#[track_caller]` attribute cannot be used on statics
+  --> $DIR/issue-105594-invalid-attr-validation.rs:6:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: `#[track_caller]` can only be applied to functions
+
+error: aborting due to 1 previous error
+

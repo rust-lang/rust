@@ -1,0 +1,15 @@
+error[E0201]: duplicate definitions with name `foo`:
+  --> $DIR/impl_items-2.rs:14:5
+   |
+LL |     fn foo() {}
+   |     ----------- item in trait
+...
+LL |     fn foo() {}
+   |     ----------- previous definition here
+...
+LL |     fn foo() {}
+   |     ^^^^^^^^^^^ duplicate definition
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0201`.

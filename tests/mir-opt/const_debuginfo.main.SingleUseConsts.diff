@@ -1,0 +1,127 @@
+- // MIR for `main` before SingleUseConsts
++ // MIR for `main` after SingleUseConsts
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: u8;
+      let mut _5: u8;
+      let mut _6: u8;
+      let mut _7: u8;
+      let mut _8: u8;
+      let mut _14: u32;
+      let mut _15: u32;
+      scope 1 {
+-         debug x => _1;
++         debug x => const 1_u8;
+          let _2: u8;
+          scope 2 {
+-             debug y => _2;
++             debug y => const 2_u8;
+              let _3: u8;
+              scope 3 {
+-                 debug z => _3;
++                 debug z => const 3_u8;
+                  let _4: u8;
+                  scope 4 {
+-                     debug sum => _4;
++                     debug sum => const 6_u8;
+                      let _9: &str;
+                      scope 5 {
+-                         debug s => _9;
++                         debug s => const "hello, world!";
+                          let _10: (bool, bool, u32);
+                          scope 6 {
+                              debug f => _10;
+                              let _11: std::option::Option<u16>;
+                              scope 7 {
+-                                 debug o => _11;
++                                 debug o => const Option::<u16>::Some(99_u16);
+                                  let _12: Point;
+                                  scope 8 {
+-                                     debug p => _12;
++                                     debug p => const Point {{ x: 32_u32, y: 32_u32 }};
+                                      let _13: u32;
+                                      scope 9 {
+-                                         debug a => _13;
++                                         debug a => const 64_u32;
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          nop;
+-         _1 = const 1_u8;
+          nop;
+-         _2 = const 2_u8;
+          nop;
+-         _3 = const 3_u8;
++         nop;
++         nop;
++         nop;
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+-         _6 = const 1_u8;
++         nop;
+          StorageLive(_7);
+-         _7 = const 2_u8;
+-         _5 = const 3_u8;
++         nop;
++         nop;
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageLive(_8);
+-         _8 = const 3_u8;
+-         _4 = const 6_u8;
++         nop;
++         nop;
+          StorageDead(_8);
+          StorageDead(_5);
+          StorageLive(_9);
+-         _9 = const "hello, world!";
++         nop;
+          StorageLive(_10);
+          _10 = (const true, const false, const 123_u32);
+          StorageLive(_11);
+-         _11 = const Option::<u16>::Some(99_u16);
++         nop;
+          StorageLive(_12);
+-         _12 = const Point {{ x: 32_u32, y: 32_u32 }};
++         nop;
+          StorageLive(_13);
+          nop;
+-         _14 = const 32_u32;
++         nop;
+          StorageLive(_15);
+-         _15 = const 32_u32;
+-         _13 = const 64_u32;
++         nop;
++         nop;
+          StorageDead(_15);
+          nop;
+          _0 = const ();
+          StorageDead(_13);
+          StorageDead(_12);
+          StorageDead(_11);
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageDead(_4);
+          nop;
+          nop;
+          nop;
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 8, align: 4) { .. }
+  
+  ALLOC1 (size: 4, align: 2) { .. }
+  
+  ALLOC2 (size: 13, align: 1) { .. }
+  

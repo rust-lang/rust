@@ -1,0 +1,56 @@
+error: expected one of `:`, `@`, or `|`, found `bar`
+  --> $DIR/inverted-parameters.rs:6:24
+   |
+LL |     fn foo(&self, &str bar) {}
+   |                   -----^^^
+   |                   |    |
+   |                   |    expected one of `:`, `@`, or `|`
+   |                   help: declare the type after the parameter binding: `<identifier>: <type>`
+
+error: expected one of `:`, `@`, or `|`, found `quux`
+  --> $DIR/inverted-parameters.rs:12:10
+   |
+LL | fn baz(S quux, xyzzy: i32) {}
+   |        --^^^^
+   |        | |
+   |        | expected one of `:`, `@`, or `|`
+   |        help: declare the type after the parameter binding: `<identifier>: <type>`
+
+error: expected one of `:`, `@`, or `|`, found `a`
+  --> $DIR/inverted-parameters.rs:17:12
+   |
+LL | fn one(i32 a b) {}
+   |            ^ expected one of `:`, `@`, or `|`
+
+error: expected one of `:` or `|`, found `(`
+  --> $DIR/inverted-parameters.rs:20:23
+   |
+LL | fn pattern((i32, i32) (a, b)) {}
+   |                       ^ expected one of `:` or `|`
+
+error: expected one of `:`, `@`, or `|`, found `)`
+  --> $DIR/inverted-parameters.rs:23:12
+   |
+LL | fn fizz(i32) {}
+   |            ^ expected one of `:`, `@`, or `|`
+   |
+help: if this is a parameter name, give it a type
+   |
+LL | fn fizz(i32: TypeName) {}
+   |            ++++++++++
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL | fn fizz(_: i32) {}
+   |         ++
+
+error: expected one of `:`, `@`, or `|`, found `S`
+  --> $DIR/inverted-parameters.rs:28:23
+   |
+LL | fn missing_colon(quux S) {}
+   |                  -----^
+   |                  |    |
+   |                  |    expected one of `:`, `@`, or `|`
+   |                  help: declare the type after the parameter binding: `<identifier>: <type>`
+
+error: aborting due to 6 previous errors
+

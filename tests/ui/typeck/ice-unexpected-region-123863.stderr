@@ -1,0 +1,47 @@
+error: `&'static str` is forbidden as the type of a const generic parameter
+  --> $DIR/ice-unexpected-region-123863.rs:1:31
+   |
+LL | const fn concat_strs<const A: &'static str>() -> &'static str {
+   |                               ^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
+   |
+
+error: `&'static str` is forbidden as the type of a const generic parameter
+  --> $DIR/ice-unexpected-region-123863.rs:3:27
+   |
+LL |     struct Inner<const A: &'static str>;
+   |                           ^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ice-unexpected-region-123863.rs:5:5
+   |
+LL |     Inner::concat_strs::<"a">::A
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `concat_strs` implemented for `Inner<_>`, you could use the fully-qualified path
+   |
+LL -     Inner::concat_strs::<"a">::A
+LL +     <Inner<_> as Example>::concat_strs::<"a">::A
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0223`.

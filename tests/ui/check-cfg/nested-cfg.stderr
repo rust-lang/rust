@@ -1,0 +1,23 @@
+warning: unexpected `cfg` condition name: `unknown`
+  --> $DIR/nested-cfg.rs:3:7
+   |
+LL | #[cfg(unknown)]
+   |       ^^^^^^^
+   |
+   = help: expected names are: `FALSE` and `test` and 31 more
+   = help: to expect this configuration use `--check-cfg=cfg(unknown)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+help: found config with similar value
+   |
+LL - #[cfg(unknown)]
+LL + #[cfg(target_os = "unknown")]
+   |
+help: found config with similar value
+   |
+LL - #[cfg(unknown)]
+LL + #[cfg(target_vendor = "unknown")]
+   |
+
+warning: 1 warning emitted
+

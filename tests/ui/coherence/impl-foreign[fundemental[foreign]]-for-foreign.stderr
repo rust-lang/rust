@@ -1,0 +1,45 @@
+error[E0117]: only traits defined in the current crate can be implemented for primitive types
+  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:11:1
+   |
+LL | impl Remote1<Box<String>> for i32 {
+   | ^^^^^--------------------^^^^^---
+   |      |                        |
+   |      |                        `i32` is not defined in the current crate
+   |      `String` is not defined in the current crate
+   |      `std::alloc::Global` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for primitive types
+  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:15:1
+   |
+LL | impl Remote1<Box<Rc<i32>>> for f64 {
+   | ^^^^^---------------------^^^^^---
+   |      |                         |
+   |      |                         `f64` is not defined in the current crate
+   |      `Rc` is not defined in the current crate
+   |      `std::alloc::Global` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for primitive types
+  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:19:1
+   |
+LL | impl<T> Remote1<Box<Rc<T>>> for f32 {
+   | ^^^^^^^^-------------------^^^^^---
+   |         |                       |
+   |         |                       `f32` is not defined in the current crate
+   |         `Rc` is not defined in the current crate
+   |         `std::alloc::Global` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0117`.

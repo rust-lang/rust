@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Copyright notices for The Rust Toolchain</title>
+</head>
+<body>
+
+<h1>Copyright notices for The Rust Toolchain</h1>
+
+<h2>Table of Contents</h2>
+<ul>
+    <li><a href="#short-version">Short version for non-lawyers</a></li>
+    <li><a href="#longer-version">Longer version</a></li>
+    <li><a href="#in-tree-files">In-tree files</a></li>
+    <li><a href="#out-of-tree-dependencies">Out-of-tree dependencies</a></li>
+</ul>
+
+<h2 id="short-version">Short version for non-lawyers</h2>
+
+The Rust Project is dual-licensed under Apache 2.0 and MIT terms.
+
+<h2 id="longer-version">Longer version</h2>
+
+<p>Copyrights in the Rust project are retained by their contributors. No copyright assignment is required to contribute to the Rust project.</p>
+
+<p>Some files include explicit copyright notices and/or license notices. For full authorship information, see the version control history or <a href="https://thanks.rust-lang.org">https://thanks.rust-lang.org</a>.</p>
+
+<p>Except as otherwise noted (below and/or in individual files), Rust is licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a> or the <a href="http://opensource.org/licenses/MIT">MIT</a> license, at your option.</p>
+
+<p>This file describes the copyright and licensing information for the source code within The Rust Project git tree, and the third-party dependencies used when building the Rust toolchain (including the Rust Standard Library).</p>
+
+<h2 id="in-tree-files">In-tree files</h2>
+
+<p>The following licenses cover the in-tree source files that were used in this release:</p>
+
+{{ in_tree|safe }}
+
+<h2 id="out-of-tree-dependencies">Out-of-tree dependencies</h2>
+
+<p>The following licenses cover the out-of-tree crates that were used in this release:</p>
+
+{% for (key, value) in dependencies %}
+    <h3>📦 {{key.name}}-{{key.version}}</h3>
+    <p><b>URL:</b> <a href="https://crates.io/crates/{{ key.name }}/{{ key.version }}">https://crates.io/crates/{{ key.name }}/{{ key.version }}</a></p>
+    <p><b>In libstd:</b> {% if value.is_in_libstd.unwrap() %} Yes {% else %} No {% endif %}</p>
+    <p><b>Authors:</b> {{ value.authors|join(", ") }}</p>
+    <p><b>License:</b> {{ value.license }}</p>
+    {% let len = value.notices.len() %}
+    {% if len > 0 %}
+        <p><b>Notices:</b>
+        {% for (notice_name, notice_text) in value.notices %}
+            <details>
+                <summary><code>{{ notice_name }}</code></summary>
+                <pre>
+{{ notice_text }}
+                </pre>
+            </details>
+        {% endfor %}
+        </p>
+    {% endif %}
+{% endfor %}
+</body>
+</html>

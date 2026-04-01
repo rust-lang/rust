@@ -1,0 +1,9 @@
+error[E0463]: can't find crate for `std`
+   |
+   = note: the `thumbv6m-none-eabi` target may not be installed
+   = help: consider downloading the target with `rustup target add thumbv6m-none-eabi`
+   = help: consider building the standard library from source with `cargo build -Zbuild-std`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0463`.

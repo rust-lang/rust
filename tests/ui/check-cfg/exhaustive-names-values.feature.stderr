@@ -1,0 +1,32 @@
+warning: unexpected `cfg` condition name: `unknown_key`
+  --> $DIR/exhaustive-names-values.rs:10:7
+   |
+LL | #[cfg(unknown_key = "value")]
+   |       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected names are: `feature` and 31 more
+   = help: to expect this configuration use `--check-cfg=cfg(unknown_key, values("value"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `value`
+  --> $DIR/exhaustive-names-values.rs:14:7
+   |
+LL | #[cfg(target_vendor = "value")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_vendor` are: `amd`, `apple`, `espressif`, `fortanix`, `ibm`, `kmc`, `mti`, `nintendo`, `nvidia`, `openwrt`, `pc`, `risc0`, `sony`, `sun`, `unikraft`, `unknown`, `uwp`, `vex`, `win7`, and `wrs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `unk`
+  --> $DIR/exhaustive-names-values.rs:18:7
+   |
+LL | #[cfg(feature = "unk")]
+   |       ^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `std`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("unk"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 3 warnings emitted
+

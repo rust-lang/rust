@@ -1,0 +1,319 @@
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:25:25
+   |
+LL |                 let w = { 3 };
+   |                         ^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+   = note: `-D clippy::excessive-nesting` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::excessive_nesting)]`
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:72:17
+   |
+LL | /                 impl C {
+LL | |
+LL | |                     pub fn c() {}
+LL | |                 }
+   | |_________________^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:87:25
+   |
+LL |                 let x = { 1 }; // not a warning, but cc is
+   |                         ^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:105:17
+   |
+LL | /                 pub mod e {
+LL | |
+LL | |                     pub mod f {}
+LL | |                 } // not here
+   | |_________________^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:119:18
+   |
+LL |     a_but_not({{{{{{{{0}}}}}}}});
+   |                  ^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:121:12
+   |
+LL |     a.a({{{{{{{{{0}}}}}}}}});
+   |            ^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:123:12
+   |
+LL |     (0, {{{{{{{1}}}}}}});
+   |            ^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:129:25
+   |
+LL |                   if true {
+   |  _________________________^
+LL | |
+LL | |                     if true {
+...  |
+LL | |                 }
+   | |_________________^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:142:29
+   |
+LL |                   let z = (|| {
+   |  _____________________________^
+LL | |
+LL | |                     let w = { 3 };
+LL | |                     w
+LL | |                 })();
+   | |_________________^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:162:13
+   |
+LL |     y += {{{{{5}}}}};
+   |             ^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:164:20
+   |
+LL |     let z = y + {{{{{{{{{5}}}}}}}}};
+   |                    ^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:166:12
+   |
+LL |     [0, {{{{{{{{{{0}}}}}}}}}}];
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:168:25
+   |
+LL |     let mut xx = [0; {{{{{{{{100}}}}}}}}];
+   |                         ^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:170:11
+   |
+LL |     xx[{{{{{{{{{{{{{{{{{{{{{{{{3}}}}}}}}}}}}}}}}}}}}}}}}];
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:172:13
+   |
+LL |     &mut {{{{{{{{{{y}}}}}}}}}};
+   |             ^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:175:17
+   |
+LL |     for i in {{{{xx}}}} {{{{{{{{}}}}}}}}
+   |                 ^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:175:28
+   |
+LL |     for i in {{{{xx}}}} {{{{{{{{}}}}}}}}
+   |                            ^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:179:28
+   |
+LL |     while let Some(i) = {{{{{{Some(1)}}}}}} {{{{{{{}}}}}}}
+   |                            ^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:179:48
+   |
+LL |     while let Some(i) = {{{{{{Some(1)}}}}}} {{{{{{{}}}}}}}
+   |                                                ^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:183:14
+   |
+LL |     while {{{{{{{{true}}}}}}}} {{{{{{{{{}}}}}}}}}
+   |              ^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:183:35
+   |
+LL |     while {{{{{{{{true}}}}}}}} {{{{{{{{{}}}}}}}}}
+   |                                   ^^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:187:23
+   |
+LL |     let d = D { d: {{{{{{{{{{{{{{{{{{{{{{{3}}}}}}}}}}}}}}}}}}}}}}} };
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:190:8
+   |
+LL |     {{{{1;}}}}..{{{{{{3}}}}}};
+   |        ^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:190:20
+   |
+LL |     {{{{1;}}}}..{{{{{{3}}}}}};
+   |                    ^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:193:8
+   |
+LL |     {{{{1;}}}}..={{{{{{{{{{{{{{{{{{{{{{{{{{6}}}}}}}}}}}}}}}}}}}}}}}}}};
+   |        ^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:193:21
+   |
+LL |     {{{{1;}}}}..={{{{{{{{{{{{{{{{{{{{{{{{{{6}}}}}}}}}}}}}}}}}}}}}}}}}};
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:196:10
+   |
+LL |     ..{{{{{{{5}}}}}}};
+   |          ^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:198:11
+   |
+LL |     ..={{{{{3}}}}};
+   |           ^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:200:8
+   |
+LL |     {{{{{1;}}}}}..;
+   |        ^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:203:20
+   |
+LL |     loop { break {{{{1}}}} };
+   |                    ^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:205:13
+   |
+LL |     loop {{{{{{}}}}}}
+   |             ^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:208:14
+   |
+LL |     match {{{{{{true}}}}}} {
+   |              ^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:210:20
+   |
+LL |         true => {{{{}}}},
+   |                    ^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:212:21
+   |
+LL |         false => {{{{}}}},
+   |                     ^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:219:17
+   |
+LL | /                 {
+LL | |
+LL | |                     println!("warning! :)");
+LL | |                 }
+   | |_________________^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:229:28
+   |
+LL |     async fn c() -> u32 {{{{{{{0}}}}}}}
+   |                            ^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: this block is too nested
+  --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:236:8
+   |
+LL |     {{{{b().await}}}};
+   |        ^^^^^^^^^^^
+   |
+   = help: try refactoring your code to minimize nesting
+
+error: aborting due to 37 previous errors
+

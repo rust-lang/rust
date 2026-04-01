@@ -1,0 +1,61 @@
+error[E0277]: the trait bound `T: !Copy` is not satisfied
+  --> $DIR/simple.rs:10:16
+   |
+LL |     not_copy::<T>();
+   |                ^ the trait bound `T: !Copy` is not satisfied
+   |
+note: required by a bound in `not_copy`
+  --> $DIR/simple.rs:3:16
+   |
+LL | fn not_copy<T: !Copy>() {}
+   |                ^^^^^ required by this bound in `not_copy`
+
+error[E0277]: the trait bound `T: !Copy` is not satisfied
+  --> $DIR/simple.rs:15:16
+   |
+LL |     not_copy::<T>();
+   |                ^ the trait bound `T: !Copy` is not satisfied
+   |
+note: required by a bound in `not_copy`
+  --> $DIR/simple.rs:3:16
+   |
+LL | fn not_copy<T: !Copy>() {}
+   |                ^^^^^ required by this bound in `not_copy`
+
+error[E0277]: the trait bound `Copyable: !Copy` is not satisfied
+  --> $DIR/simple.rs:30:16
+   |
+LL |     not_copy::<Copyable>();
+   |                ^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait bound `Copyable: !Copy` is not satisfied
+  --> $DIR/simple.rs:27:1
+   |
+LL | struct Copyable;
+   | ^^^^^^^^^^^^^^^
+note: required by a bound in `not_copy`
+  --> $DIR/simple.rs:3:16
+   |
+LL | fn not_copy<T: !Copy>() {}
+   |                ^^^^^ required by this bound in `not_copy`
+
+error[E0277]: the trait bound `NotNecessarilyCopyable: !Copy` is not satisfied
+  --> $DIR/simple.rs:37:16
+   |
+LL |     not_copy::<NotNecessarilyCopyable>();
+   |                ^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait bound `NotNecessarilyCopyable: !Copy` is not satisfied
+  --> $DIR/simple.rs:34:1
+   |
+LL | struct NotNecessarilyCopyable;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `not_copy`
+  --> $DIR/simple.rs:3:16
+   |
+LL | fn not_copy<T: !Copy>() {}
+   |                ^^^^^ required by this bound in `not_copy`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

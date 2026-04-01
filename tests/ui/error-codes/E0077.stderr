@@ -1,0 +1,9 @@
+error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
+  --> $DIR/E0077.rs:4:1
+   |
+LL | struct Bad([String; 2]);
+   | ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0077`.

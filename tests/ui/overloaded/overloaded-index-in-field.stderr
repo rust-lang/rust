@@ -1,0 +1,15 @@
+warning: methods `get_from_ref` and `inc` are never used
+  --> $DIR/overloaded-index-in-field.rs:30:8
+   |
+LL | trait Int {
+   |       --- methods in this trait
+LL |     fn get(self) -> isize;
+LL |     fn get_from_ref(&self) -> isize;
+   |        ^^^^^^^^^^^^
+LL |     fn inc(&mut self);
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

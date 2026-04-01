@@ -1,0 +1,114 @@
+print-type-size type: `IndirectNonZero`: 12 bytes, alignment: 4 bytes
+print-type-size     field `.nested`: 8 bytes
+print-type-size     field `.post`: 2 bytes
+print-type-size     field `.pre`: 1 bytes
+print-type-size     end padding: 1 bytes
+print-type-size type: `MyOption<IndirectNonZero>`: 12 bytes, alignment: 4 bytes
+print-type-size     variant `Some`: 12 bytes
+print-type-size         field `.0`: 12 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `EmbeddedDiscr`: 8 bytes, alignment: 4 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Record`: 7 bytes
+print-type-size         field `.pre`: 1 bytes
+print-type-size         field `.post`: 2 bytes
+print-type-size         field `.val`: 4 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `MyOption<Union1<std::num::NonZero<u32>>>`: 8 bytes, alignment: 4 bytes
+print-type-size     discriminant: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `MyOption<Union2<std::num::NonZero<u32>, std::num::NonZero<u32>>>`: 8 bytes, alignment: 4 bytes
+print-type-size     discriminant: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `MyOption<Union2<std::num::NonZero<u32>, u32>>`: 8 bytes, alignment: 4 bytes
+print-type-size     discriminant: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `NestedNonZero`: 8 bytes, alignment: 4 bytes
+print-type-size     field `.val`: 4 bytes
+print-type-size     field `.post`: 2 bytes
+print-type-size     field `.pre`: 1 bytes
+print-type-size     end padding: 1 bytes
+print-type-size type: `Enum4<(), char, (), ()>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Two`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `One`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size     variant `Three`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size     variant `Four`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size type: `MyNotNegativeOne`: 4 bytes, alignment: 4 bytes
+print-type-size     field `._i`: 4 bytes
+print-type-size type: `MyOption<MyNotNegativeOne>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `MyOption<char>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `MyOption<std::num::NonZero<u32>>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `Union1<std::num::NonZero<u32>>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Union1`: 4 bytes
+print-type-size         field `.a`: 4 bytes
+print-type-size type: `Union2<std::num::NonZero<u32>, std::num::NonZero<u32>>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Union2`: 4 bytes
+print-type-size         field `.a`: 4 bytes
+print-type-size         field `.b`: 4 bytes, offset: 0 bytes, alignment: 4 bytes
+print-type-size type: `Union2<std::num::NonZero<u32>, u32>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Union2`: 4 bytes
+print-type-size         field `.a`: 4 bytes
+print-type-size         field `.b`: 4 bytes, offset: 0 bytes, alignment: 4 bytes
+print-type-size type: `core::num::niche_types::NonZeroU32Inner`: 4 bytes, alignment: 4 bytes
+print-type-size     field `.0`: 4 bytes
+print-type-size type: `std::num::NonZero<u32>`: 4 bytes, alignment: 4 bytes
+print-type-size     field `.0`: 4 bytes
+print-type-size type: `Enum4<(), (), (), MyOption<u8>>`: 2 bytes, alignment: 1 bytes
+print-type-size     variant `Four`: 2 bytes
+print-type-size         field `.0`: 2 bytes
+print-type-size     variant `One`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size     variant `Two`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size     variant `Three`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size type: `MyOption<MyOption<u8>>`: 2 bytes, alignment: 1 bytes
+print-type-size     variant `Some`: 2 bytes
+print-type-size         field `.0`: 2 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `MyOption<u8>`: 2 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Some`: 1 bytes
+print-type-size         field `.0`: 1 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `Enum4<(), (), bool, ()>`: 1 bytes, alignment: 1 bytes
+print-type-size     variant `Three`: 1 bytes
+print-type-size         field `.0`: 1 bytes
+print-type-size     variant `One`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size     variant `Two`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size     variant `Four`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size type: `MyOption<bool>`: 1 bytes, alignment: 1 bytes
+print-type-size     variant `Some`: 1 bytes
+print-type-size         field `.0`: 1 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `MyOption<std::cmp::Ordering>`: 1 bytes, alignment: 1 bytes
+print-type-size     variant `Some`: 1 bytes
+print-type-size         field `.0`: 1 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `std::cmp::Ordering`: 1 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Less`: 0 bytes
+print-type-size     variant `Equal`: 0 bytes
+print-type-size     variant `Greater`: 0 bytes

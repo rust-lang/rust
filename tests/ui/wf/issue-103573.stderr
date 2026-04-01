@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `<<Self as TraitC<E>>::TypeC<'a> as TraitB>::TypeB: TraitA` is not satisfied
+  --> $DIR/issue-103573.rs:18:18
+   |
+LL |     fn g<'a>(_: &<<Self::TypeC<'a> as TraitB>::TypeB as TraitA>::TypeA);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `TraitA` is not implemented for `<<Self as TraitC<E>>::TypeC<'a> as TraitB>::TypeB`
+   |
+help: consider further restricting the associated type
+   |
+LL |     fn g<'a>(_: &<<Self::TypeC<'a> as TraitB>::TypeB as TraitA>::TypeA) where <<Self as TraitC<E>>::TypeC<'a> as TraitB>::TypeB: TraitA;
+   |                                                                         +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

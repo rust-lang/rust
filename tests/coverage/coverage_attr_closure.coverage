@@ -1,0 +1,43 @@
+   LL|       |#![feature(coverage_attribute, stmt_expr_attributes)]
+   LL|       |#![allow(dead_code)]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |static GLOBAL_CLOSURE_ON: fn(&str) = #[coverage(on)]
+   LL|      0||input: &str| {
+   LL|      0|    println!("{input}");
+   LL|      0|};
+   LL|       |static GLOBAL_CLOSURE_OFF: fn(&str) = #[coverage(off)]
+   LL|       ||input: &str| {
+   LL|       |    println!("{input}");
+   LL|       |};
+   LL|       |
+   LL|       |#[coverage(on)]
+   LL|      1|fn contains_closures_on() {
+   LL|      1|    let _local_closure_on = #[coverage(on)]
+   LL|      0|    |input: &str| {
+   LL|      0|        println!("{input}");
+   LL|      0|    };
+   LL|      1|    let _local_closure_off = #[coverage(off)]
+   LL|       |    |input: &str| {
+   LL|       |        println!("{input}");
+   LL|       |    };
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn contains_closures_off() {
+   LL|       |    let _local_closure_on = #[coverage(on)]
+   LL|      0|    |input: &str| {
+   LL|      0|        println!("{input}");
+   LL|      0|    };
+   LL|       |    let _local_closure_off = #[coverage(off)]
+   LL|       |    |input: &str| {
+   LL|       |        println!("{input}");
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    contains_closures_on();
+   LL|       |    contains_closures_off();
+   LL|       |}
+

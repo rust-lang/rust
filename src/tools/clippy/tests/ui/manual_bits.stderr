@@ -1,0 +1,179 @@
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:14:5
+   |
+LL |     size_of::<i8>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `i8::BITS as usize`
+   |
+   = note: `-D clippy::manual-bits` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_bits)]`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:16:5
+   |
+LL |     size_of::<i16>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `i16::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:18:5
+   |
+LL |     size_of::<i32>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `i32::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:20:5
+   |
+LL |     size_of::<i64>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `i64::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:22:5
+   |
+LL |     size_of::<i128>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `i128::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:24:5
+   |
+LL |     size_of::<isize>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `isize::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:27:5
+   |
+LL |     size_of::<u8>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `u8::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:29:5
+   |
+LL |     size_of::<u16>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `u16::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:31:5
+   |
+LL |     size_of::<u32>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `u32::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:33:5
+   |
+LL |     size_of::<u64>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `u64::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:35:5
+   |
+LL |     size_of::<u128>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `u128::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:37:5
+   |
+LL |     size_of::<usize>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `usize::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:40:5
+   |
+LL |     8 * size_of::<i8>();
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `i8::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:42:5
+   |
+LL |     8 * size_of::<i16>();
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `i16::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:44:5
+   |
+LL |     8 * size_of::<i32>();
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `i32::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:46:5
+   |
+LL |     8 * size_of::<i64>();
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `i64::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:48:5
+   |
+LL |     8 * size_of::<i128>();
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `i128::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:50:5
+   |
+LL |     8 * size_of::<isize>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `isize::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:53:5
+   |
+LL |     8 * size_of::<u8>();
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `u8::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:55:5
+   |
+LL |     8 * size_of::<u16>();
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `u16::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:57:5
+   |
+LL |     8 * size_of::<u32>();
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `u32::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:59:5
+   |
+LL |     8 * size_of::<u64>();
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using: `u64::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:61:5
+   |
+LL |     8 * size_of::<u128>();
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `u128::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:63:5
+   |
+LL |     8 * size_of::<usize>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `usize::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:74:5
+   |
+LL |     size_of::<Word>() * 8;
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `Word::BITS as usize`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:79:18
+   |
+LL |     let _: u32 = (size_of::<u128>() * 8) as u32;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `u128::BITS`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:81:18
+   |
+LL |     let _: u32 = (size_of::<u128>() * 8).try_into().unwrap();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `u128::BITS`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:83:13
+   |
+LL |     let _ = (size_of::<u128>() * 8).pow(5);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(u128::BITS as usize)`
+
+error: usage of `size_of::<T>()` to obtain the size of `T` in bits
+  --> tests/ui/manual_bits.rs:85:14
+   |
+LL |     let _ = &(size_of::<u128>() * 8);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(u128::BITS as usize)`
+
+error: aborting due to 29 previous errors
+

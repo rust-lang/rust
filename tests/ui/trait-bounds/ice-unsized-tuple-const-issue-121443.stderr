@@ -1,0 +1,37 @@
+error[E0425]: cannot find value `some_fn` in this scope
+  --> $DIR/ice-unsized-tuple-const-issue-121443.rs:8:18
+   |
+LL | const TEST: Fn = some_fn;
+   |                  ^^^^^^^ not found in this scope
+
+error[E0277]: the size for values of type `(dyn FnOnce() -> u8 + 'static)` cannot be known at compilation time
+  --> $DIR/ice-unsized-tuple-const-issue-121443.rs:8:13
+   |
+LL | const TEST: Fn = some_fn;
+   |             ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn FnOnce() -> u8 + 'static)`
+   = note: statics and constants must have a statically known size
+
+error[E0277]: the size for values of type `(dyn FnOnce() -> u8 + 'static)` cannot be known at compilation time
+  --> $DIR/ice-unsized-tuple-const-issue-121443.rs:11:14
+   |
+LL | const TEST2: (Fn, u8) = (TEST, 0);
+   |              ^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn FnOnce() -> u8 + 'static)`
+   = note: only the last element of a tuple may have a dynamically sized type
+
+error[E0277]: the size for values of type `(dyn FnOnce() -> u8 + 'static)` cannot be known at compilation time
+  --> $DIR/ice-unsized-tuple-const-issue-121443.rs:11:25
+   |
+LL | const TEST2: (Fn, u8) = (TEST, 0);
+   |                         ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn FnOnce() -> u8 + 'static)`
+   = note: only the last element of a tuple may have a dynamically sized type
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0425.
+For more information about an error, try `rustc --explain E0277`.

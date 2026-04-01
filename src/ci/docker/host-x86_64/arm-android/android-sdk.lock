@@ -1,0 +1,6 @@
+emulator emulator-linux-5264690.zip 48c1cda2bdf3095d9d9d5c010fbfb3d6d673e3ea
+patcher;v4 3534162-studio.sdk-patcher.zip 046699c5e2716ae11d77e0bad814f7f33fab261e
+platform-tools platform-tools_r34.0.5-linux.zip 96097475cf7b279fdd8f218f5d043ffe94104ec3
+platforms;android-21 android-21_r02.zip 53536556059bb29ae82f414fd2e14bc335a4eb4c
+system-images;android-21;default;armeabi-v7a sys-img/android/armeabi-v7a-21_r04.zip 8c606f81306564b65e41303d2603e4c42ded0d10
+tools sdk-tools-linux-4333796.zip 8c7c28554a32318461802c1291d76fccfafde054

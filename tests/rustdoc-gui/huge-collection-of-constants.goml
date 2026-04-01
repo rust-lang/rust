@@ -1,0 +1,9 @@
+// Make sure that the last two entries are more than 12 pixels apart and not stacked on each other.
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/huge_amount_of_consts/index.html"
+
+compare-elements-position-near-false: (
+    "//dl[@class='item-table']/dt[last()-1]",
+    "//dl[@class='item-table']/dt[last()-3]",
+    {"y": 12},
+)

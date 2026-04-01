@@ -1,0 +1,13 @@
+error: unconstrained generic constant
+  --> $DIR/abstract-consts-as-cast-5.rs:5:11
+   |
+LL |     bar::<{ N as usize as usize }>();
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn foo<const N: u8>(a: [(); N as usize]) where [(); { N as usize as usize }]: {
+   |                                          ++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+

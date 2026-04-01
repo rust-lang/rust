@@ -1,0 +1,76 @@
+// This test checks that the correct font is used on module items (in index.html pages).
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-css: (
+    ".item-table dt > a",
+    {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
+    ALL,
+)
+assert-css: (
+    ".item-table dd",
+    {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
+    ALL,
+)
+
+// modules
+assert-css: (
+    "#modules + .item-table dt a",
+    {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
+)
+assert-css: (
+    "#modules + .item-table ",
+    {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
+)
+// structs
+assert-css: (
+    "#structs + .item-table dt a",
+    {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
+)
+assert-css: (
+    "#structs + .item-table dd",
+    {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
+)
+// enums
+assert-css: (
+    "#enums + .item-table dt a",
+    {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
+)
+assert-css: (
+    "#enums + .item-table dd",
+    {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
+)
+// traits
+assert-css: (
+    "#traits + .item-table dt a",
+    {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
+)
+assert-css: (
+    "#traits + .item-table dd",
+    {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
+)
+// functions
+assert-css: (
+    "#functions + .item-table dt a",
+    {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
+)
+assert-css: (
+    "#functions + .item-table dd",
+    {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
+)
+// keywords
+assert-css: (
+    "#keywords + .item-table dt a",
+    {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
+)
+assert-css: (
+    "#keywords + .item-table dd",
+    {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
+)
+// attributes
+assert-css: (
+    "#attributes + .item-table dt a",
+    {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
+)
+assert-css: (
+    "#attributes + .item-table dd",
+    {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
+)

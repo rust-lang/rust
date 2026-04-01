@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Foo` for type `u8`
+  --> $DIR/specialization-feature-gate-overlap.rs:13:1
+   |
+LL | impl<T> Foo for T {
+   | ----------------- first implementation here
+...
+LL | impl Foo for u8 {
+   | ^^^^^^^^^^^^^^^ conflicting implementation for `u8`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

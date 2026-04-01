@@ -1,0 +1,34 @@
+// The ayu theme has a different color for the "<code>" tags in the doc blocks. We need to
+// check that the rule isn't applied on other "<code>" elements.
+//
+// While we're at it, we also check it for the other themes.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+// If the text isn't displayed, the browser doesn't compute color style correctly...
+show-text: true
+
+define-function: (
+    "check-colors",
+    [theme, doc_code_color, doc_inline_code_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: (".docblock pre > code", {"color": |doc_code_color|}, ALL)
+        assert-css: (".docblock > p > code", {"color": |doc_inline_code_color|}, ALL)
+    },
+)
+
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "doc_code_color": "#e6e1cf",
+    "doc_inline_code_color": "#ffb454",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "doc_code_color": "#ddd",
+    "doc_inline_code_color": "#ddd",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "doc_code_color": "black",
+    "doc_inline_code_color": "black",
+})

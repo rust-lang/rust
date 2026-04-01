@@ -1,0 +1,21 @@
+error[E0609]: no field `b` on type `Foo`
+  --> $DIR/struct-field-access-errors-24365.rs:11:22
+   |
+LL |     println!("{}", a.b);
+   |                      ^ unknown field
+
+error[E0609]: no field `attr_name_idx` on type `&Attribute`
+  --> $DIR/struct-field-access-errors-24365.rs:18:18
+   |
+LL |     let z = (&x).attr_name_idx;
+   |                  ^^^^^^^^^^^^^ unknown field
+
+error[E0609]: no field `attr_name_idx` on type `Attribute`
+  --> $DIR/struct-field-access-errors-24365.rs:19:15
+   |
+LL |     let y = x.attr_name_idx;
+   |               ^^^^^^^^^^^^^ unknown field
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

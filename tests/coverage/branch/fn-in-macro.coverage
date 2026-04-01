@@ -1,0 +1,62 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |//@ compile-flags: -Zcoverage-options=branch
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|       |// Snapshot test demonstrating how branch coverage interacts with code in macros.
+   LL|       |// This test captures current behavior, which is not necessarily "correct".
+   LL|       |
+   LL|       |macro_rules! define_fn {
+   LL|       |    () => {
+   LL|       |        /// Function defined entirely within a macro.
+   LL|      1|        fn fn_in_macro() {
+   LL|      1|            if core::hint::black_box(true) {
+   LL|      1|                say("true");
+   LL|      1|            } else {
+   LL|      0|                say("false");
+   LL|      0|            }
+   LL|      1|        }
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|       |define_fn!();
+   LL|       |
+   LL|       |/// Function not in a macro at all, for comparison.
+   LL|      1|fn fn_not_in_macro() {
+   LL|      1|    if core::hint::black_box(true) {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
+   LL|      1|        say("true");
+   LL|      1|    } else {
+   LL|      0|        say("false");
+   LL|      0|    }
+   LL|      1|}
+   LL|       |
+   LL|       |/// Function that is not in a macro, containing a branch that is in a macro.
+   LL|      1|fn branch_in_macro() {
+   LL|       |    macro_rules! macro_with_branch {
+   LL|       |        () => {{
+   LL|       |            if core::hint::black_box(true) {
+   LL|       |                say("true");
+   LL|       |            } else {
+   LL|       |                say("false");
+   LL|       |            }
+   LL|       |        }};
+   LL|       |    }
+   LL|       |
+   LL|      1|    macro_with_branch!();
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    fn_in_macro();
+   LL|       |    fn_not_in_macro();
+   LL|       |    branch_in_macro();
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(message: &str) {
+   LL|       |    println!("{message}");
+   LL|       |}
+

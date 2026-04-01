@@ -1,0 +1,45 @@
+error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+  --> $DIR/attribute-typos.rs:7:3
+   |
+LL | #[rustc_dumm]
+   |   ^^^^^^^^^^
+
+error: cannot find attribute `rustc_dumm` in this scope
+  --> $DIR/attribute-typos.rs:7:3
+   |
+LL | #[rustc_dumm]
+   |   ^^^^^^^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL | #[rustc_dummy]
+   |             +
+
+error: cannot find attribute `tests` in this scope
+  --> $DIR/attribute-typos.rs:4:3
+   |
+LL | #[tests]
+   |   ^^^^^
+   |
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+   |
+   = note: similarly named attribute macro `test` defined here
+help: an attribute macro with a similar name exists
+   |
+LL - #[tests]
+LL + #[test]
+   |
+
+error: cannot find attribute `deprcated` in this scope
+  --> $DIR/attribute-typos.rs:1:3
+   |
+LL | #[deprcated]
+   |   ^^^^^^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL | #[deprecated]
+   |       +
+
+error: aborting due to 4 previous errors
+

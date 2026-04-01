@@ -1,0 +1,20 @@
+error[E0422]: cannot find struct, variant or union type `Blah` in this scope
+  --> $DIR/track3.rs:LL:CC
+   |
+LL |     let _unimported = Blah { field: u8 };
+   |                       ^^^^ not found in this scope
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:LL:CC
+
+error[E0423]: expected value, found builtin type `u8`
+  --> $DIR/track3.rs:LL:CC
+   |
+LL |     let _unimported = Blah { field: u8 };
+   |                                     ^^ not a value
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:LL:CC
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0422, E0423.
+For more information about an error, try `rustc --explain E0422`.

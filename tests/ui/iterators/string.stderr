@@ -1,0 +1,21 @@
+error[E0277]: `String` is not an iterator
+  --> $DIR/string.rs:2:14
+   |
+LL |     for _ in "".to_owned() {}
+   |              ^^^^^^^^^^^^^ `String` is not an iterator; try calling `.chars()` or `.bytes()`
+   |
+   = help: the trait `Iterator` is not implemented for `String`
+   = note: required for `String` to implement `IntoIterator`
+
+error[E0277]: `&str` is not an iterator
+  --> $DIR/string.rs:4:14
+   |
+LL |     for _ in "" {}
+   |              ^^ `&str` is not an iterator; try calling `.chars()` or `.bytes()`
+   |
+   = help: the trait `Iterator` is not implemented for `&str`
+   = note: required for `&str` to implement `IntoIterator`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

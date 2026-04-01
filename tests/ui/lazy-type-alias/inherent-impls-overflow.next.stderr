@@ -1,0 +1,76 @@
+error[E0271]: type mismatch resolving `Loop normalizes-to _`
+  --> $DIR/inherent-impls-overflow.rs:8:1
+   |
+LL | type Loop = Loop;
+   | ^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `Loop normalizes-to _`
+  --> $DIR/inherent-impls-overflow.rs:12:1
+   |
+LL | impl Loop {}
+   | ^^^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `Loop normalizes-to _`
+  --> $DIR/inherent-impls-overflow.rs:12:6
+   |
+LL | impl Loop {}
+   |      ^^^^ types differ
+
+error[E0275]: overflow evaluating the requirement `Poly1<(T,)> == _`
+  --> $DIR/inherent-impls-overflow.rs:17:1
+   |
+LL | type Poly0<T> = Poly1<(T,)>;
+   | ^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
+
+error: type parameter `T` is only used recursively
+  --> $DIR/inherent-impls-overflow.rs:17:24
+   |
+LL | type Poly0<T> = Poly1<(T,)>;
+   |            -           ^
+   |            |
+   |            type parameter must be used non-recursively in the definition
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
+error[E0275]: overflow evaluating the requirement `Poly0<(T,)> == _`
+  --> $DIR/inherent-impls-overflow.rs:21:1
+   |
+LL | type Poly1<T> = Poly0<(T,)>;
+   | ^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
+
+error: type parameter `T` is only used recursively
+  --> $DIR/inherent-impls-overflow.rs:21:24
+   |
+LL | type Poly1<T> = Poly0<(T,)>;
+   |            -           ^
+   |            |
+   |            type parameter must be used non-recursively in the definition
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
+error[E0275]: overflow evaluating the requirement `Poly0<()> == _`
+  --> $DIR/inherent-impls-overflow.rs:26:1
+   |
+LL | impl Poly0<()> {}
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
+
+error[E0275]: overflow evaluating the requirement `Poly0<()> == _`
+  --> $DIR/inherent-impls-overflow.rs:26:6
+   |
+LL | impl Poly0<()> {}
+   |      ^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0271, E0275.
+For more information about an error, try `rustc --explain E0271`.

@@ -1,0 +1,19 @@
+error[E0107]: missing generics for associated type `StreamingIterator::Item`
+  --> $DIR/issue-81862.rs:3:40
+   |
+LL |     fn next(&mut self) -> Option<Self::Item>;
+   |                                        ^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-81862.rs:2:10
+   |
+LL |     type Item<'a>;
+   |          ^^^^ --
+help: add missing lifetime argument
+   |
+LL |     fn next(&mut self) -> Option<Self::Item<'_>>;
+   |                                            ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

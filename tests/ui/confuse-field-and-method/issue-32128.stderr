@@ -1,0 +1,17 @@
+error[E0599]: no method named `example` found for struct `Example` in the current scope
+  --> $DIR/issue-32128.rs:12:10
+   |
+LL | struct Example {
+   | -------------- method `example` not found for this struct
+...
+LL |     demo.example(1);
+   |          ^^^^^^^ field, not a method
+   |
+help: to call the trait object stored in `example`, surround the field access with parentheses
+   |
+LL |     (demo.example)(1);
+   |     +            +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,9 @@
+error[E0747]: constant provided when a type was expected
+  --> $DIR/const-arg-type-arg-misordered.rs:3:35
+   |
+LL | fn foo<const N: usize>() -> Array<N, ()> {
+   |                                   ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0747`.

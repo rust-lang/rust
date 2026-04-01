@@ -1,0 +1,41 @@
+error[E0568]: auto traits cannot have super traits or lifetime bounds
+  --> $DIR/typeck-auto-trait-no-supertraits-2.rs:4:20
+   |
+LL | auto trait Magic : Sized where Option<Self> : Magic {}
+   |            -----   ^^^^^
+   |            |
+   |            auto traits cannot have super traits or lifetime bounds
+
+error[E0568]: auto traits cannot have super traits or lifetime bounds
+  --> $DIR/typeck-auto-trait-no-supertraits-2.rs:4:26
+   |
+LL | auto trait Magic : Sized where Option<Self> : Magic {}
+   |            -----         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            |
+   |            auto traits cannot have super traits or lifetime bounds
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/typeck-auto-trait-no-supertraits-2.rs:8:41
+   |
+LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
+   |                   -                  -  ^ value used here after move
+   |                   |                  |
+   |                   |                  value moved here
+   |                   move occurs because `x` has type `T`, which does not implement the `Copy` trait
+   |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/typeck-auto-trait-no-supertraits-2.rs:8:9
+   |
+LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
+   |         ^                            - you could clone this value
+   |         |
+   |         consider constraining this type parameter with `Clone`
+help: consider further restricting type parameter `T` with trait `Copy`
+   |
+LL | fn copy<T: Magic + Copy>(x: T) -> (T, T) { (x, x) }
+   |                  ++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0382, E0568.
+For more information about an error, try `rustc --explain E0382`.

@@ -1,0 +1,13 @@
+error[E0320]: overflow while adding drop-check rules for `S<u32>`
+  --> $DIR/issue-38591-non-regular-dropck-recursion.rs:12:6
+   |
+LL | fn f(x: S<u32>) {}
+   |      ^
+   |
+   = note: overflowed on `S<fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(...))))))))))))))))>`
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/issue-38591-non-regular-dropck-recursion.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0320`.

@@ -1,0 +1,85 @@
+// MIR for `forward_loop` after PreCodegen
+
+fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
+    debug start => _1;
+    debug end => _2;
+    debug f => _3;
+    let mut _0: ();
+    let mut _7: std::option::Option<u32>;
+    let mut _9: &impl Fn(u32);
+    let mut _10: (u32,);
+    let _11: ();
+    scope 1 {
+        debug ((iter: std::ops::Range<u32>).0: u32) => _1;
+        debug ((iter: std::ops::Range<u32>).1: u32) => _2;
+        let _8: u32;
+        scope 2 {
+            debug x => _8;
+        }
+        scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<u32>>::next) {
+            scope 5 (inlined <std::ops::Range<u32> as iter::range::RangeIteratorImpl>::spec_next) {
+                let mut _5: bool;
+                let _6: u32;
+                scope 6 {
+                    scope 8 (inlined <u32 as Step>::forward_unchecked) {
+                        scope 9 (inlined #[track_caller] core::num::<impl u32>::unchecked_add) {
+                            scope 10 (inlined core::ub_checks::check_language_ub) {
+                                scope 11 (inlined core::ub_checks::check_language_ub::runtime) {
+                                }
+                            }
+                        }
+                    }
+                }
+                scope 7 (inlined std::cmp::impls::<impl PartialOrd for u32>::lt) {
+                    let mut _4: u32;
+                }
+            }
+        }
+    }
+    scope 3 (inlined <std::ops::Range<u32> as IntoIterator>::into_iter) {
+    }
+
+    bb0: {
+        goto -> bb1;
+    }
+
+    bb1: {
+        StorageLive(_7);
+        StorageLive(_5);
+        StorageLive(_4);
+        _4 = copy _1;
+        _5 = Lt(move _4, copy _2);
+        StorageDead(_4);
+        switchInt(move _5) -> [0: bb2, otherwise: bb4];
+    }
+
+    bb2: {
+        StorageDead(_5);
+        StorageDead(_7);
+        drop(_3) -> [return: bb3, unwind unreachable];
+    }
+
+    bb3: {
+        return;
+    }
+
+    bb4: {
+        _6 = copy _1;
+        _1 = AddUnchecked(copy _6, const 1_u32);
+        _7 = Option::<u32>::Some(copy _6);
+        StorageDead(_5);
+        _8 = copy ((_7 as Some).0: u32);
+        StorageLive(_9);
+        _9 = &_3;
+        StorageLive(_10);
+        _10 = (copy _8,);
+        _11 = <impl Fn(u32) as Fn<(u32,)>>::call(move _9, move _10) -> [return: bb5, unwind unreachable];
+    }
+
+    bb5: {
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageDead(_7);
+        goto -> bb1;
+    }
+}

@@ -1,0 +1,30 @@
+error[E0432]: unresolved import `crate::ImportError`
+  --> $DIR/issue-5035.rs:7:5
+   |
+LL | use crate::ImportError;
+   |     ^^^^^^^^^^^^^^^^^^ no `ImportError` in the root
+
+error[E0404]: expected trait, found type alias `K`
+  --> $DIR/issue-5035.rs:5:6
+   |
+LL | trait I {}
+   | ------- similarly named trait `I` defined here
+LL | type K = dyn I;
+LL | impl K for isize {}
+   |      ^ type aliases cannot be used as traits
+   |
+help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
+   |
+LL - type K = dyn I;
+LL + trait K = dyn I;
+   |
+help: a trait with a similar name exists
+   |
+LL - impl K for isize {}
+LL + impl I for isize {}
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0404, E0432.
+For more information about an error, try `rustc --explain E0404`.

@@ -1,0 +1,15 @@
+error: item does not constrain `Opaque::{opaque#0}`
+  --> $DIR/different_args_considered_equal.rs:11:4
+   |
+LL | fn get_iter<'a>() -> impl IntoIterator<Item = Opaque<'a>> {
+   |    ^^^^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/different_args_considered_equal.rs:3:23
+   |
+LL | pub type Opaque<'a> = impl Sized;
+   |                       ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

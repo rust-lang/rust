@@ -1,0 +1,34 @@
+error: `&'static str` is forbidden as the type of a const generic parameter
+  --> $DIR/issue-71348.rs:10:24
+   |
+LL | trait Get<'a, const N: &'static str> {
+   |                        ^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
+   |
+
+error: `&'static str` is forbidden as the type of a const generic parameter
+  --> $DIR/issue-71348.rs:18:25
+   |
+LL |     fn ask<'a, const N: &'static str>(&'a self) -> &'a <Self as Get<N>>::Target
+   |                         ^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
+   |
+
+error: aborting due to 2 previous errors
+

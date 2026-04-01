@@ -1,0 +1,78 @@
+error[E0308]: mismatched types
+  --> $DIR/async-block-control-flow-static-semantics.rs:21:58
+   |
+LL |   async fn return_targets_async_block_not_async_fn() -> u8 {
+   |  __________________________________________________________^
+LL | |
+LL | |     let block = async {
+LL | |         return 0u8;
+...  |
+LL | | }
+   | |_^ expected `u8`, found `()`
+
+error[E0271]: expected `{async block@$DIR/async-block-control-flow-static-semantics.rs:23:17: 23:22}` to be a future that resolves to `()`, but it resolves to `u8`
+  --> $DIR/async-block-control-flow-static-semantics.rs:26:39
+   |
+LL |     let _: &dyn Future<Output = ()> = &block;
+   |                                       ^^^^^^ expected `()`, found `u8`
+   |
+   = note: required for the cast from `&{async block@$DIR/async-block-control-flow-static-semantics.rs:23:17: 23:22}` to `&dyn Future<Output = ()>`
+
+error[E0308]: mismatched types
+  --> $DIR/async-block-control-flow-static-semantics.rs:12:43
+   |
+LL | fn return_targets_async_block_not_fn() -> u8 {
+   |    ---------------------------------      ^^ expected `u8`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error[E0271]: expected `{async block@$DIR/async-block-control-flow-static-semantics.rs:14:17: 14:22}` to be a future that resolves to `()`, but it resolves to `u8`
+  --> $DIR/async-block-control-flow-static-semantics.rs:17:39
+   |
+LL |     let _: &dyn Future<Output = ()> = &block;
+   |                                       ^^^^^^ expected `()`, found `u8`
+   |
+   = note: required for the cast from `&{async block@$DIR/async-block-control-flow-static-semantics.rs:14:17: 14:22}` to `&dyn Future<Output = ()>`
+
+error[E0267]: `break` inside `async` block
+  --> $DIR/async-block-control-flow-static-semantics.rs:32:9
+   |
+LL |     async {
+   |     ----- enclosing `async` block
+LL |         break 0u8;
+   |         ^^^^^^^^^ cannot `break` inside `async` block
+
+error[E0267]: `break` inside `async` block
+  --> $DIR/async-block-control-flow-static-semantics.rs:39:13
+   |
+LL |         async {
+   |         ----- enclosing `async` block
+LL |             break 0u8;
+   |             ^^^^^^^^^ cannot `break` inside `async` block
+
+error[E0308]: mismatched types
+  --> $DIR/async-block-control-flow-static-semantics.rs:49:44
+   |
+LL | fn rethrow_targets_async_block_not_fn() -> Result<u8, MyErr> {
+   |    ----------------------------------      ^^^^^^^^^^^^^^^^^ expected `Result<u8, MyErr>`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note:   expected enum `Result<u8, MyErr>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/async-block-control-flow-static-semantics.rs:58:50
+   |
+LL | fn rethrow_targets_async_block_not_async_fn() -> Result<u8, MyErr> {
+   |    ----------------------------------------      ^^^^^^^^^^^^^^^^^ expected `Result<u8, MyErr>`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note:   expected enum `Result<u8, MyErr>`
+           found unit type `()`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0267, E0271, E0308.
+For more information about an error, try `rustc --explain E0267`.

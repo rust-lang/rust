@@ -1,0 +1,64 @@
+error: use of `format!` to build up a string from an iterator
+  --> tests/ui/format_collect.rs:5:5
+   |
+LL |     bytes.iter().map(|b| format!("{b:02X}")).collect()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: call `fold` instead
+  --> tests/ui/format_collect.rs:5:18
+   |
+LL |     bytes.iter().map(|b| format!("{b:02X}")).collect()
+   |                  ^^^
+help: ... and use the `write!` macro here
+  --> tests/ui/format_collect.rs:5:26
+   |
+LL |     bytes.iter().map(|b| format!("{b:02X}")).collect()
+   |                          ^^^^^^^^^^^^^^^^^^
+   = note: this can be written more efficiently by appending to a `String` directly
+   = note: `-D clippy::format-collect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::format_collect)]`
+
+error: use of `format!` to build up a string from an iterator
+  --> tests/ui/format_collect.rs:11:5
+   |
+LL |     bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: call `fold` instead
+  --> tests/ui/format_collect.rs:11:18
+   |
+LL |     bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
+   |                  ^^^
+help: ... and use the `write!` macro here
+  --> tests/ui/format_collect.rs:11:32
+   |
+LL |     bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
+   |                                ^^^^^^^^^^^^^^^^^^
+   = note: this can be written more efficiently by appending to a `String` directly
+
+error: use of `format!` to build up a string from an iterator
+  --> tests/ui/format_collect.rs:27:5
+   |
+LL | /     (1..10)
+LL | |
+LL | |         .map(|s| {
+LL | |             let y = 1;
+LL | |             format!("{s} {y}")
+LL | |         })
+LL | |         .collect()
+   | |__________________^
+   |
+help: call `fold` instead
+  --> tests/ui/format_collect.rs:29:10
+   |
+LL |         .map(|s| {
+   |          ^^^
+help: ... and use the `write!` macro here
+  --> tests/ui/format_collect.rs:31:13
+   |
+LL |             format!("{s} {y}")
+   |             ^^^^^^^^^^^^^^^^^^
+   = note: this can be written more efficiently by appending to a `String` directly
+
+error: aborting due to 3 previous errors
+

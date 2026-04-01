@@ -1,0 +1,318 @@
+error: expected expression, found `+`
+  --> $DIR/expr-as-stmt.rs:8:9
+   |
+LL |     {2} + {2}
+   |         ^ expected expression
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({2}) + {2}
+   |     +   +
+
+error: leading `+` is not supported
+  --> $DIR/expr-as-stmt.rs:13:9
+   |
+LL |     {2} + 2
+   |         ^ unexpected `+`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({2}) + 2
+   |     +   +
+
+error: expected expression, found `+`
+  --> $DIR/expr-as-stmt.rs:19:12
+   |
+LL |     { 42 } + foo;
+   |            ^ expected expression
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({ 42 }) + foo;
+   |     +      +
+
+error: expected expression, found `>`
+  --> $DIR/expr-as-stmt.rs:32:7
+   |
+LL |     } > 0
+   |       ^ expected expression
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL ~     (match x {
+LL |         _ => 1,
+LL ~     }) > 0
+   |
+
+error: expected parameter name, found `{`
+  --> $DIR/expr-as-stmt.rs:41:16
+   |
+LL |     { true } | { true }
+   |                ^ expected parameter name
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({ true }) | { true }
+   |     +        +
+
+error: expected expression, found `+`
+  --> $DIR/expr-as-stmt.rs:69:26
+   |
+LL |     match () { () => 1 } + match () { () => 1 }
+   |                          ^ expected expression
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { () => 1 }) + match () { () => 1 }
+   |     +                    +
+
+error: expected expression, found `+`
+  --> $DIR/expr-as-stmt.rs:75:18
+   |
+LL |     unsafe { 1 } + unsafe { 1 }
+   |                  ^ expected expression
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (unsafe { 1 }) + unsafe { 1 }
+   |     +            +
+
+error: expected `;`, found keyword `match`
+  --> $DIR/expr-as-stmt.rs:82:53
+   |
+LL |     match () { _ => true } && match () { _ => true }
+   |                                                     ^ help: add `;` here
+LL |
+LL |     match () { _ => true } && true;
+   |     ----- unexpected token
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:64:7
+   |
+LL |     { foo() } || { true }
+   |       ^^^^^- help: consider using a semicolon here: `;`
+   |       |
+   |       expected `()`, found `i32`
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:8:6
+   |
+LL |     {2} + {2}
+   |      ^ expected `()`, found integer
+   |
+help: you might have meant to return this value
+   |
+LL |     {return 2;} + {2}
+   |      ++++++  +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:13:6
+   |
+LL |     {2} + 2
+   |      ^ expected `()`, found integer
+   |
+help: you might have meant to return this value
+   |
+LL |     {return 2;} + 2
+   |      ++++++  +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:19:7
+   |
+LL |     { 42 } + foo;
+   |       ^^ expected `()`, found integer
+   |
+help: you might have meant to return this value
+   |
+LL |     { return 42; } + foo;
+   |       ++++++   +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:25:7
+   |
+LL |     { 3 } * 3
+   |       ^ expected `()`, found integer
+   |
+help: you might have meant to return this value
+   |
+LL |     { return 3; } * 3
+   |       ++++++  +
+
+error[E0614]: type `{integer}` cannot be dereferenced
+  --> $DIR/expr-as-stmt.rs:25:11
+   |
+LL |     { 3 } * 3
+   |           ^^^ can't be dereferenced
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({ 3 }) * 3
+   |     +     +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:36:6
+   |
+LL |     {2} - 2
+   |      ^ expected `()`, found integer
+   |
+help: you might have meant to return this value
+   |
+LL |     {return 2;} - 2
+   |      ++++++  +
+
+error[E0600]: cannot apply unary operator `-` to type `u32`
+  --> $DIR/expr-as-stmt.rs:36:9
+   |
+LL |     {2} - 2
+   |         ^^^ cannot apply unary operator `-`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({2}) - 2
+   |     +   +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:41:7
+   |
+LL |     { true } | { true }
+   |       ^^^^ expected `()`, found `bool`
+   |
+help: you might have meant to return this value
+   |
+LL |     { return true; } | { true }
+   |       ++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:46:7
+   |
+LL |     { true } && { true }
+   |       ^^^^ expected `()`, found `bool`
+   |
+help: you might have meant to return this value
+   |
+LL |     { return true; } && { true }
+   |       ++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:46:14
+   |
+LL | fn revenge_from_mars() -> bool {
+   |                           ---- expected `bool` because of return type
+LL |     { true } && { true }
+   |              ^^^^^^^^^^^ expected `bool`, found `&&bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({ true }) && { true }
+   |     +        +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:51:7
+   |
+LL |     { true } || { true }
+   |       ^^^^ expected `()`, found `bool`
+   |
+help: you might have meant to return this value
+   |
+LL |     { return true; } || { true }
+   |       ++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:51:14
+   |
+LL | fn attack_from_mars() -> bool {
+   |                          ---- expected `bool` because of return type
+LL |     { true } || { true }
+   |              ^^^^^^^^^^^ expected `bool`, found closure
+   |
+   = note: expected type `bool`
+           found closure `{closure@$DIR/expr-as-stmt.rs:51:14: 51:16}`
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({ true }) || { true }
+   |     +        +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:69:5
+   |
+LL |     match () { () => 1 } + match () { () => 1 }
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `()`, found integer
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { () => 1 }) + match () { () => 1 }
+   |     +                    +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:75:14
+   |
+LL |     unsafe { 1 } + unsafe { 1 }
+   |              ^ expected `()`, found integer
+   |
+help: you might have meant to return this value
+   |
+LL |     unsafe { return 1; } + unsafe { 1 }
+   |              ++++++  +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:81:5
+   |
+LL |     match () { _ => true } && match () { _ => true };
+   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { _ => true }) && match () { _ => true };
+   |     +                      +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:82:5
+   |
+LL |     match () { _ => true } && match () { _ => true }
+   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { _ => true }) && match () { _ => true }
+   |     +                      +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:84:5
+   |
+LL |     match () { _ => true } && true;
+   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { _ => true }) && true;
+   |     +                      +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:85:5
+   |
+LL |     match () { _ => true } && true
+   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { _ => true }) && true
+   |     +                      +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:85:28
+   |
+LL | fn matches() -> bool {
+   |                 ---- expected `bool` because of return type
+...
+LL |     match () { _ => true } && true
+   |                            ^^^^^^^ expected `bool`, found `&&bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { _ => true }) && true
+   |     +                      +
+
+error: aborting due to 28 previous errors
+
+Some errors have detailed explanations: E0308, E0600, E0614.
+For more information about an error, try `rustc --explain E0308`.

@@ -1,0 +1,37 @@
+error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/leaking-vars-in-cause-code-2.rs:19:9
+   |
+LL | impl<T, U> Trait<()> for B<T>
+   |         ^ unconstrained type parameter
+
+error[E0277]: the trait bound `(): IncompleteGuidance` is not satisfied
+  --> $DIR/leaking-vars-in-cause-code-2.rs:29:19
+   |
+LL |     impls_trait::<B<()>>();
+   |                   ^^^^^ the trait `IncompleteGuidance` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/leaking-vars-in-cause-code-2.rs:11:1
+   |
+LL | trait IncompleteGuidance {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+note: required for `A<()>` to implement `Trait<()>`
+  --> $DIR/leaking-vars-in-cause-code-2.rs:13:9
+   |
+LL | impl<T> Trait<()> for A<T>
+   |         ^^^^^^^^^     ^^^^
+LL | where
+LL |     T: IncompleteGuidance,
+   |        ------------------ unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `B<()>` to implement `Trait<()>`
+note: required by a bound in `impls_trait`
+  --> $DIR/leaking-vars-in-cause-code-2.rs:26:19
+   |
+LL | fn impls_trait<T: Trait<()>>() {}
+   |                   ^^^^^^^^^ required by this bound in `impls_trait`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0207, E0277.
+For more information about an error, try `rustc --explain E0207`.

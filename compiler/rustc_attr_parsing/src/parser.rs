@@ -1,0 +1,701 @@
+//! This is in essence an (improved) duplicate of `rustc_ast/attr/mod.rs`.
+//! That module is intended to be deleted in its entirety.
+//!
+//! FIXME(jdonszelmann): delete `rustc_ast/attr/mod.rs`
+
+use std::borrow::Borrow;
+use std::fmt::{Debug, Display};
+
+use rustc_ast::token::{self, Delimiter, MetaVarKind};
+use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{
+    AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp,
+};
+use rustc_ast_pretty::pprust;
+use rustc_errors::{Diag, PResult};
+use rustc_hir::{self as hir, AttrPath};
+use rustc_parse::exp;
+use rustc_parse::parser::{ForceCollect, Parser, PathStyle, Recovery, token_descr};
+use rustc_session::errors::create_lit_error;
+use rustc_session::parse::ParseSess;
+use rustc_span::{Ident, Span, Symbol, sym};
+use thin_vec::ThinVec;
+
+use crate::ShouldEmit;
+use crate::session_diagnostics::{
+    InvalidMetaItem, InvalidMetaItemQuoteIdentSugg, InvalidMetaItemRemoveNegSugg, MetaBadDelim,
+    MetaBadDelimSugg, SuffixedLiteralInAttribute,
+};
+
+#[derive(Clone, Debug)]
+pub struct PathParser<P: Borrow<Path>>(pub P);
+
+pub type OwnedPathParser = PathParser<Path>;
+pub type RefPathParser<'p> = PathParser<&'p Path>;
+
+impl<P: Borrow<Path>> PathParser<P> {
+    pub fn get_attribute_path(&self) -> hir::AttrPath {
+        AttrPath {
+            segments: self.segments().map(|s| s.name).collect::<Vec<_>>().into_boxed_slice(),
+            span: self.span(),
+        }
+    }
+
+    pub fn segments(&self) -> impl Iterator<Item = &Ident> {
+        self.0.borrow().segments.iter().map(|seg| &seg.ident)
+    }
+
+    pub fn span(&self) -> Span {
+        self.0.borrow().span
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.borrow().segments.len()
+    }
+
+    pub fn segments_is(&self, segments: &[Symbol]) -> bool {
+        self.segments().map(|segment| &segment.name).eq(segments)
+    }
+
+    pub fn word(&self) -> Option<Ident> {
+        (self.len() == 1).then(|| **self.segments().next().as_ref().unwrap())
+    }
+
+    pub fn word_sym(&self) -> Option<Symbol> {
+        self.word().map(|ident| ident.name)
+    }
+
+    /// Asserts that this MetaItem is some specific word.
+    ///
+    /// See [`word`](Self::word) for examples of what a word is.
+    pub fn word_is(&self, sym: Symbol) -> bool {
+        self.word().map(|i| i.name == sym).unwrap_or(false)
+    }
+
+    /// Checks whether the first segments match the givens.
+    ///
+    /// Unlike [`segments_is`](Self::segments_is),
+    /// `self` may contain more segments than the number matched  against.
+    pub fn starts_with(&self, segments: &[Symbol]) -> bool {
+        segments.len() < self.len() && self.segments().zip(segments).all(|(a, b)| a.name == *b)
+    }
+}
+
+impl<P: Borrow<Path>> Display for PathParser<P> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", pprust::path_to_string(self.0.borrow()))
+    }
+}
+
+#[derive(Clone, Debug)]
+#[must_use]
+pub enum ArgParser {
+    NoArgs,
+    List(MetaItemListParser),
+    NameValue(NameValueParser),
+}
+
+impl ArgParser {
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            Self::NoArgs => None,
+            Self::List(l) => Some(l.span),
+            Self::NameValue(n) => Some(n.value_span.with_lo(n.eq_span.lo())),
+        }
+    }
+
+    pub fn from_attr_args<'sess>(
+        value: &AttrArgs,
+        parts: &[Symbol],
+        psess: &'sess ParseSess,
+        should_emit: ShouldEmit,
+        allow_expr_metavar: AllowExprMetavar,
+    ) -> Option<Self> {
+        Some(match value {
+            AttrArgs::Empty => Self::NoArgs,
+            AttrArgs::Delimited(args) => {
+                // Diagnostic attributes can't error if they encounter non meta item syntax.
+                // However, the current syntax for diagnostic attributes is meta item syntax.
+                // Therefore we can substitute with a dummy value on invalid syntax.
+                if matches!(parts, [sym::rustc_dummy] | [sym::diagnostic, ..]) {
+                    match MetaItemListParser::new(
+                        &args.tokens,
+                        args.dspan.entire(),
+                        psess,
+                        ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden },
+                        allow_expr_metavar,
+                    ) {
+                        Ok(p) => return Some(ArgParser::List(p)),
+                        Err(e) => {
+                            // We can just dispose of the diagnostic and not bother with a lint,
+                            // because this will look like `#[diagnostic::attr()]` was used. This
+                            // is invalid for all diagnostic attrs, so a lint explaining the proper
+                            // form will be issued later.
+                            e.cancel();
+                            return Some(ArgParser::List(MetaItemListParser {
+                                sub_parsers: ThinVec::new(),
+                                span: args.dspan.entire(),
+                            }));
+                        }
+                    }
+                }
+
+                if args.delim != Delimiter::Parenthesis {
+                    should_emit.emit_err(psess.dcx().create_err(MetaBadDelim {
+                        span: args.dspan.entire(),
+                        sugg: MetaBadDelimSugg { open: args.dspan.open, close: args.dspan.close },
+                    }));
+                    return None;
+                }
+
+                Self::List(
+                    MetaItemListParser::new(
+                        &args.tokens,
+                        args.dspan.entire(),
+                        psess,
+                        should_emit,
+                        allow_expr_metavar,
+                    )
+                    .map_err(|e| should_emit.emit_err(e))
+                    .ok()?,
+                )
+            }
+            AttrArgs::Eq { eq_span, expr } => Self::NameValue(NameValueParser {
+                eq_span: *eq_span,
+                value: expr_to_lit(psess, &expr, expr.span, should_emit)
+                    .map_err(|e| should_emit.emit_err(e))
+                    .ok()??,
+                value_span: expr.span,
+            }),
+        })
+    }
+
+    /// Asserts that this MetaItem is a list
+    ///
+    /// Some examples:
+    ///
+    /// - `#[allow(clippy::complexity)]`: `(clippy::complexity)` is a list
+    /// - `#[rustfmt::skip::macros(target_macro_name)]`: `(target_macro_name)` is a list
+    pub fn list(&self) -> Option<&MetaItemListParser> {
+        match self {
+            Self::List(l) => Some(l),
+            Self::NameValue(_) | Self::NoArgs => None,
+        }
+    }
+
+    /// Asserts that this MetaItem is a name-value pair.
+    ///
+    /// Some examples:
+    ///
+    /// - `#[clippy::cyclomatic_complexity = "100"]`: `clippy::cyclomatic_complexity = "100"` is a name value pair,
+    ///   where the name is a path (`clippy::cyclomatic_complexity`). You already checked the path
+    ///   to get an `ArgParser`, so this method will effectively only assert that the `= "100"` is
+    ///   there
+    /// - `#[doc = "hello"]`: `doc = "hello`  is also a name value pair
+    pub fn name_value(&self) -> Option<&NameValueParser> {
+        match self {
+            Self::NameValue(n) => Some(n),
+            Self::List(_) | Self::NoArgs => None,
+        }
+    }
+
+    /// Assert that there were no args.
+    /// If there were, get a span to the arguments
+    /// (to pass to [`AcceptContext::expected_no_args`](crate::context::AcceptContext::expected_no_args)).
+    pub fn no_args(&self) -> Result<(), Span> {
+        match self {
+            Self::NoArgs => Ok(()),
+            Self::List(args) => Err(args.span),
+            Self::NameValue(args) => Err(args.args_span()),
+        }
+    }
+}
+
+/// Inside lists, values could be either literals, or more deeply nested meta items.
+/// This enum represents that.
+///
+/// Choose which one you want using the provided methods.
+#[derive(Debug, Clone)]
+pub enum MetaItemOrLitParser {
+    MetaItemParser(MetaItemParser),
+    Lit(MetaItemLit),
+}
+
+impl MetaItemOrLitParser {
+    pub fn parse_single<'sess>(
+        parser: &mut Parser<'sess>,
+        should_emit: ShouldEmit,
+        allow_expr_metavar: AllowExprMetavar,
+    ) -> PResult<'sess, MetaItemOrLitParser> {
+        let mut this = MetaItemListParserContext { parser, should_emit, allow_expr_metavar };
+        this.parse_meta_item_inner()
+    }
+
+    pub fn span(&self) -> Span {
+        match self {
+            MetaItemOrLitParser::MetaItemParser(generic_meta_item_parser) => {
+                generic_meta_item_parser.span()
+            }
+            MetaItemOrLitParser::Lit(meta_item_lit) => meta_item_lit.span,
+        }
+    }
+
+    pub fn lit(&self) -> Option<&MetaItemLit> {
+        match self {
+            MetaItemOrLitParser::Lit(meta_item_lit) => Some(meta_item_lit),
+            MetaItemOrLitParser::MetaItemParser(_) => None,
+        }
+    }
+
+    pub fn meta_item(&self) -> Option<&MetaItemParser> {
+        match self {
+            MetaItemOrLitParser::MetaItemParser(parser) => Some(parser),
+            MetaItemOrLitParser::Lit(_) => None,
+        }
+    }
+}
+
+/// Utility that deconstructs a MetaItem into usable parts.
+///
+/// MetaItems are syntactically extremely flexible, but specific attributes want to parse
+/// them in custom, more restricted ways. This can be done using this struct.
+///
+/// MetaItems consist of some path, and some args. The args could be empty. In other words:
+///
+/// - `name` -> args are empty
+/// - `name(...)` -> args are a [`list`](ArgParser::list), which is the bit between the parentheses
+/// - `name = value`-> arg is [`name_value`](ArgParser::name_value), where the argument is the
+///   `= value` part
+///
+/// The syntax of MetaItems can be found at <https://doc.rust-lang.org/reference/attributes.html>
+#[derive(Clone)]
+pub struct MetaItemParser {
+    path: OwnedPathParser,
+    args: ArgParser,
+}
+
+impl Debug for MetaItemParser {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MetaItemParser")
+            .field("path", &self.path)
+            .field("args", &self.args)
+            .finish()
+    }
+}
+
+impl MetaItemParser {
+    /// For a single-segment meta item, returns its name; otherwise, returns `None`.
+    pub fn ident(&self) -> Option<Ident> {
+        if let [PathSegment { ident, .. }] = self.path.0.segments[..] { Some(ident) } else { None }
+    }
+
+    pub fn span(&self) -> Span {
+        if let Some(other) = self.args.span() {
+            self.path.borrow().span().with_hi(other.hi())
+        } else {
+            self.path.borrow().span()
+        }
+    }
+
+    /// Gets just the path, without the args. Some examples:
+    ///
+    /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path
+    /// - `#[allow(clippy::complexity)]`: `clippy::complexity` is a path
+    /// - `#[inline]`: `inline` is a single segment path
+    pub fn path(&self) -> &OwnedPathParser {
+        &self.path
+    }
+
+    /// Gets just the args parser, without caring about the path.
+    pub fn args(&self) -> &ArgParser {
+        &self.args
+    }
+
+    /// Asserts that this MetaItem starts with a word, or single segment path.
+    ///
+    /// Some examples:
+    /// - `#[inline]`: `inline` is a word
+    /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path,
+    ///   and not a word and should instead be parsed using [`path`](Self::path)
+    pub fn word_is(&self, sym: Symbol) -> Option<&ArgParser> {
+        self.path().word_is(sym).then(|| self.args())
+    }
+}
+
+#[derive(Clone)]
+pub struct NameValueParser {
+    pub eq_span: Span,
+    value: MetaItemLit,
+    pub value_span: Span,
+}
+
+impl Debug for NameValueParser {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NameValueParser")
+            .field("eq_span", &self.eq_span)
+            .field("value", &self.value)
+            .field("value_span", &self.value_span)
+            .finish()
+    }
+}
+
+impl NameValueParser {
+    pub fn value_as_lit(&self) -> &MetaItemLit {
+        &self.value
+    }
+
+    pub fn value_as_str(&self) -> Option<Symbol> {
+        self.value_as_lit().kind.str()
+    }
+
+    /// If the value is a string literal, it will return its value associated with its span (an
+    /// `Ident` in short).
+    pub fn value_as_ident(&self) -> Option<Ident> {
+        let meta_item = self.value_as_lit();
+        meta_item.kind.str().map(|name| Ident { name, span: meta_item.span })
+    }
+
+    pub fn args_span(&self) -> Span {
+        self.eq_span.to(self.value_span)
+    }
+}
+
+fn expr_to_lit<'sess>(
+    psess: &'sess ParseSess,
+    expr: &Expr,
+    span: Span,
+    should_emit: ShouldEmit,
+) -> PResult<'sess, Option<MetaItemLit>> {
+    if let ExprKind::Lit(token_lit) = expr.kind {
+        let res = MetaItemLit::from_token_lit(token_lit, expr.span);
+        match res {
+            Ok(lit) => {
+                if token_lit.suffix.is_some() {
+                    Err(psess.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }))
+                } else {
+                    if lit.kind.is_unsuffixed() {
+                        Ok(Some(lit))
+                    } else {
+                        Err(psess.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }))
+                    }
+                }
+            }
+            Err(err) => {
+                let err = create_lit_error(psess, err, token_lit, expr.span);
+                if matches!(
+                    should_emit,
+                    ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden }
+                ) {
+                    Err(err)
+                } else {
+                    let lit = MetaItemLit {
+                        symbol: token_lit.symbol,
+                        suffix: token_lit.suffix,
+                        kind: LitKind::Err(err.emit()),
+                        span: expr.span,
+                    };
+                    Ok(Some(lit))
+                }
+            }
+        }
+    } else {
+        if matches!(should_emit, ShouldEmit::Nothing) || matches!(expr.kind, ExprKind::Err(_)) {
+            return Ok(None);
+        }
+
+        // Example cases:
+        // - `#[foo = 1+1]`: results in `ast::ExprKind::BinOp`.
+        // - `#[foo = include_str!("nonexistent-file.rs")]`:
+        //   results in `ast::ExprKind::Err`.
+        let msg = "attribute value must be a literal";
+        let err = psess.dcx().struct_span_err(span, msg);
+        Err(err)
+    }
+}
+
+/// Whether expansions of `expr` metavariables from decrarative macros
+/// are permitted. Used when parsing meta items; currently, only `cfg` predicates
+/// enable this option
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum AllowExprMetavar {
+    No,
+    Yes,
+}
+
+struct MetaItemListParserContext<'a, 'sess> {
+    parser: &'a mut Parser<'sess>,
+    should_emit: ShouldEmit,
+    allow_expr_metavar: AllowExprMetavar,
+}
+
+impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
+    fn parse_unsuffixed_meta_item_lit(&mut self) -> PResult<'sess, MetaItemLit> {
+        let Some(token_lit) = self.parser.eat_token_lit() else { return Err(self.expected_lit()) };
+        self.unsuffixed_meta_item_from_lit(token_lit)
+    }
+
+    fn unsuffixed_meta_item_from_lit(
+        &mut self,
+        token_lit: token::Lit,
+    ) -> PResult<'sess, MetaItemLit> {
+        let lit = match MetaItemLit::from_token_lit(token_lit, self.parser.prev_token.span) {
+            Ok(lit) => lit,
+            Err(err) => {
+                return Err(create_lit_error(
+                    &self.parser.psess,
+                    err,
+                    token_lit,
+                    self.parser.prev_token_uninterpolated_span(),
+                ));
+            }
+        };
+
+        if !lit.kind.is_unsuffixed() {
+            // Emit error and continue, we can still parse the attribute as if the suffix isn't there
+            let err = self.parser.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span });
+            if matches!(
+                self.should_emit,
+                ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden }
+            ) {
+                return Err(err);
+            } else {
+                self.should_emit.emit_err(err)
+            };
+        }
+
+        Ok(lit)
+    }
+
+    fn parse_meta_item(&mut self) -> PResult<'sess, MetaItemParser> {
+        if let Some(metavar) = self.parser.token.is_metavar_seq() {
+            match (metavar, self.allow_expr_metavar) {
+                (kind @ MetaVarKind::Expr { .. }, AllowExprMetavar::Yes) => {
+                    return self
+                        .parser
+                        .eat_metavar_seq(kind, |this| {
+                            MetaItemListParserContext {
+                                parser: this,
+                                should_emit: self.should_emit,
+                                allow_expr_metavar: AllowExprMetavar::Yes,
+                            }
+                            .parse_meta_item()
+                        })
+                        .ok_or_else(|| {
+                            self.parser.unexpected_any::<core::convert::Infallible>().unwrap_err()
+                        });
+                }
+                (MetaVarKind::Meta { has_meta_form }, _) => {
+                    return if has_meta_form {
+                        let attr_item = self
+                            .parser
+                            .eat_metavar_seq(MetaVarKind::Meta { has_meta_form: true }, |this| {
+                                MetaItemListParserContext {
+                                    parser: this,
+                                    should_emit: self.should_emit,
+                                    allow_expr_metavar: self.allow_expr_metavar,
+                                }
+                                .parse_meta_item()
+                            })
+                            .unwrap();
+                        Ok(attr_item)
+                    } else {
+                        self.parser.unexpected_any()
+                    };
+                }
+                _ => {}
+            }
+        }
+
+        let path = self.parser.parse_path(PathStyle::Mod)?;
+
+        // Check style of arguments that this meta item has
+        let args = if self.parser.check(exp!(OpenParen)) {
+            let start = self.parser.token.span;
+            let (sub_parsers, _) = self.parser.parse_paren_comma_seq(|parser| {
+                MetaItemListParserContext {
+                    parser,
+                    should_emit: self.should_emit,
+                    allow_expr_metavar: self.allow_expr_metavar,
+                }
+                .parse_meta_item_inner()
+            })?;
+            let end = self.parser.prev_token.span;
+            ArgParser::List(MetaItemListParser { sub_parsers, span: start.with_hi(end.hi()) })
+        } else if self.parser.eat(exp!(Eq)) {
+            let eq_span = self.parser.prev_token.span;
+            let value = self.parse_unsuffixed_meta_item_lit()?;
+
+            ArgParser::NameValue(NameValueParser { eq_span, value, value_span: value.span })
+        } else {
+            ArgParser::NoArgs
+        };
+
+        Ok(MetaItemParser { path: PathParser(path), args })
+    }
+
+    fn parse_meta_item_inner(&mut self) -> PResult<'sess, MetaItemOrLitParser> {
+        if let Some(token_lit) = self.parser.eat_token_lit() {
+            // If a literal token is parsed, we commit to parsing a MetaItemLit for better errors
+            Ok(MetaItemOrLitParser::Lit(self.unsuffixed_meta_item_from_lit(token_lit)?))
+        } else {
+            let prev_pros = self.parser.approx_token_stream_pos();
+            match self.parse_meta_item() {
+                Ok(item) => Ok(MetaItemOrLitParser::MetaItemParser(item)),
+                Err(err) => {
+                    // If `parse_attr_item` made any progress, it likely has a more precise error we should prefer
+                    // If it didn't make progress we use the `expected_lit` from below
+                    if self.parser.approx_token_stream_pos() != prev_pros {
+                        Err(err)
+                    } else {
+                        err.cancel();
+                        Err(self.expected_lit())
+                    }
+                }
+            }
+        }
+    }
+
+    fn expected_lit(&mut self) -> Diag<'sess> {
+        let mut err = InvalidMetaItem {
+            span: self.parser.token.span,
+            descr: token_descr(&self.parser.token),
+            quote_ident_sugg: None,
+            remove_neg_sugg: None,
+            label: None,
+        };
+
+        if let token::OpenInvisible(_) = self.parser.token.kind {
+            // Do not attempt to suggest anything when encountered as part of a macro expansion.
+            return self.parser.dcx().create_err(err);
+        }
+
+        if let ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden } = self.should_emit {
+            // Do not attempt to suggest anything in `Recovery::Forbidden` mode.
+            // Malformed diagnostic-attr arguments that start with an `if` expression can lead to
+            // an ICE (https://github.com/rust-lang/rust/issues/152744), because callers may cancel the `InvalidMetaItem` error.
+            return self.parser.dcx().create_err(err);
+        }
+
+        // Suggest quoting idents, e.g. in `#[cfg(key = value)]`. We don't use `Token::ident` and
+        // don't `uninterpolate` the token to avoid suggesting anything butchered or questionable
+        // when macro metavariables are involved.
+        let snapshot = self.parser.create_snapshot_for_diagnostic();
+        let stmt = self.parser.parse_stmt_without_recovery(false, ForceCollect::No, false);
+        match stmt {
+            Ok(Some(stmt)) => {
+                // The user tried to write something like
+                // `#[deprecated(note = concat!("a", "b"))]`.
+                err.descr = stmt.kind.descr().to_string();
+                err.label = Some(stmt.span);
+                err.span = stmt.span;
+                if let StmtKind::Expr(expr) = &stmt.kind
+                    && let ExprKind::Unary(UnOp::Neg, val) = &expr.kind
+                    && let ExprKind::Lit(_) = val.kind
+                {
+                    err.remove_neg_sugg = Some(InvalidMetaItemRemoveNegSugg {
+                        negative_sign: expr.span.until(val.span),
+                    });
+                } else if let StmtKind::Expr(expr) = &stmt.kind
+                    && let ExprKind::Path(None, Path { segments, .. }) = &expr.kind
+                    && segments.len() == 1
+                {
+                    while let token::Ident(..) | token::Literal(_) | token::Dot =
+                        self.parser.token.kind
+                    {
+                        // We've got a word, so we try to consume the rest of a potential sentence.
+                        // We include `.` to correctly handle things like `A sentence here.`.
+                        self.parser.bump();
+                    }
+                    err.quote_ident_sugg = Some(InvalidMetaItemQuoteIdentSugg {
+                        before: expr.span.shrink_to_lo(),
+                        after: self.parser.prev_token.span.shrink_to_hi(),
+                    });
+                }
+            }
+            Ok(None) => {}
+            Err(e) => {
+                e.cancel();
+                self.parser.restore_snapshot(snapshot);
+            }
+        }
+
+        self.parser.dcx().create_err(err)
+    }
+
+    fn parse(
+        tokens: TokenStream,
+        psess: &'sess ParseSess,
+        span: Span,
+        should_emit: ShouldEmit,
+        allow_expr_metavar: AllowExprMetavar,
+    ) -> PResult<'sess, MetaItemListParser> {
+        let mut parser = Parser::new(psess, tokens, None);
+        if let ShouldEmit::ErrorsAndLints { recovery } = should_emit {
+            parser = parser.recovery(recovery);
+        }
+
+        let mut this =
+            MetaItemListParserContext { parser: &mut parser, should_emit, allow_expr_metavar };
+
+        // Presumably, the majority of the time there will only be one attr.
+        let mut sub_parsers = ThinVec::with_capacity(1);
+        while this.parser.token != token::Eof {
+            sub_parsers.push(this.parse_meta_item_inner()?);
+
+            if !this.parser.eat(exp!(Comma)) {
+                break;
+            }
+        }
+
+        if parser.token != token::Eof {
+            parser.unexpected()?;
+        }
+
+        Ok(MetaItemListParser { sub_parsers, span })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MetaItemListParser {
+    sub_parsers: ThinVec<MetaItemOrLitParser>,
+    pub span: Span,
+}
+
+impl MetaItemListParser {
+    pub(crate) fn new<'sess>(
+        tokens: &TokenStream,
+        span: Span,
+        psess: &'sess ParseSess,
+        should_emit: ShouldEmit,
+        allow_expr_metavar: AllowExprMetavar,
+    ) -> Result<Self, Diag<'sess>> {
+        MetaItemListParserContext::parse(
+            tokens.clone(),
+            psess,
+            span,
+            should_emit,
+            allow_expr_metavar,
+        )
+    }
+
+    /// Lets you pick and choose as what you want to parse each element in the list
+    pub fn mixed(&self) -> impl Iterator<Item = &MetaItemOrLitParser> {
+        self.sub_parsers.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.sub_parsers.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns Some if the list contains only a single element.
+    ///
+    /// Inside the Some is the parser to parse this single element.
+    pub fn single(&self) -> Option<&MetaItemOrLitParser> {
+        let mut iter = self.mixed();
+        iter.next().filter(|_| iter.next().is_none())
+    }
+}

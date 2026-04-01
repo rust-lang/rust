@@ -1,0 +1,11 @@
+// MIR for `tail_call` after built
+
+fn tail_call(_1: i32) -> i32 {
+    let mut _0: i32;
+    let mut _2: i32;
+
+    bb0: {
+        _2 = Add(copy _1, const 42_i32);
+        tailcall ident::<i32>(copy _2);
+    }
+}

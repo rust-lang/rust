@@ -1,0 +1,144 @@
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:11:5
+   |
+LL | /     if true {
+LL | |
+LL | |         println!("Hello World!");
+   | |_________________________________^
+   |
+note: the lint level is defined here
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:1:9
+   |
+LL | #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider moving these statements before the if
+   |
+LL ~     println!("Hello World!");
+LL +     if true {
+   |
+
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:21:5
+   |
+LL | /     if x == 0 {
+LL | |
+LL | |         let y = 9;
+LL | |         println!("The value y was set to: `{}`", y);
+LL | |         let _z = y;
+   | |___________________^
+   |
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
+   |
+LL ~     let y = 9;
+LL +     println!("The value y was set to: `{}`", y);
+LL +     let _z = y;
+LL +     if x == 0 {
+   |
+
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:43:5
+   |
+LL | /     let _ = if x == 7 {
+...  |
+LL | |         let y = 16;
+   | |___________________^
+   |
+help: consider moving these statements before the if
+   |
+LL ~     let y = 16;
+LL +     let _ = if x == 7 {
+   |
+
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:63:5
+   |
+LL | /     if x == 10 {
+LL | |
+LL | |         let used_value_name = "Different type";
+LL | |         println!("Str: {}", used_value_name);
+   | |_____________________________________________^
+   |
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
+   |
+LL ~     let used_value_name = "Different type";
+LL +     println!("Str: {}", used_value_name);
+LL +     if x == 10 {
+   |
+
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:79:5
+   |
+LL | /     if x == 11 {
+LL | |
+LL | |
+LL | |         let can_be_overridden = "Move me";
+LL | |         println!("I'm also moveable");
+   | |______________________________________^
+   |
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
+   |
+LL ~     let can_be_overridden = "Move me";
+LL +     println!("I'm also moveable");
+LL +     if x == 11 {
+   |
+
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:97:5
+   |
+LL | /     if x == 2020 {
+LL | |
+LL | |
+LL | |         println!("This should trigger the `SHARED_CODE_IN_IF_BLOCKS` lint.");
+LL | |         println!("Because `IF_SAME_THEN_ELSE` is allowed here");
+   | |________________________________________________________________^
+   |
+help: consider moving these statements before the if
+   |
+LL ~     println!("This should trigger the `SHARED_CODE_IN_IF_BLOCKS` lint.");
+LL +     println!("Because `IF_SAME_THEN_ELSE` is allowed here");
+LL +     if x == 2020 {
+   |
+
+error: this `if` has identical blocks
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:107:18
+   |
+LL |       if x == 2019 {
+   |  __________________^
+LL | |         println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:109:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
+LL | |     }
+   | |_____^
+note: the lint level is defined here
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:1:40
+   |
+LL | #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:148:9
+   |
+LL | /         if false {
+LL | |
+LL | |             let x = 1;
+   | |______________________^
+   |
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
+   |
+LL ~         let x = 1;
+LL +         if false {
+   |
+
+error: aborting due to 8 previous errors
+

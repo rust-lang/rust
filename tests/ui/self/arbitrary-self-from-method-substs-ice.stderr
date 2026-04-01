@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `R: [const] Deref` is not satisfied
+  --> $DIR/arbitrary-self-from-method-substs-ice.rs:12:9
+   |
+LL |         self.0
+   |         ^^^^
+
+error[E0801]: invalid generic `self` parameter type: `R`
+  --> $DIR/arbitrary-self-from-method-substs-ice.rs:10:49
+   |
+LL |     const fn get<R: Deref<Target = Self>>(self: R) -> u32 {
+   |                                                 ^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0801.
+For more information about an error, try `rustc --explain E0277`.

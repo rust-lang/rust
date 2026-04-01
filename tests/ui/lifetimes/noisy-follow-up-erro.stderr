@@ -1,0 +1,30 @@
+error[E0107]: struct takes 2 lifetime arguments but 3 lifetime arguments were supplied
+  --> $DIR/noisy-follow-up-erro.rs:12:30
+   |
+LL |     fn boom(&self, foo: &mut Foo<'_, '_, 'a>) -> Result<(), &'a ()> {
+   |                              ^^^       ---- help: remove the lifetime argument
+   |                              |
+   |                              expected 2 lifetime arguments
+   |
+note: struct defined here, with 2 lifetime parameters: `'c`, `'d`
+  --> $DIR/noisy-follow-up-erro.rs:1:8
+   |
+LL | struct Foo<'c, 'd>(&'c (), &'d ());
+   |        ^^^ --  --
+
+error[E0621]: explicit lifetime required in the type of `foo`
+  --> $DIR/noisy-follow-up-erro.rs:14:9
+   |
+LL |         self.bar().map_err(|()| foo.acc(self))?;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `foo`
+   |
+LL -     fn boom(&self, foo: &mut Foo<'_, '_, 'a>) -> Result<(), &'a ()> {
+LL +     fn boom(&self, foo: &mut Foo<'_, 'a>) -> Result<(), &'a ()> {
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0621.
+For more information about an error, try `rustc --explain E0107`.

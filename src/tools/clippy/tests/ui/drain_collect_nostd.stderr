@@ -1,0 +1,11 @@
+error: you seem to be trying to move all elements into a new `Vec`
+  --> tests/ui/drain_collect_nostd.rs:7:5
+   |
+LL |     v.drain(..).collect()
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `core::mem::take(v)`
+   |
+   = note: `-D clippy::drain-collect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::drain_collect)]`
+
+error: aborting due to 1 previous error
+

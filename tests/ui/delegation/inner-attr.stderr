@@ -1,0 +1,31 @@
+error: an inner attribute is not permitted in this context
+  --> $DIR/inner-attr.rs:6:16
+   |
+LL | reuse a as b { #![rustc_dummy] self }
+   |                ^^^^^^^^^^^^^^^
+...
+LL | fn main() {}
+   | ------------ the inner attribute doesn't annotate this function
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/inner-attr.rs:6:7
+   |
+LL | reuse a as b { #![rustc_dummy] self }
+   |       ^                        ---- unexpected argument
+   |
+note: function defined here
+  --> $DIR/inner-attr.rs:4:4
+   |
+LL | fn a() {}
+   |    ^
+help: remove the extra argument
+   |
+LL - reuse a as b { #![rustc_dummy] self }
+LL + reuse self }
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

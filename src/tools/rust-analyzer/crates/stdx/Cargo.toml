@@ -1,0 +1,37 @@
+[package]
+name = "stdx"
+version = "0.0.0"
+repository.workspace = true
+description = "Missing batteries for standard libraries for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+backtrace = { version = "0.3.75", optional = true }
+jod-thread = "1.0.0"
+crossbeam-channel.workspace = true
+itertools.workspace = true
+tracing.workspace = true
+crossbeam-utils = "0.8.21"
+# Think twice before adding anything here
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+miow = "0.6.0"
+windows-sys = { version = "0.60", features = ["Win32_Foundation"] }
+
+[features]
+# Uncomment to enable for the whole crate graph
+# default = [ "backtrace" ]
+force-always-assert = []
+
+[lints]
+workspace = true

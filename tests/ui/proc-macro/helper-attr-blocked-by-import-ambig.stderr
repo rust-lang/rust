@@ -1,0 +1,49 @@
+error[E0659]: `empty_helper` is ambiguous
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:7:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a derive helper attribute
+note: `empty_helper` could refer to the derive helper attribute defined here
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:10:10
+   |
+LL | #[derive(Empty)]
+   |          ^^^^^
+note: `empty_helper` could also refer to the attribute macro imported here
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:5:5
+   |
+LL | use test_macros::empty_attr as empty_helper;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
+
+error: derive helper attribute is used before it is introduced
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:7:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^
+...
+LL | #[derive(Empty)]
+   |          ----- the attribute is introduced here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+   = note: `#[deny(legacy_derive_helpers)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0659`.
+Future incompatibility report: Future breakage diagnostic:
+error: derive helper attribute is used before it is introduced
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:7:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^
+...
+LL | #[derive(Empty)]
+   |          ----- the attribute is introduced here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+   = note: `#[deny(legacy_derive_helpers)]` (part of `#[deny(future_incompatible)]`) on by default
+

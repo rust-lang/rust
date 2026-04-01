@@ -1,0 +1,10 @@
+// MIR for `int_to_int` after built
+
+fn int_to_int(_1: u32) -> i32 {
+    let mut _0: i32;
+
+    bb0: {
+        _0 = copy _1 as i32 (IntToInt);
+        return;
+    }
+}

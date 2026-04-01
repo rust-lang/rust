@@ -1,0 +1,49 @@
+error[E0407]: method `line_stream` is not a member of trait `X`
+  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:29:5
+   |
+LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `X`
+
+error[E0049]: associated type `LineStream` has 0 type parameters but its trait declaration has 1 type parameter
+  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:25:21
+   |
+LL |     type LineStream<'a, Repr>
+   |                     --  ----
+   |                     |
+   |                     expected 1 type parameter
+...
+LL |     type LineStream<'c, 'd> = impl Stream;
+   |                     ^^  ^^
+   |                     |
+   |                     found 0 type parameters
+
+error: unconstrained opaque type
+  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:25:31
+   |
+LL |     type LineStream<'c, 'd> = impl Stream;
+   |                               ^^^^^^^^^^^
+   |
+   = note: `LineStream` must be used in combination with a concrete type within the same impl
+
+error[E0271]: type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> normalizes-to ()`
+  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:29:43
+   |
+LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {}
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> normalizes-to _`
+  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:29:73
+   |
+LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {}
+   |                                                                         ^^ types differ
+
+error[E0271]: type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> normalizes-to _`
+  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:29:5
+   |
+LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0049, E0271, E0407.
+For more information about an error, try `rustc --explain E0049`.

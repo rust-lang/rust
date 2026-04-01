@@ -1,0 +1,15 @@
+error[E0762]: unterminated character literal
+  --> $DIR/lex-bad-str-literal-as-char-3.rs:6:26
+   |
+LL |     println!('hello world');
+   |                          ^^^
+   |
+help: if you meant to write a string literal, use double quotes
+   |
+LL -     println!('hello world');
+LL +     println!("hello world");
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0762`.

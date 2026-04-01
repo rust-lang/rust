@@ -1,0 +1,93 @@
+error: ==-comparison of unit values detected. This will always be true
+  --> tests/ui/unit_cmp.rs:17:8
+   |
+LL |       if {
+   |  ________^
+LL | |
+LL | |
+LL | |         true;
+LL | |     } == {
+LL | |         false;
+LL | |     } {}
+   | |_____^
+   |
+   = note: `-D clippy::unit-cmp` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unit_cmp)]`
+
+error: >-comparison of unit values detected. This will always be false
+  --> tests/ui/unit_cmp.rs:25:8
+   |
+LL |       if {
+   |  ________^
+LL | |
+LL | |
+LL | |         true;
+LL | |     } > {
+LL | |         false;
+LL | |     } {}
+   | |_____^
+
+error: `assert_eq` of unit values detected. This will always succeed
+  --> tests/ui/unit_cmp.rs:33:5
+   |
+LL | /     assert_eq!(
+LL | |
+LL | |         {
+LL | |             true;
+...  |
+LL | |     );
+   | |_____^
+
+error: `debug_assert_eq` of unit values detected. This will always succeed
+  --> tests/ui/unit_cmp.rs:42:5
+   |
+LL | /     debug_assert_eq!(
+LL | |
+LL | |         {
+LL | |             true;
+...  |
+LL | |     );
+   | |_____^
+
+error: `assert_ne` of unit values detected. This will always fail
+  --> tests/ui/unit_cmp.rs:52:5
+   |
+LL | /     assert_ne!(
+LL | |
+LL | |         {
+LL | |             true;
+...  |
+LL | |     );
+   | |_____^
+
+error: `debug_assert_ne` of unit values detected. This will always fail
+  --> tests/ui/unit_cmp.rs:61:5
+   |
+LL | /     debug_assert_ne!(
+LL | |
+LL | |         {
+LL | |             true;
+...  |
+LL | |     );
+   | |_____^
+
+error: `assert_eq` of unit values detected. This will always succeed
+  --> tests/ui/unit_cmp.rs:74:5
+   |
+LL | /     assert_eq!(
+LL | |
+LL | |         {
+LL | |             1;
+LL | |         },
+LL | |         foo()
+LL | |     );
+   | |_____^
+
+error: `assert_eq` of unit values detected. This will always succeed
+  --> tests/ui/unit_cmp.rs:81:5
+   |
+LL |     assert_eq!(foo(), foo());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

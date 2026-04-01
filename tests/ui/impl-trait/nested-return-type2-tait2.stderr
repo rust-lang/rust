@@ -1,0 +1,13 @@
+warning: opaque type `Traitable` does not satisfy its associated type bounds
+  --> $DIR/nested-return-type2-tait2.rs:21:29
+   |
+LL |     type Assoc: Duh;
+   |                 --- this associated type bound is unsatisfied for `Sendable`
+...
+LL | type Traitable = impl Trait<Assoc = Sendable>;
+   |                             ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(opaque_hidden_inferred_bound)]` on by default
+
+warning: 1 warning emitted
+

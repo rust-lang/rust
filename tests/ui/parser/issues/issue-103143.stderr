@@ -1,0 +1,15 @@
+error: attributes cannot be applied to generic arguments
+  --> $DIR/issue-103143.rs:2:9
+   |
+LL |     x::<#[a]y::<z>>
+   |         ^^^^ attributes are not allowed here
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-103143.rs:2:5
+   |
+LL |     x::<#[a]y::<z>>
+   |     ^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

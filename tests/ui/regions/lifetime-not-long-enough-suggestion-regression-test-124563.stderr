@@ -1,0 +1,53 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/lifetime-not-long-enough-suggestion-regression-test-124563.rs:19:5
+   |
+LL |     type Bar = BarImpl<'a, 'b, T>;
+   |     ^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/lifetime-not-long-enough-suggestion-regression-test-124563.rs:14:6
+   |
+LL | impl<'a, 'b, T> Foo for FooImpl<'a, 'b, T>
+   |      ^^
+note: but lifetime parameter must outlive the lifetime `'b` as defined here
+  --> $DIR/lifetime-not-long-enough-suggestion-regression-test-124563.rs:14:10
+   |
+LL | impl<'a, 'b, T> Foo for FooImpl<'a, 'b, T>
+   |          ^^
+
+error: lifetime may not live long enough
+  --> $DIR/lifetime-not-long-enough-suggestion-regression-test-124563.rs:23:21
+   |
+LL |         self.enter_scope(|ctx| {
+   |                           ---
+   |                           |
+   |                           has type `&'1 mut FooImpl<'_, '_, T>`
+   |                           has type `&mut FooImpl<'2, '_, T>`
+LL |             BarImpl(ctx);
+   |                     ^^^ this usage requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `FooImpl<'_, '_, T>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/lifetime-not-long-enough-suggestion-regression-test-124563.rs:22:9
+   |
+LL |   impl<'a, 'b, T> Foo for FooImpl<'a, 'b, T>
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+...
+LL | /         self.enter_scope(|ctx| {
+LL | |             BarImpl(ctx);
+LL | |         });
+   | |__________^ argument requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable reference to `FooImpl<'_, '_, T>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0478`.

@@ -1,0 +1,37 @@
+// Checks that the crate search filtering is handled correctly and changes the results.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=sa'%3Bda'%3Bds"
+show-text: true
+
+define-function: (
+    "check-colors",
+    [theme, error_background],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        wait-for-false: "#search-tabs .count.loading"
+        wait-for: "#search .error code"
+        assert-css: ("#search .error code", {"background-color": |error_background|})
+    }
+)
+
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "error_background": "#4f4c4c",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "error_background": "#484848",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "error_background": "#d0cccc",
+    },
+)

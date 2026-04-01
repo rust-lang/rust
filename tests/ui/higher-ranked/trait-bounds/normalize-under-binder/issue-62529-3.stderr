@@ -1,0 +1,27 @@
+error[E0277]: expected a `Fn(<_ as ATC<'a>>::Type)` closure, found `F`
+  --> $DIR/issue-62529-3.rs:25:14
+   |
+LL |         call(f, ());
+   |         ---- ^ expected an `Fn(<_ as ATC<'a>>::Type)` closure, found `F`
+   |         |
+   |         required by a bound introduced by this call
+   |
+   = note: expected a closure with signature `for<'a> fn(<_ as ATC<'a>>::Type)`
+              found a closure with signature `fn(())`
+note: this is a known limitation of the trait solver that will be lifted in the future
+  --> $DIR/issue-62529-3.rs:25:14
+   |
+LL |         call(f, ());
+   |         -----^-----
+   |         |    |
+   |         |    the trait solver is unable to infer the generic types that should be inferred from this argument
+   |         add turbofish arguments to this call to specify the types manually, even if it's redundant
+note: required by a bound in `call`
+  --> $DIR/issue-62529-3.rs:9:36
+   |
+LL | fn call<'b, T: for<'a> ATC<'a>, F: for<'a> Fn(<T as ATC<'a>>::Type)>(
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `call`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

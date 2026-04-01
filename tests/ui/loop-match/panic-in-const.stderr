@@ -1,0 +1,9 @@
+error[E0080]: evaluation panicked: diverge!
+  --> $DIR/panic-in-const.rs:5:31
+   |
+LL | const CONST_THAT_PANICS: u8 = panic!("diverge!");
+   |                               ^^^^^^^^^^^^^^^^^^ evaluation of `CONST_THAT_PANICS` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

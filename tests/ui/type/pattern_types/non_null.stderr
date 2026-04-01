@@ -1,0 +1,218 @@
+error: layout_of((*const T) is !null) = Layout {
+           size: Size(8 bytes),
+           align: AbiAlign {
+               abi: Align(8 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: 1..=18446744073709551615,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: 1..=18446744073709551615,
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(8 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/non_null.rs:11:1
+   |
+LL | type NonNull<T> = pattern_type!(*const T is !null);
+   | ^^^^^^^^^^^^^^^
+
+error: layout_of(Option<(*const ()) is !null>) = Layout {
+           size: Size(8 bytes),
+           align: AbiAlign {
+               abi: Align(8 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: (..=0) | (1..),
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: None,
+           uninhabited: false,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: (..=0) | (1..),
+               },
+               tag_encoding: Niche {
+                   untagged_variant: 1,
+                   niche_variants: 0..=0,
+                   niche_start: 0,
+               },
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(0 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           in_memory_order: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
+                   },
+                   Layout {
+                       size: Size(8 bytes),
+                       align: AbiAlign {
+                           abi: Align(8 bytes),
+                       },
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Pointer(
+                                   AddressSpace(
+                                       0,
+                                   ),
+                               ),
+                               valid_range: 1..=18446744073709551615,
+                           },
+                       ),
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                           ],
+                           in_memory_order: [
+                               0,
+                           ],
+                       },
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(0 bytes),
+                               value: Pointer(
+                                   AddressSpace(
+                                       0,
+                                   ),
+                               ),
+                               valid_range: 1..=18446744073709551615,
+                           },
+                       ),
+                       uninhabited: false,
+                       variants: Single {
+                           index: 1,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(8 bytes),
+                       randomization_seed: $SEED,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(8 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/non_null.rs:14:1
+   |
+LL | type Test = Option<NonNull<()>>;
+   | ^^^^^^^^^
+
+error: layout_of((*const [u8]) is !null) = Layout {
+           size: Size(16 bytes),
+           align: AbiAlign {
+               abi: Align(8 bytes),
+           },
+           backend_repr: ScalarPair(
+               Initialized {
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: 1..=18446744073709551615,
+               },
+               Initialized {
+                   value: Int(
+                       I64,
+                       false,
+                   ),
+                   valid_range: 0..=18446744073709551615,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: 1..=18446744073709551615,
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(8 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/non_null.rs:17:1
+   |
+LL | type Wide = pattern_type!(*const [u8] is !null);
+   | ^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

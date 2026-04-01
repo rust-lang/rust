@@ -1,0 +1,21 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/ice-cannot-relate-region-109178.rs:7:31
+   |
+LL | struct Changes<const CHANGES: &[&'static str]>
+   |                               ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/ice-cannot-relate-region-109178.rs:12:21
+   |
+LL | impl<const CHANGES: &[&str]> Changes<CHANGES> where [(); CHANGES.len()]: {}
+   |                     ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/ice-cannot-relate-region-109178.rs:12:23
+   |
+LL | impl<const CHANGES: &[&str]> Changes<CHANGES> where [(); CHANGES.len()]: {}
+   |                       ^ explicit lifetime name needed here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0637`.

@@ -1,0 +1,17 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/unclosed-braces.rs:22:52
+   |
+LL | fn main() {
+   |           - unclosed delimiter
+...
+LL |         {
+   |         - this delimiter might not be properly closed...
+...
+LL |     }
+   |     - ...as it matches this but it has different indentation
+...
+LL |
+   |                                                   ^
+
+error: aborting due to 1 previous error
+

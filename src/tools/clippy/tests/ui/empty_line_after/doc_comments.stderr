@@ -1,0 +1,208 @@
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:6:1
+   |
+LL | / /// for the crate
+LL | |
+   | |_^
+LL |   fn first_in_crate() {}
+   |   ----------------- the comment documents this function
+   |
+   = note: `-D clippy::empty-line-after-doc-comments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_doc_comments)]`
+   = help: if the empty line is unintentional, remove it
+help: if the comment should document the crate use an inner doc comment
+   |
+LL ~ //! Meant to be an
+LL ~ //! inner doc comment
+LL ~ //! for the crate
+   |
+
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:14:5
+   |
+LL | /     /// for the module
+LL | |
+   | |_^
+LL |       fn first_in_module() {}
+   |       ------------------ the comment documents this function
+   |
+   = help: if the empty line is unintentional, remove it
+help: if the comment should document the parent module use an inner doc comment
+   |
+LL ~     //! Meant to be an
+LL ~     //! inner doc comment
+LL ~     //! for the module
+   |
+
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:27:5
+   |
+LL | /     /// # Indented
+LL | |
+   | |_^
+LL |       /// Blank line
+LL |       fn indented() {}
+   |       ----------- the comment documents this function
+   |
+   = help: if the empty line is unintentional, remove it
+help: if the documentation should include the empty line include it in the comment
+   |
+LL |     ///
+   |
+
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:34:1
+   |
+LL | / /// This should produce a warning
+LL | |
+   | |_^
+LL |   fn with_doc_and_newline() {}
+   |   ----------------------- the comment documents this function
+   |
+   = help: if the empty line is unintentional, remove it
+
+error: empty lines after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:44:1
+   |
+LL | / /// This doc comment should produce a warning
+LL | |
+LL | | /** This is also a doc comment and is part of the warning
+LL | |  */
+LL | |
+   | |_^
+...
+LL |   fn three_attributes() {}
+   |   ------------------- the comment documents this function
+   |
+   = help: if the empty lines are unintentional, remove them
+
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:56:5
+   |
+LL | /     /// docs for `old_code`
+LL | |     // fn old_code() {}
+LL | |
+   | |_^
+LL |       fn new_code() {}
+   |       ----------- the comment documents this function
+   |
+   = help: if the empty line is unintentional, remove it
+help: if the doc comment should not document function `new_code` then comment it out
+   |
+LL |     // /// docs for `old_code`
+   |     ++
+
+error: empty lines after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:63:5
+   |
+LL | /     /// for OldA
+LL | |     // struct OldA;
+LL | |
+LL | |     /// Docs
+...  |
+LL | |
+   | |_^
+...
+LL |       struct Multiple;
+   |       --------------- the comment documents this struct
+   |
+   = help: if the empty lines are unintentional, remove them
+help: if the doc comment should not document struct `Multiple` then comment it out
+   |
+LL ~     // /// Docs
+LL ~     // /// for OldA
+LL |     // struct OldA;
+LL |
+LL ~     // /// Docs
+LL ~     // /// for OldB
+   |
+
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:78:5
+   |
+LL | /     /**
+LL | |      * Meant to be inner doc comment
+LL | |      */
+LL | |
+   | |_^
+LL |       fn first_in_module() {}
+   |       ------------------ the comment documents this function
+   |
+   = help: if the empty line is unintentional, remove it
+help: if the comment should document the parent module use an inner doc comment
+   |
+LL -     /**
+LL +     /*!
+   |
+
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:85:5
+   |
+LL | /     /**
+LL | |      * Docs for `old_code`
+LL | |      */
+LL | |     /* fn old_code() {} */
+LL | |
+   | |_^
+...
+LL |       fn new_code() {}
+   |       ----------- the comment documents this function
+   |
+   = help: if the empty line is unintentional, remove it
+help: if the doc comment should not document function `new_code` then comment it out
+   |
+LL -     /**
+LL +     /*
+   |
+
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:96:5
+   |
+LL | /     /// Docs for `old_code2`
+LL | |     /* fn old_code2() {} */
+LL | |
+   | |_^
+LL |       /// Docs for `new_code2`
+LL |       fn new_code2() {}
+   |       ------------ the comment documents this function
+   |
+   = help: if the empty line is unintentional, remove it
+help: if the doc comment should not document function `new_code2` then comment it out
+   |
+LL |     // /// Docs for `old_code2`
+   |     ++
+
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:152:5
+   |
+LL | /     /// comment on assoc item
+LL | |
+LL | |
+   | |_^
+LL |       fn bar() {}
+   |       ------ the comment documents this function
+   |
+   = help: if the empty line is unintentional, remove it
+help: if the doc comment should not document function `bar` then comment it out
+   |
+LL |     // /// comment on assoc item
+   |     ++
+
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:159:1
+   |
+LL | / /// Docs for this item.
+LL | | // fn some_item() {}
+LL | |
+   | |_^
+LL |   impl LineComment {} // or any other nameless item kind
+   |   - the comment documents this implementation
+   |
+   = help: if the empty line is unintentional, remove it
+help: if the doc comment should not document the following item then comment it out
+   |
+LL | // /// Docs for this item.
+   | ++
+
+error: aborting due to 12 previous errors
+

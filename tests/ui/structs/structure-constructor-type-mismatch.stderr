@@ -1,0 +1,153 @@
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:19:12
+   |
+LL |         x: 1,
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         x: 1.0,
+   |             ++
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:22:12
+   |
+LL |         y: 2,
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         y: 2.0,
+   |             ++
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:28:12
+   |
+LL |         x: 3,
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         x: 3.0,
+   |             ++
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:31:12
+   |
+LL |         y: 4,
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         y: 4.0,
+   |             ++
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:37:12
+   |
+LL |         x: 5,
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         x: 5.0,
+   |             ++
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:44:12
+   |
+LL |         x: 7,
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         x: 7.0,
+   |             ++
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/structure-constructor-type-mismatch.rs:50:15
+   |
+LL |     let pt3 = PointF::<i32> {
+   |               ^^^^^^------- help: remove the unnecessary generics
+   |               |
+   |               expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> $DIR/structure-constructor-type-mismatch.rs:8:6
+   |
+LL | type PointF = Point<f32>;
+   |      ^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:51:12
+   |
+LL |         x: 9,
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         x: 9.0,
+   |             ++
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:52:12
+   |
+LL |         y: 10,
+   |            ^^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         y: 10.0,
+   |              ++
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/structure-constructor-type-mismatch.rs:56:9
+   |
+LL |         PointF::<u32> { .. } => {}
+   |         ^^^^^^------- help: remove the unnecessary generics
+   |         |
+   |         expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> $DIR/structure-constructor-type-mismatch.rs:8:6
+   |
+LL | type PointF = Point<f32>;
+   |      ^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:56:9
+   |
+LL |     match (Point { x: 1, y: 2 }) {
+   |           ---------------------- this expression has type `Point<{integer}>`
+LL |         PointF::<u32> { .. } => {}
+   |         ^^^^^^^^^^^^^^^^^^^^ expected `Point<{integer}>`, found `Point<f32>`
+   |
+   = note: expected struct `Point<{integer}>`
+              found struct `Point<f32>`
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:61:9
+   |
+LL |     match (Point { x: 1, y: 2 }) {
+   |           ---------------------- this expression has type `Point<{integer}>`
+LL |         PointF { .. } => {}
+   |         ^^^^^^^^^^^^^ expected `Point<{integer}>`, found `Point<f32>`
+   |
+   = note: expected struct `Point<{integer}>`
+              found struct `Point<f32>`
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:69:9
+   |
+LL |     match (Pair { x: 1, y: 2 }) {
+   |           --------------------- this expression has type `Pair<{integer}, {integer}>`
+LL |         PairF::<u32> { .. } => {}
+   |         ^^^^^^^^^^^^^^^^^^^ expected `Pair<{integer}, {integer}>`, found `Pair<f32, u32>`
+   |
+   = note: expected struct `Pair<{integer}, {integer}>`
+              found struct `Pair<f32, u32>`
+
+error: aborting due to 13 previous errors
+
+Some errors have detailed explanations: E0107, E0308.
+For more information about an error, try `rustc --explain E0107`.

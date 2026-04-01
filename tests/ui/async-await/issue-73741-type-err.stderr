@@ -1,0 +1,11 @@
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/issue-73741-type-err.rs:8:7
+   |
+LL |     1 = 2;
+   |     - ^
+   |     |
+   |     cannot assign to this expression
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0070`.

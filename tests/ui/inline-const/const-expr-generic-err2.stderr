@@ -1,0 +1,10 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/const-expr-generic-err2.rs:2:19
+   |
+LL |     let _ = [0u8; const { std::mem::size_of::<T>() }];
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,8 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62546.rs:1:60
+   |
+LL | pub t(#
+   |      - unclosed delimiter                                 ^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,96 @@
+error: macro definition ended unexpectedly
+  --> $DIR/macro-derive-bad.rs:4:42
+   |
+LL | macro_rules! derive_incomplete_1 { derive }
+   |                                          ^ expected `()` after `derive`
+
+error: macro definition ended unexpectedly
+  --> $DIR/macro-derive-bad.rs:8:44
+   |
+LL | macro_rules! derive_incomplete_2 { derive() }
+   |                                            ^ expected macro derive body
+
+error: expected `=>`, found end of macro arguments
+  --> $DIR/macro-derive-bad.rs:12:47
+   |
+LL | macro_rules! derive_incomplete_3 { derive() {} }
+   |                                               ^ expected `=>`
+
+error: macro definition ended unexpectedly
+  --> $DIR/macro-derive-bad.rs:16:50
+   |
+LL | macro_rules! derive_incomplete_4 { derive() {} => }
+   |                                                  ^ expected right-hand side of macro rule
+
+error: `derive` rule argument matchers require parentheses
+  --> $DIR/macro-derive-bad.rs:20:40
+   |
+LL | macro_rules! derive_noparens_1 { derive{} {} => {} }
+   |                                        ^^
+   |
+help: the delimiters should be `(` and `)`
+   |
+LL - macro_rules! derive_noparens_1 { derive{} {} => {} }
+LL + macro_rules! derive_noparens_1 { derive() {} => {} }
+   |
+
+error: `derive` rule argument matchers require parentheses
+  --> $DIR/macro-derive-bad.rs:23:40
+   |
+LL | macro_rules! derive_noparens_2 { derive[] {} => {} }
+   |                                        ^^
+   |
+help: the delimiters should be `(` and `)`
+   |
+LL - macro_rules! derive_noparens_2 { derive[] {} => {} }
+LL + macro_rules! derive_noparens_2 { derive() {} => {} }
+   |
+
+error: `derive` rules do not accept arguments; `derive` must be followed by `()`
+  --> $DIR/macro-derive-bad.rs:26:41
+   |
+LL | macro_rules! derive_noparens_3 { derive _ {} => {} }
+   |                                         ^
+
+error: `derive` rules do not accept arguments; `derive` must be followed by `()`
+  --> $DIR/macro-derive-bad.rs:29:36
+   |
+LL | macro_rules! derive_args_1 { derive($x:ident) ($y:ident) => {} }
+   |                                    ^^^^^^^^^^
+
+error: expected macro derive body, got `=>`
+  --> $DIR/macro-derive-bad.rs:32:39
+   |
+LL | macro_rules! derive_args_2 { derive() => {} }
+   |                                       ^^
+
+error: `derive` rules do not accept arguments; `derive` must be followed by `()`
+  --> $DIR/macro-derive-bad.rs:35:36
+   |
+LL | macro_rules! derive_args_3 { derive($x:ident) => {} }
+   |                                    ^^^^^^^^^^
+
+error: expected macro derive body, got `=>`
+  --> $DIR/macro-derive-bad.rs:35:47
+   |
+LL | macro_rules! derive_args_3 { derive($x:ident) => {} }
+   |                              ------           ^^
+   |                              |
+   |                              need `()` after this `derive`
+
+error: duplicate matcher binding
+  --> $DIR/macro-derive-bad.rs:40:54
+   |
+LL | macro_rules! derive_dup_matcher { derive() {$x:ident $x:ident} => {} }
+   |                                             -------- ^^^^^^^^ duplicate binding
+   |                                             |
+   |                                             previous binding
+
+error: `unsafe` is only supported on `attr` rules
+  --> $DIR/macro-derive-bad.rs:45:30
+   |
+LL | macro_rules! derive_unsafe { unsafe derive() {} => {} }
+   |                              ^^^^^^
+
+error: aborting due to 13 previous errors
+

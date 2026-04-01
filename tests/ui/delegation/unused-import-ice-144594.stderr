@@ -1,0 +1,15 @@
+error[E0425]: cannot find function `a` in this scope
+  --> $DIR/unused-import-ice-144594.rs:4:7
+   |
+LL | reuse a as b {
+   |       ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/unused-import-ice-144594.rs:8:9
+   |
+LL |         x.add
+   |         ^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

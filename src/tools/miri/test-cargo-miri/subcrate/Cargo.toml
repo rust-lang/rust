@@ -1,0 +1,21 @@
+[package]
+name = "subcrate"
+version = "0.1.0"
+authors = ["Miri Team"]
+# This is deliberately *not* on the 2024 edition to ensure doctests keep working
+# on old editions.
+edition = "2018"
+
+[lib]
+
+[[bin]]
+name = "subcrate"
+path = "main.rs"
+
+[[test]]
+name = "subtest"
+path = "test.rs"
+harness = false
+
+[dev-dependencies]
+byteorder = "1.0"

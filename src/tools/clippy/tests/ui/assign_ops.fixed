@@ -1,0 +1,139 @@
+#![allow(clippy::useless_vec)]
+#![warn(clippy::assign_op_pattern)]
+#![feature(const_ops)]
+#![feature(const_trait_impl)]
+
+use std::num::Wrapping;
+use std::ops::{Mul, MulAssign};
+
+fn main() {
+    let mut a = 5;
+    a += 1;
+    //~^ assign_op_pattern
+    a += 1;
+    //~^ assign_op_pattern
+    a -= 1;
+    //~^ assign_op_pattern
+    a *= 99;
+    //~^ assign_op_pattern
+    a *= 42;
+    //~^ assign_op_pattern
+    a /= 2;
+    //~^ assign_op_pattern
+    a %= 5;
+    //~^ assign_op_pattern
+    a &= 1;
+    //~^ assign_op_pattern
+    a = 1 - a;
+    a = 5 / a;
+    a = 42 % a;
+    a = 6 << a;
+    let mut s = String::new();
+    s += "bla";
+    //~^ assign_op_pattern
+
+    // Issue #9180
+    let mut a = Wrapping(0u32);
+    a += Wrapping(1u32);
+    //~^ assign_op_pattern
+    let mut v = vec![0u32, 1u32];
+    v[0] += v[1];
+    //~^ assign_op_pattern
+    let mut v = vec![Wrapping(0u32), Wrapping(1u32)];
+    v[0] = v[0] + v[1];
+    let _ = || v[0] = v[0] + v[1];
+}
+
+fn cow_add_assign() {
+    use std::borrow::Cow;
+    let mut buf = Cow::Owned(String::from("bar"));
+    let cows = Cow::Borrowed("foo");
+
+    // this can be linted
+    buf += cows.clone();
+    //~^ assign_op_pattern
+
+    // this should not as cow<str> Add is not commutative
+    buf = cows + buf;
+}
+
+// check that we don't lint on op assign impls, because that's just the way to impl them
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Wrap(i64);
+
+impl Mul<i64> for Wrap {
+    type Output = Self;
+
+    fn mul(self, rhs: i64) -> Self {
+        Wrap(self.0 * rhs)
+    }
+}
+
+impl MulAssign<i64> for Wrap {
+    fn mul_assign(&mut self, rhs: i64) {
+        *self = *self * rhs
+    }
+}
+
+mod issue14871 {
+
+    use std::ops::{Add, AddAssign};
+
+    pub trait Number: Copy + Add<Self, Output = Self> + AddAssign {
+        const ZERO: Self;
+        const ONE: Self;
+
+        fn non_constant(value: usize) -> Self {
+            let mut res = Self::ZERO;
+            let mut count = 0;
+            while count < value {
+                res += Self::ONE;
+                //~^ assign_op_pattern
+                count += 1;
+                //~^ assign_op_pattern
+            }
+            res
+        }
+    }
+
+    #[rustfmt::skip] // rustfmt doesn't understand the order of pub const on traits (yet)
+    pub const trait NumberConstants {
+        fn constant(value: usize) -> Self;
+    }
+
+    impl<T> const NumberConstants for T
+    where
+        T: Number + [const] std::ops::Add,
+    {
+        fn constant(value: usize) -> Self {
+            let mut res = Self::ZERO;
+            let mut count = 0;
+            while count < value {
+                res = res + Self::ONE;
+                count += 1;
+                //~^ assign_op_pattern
+            }
+            res
+        }
+    }
+
+    pub struct S;
+
+    impl const std::ops::Add for S {
+        type Output = S;
+        fn add(self, _rhs: S) -> S {
+            S
+        }
+    }
+
+    impl const std::ops::AddAssign for S {
+        fn add_assign(&mut self, rhs: S) {}
+    }
+
+    const fn do_add() {
+        let mut s = S;
+        s += S;
+        //~^ assign_op_pattern
+    }
+}

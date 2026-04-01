@@ -1,0 +1,8 @@
+error: expected type, found keyword `extern`
+  --> $DIR/keyword-extern-as-identifier-type.rs:1:10
+   |
+LL | type A = extern::foo::bar;
+   |          ^^^^^^ expected type
+
+error: aborting due to 1 previous error
+

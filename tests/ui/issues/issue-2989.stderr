@@ -1,0 +1,10 @@
+warning: trait `methods` is never used
+  --> $DIR/issue-2989.rs:4:7
+   |
+LL | trait methods {
+   |       ^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

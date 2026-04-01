@@ -1,0 +1,43 @@
+error[E0805]: malformed `inline` attribute input
+  --> $DIR/invalid-inline.rs:3:1
+   |
+LL | #[inline(please,no)]
+   | ^^^^^^^^-----------^
+   |         |
+   |         expected a single argument here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[inline(please,no)]
+LL + #[inline(always)]
+   |
+LL - #[inline(please,no)]
+LL + #[inline(never)]
+   |
+LL - #[inline(please,no)]
+LL + #[inline]
+   |
+
+error[E0805]: malformed `inline` attribute input
+  --> $DIR/invalid-inline.rs:7:1
+   |
+LL | #[inline()]
+   | ^^^^^^^^--^
+   |         |
+   |         expected a single argument here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[inline(always)]
+   |          ++++++
+LL | #[inline(never)]
+   |          +++++
+LL - #[inline()]
+LL + #[inline]
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0805`.

@@ -1,0 +1,29 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/opaque-type-error.rs:20:9
+   |
+LL |   fn thing_one() -> impl Future<Output = Result<(), ()>> {
+   |                     ------------------------------------ the expected future
+...
+LL |   fn thing_two() -> impl Future<Output = Result<(), ()>> {
+   |                     ------------------------------------ the found future
+...
+LL | /     if true {
+LL | |         thing_one()
+   | |         ----------- expected because of this
+LL | |     } else {
+LL | |         thing_two()
+   | |         ^^^^^^^^^^^ expected future, found a different future
+LL | |     }.await
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note: distinct uses of `impl Trait` result in different opaque types
+help: consider `await`ing on both `Future`s
+   |
+LL ~         thing_one().await
+LL |     } else {
+LL ~         thing_two().await
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,14 @@
+// This test ensures that there is no macro duplicates in the sidebar.
+go-to: "file://" + |DOC_PATH| + "/test_docs/macro.a.html"
+// Waiting for the elements in the sidebar to be rendered.
+wait-for: ".sidebar-elems .macro"
+// Check there is only one macro named "a" listed in the sidebar.
+assert-count: (
+    "//*[@class='sidebar-elems']//*[@class='block macro']//li/a[normalize-space()='a']",
+    1,
+)
+// Check there is only one macro named "b" listed in the sidebar.
+assert-count: (
+    "//*[@class='sidebar-elems']//*[@class='block macro']//li/a[normalize-space()='b']",
+    1,
+)

@@ -1,0 +1,24 @@
+error: lifetime may not live long enough
+  --> $DIR/not-lending.rs:12:42
+   |
+LL |         let x = async move || -> &String { &s };
+   |                 ------------------------ ^^^^^^ returning this value requires that `'1` must outlive `'2`
+   |                 |                |
+   |                 |                return type of async closure `{async closure body@$DIR/not-lending.rs:12:42: 12:48}` contains a lifetime `'2`
+   |                 lifetime `'1` represents this closure's body
+   |
+   = note: closure implements `Fn`, so references to captured variables can't escape the closure
+
+error: lifetime may not live long enough
+  --> $DIR/not-lending.rs:16:31
+   |
+LL |         let x = async move || { &s };
+   |                 ------------- ^^^^^^ returning this value requires that `'1` must outlive `'2`
+   |                 |           |
+   |                 |           return type of async closure `{async closure body@$DIR/not-lending.rs:16:31: 16:37}` contains a lifetime `'2`
+   |                 lifetime `'1` represents this closure's body
+   |
+   = note: closure implements `Fn`, so references to captured variables can't escape the closure
+
+error: aborting due to 2 previous errors
+

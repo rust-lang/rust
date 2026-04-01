@@ -1,0 +1,60 @@
+error[E0277]: the trait bound `bool: Bar` is not satisfied
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:8:18
+   |
+LL |     type Assoc = bool;
+   |                  ^^^^ the trait `Bar` is not implemented for `bool`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:1:1
+   |
+LL | trait Bar {}
+   | ^^^^^^^^^
+note: required by a bound in `Foo::Assoc`
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:4:17
+   |
+LL |     type Assoc: Bar;
+   |                 ^^^ required by this bound in `Foo::Assoc`
+
+error[E0277]: the trait bound `bool: Bar` is not satisfied
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:19:18
+   |
+LL |     type Assoc = bool;
+   |                  ^^^^ the trait `Bar` is not implemented for `bool`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:1:1
+   |
+LL | trait Bar {}
+   | ^^^^^^^^^
+note: required by a bound in `Baz::Assoc`
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:13:18
+   |
+LL |     Self::Assoc: Bar,
+   |                  ^^^ required by this bound in `Baz::Assoc`
+LL | {
+LL |     type Assoc;
+   |          ----- required by a bound in this associated type
+
+error[E0277]: the trait bound `bool: Bar` is not satisfied
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:30:18
+   |
+LL |     type Assoc = bool;
+   |                  ^^^^ the trait `Bar` is not implemented for `bool`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:1:1
+   |
+LL | trait Bar {}
+   | ^^^^^^^^^
+note: required by a bound in `Bat::Assoc`
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:24:27
+   |
+LL |     <Self as Bat>::Assoc: Bar,
+   |                           ^^^ required by this bound in `Bat::Assoc`
+LL | {
+LL |     type Assoc;
+   |          ----- required by a bound in this associated type
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

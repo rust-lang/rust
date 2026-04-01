@@ -1,0 +1,46 @@
+Running GenMC Verification...
+error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
+  --> tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
+   |
+LL |     dealloc(ptr as *mut u8, Layout::new::<u64>())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
+   |
+LL |                 let a: *mut u64 = alloc(Layout::new::<u64>()) as *mut u64;
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: ALLOC was deallocated here:
+  --> tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
+   |
+LL |     dealloc(ptr as *mut u8, Layout::new::<u64>())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this is on thread `unnamed-ID`
+   = note: stack backtrace:
+           0: free
+               at tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
+           1: miri_start::{closure#1}
+               at tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
+           2: <std::boxed::Box<{closure@tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           3: genmc::spawn_pthread_closure::thread_func
+               at tests/genmc/fail/atomics/../../../utils/genmc.rs:LL:CC
+note: the last function in that backtrace got called indirectly due to this code
+  --> tests/genmc/fail/atomics/../../../utils/genmc.rs:LL:CC
+   |
+LL | /         libc::pthread_create(
+LL | |             &raw mut thread_id,
+LL | |             attr,
+LL | |             thread_func::<F>,
+LL | |             Box::into_raw(f) as *mut c_void,
+LL | |         )
+   | |_________^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+note: add `-Zmiri-genmc-print-genmc-output` to MIRIFLAGS to see the detailed GenMC error report
+
+error: aborting due to 1 previous error
+

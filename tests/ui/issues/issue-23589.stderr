@@ -1,0 +1,28 @@
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-23589.rs:2:12
+   |
+LL |     let v: Vec(&str) = vec!['1', '2'];
+   |            ^^^^^^^^^ only `Fn` traits may use parentheses
+   |
+help: use angle brackets instead
+   |
+LL -     let v: Vec(&str) = vec!['1', '2'];
+LL +     let v: Vec<&str> = vec!['1', '2'];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-23589.rs:2:29
+   |
+LL |     let v: Vec(&str) = vec!['1', '2'];
+   |                             ^^^ expected `&str`, found `char`
+   |
+help: if you meant to write a string literal, use double quotes
+   |
+LL -     let v: Vec(&str) = vec!['1', '2'];
+LL +     let v: Vec(&str) = vec!["1", '2'];
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0214, E0308.
+For more information about an error, try `rustc --explain E0214`.

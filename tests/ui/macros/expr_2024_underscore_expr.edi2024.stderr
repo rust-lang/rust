@@ -1,0 +1,17 @@
+error: no rules expected reserved identifier `_`
+  --> $DIR/expr_2024_underscore_expr.rs:19:12
+   |
+LL | macro_rules! m2021 {
+   | ------------------ when calling this macro
+...
+LL |     m2021!(_);
+   |            ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$e:expr_2021`
+  --> $DIR/expr_2024_underscore_expr.rs:7:6
+   |
+LL |     ($e:expr_2021) => {
+   |      ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

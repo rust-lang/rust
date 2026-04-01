@@ -1,0 +1,25 @@
+error[E0428]: the name `Foo` is defined multiple times
+  --> $DIR/enum-and-module-in-same-scope.rs:5:1
+   |
+LL | enum Foo {
+   | -------- previous definition of the type `Foo` here
+...
+LL | mod Foo {
+   | ^^^^^^^ `Foo` redefined here
+   |
+   = note: `Foo` must be defined only once in the type namespace of this module
+
+warning: function cannot return without recursing
+  --> $DIR/enum-and-module-in-same-scope.rs:7:5
+   |
+LL |     fn f() { f() } // Check that this does not result in a resolution error
+   |     ^^^^^^   --- recursive call site
+   |     |
+   |     cannot return without recursing
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0428`.

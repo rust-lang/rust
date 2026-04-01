@@ -1,0 +1,12 @@
+<div class="scraped-example{% if !info.needs_expansion +%} expanded{% endif %}" data-locs="{{info.locations}}"> {# #}
+    <div class="scraped-example-title">
+       {{info.name +}} (<a href="{{info.url}}">{{info.title}}</a>) {# #}
+    </div> {# #}
+    <div class="example-wrap digits-{{max_nb_digits}}"> {# #}
+        <pre class="rust"> {# #}
+            <code>
+                {{code_html|safe}}
+            </code> {# #}
+        </pre> {# #}
+    </div> {# #}
+</div> {# #}

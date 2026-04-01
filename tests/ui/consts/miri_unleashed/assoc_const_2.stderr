@@ -1,0 +1,23 @@
+error[E0080]: attempt to divide `100_u32` by zero
+  --> $DIR/assoc_const_2.rs:11:20
+   |
+LL |     const F: u32 = 100 / U::X;
+   |                    ^^^^^^^^^^ evaluation of `<std::string::String as Bar<std::string::String>>::F` failed here
+
+note: erroneous constant encountered
+  --> $DIR/assoc_const_2.rs:28:13
+   |
+LL |     let y = <String as Bar<String>>::F;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/assoc_const_2.rs:28:13
+   |
+LL |     let y = <String as Bar<String>>::F;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

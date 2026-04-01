@@ -1,0 +1,33 @@
+error[E0277]: the trait bound `Header<'_>: Copy` is not satisfied
+  --> $DIR/repeat_empty_ok.rs:8:20
+   |
+LL |     let headers = [Header{value: &[]}; 128];
+   |                    ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Header<'_>`
+   |
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
+   = help: consider using `core::array::from_fn` to initialize the array
+   = help: see https://doc.rust-lang.org/stable/std/array/fn.from_fn.html for more information
+help: consider annotating `Header<'_>` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | pub struct Header<'a> {
+   |
+
+error[E0277]: the trait bound `Header<'_>: Copy` is not satisfied
+  --> $DIR/repeat_empty_ok.rs:13:20
+   |
+LL |     let headers = [Header{value: &[0]}; 128];
+   |                    ^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Header<'_>`
+   |
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
+   = help: consider using `core::array::from_fn` to initialize the array
+   = help: see https://doc.rust-lang.org/stable/std/array/fn.from_fn.html for more information
+help: consider annotating `Header<'_>` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | pub struct Header<'a> {
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

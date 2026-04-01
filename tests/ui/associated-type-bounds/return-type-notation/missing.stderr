@@ -1,0 +1,9 @@
+error[E0220]: associated function `methid` not found for `Trait`
+  --> $DIR/missing.rs:9:17
+   |
+LL | fn bar<T: Trait<methid(..): Send>>() {}
+   |                 ^^^^^^ help: there is an associated function with a similar name: `method`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0220`.

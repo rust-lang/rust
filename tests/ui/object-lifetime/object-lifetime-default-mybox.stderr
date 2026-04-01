@@ -1,0 +1,29 @@
+error: lifetime may not live long enough
+  --> $DIR/object-lifetime-default-mybox.rs:27:5
+   |
+LL | fn load1<'a,'b>(a: &'a MyBox<dyn SomeTrait>,
+   |          -- -- lifetime `'b` defined here
+   |          |
+   |          lifetime `'a` defined here
+...
+LL |     a
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/object-lifetime-default-mybox.rs:32:5
+   |
+LL | fn load2<'a>(ss: &MyBox<dyn SomeTrait + 'a>) -> MyBox<dyn SomeTrait + 'a> {
+   |          --  -- `ss` is a reference that is only valid in the function body
+   |          |
+   |          lifetime `'a` defined here
+LL |     load0(ss)
+   |     ^^^^^^^^^
+   |     |
+   |     `ss` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0521`.

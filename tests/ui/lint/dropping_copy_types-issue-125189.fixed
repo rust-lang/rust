@@ -1,0 +1,10 @@
+//@ check-fail
+//@ run-rustfix
+
+#![deny(dropping_copy_types)]
+
+fn main() {
+    let y = 1;
+    let _ = 3.2; //~ ERROR calls to `std::mem::drop`
+    let _ = y; //~ ERROR calls to `std::mem::drop`
+}

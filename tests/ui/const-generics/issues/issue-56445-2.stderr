@@ -1,0 +1,14 @@
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/issue-56445-2.rs:7:38
+   |
+LL |     fn lfn_contents(&self) -> [char; Self::LFN_FRAGMENT_LEN] { loop { } }
+   |                                      ^^^^
+   |
+note: not a concrete type
+  --> $DIR/issue-56445-2.rs:4:10
+   |
+LL | impl<'a> OnDiskDirEntry<'a> {
+   |          ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

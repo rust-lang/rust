@@ -1,0 +1,31 @@
+error: use of deprecated function `bar::deprecated`: replaced by `replacement`
+  --> $DIR/suggestion.rs:42:10
+   |
+LL |     bar::deprecated();
+   |          ^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/suggestion.rs:8:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+help: replace the use of the deprecated function
+   |
+LL -     bar::deprecated();
+LL +     bar::replacement();
+   |
+
+error: use of deprecated method `Foo::deprecated`: replaced by `replacement`
+  --> $DIR/suggestion.rs:40:9
+   |
+LL |     foo.deprecated();
+   |         ^^^^^^^^^^
+   |
+help: replace the use of the deprecated method
+   |
+LL -     foo.deprecated();
+LL +     foo.replacement();
+   |
+
+error: aborting due to 2 previous errors
+

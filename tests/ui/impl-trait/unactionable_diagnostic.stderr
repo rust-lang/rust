@@ -1,0 +1,17 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/unactionable_diagnostic.rs:21:5
+   |
+LL | pub fn bar<'t, T>(
+   |            -- the parameter type `T` must be valid for the lifetime `'t` as defined here...
+...
+LL |     foo(post, x)
+   |     ^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | pub fn bar<'t, T: 't>(
+   |                 ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0309`.

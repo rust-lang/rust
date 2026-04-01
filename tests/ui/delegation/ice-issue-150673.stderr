@@ -1,0 +1,19 @@
+error[E0107]: missing generics for struct `S`
+  --> $DIR/ice-issue-150673.rs:16:16
+   |
+LL | impl Trait for S {
+   |                ^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $DIR/ice-issue-150673.rs:10:8
+   |
+LL | struct S<T>(T);
+   |        ^ -
+help: add missing generic argument
+   |
+LL | impl Trait for S<T> {
+   |                 +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

@@ -1,0 +1,18 @@
+- // MIR for `d1` before SimplifyLocals-before-const-prop
++ // MIR for `d1` after SimplifyLocals-before-const-prop
+  
+  fn d1() -> () {
+      let mut _0: ();
+-     let mut _1: E;
+      scope 1 {
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+-         _1 = E::A;
+-         StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  

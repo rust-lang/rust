@@ -1,0 +1,37 @@
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attributes-from-pm-in-2024.rs:6:1
+   |
+LL | unsafe_attributes_pm_in_2024::missing_unsafe!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ usage of unsafe attribute
+   |
+   = note: this error originates in the macro `unsafe_attributes_pm_in_2024::missing_unsafe` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attributes-from-pm-in-2024.rs:8:1
+   |
+LL | #[unsafe_attributes_pm_in_2024::attr_missing_unsafe]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ usage of unsafe attribute
+   |
+   = note: this error originates in the attribute macro `unsafe_attributes_pm_in_2024::attr_missing_unsafe` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attributes-from-pm-in-2024.rs:11:10
+   |
+LL | #[derive(unsafe_attributes_pm_in_2024::AttrMissingUnsafe)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ usage of unsafe attribute
+   |
+   = note: this error originates in the derive macro `unsafe_attributes_pm_in_2024::AttrMissingUnsafe` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attributes-from-pm-in-2024.rs:14:1
+   |
+LL | unsafe_attributes_pm_in_2024::macro_rules_missing_unsafe!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ usage of unsafe attribute
+LL |
+LL | make_fn!();
+   | ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `make_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,32 @@
+error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
+  --> tests/fail/coroutine-pinned-moved.rs:LL:CC
+   |
+LL |         *num += 1;
+   |         ^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> tests/fail/coroutine-pinned-moved.rs:LL:CC
+   |
+LL |         let mut coroutine_iterator = Box::new(CoroutineIteratorAdapter(firstn()));
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: ALLOC was deallocated here:
+  --> tests/fail/coroutine-pinned-moved.rs:LL:CC
+   |
+LL |     }; // *deallocate* coroutine_iterator
+   |     ^
+   = note: stack backtrace:
+           0: firstn::{closure#0}
+               at tests/fail/coroutine-pinned-moved.rs:LL:CC
+           1: <CoroutineIteratorAdapter<{static coroutine@tests/fail/coroutine-pinned-moved.rs:LL:CC}> as std::iter::Iterator>::next
+               at tests/fail/coroutine-pinned-moved.rs:LL:CC
+           2: std::boxed::iter::next
+               at RUSTLIB/alloc/src/boxed/iter.rs:LL:CC
+           3: main
+               at tests/fail/coroutine-pinned-moved.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

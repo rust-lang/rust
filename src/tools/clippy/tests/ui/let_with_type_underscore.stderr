@@ -1,0 +1,112 @@
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:15:5
+   |
+LL |     let x: _ = 1;
+   |     ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::let-with-type-underscore` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::let_with_type_underscore)]`
+help: remove the explicit type `_` declaration
+   |
+LL -     let x: _ = 1;
+LL +     let x = 1;
+   |
+
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:17:5
+   |
+LL |     let _: _ = 2;
+   |     ^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let _: _ = 2;
+LL +     let _ = 2;
+   |
+
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:19:5
+   |
+LL |     let x: _ = func();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let x: _ = func();
+LL +     let x = func();
+   |
+
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:21:5
+   |
+LL |     let x: _;
+   |     ^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let x: _;
+LL +     let x;
+   |
+
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:29:5
+   |
+LL |     let x : _ = 1;
+   |     ^^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let x : _ = 1;
+LL +     let x = 1;
+   |
+
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:50:5
+   |
+LL |     let (a): _ = 0;
+   |     ^^^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let (a): _ = 0;
+LL +     let (a) = 0;
+   |
+
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:52:5
+   |
+LL |     let ((a)): _ = 0;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let ((a)): _ = 0;
+LL +     let ((a)) = 0;
+   |
+
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:54:5
+   |
+LL |     let ((a,)): _ = (0,);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let ((a,)): _ = (0,);
+LL +     let ((a,)) = (0,);
+   |
+
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:57:5
+   |
+LL |     let (   (a   )   ):  _ = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let (   (a   )   ):  _ = 0;
+LL +     let (   (a   )   ) = 0;
+   |
+
+error: aborting due to 9 previous errors
+

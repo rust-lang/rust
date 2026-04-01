@@ -1,0 +1,92 @@
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:31:14
+   |
+LL |     for _ in 0..3 + 1 {}
+   |              ^^^^^^^^ help: use: `0..=3`
+   |
+   = note: `-D clippy::range-plus-one` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::range_plus_one)]`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:35:14
+   |
+LL |     for _ in 0..1 + 5 {}
+   |              ^^^^^^^^ help: use: `0..=5`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:39:14
+   |
+LL |     for _ in 1..1 + 1 {}
+   |              ^^^^^^^^ help: use: `1..=1`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:46:14
+   |
+LL |     for _ in 0..(1 + f()) {}
+   |              ^^^^^^^^^^^^ help: use: `0..=f()`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:60:14
+   |
+LL |     for _ in 1..ONE + ONE {}
+   |              ^^^^^^^^^^^^ help: use: `1..=ONE`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:70:6
+   |
+LL |     (1..10 + 1).for_each(|_| {});
+   |      ^^^^^^^^^ help: use: `1..=10`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:75:6
+   |
+LL |     (1..10 + 1).into_iter().for_each(|_| {});
+   |      ^^^^^^^^^ help: use: `1..=10`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:80:18
+   |
+LL |         let _ = (1..10 + 1).start_bound();
+   |                  ^^^^^^^^^ help: use: `1..=10`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:86:16
+   |
+LL |     let _ = &a[1..1 + 1];
+   |                ^^^^^^^^ help: use: `1..=1`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:90:15
+   |
+LL |     vec.drain(2..3 + 1);
+   |               ^^^^^^^^ help: use: `2..=3`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:94:14
+   |
+LL |     take_arg(10..20 + 1);
+   |              ^^^^^^^^^^ help: use: `10..=20`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:98:16
+   |
+LL |     take_arg({ 10..20 + 1 });
+   |                ^^^^^^^^^^ help: use: `10..=20`
+
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:112:7
+   |
+LL |     a[0..2 + 1][0] = 1;
+   |       ^^^^^^^^ help: use: `0..=2`
+
+error: an exclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:180:6
+   |
+LL |     (1..=n - 1).sum()
+   |      ^^^^^^^^^ help: use: `1..n`
+   |
+   = note: `-D clippy::range-minus-one` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::range_minus_one)]`
+
+error: aborting due to 14 previous errors
+

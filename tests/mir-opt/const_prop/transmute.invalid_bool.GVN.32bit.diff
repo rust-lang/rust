@@ -1,0 +1,13 @@
+- // MIR for `invalid_bool` before GVN
++ // MIR for `invalid_bool` after GVN
+  
+  fn invalid_bool() -> bool {
+      let mut _0: bool;
+  
+      bb0: {
+-         _0 = const -1_i8 as bool (Transmute);
++         _0 = const {transmute(0xff): bool};
+          return;
+      }
+  }
+  

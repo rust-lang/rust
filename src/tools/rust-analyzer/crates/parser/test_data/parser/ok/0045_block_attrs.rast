@@ -1,0 +1,230 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "inner"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        ATTR
+          POUND "#"
+          BANG "!"
+          L_BRACK "["
+          META
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "doc"
+            TOKEN_TREE
+              L_PAREN "("
+              STRING "\"Inner attributes allowed here\""
+              R_PAREN ")"
+          R_BRACK "]"
+        WHITESPACE "\n    "
+        COMMENT "//! As are ModuleDoc style comments"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              ATTR
+                POUND "#"
+                BANG "!"
+                L_BRACK "["
+                META
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "doc"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    STRING "\"Inner attributes are allowed in blocks used as statements\""
+                    R_PAREN ")"
+                R_BRACK "]"
+              WHITESPACE "\n        "
+              ATTR
+                POUND "#"
+                BANG "!"
+                L_BRACK "["
+                META
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "doc"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    STRING "\"Being validated is not affected by duplicates\""
+                    R_PAREN ")"
+                R_BRACK "]"
+              WHITESPACE "\n        "
+              COMMENT "//! As are ModuleDoc style comments"
+              WHITESPACE "\n    "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        BLOCK_EXPR
+          STMT_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            ATTR
+              POUND "#"
+              BANG "!"
+              L_BRACK "["
+              META
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "doc"
+                TOKEN_TREE
+                  L_PAREN "("
+                  STRING "\"Inner attributes are allowed in blocks when they are the last statement of another block\""
+                  R_PAREN ")"
+              R_BRACK "]"
+            WHITESPACE "\n        "
+            COMMENT "//! As are ModuleDoc style comments"
+            WHITESPACE "\n    "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "outer"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          BLOCK_EXPR
+            ATTR
+              POUND "#"
+              L_BRACK "["
+              META
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "doc"
+                TOKEN_TREE
+                  L_PAREN "("
+                  STRING "\"Outer attributes are always allowed\""
+                  R_PAREN ")"
+              R_BRACK "]"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  IMPL
+    COMMENT "// https://github.com/rust-lang/rust-analyzer/issues/689"
+    WHITESPACE "\n"
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Whatever"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "salsa_event"
+        PARAM_LIST
+          L_PAREN "("
+          SELF_PARAM
+            AMP "&"
+            NAME
+              SELF_KW "self"
+          COMMA ","
+          WHITESPACE " "
+          PARAM
+            IDENT_PAT
+              NAME
+                IDENT "event_fn"
+            COLON ":"
+            WHITESPACE " "
+            IMPL_TRAIT_TYPE
+              IMPL_KW "impl"
+              WHITESPACE " "
+              TYPE_BOUND_LIST
+                TYPE_BOUND
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Fn"
+                        PARENTHESIZED_ARG_LIST
+                          L_PAREN "("
+                          R_PAREN ")"
+                        WHITESPACE " "
+                        RET_TYPE
+                          THIN_ARROW "->"
+                          WHITESPACE " "
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "Event"
+                                GENERIC_ARG_LIST
+                                  L_ANGLE "<"
+                                  TYPE_ARG
+                                    PATH_TYPE
+                                      PATH
+                                        PATH_SEGMENT
+                                          NAME_REF
+                                            SELF_TYPE_KW "Self"
+                                  R_ANGLE ">"
+          R_PAREN ")"
+        WHITESPACE " "
+        BLOCK_EXPR
+          STMT_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            ATTR
+              POUND "#"
+              BANG "!"
+              L_BRACK "["
+              META
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "allow"
+                TOKEN_TREE
+                  L_PAREN "("
+                  IDENT "unused_variables"
+                  R_PAREN ")"
+              R_BRACK "]"
+            WHITESPACE " "
+            COMMENT "// this is  `inner_attr` of the block"
+            WHITESPACE "\n    "
+            R_CURLY "}"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n"

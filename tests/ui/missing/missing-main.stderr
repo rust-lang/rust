@@ -1,0 +1,9 @@
+error[E0601]: `main` function not found in crate `missing_main`
+  --> $DIR/missing-main.rs:1:14
+   |
+LL | fn mian() { }
+   |              ^ consider adding a `main` function to `$DIR/missing-main.rs`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0601`.

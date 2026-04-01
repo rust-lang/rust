@@ -1,0 +1,61 @@
+#![warn(clippy::needless_character_iteration)]
+#![allow(clippy::map_identity, clippy::unnecessary_operation)]
+
+#[derive(Default)]
+struct S {
+    field: &'static str,
+}
+
+impl S {
+    fn field(&self) -> &str {
+        self.field
+    }
+}
+
+fn magic(_: char) {}
+
+fn main() {
+    "foo".is_ascii();
+    //~^ needless_character_iteration
+
+    !"foo".is_ascii();
+    //~^ needless_character_iteration
+
+    "foo".is_ascii();
+    //~^ needless_character_iteration
+
+    !"foo".is_ascii();
+    //~^ needless_character_iteration
+
+    let s = String::new();
+    s.is_ascii();
+    //~^ needless_character_iteration
+
+    !"foo".to_string().is_ascii();
+    //~^ needless_character_iteration
+
+    "foo".is_ascii();
+    !"foo".is_ascii();
+
+    S::default().field().is_ascii();
+    //~^ needless_character_iteration
+
+    // Should not lint!
+    "foo".chars().all(|c| {
+        let x = c;
+        magic(x);
+        x.is_ascii()
+    });
+
+    // Should not lint!
+    "foo".chars().all(|c| c.is_ascii() && c.is_alphabetic());
+
+    // Should not lint!
+    "foo".chars().map(|c| c).all(|c| !char::is_ascii(&c));
+
+    // Should not lint!
+    "foo".chars().all(|c| !c.is_ascii());
+
+    // Should not lint!
+    "foo".chars().any(|c| c.is_ascii());
+}

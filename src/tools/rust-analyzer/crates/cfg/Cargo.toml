@@ -1,0 +1,44 @@
+[package]
+name = "cfg"
+version = "0.0.0"
+repository.workspace = true
+description = "Conditional compiling options, `cfg` attribute parser and evaluator for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+rustc-hash.workspace = true
+tracing.workspace = true
+
+# locals deps
+tt = { workspace = true, optional = true }
+syntax = { workspace = true, optional = true }
+span = { path = "../span", version = "0.0", optional = true }
+intern.workspace = true
+
+[dev-dependencies]
+expect-test = "1.5.1"
+oorandom = "11.1.5"
+arbitrary = { version = "1.4.1", features = ["derive"] }
+
+# local deps
+syntax-bridge.workspace = true
+syntax.workspace = true
+
+# tt is needed for testing
+cfg = { path = ".", default-features = false, features = ["tt"] }
+
+[features]
+default = []
+syntax = ["dep:syntax", "dep:span"]
+tt = ["dep:tt"]
+in-rust-tree = []
+
+[lints]
+workspace = true

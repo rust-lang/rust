@@ -1,0 +1,14 @@
+error: type annotations needed for the literal
+  --> $DIR/dyn-compat-self-const-projections-in-assoc-const-ty.rs:32:33
+   |
+LL |     let _: dyn A<Ty = i32, CT = 0>;
+   |                                 ^
+
+error: type annotations needed for the literal
+  --> $DIR/dyn-compat-self-const-projections-in-assoc-const-ty.rs:34:34
+   |
+LL |     let _: &dyn A<Ty = i32, CT = 0> = &();
+   |                                  ^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,67 @@
+# Are defined under a similar name
+
+#__bswap_64
+_bswap64
+
+# not present in Clang and Rust
+_bit_scan_forward
+_bit_scan_reverse
+_castf32_u32
+_castf64_u64
+_castu32_f32
+_castu64_f64
+_lrotl
+_lrotr
+_may_i_use_cpu_feature
+_may_i_use_cpu_feature_ext
+_rdpmc
+_rotl
+_rotl64
+_rotr
+_rotr64
+_rotwl
+_rotwr
+_urdmsr
+
+# not present in Clang
+_bswap
+_mm_cvtsd_si64x
+_mm_cvtsi128_si64x
+_mm_cvtsi64x_sd
+_mm_cvtsi64x_si128
+_mm_cvttsd_si64x
+_popcnt32
+_popcnt64
+
+# not present in Rust
+_cvtsh_ss
+_cvtss_sh
+_mm256_set1_pch
+_mm512_set1_pch
+_mm_malloc
+_mm_popcnt_u32
+_mm_popcnt_u64
+_mm_set1_pch
+_tpause
+_umwait
+
+# IMM8 must be an even number in the range `0..=62`
+_mm_sm3rnds2_epi32
+
+# SDE ERROR: Cannot execute XGETBV with ECX != 0
+_xgetbv
+
+# top bits are undefined, unclear how to test these
+_mm256_castsi128_si256
+_mm512_castsi128_si512
+_mm512_castsi256_si512
+
+# Clang bug
+_mm256_extract_epi16
+_mm256_extract_epi8
+_mm512_mask_reduce_max_pd
+_mm512_mask_reduce_max_ps
+_mm512_mask_reduce_min_pd
+_mm512_mask_reduce_min_ps
+_mm_extract_epi16
+_mm_extract_epi8

@@ -1,0 +1,82 @@
+- // MIR for `multiple` before DataflowConstProp
++ // MIR for `multiple` after DataflowConstProp
+  
+  fn multiple(_1: bool, _2: u8) -> () {
+      debug x => _1;
+      debug i => _2;
+      let mut _0: ();
+      let _3: std::option::Option<u8>;
+      let mut _4: bool;
+      let mut _5: u8;
+      let mut _7: isize;
+      scope 1 {
+          debug e => _3;
+          let _6: u8;
+          let _8: u8;
+          scope 2 {
+              debug x2 => _6;
+              let _9: u8;
+              scope 4 {
+                  debug y => _9;
+              }
+          }
+          scope 3 {
+              debug i => _8;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+          switchInt(move _4) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          StorageLive(_5);
+          _5 = copy _2;
+          _3 = Option::<u8>::Some(move _5);
+          StorageDead(_5);
+          goto -> bb3;
+      }
+  
+      bb2: {
+          _3 = Option::<u8>::None;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_4);
+          StorageLive(_6);
+          _7 = discriminant(_3);
+          switchInt(move _7) -> [0: bb5, 1: bb6, otherwise: bb4];
+      }
+  
+      bb4: {
+          unreachable;
+      }
+  
+      bb5: {
+          _6 = const 0_u8;
+          goto -> bb7;
+      }
+  
+      bb6: {
+          StorageLive(_8);
+          _8 = copy ((_3 as Some).0: u8);
+          _6 = copy _8;
+          StorageDead(_8);
+          goto -> bb7;
+      }
+  
+      bb7: {
+          StorageLive(_9);
+          _9 = copy _6;
+          _0 = const ();
+          StorageDead(_9);
+          StorageDead(_6);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

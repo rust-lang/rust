@@ -1,0 +1,30 @@
+error[E0119]: conflicting implementations of trait `Bop` for type `Bar<()>`
+  --> $DIR/impl_trait_for_same_tait.rs:18:1
+   |
+LL | impl Bop for Bar<()> {}
+   | -------------------- first implementation here
+...
+LL | impl Bop for Bar<i32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Bar<()>`
+
+error[E0119]: conflicting implementations of trait `Bop` for type `Bar<()>`
+  --> $DIR/impl_trait_for_same_tait.rs:28:1
+   |
+LL | impl Bop for Bar<()> {}
+   | -------------------- first implementation here
+...
+LL | impl Bop for Barr {}
+   | ^^^^^^^^^^^^^^^^^ conflicting implementation for `Bar<()>`
+
+error[E0119]: conflicting implementations of trait `Bop` for type `Bar<()>`
+  --> $DIR/impl_trait_for_same_tait.rs:32:1
+   |
+LL | impl Bop for Bar<()> {}
+   | -------------------- first implementation here
+...
+LL | impl Bop for i32 {}
+   | ^^^^^^^^^^^^^^^^ conflicting implementation for `Bar<()>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

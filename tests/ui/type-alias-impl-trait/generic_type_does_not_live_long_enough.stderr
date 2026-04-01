@@ -1,0 +1,33 @@
+error: at least one trait must be specified
+  --> $DIR/generic_type_does_not_live_long_enough.rs:9:28
+   |
+LL |     type WrongGeneric<T> = impl 'static;
+   |                            ^^^^^^^^^^^^
+
+error[E0792]: expected generic type parameter, found `&i32`
+  --> $DIR/generic_type_does_not_live_long_enough.rs:6:18
+   |
+LL |     let z: i32 = x;
+   |                  ^
+...
+LL |     type WrongGeneric<T> = impl 'static;
+   |                       - this generic parameter must be used with a generic type parameter
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/generic_type_does_not_live_long_enough.rs:14:9
+   |
+LL |         t
+   |         ^
+   |         |
+   |         the parameter type `T` must be valid for the static lifetime...
+   |         ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn wrong_generic<T: 'static>(t: T) -> WrongGeneric<T> {
+   |                       +++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0310, E0792.
+For more information about an error, try `rustc --explain E0310`.

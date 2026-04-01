@@ -1,0 +1,19 @@
+error[E0423]: expected function, found module `core::future::async_drop`
+  --> $DIR/ex-ice1.rs:9:35
+   |
+LL | ...   let async_drop_fut = pin!(core::future::async_drop(async {}));
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^ not a function
+
+error[E0603]: module `async_drop` is private
+  --> $DIR/ex-ice1.rs:9:49
+   |
+LL | ...   let async_drop_fut = pin!(core::future::async_drop(async {}));
+   |                                               ^^^^^^^^^^ private module
+   |
+note: the module `async_drop` is defined here
+  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0423, E0603.
+For more information about an error, try `rustc --explain E0423`.

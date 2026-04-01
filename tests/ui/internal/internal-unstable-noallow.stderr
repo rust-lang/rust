@@ -1,0 +1,43 @@
+error[E0658]: use of unstable library feature `function`
+  --> $DIR/internal-unstable-noallow.rs:12:5
+   |
+LL |     call_unstable_noallow!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(function)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `call_unstable_noallow` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: use of unstable library feature `struct_field`
+  --> $DIR/internal-unstable-noallow.rs:14:5
+   |
+LL |     construct_unstable_noallow!(0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(struct_field)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `construct_unstable_noallow` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: use of unstable library feature `method`
+  --> $DIR/internal-unstable-noallow.rs:16:35
+   |
+LL |     |x: internal_unstable::Foo| { call_method_noallow!(x) };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(method)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `call_method_noallow` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: use of unstable library feature `struct2_field`
+  --> $DIR/internal-unstable-noallow.rs:19:35
+   |
+LL |     |x: internal_unstable::Bar| { access_field_noallow!(x) };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(struct2_field)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `access_field_noallow` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

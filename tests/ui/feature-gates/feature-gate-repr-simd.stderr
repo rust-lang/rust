@@ -1,0 +1,89 @@
+error[E0658]: SIMD types are experimental and possibly buggy
+  --> $DIR/feature-gate-repr-simd.rs:1:1
+   |
+LL | #[repr(simd)]
+   | ^^^^^^^^^^^^^
+   |
+   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
+   = help: add `#![feature(repr_simd)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: SIMD types are experimental and possibly buggy
+  --> $DIR/feature-gate-repr-simd.rs:6:1
+   |
+LL | #[repr(simd)]
+   | ^^^^^^^^^^^^^
+   |
+   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
+   = help: add `#![feature(repr_simd)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: SIMD types are experimental and possibly buggy
+  --> $DIR/feature-gate-repr-simd.rs:9:1
+   |
+LL | #[repr(simd)]
+   | ^^^^^^^^^^^^^
+   |
+   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
+   = help: add `#![feature(repr_simd)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: SIMD types are experimental and possibly buggy
+  --> $DIR/feature-gate-repr-simd.rs:13:1
+   |
+LL | #[repr(simd)]
+   | ^^^^^^^^^^^^^
+   |
+   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
+   = help: add `#![feature(repr_simd)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0566]: conflicting representation hints
+  --> $DIR/feature-gate-repr-simd.rs:4:8
+   |
+LL | #[repr(C)]
+   |        ^
+LL |
+LL | #[repr(simd)]
+   |        ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/feature-gate-repr-simd.rs:9:8
+   |
+LL | #[repr(simd)]
+   |        ^^^^
+LL |
+LL | union U {f: u32}
+   | ---------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/feature-gate-repr-simd.rs:13:8
+   |
+LL | #[repr(simd)]
+   |        ^^^^
+LL |
+LL | enum E { X }
+   | ------------ not a struct
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0517, E0566, E0658.
+For more information about an error, try `rustc --explain E0517`.
+Future incompatibility report: Future breakage diagnostic:
+error[E0566]: conflicting representation hints
+  --> $DIR/feature-gate-repr-simd.rs:4:8
+   |
+LL | #[repr(C)]
+   |        ^
+LL |
+LL | #[repr(simd)]
+   |        ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
+

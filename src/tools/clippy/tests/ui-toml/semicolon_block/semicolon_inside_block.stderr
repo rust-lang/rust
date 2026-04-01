@@ -1,0 +1,20 @@
+error: consider moving the `;` inside the block for consistent formatting
+  --> tests/ui-toml/semicolon_block/semicolon_inside_block.rs:47:5
+   |
+LL | /     {
+LL | |
+LL | |         unit_fn_block();
+LL | |         unit_fn_block()
+LL | |     };
+   | |______^
+   |
+   = note: `-D clippy::semicolon-inside-block` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::semicolon_inside_block)]`
+help: put the `;` here
+   |
+LL ~         unit_fn_block();
+LL ~     }
+   |
+
+error: aborting due to 1 previous error
+

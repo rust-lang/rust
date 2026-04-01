@@ -1,0 +1,31 @@
+error[E0391]: cycle detected when computing the super predicates of `A`
+  --> $DIR/cyclic-trait-resolution.rs:1:14
+   |
+LL | trait A: B + A {}
+   |              ^
+   |
+   = note: ...which immediately requires computing the super predicates of `A` again
+note: cycle used when checking that `A` is well-formed
+  --> $DIR/cyclic-trait-resolution.rs:1:1
+   |
+LL | trait A: B + A {}
+   | ^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing the implied predicates of `A`
+  --> $DIR/cyclic-trait-resolution.rs:1:14
+   |
+LL | trait A: B + A {}
+   |              ^
+   |
+   = note: ...which immediately requires computing the implied predicates of `A` again
+note: cycle used when checking that `<impl at $DIR/cyclic-trait-resolution.rs:7:1: 7:14>` is well-formed
+  --> $DIR/cyclic-trait-resolution.rs:7:1
+   |
+LL | impl A for () {}
+   | ^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

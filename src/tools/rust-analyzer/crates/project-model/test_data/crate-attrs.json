@@ -1,0 +1,13 @@
+{
+    "sysroot_src": null,
+    "crates": [
+        {
+            "display_name": "foo",
+            "root_module": "$ROOT$src/lib.rs",
+            "edition": "2024",
+            "deps": [],
+            "crate_attrs": ["no_std", "feature(f16,f128)", "crate_type = \"lib\""],
+            "is_workspace_member": true
+        }
+    ]
+}

@@ -1,0 +1,39 @@
+error: expected identifier, found reserved identifier `$crate`
+  --> $DIR/dollar-crate-is-keyword.rs:6:20
+   |
+LL |             struct $crate {}
+   |                    ^^^^^^ expected identifier, found reserved identifier
+...
+LL | m!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected identifier, found reserved identifier `$crate`
+  --> $DIR/dollar-crate-is-keyword.rs:10:23
+   |
+LL |         use $crate as $crate;
+   |                       ^^^^^^ expected identifier, found reserved identifier
+...
+LL | m!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: imports need to be explicitly named
+  --> $DIR/dollar-crate-is-keyword.rs:9:13
+   |
+LL |         use $crate;
+   |             ^^^^^^
+...
+LL | m!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: try renaming it with a name
+   |
+LL |         use $crate as name;
+   |                    +++++++
+
+error: aborting due to 3 previous errors
+

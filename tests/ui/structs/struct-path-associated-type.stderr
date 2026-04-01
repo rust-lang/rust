@@ -1,0 +1,86 @@
+error[E0071]: expected struct, variant or union type, found associated type
+  --> $DIR/struct-path-associated-type.rs:12:13
+   |
+LL |     let s = T::A {};
+   |             ^^^^ not a struct
+
+error[E0107]: associated type takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/struct-path-associated-type.rs:14:16
+   |
+LL |     let z = T::A::<u8> {};
+   |                ^------ help: remove the unnecessary generics
+   |                |
+   |                expected 0 generic arguments
+   |
+note: associated type defined here, with 0 generic parameters
+  --> $DIR/struct-path-associated-type.rs:4:10
+   |
+LL |     type A;
+   |          ^
+
+error[E0071]: expected struct, variant or union type, found associated type
+  --> $DIR/struct-path-associated-type.rs:14:13
+   |
+LL |     let z = T::A::<u8> {};
+   |             ^^^^ not a struct
+
+error[E0071]: expected struct, variant or union type, found associated type
+  --> $DIR/struct-path-associated-type.rs:18:9
+   |
+LL |         T::A {} => {}
+   |         ^^^^ not a struct
+
+error[E0107]: associated type takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/struct-path-associated-type.rs:25:16
+   |
+LL |     let z = T::A::<u8> {};
+   |                ^------ help: remove the unnecessary generics
+   |                |
+   |                expected 0 generic arguments
+   |
+note: associated type defined here, with 0 generic parameters
+  --> $DIR/struct-path-associated-type.rs:4:10
+   |
+LL |     type A;
+   |          ^
+
+error[E0223]: ambiguous associated type
+  --> $DIR/struct-path-associated-type.rs:32:13
+   |
+LL |     let s = S::A {};
+   |             ^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let s = S::A {};
+LL +     let s = <S as Tr>::A {};
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/struct-path-associated-type.rs:33:13
+   |
+LL |     let z = S::A::<u8> {};
+   |             ^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let z = S::A::<u8> {};
+LL +     let z = <S as Tr>::A::<u8> {};
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/struct-path-associated-type.rs:35:9
+   |
+LL |         S::A {} => {}
+   |         ^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -         S::A {} => {}
+LL +         <S as Tr>::A {} => {}
+   |
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0071, E0107, E0223.
+For more information about an error, try `rustc --explain E0071`.

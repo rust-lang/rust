@@ -1,0 +1,14 @@
+error: couldn't read `$DIR/not-utf8.bin`: stream did not contain valid UTF-8
+  --> $DIR/not-utf8.rs:5:5
+   |
+LL |     include!("not-utf8.bin");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: byte `193` is not valid utf-8
+  --> $DIR/not-utf8.bin:1:1
+   |
+LL | �|�␂!5�cc␕␂�Ӻi��WWj�ȥ�'�}�␒�J�ȉ��W�␞O�@����␜w�V���LO����␔[ ␃_�'���SQ�~ذ��ų&��-    ��lN~��!@␌ _#���kQ��h�␝�:�␜␇�
+   | ^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,16 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-110052.rs:6:30
+   |
+LL |     for<'iter> dyn Validator<<&'iter I>::Item>:,
+   |                              ^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL |     for<'iter> dyn Validator<<&'iter I as IntoAsyncIterator>::Item>:,
+   |                                        ++++++++++++++++++++
+LL |     for<'iter> dyn Validator<<&'iter I as IntoIterator>::Item>:,
+   |                                        +++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0223`.

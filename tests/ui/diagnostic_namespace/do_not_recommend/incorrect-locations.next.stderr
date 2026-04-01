@@ -1,0 +1,58 @@
+warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:7:1
+   |
+LL | #[diagnostic::do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:11:1
+   |
+LL | #[diagnostic::do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:15:1
+   |
+LL | #[diagnostic::do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:19:1
+   |
+LL | #[diagnostic::do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:23:1
+   |
+LL | #[diagnostic::do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:27:1
+   |
+LL | #[diagnostic::do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:31:1
+   |
+LL | #[diagnostic::do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:35:1
+   |
+LL | #[diagnostic::do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:39:1
+   |
+LL | #[diagnostic::do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 9 warnings emitted
+

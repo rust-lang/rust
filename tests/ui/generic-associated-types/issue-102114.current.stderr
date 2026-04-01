@@ -1,0 +1,12 @@
+error[E0049]: associated type `B` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/issue-102114.rs:15:12
+   |
+LL |     type B<'b>;
+   |            -- expected 0 type parameters
+...
+LL |     type B<T> = Wrapper<T>;
+   |            ^ found 1 type parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0049`.

@@ -1,0 +1,70 @@
+# 6 hours timeout for CI builds
+timeout = 21600
+
+# Do not allow approving PRs with certain labels
+labels_blocking_approval = [
+    # Waiting for an FCP to finish
+    "final-comment-period",
+    "proposed-final-comment-period",
+    # PRs that were closed or postponed by an FCP
+    "disposition-close",
+    "disposition-postpone",
+    # Waiting for library ACP
+    "S-waiting-on-ACP",
+    "S-waiting-on-concerns",
+    "S-waiting-on-crater",
+    "S-waiting-on-fcp",
+    "S-waiting-on-MCP",
+    "S-waiting-on-t-lang",
+    "S-waiting-on-t-compiler",
+    "S-waiting-on-t-libs-api",
+    "S-waiting-on-t-libs",
+    "S-waiting-on-t-types",
+    "S-waiting-on-t-opsem",
+    "S-waiting-on-t-rustdoc",
+    "S-waiting-on-t-rustdoc-frontend",
+    "S-waiting-on-t-clippy",
+    # PR manually set to blocked
+    "S-blocked",
+]
+
+# If CI runs quicker than this duration, consider it to be a failure
+min_ci_time = 600
+
+merge_queue_enabled = true
+report_merge_conflicts = true
+
+[labels]
+approved = [
+    "+S-waiting-on-bors",
+    "-S-blocked",
+    "-S-waiting-on-author",
+    "-S-waiting-on-crater",
+    "-S-waiting-on-review",
+    "-S-waiting-on-team",
+]
+unapproved = [
+    "+S-waiting-on-author",
+    "-S-blocked",
+    "-S-waiting-on-bors",
+    "-S-waiting-on-crater",
+    "-S-waiting-on-review",
+    "-S-waiting-on-team",
+]
+try_failed = [
+    "+S-waiting-on-author",
+    "-S-waiting-on-review",
+    "-S-waiting-on-crater",
+]
+auto_build_succeeded = [
+    "+merged-by-bors",
+    "-S-waiting-on-bors",
+]
+auto_build_failed = [
+    "+S-waiting-on-review",
+    "-S-blocked",
+    "-S-waiting-on-bors",
+    "-S-waiting-on-author",
+    "-S-waiting-on-crater",
+    "-S-waiting-on-team",
+]

@@ -1,0 +1,85 @@
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:10:9
+   |
+LL |     let _ = data.lock().unwrap();
+   |         ^ this lock is not assigned to a binding and is immediately dropped
+   |
+   = note: `#[deny(let_underscore_lock)]` (part of `#[deny(let_underscore)]`) on by default
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = data.lock().unwrap();
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _ = data.lock().unwrap();
+LL +     drop(data.lock().unwrap());
+   |
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:12:9
+   |
+LL |     let _ = data.lock();
+   |         ^ this lock is not assigned to a binding and is immediately dropped
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = data.lock();
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _ = data.lock();
+LL +     drop(data.lock());
+   |
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:14:10
+   |
+LL |     let (_, _) = (data.lock(), 1);
+   |          ^ this lock is not assigned to a binding and is immediately dropped
+   |
+   = help: consider immediately dropping the value using `drop(..)` after the `let` statement
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let (_unused, _) = (data.lock(), 1);
+   |           ++++++
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:16:26
+   |
+LL |     let (_a, Struct { a: _ }) = (0, Struct { a: data.lock() });
+   |                          ^ this lock is not assigned to a binding and is immediately dropped
+   |
+   = help: consider immediately dropping the value using `drop(..)` after the `let` statement
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let (_a, Struct { a: _unused }) = (0, Struct { a: data.lock() });
+   |                           ++++++
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:18:6
+   |
+LL |     (_ , _) = (data.lock(), 1);
+   |      ^ this lock is not assigned to a binding and is immediately dropped
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+  --> $DIR/let_underscore_lock.rs:18:6
+   |
+LL |     (_ , _) = (data.lock(), 1);
+   |      ^
+   = help: consider immediately dropping the value using `drop(..)` after the `let` statement
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:21:22
+   |
+LL |     (_b, Struct { a: _ }) = (0, Struct { a: data.lock() });
+   |                      ^ this lock is not assigned to a binding and is immediately dropped
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+  --> $DIR/let_underscore_lock.rs:21:22
+   |
+LL |     (_b, Struct { a: _ }) = (0, Struct { a: data.lock() });
+   |                      ^
+   = help: consider immediately dropping the value using `drop(..)` after the `let` statement
+
+error: aborting due to 6 previous errors
+

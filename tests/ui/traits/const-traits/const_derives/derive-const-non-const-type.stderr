@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `A: [const] Default` is not satisfied
+  --> $DIR/derive-const-non-const-type.rs:12:14
+   |
+LL | #[derive_const(Default)]
+   |                ------- in this derive macro expansion
+LL | pub struct S(A);
+   |              ^
+   |
+help: make the `impl` of trait `Default` `const`
+   |
+LL | impl const Default for A {
+   |      +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

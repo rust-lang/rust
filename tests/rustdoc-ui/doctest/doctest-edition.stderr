@@ -1,0 +1,22 @@
+error: could not parse code block as Rust code
+  --> $DIR/doctest-edition.rs:7:5
+   |
+LL |   //! ```
+   |  _____^
+LL | | //! foo'b'
+LL | | //! ```
+   | |_______^
+   |
+   = note: error from rustc: prefix `foo` is unknown
+note: the lint level is defined here
+  --> $DIR/doctest-edition.rs:3:9
+   |
+LL | #![deny(rustdoc::invalid_rust_codeblocks)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: mark blocks that do not contain Rust code as text
+   |
+LL | //! ```text
+   |        ++++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,110 @@
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attributes-fix.rs:53:6
+   |
+LL | tt!([no_mangle]);
+   |      ^^^^^^^^^ usage of unsafe attribute
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-attributes.html>
+note: the lint level is defined here
+  --> $DIR/unsafe-attributes-fix.rs:3:9
+   |
+LL | #![deny(unsafe_attr_outside_unsafe)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: wrap the attribute in `unsafe(...)`
+   |
+LL | tt!([unsafe(no_mangle)]);
+   |      +++++++         +
+
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attributes-fix.rs:14:11
+   |
+LL |         #[$e]
+   |           ^^ usage of unsafe attribute
+...
+LL | ident!(no_mangle);
+   | ----------------- in this macro invocation
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-attributes.html>
+   = note: this error originates in the macro `ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: wrap the attribute in `unsafe(...)`
+   |
+LL |         #[unsafe($e)]
+   |           +++++++  +
+
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attributes-fix.rs:57:7
+   |
+LL | meta!(no_mangle);
+   |       ^^^^^^^^^ usage of unsafe attribute
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-attributes.html>
+help: wrap the attribute in `unsafe(...)`
+   |
+LL | meta!(unsafe(no_mangle));
+   |       +++++++         +
+
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attributes-fix.rs:60:8
+   |
+LL | meta2!(export_name = "baw");
+   |        ^^^^^^^^^^^ usage of unsafe attribute
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-attributes.html>
+help: wrap the attribute in `unsafe(...)`
+   |
+LL | meta2!(unsafe(export_name = "baw"));
+   |        +++++++                   +
+
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attributes-fix.rs:23:11
+   |
+LL |         #[$e = $l]
+   |           ^^ usage of unsafe attribute
+...
+LL | ident2!(export_name, "bars");
+   | ---------------------------- in this macro invocation
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-attributes.html>
+   = note: this error originates in the macro `ident2` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: wrap the attribute in `unsafe(...)`
+   |
+LL |         #[unsafe($e = $l)]
+   |           +++++++       +
+
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attributes-fix.rs:46:26
+   |
+LL |         #[cfg_attr(true, link_section = ".custom_section")]
+   |                          ^^^^^^^^^^^^ usage of unsafe attribute
+...
+LL | with_cfg_attr!();
+   | ---------------- in this macro invocation
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-attributes.html>
+   = note: this error originates in the macro `with_cfg_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: wrap the attribute in `unsafe(...)`
+   |
+LL |         #[cfg_attr(true, unsafe(link_section = ".custom_section"))]
+   |                          +++++++                                +
+
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attributes-fix.rs:67:3
+   |
+LL | #[no_mangle]
+   |   ^^^^^^^^^ usage of unsafe attribute
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-attributes.html>
+help: wrap the attribute in `unsafe(...)`
+   |
+LL | #[unsafe(no_mangle)]
+   |   +++++++         +
+
+error: aborting due to 7 previous errors
+

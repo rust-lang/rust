@@ -1,0 +1,74 @@
+error: `std::ops::Range<usize>` is forbidden as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:8:24
+   |
+LL | struct _Range<const R: std::ops::Range<usize>>;
+   |                        ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: `std::ops::RangeFrom<usize>` is forbidden as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:13:28
+   |
+LL | struct _RangeFrom<const R: std::ops::RangeFrom<usize>>;
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: `RangeFull` is forbidden as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:18:28
+   |
+LL | struct _RangeFull<const R: std::ops::RangeFull>;
+   |                            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: `std::ops::RangeInclusive<usize>` is forbidden as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:24:33
+   |
+LL | struct _RangeInclusive<const R: std::ops::RangeInclusive<usize>>;
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: `RangeTo<usize>` is forbidden as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:29:26
+   |
+LL | struct _RangeTo<const R: std::ops::RangeTo<usize>>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: `std::ops::RangeToInclusive<usize>` is forbidden as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:34:35
+   |
+LL | struct _RangeToInclusive<const R: std::ops::RangeToInclusive<usize>>;
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: aborting due to 6 previous errors
+

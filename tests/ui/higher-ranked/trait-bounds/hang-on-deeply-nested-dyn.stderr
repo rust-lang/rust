@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/hang-on-deeply-nested-dyn.rs:10:5
+   |
+LL |   ) -> &dyn Fn(
+   |  ______-
+LL | |     &dyn Fn(
+LL | |         &dyn Fn(
+LL | |             &dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(u32))))))))),
+LL | |         ),
+LL | |     ),
+LL | | ) {
+   | |_- expected `&dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn Fn(u32) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a))` because of return type
+LL |       f
+   |       ^ expected `&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&...))))`, found `&dyn Fn(u32)`
+   |
+   = note: expected reference `&dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn Fn(u32) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a))`
+              found reference `&dyn Fn(u32)`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,17 @@
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/const_trait.rs:23:1
+   |
+LL | / fn can_be_const() {
+LL | |     0u64.method();
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
+help: make the function `const`
+   |
+LL | const fn can_be_const() {
+   | +++++
+
+error: aborting due to 1 previous error
+

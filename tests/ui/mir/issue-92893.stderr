@@ -1,0 +1,10 @@
+error: expected expression, found `let` statement
+  --> $DIR/issue-92893.rs:1:22
+   |
+LL | struct Bug<A = [(); (let a = (), 1).1]> {
+   |                      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: aborting due to 1 previous error
+

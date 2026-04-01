@@ -1,0 +1,24 @@
+error: `<i32 as Trait>::Type` is forbidden as the type of a const generic parameter
+  --> $DIR/default-proj-ty-as-type-of-const-issue-125757.rs:12:25
+   |
+LL | struct Wrapper<const C: <i32 as Trait>::Type> {}
+   |                         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: the constant `C` is not of type `<i32 as Trait>::Type`
+  --> $DIR/default-proj-ty-as-type-of-const-issue-125757.rs:15:22
+   |
+LL | impl<const C: usize> Wrapper<C> {}
+   |                      ^^^^^^^^^^ expected associated type, found `usize`
+   |
+   = help: consider constraining the associated type `<i32 as Trait>::Type` to `usize`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: required by a const generic parameter in `Wrapper`
+  --> $DIR/default-proj-ty-as-type-of-const-issue-125757.rs:12:16
+   |
+LL | struct Wrapper<const C: <i32 as Trait>::Type> {}
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `Wrapper`
+
+error: aborting due to 2 previous errors
+

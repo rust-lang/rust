@@ -1,0 +1,11 @@
+error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
+  --> $DIR/E0055.rs:11:13
+   |
+LL |     ref_foo.foo();
+   |             ^^^ deref recursion limit reached
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "8"]` attribute to your crate (`E0055`)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0055`.

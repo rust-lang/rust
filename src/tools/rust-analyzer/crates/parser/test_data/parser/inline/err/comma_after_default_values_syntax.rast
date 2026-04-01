@@ -1,0 +1,58 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              DOT2 ".."
+              COMMA ","
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        RECORD_EXPR
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "S"
+          WHITESPACE " "
+          RECORD_EXPR_FIELD_LIST
+            L_CURLY "{"
+            WHITESPACE " "
+            DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            RECORD_EXPR_FIELD
+              NAME_REF
+                IDENT "a"
+              COLON ":"
+              WHITESPACE " "
+              LITERAL
+                INT_NUMBER "0"
+            WHITESPACE " "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 21: expected expression
+error 21: cannot use a comma after the base struct
+error 36: expected expression
+error 36: cannot use a comma after the base struct

@@ -1,0 +1,31 @@
+error: `...` is not supported for `extern "Rust"` naked functions
+  --> $DIR/naked-invalid.rs:29:41
+   |
+LL | unsafe extern "Rust" fn c_variadic_rust(_: ...) {
+   |        -------------                    ^^^^^^
+   |        |
+   |        `extern "Rust"` because of this
+   |
+   = help: C-variadic function must have a compatible calling convention
+
+error: `...` is not supported for `extern "x86-interrupt"` naked functions
+  --> $DIR/naked-invalid.rs:35:59
+   |
+LL | unsafe extern "x86-interrupt" fn c_variadic_x86_interrupt(_: ...) {
+   |        ----------------------                             ^^^^^^
+   |        |
+   |        `extern "x86-interrupt"` because of this
+   |
+   = help: C-variadic function must have a compatible calling convention
+
+error[E0703]: invalid ABI: found `nonsense`
+  --> $DIR/naked-invalid.rs:41:15
+   |
+LL | unsafe extern "nonsense" fn c_variadic_x86_nonsense(_: ...) {
+   |               ^^^^^^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0703`.

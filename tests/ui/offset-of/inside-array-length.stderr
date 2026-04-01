@@ -1,0 +1,90 @@
+error: overly complex generic constant
+  --> $DIR/inside-array-length.rs:9:27
+   |
+LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ const blocks are not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+   = note: this error originates in the macro `std::mem::offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/inside-array-length.rs:13:15
+   |
+LL | struct Inline<T>
+   |               ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error: overly complex generic constant
+  --> $DIR/inside-array-length.rs:16:10
+   |
+LL |     [(); std::mem::offset_of!((T,), 0)]:,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ const blocks are not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+   = note: this error originates in the macro `std::mem::offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0391]: cycle detected when evaluating type-level constant
+  --> $DIR/inside-array-length.rs:9:27
+   |
+LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires const-evaluating + checking `foo::{constant#0}`...
+  --> $DIR/inside-array-length.rs:9:27
+   |
+LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires caching mir of `foo::{constant#0}` for CTFE...
+  --> $DIR/inside-array-length.rs:9:27
+   |
+LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires elaborating drops for `foo::{constant#0}`...
+  --> $DIR/inside-array-length.rs:9:27
+   |
+LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires borrow-checking `foo::{constant#0}`...
+  --> $DIR/inside-array-length.rs:9:27
+   |
+LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires normalizing `Binder { value: ConstEvaluatable(UnevaluatedConst { def: DefId(0:7 ~ inside_array_length[07d6]::foo::{constant#0}), args: ['^c_1, T/#1] }), bound_vars: [] }`...
+  --> $DIR/inside-array-length.rs:9:27
+   |
+LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires evaluating type-level constant, completing the cycle
+note: cycle used when normalizing `inside_array_length::::foo::{constant#0}`
+  --> $DIR/inside-array-length.rs:9:27
+   |
+LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: this error originates in the macro `std::mem::offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
+  --> $DIR/inside-array-length.rs:21:14
+   |
+LL |     let dst: Inline<dyn Trait>;
+   |              ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Trait`
+note: required by an implicit `Sized` bound in `Inline`
+  --> $DIR/inside-array-length.rs:13:15
+   |
+LL | struct Inline<T>
+   |               ^ required by the implicit `Sized` requirement on this type parameter in `Inline`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | struct Inline<T: ?Sized>
+   |                ++++++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0391, E0392.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,0 +1,14 @@
+error: specializing impl repeats parameter `T`
+  --> $DIR/dyn-trait-assoc-types.rs:22:1
+   |
+LL | impl<'a, T> Specializable for dyn B<T, Y = T> + 'a {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: specializing impl repeats parameter `T`
+  --> $DIR/dyn-trait-assoc-types.rs:27:1
+   |
+LL | impl<'a, T> Specializable for dyn C<Y = (T, T)> + 'a {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

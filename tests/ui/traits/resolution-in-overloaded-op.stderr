@@ -1,0 +1,16 @@
+error[E0369]: cannot multiply `&T` by `f64`
+  --> $DIR/resolution-in-overloaded-op.rs:8:7
+   |
+LL |     a * b
+   |     - ^ - f64
+   |     |
+   |     &T
+   |
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn foo<T: MyMul<f64, f64>>(a: &T, b: f64) -> f64 where &T: Mul<f64, Output = f64> {
+   |                                                  ++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

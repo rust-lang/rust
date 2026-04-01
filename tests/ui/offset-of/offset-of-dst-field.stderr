@@ -1,0 +1,95 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:37:5
+   |
+LL |     offset_of!(Alpha, z);
+   |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:38:5
+   |
+LL |     offset_of!(Beta, z);
+   |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Trait + 'static)`
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `Extern` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:39:5
+   |
+LL |     offset_of!(Gamma, z);
+   |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `Extern`
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:41:5
+   |
+LL |     offset_of!((u8, dyn Trait), 1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Trait`
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `Extern` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:46:5
+   |
+LL |     offset_of!(Delta<Extern>, z);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `Extern`
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:47:5
+   |
+LL |     offset_of!(Delta<dyn Trait>, z);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Trait`
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:45:5
+   |
+LL |     offset_of!(Delta<Alpha>, z);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Alpha`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `Alpha`
+  --> $DIR/offset-of-dst-field.rs:6:8
+   |
+LL | struct Alpha {
+   |        ^^^^^
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:51:5
+   |
+LL | fn generic_with_maybe_sized<T: ?Sized>() -> usize {
+   |                             - this type parameter needs to be `Sized`
+LL |     offset_of!(Delta<T>, z)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn generic_with_maybe_sized<T: ?Sized>() -> usize {
+LL + fn generic_with_maybe_sized<T>() -> usize {
+   |
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:55:16
+   |
+LL |     offset_of!(([u8], u8), 1);
+   |                ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: only the last element of a tuple may have a dynamically sized type
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

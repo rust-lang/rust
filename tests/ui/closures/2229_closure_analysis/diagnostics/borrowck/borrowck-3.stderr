@@ -1,0 +1,22 @@
+error[E0373]: closure may outlive the current block, but it borrows `p`, which is owned by the current block
+  --> $DIR/borrowck-3.rs:11:9
+   |
+LL |         || {
+   |         ^^ may outlive borrowed value `p`
+LL |            let x = &mut p.x;
+LL |            println!("{:?}", p);
+   |                             - `p` is borrowed here
+   |
+note: block requires argument type to outlive `'1`
+  --> $DIR/borrowck-3.rs:9:9
+   |
+LL |     let mut c = {
+   |         ^^^^^
+help: to force the closure to take ownership of `p` (and any other referenced variables), use the `move` keyword
+   |
+LL |         move || {
+   |         ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0373`.

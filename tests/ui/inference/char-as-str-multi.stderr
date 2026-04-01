@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/char-as-str-multi.rs:5:19
+   |
+LL |     let _: char = "foo";
+   |            ----   ^^^^^ expected `char`, found `&str`
+   |            |
+   |            expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/char-as-str-multi.rs:6:19
+   |
+LL |     let _: char = "";
+   |            ----   ^^ expected `char`, found `&str`
+   |            |
+   |            expected due to this
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

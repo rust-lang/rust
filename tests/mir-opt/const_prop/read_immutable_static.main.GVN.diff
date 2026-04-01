@@ -1,0 +1,46 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: u8;
+      let mut _2: u8;
+      let mut _3: &u8;
+      let mut _4: u8;
+      let mut _5: &u8;
+      scope 1 {
+          debug x => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         StorageLive(_2);
+-         StorageLive(_3);
++         nop;
++         nop;
+          _3 = const {ALLOC0: &u8};
+-         _2 = copy (*_3);
++         _2 = const 2_u8;
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = const {ALLOC0: &u8};
+-         _4 = copy (*_5);
+-         _1 = Add(move _2, move _4);
++         _4 = const 2_u8;
++         _1 = const 4_u8;
+          StorageDead(_4);
+-         StorageDead(_2);
++         nop;
+          StorageDead(_5);
+-         StorageDead(_3);
++         nop;
+          _0 = const ();
+          StorageDead(_1);
+          return;
+      }
+  }
+  
+  ALLOC0 (static: FOO, size: 1, align: 1) {
+      02                                              │ .
+  }
+  

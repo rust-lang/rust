@@ -1,0 +1,54 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ reference: attributes.coverage.nesting
+   LL|       |
+   LL|       |// Demonstrates the interaction of `#[coverage(off)]` and `#[coverage(on)]`
+   LL|       |// in nested functions.
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn do_stuff() {}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn dense_a() {
+   LL|       |    dense_b();
+   LL|       |    dense_b();
+   LL|       |    #[coverage(on)]
+   LL|      2|    fn dense_b() {
+   LL|      2|        dense_c();
+   LL|      2|        dense_c();
+   LL|       |        #[coverage(off)]
+   LL|       |        fn dense_c() {
+   LL|       |            do_stuff();
+   LL|       |        }
+   LL|      2|    }
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn sparse_a() {
+   LL|       |    sparse_b();
+   LL|       |    sparse_b();
+   LL|       |    fn sparse_b() {
+   LL|       |        sparse_c();
+   LL|       |        sparse_c();
+   LL|       |        #[coverage(on)]
+   LL|      4|        fn sparse_c() {
+   LL|      4|            sparse_d();
+   LL|      4|            sparse_d();
+   LL|      8|            fn sparse_d() {
+   LL|      8|                sparse_e();
+   LL|      8|                sparse_e();
+   LL|       |                #[coverage(off)]
+   LL|       |                fn sparse_e() {
+   LL|       |                    do_stuff();
+   LL|       |                }
+   LL|      8|            }
+   LL|      4|        }
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    dense_a();
+   LL|       |    sparse_a();
+   LL|       |}
+

@@ -1,0 +1,226 @@
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:139:18
+   |
+LL |         use bar::baz::{foo, bar};
+   |                  ^^^ private module
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:139:18
+   |
+LL |         use bar::baz::{foo, bar};
+   |                  ^^^ private module
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:148:18
+   |
+LL |         use bar::baz;
+   |                  ^^^ private module
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
+
+error[E0603]: module `i` is private
+  --> $DIR/privacy1.rs:172:20
+   |
+LL |     use self::foo::i::A;
+   |                    ^ private module
+   |
+note: the module `i` is defined here
+  --> $DIR/privacy1.rs:177:9
+   |
+LL |         mod i {
+   |         ^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:111:21
+   |
+LL |         crate::bar::baz::A::foo();
+   |                     ^^^  - struct `A` is not publicly re-exported
+   |                     |
+   |                     private module
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:112:21
+   |
+LL |         crate::bar::baz::A::bar();
+   |                     ^^^  - struct `A` is not publicly re-exported
+   |                     |
+   |                     private module
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:114:21
+   |
+LL |         crate::bar::baz::A.foo2();
+   |                     ^^^  - unit struct `A` is not publicly re-exported
+   |                     |
+   |                     private module
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:115:21
+   |
+LL |         crate::bar::baz::A.bar2();
+   |                     ^^^  - unit struct `A` is not publicly re-exported
+   |                     |
+   |                     private module
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
+
+error[E0603]: trait `B` is private
+  --> $DIR/privacy1.rs:119:21
+   |
+LL |         crate::bar::B::foo();
+   |                     ^  --- associated function `foo` is not publicly re-exported
+   |                     |
+   |                     private trait
+   |
+note: the trait `B` is defined here
+  --> $DIR/privacy1.rs:47:5
+   |
+LL |     trait B {
+   |     ^^^^^^^
+
+error[E0603]: function `epriv` is private
+  --> $DIR/privacy1.rs:125:25
+   |
+LL |             crate::bar::epriv();
+   |                         ^^^^^ private function
+   |
+note: the function `epriv` is defined here
+  --> $DIR/privacy1.rs:72:9
+   |
+LL |         fn epriv();
+   |         ^^^^^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:134:21
+   |
+LL |         crate::bar::baz::foo();
+   |                     ^^^ private module
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
+help: consider importing this function through its public re-export instead
+   |
+LL -         crate::bar::baz::foo();
+LL +         bar::foo();
+   |
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:135:21
+   |
+LL |         crate::bar::baz::bar();
+   |                     ^^^ private module
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
+help: consider importing this function through its public re-export instead
+   |
+LL -         crate::bar::baz::bar();
+LL +         bar::bar();
+   |
+
+error[E0603]: trait `B` is private
+  --> $DIR/privacy1.rs:164:22
+   |
+LL |     impl crate::bar::B for f32 { fn foo() -> f32 { 1.0 } }
+   |                      ^ private trait
+   |
+note: the trait `B` is defined here
+  --> $DIR/privacy1.rs:47:5
+   |
+LL |     trait B {
+   |     ^^^^^^^
+
+error[E0624]: associated function `bar` is private
+  --> $DIR/privacy1.rs:84:23
+   |
+LL |             fn bar() {}
+   |             -------- private associated function defined here
+...
+LL |         self::baz::A::bar();
+   |                       ^^^ private associated function
+
+error[E0624]: associated function `bar` is private
+  --> $DIR/privacy1.rs:102:13
+   |
+LL |         fn bar() {}
+   |         -------- private associated function defined here
+...
+LL |     bar::A::bar();
+   |             ^^^ private associated function
+
+error[E0624]: associated function `bar` is private
+  --> $DIR/privacy1.rs:109:24
+   |
+LL |         fn bar() {}
+   |         -------- private associated function defined here
+...
+LL |         crate::bar::A::bar();
+   |                        ^^^ private associated function
+
+error[E0624]: associated function `bar` is private
+  --> $DIR/privacy1.rs:112:29
+   |
+LL |             fn bar() {}
+   |             -------- private associated function defined here
+...
+LL |         crate::bar::baz::A::bar();
+   |                             ^^^ private associated function
+
+error[E0624]: method `bar2` is private
+  --> $DIR/privacy1.rs:115:28
+   |
+LL |             fn bar2(&self) {}
+   |             -------------- private method defined here
+...
+LL |         crate::bar::baz::A.bar2();
+   |                            ^^^^ private method
+
+error: aborting due to 18 previous errors
+
+Some errors have detailed explanations: E0603, E0624.
+For more information about an error, try `rustc --explain E0603`.

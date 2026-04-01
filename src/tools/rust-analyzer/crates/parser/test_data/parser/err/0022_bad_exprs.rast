@@ -1,0 +1,174 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "a"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        EXPR_STMT
+          ARRAY_EXPR
+            L_BRACK "["
+            LITERAL
+              INT_NUMBER "1"
+            COMMA ","
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "2"
+            COMMA ","
+            WHITESPACE " "
+            ERROR
+              AT "@"
+        ERROR
+          COMMA ","
+        WHITESPACE " "
+        STRUCT
+          STRUCT_KW "struct"
+          ERROR
+            COMMA ","
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+        ERROR
+          R_BRACK "]"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "b"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "foo"
+            ARG_LIST
+              L_PAREN "("
+              LITERAL
+                INT_NUMBER "1"
+              COMMA ","
+              WHITESPACE " "
+              LITERAL
+                INT_NUMBER "2"
+              COMMA ","
+              WHITESPACE " "
+              ERROR
+                AT "@"
+        ERROR
+          COMMA ","
+        WHITESPACE " "
+        IMPL
+          IMPL_KW "impl"
+        ERROR
+          COMMA ","
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+        ERROR
+          R_PAREN ")"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "c"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        EXPR_STMT
+          METHOD_CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "foo"
+            DOT "."
+            NAME_REF
+              IDENT "bar"
+            ARG_LIST
+              L_PAREN "("
+              LITERAL
+                INT_NUMBER "1"
+              COMMA ","
+              WHITESPACE " "
+              LITERAL
+                INT_NUMBER "2"
+              COMMA ","
+              WHITESPACE " "
+              ERROR
+                AT "@"
+        ERROR
+          COMMA ","
+        WHITESPACE " "
+        ERROR
+          R_BRACK "]"
+        ERROR
+          COMMA ","
+        WHITESPACE " "
+        TRAIT
+          TRAIT_KW "trait"
+          ERROR
+            COMMA ","
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+        ERROR
+          R_PAREN ")"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 16: expected expression
+error 17: expected R_BRACK
+error 17: expected SEMICOLON
+error 17: expected expression, item or let statement
+error 25: expected a name
+error 26: expected `;`, `{`, or `(`
+error 30: expected pattern
+error 30: expected SEMICOLON
+error 30: expected expression, item or let statement
+error 53: expected expression
+error 54: expected R_PAREN
+error 54: expected SEMICOLON
+error 54: expected expression, item or let statement
+error 60: expected type
+error 60: expected `{`
+error 60: expected expression, item or let statement
+error 65: expected pattern
+error 65: expected SEMICOLON
+error 65: expected expression, item or let statement
+error 92: expected expression
+error 93: expected R_PAREN
+error 93: expected SEMICOLON
+error 93: expected expression, item or let statement
+error 95: expected expression, item or let statement
+error 96: expected expression, item or let statement
+error 103: expected a name
+error 104: expected `{`
+error 108: expected pattern
+error 108: expected SEMICOLON
+error 108: expected expression, item or let statement

@@ -1,0 +1,26 @@
+[package]
+name = "rustc_next_trait_solver"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+derive-where = "1.2.7"
+rustc_data_structures = { path = "../rustc_data_structures", optional = true }
+rustc_index = { path = "../rustc_index", default-features = false }
+rustc_macros = { path = "../rustc_macros", optional = true }
+rustc_type_ir = { path = "../rustc_type_ir", default-features = false }
+rustc_type_ir_macros = { path = "../rustc_type_ir_macros" }
+tracing = "0.1"
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+default = ["nightly"]
+nightly = [
+    "dep:rustc_data_structures",
+    "dep:rustc_macros",
+    "rustc_index/nightly",
+    "rustc_type_ir/nightly",
+]
+# tidy-alphabetical-end

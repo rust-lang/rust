@@ -1,0 +1,23 @@
+error: used `seek` to go to the start of the stream
+  --> tests/ui/seek_to_start_instead_of_rewind.rs:52:7
+   |
+LL |     t.seek(SeekFrom::Start(0));
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `rewind()`
+   |
+   = note: `-D clippy::seek-to-start-instead-of-rewind` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::seek_to_start_instead_of_rewind)]`
+
+error: used `seek` to go to the start of the stream
+  --> tests/ui/seek_to_start_instead_of_rewind.rs:58:7
+   |
+LL |     t.seek(SeekFrom::Start(0));
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `rewind()`
+
+error: used `seek` to go to the start of the stream
+  --> tests/ui/seek_to_start_instead_of_rewind.rs:138:7
+   |
+LL |     f.seek(SeekFrom::Start(0));
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `rewind()`
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,21 @@
+name: rustc-pull
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run at 04:00 UTC every Monday and Thursday
+    - cron: '0 4 * * 1,4'
+
+jobs:
+  pull:
+    if: github.repository == 'rust-lang/rust-analyzer'
+    uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@main
+    with:
+      github-app-id: ${{ vars.APP_CLIENT_ID }}
+      zulip-stream-id: 185405
+      zulip-bot-email:  "rust-analyzer-ci-bot@rust-lang.zulipchat.com"
+      pr-base-branch: master
+      branch-name: rustc-pull
+    secrets:
+      zulip-api-token: ${{ secrets.ZULIP_API_TOKEN }}
+      github-app-secret: ${{ secrets.APP_PRIVATE_KEY }}

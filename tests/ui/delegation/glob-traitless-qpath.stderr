@@ -1,0 +1,14 @@
+error: qualified path without a trait in glob delegation
+  --> $DIR/glob-traitless-qpath.rs:7:5
+   |
+LL |     reuse <u8>::*;
+   |     ^^^^^^^^^^^^^^
+
+error: qualified path without a trait in glob delegation
+  --> $DIR/glob-traitless-qpath.rs:8:5
+   |
+LL |     reuse <()>::*;
+   |     ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

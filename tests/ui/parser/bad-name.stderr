@@ -1,0 +1,22 @@
+error: expected a pattern, found an expression
+  --> $DIR/bad-name.rs:2:7
+   |
+LL |   let x.y::<isize>.z foo;
+   |       ^^^^^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+
+error: expected one of `(`, `.`, `::`, `:`, `;`, `=`, `?`, `|`, or an operator, found `foo`
+  --> $DIR/bad-name.rs:2:22
+   |
+LL |   let x.y::<isize>.z foo;
+   |                      ^^^ expected one of 9 possible tokens
+
+error: field expressions cannot have generic arguments
+  --> $DIR/bad-name.rs:2:12
+   |
+LL |   let x.y::<isize>.z foo;
+   |            ^^^^^^^
+
+error: aborting due to 3 previous errors
+

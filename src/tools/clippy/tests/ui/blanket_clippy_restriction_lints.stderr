@@ -1,0 +1,33 @@
+error: `clippy::restriction` is not meant to be enabled as a group
+   |
+   = note: because of the command line `--warn clippy::restriction`
+   = help: enable the restriction lints you need individually
+   = note: `-D clippy::blanket-clippy-restriction-lints` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::blanket_clippy_restriction_lints)]`
+
+error: `clippy::restriction` is not meant to be enabled as a group
+  --> tests/ui/blanket_clippy_restriction_lints.rs:7:9
+   |
+LL | #![warn(clippy::restriction)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: enable the restriction lints you need individually
+
+error: `clippy::restriction` is not meant to be enabled as a group
+  --> tests/ui/blanket_clippy_restriction_lints.rs:9:9
+   |
+LL | #![deny(clippy::restriction)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: enable the restriction lints you need individually
+
+error: `clippy::restriction` is not meant to be enabled as a group
+  --> tests/ui/blanket_clippy_restriction_lints.rs:11:11
+   |
+LL | #![forbid(clippy::restriction)]
+   |           ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: enable the restriction lints you need individually
+
+error: aborting due to 4 previous errors
+

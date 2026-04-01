@@ -1,0 +1,40 @@
+error: matching on `Some` with `ok()` is redundant
+  --> tests/ui/match_result_ok.rs:13:5
+   |
+LL |     if let Some(y) = x.parse().ok() { y } else { 0 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::match-result-ok` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_result_ok)]`
+help: consider matching on `Ok(y)` and removing the call to `ok` instead
+   |
+LL -     if let Some(y) = x.parse().ok() { y } else { 0 }
+LL +     if let Ok(y) = x.parse() { y } else { 0 }
+   |
+
+error: matching on `Some` with `ok()` is redundant
+  --> tests/ui/match_result_ok.rs:24:9
+   |
+LL |         if let Some(y) = x   .   parse()   .   ok   ()    {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider matching on `Ok(y)` and removing the call to `ok` instead
+   |
+LL -         if let Some(y) = x   .   parse()   .   ok   ()    {
+LL +         if let Ok(y) = x   .   parse()    {
+   |
+
+error: matching on `Some` with `ok()` is redundant
+  --> tests/ui/match_result_ok.rs:51:5
+   |
+LL |     while let Some(a) = wat.next().ok() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider matching on `Ok(a)` and removing the call to `ok` instead
+   |
+LL -     while let Some(a) = wat.next().ok() {
+LL +     while let Ok(a) = wat.next() {
+   |
+
+error: aborting due to 3 previous errors
+

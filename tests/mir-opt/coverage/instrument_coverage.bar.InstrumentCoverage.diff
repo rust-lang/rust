@@ -1,0 +1,17 @@
+- // MIR for `bar` before InstrumentCoverage
++ // MIR for `bar` after InstrumentCoverage
+  
+  fn bar() -> bool {
+      let mut _0: bool;
+  
++     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage.rs:27:1: 27:17 (#0);
++     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage.rs:28:5: 28:9 (#0);
++     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage.rs:29:1: 29:2 (#0);
++ 
+      bb0: {
++         Coverage::VirtualCounter(bcb0);
+          _0 = const true;
+          return;
+      }
+  }
+  

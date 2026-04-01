@@ -1,0 +1,14 @@
+error: failed to resolve delegation callee
+  --> $DIR/ice-issue-124347.rs:5:18
+   |
+LL |     reuse Trait::foo { &self.0 }
+   |                  ^^^
+
+error: failed to resolve delegation callee
+  --> $DIR/ice-issue-124347.rs:9:7
+   |
+LL | reuse foo;
+   |       ^^^
+
+error: aborting due to 2 previous errors
+

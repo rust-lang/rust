@@ -1,0 +1,33 @@
+note: no external requirements
+  --> $DIR/return-wrong-bound-region.rs:11:16
+   |
+LL |     expect_sig(|a, b| b); // ought to return `a`
+   |                ^^^^^^
+   |
+   = note: defining type: test::{closure#0} with closure args [
+               i16,
+               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 i32, &'^1 i32)) -> &'^0 i32,
+               (),
+           ]
+   = note: late-bound region is '?1
+   = note: late-bound region is '?2
+
+error: lifetime may not live long enough
+  --> $DIR/return-wrong-bound-region.rs:11:23
+   |
+LL |     expect_sig(|a, b| b); // ought to return `a`
+   |                 -  -  ^ closure was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |                 |  |
+   |                 |  has type `&'1 i32`
+   |                 has type `&'2 i32`
+
+note: no external requirements
+  --> $DIR/return-wrong-bound-region.rs:10:1
+   |
+LL | fn test() {
+   | ^^^^^^^^^
+   |
+   = note: defining type: test
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,21 @@
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/effectively-empty-trait-object-type.rs:13:14
+   |
+LL | trait Empty2 = Empty1;
+   | ------------ this alias does not contain a trait
+...
+LL | type Type0 = dyn Empty2;
+   |              ^^^^^^^^^^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/effectively-empty-trait-object-type.rs:18:14
+   |
+LL | trait Empty3 = Empty2 + Empty2;
+   | ------------ this alias does not contain a trait
+LL |
+LL | type Type1 = dyn Empty3;
+   |              ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0224`.

@@ -1,0 +1,14 @@
+error[E0404]: expected trait, found derive macro `Hash`
+  --> $DIR/relaxing-default-bound-error-37534.rs:3:16
+   |
+LL | struct Foo<T: ?Hash> {}
+   |                ^^^^ not a trait
+   |
+help: consider importing this trait instead
+   |
+LL + use std::hash::Hash;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0404`.

@@ -1,0 +1,152 @@
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:1:1
+   |
+LL | #[cfg_attr]
+   | ^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:5:1
+   |
+LL | #[cfg_attr = 10]
+   | ^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:9:1
+   |
+LL | #[cfg_attr()]
+   | ^^^^^^^^^^--^
+   | |         |
+   | |         expected at least 1 argument here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:13:1
+   |
+LL | #[cfg_attr("str")]
+   | ^^^^^^^^^^^-----^^
+   | |          |
+   | |          expected a valid identifier here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:16:1
+   |
+LL | #[cfg_attr(a::b)]
+   | ^^^^^^^^^^^----^^
+   | |          |
+   | |          expected a valid identifier here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0537]: invalid predicate `a`
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:19:12
+   |
+LL | #[cfg_attr(a())]
+   |            ^^^
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:22:1
+   |
+LL | #[cfg_attr(a = 10)]
+   | ^^^^^^^^^^^^^^^--^^
+   | |              |
+   | |              expected a string literal here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:25:1
+   |
+LL | #[cfg_attr(a = b"hi")]
+   | ^^^^^^^^^^^^^^^-^^^^^^
+   |                |
+   |                help: consider removing the prefix
+   |
+   = note: expected a normal string literal, not a byte string literal
+
+error: expected `,`, found end of `cfg_attr` input
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:38:16
+   |
+LL | #[cfg_attr(true)]
+   | ---------------^-
+   | |              |
+   | |              expected `,`
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:30:30
+   |
+LL |         #[cfg_attr(feature = $expr)]
+   |         ---------------------^^^^^-- help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+...
+LL | generate_s10!(concat!("nonexistent"));
+   | ------------------------------------- in this macro invocation
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+   = note: this error originates in the macro `generate_s10` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot find attribute `unknown_attribute` in this scope
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:41:18
+   |
+LL | #[cfg_attr(true, unknown_attribute)]
+   |                  ^^^^^^^^^^^^^^^^^
+
+error[E0539]: malformed `link_section` attribute input
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:44:18
+   |
+LL | #[cfg_attr(true, link_section)]
+   |                  ^^^^^^^^^^^^ help: must be of the form: `link_section = "name"`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute>
+
+error[E0805]: malformed `inline` attribute input
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:49:18
+   |
+LL | #[cfg_attr(true, inline())]
+   |                  ^^^^^^--
+   |                        |
+   |                        expected a single argument here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[cfg_attr(true, inline())]
+LL + #[cfg_attr(true, inline)]
+   |
+LL | #[cfg_attr(true, inline(always))]
+   |                         ++++++
+LL | #[cfg_attr(true, inline(never))]
+   |                         +++++
+
+warning: `#[link_section]` attribute cannot be used on structs
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:44:18
+   |
+LL | #[cfg_attr(true, link_section)]
+   |                  ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[link_section]` can be applied to functions and statics
+   = note: requested on the command line with `-W unused-attributes`
+
+error: aborting due to 13 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0537, E0539, E0805.
+For more information about an error, try `rustc --explain E0537`.

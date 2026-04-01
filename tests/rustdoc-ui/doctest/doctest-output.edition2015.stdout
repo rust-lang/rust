@@ -1,0 +1,8 @@
+
+running 3 tests
+test $DIR/doctest-output.rs - (line 14) ... ok
+test $DIR/doctest-output.rs - ExpandedStruct (line 30) ... ok
+test $DIR/doctest-output.rs - foo::bar (line 24) ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

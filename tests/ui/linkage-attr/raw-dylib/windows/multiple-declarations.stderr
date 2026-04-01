@@ -1,0 +1,8 @@
+error: multiple declarations of external function `f` from library `foo.dll` have different calling conventions
+  --> $DIR/multiple-declarations.rs:13:9
+   |
+LL |         fn f(x: i32);
+   |         ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

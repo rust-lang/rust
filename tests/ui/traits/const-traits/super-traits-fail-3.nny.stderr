@@ -1,0 +1,133 @@
+error[E0658]: const trait impls are experimental
+  --> $DIR/super-traits-fail-3.rs:15:33
+   |
+LL | #[cfg(any(yyy, yyn, nyy, nyn))] const trait Foo { fn a(&self); }
+   |                                 ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/super-traits-fail-3.rs:19:33
+   |
+LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
+   |                                 ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/super-traits-fail-3.rs:19:50
+   |
+LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
+   |                                                  ^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/super-traits-fail-3.rs:27:44
+   |
+LL | #[cfg(any(yyn, ynn, nyn, nnn))] trait Bar: [const] Foo {}
+   |                                            ^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/super-traits-fail-3.rs:34:17
+   |
+LL | const fn foo<T: [const] Bar>(x: &T) {
+   |                 ^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/super-traits-fail-3.rs:19:50
+   |
+LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
+   |                                                  ^^^^^^^ can't be applied to `Foo`
+   |
+help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `const` to allow it to have `const` implementations
+   |
+LL | #[cfg(any(yny, ynn, nny, nnn))] const trait Foo { fn a(&self); }
+   |                                 +++++
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/super-traits-fail-3.rs:19:50
+   |
+LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
+   |                                                  ^^^^^^^ can't be applied to `Foo`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `const` to allow it to have `const` implementations
+   |
+LL | #[cfg(any(yny, ynn, nny, nnn))] const trait Foo { fn a(&self); }
+   |                                 +++++
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/super-traits-fail-3.rs:19:50
+   |
+LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
+   |                                                  ^^^^^^^ can't be applied to `Foo`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `const` to allow it to have `const` implementations
+   |
+LL | #[cfg(any(yny, ynn, nny, nnn))] const trait Foo { fn a(&self); }
+   |                                 +++++
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/super-traits-fail-3.rs:19:50
+   |
+LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
+   |                                                  ^^^^^^^ can't be applied to `Foo`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `const` to allow it to have `const` implementations
+   |
+LL | #[cfg(any(yny, ynn, nny, nnn))] const trait Foo { fn a(&self); }
+   |                                 +++++
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/super-traits-fail-3.rs:19:50
+   |
+LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
+   |                                                  ^^^^^^^ can't be applied to `Foo`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `const` to allow it to have `const` implementations
+   |
+LL | #[cfg(any(yny, ynn, nny, nnn))] const trait Foo { fn a(&self); }
+   |                                 +++++
+
+error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
+  --> $DIR/super-traits-fail-3.rs:38:7
+   |
+LL |     x.a();
+   |       ^^^
+   |
+note: method `a` is not const because trait `Foo` is not const
+  --> $DIR/super-traits-fail-3.rs:17:33
+   |
+LL | #[cfg(any(yny, ynn, nny, nnn))] trait Foo { fn a(&self); }
+   |                                 ^^^^^^^^^   ------------ this method is not const
+   |                                 |
+   |                                 this trait is not const
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable const traits
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+help: consider making trait `Foo` const
+   |
+LL | #[cfg(any(yny, ynn, nny, nnn))] const trait Foo { fn a(&self); }
+   |                                 +++++
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0015, E0658.
+For more information about an error, try `rustc --explain E0015`.

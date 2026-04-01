@@ -1,0 +1,73 @@
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:15:8
+   |
+LL | extern "vectorcall" fn f() {}
+   |        ^^^^^^^^^^^^
+   |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:18:12
+   |
+LL |     extern "vectorcall" fn m();
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:20:12
+   |
+LL |     extern "vectorcall" fn dm() {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:25:12
+   |
+LL |     extern "vectorcall" fn m() {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:29:12
+   |
+LL |     extern "vectorcall" fn im() {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:32:18
+   |
+LL | type TA = extern "vectorcall" fn();
+   |                  ^^^^^^^^^^^^
+   |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:34:8
+   |
+LL | extern "vectorcall" {}
+   |        ^^^^^^^^^^^^
+   |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

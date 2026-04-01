@@ -1,0 +1,79 @@
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/dyn-incompatible-trait-references-self.rs:9:12
+   |
+LL | fn bar(x: &dyn Trait) {}
+   |            ^^^^^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/dyn-incompatible-trait-references-self.rs:2:22
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+LL |     fn baz(&self, _: Self) {}
+   |                      ^^^^ ...because method `baz` references the `Self` type in this parameter
+LL |
+LL |     fn bat(&self) -> Self {}
+   |                      ^^^^ ...because method `bat` references the `Self` type in its return type
+   = help: consider moving `baz` to another trait
+   = help: consider moving `bat` to another trait
+
+error[E0038]: the trait `Other` is not dyn compatible
+  --> $DIR/dyn-incompatible-trait-references-self.rs:13:12
+   |
+LL | fn foo(x: &dyn Other) {}
+   |            ^^^^^^^^^ `Other` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/dyn-incompatible-trait-references-self.rs:11:14
+   |
+LL | trait Other: Sized {}
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait is not dyn compatible...
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/dyn-incompatible-trait-references-self.rs:4:22
+   |
+LL |     fn bat(&self) -> Self {}
+   |                      ^^^^ doesn't have a size known at compile-time
+   |
+   = note: the return type of a function must have a statically known size
+help: consider further restricting `Self`
+   |
+LL |     fn bat(&self) -> Self where Self: Sized {}
+   |                           +++++++++++++++++
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/dyn-incompatible-trait-references-self.rs:2:22
+   |
+LL |     fn baz(&self, _: Self) {}
+   |                      ^^^^ doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider further restricting `Self`
+   |
+LL |     fn baz(&self, _: Self) where Self: Sized {}
+   |                            +++++++++++++++++
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     fn baz(&self, _: &Self) {}
+   |                      +
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-incompatible-trait-references-self.rs:4:27
+   |
+LL | trait Trait {
+   | ----------- expected this type parameter
+...
+LL |     fn bat(&self) -> Self {}
+   |                           ^^ expected type parameter `Self`, found `()`
+   |
+   = note: expected type parameter `Self`
+                   found unit type `()`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0038, E0277, E0308.
+For more information about an error, try `rustc --explain E0038`.

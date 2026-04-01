@@ -1,0 +1,75 @@
+error[E0499]: cannot borrow `f` as mutable more than once at a time
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:12:16
+   |
+LL |     f(Box::new(|| {
+   |     -          ^^ second mutable borrow occurs here
+   |     |
+   |     first mutable borrow occurs here
+   |     first borrow later used by call
+LL |
+LL |         f((Box::new(|| {})))
+   |         - second borrow occurs due to use of `f` in closure
+
+error[E0596]: cannot borrow `*f` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:25:5
+   |
+LL |     (*f)();
+   |     ^^^^ `f` is a `&` reference, so it cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn test2<F>(f: &mut F) where F: FnMut() {
+   |                 +++
+
+error[E0596]: cannot borrow `f.f` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:34:5
+   |
+LL |     f.f.call_mut(())
+   |     ^^^ `f` is a `&` reference, so it cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn test4(f: &mut Test) {
+   |              +++
+
+error[E0507]: cannot move out of `f`, a captured variable in an `FnMut` closure
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:57:13
+   |
+LL |     let mut f = move |g: Box<dyn FnMut(isize)>, b: isize| {
+   |         ----- captured outer variable
+...
+LL |     f(Box::new(|a| {
+   |                --- captured by this `FnMut` closure
+LL |
+LL |         foo(f);
+   |             ^ move occurs because `f` has type `{closure@$DIR/borrowck-call-is-borrow-issue-12224.rs:52:17: 52:58}`, which does not implement the `Copy` trait
+   |
+   = help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         foo(f.clone());
+   |              ++++++++
+
+error[E0505]: cannot move out of `f` because it is borrowed
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:55:16
+   |
+LL |     let mut f = move |g: Box<dyn FnMut(isize)>, b: isize| {
+   |         ----- binding `f` declared here
+...
+LL |     f(Box::new(|a| {
+   |     -          ^^^ move out of `f` occurs here
+   |     |
+   |     borrow of `f` occurs here
+LL |
+LL |         foo(f);
+   |             - move occurs due to use in closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     f.clone()(Box::new(|a| {
+   |      ++++++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0499, E0505, E0507, E0596.
+For more information about an error, try `rustc --explain E0499`.

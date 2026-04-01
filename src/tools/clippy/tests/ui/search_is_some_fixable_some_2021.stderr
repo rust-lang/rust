@@ -1,0 +1,17 @@
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> tests/ui/search_is_some_fixable_some_2021.rs:6:55
+   |
+LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|(&x, y)| x == *y).is_some();
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|(&x, y)| x == *y)`
+   |
+   = note: `-D clippy::search-is-some` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::search_is_some)]`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> tests/ui/search_is_some_fixable_some_2021.rs:8:55
+   |
+LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_some();
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|(&x, y)| x == *y)`
+
+error: aborting due to 2 previous errors
+

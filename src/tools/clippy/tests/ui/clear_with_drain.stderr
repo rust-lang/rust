@@ -1,0 +1,131 @@
+error: `drain` used to clear a `Vec`
+  --> tests/ui/clear_with_drain.rs:22:7
+   |
+LL |     v.drain(0..v.len());
+   |       ^^^^^^^^^^^^^^^^^ help: try: `clear()`
+   |
+   = note: `-D clippy::clear-with-drain` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::clear_with_drain)]`
+
+error: `drain` used to clear a `Vec`
+  --> tests/ui/clear_with_drain.rs:27:7
+   |
+LL |     v.drain(usize::MIN..v.len());
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `Vec`
+  --> tests/ui/clear_with_drain.rs:47:7
+   |
+LL |     v.drain(0..);
+   |       ^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `Vec`
+  --> tests/ui/clear_with_drain.rs:52:7
+   |
+LL |     v.drain(usize::MIN..);
+   |       ^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `Vec`
+  --> tests/ui/clear_with_drain.rs:69:7
+   |
+LL |     v.drain(..);
+   |       ^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `Vec`
+  --> tests/ui/clear_with_drain.rs:87:7
+   |
+LL |     v.drain(..v.len());
+   |       ^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `VecDeque`
+  --> tests/ui/clear_with_drain.rs:126:11
+   |
+LL |     deque.drain(0..deque.len());
+   |           ^^^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `VecDeque`
+  --> tests/ui/clear_with_drain.rs:131:11
+   |
+LL |     deque.drain(usize::MIN..deque.len());
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `VecDeque`
+  --> tests/ui/clear_with_drain.rs:151:11
+   |
+LL |     deque.drain(0..);
+   |           ^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `VecDeque`
+  --> tests/ui/clear_with_drain.rs:156:11
+   |
+LL |     deque.drain(usize::MIN..);
+   |           ^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `VecDeque`
+  --> tests/ui/clear_with_drain.rs:173:11
+   |
+LL |     deque.drain(..);
+   |           ^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `VecDeque`
+  --> tests/ui/clear_with_drain.rs:191:11
+   |
+LL |     deque.drain(..deque.len());
+   |           ^^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `String`
+  --> tests/ui/clear_with_drain.rs:230:7
+   |
+LL |     s.drain(0..s.len());
+   |       ^^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `String`
+  --> tests/ui/clear_with_drain.rs:235:7
+   |
+LL |     s.drain(usize::MIN..s.len());
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `String`
+  --> tests/ui/clear_with_drain.rs:255:7
+   |
+LL |     s.drain(0..);
+   |       ^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `String`
+  --> tests/ui/clear_with_drain.rs:260:7
+   |
+LL |     s.drain(usize::MIN..);
+   |       ^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `String`
+  --> tests/ui/clear_with_drain.rs:277:7
+   |
+LL |     s.drain(..);
+   |       ^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `String`
+  --> tests/ui/clear_with_drain.rs:295:7
+   |
+LL |     s.drain(..s.len());
+   |       ^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `HashSet`
+  --> tests/ui/clear_with_drain.rs:334:9
+   |
+LL |     set.drain();
+   |         ^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `HashMap`
+  --> tests/ui/clear_with_drain.rs:354:9
+   |
+LL |     map.drain();
+   |         ^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `BinaryHeap`
+  --> tests/ui/clear_with_drain.rs:374:10
+   |
+LL |     heap.drain();
+   |          ^^^^^^^ help: try: `clear()`
+
+error: aborting due to 21 previous errors
+

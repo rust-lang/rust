@@ -1,0 +1,21 @@
+warning: unexpected `cfg` condition name: `widnows`
+  --> $DIR/unexpected-cfg-name.rs:7:7
+   |
+LL | #[cfg(widnows)]
+   |       ^^^^^^^ help: there is a config with a similar name: `windows`
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(widnows)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `test`
+  --> $DIR/unexpected-cfg-name.rs:11:7
+   |
+LL | #[cfg(test)]
+   |       ^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(test)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 2 warnings emitted
+

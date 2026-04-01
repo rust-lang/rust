@@ -1,0 +1,21 @@
+error[E0282]: type annotations needed
+  --> $DIR/type-alias.rs:12:5
+   |
+LL |     DirectAlias::new()
+   |     ^^^^^^^^^^^ cannot infer type for type parameter `T` declared on the type alias `DirectAlias`
+
+error[E0282]: type annotations needed
+  --> $DIR/type-alias.rs:18:5
+   |
+LL |     IndirectAlias::new();
+   |     ^^^^^^^^^^^^^ cannot infer type for type parameter `T` declared on the type alias `IndirectAlias`
+
+error[E0282]: type annotations needed
+  --> $DIR/type-alias.rs:32:5
+   |
+LL |     DirectButWithDefaultAlias::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `T` declared on the type alias `DirectButWithDefaultAlias`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

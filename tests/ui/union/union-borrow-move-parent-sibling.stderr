@@ -1,0 +1,110 @@
+error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borrowed as mutable (via `u.x`)
+  --> $DIR/union-borrow-move-parent-sibling.rs:53:13
+   |
+LL |     let a = &mut (*u.x).0;
+   |                    --- mutable borrow occurs here (via `u.x`)
+LL |     let b = &u.y;
+   |             ^^^^ immutable borrow of `u.y` -- which overlaps with `u.x` -- occurs here
+LL |     use_borrow(a);
+   |                - mutable borrow later used here
+   |
+   = note: `u.y` is a field of the union `U`, so it overlaps the field `u.x`
+
+error[E0507]: cannot move out of dereference of `ManuallyDrop<((MockVec<u8>, MockVec<u8>), MockVec<u8>)>`
+  --> $DIR/union-borrow-move-parent-sibling.rs:59:13
+   |
+LL |     let a = u.x.0;
+   |             ^^^^^ move occurs because value has type `(MockVec<u8>, MockVec<u8>)`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     let a = &u.x.0;
+   |             +
+
+error[E0382]: use of moved value: `u`
+  --> $DIR/union-borrow-move-parent-sibling.rs:61:13
+   |
+LL |     let u = U { x: ManuallyDrop::new(((MockVec::new(), MockVec::new()), MockVec::new())) };
+   |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
+LL |     let a = u.x.0;
+LL |     let a = u.x;
+   |             --- value moved here
+LL |     let b = u.y;
+   |             ^^^ value used here after move
+   |
+note: if `U` implemented `Clone`, you could clone the value
+  --> $DIR/union-borrow-move-parent-sibling.rs:43:1
+   |
+LL | union U {
+   | ^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let a = u.x;
+   |             --- you could clone this value
+
+error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borrowed as mutable (via `u.x`)
+  --> $DIR/union-borrow-move-parent-sibling.rs:67:13
+   |
+LL |     let a = &mut ((*u.x).0).0;
+   |                     --- mutable borrow occurs here (via `u.x`)
+LL |     let b = &u.y;
+   |             ^^^^ immutable borrow of `u.y` -- which overlaps with `u.x` -- occurs here
+LL |     use_borrow(a);
+   |                - mutable borrow later used here
+   |
+   = note: `u.y` is a field of the union `U`, so it overlaps the field `u.x`
+
+error[E0507]: cannot move out of dereference of `ManuallyDrop<((MockVec<u8>, MockVec<u8>), MockVec<u8>)>`
+  --> $DIR/union-borrow-move-parent-sibling.rs:73:13
+   |
+LL |     let a = (u.x.0).0;
+   |             ^^^^^^^^^ move occurs because value has type `MockVec<u8>`, which does not implement the `Copy` trait
+   |
+note: if `MockVec<u8>` implemented `Clone`, you could clone the value
+  --> $DIR/union-borrow-move-parent-sibling.rs:25:1
+   |
+LL | struct MockVec<T> {
+   | ^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let a = (u.x.0).0;
+   |             --------- you could clone this value
+help: consider borrowing here
+   |
+LL |     let a = &(u.x.0).0;
+   |             +
+
+error[E0382]: use of moved value: `u`
+  --> $DIR/union-borrow-move-parent-sibling.rs:75:13
+   |
+LL |     let u = U { x: ManuallyDrop::new(((MockVec::new(), MockVec::new()), MockVec::new())) };
+   |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
+LL |     let a = (u.x.0).0;
+LL |     let a = u.x;
+   |             --- value moved here
+LL |     let b = u.y;
+   |             ^^^ value used here after move
+   |
+note: if `U` implemented `Clone`, you could clone the value
+  --> $DIR/union-borrow-move-parent-sibling.rs:43:1
+   |
+LL | union U {
+   | ^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let a = u.x;
+   |             --- you could clone this value
+
+error[E0502]: cannot borrow `u` (via `u.x`) as immutable because it is also borrowed as mutable (via `u.y`)
+  --> $DIR/union-borrow-move-parent-sibling.rs:81:13
+   |
+LL |     let a = &mut *u.y;
+   |                   --- mutable borrow occurs here (via `u.y`)
+LL |     let b = &u.x;
+   |             ^^^^ immutable borrow of `u.x` -- which overlaps with `u.y` -- occurs here
+LL |     use_borrow(a);
+   |                - mutable borrow later used here
+   |
+   = note: `u.x` is a field of the union `U`, so it overlaps the field `u.y`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0382, E0502, E0507.
+For more information about an error, try `rustc --explain E0382`.

@@ -1,0 +1,30 @@
+SOURCE_FILE
+  FN
+    ATTR
+      POUND "#"
+      L_BRACK "["
+      META
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "foo"
+        TOKEN_TREE
+          L_PAREN "("
+          IDENT "a"
+          COMMA ","
+          R_PAREN ")"
+      R_BRACK "]"
+    WHITESPACE "\n"
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

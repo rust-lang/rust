@@ -1,0 +1,24 @@
+//@ compile-flags:--test
+//@ reference: attributes.testing.test.allowed-positions
+
+struct A {}
+
+impl A {
+    #[test]
+    //~^ ERROR the `#[test]` attribute may only be used on a free function
+    fn new() -> A {
+        A {}
+    }
+    #[test]
+    //~^ ERROR the `#[test]` attribute may only be used on a free function
+    fn recovery_witness() -> A {
+        A {}
+    }
+}
+
+#[test]
+fn test() {
+    let _ = A::new();
+}
+
+fn main() {}

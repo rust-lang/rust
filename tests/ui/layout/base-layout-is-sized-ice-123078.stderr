@@ -1,0 +1,37 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/base-layout-is-sized-ice-123078.rs:5:8
+   |
+LL |     a: [u8],
+   |        ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: only the last field of a struct may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     a: &[u8],
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     a: Box<[u8]>,
+   |        ++++    +
+
+error[E0080]: the type `S` has an unknown layout
+  --> $DIR/base-layout-is-sized-ice-123078.rs:10:1
+   |
+LL | const C: S = unsafe { std::mem::transmute(()) };
+   | ^^^^^^^^^^ evaluation of `C` failed here
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/base-layout-is-sized-ice-123078.rs:10:23
+   |
+LL | const C: S = unsafe { std::mem::transmute(()) };
+   |                       ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `()` (0 bits)
+   = note: target type: `S` (the type `S` has an unknown layout)
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0080, E0277, E0512.
+For more information about an error, try `rustc --explain E0080`.

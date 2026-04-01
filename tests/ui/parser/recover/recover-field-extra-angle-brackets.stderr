@@ -1,0 +1,14 @@
+error: unmatched angle bracket
+  --> $DIR/recover-field-extra-angle-brackets.rs:5:19
+   |
+LL |     first: Vec<u8>>,
+   |                   ^
+   |
+help: remove extra angle bracket
+   |
+LL -     first: Vec<u8>>,
+LL +     first: Vec<u8>,
+   |
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,87 @@
+error[E0277]: the size for values of type `dyn Send` cannot be known at compilation time
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:32:55
+   |
+LL |     let _: Box<dyn Send> = field_to_box1(Foo { field: 1, tail: () });
+   |                                                       ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Send`
+note: required by an implicit `Sized` bound in `Foo`
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:10:12
+   |
+LL | struct Foo<T> {
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Foo`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:10:12
+   |
+LL | struct Foo<T> {
+   |            ^ this could be changed to `T: ?Sized`...
+LL |     field: T,
+   |            - ...if indirection were used here: `Box<T>`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:32:55
+   |
+LL |     let _: Box<dyn Send> = field_to_box1(Foo { field: 1, tail: () });
+   |                                                       ^ expected trait object, found integer
+   |
+   = note: expected trait object `dyn Send`
+                      found type `{integer}`
+
+error[E0277]: the size for values of type `dyn Send` cannot be known at compilation time
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:32:42
+   |
+LL |     let _: Box<dyn Send> = field_to_box1(Foo { field: 1, tail: () });
+   |                            ------------- ^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                            |
+   |                            required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `dyn Send`
+note: required by an implicit `Sized` bound in `field_to_box1`
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:19:18
+   |
+LL | fn field_to_box1<T>(x: Foo<T>) -> Box<T> {
+   |                  ^ required by the implicit `Sized` requirement on this type parameter in `field_to_box1`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn field_to_box1<T: ?Sized>(x: Foo<T>) -> Box<T> {
+   |                   ++++++++
+
+error[E0277]: the size for values of type `dyn Send` cannot be known at compilation time
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:36:38
+   |
+LL |     let _: &dyn Send = field_to_box2(&Bar { field: 1 });
+   |                        ------------- ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                        |
+   |                        required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `dyn Send`
+note: required by an implicit `Sized` bound in `field_to_box2`
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:23:18
+   |
+LL | fn field_to_box2<T>(x: &Bar<T>) -> &T {
+   |                  ^ required by the implicit `Sized` requirement on this type parameter in `field_to_box2`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn field_to_box2<T: ?Sized>(x: &Bar<T>) -> &T {
+   |                   ++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:38:38
+   |
+LL |     let _: &dyn Send = field_to_box3(&(1,));
+   |                        ------------- ^^^^^ expected `&(dyn Send,)`, found `&({integer},)`
+   |                        |
+   |                        arguments to this function are incorrect
+   |
+   = note: expected reference `&(dyn Send,)`
+              found reference `&({integer},)`
+note: function defined here
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:27:4
+   |
+LL | fn field_to_box3<T>(x: &(T,)) -> &T {
+   |    ^^^^^^^^^^^^^    --------
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,0 +1,74 @@
+error: symbol-name(_RNvMCsCRATE_HASH_1cINtB<REF>_8UnsignedKhb_E1f)
+  --> $DIR/const-generics-demangling.rs:13:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<c[HASH]::Unsigned<11u8>>::f)
+  --> $DIR/const-generics-demangling.rs:13:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<c::Unsigned<11>>::f)
+  --> $DIR/const-generics-demangling.rs:13:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RNvMs_CsCRATE_HASH_1cINtB<REF>_6SignedKsn98_E1f)
+  --> $DIR/const-generics-demangling.rs:26:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<c[HASH]::Signed<-152i16>>::f)
+  --> $DIR/const-generics-demangling.rs:26:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<c::Signed<-152>>::f)
+  --> $DIR/const-generics-demangling.rs:26:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RNvMs0_CsCRATE_HASH_1cINtB<REF>_4BoolKb1_E1f)
+  --> $DIR/const-generics-demangling.rs:39:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<c[HASH]::Bool<true>>::f)
+  --> $DIR/const-generics-demangling.rs:39:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<c::Bool<true>>::f)
+  --> $DIR/const-generics-demangling.rs:39:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RNvMs1_CsCRATE_HASH_1cINtB<REF>_4CharKc2202_E1f)
+  --> $DIR/const-generics-demangling.rs:52:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<c[HASH]::Char<'∂'>>::f)
+  --> $DIR/const-generics-demangling.rs:52:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<c::Char<'∂'>>::f)
+  --> $DIR/const-generics-demangling.rs:52:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

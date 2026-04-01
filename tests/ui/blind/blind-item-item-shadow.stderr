@@ -1,0 +1,18 @@
+error[E0255]: the name `foo` is defined multiple times
+  --> $DIR/blind-item-item-shadow.rs:5:5
+   |
+LL | mod foo { pub mod foo {  } }
+   | ------- previous definition of the module `foo` here
+LL |
+LL | use foo::foo;
+   |     ^^^^^^^^ `foo` reimported here
+   |
+   = note: `foo` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use foo::foo as other_foo;
+   |              ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0255`.

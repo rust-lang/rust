@@ -1,0 +1,41 @@
+error: strict comparison of `f32` or `f64`
+  --> tests/ui/float_cmp.rs:72:5
+   |
+LL |     ONE as f64 != 2.0;
+   |     ^^^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(ONE as f64 - 2.0).abs() > error_margin`
+   |
+   = note: `-D clippy::float-cmp` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::float_cmp)]`
+
+error: strict comparison of `f32` or `f64`
+  --> tests/ui/float_cmp.rs:79:5
+   |
+LL |     x == 1.0;
+   |     ^^^^^^^^ help: consider comparing them within some margin of error: `(x - 1.0).abs() < error_margin`
+
+error: strict comparison of `f32` or `f64`
+  --> tests/ui/float_cmp.rs:84:5
+   |
+LL |     twice(x) != twice(ONE as f64);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(twice(x) - twice(ONE as f64)).abs() > error_margin`
+
+error: strict comparison of `f32` or `f64`
+  --> tests/ui/float_cmp.rs:105:5
+   |
+LL |     NON_ZERO_ARRAY[i] == NON_ZERO_ARRAY[j];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(NON_ZERO_ARRAY[i] - NON_ZERO_ARRAY[j]).abs() < error_margin`
+
+error: strict comparison of `f32` or `f64` arrays
+  --> tests/ui/float_cmp.rs:111:5
+   |
+LL |     a1 == a2;
+   |     ^^^^^^^^
+
+error: strict comparison of `f32` or `f64`
+  --> tests/ui/float_cmp.rs:114:5
+   |
+LL |     a1[0] == a2[0];
+   |     ^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(a1[0] - a2[0]).abs() < error_margin`
+
+error: aborting due to 6 previous errors
+

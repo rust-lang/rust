@@ -1,0 +1,48 @@
+error[E0801]: invalid generic `self` parameter type: `&R`
+  --> $DIR/arbitrary_self_types_generic_receiver.rs:26:53
+   |
+LL |     fn a<R: core::ops::Receiver<Target=Self>>(self: &R) {}
+   |                                                     ^^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `&mut R`
+  --> $DIR/arbitrary_self_types_generic_receiver.rs:28:53
+   |
+LL |     fn b<R: core::ops::Receiver<Target=Self>>(self: &mut R) {}
+   |                                                     ^^^^^^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `R`
+  --> $DIR/arbitrary_self_types_generic_receiver.rs:30:53
+   |
+LL |     fn c<R: core::ops::Receiver<Target=Self>>(self: R) {}
+   |                                                     ^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `R`
+  --> $DIR/arbitrary_self_types_generic_receiver.rs:32:45
+   |
+LL |     fn d<R: SomePtr<SomeTarget=Self>>(self: R) {}
+   |                                             ^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `impl SomePtr<SomeTarget = Self>`
+  --> $DIR/arbitrary_self_types_generic_receiver.rs:34:16
+   |
+LL |     fn e(self: impl SomePtr<SomeTarget=Self>) {}
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0801`.

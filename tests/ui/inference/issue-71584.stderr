@@ -1,0 +1,18 @@
+error[E0284]: type annotations needed
+  --> $DIR/issue-71584.rs:5:15
+   |
+LL |     d = d % n.into();
+   |           -   ^^^^
+   |           |
+   |           type must be known at this point
+   |
+   = note: cannot satisfy `<u64 as Rem<_>>::Output == u64`
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     d = d % n.into();
+LL +     d = d % <u32 as Into<T>>::into(n);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.

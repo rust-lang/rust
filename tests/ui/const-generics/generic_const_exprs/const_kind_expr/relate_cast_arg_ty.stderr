@@ -1,0 +1,23 @@
+error[E0308]: mismatched types
+  --> $DIR/relate_cast_arg_ty.rs:7:5
+   |
+LL |     [(); (1_u8 as usize) + N]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(true as usize) + N`, found `(1_u8 as usize) + N`
+   |
+   = note: expected constant `(true as usize) + N`
+              found constant `(1_u8 as usize) + N`
+
+error: unconstrained generic constant
+  --> $DIR/relate_cast_arg_ty.rs:7:10
+   |
+LL |     [(); (1_u8 as usize) + N]
+   |          ^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn foo<const N: usize>() -> [(); (true as usize) + N] where [(); (1_u8 as usize) + N]: {
+   |                                                       ++++++++++++++++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

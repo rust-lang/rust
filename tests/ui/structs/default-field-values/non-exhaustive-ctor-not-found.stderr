@@ -1,0 +1,22 @@
+error[E0422]: cannot find struct, variant or union type `WithUse` in this scope
+  --> $DIR/non-exhaustive-ctor-not-found.rs:6:5
+   |
+LL |     WithUse { one: m::Priv2 }
+   |     ^^^^^^^ not found in this scope
+
+error[E0603]: unit struct `Priv2` is private
+  --> $DIR/non-exhaustive-ctor-not-found.rs:6:23
+   |
+LL |     WithUse { one: m::Priv2 }
+   |                       ^^^^^ private unit struct
+   |
+note: the unit struct `Priv2` is defined here
+  --> $DIR/non-exhaustive-ctor-not-found.rs:3:5
+   |
+LL |     struct Priv2;
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0422, E0603.
+For more information about an error, try `rustc --explain E0422`.

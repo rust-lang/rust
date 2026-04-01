@@ -1,0 +1,22 @@
+- // MIR for `undef_union_as_integer` before DataflowConstProp
++ // MIR for `undef_union_as_integer` after DataflowConstProp
+  
+  fn undef_union_as_integer() -> u32 {
+      let mut _0: u32;
+      let mut _1: undef_union_as_integer::Union32;
+      let mut _2: ();
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+-         _2 = ();
+-         _1 = Union32 { value: move _2 };
++         _2 = const ();
++         _1 = Union32 { value: const () };
+          StorageDead(_2);
+          _0 = move _1 as u32 (Transmute);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

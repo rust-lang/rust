@@ -1,0 +1,51 @@
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/generics.rs:15:31
+   |
+LL | fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
+   |                               ^^^^^^^ `Bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/generics.rs:7:8
+   |
+LL | trait Bar {
+   |       --- this trait is not dyn compatible...
+LL |     fn bar<T>(&self, t: T);
+   |        ^^^ ...because method `bar` has generic type parameters
+   = help: consider moving `bar` to another trait
+
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/generics.rs:20:40
+   |
+LL | fn make_bar_explicit<T:Bar>(t: &T) -> &dyn Bar {
+   |                                        ^^^^^^^ `Bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/generics.rs:7:8
+   |
+LL | trait Bar {
+   |       --- this trait is not dyn compatible...
+LL |     fn bar<T>(&self, t: T);
+   |        ^^^ ...because method `bar` has generic type parameters
+   = help: consider moving `bar` to another trait
+
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/generics.rs:22:15
+   |
+LL |     t as &dyn Bar
+   |               ^^^ `Bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/generics.rs:7:8
+   |
+LL | trait Bar {
+   |       --- this trait is not dyn compatible...
+LL |     fn bar<T>(&self, t: T);
+   |        ^^^ ...because method `bar` has generic type parameters
+   = help: consider moving `bar` to another trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

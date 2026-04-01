@@ -1,0 +1,184 @@
+error: usage of `Box<Rc<T>>`
+  --> tests/ui/redundant_allocation.rs:15:30
+   |
+LL |     pub fn box_test6<T>(foo: Box<Rc<T>>) {}
+   |                              ^^^^^^^^^^
+   |
+   = note: `Rc<T>` is already on the heap, `Box<Rc<T>>` makes an extra allocation
+   = help: consider using just `Box<T>` or `Rc<T>`
+   = note: `-D clippy::redundant-allocation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_allocation)]`
+
+error: usage of `Box<Arc<T>>`
+  --> tests/ui/redundant_allocation.rs:18:30
+   |
+LL |     pub fn box_test7<T>(foo: Box<Arc<T>>) {}
+   |                              ^^^^^^^^^^^
+   |
+   = note: `Arc<T>` is already on the heap, `Box<Arc<T>>` makes an extra allocation
+   = help: consider using just `Box<T>` or `Arc<T>`
+
+error: usage of `Box<Rc<SubT<usize>>>`
+  --> tests/ui/redundant_allocation.rs:21:27
+   |
+LL |     pub fn box_test8() -> Box<Rc<SubT<usize>>> {
+   |                           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Rc<SubT<usize>>` is already on the heap, `Box<Rc<SubT<usize>>>` makes an extra allocation
+   = help: consider using just `Box<SubT<usize>>` or `Rc<SubT<usize>>`
+
+error: usage of `Box<Arc<T>>`
+  --> tests/ui/redundant_allocation.rs:27:30
+   |
+LL |     pub fn box_test9<T>(foo: Box<Arc<T>>) -> Box<Arc<SubT<T>>> {
+   |                              ^^^^^^^^^^^
+   |
+   = note: `Arc<T>` is already on the heap, `Box<Arc<T>>` makes an extra allocation
+   = help: consider using just `Box<T>` or `Arc<T>`
+
+error: usage of `Box<Arc<SubT<T>>>`
+  --> tests/ui/redundant_allocation.rs:27:46
+   |
+LL |     pub fn box_test9<T>(foo: Box<Arc<T>>) -> Box<Arc<SubT<T>>> {
+   |                                              ^^^^^^^^^^^^^^^^^
+   |
+   = note: `Arc<SubT<T>>` is already on the heap, `Box<Arc<SubT<T>>>` makes an extra allocation
+   = help: consider using just `Box<SubT<T>>` or `Arc<SubT<T>>`
+
+error: usage of `Rc<Box<bool>>`
+  --> tests/ui/redundant_allocation.rs:41:24
+   |
+LL |     pub fn rc_test5(a: Rc<Box<bool>>) {}
+   |                        ^^^^^^^^^^^^^
+   |
+   = note: `Box<bool>` is already on the heap, `Rc<Box<bool>>` makes an extra allocation
+   = help: consider using just `Rc<bool>` or `Box<bool>`
+
+error: usage of `Rc<Arc<bool>>`
+  --> tests/ui/redundant_allocation.rs:44:24
+   |
+LL |     pub fn rc_test7(a: Rc<Arc<bool>>) {}
+   |                        ^^^^^^^^^^^^^
+   |
+   = note: `Arc<bool>` is already on the heap, `Rc<Arc<bool>>` makes an extra allocation
+   = help: consider using just `Rc<bool>` or `Arc<bool>`
+
+error: usage of `Rc<Box<SubT<usize>>>`
+  --> tests/ui/redundant_allocation.rs:47:26
+   |
+LL |     pub fn rc_test8() -> Rc<Box<SubT<usize>>> {
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<SubT<usize>>` is already on the heap, `Rc<Box<SubT<usize>>>` makes an extra allocation
+   = help: consider using just `Rc<SubT<usize>>` or `Box<SubT<usize>>`
+
+error: usage of `Rc<Arc<T>>`
+  --> tests/ui/redundant_allocation.rs:53:29
+   |
+LL |     pub fn rc_test9<T>(foo: Rc<Arc<T>>) -> Rc<Arc<SubT<T>>> {
+   |                             ^^^^^^^^^^
+   |
+   = note: `Arc<T>` is already on the heap, `Rc<Arc<T>>` makes an extra allocation
+   = help: consider using just `Rc<T>` or `Arc<T>`
+
+error: usage of `Rc<Arc<SubT<T>>>`
+  --> tests/ui/redundant_allocation.rs:53:44
+   |
+LL |     pub fn rc_test9<T>(foo: Rc<Arc<T>>) -> Rc<Arc<SubT<T>>> {
+   |                                            ^^^^^^^^^^^^^^^^
+   |
+   = note: `Arc<SubT<T>>` is already on the heap, `Rc<Arc<SubT<T>>>` makes an extra allocation
+   = help: consider using just `Rc<SubT<T>>` or `Arc<SubT<T>>`
+
+error: usage of `Arc<Box<bool>>`
+  --> tests/ui/redundant_allocation.rs:67:25
+   |
+LL |     pub fn arc_test5(a: Arc<Box<bool>>) {}
+   |                         ^^^^^^^^^^^^^^
+   |
+   = note: `Box<bool>` is already on the heap, `Arc<Box<bool>>` makes an extra allocation
+   = help: consider using just `Arc<bool>` or `Box<bool>`
+
+error: usage of `Arc<Rc<bool>>`
+  --> tests/ui/redundant_allocation.rs:70:25
+   |
+LL |     pub fn arc_test6(a: Arc<Rc<bool>>) {}
+   |                         ^^^^^^^^^^^^^
+   |
+   = note: `Rc<bool>` is already on the heap, `Arc<Rc<bool>>` makes an extra allocation
+   = help: consider using just `Arc<bool>` or `Rc<bool>`
+
+error: usage of `Arc<Box<SubT<usize>>>`
+  --> tests/ui/redundant_allocation.rs:73:27
+   |
+LL |     pub fn arc_test8() -> Arc<Box<SubT<usize>>> {
+   |                           ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<SubT<usize>>` is already on the heap, `Arc<Box<SubT<usize>>>` makes an extra allocation
+   = help: consider using just `Arc<SubT<usize>>` or `Box<SubT<usize>>`
+
+error: usage of `Arc<Rc<T>>`
+  --> tests/ui/redundant_allocation.rs:79:30
+   |
+LL |     pub fn arc_test9<T>(foo: Arc<Rc<T>>) -> Arc<Rc<SubT<T>>> {
+   |                              ^^^^^^^^^^
+   |
+   = note: `Rc<T>` is already on the heap, `Arc<Rc<T>>` makes an extra allocation
+   = help: consider using just `Arc<T>` or `Rc<T>`
+
+error: usage of `Arc<Rc<SubT<T>>>`
+  --> tests/ui/redundant_allocation.rs:79:45
+   |
+LL |     pub fn arc_test9<T>(foo: Arc<Rc<T>>) -> Arc<Rc<SubT<T>>> {
+   |                                             ^^^^^^^^^^^^^^^^
+   |
+   = note: `Rc<SubT<T>>` is already on the heap, `Arc<Rc<SubT<T>>>` makes an extra allocation
+   = help: consider using just `Arc<SubT<T>>` or `Rc<SubT<T>>`
+
+error: usage of `Rc<Box<Box<dyn T>>>`
+  --> tests/ui/redundant_allocation.rs:104:27
+   |
+LL |     pub fn test_rc_box(_: Rc<Box<Box<dyn T>>>) {}
+   |                           ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<Box<dyn T>>` is already on the heap, `Rc<Box<Box<dyn T>>>` makes an extra allocation
+   = help: consider using just `Rc<Box<dyn T>>` or `Box<Box<dyn T>>`
+
+error: usage of `Rc<Box<Box<str>>>`
+  --> tests/ui/redundant_allocation.rs:137:31
+   |
+LL |     pub fn test_rc_box_str(_: Rc<Box<Box<str>>>) {}
+   |                               ^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<Box<str>>` is already on the heap, `Rc<Box<Box<str>>>` makes an extra allocation
+   = help: consider using just `Rc<Box<str>>` or `Box<Box<str>>`
+
+error: usage of `Rc<Box<Box<[usize]>>>`
+  --> tests/ui/redundant_allocation.rs:140:33
+   |
+LL |     pub fn test_rc_box_slice(_: Rc<Box<Box<[usize]>>>) {}
+   |                                 ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<Box<[usize]>>` is already on the heap, `Rc<Box<Box<[usize]>>>` makes an extra allocation
+   = help: consider using just `Rc<Box<[usize]>>` or `Box<Box<[usize]>>`
+
+error: usage of `Rc<Box<Box<Path>>>`
+  --> tests/ui/redundant_allocation.rs:143:32
+   |
+LL |     pub fn test_rc_box_path(_: Rc<Box<Box<Path>>>) {}
+   |                                ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<Box<Path>>` is already on the heap, `Rc<Box<Box<Path>>>` makes an extra allocation
+   = help: consider using just `Rc<Box<Path>>` or `Box<Box<Path>>`
+
+error: usage of `Rc<Box<Box<DynSized>>>`
+  --> tests/ui/redundant_allocation.rs:146:34
+   |
+LL |     pub fn test_rc_box_custom(_: Rc<Box<Box<DynSized>>>) {}
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<Box<DynSized>>` is already on the heap, `Rc<Box<Box<DynSized>>>` makes an extra allocation
+   = help: consider using just `Rc<Box<DynSized>>` or `Box<Box<DynSized>>`
+
+error: aborting due to 20 previous errors
+

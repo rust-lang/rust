@@ -1,0 +1,1 @@
+BYTE "b'\\u{20AA}" error: Missing trailing `'` symbol to terminate the byte literal

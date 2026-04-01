@@ -1,0 +1,21 @@
+error[E0080]: evaluation panicked: assertion failed: LANE < 4
+  --> $DIR/const-err-trumps-simd-err.rs:17:13
+   |
+LL |     const { assert!(LANE < 4); } // the error should be here...
+   |             ^^^^^^^^^^^^^^^^^ evaluation of `get_elem::<4>::{constant#0}` failed here
+
+note: erroneous constant encountered
+  --> $DIR/const-err-trumps-simd-err.rs:17:5
+   |
+LL |     const { assert!(LANE < 4); } // the error should be here...
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: the above error was encountered while instantiating `fn get_elem::<4>`
+  --> $DIR/const-err-trumps-simd-err.rs:23:5
+   |
+LL |     get_elem::<4>(int8x4_t([0, 0, 0, 0]));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

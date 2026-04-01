@@ -1,0 +1,29 @@
+- // MIR for `f` before CopyProp
++ // MIR for `f` after CopyProp
+  
+  fn f(_1: bool) -> bool {
+      let mut _0: bool;
+      let mut _2: bool;
+      let mut _3: bool;
+  
+      bb0: {
+          goto -> bb1;
+      }
+  
+      bb1: {
+          _3 = copy _1;
+          switchInt(copy _3) -> [0: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+          _2 = copy _3;
+          _1 = const false;
+          goto -> bb1;
+      }
+  
+      bb3: {
+          _0 = copy _2;
+          return;
+      }
+  }
+  

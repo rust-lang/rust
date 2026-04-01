@@ -1,0 +1,24 @@
+From 1a8f6b8e39f343959d4d2e6b6957a6d780ac3fc0 Mon Sep 17 00:00:00 2001
+From: None <none@example.com>
+Date: Thu, 27 Mar 2025 14:32:14 -0400
+Subject: [PATCH] Disable portable-simd test
+
+---
+ library/coretests/tests/lib.rs | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/library/coretests/tests/lib.rs b/library/coretests/tests/lib.rs
+index 79022fe..9223b2f 100644
+--- a/library/coretests/tests/lib.rs
++++ b/library/coretests/tests/lib.rs
+@@ -165,7 +165,6 @@ mod pin;
+ mod pin_macro;
+ mod ptr;
+ mod result;
+-mod simd;
+ mod slice;
+ mod str;
+ mod str_lossy;
+-- 
+2.49.0
+

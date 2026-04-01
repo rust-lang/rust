@@ -1,0 +1,24 @@
+error[E0573]: expected type, found module `result`
+  --> $DIR/do-not-attempt-to-add-suggestions-with-no-changes.rs:3:6
+   |
+LL | impl result {
+   |      ^^^^^^
+   |
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+   = note: similarly named enum `Result` defined here
+help: an enum with a similar name exists
+   |
+LL - impl result {
+LL + impl Result {
+   |
+
+error[E0573]: expected type, found variant `Err`
+  --> $DIR/do-not-attempt-to-add-suggestions-with-no-changes.rs:4:25
+   |
+LL |     fn into_future() -> Err {}
+   |                         ^^^ not a type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0573`.

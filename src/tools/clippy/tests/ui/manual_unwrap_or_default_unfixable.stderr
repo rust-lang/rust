@@ -1,0 +1,35 @@
+error: if let can be simplified with `.unwrap_or_default()`
+  --> tests/ui/manual_unwrap_or_default_unfixable.rs:5:13
+   |
+LL |       let _ = if let Some(x) = "1".parse().ok() {
+   |  _____________^
+LL | |
+LL | |         x
+LL | |     } else {
+LL | |         i32::default()
+LL | |     };
+   | |_____^ help: ascribe the type i32 and replace your expression with: `"1".parse().ok().unwrap_or_default()`
+   |
+   = note: `-D clippy::manual-unwrap-or-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_unwrap_or_default)]`
+
+error: if let can be simplified with `.unwrap_or_default()`
+  --> tests/ui/manual_unwrap_or_default_unfixable.rs:11:13
+   |
+LL |     let _ = if let Some(x) = None { x } else { i32::default() };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `None::<i32>.unwrap_or_default()`
+
+error: if let can be simplified with `.unwrap_or_default()`
+  --> tests/ui/manual_unwrap_or_default_unfixable.rs:15:13
+   |
+LL |     let _ = if let Some(x) = a { x } else { i32::default() };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a.unwrap_or_default()`
+
+error: if let can be simplified with `.unwrap_or_default()`
+  --> tests/ui/manual_unwrap_or_default_unfixable.rs:17:13
+   |
+LL |     let _ = if let Some(x) = Some(99) { x } else { i32::default() };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `Some(99).unwrap_or_default()`
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,9 @@
+error[E0573]: expected type, found const parameter `C`
+  --> $DIR/struct-with-invalid-const-param.rs:3:23
+   |
+LL | struct S<const C: u8>(C);
+   |                       ^ not a type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0573`.

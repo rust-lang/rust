@@ -1,0 +1,29 @@
+error: local variable doesn't need to be boxed here
+  --> tests/ui/boxed_local.rs:40:13
+   |
+LL | fn warn_arg(x: Box<A>) {
+   |             ^
+   |
+   = note: `-D clippy::boxed-local` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::boxed_local)]`
+
+error: local variable doesn't need to be boxed here
+  --> tests/ui/boxed_local.rs:123:12
+   |
+LL | pub fn new(_needs_name: Box<PeekableSeekable<&()>>) -> () {}
+   |            ^^^^^^^^^^^
+
+error: local variable doesn't need to be boxed here
+  --> tests/ui/boxed_local.rs:189:44
+   |
+LL |         fn default_impl_x(self: Box<Self>, x: Box<u32>) -> u32 {
+   |                                            ^
+
+error: local variable doesn't need to be boxed here
+  --> tests/ui/boxed_local.rs:198:16
+   |
+LL |         fn foo(x: Box<u32>) {}
+   |                ^
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,170 @@
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:88:8
+   |
+LL |     if x.len() == 0 {
+   |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `x.is_empty()`
+   |
+   = note: `-D clippy::len-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::len_zero)]`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:93:8
+   |
+LL |     if "".len() == 0 {}
+   |        ^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `"".is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/len_zero.rs:103:20
+   |
+LL |     println!("{}", *s1 == "");
+   |                    ^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s1.is_empty()`
+   |
+   = note: `-D clippy::comparison-to-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::comparison_to_empty)]`
+
+error: comparison to empty slice
+  --> tests/ui/len_zero.rs:105:20
+   |
+LL |     println!("{}", **s2 == "");
+   |                    ^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s2.is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/len_zero.rs:107:20
+   |
+LL |     println!("{}", ***s3 == "");
+   |                    ^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s3.is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/len_zero.rs:109:20
+   |
+LL |     println!("{}", ****s4 == "");
+   |                    ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s4.is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/len_zero.rs:111:20
+   |
+LL |     println!("{}", *****s5 == "");
+   |                    ^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s5.is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/len_zero.rs:113:20
+   |
+LL |     println!("{}", ******(s6) == "");
+   |                    ^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `(s6).is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/len_zero.rs:117:20
+   |
+LL |     println!("{}", &**d2s == "");
+   |                    ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `(**d2s).is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/len_zero.rs:120:20
+   |
+LL |     println!("{}", std::borrow::Cow::Borrowed("") == "");
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `std::borrow::Cow::Borrowed("").is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:136:8
+   |
+LL |     if has_is_empty.len() == 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:140:8
+   |
+LL |     if has_is_empty.len() != 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:144:8
+   |
+LL |     if has_is_empty.len() > 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to one
+  --> tests/ui/len_zero.rs:148:8
+   |
+LL |     if has_is_empty.len() < 1 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to one
+  --> tests/ui/len_zero.rs:152:8
+   |
+LL |     if has_is_empty.len() >= 1 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:164:8
+   |
+LL |     if 0 == has_is_empty.len() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:168:8
+   |
+LL |     if 0 != has_is_empty.len() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:172:8
+   |
+LL |     if 0 < has_is_empty.len() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to one
+  --> tests/ui/len_zero.rs:176:8
+   |
+LL |     if 1 <= has_is_empty.len() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to one
+  --> tests/ui/len_zero.rs:180:8
+   |
+LL |     if 1 > has_is_empty.len() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:195:8
+   |
+LL |     if with_is_empty.len() == 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `with_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:208:6
+   |
+LL |     (has_is_empty.len() > 0).then(|| println!("This can happen."));
+   |      ^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:210:6
+   |
+LL |     (has_is_empty.len() == 0).then(|| println!("Or this!"));
+   |      ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:215:8
+   |
+LL |     if b.len() != 0 {}
+   |        ^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!b.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:250:8
+   |
+LL |     if has_is_empty.len() == compare_to!(0) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:252:8
+   |
+LL |     if has_is_empty.len() == zero!() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:255:6
+   |
+LL |     (compare_to!(0) < has_is_empty.len()).then(|| println!("This can happen."));
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: aborting due to 27 previous errors
+

@@ -1,0 +1,51 @@
+error[E0038]: the trait `A` is not dyn compatible
+  --> $DIR/dyn-incompatible-trait-should-use-self.rs:2:13
+   |
+LL |     fn f(a: dyn A) -> dyn A;
+   |             ^^^^^ `A` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/dyn-incompatible-trait-should-use-self.rs:1:10
+   |
+LL | trait A: Sized {
+   |       -  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait is not dyn compatible...
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     fn f(a: dyn A) -> dyn A;
+LL +     fn f(a: Self) -> dyn A;
+   |
+
+error[E0038]: the trait `B` is not dyn compatible
+  --> $DIR/dyn-incompatible-trait-should-use-self.rs:6:13
+   |
+LL |     fn f(a: dyn B) -> dyn B;
+   |             ^^^^^ `B` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/dyn-incompatible-trait-should-use-self.rs:6:8
+   |
+LL | trait B {
+   |       - this trait is not dyn compatible...
+LL |     fn f(a: dyn B) -> dyn B;
+   |        ^ ...because associated function `f` has no `self` parameter
+help: consider turning `f` into a method by giving it a `&self` argument
+   |
+LL |     fn f(&self, a: dyn B) -> dyn B;
+   |          ++++++
+help: alternatively, consider constraining `f` so it does not apply to trait objects
+   |
+LL |     fn f(a: dyn B) -> dyn B where Self: Sized;
+   |                             +++++++++++++++++
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     fn f(a: dyn B) -> dyn B;
+LL +     fn f(a: Self) -> dyn B;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

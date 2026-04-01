@@ -1,0 +1,24 @@
+error[E0308]: `?` operator has incompatible types
+  --> $DIR/incompatible-types-with-question-mark-51632.rs:9:5
+   |
+LL | fn forbidden_narratives() -> Result<isize, ()> {
+   |                              ----------------- expected `Result<isize, ()>` because of return type
+LL |     missing_discourses()?
+   |     ^^^^^^^^^^^^^^^^^^^^^ expected `Result<isize, ()>`, found `isize`
+   |
+   = note: `?` operator cannot convert from `isize` to `Result<isize, ()>`
+   = note: expected enum `Result<isize, ()>`
+              found type `isize`
+help: try removing this `?`
+   |
+LL -     missing_discourses()?
+LL +     missing_discourses()
+   |
+help: try wrapping the expression in `Ok`
+   |
+LL |     Ok(missing_discourses()?)
+   |     +++                     +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

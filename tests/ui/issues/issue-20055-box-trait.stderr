@@ -1,0 +1,12 @@
+warning: method `dummy` is never used
+  --> $DIR/issue-20055-box-trait.rs:11:8
+   |
+LL | trait Boo {
+   |       --- method in this trait
+LL |     fn dummy(&self) { }
+   |        ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,104 @@
+error: equality constraints are not yet supported in `where` clauses
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:32:47
+   |
+LL | fn dent_object_2<COLOR>(c: &dyn BoxCar) where <dyn BoxCar as Vehicle>::Color = COLOR {
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+
+error[E0221]: ambiguous associated type `Color` in bounds of `C`
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:19:32
+   |
+LL |     type Color;
+   |     ---------- ambiguous `Color` from `Vehicle`
+...
+LL |     type Color;
+   |     ---------- ambiguous `Color` from `Box`
+...
+LL | fn dent<C:BoxCar>(c: C, color: C::Color) {
+   |                                ^^^^^^^^ ambiguous associated type `Color`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn dent<C:BoxCar>(c: C, color: C::Color) {
+LL + fn dent<C:BoxCar>(c: C, color: <C as Vehicle>::Color) {
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn dent<C:BoxCar>(c: C, color: C::Color) {
+LL + fn dent<C:BoxCar>(c: C, color: <C as Box>::Color) {
+   |
+
+error[E0222]: ambiguous associated type `Color` in bounds of `BoxCar`
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:38
+   |
+LL |     type Color;
+   |     ---------- ambiguous `Color` from `Vehicle`
+...
+LL |     type Color;
+   |     ---------- ambiguous `Color` from `Box`
+...
+LL | fn dent_object<COLOR>(c: &dyn BoxCar<Color=COLOR>) {
+   |                                      ^^^^^^^^^^^ ambiguous associated type `Color`
+   |
+   = help: consider introducing a new type parameter `T` and adding `where` constraints:
+               where
+                   T: BoxCar,
+                   T: Vehicle::Color = COLOR,
+                   T: Box::Color = COLOR
+
+error[E0191]: the value of the associated types `Color` in `Box`, `Color` in `Vehicle` must be specified
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:31
+   |
+LL |     type Color;
+   |     ---------- `Vehicle::Color` defined here
+...
+LL |     type Color;
+   |     ---------- `Box::Color` defined here
+...
+LL | fn dent_object<COLOR>(c: &dyn BoxCar<Color=COLOR>) {
+   |                               ^^^^^^^^^^^^^^^^^^^ associated types `Color` (from trait `Vehicle`), `Color` (from trait `Box`) must be specified
+   |
+   = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated types
+
+error[E0221]: ambiguous associated type `Color` in bounds of `C`
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:28:29
+   |
+LL |     type Color;
+   |     ---------- ambiguous `Color` from `Vehicle`
+...
+LL |     type Color;
+   |     ---------- ambiguous `Color` from `Box`
+...
+LL | fn paint<C:BoxCar>(c: C, d: C::Color) {
+   |                             ^^^^^^^^ ambiguous associated type `Color`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn paint<C:BoxCar>(c: C, d: C::Color) {
+LL + fn paint<C:BoxCar>(c: C, d: <C as Vehicle>::Color) {
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn paint<C:BoxCar>(c: C, d: C::Color) {
+LL + fn paint<C:BoxCar>(c: C, d: <C as Box>::Color) {
+   |
+
+error[E0191]: the value of the associated types `Color` in `Box`, `Color` in `Vehicle` must be specified
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:32:33
+   |
+LL |     type Color;
+   |     ---------- `Vehicle::Color` defined here
+...
+LL |     type Color;
+   |     ---------- `Box::Color` defined here
+...
+LL | fn dent_object_2<COLOR>(c: &dyn BoxCar) where <dyn BoxCar as Vehicle>::Color = COLOR {
+   |                                 ^^^^^^ associated types `Color` (from trait `Vehicle`), `Color` (from trait `Box`) must be specified
+   |
+   = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated types
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0191, E0221, E0222.
+For more information about an error, try `rustc --explain E0191`.

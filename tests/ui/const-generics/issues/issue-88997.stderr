@@ -1,0 +1,15 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/issue-88997.rs:8:40
+   |
+LL | struct Range<T: PartialOrd, const MIN: T, const MAX: T>(T)
+   |                                        ^ the type must not depend on the parameter `T`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/issue-88997.rs:8:54
+   |
+LL | struct Range<T: PartialOrd, const MIN: T, const MAX: T>(T)
+   |                                                      ^ the type must not depend on the parameter `T`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0770`.

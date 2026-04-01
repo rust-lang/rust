@@ -1,0 +1,11 @@
+// MIR for `<impl at $DIR/no_inlined_clone.rs:9:10: 9:15>::clone` after PreCodegen
+
+fn <impl at $DIR/no_inlined_clone.rs:9:10: 9:15>::clone(_1: &Foo) -> Foo {
+    debug self => _1;
+    let mut _0: Foo;
+
+    bb0: {
+        _0 = copy (*_1);
+        return;
+    }
+}

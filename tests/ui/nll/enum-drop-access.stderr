@@ -1,0 +1,31 @@
+error[E0713]: borrow may still be in use when destructor runs
+  --> $DIR/enum-drop-access.rs:13:31
+   |
+LL | fn drop_enum(opt: DropOption<&mut i32>) -> Option<&mut i32> {
+   |                              - let's call the lifetime of this reference `'1`
+LL |     match opt {
+LL |         DropOption::Some(&mut ref mut r) => {
+   |                               ^^^^^^^^^
+LL |             Some(r)
+   |             ------- returning this value requires that `*opt.0` is borrowed for `'1`
+...
+LL | }
+   | - here, drop of `opt` needs exclusive access to `*opt.0`, because the type `DropOption<&mut i32>` implements the `Drop` trait
+
+error[E0713]: borrow may still be in use when destructor runs
+  --> $DIR/enum-drop-access.rs:22:36
+   |
+LL | fn optional_drop_enum(opt: Option<DropOption<&mut i32>>) -> Option<&mut i32> {
+   |                                              - let's call the lifetime of this reference `'1`
+LL |     match opt {
+LL |         Some(DropOption::Some(&mut ref mut r)) => {
+   |                                    ^^^^^^^^^
+LL |             Some(r)
+   |             ------- returning this value requires that `*opt.0.0` is borrowed for `'1`
+...
+LL | }
+   | - here, drop of `opt` needs exclusive access to `*opt.0.0`, because the type `DropOption<&mut i32>` implements the `Drop` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0713`.

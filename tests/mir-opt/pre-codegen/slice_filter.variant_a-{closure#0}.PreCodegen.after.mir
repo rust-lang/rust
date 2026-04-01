@@ -1,0 +1,142 @@
+// MIR for `variant_a::{closure#0}` after PreCodegen
+
+fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2: &&(usize, usize, usize, usize)) -> bool {
+    let mut _0: bool;
+    let mut _3: &(usize, usize, usize, usize);
+    let mut _4: &(usize, usize, usize, usize);
+    let mut _5: &(usize, usize, usize, usize);
+    let mut _6: &(usize, usize, usize, usize);
+    let mut _9: bool;
+    let mut _12: bool;
+    let mut _13: bool;
+    let _16: &usize;
+    let _17: &usize;
+    let _18: &usize;
+    let _19: &usize;
+    let mut _20: &&usize;
+    let mut _21: &&usize;
+    let mut _22: &&usize;
+    let mut _23: &&usize;
+    let mut _24: &&usize;
+    let mut _25: &&usize;
+    let mut _26: &&usize;
+    let mut _27: &&usize;
+    scope 1 {
+        debug a => _16;
+        debug b => _17;
+        debug c => _18;
+        debug d => _19;
+        scope 2 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _20;
+            debug other => _21;
+            scope 3 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _16;
+                debug other => _18;
+                let mut _7: usize;
+                let mut _8: usize;
+            }
+        }
+        scope 4 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _22;
+            debug other => _23;
+            scope 5 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _19;
+                debug other => _17;
+                let mut _10: usize;
+                let mut _11: usize;
+            }
+        }
+        scope 6 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _24;
+            debug other => _25;
+            scope 7 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _18;
+                debug other => _16;
+            }
+        }
+        scope 8 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _26;
+            debug other => _27;
+            scope 9 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _17;
+                debug other => _19;
+                let mut _14: usize;
+                let mut _15: usize;
+            }
+        }
+    }
+
+    bb0: {
+        _3 = copy (*_2);
+        // DBG: _16 = &((*_3).0: usize);
+        _4 = copy (*_2);
+        // DBG: _17 = &((*_4).1: usize);
+        _5 = copy (*_2);
+        // DBG: _18 = &((*_5).2: usize);
+        _6 = copy (*_2);
+        // DBG: _19 = &((*_6).3: usize);
+        StorageLive(_9);
+        // DBG: _20 = &_16;
+        // DBG: _21 = &?;
+        _7 = copy ((*_3).0: usize);
+        _8 = copy ((*_5).2: usize);
+        _9 = Le(copy _7, copy _8);
+        switchInt(move _9) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        StorageLive(_12);
+        // DBG: _22 = &_19;
+        // DBG: _23 = &?;
+        StorageLive(_10);
+        _10 = copy ((*_6).3: usize);
+        StorageLive(_11);
+        _11 = copy ((*_4).1: usize);
+        _12 = Le(move _10, move _11);
+        StorageDead(_11);
+        StorageDead(_10);
+        switchInt(move _12) -> [0: bb2, otherwise: bb6];
+    }
+
+    bb2: {
+        StorageLive(_13);
+        // DBG: _24 = &_18;
+        // DBG: _25 = &?;
+        _13 = Le(copy _8, copy _7);
+        switchInt(move _13) -> [0: bb3, otherwise: bb4];
+    }
+
+    bb3: {
+        _0 = const false;
+        goto -> bb5;
+    }
+
+    bb4: {
+        // DBG: _26 = &_17;
+        // DBG: _27 = &?;
+        StorageLive(_14);
+        _14 = copy ((*_4).1: usize);
+        StorageLive(_15);
+        _15 = copy ((*_6).3: usize);
+        _0 = Le(move _14, move _15);
+        StorageDead(_15);
+        StorageDead(_14);
+        goto -> bb5;
+    }
+
+    bb5: {
+        StorageDead(_13);
+        goto -> bb7;
+    }
+
+    bb6: {
+        _0 = const true;
+        goto -> bb7;
+    }
+
+    bb7: {
+        StorageDead(_12);
+        StorageDead(_9);
+        return;
+    }
+}

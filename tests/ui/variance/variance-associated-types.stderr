@@ -1,0 +1,14 @@
+error: ['a: +, T: +]
+  --> $DIR/variance-associated-types.rs:13:1
+   |
+LL | struct Foo<'a, T : Trait<'a>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: o, T: o]
+  --> $DIR/variance-associated-types.rs:18:1
+   |
+LL | struct Bar<'a, T : Trait<'a>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,6 @@
+error: using the offload feature requires -Z offload=Enable
+
+error: using the offload feature requires -C lto=fat
+
+error: aborting due to 2 previous errors
+

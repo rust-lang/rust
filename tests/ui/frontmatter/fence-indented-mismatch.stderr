@@ -1,0 +1,30 @@
+error: unclosed frontmatter
+  --> $DIR/fence-indented-mismatch.rs:1:1
+   |
+LL | / ---cargo
+...  |
+LL | |
+   | |_^
+   |
+note: frontmatter opening here was not closed
+  --> $DIR/fence-indented-mismatch.rs:1:1
+   |
+LL | ---cargo
+   | ^^^
+
+warning: use of a double negation
+  --> $DIR/fence-indented-mismatch.rs:9:6
+   |
+LL |     ---x
+   |      ^^^
+   |
+   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+   = note: use `-= 1` if you meant to decrement the value
+   = note: `#[warn(double_negations)]` on by default
+help: add parentheses for clarity
+   |
+LL |     --(-x)
+   |       +  +
+
+error: aborting due to 1 previous error; 1 warning emitted
+

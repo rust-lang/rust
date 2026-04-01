@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `b::f`
+  --> $DIR/issue-13404.rs:2:5
+   |
+LL | use b::f;
+   |     ^^^^ no `f` in `b`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

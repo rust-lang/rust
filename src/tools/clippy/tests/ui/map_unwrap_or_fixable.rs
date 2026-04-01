@@ -1,0 +1,95 @@
+//@aux-build:option_helpers.rs
+
+#![warn(clippy::map_unwrap_or)]
+#![allow(
+    clippy::unnecessary_lazy_evaluations,
+    clippy::manual_is_variant_and,
+    clippy::unnecessary_map_or
+)]
+
+#[macro_use]
+extern crate option_helpers;
+
+use std::collections::HashMap;
+
+#[rustfmt::skip]
+fn option_methods() {
+    let opt = Some(1);
+
+    // Check for `option.map(_).unwrap_or_else(_)` use.
+    // single line case
+    let _ = opt.map(|x| x + 1)
+    //~^ map_unwrap_or
+        // Should lint even though this call is on a separate line.
+        .unwrap_or_else(|| 0);
+
+    // Macro case.
+    // Should not lint.
+    let _ = opt_map!(opt, |x| x + 1).unwrap_or_else(|| 0);
+
+    // Issue #4144
+    {
+        let mut frequencies = HashMap::new();
+        let word = "foo";
+
+        frequencies
+            .get_mut(word)
+            .map(|count| {
+                *count += 1;
+            })
+            .unwrap_or_else(|| {
+                frequencies.insert(word.to_owned(), 1);
+            });
+    }
+}
+
+#[rustfmt::skip]
+fn result_methods() {
+    let res: Result<i32, ()> = Ok(1);
+
+    // Check for `result.map(_).unwrap_or_else(_)` use.
+    // single line case
+    let _ = res.map(|x| x + 1)
+    //~^ map_unwrap_or
+        // should lint even though this call is on a separate line
+        .unwrap_or_else(|_e| 0);
+
+    // macro case
+    let _ = opt_map!(res, |x| x + 1).unwrap_or_else(|_e| 0); // should not lint
+}
+
+fn main() {}
+
+fn issue15714() {
+    let o: Option<i32> = Some(3);
+    let r: Result<i32, ()> = Ok(3);
+    println!("{}", o.map(|y| y + 1).unwrap_or(3));
+    //~^ map_unwrap_or
+    println!("{}", o.map(|y| y + 1).unwrap_or_else(|| 3));
+    //~^ map_unwrap_or
+    println!("{}", r.map(|y| y + 1).unwrap_or(3));
+    //~^ map_unwrap_or
+    println!("{}", r.map(|y| y + 1).unwrap_or_else(|()| 3));
+    //~^ map_unwrap_or
+
+    println!("{}", r.map(|y| y == 1).unwrap_or(false));
+    //~^ map_unwrap_or
+}
+
+fn issue15713() {
+    let x = &Some(3);
+    println!("{}", x.map(|y| y + 1).unwrap_or(3));
+    //~^ map_unwrap_or
+
+    let x: &Result<i32, ()> = &Ok(3);
+    println!("{}", x.map(|y| y + 1).unwrap_or(3));
+    //~^ map_unwrap_or
+
+    let x = &Some(3);
+    println!("{}", x.map(|y| y + 1).unwrap_or_else(|| 3));
+    //~^ map_unwrap_or
+
+    let x: &Result<i32, ()> = &Ok(3);
+    println!("{}", x.map(|y| y + 1).unwrap_or_else(|_| 3));
+    //~^ map_unwrap_or
+}

@@ -1,0 +1,95 @@
+error: you are using an explicit closure for copying elements
+  --> tests/ui/map_clone.rs:14:22
+   |
+LL |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `vec![5_i8; 6].iter().copied()`
+   |
+   = note: `-D clippy::map-clone` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_clone)]`
+
+error: you are using an explicit closure for cloning elements
+  --> tests/ui/map_clone.rs:16:26
+   |
+LL |     let _: Vec<String> = vec![String::new()].iter().map(|x| x.clone()).collect();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `vec![String::new()].iter().cloned()`
+
+error: you are using an explicit closure for copying elements
+  --> tests/ui/map_clone.rs:18:23
+   |
+LL |     let _: Vec<u32> = vec![42, 43].iter().map(|&x| x).collect();
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `vec![42, 43].iter().copied()`
+
+error: you are using an explicit closure for copying elements
+  --> tests/ui/map_clone.rs:21:26
+   |
+LL |     let _: Option<u64> = Some(&16).map(|b| *b);
+   |                          ^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `Some(&16).copied()`
+
+error: you are using an explicit closure for copying elements
+  --> tests/ui/map_clone.rs:23:25
+   |
+LL |     let _: Option<u8> = Some(&1).map(|x| x.clone());
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `Some(&1).copied()`
+
+error: you are needlessly cloning iterator elements
+  --> tests/ui/map_clone.rs:35:29
+   |
+LL |     let _ = std::env::args().map(|v| v.clone());
+   |                             ^^^^^^^^^^^^^^^^^^^ help: remove the `map` call
+
+error: you are explicitly cloning with `.map()`
+  --> tests/ui/map_clone.rs:75:13
+   |
+LL |     let y = x.map(|x| String::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
+
+error: you are explicitly cloning with `.map()`
+  --> tests/ui/map_clone.rs:78:13
+   |
+LL |     let y = x.map(Clone::clone);
+   |             ^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
+
+error: you are explicitly cloning with `.map()`
+  --> tests/ui/map_clone.rs:81:13
+   |
+LL |     let y = x.map(String::clone);
+   |             ^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
+
+error: you are explicitly cloning with `.map()`
+  --> tests/ui/map_clone.rs:86:13
+   |
+LL |     let y = x.map(|x| u32::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
+
+error: you are explicitly cloning with `.map()`
+  --> tests/ui/map_clone.rs:89:13
+   |
+LL |     let y = x.map(|x| Clone::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
+
+error: you are explicitly cloning with `.map()`
+  --> tests/ui/map_clone.rs:100:13
+   |
+LL |     let y = x.map(|x| String::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
+
+error: you are explicitly cloning with `.map()`
+  --> tests/ui/map_clone.rs:103:13
+   |
+LL |     let y = x.map(|x| Clone::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
+
+error: you are explicitly cloning with `.map()`
+  --> tests/ui/map_clone.rs:108:13
+   |
+LL |     let y = x.map(|x| u32::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
+
+error: you are explicitly cloning with `.map()`
+  --> tests/ui/map_clone.rs:111:13
+   |
+LL |     let y = x.map(|x| Clone::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
+
+error: aborting due to 15 previous errors
+

@@ -1,0 +1,29 @@
+error[E0425]: cannot find type `Tr` in this scope
+  --> $DIR/parent_generics_of_nested_in_default.rs:1:36
+   |
+LL | impl<const A: i32 = { || [0; B] }> Tr {}
+   |                                    ^^ not found in this scope
+
+error[E0425]: cannot find value `B` in this scope
+  --> $DIR/parent_generics_of_nested_in_default.rs:1:30
+   |
+LL | impl<const A: i32 = { || [0; B] }> Tr {}
+   |            -                 ^
+   |            |
+   |            similarly named const parameter `A` defined here
+   |
+help: a const parameter with a similar name exists
+   |
+LL - impl<const A: i32 = { || [0; B] }> Tr {}
+LL + impl<const A: i32 = { || [0; A] }> Tr {}
+   |
+
+error: defaults for generic parameters are not allowed here
+  --> $DIR/parent_generics_of_nested_in_default.rs:1:6
+   |
+LL | impl<const A: i32 = { || [0; B] }> Tr {}
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

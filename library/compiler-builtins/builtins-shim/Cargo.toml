@@ -1,0 +1,66 @@
+# NOTE: Must be kept in sync with `../compiler-builtins/Cargo.toml`.
+#
+# The manifest at `../compiler-builtins` is what actually gets used in the
+# rust-lang/rust tree; however, we can't build it out of tree because it
+# depends on `core` by path, and even optional Cargo dependencies need to be
+# available at build time. So, we work around this by having this "shim"
+# manifest that is identical except for the `core` dependency and forwards
+# to the same sources, which acts as the `compiler-builtins` Cargo entrypoint
+# for out of tree testing
+#
+# Ideally we can eventually replace this with a patch in the workspace
+# manifest <https://github.com/rust-lang/cargo/issues/4648>.
+
+[package]
+name = "compiler_builtins"
+version = "0.1.160"
+authors = [
+    "Alex Crichton <alex@alexcrichton.com>",
+    "Amanieu d'Antras <amanieu@gmail.com>",
+    "Jorge Aparicio <japaricious@gmail.com>",
+    "Trevor Gross <tg@trevorgross.com>",
+]
+description = "Compiler intrinsics used by the Rust compiler."
+repository = "https://github.com/rust-lang/compiler-builtins"
+license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
+edition = "2024"
+publish = false
+links = "compiler-rt"
+
+build = "../compiler-builtins/build.rs"
+
+[lib]
+path = "../compiler-builtins/src/lib.rs"
+bench = false
+doctest = false
+test = false
+
+[build-dependencies]
+cc = { version = "1.2", optional = true }
+
+[features]
+default = []
+
+# Enable compilation of C code in compiler-rt, filling in some more optimized
+# implementations and also filling in unimplemented intrinsics
+c = ["dep:cc"]
+
+# For implementations where there is both a generic version and a platform-
+# specific version, use the generic version. This is meant to enable testing
+# the generic versions on all platforms.
+no-asm = []
+
+# Flag this library as the unstable compiler-builtins lib. This must be enabled
+# when using as `std`'s dependency.'
+compiler-builtins = []
+
+# Generate memory-related intrinsics like memcpy
+mem = []
+
+# Mangle all names so this can be linked in with other versions or other
+# compiler-rt implementations. Also used for testing
+mangled-names = []
+
+# This makes certain traits and function specializations public that
+# are not normally public but are required by the `builtins-test`
+unstable-public-internals = []

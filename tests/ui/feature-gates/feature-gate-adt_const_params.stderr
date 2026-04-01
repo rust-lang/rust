@@ -1,0 +1,14 @@
+error: `Bar` is forbidden as the type of a const generic parameter
+  --> $DIR/feature-gate-adt_const_params.rs:3:21
+   |
+LL | struct Foo<const N: Bar>;
+   |                     ^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: aborting due to 1 previous error
+

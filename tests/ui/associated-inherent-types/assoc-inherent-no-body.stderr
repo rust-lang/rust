@@ -1,0 +1,10 @@
+error: associated type in `impl` without body
+  --> $DIR/assoc-inherent-no-body.rs:7:5
+   |
+LL |     type Baz;
+   |     ^^^^^^^^-
+   |             |
+   |             help: provide a definition for the type: `= <type>;`
+
+error: aborting due to 1 previous error
+

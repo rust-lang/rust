@@ -1,0 +1,21 @@
+error: implementation of `Trait` is not general enough
+  --> $DIR/closure-malformed-projection-input-issue-102800.rs:18:12
+   |
+LL |     let _: for<'a> fn(<&'a () as Trait>::Ty) = |_| {};
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Trait` is not general enough
+   |
+   = note: `&'0 ()` must implement `Trait`, for any lifetime `'0`...
+   = note: ...but `Trait` is actually implemented for the type `&'static ()`
+
+error: implementation of `Trait` is not general enough
+  --> $DIR/closure-malformed-projection-input-issue-102800.rs:18:12
+   |
+LL |     let _: for<'a> fn(<&'a () as Trait>::Ty) = |_| {};
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Trait` is not general enough
+   |
+   = note: `&'0 ()` must implement `Trait`, for any lifetime `'0`...
+   = note: ...but `Trait` is actually implemented for the type `&'static ()`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

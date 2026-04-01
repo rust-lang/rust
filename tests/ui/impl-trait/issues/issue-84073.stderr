@@ -1,0 +1,9 @@
+error[E0275]: overflow assigning `_` to `Option<_>`
+  --> $DIR/issue-84073.rs:32:27
+   |
+LL |     Race::new(|race| race.when());
+   |                           ^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

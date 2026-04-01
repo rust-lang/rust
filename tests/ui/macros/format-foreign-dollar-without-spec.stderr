@@ -1,0 +1,16 @@
+error: argument never used
+  --> $DIR/format-foreign-dollar-without-spec.rs:3:25
+   |
+LL |     println!("%65536$", 1);
+   |                         ^ argument never used
+   |
+note: format specifiers use curly braces, and the conversion specifier `
+      ` is unknown or unsupported
+  --> $DIR/format-foreign-dollar-without-spec.rs:3:15
+   |
+LL |     println!("%65536$", 1);
+   |               ^^^^^^^^
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+
+error: aborting due to 1 previous error
+

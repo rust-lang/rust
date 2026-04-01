@@ -1,0 +1,18 @@
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/sized.rs:8:32
+   |
+LL | fn make_bar<T: Bar>(t: &T) -> &dyn Bar {
+   |                                ^^^^^^^ `Bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/sized.rs:4:12
+   |
+LL | trait Bar: Sized {
+   |       ---  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait is not dyn compatible...
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

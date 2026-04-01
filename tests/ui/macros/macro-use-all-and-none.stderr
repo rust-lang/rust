@@ -1,0 +1,15 @@
+warning: unused attribute
+  --> $DIR/macro-use-all-and-none.rs:7:12
+   |
+LL | #[macro_use()]
+   |            ^^ help: remove these parentheses
+   |
+   = note: using `macro_use` with an empty list is equivalent to not using a list at all
+note: the lint level is defined here
+  --> $DIR/macro-use-all-and-none.rs:4:9
+   |
+LL | #![warn(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

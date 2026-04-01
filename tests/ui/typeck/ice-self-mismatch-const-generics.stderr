@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/ice-self-mismatch-const-generics.rs:11:9
+   |
+LL | impl<T> GenericStruct<0, T> {
+   |         ------------------- this is the type of the `Self` literal
+LL |     pub fn new(thing: T) -> GenericStruct<1, T> {
+   |                             ------------------- expected `GenericStruct<1, T>` because of return type
+LL |         Self { thing }
+   |         ^^^^^^^^^^^^^^ expected `1`, found `0`
+   |
+   = note: expected struct `GenericStruct<1, _>`
+              found struct `GenericStruct<0, _>`
+help: use the type name directly
+   |
+LL -         Self { thing }
+LL +         GenericStruct::<1, T> { thing }
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ice-self-mismatch-const-generics.rs:20:9
+   |
+LL | impl<T> GenericStruct2<0, T> {
+   |         -------------------- this is the type of the `Self` literal
+LL |     pub fn new(thing: T) -> GenericStruct2<1, T> {
+   |                             -------------------- expected `GenericStruct2<1, T>` because of return type
+LL |         Self { 0: thing }
+   |         ^^^^^^^^^^^^^^^^^ expected `1`, found `0`
+   |
+   = note: expected struct `GenericStruct2<1, _>`
+              found struct `GenericStruct2<0, _>`
+help: use the type name directly
+   |
+LL -         Self { 0: thing }
+LL +         GenericStruct2::<1, T> { 0: thing }
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

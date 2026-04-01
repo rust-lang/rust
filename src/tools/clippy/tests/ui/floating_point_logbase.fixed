@@ -1,0 +1,22 @@
+#![warn(clippy::suboptimal_flops)]
+#![allow(clippy::unnecessary_cast)]
+
+fn main() {
+    let x = 3f32;
+    let y = 5f32;
+    let _ = x.log(y);
+    //~^ suboptimal_flops
+    let _ = (x as f32).log(y);
+    //~^ suboptimal_flops
+    let _ = x.log(y);
+    //~^ suboptimal_flops
+    let _ = x.log(y);
+    //~^ suboptimal_flops
+    let _ = x.log(y);
+    //~^ suboptimal_flops
+    // Cases where the lint shouldn't be applied
+    let _ = x.ln() / y.powf(3.2);
+    let _ = x.powf(3.2) / y.powf(3.2);
+    let _ = x.powf(3.2) / y.ln();
+    let _ = x.log(5f32) / y.log(7f32);
+}

@@ -1,0 +1,43 @@
+use run_make_support::{bin_name, rust_lib_name, rustc, target};
+
+fn main() {
+    rustc()
+        .target(target())
+        .print("crate-name")
+        .input("crate.rs")
+        .run()
+        .assert_stdout_equals("foo");
+    rustc()
+        .target(target())
+        .print("file-names")
+        .input("crate.rs")
+        .run()
+        .assert_stdout_equals(bin_name("foo"));
+    rustc()
+        .target(target())
+        .print("file-names")
+        .crate_type("lib")
+        .arg("--test")
+        .input("crate.rs")
+        .run()
+        .assert_stdout_equals(bin_name("foo"));
+    rustc()
+        .target(target())
+        .print("file-names")
+        .arg("--test")
+        .input("lib.rs")
+        .run()
+        .assert_stdout_equals(bin_name("mylib"));
+    rustc()
+        .target(target())
+        .print("file-names")
+        .input("lib.rs")
+        .run()
+        .assert_stdout_equals(rust_lib_name("mylib"));
+    rustc()
+        .target(target())
+        .print("file-names")
+        .input("rlib.rs")
+        .run()
+        .assert_stdout_equals(rust_lib_name("mylib"));
+}

@@ -1,0 +1,175 @@
+#![warn(clippy::manual_memcpy)]
+#![allow(
+    clippy::assigning_clones,
+    clippy::useless_vec,
+    clippy::needless_range_loop,
+    clippy::manual_slice_fill,
+    clippy::redundant_slicing
+)]
+
+const LOOP_OFFSET: usize = 5000;
+
+pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
+    // plain manual memcpy
+    dst[..src.len()].copy_from_slice(&src[..]);
+
+    // dst offset memcpy
+    dst[10..(src.len() + 10)].copy_from_slice(&src[..]);
+
+    // src offset memcpy
+    dst[..src.len()].copy_from_slice(&src[10..(src.len() + 10)]);
+
+    // src offset memcpy
+    dst[11..src.len()].copy_from_slice(&src[(11 - 10)..(src.len() - 10)]);
+
+    // overwrite entire dst
+    dst.copy_from_slice(&src[..dst.len()]);
+
+    // manual copy with branch - can't easily convert to memcpy!
+    for i in 0..src.len() {
+        dst[i] = src[i];
+        if dst[i] > 5 {
+            break;
+        }
+    }
+
+    // multiple copies - suggest two memcpy statements
+    dst[10..256].copy_from_slice(&src[(10 - 5)..(256 - 5)]);
+    dst2[(10 + 500)..(256 + 500)].copy_from_slice(&src[10..256]);
+
+    // this is a reversal - the copy lint shouldn't be triggered
+    for i in 10..LOOP_OFFSET {
+        dst[i + LOOP_OFFSET] = src[LOOP_OFFSET - i];
+    }
+
+    let some_var = 5;
+    // Offset in variable
+    dst[(10 + LOOP_OFFSET)..(LOOP_OFFSET + LOOP_OFFSET)].copy_from_slice(&src[(10 - some_var)..(LOOP_OFFSET - some_var)]);
+
+    // Non continuous copy - don't trigger lint
+    for i in 0..10 {
+        dst[i + i] = src[i];
+    }
+
+    let src_vec = vec![1, 2, 3, 4, 5];
+    let mut dst_vec = vec![0, 0, 0, 0, 0];
+
+    // make sure vectors are supported
+    dst_vec[..src_vec.len()].copy_from_slice(&src_vec[..]);
+
+    // lint should not trigger when either
+    // source or destination type is not
+    // slice-like, like DummyStruct
+    struct DummyStruct(i32);
+
+    impl ::std::ops::Index<usize> for DummyStruct {
+        type Output = i32;
+
+        fn index(&self, _: usize) -> &i32 {
+            &self.0
+        }
+    }
+
+    let src = DummyStruct(5);
+    let mut dst_vec = vec![0; 10];
+
+    for i in 0..10 {
+        dst_vec[i] = src[i];
+    }
+
+    // Simplify suggestion (issue #3004)
+    let src = [0, 1, 2, 3, 4];
+    let mut dst = [0, 0, 0, 0, 0, 0];
+    let from = 1;
+
+    dst[from..(from + src.len())].copy_from_slice(&src[..(from + src.len() - from)]);
+
+    dst[from..(from + 3)].copy_from_slice(&src[..(from + 3 - from)]);
+
+    #[allow(clippy::identity_op)]
+    dst[..5].copy_from_slice(&src);
+
+    #[allow(clippy::reversed_empty_ranges)]
+    dst[..0].copy_from_slice(&src[..0]);
+
+    // `RangeTo` `for` loop - don't trigger lint
+    for i in 0.. {
+        dst[i] = src[i];
+    }
+
+    // VecDeque - ideally this would work, but would require something like `range_as_slices`
+    let mut dst = std::collections::VecDeque::from_iter([0; 5]);
+    let src = std::collections::VecDeque::from_iter([0, 1, 2, 3, 4]);
+    for i in 0..dst.len() {
+        dst[i] = src[i];
+    }
+    let src = vec![0, 1, 2, 3, 4];
+    for i in 0..dst.len() {
+        dst[i] = src[i];
+    }
+
+    // Range is equal to array length
+    let src = [0, 1, 2, 3, 4];
+    let mut dst = [0; 4];
+    dst.copy_from_slice(&src[..4]);
+
+    let mut dst = [0; 6];
+    dst[..5].copy_from_slice(&src);
+
+    let mut dst = [0; 5];
+    dst.copy_from_slice(&src);
+
+    // Don't trigger lint for following multi-dimensional arrays
+    let src = [[0; 5]; 5];
+    for i in 0..4 {
+        dst[i] = src[i + 1][i];
+    }
+    for i in 0..5 {
+        dst[i] = src[i][i];
+    }
+    for i in 0..5 {
+        dst[i] = src[i][3];
+    }
+
+    let src = [0; 5];
+    let mut dst = [[0; 5]; 5];
+    for i in 0..5 {
+        dst[i][i] = src[i];
+    }
+
+    let src = [[[0; 5]; 5]; 5];
+    let mut dst = [0; 5];
+    for i in 0..5 {
+        dst[i] = src[i][i][i];
+    }
+    for i in 0..5 {
+        dst[i] = src[i][i][0];
+    }
+    for i in 0..5 {
+        dst[i] = src[i][0][i];
+    }
+    for i in 0..5 {
+        dst[i] = src[0][i][i];
+    }
+    for i in 0..5 {
+        dst[i] = src[0][i][1];
+    }
+    for i in 0..5 {
+        dst[i] = src[i][0][1];
+    }
+
+    // Trigger lint
+    let src = [[0; 5]; 5];
+    let mut dst = [0; 5];
+    dst.copy_from_slice(&src[0]);
+
+    let src = [[[0; 5]; 5]; 5];
+    dst.copy_from_slice(&src[0][1]);
+}
+
+#[warn(clippy::needless_range_loop, clippy::manual_memcpy)]
+pub fn manual_clone(src: &[String], dst: &mut [String]) {
+    dst[..src.len()].clone_from_slice(&src[..]);
+}
+
+fn main() {}

@@ -1,0 +1,24 @@
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/issue-29161.rs:5:9
+   |
+LL |         pub fn default() -> A {
+   |         ^^^ help: remove the qualifier
+   |
+   = note: trait items always share the visibility of their trait
+
+error[E0603]: struct `A` is private
+  --> $DIR/issue-29161.rs:13:8
+   |
+LL |     a::A::default();
+   |        ^ private struct
+   |
+note: the struct `A` is defined here
+  --> $DIR/issue-29161.rs:2:5
+   |
+LL |     struct A;
+   |     ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0449, E0603.
+For more information about an error, try `rustc --explain E0449`.

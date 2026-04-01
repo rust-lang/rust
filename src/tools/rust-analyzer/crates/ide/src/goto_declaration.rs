@@ -1,0 +1,250 @@
+use hir::{AsAssocItem, Semantics};
+use ide_db::{
+    RootDatabase,
+    defs::{Definition, NameClass, NameRefClass},
+};
+use syntax::{AstNode, SyntaxKind::*, T, ast, match_ast};
+
+use crate::{
+    FilePosition, GotoDefinitionConfig, NavigationTarget, RangeInfo,
+    goto_definition::goto_definition, navigation_target::TryToNav,
+};
+
+// Feature: Go to Declaration
+//
+// Navigates to the declaration of an identifier.
+//
+// This is the same as `Go to Definition` with the following exceptions:
+// - outline modules will navigate to the `mod name;` item declaration
+// - trait assoc items will navigate to the assoc item of the trait declaration as opposed to the trait impl
+// - fields in patterns will navigate to the field declaration of the struct, union or variant
+pub(crate) fn goto_declaration(
+    db: &RootDatabase,
+    position @ FilePosition { file_id, offset }: FilePosition,
+    config: &GotoDefinitionConfig<'_>,
+) -> Option<RangeInfo<Vec<NavigationTarget>>> {
+    let sema = Semantics::new(db);
+    let file = sema.parse_guess_edition(file_id).syntax().clone();
+    let original_token = file
+        .token_at_offset(offset)
+        .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate] | T![Self]))?;
+    let range = original_token.text_range();
+    let info: Vec<NavigationTarget> = sema
+        .descend_into_macros_no_opaque(original_token, false)
+        .iter()
+        .filter_map(|token| {
+            let parent = token.value.parent()?;
+            let def = match_ast! {
+                match parent {
+                    ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
+                        NameRefClass::Definition(it, _) => Some(it),
+                        NameRefClass::FieldShorthand { field_ref, .. } =>
+                            return field_ref.try_to_nav(&sema),
+                        NameRefClass::ExternCrateShorthand { decl, .. } =>
+                            return decl.try_to_nav(&sema),
+                    },
+                    ast::Name(name) => match NameClass::classify(&sema, &name)? {
+                        NameClass::Definition(it) | NameClass::ConstReference(it) => Some(it),
+                        NameClass::PatFieldShorthand { field_ref, .. } =>
+                            return field_ref.try_to_nav(&sema),
+                    },
+                    _ => None
+                }
+            };
+            let assoc = match def? {
+                Definition::Module(module) => {
+                    return Some(NavigationTarget::from_module_to_decl(db, module));
+                }
+                Definition::Const(c) => c.as_assoc_item(db),
+                Definition::TypeAlias(ta) => ta.as_assoc_item(db),
+                Definition::Function(f) => f.as_assoc_item(db),
+                Definition::ExternCrateDecl(it) => return it.try_to_nav(&sema),
+                _ => None,
+            }?;
+
+            let trait_ = assoc.implemented_trait(db)?;
+            let name = Some(assoc.name(db)?);
+            let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
+            item.try_to_nav(&sema)
+        })
+        .flatten()
+        .collect();
+
+    if info.is_empty() {
+        goto_definition(db, position, config)
+    } else {
+        Some(RangeInfo::new(range, info))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ide_db::{FileRange, MiniCore};
+    use itertools::Itertools;
+
+    use crate::{GotoDefinitionConfig, fixture};
+
+    const TEST_CONFIG: GotoDefinitionConfig<'_> =
+        GotoDefinitionConfig { minicore: MiniCore::default() };
+
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
+        let (analysis, position, expected) = fixture::annotations(ra_fixture);
+        let navs = analysis
+            .goto_declaration(position, &TEST_CONFIG)
+            .unwrap()
+            .expect("no declaration or definition found")
+            .info;
+        if navs.is_empty() {
+            panic!("unresolved reference")
+        }
+
+        let cmp = |&FileRange { file_id, range }: &_| (file_id, range.start());
+        let navs = navs
+            .into_iter()
+            .map(|nav| FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
+            .sorted_by_key(cmp)
+            .collect::<Vec<_>>();
+        let expected = expected
+            .into_iter()
+            .map(|(FileRange { file_id, range }, _)| FileRange { file_id, range })
+            .sorted_by_key(cmp)
+            .collect::<Vec<_>>();
+        assert_eq!(expected, navs);
+    }
+
+    #[test]
+    fn goto_decl_module_outline() {
+        check(
+            r#"
+//- /main.rs
+mod foo;
+ // ^^^
+//- /foo.rs
+use self$0;
+"#,
+        )
+    }
+
+    #[test]
+    fn goto_decl_module_inline() {
+        check(
+            r#"
+mod foo {
+ // ^^^
+    use self$0;
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn goto_decl_goto_def_fallback() {
+        check(
+            r#"
+struct Foo;
+    // ^^^
+impl Foo$0 {}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_decl_assoc_item_no_impl_item() {
+        check(
+            r#"
+trait Trait {
+    const C: () = ();
+       // ^
+}
+impl Trait for () {}
+
+fn main() {
+    <()>::C$0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_decl_assoc_item() {
+        check(
+            r#"
+trait Trait {
+    const C: () = ();
+       // ^
+}
+impl Trait for () {
+    const C: () = ();
+}
+
+fn main() {
+    <()>::C$0;
+}
+"#,
+        );
+        check(
+            r#"
+trait Trait {
+    const C: () = ();
+       // ^
+}
+impl Trait for () {
+    const C$0: () = ();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_decl_field_pat_shorthand() {
+        check(
+            r#"
+struct Foo { field: u32 }
+           //^^^^^
+fn main() {
+    let Foo { field$0 };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_decl_constructor_shorthand() {
+        check(
+            r#"
+struct Foo { field: u32 }
+           //^^^^^
+fn main() {
+    let field = 0;
+    Foo { field$0 };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_decl_for_extern_crate() {
+        check(
+            r#"
+//- /main.rs crate:main deps:std
+extern crate std$0;
+         /// ^^^
+//- /std/lib.rs crate:std
+// empty
+"#,
+        )
+    }
+
+    #[test]
+    fn goto_decl_for_renamed_extern_crate() {
+        check(
+            r#"
+//- /main.rs crate:main deps:std
+extern crate std as abc$0;
+                /// ^^^
+//- /std/lib.rs crate:std
+// empty
+"#,
+        )
+    }
+}

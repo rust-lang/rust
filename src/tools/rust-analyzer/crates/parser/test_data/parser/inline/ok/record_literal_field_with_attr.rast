@@ -1,0 +1,49 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        RECORD_EXPR
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "S"
+          WHITESPACE " "
+          RECORD_EXPR_FIELD_LIST
+            L_CURLY "{"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD
+              ATTR
+                POUND "#"
+                L_BRACK "["
+                META
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "cfg"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    IDENT "test"
+                    R_PAREN ")"
+                R_BRACK "]"
+              WHITESPACE " "
+              NAME_REF
+                IDENT "field"
+              COLON ":"
+              WHITESPACE " "
+              LITERAL
+                INT_NUMBER "1"
+            WHITESPACE " "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

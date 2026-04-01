@@ -1,0 +1,47 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/issue-87378.rs:14:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: First Pass analysis includes:
+  --> $DIR/issue-87378.rs:18:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |        unsafe { u.value }
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing u[(0, 0)] -> Immutable
+  --> $DIR/issue-87378.rs:21:17
+   |
+LL |        unsafe { u.value }
+   |                 ^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/issue-87378.rs:18:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |        unsafe { u.value }
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture u[] -> Immutable
+  --> $DIR/issue-87378.rs:21:17
+   |
+LL |        unsafe { u.value }
+   |                 ^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

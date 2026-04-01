@@ -1,0 +1,51 @@
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/issue-18959.rs:11:12
+   |
+LL | fn foo(b: &dyn Bar) {
+   |            ^^^^^^^ `Bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-18959.rs:1:20
+   |
+LL | pub trait Foo { fn foo<T>(&self, ext_thing: &T); }
+   |                    ^^^ ...because method `foo` has generic type parameters
+LL | pub trait Bar: Foo { }
+   |           --- this trait is not dyn compatible...
+   = help: consider moving `foo` to another trait
+
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/issue-18959.rs:18:20
+   |
+LL |     let test: &dyn Bar = &mut thing;
+   |                    ^^^ `Bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-18959.rs:1:20
+   |
+LL | pub trait Foo { fn foo<T>(&self, ext_thing: &T); }
+   |                    ^^^ ...because method `foo` has generic type parameters
+LL | pub trait Bar: Foo { }
+   |           --- this trait is not dyn compatible...
+   = help: consider moving `foo` to another trait
+
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/issue-18959.rs:20:9
+   |
+LL |     foo(test);
+   |         ^^^^ `Bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-18959.rs:1:20
+   |
+LL | pub trait Foo { fn foo<T>(&self, ext_thing: &T); }
+   |                    ^^^ ...because method `foo` has generic type parameters
+LL | pub trait Bar: Foo { }
+   |           --- this trait is not dyn compatible...
+   = help: consider moving `foo` to another trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

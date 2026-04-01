@@ -1,0 +1,53 @@
+- // MIR for `main` before InstrumentCoverage
++ // MIR for `main` after InstrumentCoverage
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: ();
+      let mut _2: bool;
+      let mut _3: !;
+  
++     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage.rs:13:1: 13:10 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/instrument_coverage.rs:15:12: 15:15 (#0);
++     coverage Code { bcb: bcb2 } => $DIR/instrument_coverage.rs:16:13: 16:18 (#0);
++     coverage Code { bcb: bcb3 } => $DIR/instrument_coverage.rs:17:9: 17:10 (#0);
++     coverage Code { bcb: bcb2 } => $DIR/instrument_coverage.rs:19:1: 19:2 (#0);
++ 
+      bb0: {
++         Coverage::VirtualCounter(bcb0);
+          goto -> bb1;
+      }
+  
+      bb1: {
++         Coverage::VirtualCounter(bcb1);
+          falseUnwind -> [real: bb2, unwind: bb6];
+      }
+  
+      bb2: {
+          StorageLive(_2);
+          _2 = bar() -> [return: bb3, unwind: bb6];
+      }
+  
+      bb3: {
+          switchInt(move _2) -> [0: bb5, otherwise: bb4];
+      }
+  
+      bb4: {
++         Coverage::VirtualCounter(bcb2);
+          _0 = const ();
+          StorageDead(_2);
+          return;
+      }
+  
+      bb5: {
++         Coverage::VirtualCounter(bcb3);
+          _1 = const ();
+          StorageDead(_2);
+          goto -> bb1;
+      }
+  
+      bb6 (cleanup): {
+          resume;
+      }
+  }
+  

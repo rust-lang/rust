@@ -1,0 +1,22 @@
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/coerce-in-may-coerce.rs:17:5
+   |
+LL |     arg_error((), || ());
+   |     ^^^^^^^^^ --  ----- expected `()`, found `{closure@$DIR/coerce-in-may-coerce.rs:17:19: 17:21}`
+   |               |
+   |               expected `<fn() as Mirror>::Assoc`, found `()`
+   |
+note: function defined here
+  --> $DIR/coerce-in-may-coerce.rs:12:4
+   |
+LL | fn arg_error(x: <fn() as Mirror>::Assoc, y: ()) { todo!() }
+   |    ^^^^^^^^^
+help: swap these arguments
+   |
+LL -     arg_error((), || ());
+LL +     arg_error(|| (), ());
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

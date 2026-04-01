@@ -1,0 +1,44 @@
+SOURCE_FILE
+  STATIC
+    STATIC_KW "static"
+    WHITESPACE " "
+    NAME
+      IDENT "C"
+    COLON ":"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "u32"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "0"
+  WHITESPACE "\n"
+  ERROR
+    WHERE_KW "where"
+  WHITESPACE " "
+  ERROR
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "i32"
+  ERROR
+    COLON ":"
+  WHITESPACE " "
+  ERROR
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "Copy"
+  ERROR
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 17: expected SEMICOLON
+error 18: expected an item
+error 27: expected an item
+error 27: expected an item
+error 33: expected an item
+error 33: expected an item

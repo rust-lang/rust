@@ -1,0 +1,8 @@
+SOURCE_FILE
+  ERROR
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "foo"
+  WHITESPACE "\n"
+error 3: expected an item

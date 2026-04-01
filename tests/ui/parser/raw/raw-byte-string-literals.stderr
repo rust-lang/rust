@@ -1,0 +1,20 @@
+error: bare CR not allowed in raw string
+  --> $DIR/raw-byte-string-literals.rs:4:9
+   |
+LL |     br"a␍";
+   |         ^
+
+error: non-ASCII character in raw byte string literal
+  --> $DIR/raw-byte-string-literals.rs:5:8
+   |
+LL |     br"é";
+   |        ^ must be ASCII
+
+error: found invalid character; only `#` is allowed in raw string delimitation: ~
+  --> $DIR/raw-byte-string-literals.rs:6:5
+   |
+LL |     br##~"a"~##;
+   |     ^^^^^
+
+error: aborting due to 3 previous errors
+

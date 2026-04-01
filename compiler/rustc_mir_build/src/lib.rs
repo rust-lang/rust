@@ -1,0 +1,28 @@
+//! Construction of MIR from HIR.
+
+// tidy-alphabetical-start
+#![feature(box_patterns)]
+#![feature(try_blocks)]
+// tidy-alphabetical-end
+
+// The `builder` module used to be named `build`, but that was causing GitHub's
+// "Go to file" feature to silently ignore all files in the module, probably
+// because it assumes that "build" is a build-output directory. See #134365.
+mod builder;
+mod check_tail_calls;
+mod check_unsafety;
+mod errors;
+pub mod thir;
+
+use rustc_middle::util::Providers;
+
+pub fn provide(providers: &mut Providers) {
+    providers.queries.check_match = thir::pattern::check_match;
+    providers.queries.lit_to_const = thir::constant::lit_to_const;
+    providers.queries.closure_saved_names_of_captured_variables =
+        builder::closure_saved_names_of_captured_variables;
+    providers.queries.check_unsafety = check_unsafety::check_unsafety;
+    providers.queries.check_tail_calls = check_tail_calls::check_tail_calls;
+    providers.queries.thir_body = thir::cx::thir_body;
+    providers.hooks.build_mir_inner_impl = builder::build_mir_inner_impl;
+}

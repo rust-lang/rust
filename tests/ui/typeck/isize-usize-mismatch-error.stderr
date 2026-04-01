@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/isize-usize-mismatch-error.rs:10:9
+   |
+LL |     foo(1*(1 as isize));
+   |     --- ^^^^^^^^^^^^^^ expected `i16`, found `isize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/isize-usize-mismatch-error.rs:5:4
+   |
+LL | fn foo(_s: i16) { }
+   |    ^^^ -------
+help: you can convert an `isize` to an `i16` and panic if the converted value doesn't fit
+   |
+LL |     foo((1*(1 as isize)).try_into().unwrap());
+   |         +              +++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/isize-usize-mismatch-error.rs:14:9
+   |
+LL |     bar(1*(1 as usize));
+   |     --- ^^^^^^^^^^^^^^ expected `u32`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/isize-usize-mismatch-error.rs:7:4
+   |
+LL | fn bar(_s: u32) { }
+   |    ^^^ -------
+help: you can convert a `usize` to a `u32` and panic if the converted value doesn't fit
+   |
+LL |     bar((1*(1 as usize)).try_into().unwrap());
+   |         +              +++++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

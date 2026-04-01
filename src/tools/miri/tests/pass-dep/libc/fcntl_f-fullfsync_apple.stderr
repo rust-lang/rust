@@ -1,0 +1,2 @@
+warning: `fcntl` was made to return an error due to isolation
+

@@ -1,0 +1,107 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |#![feature(custom_inner_attributes)] // for #![rustfmt::skip]
+   LL|       |#![allow(unused_assignments, dead_code)]
+   LL|       |#![rustfmt::skip]
+   LL|       |//@ edition: 2018
+   LL|       |//@ compile-flags: -Copt-level=1
+   LL|       |
+   LL|       |//@ aux-build: executor.rs
+   LL|       |extern crate executor;
+   LL|       |
+   LL|      1|async fn c(x: u8) -> u8 {
+   LL|      1|    if x == 8 {
+   LL|      1|        1
+   LL|       |    } else {
+   LL|      0|        0
+   LL|       |    }
+   LL|      1|}
+   LL|       |
+   LL|      0|async fn d() -> u8 { 1 }
+   LL|       |
+   LL|      0|async fn e() -> u8 { 1 } // unused function; executor does not block on `g()`
+   LL|       |
+   LL|      1|async fn f() -> u8 { 1 }
+   LL|       |
+   LL|      0|async fn foo() -> [bool; 10] { [false; 10] } // unused function; executor does not block on `h()`
+   LL|       |
+   LL|      1|async fn g(x: u8) {
+                                ^0
+   LL|      0|    match x {
+   LL|      0|        y if e().await == y => (),
+   LL|      0|        y if f().await == y => (),
+   LL|      0|        _ => (),
+   LL|       |    }
+   LL|      0|}
+   LL|       |
+   LL|      1|async fn h(x: usize) { // The function signature is counted when called, but the body is not
+                                   ^0
+   LL|       |                       // executed (not awaited) so the open brace has a `0` count (at least when
+   LL|       |                       // displayed with `llvm-cov show` in color-mode).
+   LL|      0|    match x {
+   LL|      0|        y if foo().await[y] => (),
+   LL|      0|        _ => (),
+   LL|       |    }
+   LL|      0|}
+   LL|       |
+   LL|      1|async fn i(x: u8) { // line coverage is 1, but there are 2 regions:
+   LL|       |                    // (a) the function signature, counted when the function is called; and
+   LL|       |                    // (b) the open brace for the function body, counted once when the body is
+   LL|       |                    // executed asynchronously.
+   LL|      1|    match x {
+   LL|      1|        y if c(x).await == y + 1 => { d().await; }
+                      ^0                            ^0
+   LL|      1|        y if f().await == y + 1 => (),
+                      ^0                         ^0
+   LL|      1|        _ => (),
+   LL|       |    }
+   LL|      1|}
+   LL|       |
+   LL|      1|fn j(x: u8) {
+   LL|       |    // non-async versions of `c()`, `d()`, and `f()` to make it similar to async `i()`.
+   LL|      1|    fn c(x: u8) -> u8 {
+   LL|      1|        if x == 8 {
+   LL|      0|            1
+   LL|       |        } else {
+   LL|      1|            0
+   LL|       |        }
+   LL|      1|    }
+   LL|      0|    fn d() -> u8 { 1 } // inner function is defined in-line, but the function is not executed
+   LL|      1|    fn f() -> u8 { 1 }
+   LL|      1|    match x {
+   LL|      1|        y if c(x) == y + 1 => { d(); }
+                      ^0                    ^0
+   LL|      1|        y if f() == y + 1 => (),
+                      ^0                   ^0
+   LL|      1|        _ => (),
+   LL|       |    }
+   LL|      1|}
+   LL|       |
+   LL|      0|fn k(x: u8) { // unused function
+   LL|      0|    match x {
+   LL|      0|        1 => (),
+   LL|      0|        2 => (),
+   LL|      0|        _ => (),
+   LL|       |    }
+   LL|      0|}
+   LL|       |
+   LL|      1|fn l(x: u8) {
+   LL|      1|    match x {
+   LL|      0|        1 => (),
+   LL|      0|        2 => (),
+   LL|      1|        _ => (),
+   LL|       |    }
+   LL|      1|}
+   LL|       |
+   LL|      1|async fn m(x: u8) -> u8 { x - 1 }
+                                      ^0^0    ^0
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    let _ = g(10);
+   LL|      1|    let _ = h(9);
+   LL|      1|    let mut future = Box::pin(i(8));
+   LL|      1|    j(7);
+   LL|      1|    l(6);
+   LL|      1|    let _ = m(5);
+   LL|      1|    executor::block_on(future.as_mut());
+   LL|      1|}
+

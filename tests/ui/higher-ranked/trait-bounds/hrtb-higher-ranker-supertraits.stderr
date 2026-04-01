@@ -1,0 +1,31 @@
+error[E0277]: the trait bound `for<'tcx> F: Foo<'tcx>` is not satisfied
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:14:26
+   |
+LL |     want_foo_for_any_tcx(f);
+   |     -------------------- ^ the trait `for<'tcx> Foo<'tcx>` is not implemented for `F`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `want_foo_for_any_tcx`
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:18:28
+   |
+LL | fn want_foo_for_any_tcx<F: for<'tcx> Foo<'tcx>>(f: &F) {
+   |                            ^^^^^^^^^^^^^^^^^^^ required by this bound in `want_foo_for_any_tcx`
+
+error[E0277]: the trait bound `for<'ccx> B: Bar<'ccx>` is not satisfied
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:28:26
+   |
+LL |     want_bar_for_any_ccx(b);
+   |     -------------------- ^ the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `want_bar_for_any_ccx`
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:32:28
+   |
+LL | fn want_bar_for_any_ccx<B: for<'ccx> Bar<'ccx>>(b: &B) {
+   |                            ^^^^^^^^^^^^^^^^^^^ required by this bound in `want_bar_for_any_ccx`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

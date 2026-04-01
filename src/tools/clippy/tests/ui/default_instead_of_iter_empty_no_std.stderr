@@ -1,0 +1,17 @@
+error: `core::iter::empty()` is the more idiomatic way
+  --> tests/ui/default_instead_of_iter_empty_no_std.rs:23:13
+   |
+LL |     let _ = core::iter::Empty::<usize>::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::iter::empty::<usize>()`
+   |
+   = note: `-D clippy::default-instead-of-iter-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::default_instead_of_iter_empty)]`
+
+error: `core::iter::empty()` is the more idiomatic way
+  --> tests/ui/default_instead_of_iter_empty_no_std.rs:25:42
+   |
+LL |     let _foo: core::iter::Empty<usize> = core::iter::Empty::default();
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::iter::empty()`
+
+error: aborting due to 2 previous errors
+

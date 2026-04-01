@@ -1,0 +1,14 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `a`
+  --> $DIR/return.rs:3:13
+   |
+LL |     returnn a;
+   |             ^ expected one of 8 possible tokens
+   |
+help: there is a keyword `return` with a similar name
+   |
+LL -     returnn a;
+LL +     return a;
+   |
+
+error: aborting due to 1 previous error
+

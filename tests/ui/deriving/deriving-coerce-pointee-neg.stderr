@@ -1,0 +1,157 @@
+error[E0802]: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
+  --> $DIR/deriving-coerce-pointee-neg.rs:9:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+
+error[E0802]: `CoercePointee` can only be derived on `struct`s with at least one field
+  --> $DIR/deriving-coerce-pointee-neg.rs:15:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+
+error[E0802]: `CoercePointee` can only be derived on `struct`s with at least one field
+  --> $DIR/deriving-coerce-pointee-neg.rs:22:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+
+error[E0802]: `CoercePointee` can only be derived on `struct`s that are generic over at least one type
+  --> $DIR/deriving-coerce-pointee-neg.rs:29:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+
+error[E0802]: exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits
+  --> $DIR/deriving-coerce-pointee-neg.rs:34:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+
+error[E0802]: only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
+  --> $DIR/deriving-coerce-pointee-neg.rs:43:39
+   |
+LL | struct TooManyPointees<'a, #[pointee] A: ?Sized, #[pointee] B: ?Sized>((&'a A, &'a B));
+   |                                       ^                     - here another type parameter is marked as `#[pointee]`
+
+error[E0802]: `derive(CoercePointee)` requires `T` to be marked `?Sized`
+  --> $DIR/deriving-coerce-pointee-neg.rs:54:36
+   |
+LL | struct NoMaybeSized<'a, #[pointee] T> {
+   |                                    ^
+
+error: the `#[pointee]` attribute may only be used on generic parameters
+  --> $DIR/deriving-coerce-pointee-neg.rs:62:5
+   |
+LL |     #[pointee]
+   |     ^^^^^^^^^^
+
+error: the `#[pointee]` attribute may only be used on generic parameters
+  --> $DIR/deriving-coerce-pointee-neg.rs:72:33
+   |
+LL |                     struct UhOh<#[pointee] T>(T);
+   |                                 ^^^^^^^^^^
+
+error: the `#[pointee]` attribute may only be used on generic parameters
+  --> $DIR/deriving-coerce-pointee-neg.rs:86:21
+   |
+LL |         struct UhOh<#[pointee] T>(T);
+   |                     ^^^^^^^^^^
+
+error: the `#[pointee]` attribute may only be used on generic parameters
+  --> $DIR/deriving-coerce-pointee-neg.rs:101:25
+   |
+LL |             struct UhOh<#[pointee] T>(T);
+   |                         ^^^^^^^^^^
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/deriving-coerce-pointee-neg.rs:18:16
+   |
+LL | struct NoField<'a, #[pointee] T: ?Sized> {}
+   |                ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/deriving-coerce-pointee-neg.rs:18:31
+   |
+LL | struct NoField<'a, #[pointee] T: ?Sized> {}
+   |                               ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/deriving-coerce-pointee-neg.rs:25:20
+   |
+LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
+   |                    ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/deriving-coerce-pointee-neg.rs:25:35
+   |
+LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
+   |                                   ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0802]: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
+  --> $DIR/deriving-coerce-pointee-neg.rs:47:1
+   |
+LL | struct NotTransparent<'a, #[pointee] T: ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0802]: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
+  --> $DIR/deriving-coerce-pointee-neg.rs:140:1
+   |
+LL | struct TryToWipeRepr<'a, #[pointee] T: ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: for `RcWithId<T>` to have a valid implementation of `CoerceUnsized`, it must be possible to coerce the field of type `Rc<(i32, Box<T>)>`
+  --> $DIR/deriving-coerce-pointee-neg.rs:146:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+...
+LL |     inner: std::rc::Rc<(i32, Box<T>)>,
+   |     --------------------------------- `Rc<(i32, Box<T>)>` must be a pointer, reference, or smart pointer that is allowed to be unsized
+
+error[E0375]: implementing `CoerceUnsized` does not allow multiple fields to be coerced
+  --> $DIR/deriving-coerce-pointee-neg.rs:153:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+   |
+note: the trait `CoerceUnsized` may only be implemented when a single field is being coerced
+  --> $DIR/deriving-coerce-pointee-neg.rs:157:5
+   |
+LL |     inner1: Box<T>,
+   |     ^^^^^^^^^^^^^^
+LL |     inner2: Box<T>,
+   |     ^^^^^^^^^^^^^^
+
+error: for `UsingNonCoercePointeeData<T>` to have a valid implementation of `CoerceUnsized`, it must be possible to coerce the field of type `NotCoercePointeeData<T>`
+  --> $DIR/deriving-coerce-pointee-neg.rs:164:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+LL |
+LL | struct UsingNonCoercePointeeData<T: ?Sized>(NotCoercePointeeData<T>);
+   |                                             ----------------------- `NotCoercePointeeData<T>` must be a pointer, reference, or smart pointer that is allowed to be unsized
+
+error[E0690]: transparent struct needs at most one field with non-trivial size or alignment, but has 2
+  --> $DIR/deriving-coerce-pointee-neg.rs:155:1
+   |
+LL | struct MoreThanOneField<T: ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ needs at most one field with non-trivial size or alignment, but has 2
+LL |
+LL |     inner1: Box<T>,
+   |     -------------- this field has non-zero size or requires alignment
+LL |     inner2: Box<T>,
+   |     -------------- this field has non-zero size or requires alignment
+
+error: aborting due to 21 previous errors
+
+Some errors have detailed explanations: E0375, E0392, E0690, E0802.
+For more information about an error, try `rustc --explain E0375`.

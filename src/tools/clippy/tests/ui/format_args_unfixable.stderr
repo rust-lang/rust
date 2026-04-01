@@ -1,0 +1,241 @@
+error: `format!` in `println!` args
+  --> tests/ui/format_args_unfixable.rs:26:5
+   |
+LL |     println!("error: {}", format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+   = note: `-D clippy::format-in-format-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::format_in_format_args)]`
+
+error: `format!` in `println!` args
+  --> tests/ui/format_args_unfixable.rs:29:5
+   |
+LL |     println!("{}: {}", error, format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `println!` args
+  --> tests/ui/format_args_unfixable.rs:32:5
+   |
+LL |     println!("{:?}: {}", error, format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `println!` args
+  --> tests/ui/format_args_unfixable.rs:35:5
+   |
+LL |     println!("{{}}: {}", format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `println!` args
+  --> tests/ui/format_args_unfixable.rs:38:5
+   |
+LL |     println!(r#"error: "{}""#, format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `println!` args
+  --> tests/ui/format_args_unfixable.rs:41:5
+   |
+LL |     println!("error: {}", format!(r#"something failed at "{}""#, Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `println!` args
+  --> tests/ui/format_args_unfixable.rs:44:5
+   |
+LL |     println!("error: {}", format!("something failed at {} {0}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `format!` args
+  --> tests/ui/format_args_unfixable.rs:47:13
+   |
+LL |     let _ = format!("error: {}", format!("something failed at {}", Location::caller()));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `format!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `write!` args
+  --> tests/ui/format_args_unfixable.rs:50:13
+   |
+LL |       let _ = write!(
+   |  _____________^
+LL | |
+LL | |         stdout(),
+LL | |         "error: {}",
+LL | |         format!("something failed at {}", Location::caller())
+LL | |     );
+   | |_____^
+   |
+   = help: combine the `format!(..)` arguments with the outer `write!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `writeln!` args
+  --> tests/ui/format_args_unfixable.rs:56:13
+   |
+LL |       let _ = writeln!(
+   |  _____________^
+LL | |
+LL | |         stdout(),
+LL | |         "error: {}",
+LL | |         format!("something failed at {}", Location::caller())
+LL | |     );
+   | |_____^
+   |
+   = help: combine the `format!(..)` arguments with the outer `writeln!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `print!` args
+  --> tests/ui/format_args_unfixable.rs:62:5
+   |
+LL |     print!("error: {}", format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `print!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `eprint!` args
+  --> tests/ui/format_args_unfixable.rs:65:5
+   |
+LL |     eprint!("error: {}", format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `eprint!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `eprintln!` args
+  --> tests/ui/format_args_unfixable.rs:68:5
+   |
+LL |     eprintln!("error: {}", format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `eprintln!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `format_args!` args
+  --> tests/ui/format_args_unfixable.rs:71:13
+   |
+LL |     let _ = format_args!("error: {}", format!("something failed at {}", Location::caller()));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `format_args!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `assert!` args
+  --> tests/ui/format_args_unfixable.rs:74:5
+   |
+LL |     assert!(true, "error: {}", format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `assert!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `assert_eq!` args
+  --> tests/ui/format_args_unfixable.rs:77:5
+   |
+LL |     assert_eq!(0, 0, "error: {}", format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `assert_eq!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `assert_ne!` args
+  --> tests/ui/format_args_unfixable.rs:80:5
+   |
+LL |     assert_ne!(0, 0, "error: {}", format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `assert_ne!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `panic!` args
+  --> tests/ui/format_args_unfixable.rs:83:5
+   |
+LL |     panic!("error: {}", format!("something failed at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `panic!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `usr_println!` args
+  --> tests/ui/format_args_unfixable.rs:151:5
+   |
+LL |     usr_println!(true, "error: {}", format!("boom at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `usr_println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `usr_println!` args
+  --> tests/ui/format_args_unfixable.rs:154:5
+   |
+LL |     usr_println!(true, "{}: {}", error, format!("boom at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `usr_println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `usr_println!` args
+  --> tests/ui/format_args_unfixable.rs:157:5
+   |
+LL |     usr_println!(true, "{:?}: {}", error, format!("boom at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `usr_println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `usr_println!` args
+  --> tests/ui/format_args_unfixable.rs:160:5
+   |
+LL |     usr_println!(true, "{{}}: {}", format!("boom at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `usr_println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `usr_println!` args
+  --> tests/ui/format_args_unfixable.rs:163:5
+   |
+LL |     usr_println!(true, r#"error: "{}""#, format!("boom at {}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `usr_println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `usr_println!` args
+  --> tests/ui/format_args_unfixable.rs:166:5
+   |
+LL |     usr_println!(true, "error: {}", format!(r#"boom at "{}""#, Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `usr_println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: `format!` in `usr_println!` args
+  --> tests/ui/format_args_unfixable.rs:169:5
+   |
+LL |     usr_println!(true, "error: {}", format!("boom at {} {0}", Location::caller()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: combine the `format!(..)` arguments with the outer `usr_println!(..)` call
+   = help: or consider changing `format!` to `format_args!`
+
+error: aborting due to 25 previous errors
+

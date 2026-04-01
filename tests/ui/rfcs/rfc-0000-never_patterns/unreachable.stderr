@@ -1,0 +1,58 @@
+error: unreachable pattern
+  --> $DIR/unreachable.rs:15:9
+   |
+LL |         Err(!),
+   |         ^^^^^^-
+   |         |
+   |         matches no values because `Void` is uninhabited
+   |         help: remove the match arm
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+note: the lint level is defined here
+  --> $DIR/unreachable.rs:5:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/unreachable.rs:18:19
+   |
+LL |     let (Ok(_x) | Err(!)) = res_void;
+   |                   ^^^^^^ matches no values because `Void` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/unreachable.rs:20:12
+   |
+LL |     if let Err(!) = res_void {}
+   |            ^^^^^^ matches no values because `Void` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/unreachable.rs:22:24
+   |
+LL |     if let (Ok(true) | Err(!)) = res_void {}
+   |                        ^^^^^^ matches no values because `Void` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/unreachable.rs:24:23
+   |
+LL |     for (Ok(mut _x) | Err(!)) in [res_void] {}
+   |                       ^^^^^^ matches no values because `Void` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/unreachable.rs:28:18
+   |
+LL | fn foo((Ok(_x) | Err(!)): Result<bool, Void>) {}
+   |                  ^^^^^^ matches no values because `Void` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: aborting due to 6 previous errors
+

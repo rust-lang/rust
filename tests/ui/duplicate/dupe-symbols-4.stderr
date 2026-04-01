@@ -1,0 +1,8 @@
+error: symbol `fail` is already defined
+  --> $DIR/dupe-symbols-4.rs:21:5
+   |
+LL |     fn fail(self) {}
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

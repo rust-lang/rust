@@ -1,0 +1,25 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/issue-18446.rs:18:7
+   |
+LL |     x.foo();
+   |       ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in the trait `T`
+  --> $DIR/issue-18446.rs:5:5
+   |
+LL |     fn foo(&self);
+   |     ^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `(dyn T + 'a)`
+  --> $DIR/issue-18446.rs:9:5
+   |
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     x.foo();
+LL +     T::foo(&x);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

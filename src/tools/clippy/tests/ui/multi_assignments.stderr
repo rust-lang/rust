@@ -1,0 +1,41 @@
+error: assignments don't nest intuitively
+  --> tests/ui/multi_assignments.rs:4:5
+   |
+LL |     a = b = c;
+   |     ^^^^^^^^^
+   |
+   = note: `-D clippy::multi-assignments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::multi_assignments)]`
+
+error: assignments don't nest intuitively
+  --> tests/ui/multi_assignments.rs:7:5
+   |
+LL |     a = b = c = d;
+   |     ^^^^^^^^^^^^^
+
+error: assignments don't nest intuitively
+  --> tests/ui/multi_assignments.rs:7:9
+   |
+LL |     a = b = c = d;
+   |         ^^^^^^^^^
+
+error: assignments don't nest intuitively
+  --> tests/ui/multi_assignments.rs:11:5
+   |
+LL |     a = b = { c };
+   |     ^^^^^^^^^^^^^
+
+error: assignments don't nest intuitively
+  --> tests/ui/multi_assignments.rs:14:5
+   |
+LL |     a = { b = c };
+   |     ^^^^^^^^^^^^^
+
+error: assignments don't nest intuitively
+  --> tests/ui/multi_assignments.rs:17:5
+   |
+LL |     a = (b = c);
+   |     ^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

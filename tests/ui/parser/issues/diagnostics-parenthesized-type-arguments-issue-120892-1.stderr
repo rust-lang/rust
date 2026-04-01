@@ -1,0 +1,17 @@
+error: expected type, found `"test"`
+  --> $DIR/diagnostics-parenthesized-type-arguments-issue-120892-1.rs:11:9
+   |
+LL |   foo::(
+   |      --- while parsing this parenthesized list of type arguments starting here
+...
+LL |     baz("test"),
+   |         ^^^^^^ expected type
+   |
+help: consider removing the `::` here to call the expression
+   |
+LL -   foo::(
+LL +   foo(
+   |
+
+error: aborting due to 1 previous error
+

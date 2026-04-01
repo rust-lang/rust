@@ -1,0 +1,1041 @@
+use hir::{HasVisibility, Semantics};
+use ide_db::{
+    FxHashMap, FxHashSet, RootDatabase,
+    assists::AssistId,
+    defs::Definition,
+    helpers::mod_path_to_ast,
+    search::{FileReference, SearchScope},
+};
+use itertools::Itertools;
+use syntax::syntax_editor::SyntaxEditor;
+use syntax::{AstNode, Edition, SmolStr, SyntaxNode, ToSmolStr, ast};
+use syntax::{
+    SyntaxToken,
+    ast::{HasName, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    syntax_editor::Position,
+};
+
+use crate::{
+    assist_context::{AssistContext, Assists, SourceChangeBuilder},
+    utils::{cover_edit_range, ref_field_expr::determine_ref_and_parens},
+};
+
+// Assist: destructure_struct_binding
+//
+// Destructures a struct binding in place.
+//
+// ```
+// struct Foo {
+//     bar: i32,
+//     baz: i32,
+// }
+// fn main() {
+//     let $0foo = Foo { bar: 1, baz: 2 };
+//     let bar2 = foo.bar;
+//     let baz2 = &foo.baz;
+// }
+// ```
+// ->
+// ```
+// struct Foo {
+//     bar: i32,
+//     baz: i32,
+// }
+// fn main() {
+//     let Foo { bar, baz } = Foo { bar: 1, baz: 2 };
+//     let bar2 = bar;
+//     let baz2 = &baz;
+// }
+// ```
+pub(crate) fn destructure_struct_binding(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let target = ctx.find_node_at_offset::<Target>()?;
+    let data = collect_data(target, ctx)?;
+
+    acc.add(
+        AssistId::refactor_rewrite("destructure_struct_binding"),
+        "Destructure struct binding",
+        data.target.syntax().text_range(),
+        |edit| destructure_struct_binding_impl(ctx, edit, &data),
+    );
+
+    Some(())
+}
+
+enum Target {
+    IdentPat(ast::IdentPat),
+    SelfParam { param: ast::SelfParam, insert_after: SyntaxToken },
+}
+
+impl Target {
+    fn ty<'db>(&self, sema: &Semantics<'db, RootDatabase>) -> Option<hir::Type<'db>> {
+        match self {
+            Target::IdentPat(pat) => sema.type_of_binding_in_pat(pat),
+            Target::SelfParam { param, .. } => sema.type_of_self(param),
+        }
+    }
+
+    fn is_ref(&self) -> bool {
+        match self {
+            Target::IdentPat(ident_pat) => ident_pat.ref_token().is_some(),
+            Target::SelfParam { .. } => false,
+        }
+    }
+
+    fn is_mut(&self) -> bool {
+        match self {
+            Target::IdentPat(ident_pat) => ident_pat.mut_token().is_some(),
+            Target::SelfParam { param, .. } => {
+                param.mut_token().is_some() && param.amp_token().is_none()
+            }
+        }
+    }
+}
+
+impl HasName for Target {}
+
+impl AstNode for Target {
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        if ast::IdentPat::can_cast(node.kind()) {
+            ast::IdentPat::cast(node).map(Self::IdentPat)
+        } else {
+            let param = ast::SelfParam::cast(node)?;
+            let param_list = param.syntax().parent().and_then(ast::ParamList::cast)?;
+            let block = param_list.syntax().parent()?.children().find_map(ast::BlockExpr::cast)?;
+            let insert_after = block.stmt_list()?.l_curly_token()?;
+            Some(Self::SelfParam { param, insert_after })
+        }
+    }
+
+    fn can_cast(kind: syntax::SyntaxKind) -> bool {
+        ast::IdentPat::can_cast(kind) || ast::SelfParam::can_cast(kind)
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Target::IdentPat(ident_pat) => ident_pat.syntax(),
+            Target::SelfParam { param, .. } => param.syntax(),
+        }
+    }
+}
+
+fn destructure_struct_binding_impl(
+    ctx: &AssistContext<'_>,
+    builder: &mut SourceChangeBuilder,
+    data: &StructEditData,
+) {
+    let field_names = generate_field_names(ctx, data);
+    let mut editor = builder.make_editor(data.target.syntax());
+    destructure_pat(ctx, &mut editor, data, &field_names);
+    update_usages(ctx, &mut editor, data, &field_names.into_iter().collect());
+    builder.add_file_edits(ctx.vfs_file_id(), editor);
+}
+
+struct StructEditData {
+    target: Target,
+    name: ast::Name,
+    kind: hir::StructKind,
+    struct_def_path: hir::ModPath,
+    visible_fields: Vec<hir::Field>,
+    usages: Vec<FileReference>,
+    names_in_scope: FxHashSet<SmolStr>,
+    has_private_members: bool,
+    need_record_field_name: bool,
+    is_ref: bool,
+    edition: Edition,
+}
+
+impl StructEditData {
+    fn apply_to_destruct(
+        &self,
+        new_pat: ast::Pat,
+        editor: &mut SyntaxEditor,
+        make: &SyntaxFactory,
+    ) {
+        match &self.target {
+            Target::IdentPat(pat) => {
+                // If the binding is nested inside a record, we need to wrap the new
+                // destructured pattern in a non-shorthand record field
+                if self.need_record_field_name {
+                    let new_pat =
+                        make.record_pat_field(make.name_ref(&self.name.to_string()), new_pat);
+                    editor.replace(pat.syntax(), new_pat.syntax())
+                } else {
+                    editor.replace(pat.syntax(), new_pat.syntax())
+                }
+            }
+            Target::SelfParam { insert_after, .. } => {
+                let indent = IndentLevel::from_token(insert_after) + 1;
+                let newline = make.whitespace(&format!("\n{indent}"));
+                let initializer = make.expr_path(make.ident_path("self"));
+                let let_stmt = make.let_stmt(new_pat, None, Some(initializer));
+                editor.insert_all(
+                    Position::after(insert_after),
+                    vec![newline.into(), let_stmt.syntax().clone().into()],
+                );
+            }
+        }
+    }
+}
+
+fn collect_data(target: Target, ctx: &AssistContext<'_>) -> Option<StructEditData> {
+    let ty = target.ty(&ctx.sema)?;
+    let hir::Adt::Struct(struct_type) = ty.strip_references().as_adt()? else { return None };
+
+    let module = ctx.sema.scope(target.syntax())?.module();
+    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(module.krate(ctx.db())));
+    let struct_def = hir::ModuleDef::from(struct_type);
+    let kind = struct_type.kind(ctx.db());
+    let struct_def_path = module.find_path(ctx.db(), struct_def, cfg)?;
+
+    let is_non_exhaustive = struct_def.attrs(ctx.db())?.is_non_exhaustive();
+    let is_foreign_crate =
+        struct_def.module(ctx.db()).is_some_and(|m| m.krate(ctx.db()) != module.krate(ctx.db()));
+
+    let fields = struct_type.fields(ctx.db());
+    let n_fields = fields.len();
+
+    let visible_fields =
+        fields.into_iter().filter(|field| field.is_visible_from(ctx.db(), module)).collect_vec();
+
+    if visible_fields.is_empty() {
+        return None;
+    }
+
+    let has_private_members =
+        (is_non_exhaustive && is_foreign_crate) || visible_fields.len() < n_fields;
+
+    // If private members are present, we can only destructure records
+    if !matches!(kind, hir::StructKind::Record) && has_private_members {
+        return None;
+    }
+
+    let is_ref = ty.is_reference();
+    let need_record_field_name = target
+        .syntax()
+        .parent()
+        .and_then(ast::RecordPatField::cast)
+        .is_some_and(|field| field.colon_token().is_none());
+
+    let def = match &target {
+        Target::IdentPat(pat) => ctx.sema.to_def(pat),
+        Target::SelfParam { param, .. } => ctx.sema.to_def(param),
+    };
+    let usages = def
+        .and_then(|def| {
+            Definition::Local(def)
+                .usages(&ctx.sema)
+                .in_scope(&SearchScope::single_file(ctx.file_id()))
+                .all()
+                .iter()
+                .next()
+                .map(|(_, refs)| refs.to_vec())
+        })
+        .unwrap_or_default();
+
+    let names_in_scope = get_names_in_scope(ctx, &target, &usages).unwrap_or_default();
+
+    Some(StructEditData {
+        name: target.name()?,
+        target,
+        kind,
+        struct_def_path,
+        usages,
+        has_private_members,
+        visible_fields,
+        names_in_scope,
+        need_record_field_name,
+        is_ref,
+        edition: module.krate(ctx.db()).edition(ctx.db()),
+    })
+}
+
+fn get_names_in_scope(
+    ctx: &AssistContext<'_>,
+    target: &Target,
+    usages: &[FileReference],
+) -> Option<FxHashSet<SmolStr>> {
+    fn last_usage(usages: &[FileReference]) -> Option<SyntaxNode> {
+        usages.last()?.name.syntax().into_node()
+    }
+
+    // If available, find names visible to the last usage of the binding
+    // else, find names visible to the binding itself
+    let last_usage = last_usage(usages);
+    let node = last_usage.as_ref().unwrap_or(target.syntax());
+    let scope = ctx.sema.scope(node)?;
+
+    let mut names = FxHashSet::default();
+    scope.process_all_names(&mut |name, scope| {
+        if let hir::ScopeDef::Local(_) = scope {
+            names.insert(name.as_str().into());
+        }
+    });
+    Some(names)
+}
+
+fn destructure_pat(
+    _ctx: &AssistContext<'_>,
+    editor: &mut SyntaxEditor,
+    data: &StructEditData,
+    field_names: &[(SmolStr, SmolStr)],
+) {
+    let struct_path = mod_path_to_ast(&data.struct_def_path, data.edition);
+    let is_ref = data.target.is_ref();
+    let is_mut = data.target.is_mut();
+
+    let make = SyntaxFactory::with_mappings();
+    let new_pat = match data.kind {
+        hir::StructKind::Tuple => {
+            let ident_pats = field_names.iter().map(|(_, new_name)| {
+                let name = make.name(new_name);
+                ast::Pat::from(make.ident_pat(is_ref, is_mut, name))
+            });
+            ast::Pat::TupleStructPat(make.tuple_struct_pat(struct_path, ident_pats))
+        }
+        hir::StructKind::Record => {
+            let fields = field_names.iter().map(|(old_name, new_name)| {
+                // Use shorthand syntax if possible
+                if old_name == new_name {
+                    make.record_pat_field_shorthand(
+                        make.ident_pat(is_ref, is_mut, make.name(old_name)).into(),
+                    )
+                } else {
+                    make.record_pat_field(
+                        make.name_ref(old_name),
+                        ast::Pat::IdentPat(make.ident_pat(is_ref, is_mut, make.name(new_name))),
+                    )
+                }
+            });
+            let field_list = make
+                .record_pat_field_list(fields, data.has_private_members.then_some(make.rest_pat()));
+
+            ast::Pat::RecordPat(make.record_pat_with_fields(struct_path, field_list))
+        }
+        hir::StructKind::Unit => make.path_pat(struct_path),
+    };
+
+    data.apply_to_destruct(new_pat, editor, &make);
+    editor.add_mappings(make.finish_with_mappings());
+}
+
+fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(SmolStr, SmolStr)> {
+    match data.kind {
+        hir::StructKind::Tuple => data
+            .visible_fields
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                let new_name = new_field_name((format!("_{index}")).into(), &data.names_in_scope);
+                (index.to_string().into(), new_name)
+            })
+            .collect(),
+        hir::StructKind::Record => data
+            .visible_fields
+            .iter()
+            .map(|field| {
+                let field_name = field.name(ctx.db()).display_no_db(data.edition).to_smolstr();
+                let new_name = new_field_name(field_name.clone(), &data.names_in_scope);
+                (field_name, new_name)
+            })
+            .collect(),
+        hir::StructKind::Unit => Vec::new(),
+    }
+}
+
+fn new_field_name(base_name: SmolStr, names_in_scope: &FxHashSet<SmolStr>) -> SmolStr {
+    let mut name = base_name.clone();
+    let mut i = 1;
+    while names_in_scope.contains(&name) {
+        name = format!("{base_name}_{i}").into();
+        i += 1;
+    }
+    name
+}
+
+fn update_usages(
+    ctx: &AssistContext<'_>,
+    editor: &mut SyntaxEditor,
+    data: &StructEditData,
+    field_names: &FxHashMap<SmolStr, SmolStr>,
+) {
+    let source = ctx.source_file().syntax();
+    let make = SyntaxFactory::with_mappings();
+    let edits = data
+        .usages
+        .iter()
+        .filter_map(|r| build_usage_edit(ctx, &make, data, r, field_names))
+        .collect_vec();
+    editor.add_mappings(make.finish_with_mappings());
+    for (old, new) in edits {
+        if let Some(range) = ctx.sema.original_range_opt(&old) {
+            editor.replace_all(cover_edit_range(source, range.range), vec![new.into()]);
+        }
+    }
+}
+
+fn build_usage_edit(
+    ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
+    data: &StructEditData,
+    usage: &FileReference,
+    field_names: &FxHashMap<SmolStr, SmolStr>,
+) -> Option<(SyntaxNode, SyntaxNode)> {
+    match usage.name.syntax().ancestors().find_map(ast::FieldExpr::cast) {
+        Some(field_expr) => Some({
+            let field_name: SmolStr = field_expr.name_ref()?.to_string().into();
+            let new_field_name = field_names.get(&field_name)?;
+            let new_expr = make.expr_path(make.ident_path(new_field_name));
+
+            // If struct binding is a reference, we might need to deref field usages
+            if data.is_ref {
+                let (replace_expr, ref_data) = determine_ref_and_parens(ctx, &field_expr);
+                (replace_expr.syntax().clone(), ref_data.wrap_expr(new_expr, make).syntax().clone())
+            } else {
+                (field_expr.syntax().clone(), new_expr.syntax().clone())
+            }
+        }),
+        None => Some((
+            usage.name.syntax().as_node().unwrap().clone(),
+            make.expr_macro(
+                make.ident_path("todo"),
+                make.token_tree(syntax::SyntaxKind::L_PAREN, []),
+            )
+            .syntax()
+            .clone(),
+        )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::tests::{check_assist, check_assist_not_applicable};
+
+    #[test]
+    fn record_struct() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main() {
+                let $0foo = Foo { bar: 1, baz: 2 };
+                let bar2 = foo.bar;
+                let baz2 = &foo.baz;
+
+                let foo2 = foo;
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main() {
+                let Foo { bar, baz } = Foo { bar: 1, baz: 2 };
+                let bar2 = bar;
+                let baz2 = &baz;
+
+                let foo2 = todo!();
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn tuple_struct() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo(i32, i32);
+
+            fn main() {
+                let $0foo = Foo(1, 2);
+                let bar2 = foo.0;
+                let baz2 = foo.1;
+
+                let foo2 = foo;
+            }
+            "#,
+            r#"
+            struct Foo(i32, i32);
+
+            fn main() {
+                let Foo(_0, _1) = Foo(1, 2);
+                let bar2 = _0;
+                let baz2 = _1;
+
+                let foo2 = todo!();
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn unit_struct() {
+        check_assist_not_applicable(
+            destructure_struct_binding,
+            r#"
+            struct Foo;
+
+            fn main() {
+                let $0foo = Foo;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn in_foreign_crate() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            //- /lib.rs crate:dep
+            pub struct Foo { pub bar: i32 };
+
+            //- /main.rs crate:main deps:dep
+            fn main() {
+                let $0foo = dep::Foo { bar: 1 };
+                let bar2 = foo.bar;
+            }
+            "#,
+            r#"
+            fn main() {
+                let dep::Foo { bar } = dep::Foo { bar: 1 };
+                let bar2 = bar;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn non_exhaustive_record_appends_rest() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            //- /lib.rs crate:dep
+            #[non_exhaustive]
+            pub struct Foo { pub bar: i32 };
+
+            //- /main.rs crate:main deps:dep
+            fn main($0foo: dep::Foo) {
+                let bar2 = foo.bar;
+            }
+            "#,
+            r#"
+            fn main(dep::Foo { bar, .. }: dep::Foo) {
+                let bar2 = bar;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn non_exhaustive_tuple_not_applicable() {
+        check_assist_not_applicable(
+            destructure_struct_binding,
+            r#"
+            //- /lib.rs crate:dep
+            #[non_exhaustive]
+            pub struct Foo(pub i32, pub i32);
+
+            //- /main.rs crate:main deps:dep
+            fn main(foo: dep::Foo) {
+                let $0foo2 = foo;
+                let bar = foo2.0;
+                let baz = foo2.1;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn non_exhaustive_unit_not_applicable() {
+        check_assist_not_applicable(
+            destructure_struct_binding,
+            r#"
+            //- /lib.rs crate:dep
+            #[non_exhaustive]
+            pub struct Foo;
+
+            //- /main.rs crate:main deps:dep
+            fn main(foo: dep::Foo) {
+                let $0foo2 = foo;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn record_private_fields_appends_rest() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            //- /lib.rs crate:dep
+            pub struct Foo { pub bar: i32, baz: i32 };
+
+            //- /main.rs crate:main deps:dep
+            fn main(foo: dep::Foo) {
+                let $0foo2 = foo;
+                let bar2 = foo2.bar;
+            }
+            "#,
+            r#"
+            fn main(foo: dep::Foo) {
+                let dep::Foo { bar, .. } = foo;
+                let bar2 = bar;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn tuple_private_fields_not_applicable() {
+        check_assist_not_applicable(
+            destructure_struct_binding,
+            r#"
+            //- /lib.rs crate:dep
+            pub struct Foo(pub i32, i32);
+
+            //- /main.rs crate:main deps:dep
+            fn main(foo: dep::Foo) {
+                let $0foo2 = foo;
+                let bar2 = foo2.0;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn nested_inside_record() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { fizz: Fizz }
+            struct Fizz { buzz: i32 }
+
+            fn main() {
+                let Foo { $0fizz } = Foo { fizz: Fizz { buzz: 1 } };
+                let buzz2 = fizz.buzz;
+            }
+            "#,
+            r#"
+            struct Foo { fizz: Fizz }
+            struct Fizz { buzz: i32 }
+
+            fn main() {
+                let Foo { fizz: Fizz { buzz } } = Foo { fizz: Fizz { buzz: 1 } };
+                let buzz2 = buzz;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn nested_inside_tuple() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo(Fizz);
+            struct Fizz { buzz: i32 }
+
+            fn main() {
+                let Foo($0fizz) = Foo(Fizz { buzz: 1 });
+                let buzz2 = fizz.buzz;
+            }
+            "#,
+            r#"
+            struct Foo(Fizz);
+            struct Fizz { buzz: i32 }
+
+            fn main() {
+                let Foo(Fizz { buzz }) = Foo(Fizz { buzz: 1 });
+                let buzz2 = buzz;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn mut_record() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main() {
+                let mut $0foo = Foo { bar: 1, baz: 2 };
+                let bar2 = foo.bar;
+                let baz2 = &foo.baz;
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main() {
+                let Foo { mut bar, mut baz } = Foo { bar: 1, baz: 2 };
+                let bar2 = bar;
+                let baz2 = &baz;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn mut_record_field() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { x: () }
+            struct Bar { foo: Foo }
+            fn f(Bar { mut $0foo }: Bar) {}
+            "#,
+            r#"
+            struct Foo { x: () }
+            struct Bar { foo: Foo }
+            fn f(Bar { foo: Foo { mut x } }: Bar) {}
+            "#,
+        )
+    }
+
+    #[test]
+    fn ref_record_field() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { x: () }
+            struct Bar { foo: Foo }
+            fn f(Bar { ref $0foo }: Bar) {
+                let _ = foo.x;
+            }
+            "#,
+            r#"
+            struct Foo { x: () }
+            struct Bar { foo: Foo }
+            fn f(Bar { foo: Foo { ref x } }: Bar) {
+                let _ = *x;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn ref_mut_record_field() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { x: () }
+            struct Bar { foo: Foo }
+            fn f(Bar { ref mut $0foo }: Bar) {
+                let _ = foo.x;
+            }
+            "#,
+            r#"
+            struct Foo { x: () }
+            struct Bar { foo: Foo }
+            fn f(Bar { foo: Foo { ref mut x } }: Bar) {
+                let _ = *x;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn ref_mut_record_renamed_field() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { x: () }
+            struct Bar { foo: Foo }
+            fn f(Bar { foo: ref mut $0foo1 }: Bar) {
+                let _ = foo1.x;
+            }
+            "#,
+            r#"
+            struct Foo { x: () }
+            struct Bar { foo: Foo }
+            fn f(Bar { foo: Foo { ref mut x } }: Bar) {
+                let _ = *x;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn mut_ref() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main() {
+                let $0foo = &mut Foo { bar: 1, baz: 2 };
+                foo.bar = 5;
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main() {
+                let Foo { bar, baz } = &mut Foo { bar: 1, baz: 2 };
+                *bar = 5;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn mut_self_param() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(mut $0self) {
+                    self.bar = 5;
+                }
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(mut self) {
+                    let Foo { mut bar, mut baz } = self;
+                    bar = 5;
+                }
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn ref_mut_self_param() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(&mut $0self) {
+                    self.bar = 5;
+                }
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(&mut self) {
+                    let Foo { bar, baz } = self;
+                    *bar = 5;
+                }
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn ref_self_param() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(&$0self) -> &i32 {
+                    &self.bar
+                }
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            impl Foo {
+                fn foo(&self) -> &i32 {
+                    let Foo { bar, baz } = self;
+                    bar
+                }
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn ref_not_add_parenthesis_and_deref_record() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main() {
+                let $0foo = &Foo { bar: 1, baz: 2 };
+                let _ = &foo.bar;
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main() {
+                let Foo { bar, baz } = &Foo { bar: 1, baz: 2 };
+                let _ = bar;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn ref_not_add_parenthesis_and_deref_tuple() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo(i32, i32);
+
+            fn main() {
+                let $0foo = &Foo(1, 2);
+                let _ = &foo.0;
+            }
+            "#,
+            r#"
+            struct Foo(i32, i32);
+
+            fn main() {
+                let Foo(_0, _1) = &Foo(1, 2);
+                let _ = _0;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn record_struct_name_collision() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main(baz: i32) {
+                let bar = true;
+                let $0foo = Foo { bar: 1, baz: 2 };
+                let baz_1 = 7;
+                let bar_usage = foo.bar;
+                let baz_usage = foo.baz;
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main(baz: i32) {
+                let bar = true;
+                let Foo { bar: bar_1, baz: baz_2 } = Foo { bar: 1, baz: 2 };
+                let baz_1 = 7;
+                let bar_usage = bar_1;
+                let baz_usage = baz_2;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn tuple_struct_name_collision() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo(i32, i32);
+
+            fn main() {
+                let _0 = true;
+                let $0foo = Foo(1, 2);
+                let bar = foo.0;
+                let baz = foo.1;
+            }
+            "#,
+            r#"
+            struct Foo(i32, i32);
+
+            fn main() {
+                let _0 = true;
+                let Foo(_0_1, _1) = Foo(1, 2);
+                let bar = _0_1;
+                let baz = _1;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn record_struct_name_collision_nested_scope() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32 }
+
+            fn main(foo: Foo) {
+                let bar = 5;
+
+                let new_bar = {
+                    let $0foo2 = foo;
+                    let bar_1 = 5;
+                    foo2.bar
+                };
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32 }
+
+            fn main(foo: Foo) {
+                let bar = 5;
+
+                let new_bar = {
+                    let Foo { bar: bar_2 } = foo;
+                    let bar_1 = 5;
+                    bar_2
+                };
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn record_struct_no_public_members() {
+        check_assist_not_applicable(
+            destructure_struct_binding,
+            r#"
+            //- /lib.rs crate:dep
+            pub struct Foo { bar: i32, baz: i32 };
+
+            //- /main.rs crate:main deps:dep
+            fn main($0foo: dep::Foo) {}
+            "#,
+        )
+    }
+
+    #[test]
+    fn record_struct_usage_in_macro_call() {
+        // exact repro from #20716: struct field access inside write! must not panic
+        check_assist(
+            destructure_struct_binding,
+            r#"
+//- minicore: write, fmt
+use core::fmt::Write;
+struct Foo { y: i8 }
+
+fn main() {
+    let mut s = String::new();
+    let $0x = Foo { y: 8 };
+    write!(s, "{}", x.y).unwrap();
+}
+"#,
+            r#"
+use core::fmt::Write;
+struct Foo { y: i8 }
+
+fn main() {
+    let mut s = String::new();
+    let Foo { y } = Foo { y: 8 };
+    write!(s, "{}", y).unwrap();
+}
+"#,
+        )
+    }
+}

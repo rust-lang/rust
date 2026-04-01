@@ -1,0 +1,149 @@
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:7:5
+   |
+LL |     pub(crate) fn g() {} // private due to m1
+   |     ----------^^^^^
+   |     |
+   |     help: consider using: `pub`
+   |
+   = note: `-D clippy::redundant-pub-crate` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pub_crate)]`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:14:9
+   |
+LL |         pub(crate) fn g() {} // private due to m1_1 and m1
+   |         ----------^^^^^
+   |         |
+   |         help: consider using: `pub`
+
+error: pub(crate) module inside private module
+  --> tests/ui/redundant_pub_crate.rs:20:5
+   |
+LL |     pub(crate) mod m1_2 {
+   |     ----------^^^^^^^^^
+   |     |
+   |     help: consider using: `pub`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:24:9
+   |
+LL |         pub(crate) fn g() {} // private due to m1_2 and m1
+   |         ----------^^^^^
+   |         |
+   |         help: consider using: `pub`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:32:9
+   |
+LL |         pub(crate) fn g() {} // private due to m1
+   |         ----------^^^^^
+   |         |
+   |         help: consider using: `pub`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:41:5
+   |
+LL |     pub(crate) fn g() {} // already crate visible due to m2
+   |     ----------^^^^^
+   |     |
+   |     help: consider using: `pub`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:48:9
+   |
+LL |         pub(crate) fn g() {} // private due to m2_1
+   |         ----------^^^^^
+   |         |
+   |         help: consider using: `pub`
+
+error: pub(crate) module inside private module
+  --> tests/ui/redundant_pub_crate.rs:54:5
+   |
+LL |     pub(crate) mod m2_2 {
+   |     ----------^^^^^^^^^
+   |     |
+   |     help: consider using: `pub`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:58:9
+   |
+LL |         pub(crate) fn g() {} // already crate visible due to m2_2 and m2
+   |         ----------^^^^^
+   |         |
+   |         help: consider using: `pub`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:66:9
+   |
+LL |         pub(crate) fn g() {} // already crate visible due to m2
+   |         ----------^^^^^
+   |         |
+   |         help: consider using: `pub`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:80:9
+   |
+LL |         pub(crate) fn g() {} // private due to m3_1
+   |         ----------^^^^^
+   |         |
+   |         help: consider using: `pub`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:89:9
+   |
+LL |         pub(crate) fn g() {} // already crate visible due to m3_2
+   |         ----------^^^^^
+   |         |
+   |         help: consider using: `pub`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:104:5
+   |
+LL |     pub(crate) fn g() {} // private: not re-exported by `pub use m4::*`
+   |     ----------^^^^^
+   |     |
+   |     help: consider using: `pub`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:111:9
+   |
+LL |         pub(crate) fn g() {} // private due to m4_1
+   |         ----------^^^^^
+   |         |
+   |         help: consider using: `pub`
+
+error: pub(crate) module inside private module
+  --> tests/ui/redundant_pub_crate.rs:117:5
+   |
+LL |     pub(crate) mod m4_2 {
+   |     ----------^^^^^^^^^
+   |     |
+   |     help: consider using: `pub`
+
+error: pub(crate) function inside private module
+  --> tests/ui/redundant_pub_crate.rs:121:9
+   |
+LL |         pub(crate) fn g() {} // private due to m4_2
+   |         ----------^^^^^
+   |         |
+   |         help: consider using: `pub`
+
+error: pub(crate) import inside private module
+  --> tests/ui/redundant_pub_crate.rs:137:5
+   |
+LL |     pub(crate) use m5_1::*;
+   |     ----------^^^^^^^^^^^^^
+   |     |
+   |     help: consider using: `pub`
+
+error: pub(crate) import inside private module
+  --> tests/ui/redundant_pub_crate.rs:139:27
+   |
+LL |     pub(crate) use m5_1::{*};
+   |     ----------            ^
+   |     |
+   |     help: consider using: `pub`
+
+error: aborting due to 18 previous errors
+

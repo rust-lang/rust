@@ -1,0 +1,23 @@
+error[E0639]: cannot create non-exhaustive struct using struct expression
+  --> $DIR/non-exhaustive-with-private-fields-147513.rs:8:15
+   |
+LL |       let foo = Foo {
+   |  _______________^
+LL | |
+LL | |         my_field: 10,
+LL | |     };
+   | |_____^
+
+error[E0639]: cannot create non-exhaustive struct using struct expression
+  --> $DIR/non-exhaustive-with-private-fields-147513.rs:13:15
+   |
+LL |       let bar = Bar {
+   |  _______________^
+LL | |
+LL | |         my_field: 10,
+LL | |     };
+   | |_____^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0639`.

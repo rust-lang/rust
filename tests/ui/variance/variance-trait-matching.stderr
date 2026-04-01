@@ -1,0 +1,14 @@
+error[E0621]: explicit lifetime required in the type of `get`
+  --> $DIR/variance-trait-matching.rs:24:5
+   |
+LL |     pick(get, &22)
+   |     ^^^^^^^^^^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `get`
+   |
+LL | fn get<'a, G>(get: &'a G) -> i32
+   |                     ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0621`.

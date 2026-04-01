@@ -1,0 +1,44 @@
+- // MIR for `match_eq_bool_2` before MatchBranchSimplification
++ // MIR for `match_eq_bool_2` after MatchBranchSimplification
+  
+  fn match_eq_bool_2(_1: i32) -> bool {
+      debug i => _1;
+      let mut _0: bool;
+      let _2: bool;
+      let _3: ();
+      scope 1 {
+          debug a => _2;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          switchInt(copy _1) -> [7: bb3, 8: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _2 = const true;
+          _3 = ();
+          goto -> bb4;
+      }
+  
+      bb2: {
+          _2 = const false;
+          _3 = ();
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _2 = const false;
+          _3 = ();
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_3);
+          _0 = copy _2;
+          StorageDead(_2);
+          return;
+      }
+  }
+  

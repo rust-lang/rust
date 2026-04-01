@@ -1,0 +1,31 @@
+// MIR for `index_const_generic_array` after built
+
+fn index_const_generic_array(_1: &[i32; N], _2: usize) -> &i32 {
+    debug array => _1;
+    debug index => _2;
+    let mut _0: &i32;
+    let _3: &i32;
+    let _4: usize;
+    let mut _5: bool;
+
+    bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = copy _2;
+        FakeRead(ForIndex, (*_1));
+        _5 = Lt(copy _4, const N);
+        assert(move _5, "index out of bounds: the length is {} but the index is {}", const N, copy _4) -> [success: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        _3 = &(*_1)[_4];
+        _0 = &(*_3);
+        StorageDead(_4);
+        StorageDead(_3);
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+}

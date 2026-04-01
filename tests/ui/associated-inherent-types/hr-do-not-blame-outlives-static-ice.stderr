@@ -1,0 +1,25 @@
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/hr-do-not-blame-outlives-static-ice.rs:8:6
+   |
+LL | impl<'a> Foo<fn(&())> {
+   |      ^^ unconstrained lifetime parameter
+
+error[E0308]: mismatched types
+  --> $DIR/hr-do-not-blame-outlives-static-ice.rs:13:11
+   |
+LL | fn foo(_: for<'a> fn(Foo<fn(&'a ())>::Assoc)) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected struct `Foo<for<'a> fn(&'a ())>`
+              found struct `Foo<for<'a> fn(&'a ())>`
+
+error: higher-ranked subtype error
+  --> $DIR/hr-do-not-blame-outlives-static-ice.rs:13:1
+   |
+LL | fn foo(_: for<'a> fn(Foo<fn(&'a ())>::Assoc)) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0207, E0308.
+For more information about an error, try `rustc --explain E0207`.

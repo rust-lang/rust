@@ -1,0 +1,43 @@
+// MIR for `main` after Inline
+
+fn main() -> () {
+    let mut _0: ();
+    let _1: ();
+    let _2: ();
+    scope 1 (inlined inlined::<u32>) {
+        let _3: ();
+        let _4: ();
+        let _5: ();
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = not_inlined() -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        StorageDead(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _3 = g() -> [return: bb3, unwind continue];
+    }
+
+    bb2: {
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_2);
+        _0 = const ();
+        return;
+    }
+
+    bb3: {
+        _4 = g() -> [return: bb4, unwind continue];
+    }
+
+    bb4: {
+        _5 = g() -> [return: bb2, unwind continue];
+    }
+}

@@ -1,0 +1,23 @@
+error[E0271]: type mismatch resolving `<() as Super>::Assoc == ()`
+  --> $DIR/projection-mismatch-in-impl-where-clause.rs:13:14
+   |
+LL | fn test() -> impl Test {
+   |              ^^^^^^^^^ type mismatch resolving `<() as Super>::Assoc == ()`
+LL |
+LL |     ()
+   |     -- return type was inferred to be `()` here
+   |
+note: expected this to be `()`
+  --> $DIR/projection-mismatch-in-impl-where-clause.rs:6:18
+   |
+LL |     type Assoc = u8;
+   |                  ^^
+note: required for `()` to implement `Test`
+  --> $DIR/projection-mismatch-in-impl-where-clause.rs:11:9
+   |
+LL | impl<T> Test for T where T: Super<Assoc = ()> {}
+   |         ^^^^     ^                ---------- unsatisfied trait bound introduced here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

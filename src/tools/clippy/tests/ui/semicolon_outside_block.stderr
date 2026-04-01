@@ -1,0 +1,86 @@
+error: consider moving the `;` outside the block for consistent formatting
+  --> tests/ui/semicolon_outside_block.rs:41:5
+   |
+LL |     { unit_fn_block(); }
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::semicolon-outside-block` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::semicolon_outside_block)]`
+help: put the `;` here
+   |
+LL -     { unit_fn_block(); }
+LL +     { unit_fn_block() };
+   |
+
+error: consider moving the `;` outside the block for consistent formatting
+  --> tests/ui/semicolon_outside_block.rs:43:5
+   |
+LL |     unsafe { unit_fn_block(); }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: put the `;` here
+   |
+LL -     unsafe { unit_fn_block(); }
+LL +     unsafe { unit_fn_block() };
+   |
+
+error: consider moving the `;` outside the block for consistent formatting
+  --> tests/ui/semicolon_outside_block.rs:53:5
+   |
+LL | /     {
+LL | |
+LL | |         unit_fn_block();
+LL | |         unit_fn_block();
+LL | |     }
+   | |_____^
+   |
+help: put the `;` here
+   |
+LL ~         unit_fn_block()
+LL ~     };
+   |
+
+error: consider moving the `;` outside the block for consistent formatting
+  --> tests/ui/semicolon_outside_block.rs:64:5
+   |
+LL |     { m!(()); }
+   |     ^^^^^^^^^^^
+   |
+help: put the `;` here
+   |
+LL -     { m!(()); }
+LL +     { m!(()) };
+   |
+
+error: consider moving the `;` outside the block for consistent formatting
+  --> tests/ui/semicolon_outside_block.rs:87:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         std::arch::asm!("");
+LL | |     }
+   | |_____^
+   |
+help: put the `;` here
+   |
+LL ~         std::arch::asm!("")
+LL ~     };
+   |
+
+error: consider moving the `;` outside the block for consistent formatting
+  --> tests/ui/semicolon_outside_block.rs:92:5
+   |
+LL | /     {
+LL | |
+LL | |         line!();
+LL | |     }
+   | |_____^
+   |
+help: put the `;` here
+   |
+LL ~         line!()
+LL ~     };
+   |
+
+error: aborting due to 6 previous errors
+

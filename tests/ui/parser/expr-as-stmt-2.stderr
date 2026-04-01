@@ -1,0 +1,200 @@
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:3:26
+   |
+LL |     if let Some(x) = a { true } else { false }
+   |     ---------------------^^^^-----------------
+   |     |                    |
+   |     |                    expected `()`, found `bool`
+   |     expected this to be `()`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (if let Some(x) = a { true } else { false })
+   |     +                                          +
+help: you might have meant to return this value
+   |
+LL |     if let Some(x) = a { return true; } else { false }
+   |                          ++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:3:40
+   |
+LL |     if let Some(x) = a { true } else { false }
+   |     -----------------------------------^^^^^--
+   |     |                                  |
+   |     |                                  expected `()`, found `bool`
+   |     expected this to be `()`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (if let Some(x) = a { true } else { false })
+   |     +                                          +
+help: you might have meant to return this value
+   |
+LL |     if let Some(x) = a { true } else { return false; }
+   |                                        ++++++      +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:6:5
+   |
+LL |   fn foo(a: Option<u32>, b: Option<u32>) -> bool {
+   |                                             ---- expected `bool` because of return type
+...
+LL | /     &&
+LL | |     if let Some(y) = a { true } else { false }
+   | |______________________________________________^ expected `bool`, found `&&bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (if let Some(x) = a { true } else { false })
+   |     +                                          +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:15:15
+   |
+LL |     if true { true } else { false } && true;
+   |     ----------^^^^-----------------
+   |     |         |
+   |     |         expected `()`, found `bool`
+   |     expected this to be `()`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (if true { true } else { false }) && true;
+   |     +                               +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:15:29
+   |
+LL |     if true { true } else { false } && true;
+   |     ------------------------^^^^^--
+   |     |                       |
+   |     |                       expected `()`, found `bool`
+   |     expected this to be `()`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (if true { true } else { false }) && true;
+   |     +                               +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:18:15
+   |
+LL |     if true { true } else { false } && if true { true } else { false };
+   |     ----------^^^^-----------------
+   |     |         |
+   |     |         expected `()`, found `bool`
+   |     expected this to be `()`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (if true { true } else { false }) && if true { true } else { false };
+   |     +                               +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:18:29
+   |
+LL |     if true { true } else { false } && if true { true } else { false };
+   |     ------------------------^^^^^--
+   |     |                       |
+   |     |                       expected `()`, found `bool`
+   |     expected this to be `()`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (if true { true } else { false }) && if true { true } else { false };
+   |     +                               +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:21:15
+   |
+LL |     if true { true } else { false } if true { true } else { false };
+   |     ----------^^^^-----------------
+   |     |         |
+   |     |         expected `()`, found `bool`
+   |     expected this to be `()`
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:21:29
+   |
+LL |     if true { true } else { false } if true { true } else { false };
+   |     ------------------------^^^^^--
+   |     |                       |
+   |     |                       expected `()`, found `bool`
+   |     expected this to be `()`
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:24:15
+   |
+LL |     if true { bar() } else { bar() } && if true { bar() } else { bar() };
+   |     ----------^^^^^-----------------
+   |     |         |
+   |     |         expected `()`, found `bool`
+   |     expected this to be `()`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (if true { bar() } else { bar() }) && if true { bar() } else { bar() };
+   |     +                                +
+help: consider using a semicolon here
+   |
+LL |     if true { bar() } else { bar() }; && if true { bar() } else { bar() };
+   |                                     +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:24:30
+   |
+LL |     if true { bar() } else { bar() } && if true { bar() } else { bar() };
+   |     -------------------------^^^^^--
+   |     |                        |
+   |     |                        expected `()`, found `bool`
+   |     expected this to be `()`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (if true { bar() } else { bar() }) && if true { bar() } else { bar() };
+   |     +                                +
+help: consider using a semicolon here
+   |
+LL |     if true { bar() } else { bar() }; && if true { bar() } else { bar() };
+   |                                     +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:27:15
+   |
+LL |     if true { bar() } else { bar() } if true { bar() } else { bar() };
+   |     ----------^^^^^-----------------
+   |     |         |
+   |     |         expected `()`, found `bool`
+   |     expected this to be `()`
+   |
+help: consider using a semicolon here
+   |
+LL |     if true { bar(); } else { bar() } if true { bar() } else { bar() };
+   |                    +
+help: consider using a semicolon here
+   |
+LL |     if true { bar() } else { bar() }; if true { bar() } else { bar() };
+   |                                     +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:27:30
+   |
+LL |     if true { bar() } else { bar() } if true { bar() } else { bar() };
+   |     -------------------------^^^^^--
+   |     |                        |
+   |     |                        expected `()`, found `bool`
+   |     expected this to be `()`
+   |
+help: consider using a semicolon here
+   |
+LL |     if true { bar() } else { bar(); } if true { bar() } else { bar() };
+   |                                   +
+help: consider using a semicolon here
+   |
+LL |     if true { bar() } else { bar() }; if true { bar() } else { bar() };
+   |                                     +
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

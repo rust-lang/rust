@@ -1,0 +1,14 @@
+error: lifetime may not live long enough
+  --> $DIR/wf-self-type.rs:10:5
+   |
+LL | pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {
+   |            --  -- lifetime `'b` defined here
+   |            |
+   |            lifetime `'a` defined here
+LL |     Foo::xmute(u)
+   |     ^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: aborting due to 1 previous error
+

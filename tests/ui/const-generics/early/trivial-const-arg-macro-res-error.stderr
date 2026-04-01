@@ -1,0 +1,24 @@
+error[E0425]: cannot find value `target` in this scope
+  --> $DIR/trivial-const-arg-macro-res-error.rs:5:9
+   |
+LL |         target
+   |         ^^^^^^ not found in this scope
+...
+LL |     let val: [str; len!()] = [];
+   |                    ------ in this macro invocation
+   |
+   = note: this error originates in the macro `len` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/trivial-const-arg-macro-res-error.rs:11:14
+   |
+LL |     let val: [str; len!()] = [];
+   |              ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: slice and array elements must have `Sized` type
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0425.
+For more information about an error, try `rustc --explain E0277`.

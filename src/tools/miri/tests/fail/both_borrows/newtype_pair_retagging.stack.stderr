@@ -1,0 +1,34 @@
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected
+  --> RUSTLIB/alloc/src/boxed.rs:LL:CC
+   |
+LL |         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
+   |
+LL |     let ptr = Box::into_raw(Box::new(0i32));
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: <TAG> is this argument
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
+   |
+LL | fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
+   |                          ^^
+   = note: stack backtrace:
+           0: std::boxed::Box::from_raw_in
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           1: std::boxed::Box::from_raw
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           2: main::{closure#0}
+               at tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
+           3: dealloc_while_running
+               at tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
+           4: main
+               at tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

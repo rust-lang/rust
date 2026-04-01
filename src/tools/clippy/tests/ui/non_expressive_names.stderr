@@ -1,0 +1,41 @@
+error: consider choosing a more descriptive name
+  --> tests/ui/non_expressive_names.rs:27:9
+   |
+LL |     let _1 = 1;
+   |         ^^
+   |
+   = note: `-D clippy::just-underscores-and-digits` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::just_underscores_and_digits)]`
+
+error: consider choosing a more descriptive name
+  --> tests/ui/non_expressive_names.rs:29:9
+   |
+LL |     let ____1 = 1;
+   |         ^^^^^
+
+error: consider choosing a more descriptive name
+  --> tests/ui/non_expressive_names.rs:31:9
+   |
+LL |     let __1___2 = 12;
+   |         ^^^^^^^
+
+error: consider choosing a more descriptive name
+  --> tests/ui/non_expressive_names.rs:53:13
+   |
+LL |         let _1 = 1;
+   |             ^^
+
+error: consider choosing a more descriptive name
+  --> tests/ui/non_expressive_names.rs:55:13
+   |
+LL |         let ____1 = 1;
+   |             ^^^^^
+
+error: consider choosing a more descriptive name
+  --> tests/ui/non_expressive_names.rs:57:13
+   |
+LL |         let __1___2 = 12;
+   |             ^^^^^^^
+
+error: aborting due to 6 previous errors
+

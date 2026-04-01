@@ -1,0 +1,20 @@
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/alloc-error-handler-bad-signature-3.rs:10:1
+   |
+LL |   #[alloc_error_handler]
+   |   ---------------------- in this attribute macro expansion
+LL |   fn oom() -> ! {
+   |  _-^^^^^^^^^^^^
+LL | |     loop {}
+LL | | }
+   | |_- unexpected argument of type `core::alloc::Layout`
+   |
+note: function defined here
+  --> $DIR/alloc-error-handler-bad-signature-3.rs:10:4
+   |
+LL | fn oom() -> ! {
+   |    ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

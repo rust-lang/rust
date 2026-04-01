@@ -1,0 +1,23 @@
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/feature-gate-asm_experimental_reg.rs:14:14
+   |
+LL |     asm!("", in("v0") 0);
+   |              ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `i32` cannot be used with this register class in stable
+  --> $DIR/feature-gate-asm_experimental_reg.rs:14:23
+   |
+LL |     asm!("", in("v0") 0);
+   |                       ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

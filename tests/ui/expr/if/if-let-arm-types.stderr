@@ -1,0 +1,16 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/if-let-arm-types.rs:7:9
+   |
+LL | /     if let Some(b) = None {
+LL | |
+LL | |         ()
+   | |         -- expected because of this
+...  |
+LL | |         1
+   | |         ^ expected `()`, found integer
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,11 @@
+error[E0568]: auto traits cannot have super traits or lifetime bounds
+  --> $DIR/issue-84075.rs:5:18
+   |
+LL | auto trait Magic where Self: Copy {}
+   |            ----- ^^^^^^^^^^^^^^^^
+   |            |
+   |            auto traits cannot have super traits or lifetime bounds
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0568`.

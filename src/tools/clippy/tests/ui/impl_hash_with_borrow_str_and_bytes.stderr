@@ -1,0 +1,40 @@
+error: the semantics of `Borrow<T>` around `Hash` can't be satisfied when both `Borrow<str>` and `Borrow<[u8]>` are implemented
+  --> tests/ui/impl_hash_with_borrow_str_and_bytes.rs:10:6
+   |
+LL | impl Hash for ExampleType {
+   |      ^^^^
+   |
+   = note: the `Borrow` semantics require that `Hash` must behave the same for all implementations of Borrow<T>
+   = note: however, the hash implementations of a string (`str`) and the bytes of a string `[u8]` do not behave the same ...
+   = note: ... as (`hash("abc") != hash("abc".as_bytes())`
+   = help: consider either removing one of the  `Borrow` implementations (`Borrow<str>` or `Borrow<[u8]>`) ...
+   = help: ... or not implementing `Hash` for this type
+   = note: `-D clippy::impl-hash-borrow-with-str-and-bytes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::impl_hash_borrow_with_str_and_bytes)]`
+
+error: the semantics of `Borrow<T>` around `Hash` can't be satisfied when both `Borrow<str>` and `Borrow<[u8]>` are implemented
+  --> tests/ui/impl_hash_with_borrow_str_and_bytes.rs:73:10
+   |
+LL | #[derive(Hash)]
+   |          ^^^^
+   |
+   = note: the `Borrow` semantics require that `Hash` must behave the same for all implementations of Borrow<T>
+   = note: however, the hash implementations of a string (`str`) and the bytes of a string `[u8]` do not behave the same ...
+   = note: ... as (`hash("abc") != hash("abc".as_bytes())`
+   = help: consider either removing one of the  `Borrow` implementations (`Borrow<str>` or `Borrow<[u8]>`) ...
+   = help: ... or not implementing `Hash` for this type
+
+error: the semantics of `Borrow<T>` around `Hash` can't be satisfied when both `Borrow<str>` and `Borrow<[u8]>` are implemented
+  --> tests/ui/impl_hash_with_borrow_str_and_bytes.rs:117:6
+   |
+LL | impl Hash for GenericExampleType2<String> {
+   |      ^^^^
+   |
+   = note: the `Borrow` semantics require that `Hash` must behave the same for all implementations of Borrow<T>
+   = note: however, the hash implementations of a string (`str`) and the bytes of a string `[u8]` do not behave the same ...
+   = note: ... as (`hash("abc") != hash("abc".as_bytes())`
+   = help: consider either removing one of the  `Borrow` implementations (`Borrow<str>` or `Borrow<[u8]>`) ...
+   = help: ... or not implementing `Hash` for this type
+
+error: aborting due to 3 previous errors
+

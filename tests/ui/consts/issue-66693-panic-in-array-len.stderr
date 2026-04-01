@@ -1,0 +1,15 @@
+error: argument to `panic!()` in a const context must have type `&str`
+  --> $DIR/issue-66693-panic-in-array-len.rs:7:20
+   |
+LL |     let _ = [0i32; panic!(2f32)];
+   |                    ^^^^^^^^^^^^
+
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/issue-66693-panic-in-array-len.rs:11:21
+   |
+LL |     let _ = [false; panic!()];
+   |                     ^^^^^^^^ evaluation of `main::{constant#1}` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

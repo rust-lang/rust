@@ -1,0 +1,15 @@
+error: unexpected token: keyword `fn`
+  --> <crate attribute>:1:23
+   |
+LL | #![feature(yeet_expr)]fn main(){}#[inline]
+   |                       ^^ unexpected token after this
+
+error[E0601]: `main` function not found in crate `injection`
+  --> $DIR/injection.rs:3:12
+   |
+LL | fn foo() {}
+   |            ^ consider adding a `main` function to `$DIR/injection.rs`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

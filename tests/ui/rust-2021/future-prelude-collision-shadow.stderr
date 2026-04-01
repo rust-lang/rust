@@ -1,0 +1,23 @@
+error[E0599]: no method named `try_into` found for type `u8` in the current scope
+  --> $DIR/future-prelude-collision-shadow.rs:27:26
+   |
+LL |         let _: u32 = 3u8.try_into().unwrap();
+   |                          ^^^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
+help: the following traits which provide `try_into` are implemented but not in scope; perhaps you want to import one of them
+   |
+LL +     use crate::m::TryIntoU32;
+   |
+LL +     use std::convert::TryInto;
+   |
+help: there is a method `into` with a similar name
+   |
+LL -         let _: u32 = 3u8.try_into().unwrap();
+LL +         let _: u32 = 3u8.into().unwrap();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

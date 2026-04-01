@@ -1,0 +1,183 @@
+- // MIR for `f_with_arg` before ElaborateDrops
++ // MIR for `f_with_arg` after ElaborateDrops
+  
+  fn f_with_arg(_1: String, _2: String) -> () {
+      debug _arg1 => _1;
+      debug _arg2 => _2;
+      let mut _0: ();
+      let mut _3: !;
+      let _4: std::string::String;
+      let _8: ();
+      let mut _9: std::string::String;
+      let mut _10: std::string::String;
+      let mut _11: std::string::String;
++     let mut _12: bool;
+      scope 1 {
+          debug _a => _4;
+          let _5: i32;
+          scope 2 {
+              debug _b => _5;
+              let _6: std::string::String;
+              scope 3 {
+                  debug _c => _6;
+                  let _7: std::string::String;
+                  scope 4 {
+                      debug _d => _7;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
++         _12 = const false;
+          StorageLive(_4);
+          _4 = String::new() -> [return: bb1, unwind: bb27];
+      }
+  
+      bb1: {
+          StorageLive(_5);
+          _5 = const 12_i32;
+          StorageLive(_6);
+          _6 = String::new() -> [return: bb2, unwind: bb26];
+      }
+  
+      bb2: {
++         _12 = const true;
+          StorageLive(_7);
+          _7 = String::new() -> [return: bb3, unwind: bb25];
+      }
+  
+      bb3: {
+          StorageLive(_8);
+          StorageLive(_9);
++         _12 = const false;
+          _9 = move _6;
+          _8 = std::mem::drop::<String>(move _9) -> [return: bb4, unwind: bb23];
+      }
+  
+      bb4: {
+          StorageDead(_9);
+          StorageDead(_8);
+          StorageLive(_10);
+          _10 = String::new() -> [return: bb5, unwind: bb24];
+      }
+  
+      bb5: {
+          StorageLive(_11);
+          _11 = String::new() -> [return: bb6, unwind: bb22];
+      }
+  
+      bb6: {
+          drop(_7) -> [return: bb7, unwind: bb20];
+      }
+  
+      bb7: {
+          StorageDead(_7);
+-         drop(_6) -> [return: bb8, unwind: bb18];
++         goto -> bb8;
+      }
+  
+      bb8: {
++         _12 = const false;
+          StorageDead(_6);
+          drop(_4) -> [return: bb9, unwind: bb16];
+      }
+  
+      bb9: {
+          StorageDead(_4);
+          drop(_2) -> [return: bb10, unwind: bb14];
+      }
+  
+      bb10: {
+          drop(_1) -> [return: bb11, unwind: bb12];
+      }
+  
+      bb11: {
+          tailcall g_with_arg(move _10, move _11);
+      }
+  
+      bb12 (cleanup): {
+          drop(_10) -> [return: bb13, unwind terminate(cleanup)];
+      }
+  
+      bb13 (cleanup): {
+          drop(_11) -> [return: bb29, unwind terminate(cleanup)];
+      }
+  
+      bb14 (cleanup): {
+          drop(_10) -> [return: bb15, unwind terminate(cleanup)];
+      }
+  
+      bb15 (cleanup): {
+          drop(_11) -> [return: bb28, unwind terminate(cleanup)];
+      }
+  
+      bb16 (cleanup): {
+          drop(_10) -> [return: bb17, unwind terminate(cleanup)];
+      }
+  
+      bb17 (cleanup): {
+          drop(_11) -> [return: bb27, unwind terminate(cleanup)];
+      }
+  
+      bb18 (cleanup): {
+-         drop(_10) -> [return: bb19, unwind terminate(cleanup)];
++         goto -> bb19;
+      }
+  
+      bb19 (cleanup): {
+-         drop(_11) -> [return: bb26, unwind terminate(cleanup)];
++         goto -> bb26;
+      }
+  
+      bb20 (cleanup): {
+          drop(_10) -> [return: bb21, unwind terminate(cleanup)];
+      }
+  
+      bb21 (cleanup): {
+          drop(_11) -> [return: bb25, unwind terminate(cleanup)];
+      }
+  
+      bb22 (cleanup): {
+          drop(_10) -> [return: bb24, unwind terminate(cleanup)];
+      }
+  
+      bb23 (cleanup): {
+-         drop(_9) -> [return: bb24, unwind terminate(cleanup)];
++         goto -> bb24;
+      }
+  
+      bb24 (cleanup): {
+          drop(_7) -> [return: bb25, unwind terminate(cleanup)];
+      }
+  
+      bb25 (cleanup): {
+-         drop(_6) -> [return: bb26, unwind terminate(cleanup)];
++         goto -> bb31;
+      }
+  
+      bb26 (cleanup): {
+          drop(_4) -> [return: bb27, unwind terminate(cleanup)];
+      }
+  
+      bb27 (cleanup): {
+          drop(_2) -> [return: bb28, unwind terminate(cleanup)];
+      }
+  
+      bb28 (cleanup): {
+          drop(_1) -> [return: bb29, unwind terminate(cleanup)];
+      }
+  
+      bb29 (cleanup): {
+          resume;
++     }
++ 
++     bb30 (cleanup): {
++         drop(_6) -> [return: bb26, unwind terminate(cleanup)];
++     }
++ 
++     bb31 (cleanup): {
++         switchInt(copy _12) -> [0: bb26, otherwise: bb30];
+      }
+  }
+  

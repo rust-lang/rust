@@ -1,0 +1,27 @@
+error[E0428]: the name `foo` is defined multiple times
+  --> $DIR/issue-28472.rs:6:3
+   |
+LL |     fn foo();
+   |     --------- previous definition of the value `foo` here
+LL |
+LL | /   pub
+LL | |   fn foo();
+   | |___________^ `foo` redefined here
+   |
+   = note: `foo` must be defined only once in the value namespace of this module
+
+error[E0428]: the name `foo` is defined multiple times
+  --> $DIR/issue-28472.rs:9:3
+   |
+LL |     fn foo();
+   |     --------- previous definition of the value `foo` here
+...
+LL | /   pub
+LL | |   static mut foo: u32;
+   | |______________________^ `foo` redefined here
+   |
+   = note: `foo` must be defined only once in the value namespace of this module
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

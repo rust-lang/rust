@@ -1,0 +1,53 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/bad-tait-no-substs.rs:8:11
+   |
+LL |     Tuple(Alias),
+   |           ^^^^^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ pub enum UninhabitedVariants<'a> {
+LL ~     Tuple(Alias<'a>),
+   |
+
+error[E0107]: missing generics for type alias `Alias`
+  --> $DIR/bad-tait-no-substs.rs:8:11
+   |
+LL |     Tuple(Alias),
+   |           ^^^^^ expected 1 generic argument
+   |
+note: type alias defined here, with 1 generic parameter: `U`
+  --> $DIR/bad-tait-no-substs.rs:5:6
+   |
+LL | type Alias<'a, U> = impl Trait<U>;
+   |      ^^^^^     -
+help: add missing generic argument
+   |
+LL |     Tuple(Alias<U>),
+   |                +++
+
+error[E0004]: non-exhaustive patterns: `UninhabitedVariants::Tuple(_)` not covered
+  --> $DIR/bad-tait-no-substs.rs:15:11
+   |
+LL |     match x {}
+   |           ^ pattern `UninhabitedVariants::Tuple(_)` not covered
+   |
+note: `UninhabitedVariants` defined here
+  --> $DIR/bad-tait-no-substs.rs:7:10
+   |
+LL | pub enum UninhabitedVariants {
+   |          ^^^^^^^^^^^^^^^^^^^
+LL |     Tuple(Alias),
+   |     ----- not covered
+   = note: the matched value is of type `UninhabitedVariants`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~     match x {
+LL +         UninhabitedVariants::Tuple(_) => todo!(),
+LL ~     }
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0004, E0106, E0107.
+For more information about an error, try `rustc --explain E0004`.

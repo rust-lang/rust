@@ -1,0 +1,38 @@
+error: implementation of `Fn` is not general enough
+  --> $DIR/rfc1623-2.rs:28:8
+   |
+LL |     f: &id,
+   |        ^^^ implementation of `Fn` is not general enough
+   |
+   = note: `fn(&'2 Foo<'_>) -> &'2 Foo<'_> {id::<&'2 Foo<'_>>}` must implement `Fn<(&'1 Foo<'b>,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `Fn<(&'2 Foo<'_>,)>`, for some specific lifetime `'2`
+
+error: implementation of `Fn` is not general enough
+  --> $DIR/rfc1623-2.rs:28:8
+   |
+LL |     f: &id,
+   |        ^^^ implementation of `Fn` is not general enough
+   |
+   = note: `fn(&Foo<'2>) -> &Foo<'2> {id::<&Foo<'2>>}` must implement `Fn<(&'a Foo<'1>,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `Fn<(&Foo<'2>,)>`, for some specific lifetime `'2`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/rfc1623-2.rs:28:8
+   |
+LL |     f: &id,
+   |        ^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: `fn(&'2 Foo<'_>) -> &'2 Foo<'_> {id::<&'2 Foo<'_>>}` must implement `FnOnce<(&'1 Foo<'b>,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 Foo<'_>,)>`, for some specific lifetime `'2`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/rfc1623-2.rs:28:8
+   |
+LL |     f: &id,
+   |        ^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: `fn(&Foo<'2>) -> &Foo<'2> {id::<&Foo<'2>>}` must implement `FnOnce<(&'a Foo<'1>,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&Foo<'2>,)>`, for some specific lifetime `'2`
+
+error: aborting due to 4 previous errors
+

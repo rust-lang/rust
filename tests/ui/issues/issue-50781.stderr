@@ -1,0 +1,37 @@
+error[E0038]: the trait `X` is not dyn compatible
+  --> $DIR/issue-50781.rs:11:16
+   |
+LL | impl Trait for dyn X {}
+   |                ^^^^^ `X` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-50781.rs:4:8
+   |
+LL | trait X {
+   |       - this trait is not dyn compatible...
+LL |     fn foo(&self) where Self: Trait;
+   |        ^^^ ...because method `foo` references the `Self` type in its `where` clause
+   = help: consider moving `foo` to another trait
+   = help: only type `()` implements `X`; consider using it directly instead.
+
+error[E0038]: the trait `X` is not dyn compatible
+  --> $DIR/issue-50781.rs:16:10
+   |
+LL |     <dyn X as X>::foo(&());
+   |          ^ `X` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-50781.rs:4:8
+   |
+LL | trait X {
+   |       - this trait is not dyn compatible...
+LL |     fn foo(&self) where Self: Trait;
+   |        ^^^ ...because method `foo` references the `Self` type in its `where` clause
+   = help: consider moving `foo` to another trait
+   = help: only type `()` implements `X`; consider using it directly instead.
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

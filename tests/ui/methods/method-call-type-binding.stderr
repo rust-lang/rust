@@ -1,0 +1,9 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/method-call-type-binding.rs:2:15
+   |
+LL |     0.clone::<T = u8>();
+   |               ^^^^^^ associated item constraint not allowed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0229`.

@@ -1,0 +1,381 @@
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:13:1
+   |
+LL | / enum LargeEnum {
+LL | |
+LL | |     A(i32),
+   | |     ------ the second-largest variant contains at least 4 bytes
+LL | |     B([i32; 8000]),
+   | |     -------------- the largest variant contains at least 32000 bytes
+LL | | }
+   | |_^ the entire enum is at least 32004 bytes
+   |
+   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     B([i32; 8000]),
+LL +     B(Box<[i32; 8000]>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:38:1
+   |
+LL | / enum LargeEnum2 {
+LL | |
+LL | |     VariantOk(i32, u32),
+   | |     ------------------- the second-largest variant contains at least 8 bytes
+LL | |     ContainingLargeEnum(LargeEnum),
+   | |     ------------------------------ the largest variant contains at least 32004 bytes
+LL | | }
+   | |_^ the entire enum is at least 32004 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     ContainingLargeEnum(LargeEnum),
+LL +     ContainingLargeEnum(Box<LargeEnum>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:44:1
+   |
+LL | / enum LargeEnum3 {
+LL | |
+LL | |     ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
+   | |     --------------------------------------------------------- the largest variant contains at least 70004 bytes
+LL | |     VoidVariant,
+LL | |     StructLikeLittle { x: i32, y: i32 },
+   | |     ----------------------------------- the second-largest variant contains at least 8 bytes
+LL | | }
+   | |_^ the entire enum is at least 70008 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
+LL +     ContainingMoreThanOneField(i32, Box<[i32; 8000]>, Box<[i32; 9500]>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:51:1
+   |
+LL | / enum LargeEnum4 {
+LL | |
+LL | |     VariantOk(i32, u32),
+   | |     ------------------- the second-largest variant contains at least 8 bytes
+LL | |     StructLikeLarge { x: [i32; 8000], y: i32 },
+   | |     ------------------------------------------ the largest variant contains at least 32004 bytes
+LL | | }
+   | |_^ the entire enum is at least 32008 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     StructLikeLarge { x: [i32; 8000], y: i32 },
+LL +     StructLikeLarge { x: Box<[i32; 8000]>, y: i32 },
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:57:1
+   |
+LL | / enum LargeEnum5 {
+LL | |
+LL | |     VariantOk(i32, u32),
+   | |     ------------------- the second-largest variant contains at least 8 bytes
+LL | |     StructLikeLarge2 { x: [i32; 8000] },
+   | |     ----------------------------------- the largest variant contains at least 32000 bytes
+LL | | }
+   | |_^ the entire enum is at least 32004 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     StructLikeLarge2 { x: [i32; 8000] },
+LL +     StructLikeLarge2 { x: Box<[i32; 8000]> },
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:74:1
+   |
+LL | / enum LargeEnum7 {
+LL | |
+LL | |     A,
+LL | |     B([u8; 1255]),
+   | |     ------------- the largest variant contains at least 1255 bytes
+LL | |     C([u8; 200]),
+   | |     ------------ the second-largest variant contains at least 200 bytes
+LL | | }
+   | |_^ the entire enum is at least 1256 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     B([u8; 1255]),
+LL +     B(Box<[u8; 1255]>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:81:1
+   |
+LL | / enum LargeEnum8 {
+LL | |
+LL | |     VariantOk(i32, u32),
+   | |     ------------------- the second-largest variant contains at least 8 bytes
+LL | |     ContainingMoreThanOneField([i32; 8000], [i32; 2], [i32; 9500], [i32; 30]),
+   | |     ------------------------------------------------------------------------- the largest variant contains at least 70128 bytes
+LL | | }
+   | |_^ the entire enum is at least 70132 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     ContainingMoreThanOneField([i32; 8000], [i32; 2], [i32; 9500], [i32; 30]),
+LL +     ContainingMoreThanOneField(Box<[i32; 8000]>, [i32; 2], Box<[i32; 9500]>, [i32; 30]),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:87:1
+   |
+LL | / enum LargeEnum9 {
+LL | |
+LL | |     A(Struct<()>),
+   | |     ------------- the second-largest variant contains at least 4 bytes
+LL | |     B(Struct2),
+   | |     ---------- the largest variant contains at least 32000 bytes
+LL | | }
+   | |_^ the entire enum is at least 32004 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     B(Struct2),
+LL +     B(Box<Struct2>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:93:1
+   |
+LL | / enum LargeEnumOk2<T> {
+LL | |
+LL | |     A(T),
+   | |     ---- the second-largest variant contains at least 0 bytes
+LL | |     B(Struct2),
+   | |     ---------- the largest variant contains at least 32000 bytes
+LL | | }
+   | |_^ the entire enum is at least 32000 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     B(Struct2),
+LL +     B(Box<Struct2>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:99:1
+   |
+LL | / enum LargeEnumOk3<T> {
+LL | |
+LL | |     A(Struct<T>),
+   | |     ------------ the second-largest variant contains at least 4 bytes
+LL | |     B(Struct2),
+   | |     ---------- the largest variant contains at least 32000 bytes
+LL | | }
+   | |_^ the entire enum is at least 32000 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     B(Struct2),
+LL +     B(Box<Struct2>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:115:1
+   |
+LL | / enum CopyableLargeEnum {
+LL | |
+LL | |     A(bool),
+   | |     ------- the second-largest variant contains at least 1 bytes
+LL | |     B([u64; 8000]),
+   | |     -------------- the largest variant contains at least 64000 bytes
+LL | | }
+   | |_^ the entire enum is at least 64008 bytes
+   |
+note: boxing a variant would require the type no longer be `Copy`
+  --> tests/ui/large_enum_variant.rs:115:6
+   |
+LL | enum CopyableLargeEnum {
+   |      ^^^^^^^^^^^^^^^^^
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+  --> tests/ui/large_enum_variant.rs:118:5
+   |
+LL |     B([u64; 8000]),
+   |     ^^^^^^^^^^^^^^
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:121:1
+   |
+LL | / enum ManuallyCopyLargeEnum {
+LL | |
+LL | |     A(bool),
+   | |     ------- the second-largest variant contains at least 1 bytes
+LL | |     B([u64; 8000]),
+   | |     -------------- the largest variant contains at least 64000 bytes
+LL | | }
+   | |_^ the entire enum is at least 64008 bytes
+   |
+note: boxing a variant would require the type no longer be `Copy`
+  --> tests/ui/large_enum_variant.rs:121:6
+   |
+LL | enum ManuallyCopyLargeEnum {
+   |      ^^^^^^^^^^^^^^^^^^^^^
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+  --> tests/ui/large_enum_variant.rs:124:5
+   |
+LL |     B([u64; 8000]),
+   |     ^^^^^^^^^^^^^^
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:135:1
+   |
+LL | / enum SomeGenericPossiblyCopyEnum<T> {
+LL | |
+LL | |     A(bool, std::marker::PhantomData<T>),
+   | |     ------------------------------------ the second-largest variant contains at least 1 bytes
+LL | |     B([u64; 4000]),
+   | |     -------------- the largest variant contains at least 32000 bytes
+LL | | }
+   | |_^ the entire enum is at least 32008 bytes
+   |
+note: boxing a variant would require the type no longer be `Copy`
+  --> tests/ui/large_enum_variant.rs:135:6
+   |
+LL | enum SomeGenericPossiblyCopyEnum<T> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+  --> tests/ui/large_enum_variant.rs:138:5
+   |
+LL |     B([u64; 4000]),
+   |     ^^^^^^^^^^^^^^
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:149:1
+   |
+LL | / enum LargeEnumWithGenerics<T> {
+LL | |
+LL | |     Small,
+   | |     ----- the second-largest variant carries no data at all
+LL | |     Large((T, [u8; 512])),
+   | |     --------------------- the largest variant contains at least 512 bytes
+LL | | }
+   | |_^ the entire enum is at least 512 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     Large((T, [u8; 512])),
+LL +     Large(Box<(T, [u8; 512])>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:159:1
+   |
+LL | / enum WithGenerics {
+LL | |
+LL | |     Large([Foo<u64>; 64]),
+   | |     --------------------- the largest variant contains at least 512 bytes
+LL | |     Small(u8),
+   | |     --------- the second-largest variant contains at least 1 bytes
+LL | | }
+   | |_^ the entire enum is at least 520 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     Large([Foo<u64>; 64]),
+LL +     Large(Box<[Foo<u64>; 64]>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:170:1
+   |
+LL | / enum LargeEnumOfConst {
+LL | |
+LL | |     Ok,
+   | |     -- the second-largest variant carries no data at all
+LL | |     Error(PossiblyLargeEnumWithConst<256>),
+   | |     -------------------------------------- the largest variant contains at least 514 bytes
+LL | | }
+   | |_^ the entire enum is at least 514 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     Error(PossiblyLargeEnumWithConst<256>),
+LL +     Error(Box<PossiblyLargeEnumWithConst<256>>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:176:1
+   |
+LL | / enum WithRecursion {
+LL | |
+LL | |     Large([u64; 64]),
+   | |     ---------------- the largest variant contains at least 512 bytes
+LL | |     Recursive(Box<WithRecursion>),
+   | |     ----------------------------- the second-largest variant contains at least 8 bytes
+LL | | }
+   | |_^ the entire enum is at least 520 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     Large([u64; 64]),
+LL +     Large(Box<[u64; 64]>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:187:1
+   |
+LL | / enum LargeEnumWithGenericsAndRecursive {
+LL | |
+LL | |     Ok(),
+   | |     ---- the second-largest variant carries no data at all
+LL | |     Error(WithRecursionAndGenerics<u64>),
+   | |     ------------------------------------ the largest variant contains at least 520 bytes
+LL | | }
+   | |_^ the entire enum is at least 520 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     Error(WithRecursionAndGenerics<u64>),
+LL +     Error(Box<WithRecursionAndGenerics<u64>>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:223:5
+   |
+LL | /     enum NoWarnings {
+LL | |
+LL | |         BigBoi(PublishWithBytes),
+   | |         ------------------------ the largest variant contains at least 296 bytes
+LL | |         _SmallBoi(u8),
+   | |         ------------- the second-largest variant contains at least 1 bytes
+LL | |     }
+   | |_____^ the entire enum is at least 296 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -         BigBoi(PublishWithBytes),
+LL +         BigBoi(Box<PublishWithBytes>),
+   |
+
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:229:5
+   |
+LL | /     enum MakesClippyAngry {
+LL | |
+LL | |         BigBoi(PublishWithVec),
+   | |         ---------------------- the largest variant contains at least 224 bytes
+LL | |         _SmallBoi(u8),
+   | |         ------------- the second-largest variant contains at least 1 bytes
+LL | |     }
+   | |_____^ the entire enum is at least 224 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -         BigBoi(PublishWithVec),
+LL +         BigBoi(Box<PublishWithVec>),
+   |
+
+error: aborting due to 20 previous errors
+

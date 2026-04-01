@@ -1,0 +1,7 @@
+   LL|      1|fn main() {
+   LL|      1|    let num = 9;
+   LL|      1|    while num >= 10 {
+   LL|      0|        // loop body
+   LL|      0|    }
+   LL|      1|}
+

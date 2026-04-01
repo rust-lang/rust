@@ -1,0 +1,16 @@
+// MIR for `range_inclusive_iter_next` after PreCodegen
+
+fn range_inclusive_iter_next(_1: &mut std::ops::RangeInclusive<u32>) -> Option<u32> {
+    debug it => _1;
+    let mut _0: std::option::Option<u32>;
+    scope 1 (inlined iter::range::<impl Iterator for std::ops::RangeInclusive<u32>>::next) {
+    }
+
+    bb0: {
+        _0 = <std::ops::RangeInclusive<u32> as iter::range::RangeInclusiveIteratorImpl>::spec_next(move _1) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}

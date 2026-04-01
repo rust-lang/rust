@@ -1,0 +1,8 @@
+error: removing an expression is not supported in this position
+  --> $DIR/bad-cfg.rs:4:13
+   |
+LL |     let _ = #[cfg(false)] if true {};
+   |             ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

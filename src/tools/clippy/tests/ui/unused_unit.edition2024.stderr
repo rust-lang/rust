@@ -1,0 +1,122 @@
+error: unneeded unit expression
+  --> tests/ui/unused_unit.rs:37:9
+   |
+LL |         ()
+   |         ^^ help: remove the final `()`
+   |
+note: the lint level is defined here
+  --> tests/ui/unused_unit.rs:15:9
+   |
+LL | #![deny(clippy::unused_unit)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: unneeded unit expression
+  --> tests/ui/unused_unit.rs:62:26
+   |
+LL | fn return_unit() -> () { () }
+   |                          ^^ help: remove the final `()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:22:28
+   |
+LL |     pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) -> ()
+   |                            ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:25:18
+   |
+LL |     where G: Fn() -> () {
+   |                  ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:22:58
+   |
+LL |     pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) -> ()
+   |                                                          ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:27:26
+   |
+LL |         let _y: &dyn Fn() -> () = &f;
+   |                          ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:35:18
+   |
+LL |     fn into(self) -> () {
+   |                  ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:43:29
+   |
+LL |     fn redundant<F: FnOnce() -> (), G, H>(&self, _f: F, _g: G, _h: H)
+   |                             ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:46:19
+   |
+LL |         G: FnMut() -> (),
+   |                   ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:48:16
+   |
+LL |         H: Fn() -> ();
+   |                ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:53:29
+   |
+LL |     fn redundant<F: FnOnce() -> (), G, H>(&self, _f: F, _g: G, _h: H)
+   |                             ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:56:19
+   |
+LL |         G: FnMut() -> (),
+   |                   ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:58:16
+   |
+LL |         H: Fn() -> () {}
+   |                ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:62:17
+   |
+LL | fn return_unit() -> () { () }
+   |                 ^^^^^^ help: remove the `-> ()`
+
+error: unneeded `()`
+  --> tests/ui/unused_unit.rs:74:14
+   |
+LL |         break();
+   |              ^^ help: remove the `()`
+
+error: unneeded `()`
+  --> tests/ui/unused_unit.rs:77:11
+   |
+LL |     return();
+   |           ^^ help: remove the `()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:95:10
+   |
+LL | fn test()->(){}
+   |          ^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:99:11
+   |
+LL | fn test2() ->(){}
+   |           ^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
+  --> tests/ui/unused_unit.rs:103:11
+   |
+LL | fn test3()-> (){}
+   |           ^^^^^ help: remove the `-> ()`
+
+error: aborting due to 19 previous errors
+

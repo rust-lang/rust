@@ -1,0 +1,23 @@
+error: module has the same name as its containing module
+  --> tests/ui-toml/module_inception/module_inception.rs:6:9
+   |
+LL | /         pub mod bar2 {
+LL | |
+LL | |             pub mod foo2 {}
+LL | |         }
+   | |_________^
+   |
+   = note: `-D clippy::module-inception` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::module_inception)]`
+
+error: module has the same name as its containing module
+  --> tests/ui-toml/module_inception/module_inception.rs:12:5
+   |
+LL | /     pub mod foo2 {
+LL | |
+LL | |         pub mod bar2 {}
+LL | |     }
+   | |_____^
+
+error: aborting due to 2 previous errors
+

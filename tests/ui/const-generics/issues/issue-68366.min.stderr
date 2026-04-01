@@ -1,0 +1,42 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-68366.rs:12:37
+   |
+LL | impl <const N: usize> Collatz<{Some(N)}> {}
+   |                                     ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: `Option<usize>` is forbidden as the type of a const generic parameter
+  --> $DIR/issue-68366.rs:9:25
+   |
+LL | struct Collatz<const N: Option<usize>>;
+   |                         ^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-68366.rs:12:7
+   |
+LL | impl <const N: usize> Collatz<{Some(N)}> {}
+   |       ^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-68366.rs:19:6
+   |
+LL | impl<const N: usize> Foo {}
+   |      ^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0207`.

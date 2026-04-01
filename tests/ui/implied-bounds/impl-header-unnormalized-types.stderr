@@ -1,0 +1,20 @@
+error[E0491]: in type `&'a &'b ()`, reference has a longer lifetime than the data it references
+  --> $DIR/impl-header-unnormalized-types.rs:15:5
+   |
+LL |     type Assoc = &'a &'b ();
+   |     ^^^^^^^^^^
+   |
+note: the pointer is valid for the lifetime `'a` as defined here
+  --> $DIR/impl-header-unnormalized-types.rs:14:6
+   |
+LL | impl<'a, 'b> NeedsWf<'a, 'b> for Foo<<&'a &'b () as GoodBye>::Forget> {
+   |      ^^
+note: but the referenced data is only valid for the lifetime `'b` as defined here
+  --> $DIR/impl-header-unnormalized-types.rs:14:10
+   |
+LL | impl<'a, 'b> NeedsWf<'a, 'b> for Foo<<&'a &'b () as GoodBye>::Forget> {
+   |          ^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0491`.

@@ -1,0 +1,39 @@
+error[E0107]: trait takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/unboxed-closure-sugar-region.rs:32:51
+   |
+LL | fn test2(x: &dyn Foo<(isize,),Output=()>, y: &dyn Foo(isize)) {
+   |                                                   ^^^ expected 1 lifetime argument
+   |
+note: trait defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/unboxed-closure-sugar-region.rs:10:7
+   |
+LL | trait Foo<'a,T> {
+   |       ^^^ --
+
+error[E0107]: trait takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/unboxed-closure-sugar-region.rs:23:58
+   |
+LL |     eq::< dyn Foo<(isize,),Output=()>,               dyn Foo(isize)                      >();
+   |                                                          ^^^ expected 1 lifetime argument
+   |
+note: trait defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/unboxed-closure-sugar-region.rs:10:7
+   |
+LL | trait Foo<'a,T> {
+   |       ^^^ --
+
+error[E0107]: trait takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/unboxed-closure-sugar-region.rs:28:58
+   |
+LL |     eq::< dyn Foo<'static, (isize,),Output=()>,      dyn Foo(isize)                      >();
+   |                                                          ^^^ expected 1 lifetime argument
+   |
+note: trait defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/unboxed-closure-sugar-region.rs:10:7
+   |
+LL | trait Foo<'a,T> {
+   |       ^^^ --
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

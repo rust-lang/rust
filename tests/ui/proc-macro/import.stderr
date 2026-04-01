@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `test_macros::empty_derive`
+  --> $DIR/import.rs:5:5
+   |
+LL | use test_macros::empty_derive;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ no `empty_derive` in the root
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

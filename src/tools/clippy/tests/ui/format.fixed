@@ -1,0 +1,105 @@
+#![warn(clippy::useless_format)]
+#![allow(
+    clippy::print_literal,
+    clippy::redundant_clone,
+    clippy::to_string_in_format_args,
+    clippy::needless_borrow,
+    clippy::uninlined_format_args,
+    clippy::needless_raw_string_hashes,
+    clippy::useless_vec,
+    clippy::literal_string_with_formatting_args
+)]
+
+struct Foo(pub String);
+
+macro_rules! foo {
+    ($($t:tt)*) => (Foo(format!($($t)*)))
+}
+
+fn main() {
+    "foo".to_string();
+    //~^ useless_format
+    "{}".to_string();
+    //~^ useless_format
+    "{} abc {}".to_string();
+    //~^ useless_format
+    r##"foo {}
+" bar"##.to_string();
+
+    let _ = String::new();
+    //~^ useless_format
+
+    "foo".to_string();
+    //~^ useless_format
+    format!("{:?}", "foo"); // Don't warn about `Debug`.
+    format!("{:8}", "foo");
+    format!("{:width$}", "foo", width = 8);
+    format!("foo {}", "bar");
+    format!("{} bar", "foo");
+
+    let arg = String::new();
+    arg.to_string();
+    //~^ useless_format
+    format!("{:?}", arg); // Don't warn about debug.
+    format!("{:8}", arg);
+    format!("{:width$}", arg, width = 8);
+    format!("foo {}", arg);
+    format!("{} bar", arg);
+
+    // We don’t want to warn for non-string args; see issue #697.
+    format!("{}", 42);
+    format!("{:?}", 42);
+    format!("{:+}", 42);
+    format!("foo {}", 42);
+    format!("{} bar", 42);
+
+    // We only want to warn about `format!` itself.
+    println!("foo");
+    println!("{}", "foo");
+    println!("foo {}", "foo");
+    println!("{}", 42);
+    println!("foo {}", 42);
+
+    // A `format!` inside a macro should not trigger a warning.
+    foo!("should not warn");
+
+    // Precision on string means slicing without panicking on size.
+    format!("{:.1}", "foo"); // Could be `"foo"[..1]`
+    format!("{:.10}", "foo"); // Could not be `"foo"[..10]`
+    format!("{:.prec$}", "foo", prec = 1);
+    format!("{:.prec$}", "foo", prec = 10);
+
+    42.to_string();
+    //~^ useless_format
+    let x = std::path::PathBuf::from("/bar/foo/qux");
+    x.display().to_string();
+    //~^ useless_format
+
+    // False positive
+    let a = "foo".to_string();
+    let _ = Some(a + "bar");
+    //~^ useless_format
+
+    // Wrap it with braces
+    let v: Vec<String> = vec!["foo".to_string(), "bar".to_string()];
+    let _s: String = (&*v.join("\n")).to_string();
+    //~^ useless_format
+
+    format!("prepend {:+}", "s");
+
+    // Issue #8290
+    let x = "foo";
+    let _ = x.to_string();
+    //~^ useless_format
+    let _ = format!("{x:?}"); // Don't lint on debug
+    let _ = x.to_string();
+    //~^ useless_format
+
+    // Issue #9234
+    let abc = "abc";
+    let _ = abc.to_string();
+    //~^ useless_format
+    let xx = "xx";
+    let _ = xx.to_string();
+    //~^ useless_format
+}

@@ -1,0 +1,46 @@
+error: exported type named `Error` that implements `Error`
+  --> tests/ui/error_impl_error.rs:7:16
+   |
+LL |     pub struct Error;
+   |                ^^^^^
+   |
+note: `Error` was implemented here
+  --> tests/ui/error_impl_error.rs:16:5
+   |
+LL |     impl std::error::Error for Error {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::error-impl-error` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::error_impl_error)]`
+
+error: exported type named `Error` that implements `Error`
+  --> tests/ui/error_impl_error.rs:21:21
+   |
+LL |     pub(super) enum Error {}
+   |                     ^^^^^
+   |
+note: `Error` was implemented here
+  --> tests/ui/error_impl_error.rs:30:5
+   |
+LL |     impl std::error::Error for Error {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: exported type named `Error` that implements `Error`
+  --> tests/ui/error_impl_error.rs:34:15
+   |
+LL |     pub union Error {
+   |               ^^^^^
+   |
+note: `Error` was implemented here
+  --> tests/ui/error_impl_error.rs:52:5
+   |
+LL |     impl std::error::Error for Error {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: exported type alias named `Error` that implements `Error`
+  --> tests/ui/error_impl_error.rs:56:14
+   |
+LL |     pub type Error = std::fmt::Error;
+   |              ^^^^^
+
+error: aborting due to 4 previous errors
+

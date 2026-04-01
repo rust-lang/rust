@@ -1,0 +1,22 @@
+error[E0277]: the size for values of type `[[[[[u8]]]]]` cannot be known at compilation time
+  --> $DIR/wf-normalization-sized.rs:19:11
+   |
+LL | const _: <[[[[[[u8]]]]]] as WellUnformed>::RequestNormalize = ();
+   |           ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[[[[[u8]]]]]`
+   = note: slice and array elements must have `Sized` type
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/wf-normalization-sized.rs:21:11
+   |
+LL | const _: <Vec<str> as WellUnformed>::RequestNormalize = ();
+   |           ^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

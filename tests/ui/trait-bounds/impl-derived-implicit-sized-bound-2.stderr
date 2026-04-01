@@ -1,0 +1,28 @@
+error[E0599]: the method `get` exists for struct `Victim<'_, Self>`, but its trait bounds were not satisfied
+  --> $DIR/impl-derived-implicit-sized-bound-2.rs:28:19
+   |
+LL | struct Victim<'a, T: Perpetrator + ?Sized> {
+   | ------------------------------------------ method `get` not found for this struct because it doesn't satisfy `Victim<'_, Self>: VictimTrait`
+...
+LL |     self.getter().get();
+   |                   ^^^ method cannot be called on `Victim<'_, Self>` due to unsatisfied trait bounds
+   |
+note: trait bound `Self: Sized` was not satisfied
+  --> $DIR/impl-derived-implicit-sized-bound-2.rs:12:10
+   |
+LL | impl<'a, T: Perpetrator /*+ ?Sized*/> VictimTrait for Victim<'a, T> {
+   |          ^                            -----------     -------------
+   |          |
+   |          unsatisfied trait bound introduced here
+help: consider relaxing the type parameter's implicit `Sized` bound
+   |
+LL | impl<'a, T: ?Sized + Perpetrator /*+ ?Sized*/> VictimTrait for Victim<'a, T> {
+   |             ++++++++
+help: consider restricting the type parameter to satisfy the trait bound
+   |
+LL | struct Victim<'a, T: Perpetrator + ?Sized> where Self: Sized {
+   |                                            +++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

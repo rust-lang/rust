@@ -1,0 +1,112 @@
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/cfg-attr-parse.rs:4:1
+   |
+LL | #[cfg_attr()]
+   | ^^^^^^^^^^--^
+   | |         |
+   | |         expected at least 1 argument here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error: expected `,`, found end of `cfg_attr` input
+  --> $DIR/cfg-attr-parse.rs:8:16
+   |
+LL | #[cfg_attr(true)]
+   | ---------------^-
+   | |              |
+   | |              expected `,`
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error: expected identifier, found `,`
+  --> $DIR/cfg-attr-parse.rs:17:17
+   |
+LL | #[cfg_attr(true,,)]
+   | ----------------^--
+   | |               |
+   | |               expected identifier
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error: expected identifier, found `,`
+  --> $DIR/cfg-attr-parse.rs:29:27
+   |
+LL | #[cfg_attr(true, must_use,,)]
+   | --------------------------^--
+   | |                         |
+   | |                         expected identifier
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error: expected identifier, found `,`
+  --> $DIR/cfg-attr-parse.rs:41:39
+   |
+LL | #[cfg_attr(true, must_use, deprecated,,)]
+   | --------------------------------------^--
+   | |                                     |
+   | |                                     expected identifier
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error: wrong `cfg_attr` delimiters
+  --> $DIR/cfg-attr-parse.rs:45:11
+   |
+LL | #[cfg_attr[true,,]]
+   |           ^^^^^^^^
+   |
+help: the delimiters should be `(` and `)`
+   |
+LL - #[cfg_attr[true,,]]
+LL + #[cfg_attr(true,,)]
+   |
+
+error: expected identifier, found `,`
+  --> $DIR/cfg-attr-parse.rs:45:17
+   |
+LL | #[cfg_attr[true,,]]
+   | ----------------^--
+   | |               |
+   | |               expected identifier
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error: wrong `cfg_attr` delimiters
+  --> $DIR/cfg-attr-parse.rs:51:11
+   |
+LL | #[cfg_attr{true,,}]
+   |           ^^^^^^^^
+   |
+help: the delimiters should be `(` and `)`
+   |
+LL - #[cfg_attr{true,,}]
+LL + #[cfg_attr(true,,)]
+   |
+
+error: expected identifier, found `,`
+  --> $DIR/cfg-attr-parse.rs:51:17
+   |
+LL | #[cfg_attr{true,,}]
+   | ----------------^--
+   | |               |
+   | |               expected identifier
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+warning: `#[cfg_attr]` does not expand to any attributes
+  --> $DIR/cfg-attr-parse.rs:12:1
+   |
+LL | #[cfg_attr(true,)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: requested on the command line with `-W unused-attributes`
+
+error: aborting due to 9 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0539`.

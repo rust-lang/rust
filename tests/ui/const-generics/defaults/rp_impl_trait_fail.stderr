@@ -1,0 +1,72 @@
+error[E0277]: the trait bound `Uwu<10, 12>: Trait` is not satisfied
+  --> $DIR/rp_impl_trait_fail.rs:6:14
+   |
+LL | fn rawr() -> impl Trait {
+   |              ^^^^^^^^^^ unsatisfied trait bound
+LL |
+LL |     Uwu::<10, 12>
+   |     ------------- return type was inferred to be `Uwu<10, 12>` here
+   |
+help: the trait `Trait` is not implemented for `Uwu<10, 12>`
+  --> $DIR/rp_impl_trait_fail.rs:1:1
+   |
+LL | struct Uwu<const N: u32 = 1, const M: u32 = N>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the trait `Trait` is implemented for `Uwu<N>`
+  --> $DIR/rp_impl_trait_fail.rs:4:1
+   |
+LL | impl<const N: u32> Trait for Uwu<N> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u32: Traitor<N>` is not satisfied
+  --> $DIR/rp_impl_trait_fail.rs:16:26
+   |
+LL | fn uwu<const N: u8>() -> impl Traitor<N> {
+   |                          ^^^^^^^^^^^^^^^ the trait `Traitor<N>` is not implemented for `u32`
+LL |
+LL |     1_u32
+   |     ----- return type was inferred to be `u32` here
+   |
+help: the trait `Traitor<N, N>` is not implemented for `u32`
+      but trait `Traitor<N, 2>` is implemented for it
+  --> $DIR/rp_impl_trait_fail.rs:13:1
+   |
+LL | impl<const N: u8> Traitor<N, 2> for u32 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u64: Traitor` is not satisfied
+  --> $DIR/rp_impl_trait_fail.rs:21:13
+   |
+LL | fn owo() -> impl Traitor {
+   |             ^^^^^^^^^^^^ the trait `Traitor` is not implemented for `u64`
+LL |
+LL |     1_u64
+   |     ----- return type was inferred to be `u64` here
+   |
+help: the trait `Traitor<1, 1>` is not implemented for `u64`
+      but trait `Traitor<1, 2>` is implemented for it
+  --> $DIR/rp_impl_trait_fail.rs:14:1
+   |
+LL | impl Traitor<1, 2> for u64 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0284]: type annotations needed
+  --> $DIR/rp_impl_trait_fail.rs:28:5
+   |
+LL |     uwu();
+   |     ^^^ cannot infer the value of the const parameter `N` declared on the function `uwu`
+   |
+note: required by a const generic parameter in `uwu`
+  --> $DIR/rp_impl_trait_fail.rs:16:8
+   |
+LL | fn uwu<const N: u8>() -> impl Traitor<N> {
+   |        ^^^^^^^^^^^ required by this const generic parameter in `uwu`
+help: consider specifying the generic argument
+   |
+LL |     uwu::<N>();
+   |        +++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0284.
+For more information about an error, try `rustc --explain E0277`.

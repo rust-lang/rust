@@ -1,0 +1,15 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-type-params-inherent-impl.rs:11:6
+   |
+LL | impl<T> MyType {
+   |      ^ unconstrained type parameter
+
+error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-type-params-inherent-impl.rs:20:9
+   |
+LL | impl<T, U> MyType1<T> {
+   |         ^ unconstrained type parameter
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0207`.

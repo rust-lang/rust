@@ -1,0 +1,92 @@
+error: lifetime may not live long enough
+  --> $DIR/lt-ref-self.rs:14:9
+   |
+LL |     fn ref_self(&self, f: &u32) -> &u32 {
+   |                 -         - let's call the lifetime of this reference `'1`
+   |                 |
+   |                 let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn ref_self<'b>(&self, f: &'b u32) -> &'b u32 {
+   |                ++++            ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/lt-ref-self.rs:21:9
+   |
+LL |     fn ref_Self(self: &Self, f: &u32) -> &u32 {
+   |                       -         - let's call the lifetime of this reference `'1`
+   |                       |
+   |                       let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn ref_Self<'b>(self: &Self, f: &'b u32) -> &'b u32 {
+   |                ++++                  ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/lt-ref-self.rs:26:9
+   |
+LL |     fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
+   |                               -          - let's call the lifetime of this reference `'1`
+   |                               |
+   |                               let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn box_ref_Self<'b>(self: Box<&Self>, f: &'b u32) -> &'b u32 {
+   |                    ++++                       ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/lt-ref-self.rs:31:9
+   |
+LL |     fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
+   |                               -          - let's call the lifetime of this reference `'1`
+   |                               |
+   |                               let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn pin_ref_Self<'b>(self: Pin<&Self>, f: &'b u32) -> &'b u32 {
+   |                    ++++                       ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/lt-ref-self.rs:36:9
+   |
+LL |     fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
+   |                                       -           - let's call the lifetime of this reference `'1`
+   |                                       |
+   |                                       let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn box_box_ref_Self<'b>(self: Box<Box<&Self>>, f: &'b u32) -> &'b u32 {
+   |                        ++++                            ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/lt-ref-self.rs:41:9
+   |
+LL |     fn box_pin_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
+   |                                   -           - let's call the lifetime of this reference `'1`
+   |                                   |
+   |                                   let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn box_pin_Self<'b>(self: Box<Pin<&Self>>, f: &'b u32) -> &'b u32 {
+   |                    ++++                            ++          ++
+
+error: aborting due to 6 previous errors
+

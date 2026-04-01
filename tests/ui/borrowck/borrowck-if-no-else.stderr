@@ -1,0 +1,14 @@
+error[E0381]: used binding `x` is possibly-uninitialized
+  --> $DIR/borrowck-if-no-else.rs:5:9
+   |
+LL |     let x: isize; if 1 > 2 { x = 10; }
+   |         -            -----            - an `else` arm might be missing here, initializing `x`
+   |         |            |
+   |         |            if this `if` condition is `false`, `x` is not initialized
+   |         binding declared here but left uninitialized
+LL |     foo(x);
+   |         ^ `x` used here but it is possibly-uninitialized
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0381`.

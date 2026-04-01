@@ -1,0 +1,17 @@
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> tests/ui/search_is_some.rs:21:20
+   |
+LL |     let _ = (0..1).find(some_closure).is_some();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(some_closure)`
+   |
+   = note: `-D clippy::search-is-some` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::search_is_some)]`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> tests/ui/search_is_some.rs:37:13
+   |
+LL |     let _ = (0..1).find(some_closure).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!(0..1).any(some_closure)`
+
+error: aborting due to 2 previous errors
+

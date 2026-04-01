@@ -1,0 +1,9 @@
+error[E0423]: expected value, found trait `Bar`
+  --> $DIR/issue-33876.rs:10:26
+   |
+LL |     let any: &dyn Any = &Bar;
+   |                          ^^^ not a value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0423`.

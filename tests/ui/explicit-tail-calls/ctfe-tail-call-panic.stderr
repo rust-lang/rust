@@ -1,0 +1,15 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/ctfe-tail-call-panic.rs:13:15
+   |
+LL | const _: () = f();
+   |               ^^^ evaluation of `_` failed inside this call
+   |
+note: inside `g`
+  --> $DIR/ctfe-tail-call-panic.rs:9:5
+   |
+LL |     panic!()
+   |     ^^^^^^^^ the failure occurred here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,56 @@
+error[E0271]: type mismatch resolving `<Option<<() as Trait>::Ty::{opaque#0}> as IntoIterator>::Item == ()`
+  --> $DIR/in-assoc-type-unconstrained.rs:8:19
+   |
+LL |         type Ty = Option<impl Sized>;
+   |                   ^^^^^^^^^^^^^^^^^^ expected `()`, found opaque type
+   |
+   = note: expected unit type `()`
+            found opaque type `<() as compare_ty::Trait>::Ty::{opaque#0}`
+note: required by a bound in `compare_ty::Trait::Ty`
+  --> $DIR/in-assoc-type-unconstrained.rs:5:31
+   |
+LL |         type Ty: IntoIterator<Item = ()>;
+   |                               ^^^^^^^^^ required by this bound in `Trait::Ty`
+
+error[E0053]: method `method` has an incompatible type for trait
+  --> $DIR/in-assoc-type-unconstrained.rs:22:24
+   |
+LL |         type Ty = impl Sized;
+   |                   ---------- the expected opaque type
+LL |
+LL |         fn method() -> () {}
+   |                        ^^ expected opaque type, found `()`
+   |
+note: type in trait
+  --> $DIR/in-assoc-type-unconstrained.rs:17:24
+   |
+LL |         fn method() -> Self::Ty;
+   |                        ^^^^^^^^
+   = note: expected signature `fn() -> <() as compare_method::Trait>::Ty`
+              found signature `fn() -> ()`
+help: change the output type to match the trait
+   |
+LL -         fn method() -> () {}
+LL +         fn method() -> <() as compare_method::Trait>::Ty {}
+   |
+
+error: unconstrained opaque type
+  --> $DIR/in-assoc-type-unconstrained.rs:8:26
+   |
+LL |         type Ty = Option<impl Sized>;
+   |                          ^^^^^^^^^^
+   |
+   = note: `Ty` must be used in combination with a concrete type within the same impl
+
+error: unconstrained opaque type
+  --> $DIR/in-assoc-type-unconstrained.rs:20:19
+   |
+LL |         type Ty = impl Sized;
+   |                   ^^^^^^^^^^
+   |
+   = note: `Ty` must be used in combination with a concrete type within the same impl
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0053, E0271.
+For more information about an error, try `rustc --explain E0053`.

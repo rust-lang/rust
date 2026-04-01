@@ -1,0 +1,8 @@
+error: expected identifier, found `<`
+  --> $DIR/fn-invalid-generics.rs:5:3
+   |
+LL | fn<~>()> id(x: T) -> T { x }
+   |   ^ expected identifier
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,13 @@
+error[E0197]: inherent impls cannot be unsafe
+  --> $DIR/E0197.rs:3:13
+   |
+LL | unsafe impl Foo { }
+   | ------      ^^^ inherent impl for this type
+   | |
+   | unsafe because of this
+   |
+   = note: only trait implementations may be annotated with `unsafe`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0197`.

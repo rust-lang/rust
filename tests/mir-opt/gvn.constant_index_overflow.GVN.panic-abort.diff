@@ -1,0 +1,104 @@
+- // MIR for `constant_index_overflow` before GVN
++ // MIR for `constant_index_overflow` after GVN
+  
+  fn constant_index_overflow(_1: &[T]) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: usize;
+      let mut _4: bool;
+      let mut _5: usize;
+      let mut _6: usize;
+      let mut _7: &[T];
+      let _8: usize;
+      let mut _9: usize;
+      let mut _10: bool;
+      let _11: usize;
+      let mut _12: usize;
+      let mut _13: bool;
+      let mut _14: T;
+      scope 1 {
+          debug a => _2;
+          let _3: T;
+          scope 2 {
+              debug b => _3;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = const core::num::<impl u64>::MAX as usize (IntToInt);
++         nop;
++         _2 = const usize::MAX;
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+-         _5 = copy _2;
++         _5 = const usize::MAX;
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = &(*_1);
+          _6 = core::slice::<impl [T]>::len(move _7) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_7);
+-         _4 = Lt(move _5, move _6);
++         _4 = Lt(const usize::MAX, move _6);
+          switchInt(move _4) -> [0: bb4, otherwise: bb2];
+      }
+  
+      bb2: {
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageLive(_8);
+-         _8 = copy _2;
++         _8 = const usize::MAX;
+          _9 = PtrMetadata(copy _1);
+-         _10 = Lt(copy _8, copy _9);
+-         assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, copy _8) -> [success: bb3, unwind unreachable];
++         _10 = Lt(const usize::MAX, copy _9);
++         assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, const usize::MAX) -> [success: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+-         _3 = copy (*_1)[_8];
++         _3 = copy (*_1)[_2];
+          StorageDead(_8);
+          goto -> bb6;
+      }
+  
+      bb4: {
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageLive(_11);
+          _11 = const 0_usize;
+          _12 = PtrMetadata(copy _1);
+-         _13 = Lt(copy _11, copy _12);
+-         assert(move _13, "index out of bounds: the length is {} but the index is {}", move _12, copy _11) -> [success: bb5, unwind unreachable];
++         _13 = Lt(const 0_usize, copy _12);
++         assert(move _13, "index out of bounds: the length is {} but the index is {}", move _12, const 0_usize) -> [success: bb5, unwind unreachable];
+      }
+  
+      bb5: {
+-         _3 = copy (*_1)[_11];
++         _3 = copy (*_1)[0 of 1];
+          StorageDead(_11);
+          goto -> bb6;
+      }
+  
+      bb6: {
+          StorageDead(_4);
+          StorageLive(_14);
+          _14 = copy _3;
+          _0 = opaque::<T>(move _14) -> [return: bb7, unwind unreachable];
+      }
+  
+      bb7: {
+          StorageDead(_14);
+          StorageDead(_3);
+-         StorageDead(_2);
++         nop;
+          return;
+      }
+  }
+  

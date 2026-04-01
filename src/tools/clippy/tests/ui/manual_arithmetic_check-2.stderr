@@ -1,0 +1,111 @@
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:9:23
+   |
+LL |     let result = if a > b { b - a } else { 0 };
+   |                       ^     ----- help: try replacing it with: `a - b`
+   |
+note: this subtraction underflows when `b < a`
+  --> tests/ui/manual_arithmetic_check-2.rs:9:29
+   |
+LL |     let result = if a > b { b - a } else { 0 };
+   |                             ^^^^^
+   = note: `#[deny(clippy::inverted_saturating_sub)]` on by default
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:12:23
+   |
+LL |     let result = if b < a { b - a } else { 0 };
+   |                       ^     ----- help: try replacing it with: `a - b`
+   |
+note: this subtraction underflows when `b < a`
+  --> tests/ui/manual_arithmetic_check-2.rs:12:29
+   |
+LL |     let result = if b < a { b - a } else { 0 };
+   |                             ^^^^^
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:15:23
+   |
+LL |     let result = if a > b { 0 } else { a - b };
+   |                       ^                ----- help: try replacing it with: `b - a`
+   |
+note: this subtraction underflows when `a < b`
+  --> tests/ui/manual_arithmetic_check-2.rs:15:40
+   |
+LL |     let result = if a > b { 0 } else { a - b };
+   |                                        ^^^^^
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:18:23
+   |
+LL |     let result = if a >= b { 0 } else { a - b };
+   |                       ^^                ----- help: try replacing it with: `b - a`
+   |
+note: this subtraction underflows when `a < b`
+  --> tests/ui/manual_arithmetic_check-2.rs:18:41
+   |
+LL |     let result = if a >= b { 0 } else { a - b };
+   |                                         ^^^^^
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:21:23
+   |
+LL |     let result = if b < a { 0 } else { a - b };
+   |                       ^                ----- help: try replacing it with: `b - a`
+   |
+note: this subtraction underflows when `a < b`
+  --> tests/ui/manual_arithmetic_check-2.rs:21:40
+   |
+LL |     let result = if b < a { 0 } else { a - b };
+   |                                        ^^^^^
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:24:23
+   |
+LL |     let result = if b <= a { 0 } else { a - b };
+   |                       ^^                ----- help: try replacing it with: `b - a`
+   |
+note: this subtraction underflows when `a < b`
+  --> tests/ui/manual_arithmetic_check-2.rs:24:41
+   |
+LL |     let result = if b <= a { 0 } else { a - b };
+   |                                         ^^^^^
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:27:27
+   |
+LL |     let result = if b * 2 <= a { 0 } else { a - b * 2 };
+   |                           ^^                --------- help: try replacing it with: `b * 2 - a`
+   |
+note: this subtraction underflows when `a < b * 2`
+  --> tests/ui/manual_arithmetic_check-2.rs:27:45
+   |
+LL |     let result = if b * 2 <= a { 0 } else { a - b * 2 };
+   |                                             ^^^^^^^^^
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:30:23
+   |
+LL |     let result = if b <= a * 2 { 0 } else { a * 2 - b };
+   |                       ^^                    --------- help: try replacing it with: `b - a * 2`
+   |
+note: this subtraction underflows when `a * 2 < b`
+  --> tests/ui/manual_arithmetic_check-2.rs:30:45
+   |
+LL |     let result = if b <= a * 2 { 0 } else { a * 2 - b };
+   |                                             ^^^^^^^^^
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:33:27
+   |
+LL |     let result = if b + 3 <= a + 2 { 0 } else { (a + 2) - (b + 3) };
+   |                           ^^                    ----------------- help: try replacing it with: `b + 3 - (a + 2)`
+   |
+note: this subtraction underflows when `a + 2 < b + 3`
+  --> tests/ui/manual_arithmetic_check-2.rs:33:49
+   |
+LL |     let result = if b + 3 <= a + 2 { 0 } else { (a + 2) - (b + 3) };
+   |                                                 ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

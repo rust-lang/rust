@@ -1,0 +1,18 @@
+error[E0597]: `y` does not live long enough
+  --> $DIR/const-expr-lifetime-err.rs:20:30
+   |
+LL | fn foo<'a>() {
+   |        -- lifetime `'a` defined here
+LL |     let y = ();
+   |         - binding `y` declared here
+LL |     equate(InvariantRef::new(&y), const { InvariantRef::<'a>::NEW });
+   |                              ^^           ----------------------- using this value as a constant requires that `y` is borrowed for `'a`
+   |                              |
+   |                              borrowed value does not live long enough
+LL |
+LL | }
+   | - `y` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

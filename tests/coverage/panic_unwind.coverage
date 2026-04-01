@@ -1,0 +1,32 @@
+   LL|       |#![allow(unused_assignments)]
+   LL|       |//@ failure-status: 101
+   LL|       |
+   LL|      4|fn might_panic(should_panic: bool) {
+   LL|      4|    if should_panic {
+   LL|      1|        println!("panicking...");
+   LL|      1|        panic!("panics");
+   LL|      3|    } else {
+   LL|      3|        println!("Don't Panic");
+   LL|      3|    }
+   LL|      3|}
+   LL|       |
+   LL|      1|fn main() -> Result<(), u8> {
+   LL|      1|    let mut countdown = 10;
+   LL|     10|    while countdown > 0 {
+   LL|      9|        if countdown == 1 {
+   LL|      1|            might_panic(true);
+   LL|      8|        } else if countdown < 5 {
+   LL|      3|            might_panic(false);
+   LL|      5|        }
+   LL|      9|        countdown -= 1;
+   LL|       |    }
+   LL|      1|    Ok(())
+   LL|      1|}
+   LL|       |
+   LL|       |// Notes:
+   LL|       |//   1. Compare this program and its coverage results to those of the similar tests `abort.rs` and
+   LL|       |//      `try_error_result.rs`.
+   LL|       |//   2. Since the `panic_unwind.rs` test is allowed to unwind, it is also allowed to execute the
+   LL|       |//      normal program exit cleanup, including writing out the current values of the coverage
+   LL|       |//      counters.
+

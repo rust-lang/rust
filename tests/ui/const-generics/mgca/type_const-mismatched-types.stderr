@@ -1,0 +1,20 @@
+error: the constant `5` is not of type `u32`
+  --> $DIR/type_const-mismatched-types.rs:4:1
+   |
+LL | type const FREE: u32 = 5_usize;
+   | ^^^^^^^^^^^^^^^^^^^^ expected `u32`, found `usize`
+
+error: the constant `5` is not of type `isize`
+  --> $DIR/type_const-mismatched-types.rs:7:1
+   |
+LL | type const FREE2: isize = FREE;
+   | ^^^^^^^^^^^^^^^^^^^^^^^ expected `isize`, found `usize`
+
+error: the constant `false` is not of type `usize`
+  --> $DIR/type_const-mismatched-types.rs:15:5
+   |
+LL |     type const N: usize = false;
+   |     ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
+
+error: aborting due to 3 previous errors
+

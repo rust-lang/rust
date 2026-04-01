@@ -1,0 +1,34 @@
+[package]
+name = "parser"
+version = "0.0.0"
+repository.workspace = true
+description = "The Rust parser for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+drop_bomb = "0.1.5"
+ra-ap-rustc_lexer.workspace = true
+rustc-literal-escaper.workspace = true
+tracing.workspace = true
+
+edition.workspace = true
+winnow = { version = "0.7.13", default-features = false }
+
+[dev-dependencies]
+expect-test = "1.5.1"
+
+stdx.workspace = true
+
+[features]
+default = []
+in-rust-tree = []
+
+[lints]
+workspace = true

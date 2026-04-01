@@ -1,0 +1,47 @@
+// MIR for `borrow_and_cast` after SimplifyCfg-initial
+
+fn borrow_and_cast(_1: i32) -> () {
+    debug x => _1;
+    let mut _0: ();
+    let _2: *const i32;
+    let _3: &i32;
+    let _5: &mut i32;
+    let mut _7: &mut i32;
+    scope 1 {
+        debug p => _2;
+        let _4: *const i32;
+        scope 2 {
+            debug q => _4;
+            let _6: *mut i32;
+            scope 3 {
+                debug r => _6;
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = &_1;
+        _2 = &raw const (*_3);
+        FakeRead(ForLet(None), _2);
+        StorageDead(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = &mut _1;
+        _4 = &raw const (*_5);
+        FakeRead(ForLet(None), _4);
+        StorageDead(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = &mut _1;
+        _6 = &raw mut (*_7);
+        FakeRead(ForLet(None), _6);
+        StorageDead(_7);
+        _0 = const ();
+        StorageDead(_6);
+        StorageDead(_4);
+        StorageDead(_2);
+        return;
+    }
+}

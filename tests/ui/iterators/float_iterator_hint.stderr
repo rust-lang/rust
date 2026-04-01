@@ -1,0 +1,13 @@
+error[E0277]: `{float}` is not an iterator
+  --> $DIR/float_iterator_hint.rs:4:14
+   |
+LL |     for i in 0.2 {
+   |              ^^^ `{float}` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `{float}`
+   = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
+   = note: required for `{float}` to implement `IntoIterator`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

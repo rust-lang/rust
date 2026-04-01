@@ -1,0 +1,99 @@
+error[E0511]: invalid monomorphization of `atomic_load` intrinsic: expected basic integer or pointer type, found `&dyn Fn()`
+  --> $DIR/non-integer-atomic.rs:55:5
+   |
+LL |     intrinsics::atomic_load::<_, { SeqCst }>(p);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_xchg` intrinsic: expected basic integer or pointer type, found `&dyn Fn()`
+  --> $DIR/non-integer-atomic.rs:65:5
+   |
+LL |     intrinsics::atomic_xchg::<_, { SeqCst }>(p, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_load` intrinsic: expected basic integer or pointer type, found `Foo`
+  --> $DIR/non-integer-atomic.rs:35:5
+   |
+LL |     intrinsics::atomic_load::<_, { SeqCst }>(p);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_xchg` intrinsic: expected basic integer or pointer type, found `Foo`
+  --> $DIR/non-integer-atomic.rs:45:5
+   |
+LL |     intrinsics::atomic_xchg::<_, { SeqCst }>(p, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_cxchg` intrinsic: expected basic integer or pointer type, found `&dyn Fn()`
+  --> $DIR/non-integer-atomic.rs:70:5
+   |
+LL |     intrinsics::atomic_cxchg::<_, { SeqCst }, { SeqCst }>(p, v, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_store` intrinsic: expected basic integer or pointer type, found `&dyn Fn()`
+  --> $DIR/non-integer-atomic.rs:60:5
+   |
+LL |     intrinsics::atomic_store::<_, { SeqCst }>(p, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_cxchg` intrinsic: expected basic integer or pointer type, found `Foo`
+  --> $DIR/non-integer-atomic.rs:50:5
+   |
+LL |     intrinsics::atomic_cxchg::<_, { SeqCst }, { SeqCst }>(p, v, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_store` intrinsic: expected basic integer or pointer type, found `Foo`
+  --> $DIR/non-integer-atomic.rs:40:5
+   |
+LL |     intrinsics::atomic_store::<_, { SeqCst }>(p, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_load` intrinsic: expected basic integer or pointer type, found `[u8; 100]`
+  --> $DIR/non-integer-atomic.rs:75:5
+   |
+LL |     intrinsics::atomic_load::<_, { SeqCst }>(p);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_xchg` intrinsic: expected basic integer or pointer type, found `[u8; 100]`
+  --> $DIR/non-integer-atomic.rs:85:5
+   |
+LL |     intrinsics::atomic_xchg::<_, { SeqCst }>(p, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_load` intrinsic: expected basic integer or pointer type, found `bool`
+  --> $DIR/non-integer-atomic.rs:15:5
+   |
+LL |     intrinsics::atomic_load::<_, { SeqCst }>(p);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_xchg` intrinsic: expected basic integer or pointer type, found `bool`
+  --> $DIR/non-integer-atomic.rs:25:5
+   |
+LL |     intrinsics::atomic_xchg::<_, { SeqCst }>(p, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_cxchg` intrinsic: expected basic integer or pointer type, found `[u8; 100]`
+  --> $DIR/non-integer-atomic.rs:90:5
+   |
+LL |     intrinsics::atomic_cxchg::<_, { SeqCst }, { SeqCst }>(p, v, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_store` intrinsic: expected basic integer or pointer type, found `[u8; 100]`
+  --> $DIR/non-integer-atomic.rs:80:5
+   |
+LL |     intrinsics::atomic_store::<_, { SeqCst }>(p, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_cxchg` intrinsic: expected basic integer or pointer type, found `bool`
+  --> $DIR/non-integer-atomic.rs:30:5
+   |
+LL |     intrinsics::atomic_cxchg::<_, { SeqCst }, { SeqCst }>(p, v, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `atomic_store` intrinsic: expected basic integer or pointer type, found `bool`
+  --> $DIR/non-integer-atomic.rs:20:5
+   |
+LL |     intrinsics::atomic_store::<_, { SeqCst }>(p, v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 16 previous errors
+
+For more information about this error, try `rustc --explain E0511`.

@@ -1,0 +1,22 @@
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:32:33
+   |
+LL |     fn ptr(self: Ptr<Self>);
+   |                  --------- help: consider changing method `ptr`'s `self` parameter to be `&self`: `&Self`
+...
+LL |     Ptr(Box::new(4)) as Ptr<dyn Trait>;
+   |                                 ^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:25:18
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+LL |     fn ptr(self: Ptr<Self>);
+   |                  ^^^^^^^^^ ...because method `ptr`'s `self` parameter cannot be dispatched on
+   = help: only type `i32` implements `Trait`; consider using it directly instead.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

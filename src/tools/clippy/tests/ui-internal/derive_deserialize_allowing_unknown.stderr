@@ -1,0 +1,23 @@
+error: `#[derive(serde::Deserialize)]` without `#[serde(deny_unknown_fields)]`
+  --> tests/ui-internal/derive_deserialize_allowing_unknown.rs:5:10
+   |
+LL | #[derive(Deserialize)]
+   |          ^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui-internal/derive_deserialize_allowing_unknown.rs:1:9
+   |
+LL | #![deny(clippy::derive_deserialize_allowing_unknown)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `#[derive(serde::Deserialize)]` without `#[serde(deny_unknown_fields)]`
+  --> tests/ui-internal/derive_deserialize_allowing_unknown.rs:11:10
+   |
+LL | #[derive(Deserialize)]
+   |          ^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

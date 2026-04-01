@@ -1,0 +1,76 @@
+error: arguments to `macro_use` are not allowed here
+  --> $DIR/issue-43106-gating-of-macro_use.rs:12:17
+   |
+LL |     mod inner { #![macro_use(my_macro)] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: arguments to `macro_use` are not allowed here
+  --> $DIR/issue-43106-gating-of-macro_use.rs:9:1
+   |
+LL | #[macro_use(my_macro)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: arguments to `macro_use` are not allowed here
+  --> $DIR/issue-43106-gating-of-macro_use.rs:6:1
+   |
+LL | #![macro_use(my_macro)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0539]: malformed `macro_use` attribute input
+  --> $DIR/issue-43106-gating-of-macro_use.rs:15:5
+   |
+LL |     #[macro_use = "2700"] struct S;
+   |     ^^^^^^^^^^^^--------^
+   |                 |
+   |                 expected a list or no arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL -     #[macro_use = "2700"] struct S;
+LL +     #[macro_use(name1, name2, ...)] struct S;
+   |
+LL -     #[macro_use = "2700"] struct S;
+LL +     #[macro_use] struct S;
+   |
+
+warning: `#[macro_use]` attribute cannot be used on structs
+  --> $DIR/issue-43106-gating-of-macro_use.rs:15:5
+   |
+LL |     #[macro_use = "2700"] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: `#[macro_use]` attribute cannot be used on functions
+  --> $DIR/issue-43106-gating-of-macro_use.rs:20:5
+   |
+LL |     #[macro_use] fn f() { }
+   |     ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+
+warning: `#[macro_use]` attribute cannot be used on type aliases
+  --> $DIR/issue-43106-gating-of-macro_use.rs:24:5
+   |
+LL |     #[macro_use] type T = S;
+   |     ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+
+warning: `#[macro_use]` attribute cannot be used on inherent impl blocks
+  --> $DIR/issue-43106-gating-of-macro_use.rs:28:5
+   |
+LL |     #[macro_use] impl S { }
+   |     ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+
+error: aborting due to 4 previous errors; 4 warnings emitted
+
+For more information about this error, try `rustc --explain E0539`.

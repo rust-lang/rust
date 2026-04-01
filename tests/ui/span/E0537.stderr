@@ -1,0 +1,9 @@
+error[E0537]: invalid predicate `unknown`
+  --> $DIR/E0537.rs:1:7
+   |
+LL | #[cfg(unknown())]
+   |       ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0537`.

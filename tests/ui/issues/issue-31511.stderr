@@ -1,0 +1,9 @@
+error[E0607]: cannot cast thin pointer `*const ()` to wide pointer `*const [u8]`
+  --> $DIR/issue-31511.rs:2:5
+   |
+LL |     x as *const [u8];
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0607`.

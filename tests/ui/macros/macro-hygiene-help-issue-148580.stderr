@@ -1,0 +1,19 @@
+error[E0425]: cannot find value `it` in this scope
+  --> $DIR/macro-hygiene-help-issue-148580.rs:1:50
+   |
+LL | macro_rules! print_it { {} => { println!("{:?}", it); } }
+   |                                                  ^^ not found in this scope
+...
+LL |             print_it!();
+   |             ----------- in this macro invocation
+   |
+help: an identifier with the same name exists, but is not accessible due to macro hygiene
+  --> $DIR/macro-hygiene-help-issue-148580.rs:11:17
+   |
+LL |             let it = ();
+   |                 ^^
+   = note: this error originates in the macro `print_it` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

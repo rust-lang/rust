@@ -1,0 +1,19 @@
+error[E0404]: expected trait, found type alias `Foo`
+  --> $DIR/issue-3907.rs:11:6
+   |
+LL | impl Foo for S {
+   |      ^^^ type aliases cannot be used as traits
+   |
+help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
+   |
+LL - type Foo = dyn issue_3907::Foo;
+LL + trait Foo = dyn issue_3907::Foo;
+   |
+help: consider importing this trait instead
+   |
+LL + use issue_3907::Foo;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0404`.

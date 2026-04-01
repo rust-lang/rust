@@ -1,0 +1,31 @@
+error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-100154.rs:4:5
+   |
+LL |     foo::<()>(());
+   |     ^^^------ help: remove the unnecessary generics
+   |     |
+   |     expected 0 generic arguments
+   |
+note: function defined here, with 0 generic parameters
+  --> $DIR/issue-100154.rs:1:4
+   |
+LL | fn foo(i: impl std::fmt::Display) {}
+   |    ^^^
+   = note: `impl Trait` cannot be explicitly specified as a generic argument
+
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/issue-100154.rs:4:11
+   |
+LL |     foo::<()>(());
+   |           ^^ the trait `std::fmt::Display` is not implemented for `()`
+   |
+note: required by a bound in `foo`
+  --> $DIR/issue-100154.rs:1:16
+   |
+LL | fn foo(i: impl std::fmt::Display) {}
+   |                ^^^^^^^^^^^^^^^^^ required by this bound in `foo`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0277.
+For more information about an error, try `rustc --explain E0107`.

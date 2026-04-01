@@ -1,0 +1,13 @@
+[package]
+name = "ungrammar"
+description = "A DSL for describing concrete syntax trees"
+version = "1.16.1"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-analyzer/ungrammar"
+edition = "2024"
+
+[dependencies]
+# nope
+
+[lints]
+workspace = true

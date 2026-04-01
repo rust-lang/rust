@@ -1,0 +1,84 @@
+// MIR for `bitand` after PreCodegen
+
+fn bitand(_1: &Blueprint, _2: &Blueprint) -> bool {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: bool;
+    let mut _3: u32;
+    let mut _4: u32;
+    let mut _5: bool;
+    let mut _6: u32;
+    let mut _7: u32;
+    let mut _8: bool;
+    let mut _9: bool;
+    let mut _10: u32;
+    let mut _11: u32;
+    let mut _12: bool;
+    let mut _13: bool;
+    let mut _14: u32;
+    let mut _15: u32;
+    let mut _16: bool;
+    let mut _17: bool;
+    let mut _18: u32;
+    let mut _19: u32;
+    let mut _20: bool;
+
+    bb0: {
+        StorageLive(_17);
+        StorageLive(_13);
+        StorageLive(_9);
+        StorageLive(_5);
+        StorageLive(_3);
+        _3 = copy ((*_1).0: u32);
+        StorageLive(_4);
+        _4 = copy ((*_2).0: u32);
+        _5 = Eq(move _3, move _4);
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageLive(_8);
+        StorageLive(_6);
+        _6 = copy ((*_1).1: u32);
+        StorageLive(_7);
+        _7 = copy ((*_2).1: u32);
+        _8 = Eq(move _6, move _7);
+        StorageDead(_7);
+        StorageDead(_6);
+        _9 = BitAnd(move _5, move _8);
+        StorageDead(_8);
+        StorageDead(_5);
+        StorageLive(_12);
+        StorageLive(_10);
+        _10 = copy ((*_1).2: u32);
+        StorageLive(_11);
+        _11 = copy ((*_2).2: u32);
+        _12 = Eq(move _10, move _11);
+        StorageDead(_11);
+        StorageDead(_10);
+        _13 = BitAnd(move _9, move _12);
+        StorageDead(_12);
+        StorageDead(_9);
+        StorageLive(_16);
+        StorageLive(_14);
+        _14 = copy ((*_1).3: u32);
+        StorageLive(_15);
+        _15 = copy ((*_2).3: u32);
+        _16 = Eq(move _14, move _15);
+        StorageDead(_15);
+        StorageDead(_14);
+        _17 = BitAnd(move _13, move _16);
+        StorageDead(_16);
+        StorageDead(_13);
+        StorageLive(_20);
+        StorageLive(_18);
+        _18 = copy ((*_1).4: u32);
+        StorageLive(_19);
+        _19 = copy ((*_2).4: u32);
+        _20 = Eq(move _18, move _19);
+        StorageDead(_19);
+        StorageDead(_18);
+        _0 = BitAnd(move _17, move _20);
+        StorageDead(_20);
+        StorageDead(_17);
+        return;
+    }
+}

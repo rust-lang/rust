@@ -1,0 +1,13 @@
+// MIR for `std::ops::Fn::call` before AddMovesForPackedDrops
+
+fn std::ops::Fn::call(_1: &fn(), _2: ()) -> <fn() as FnOnce<()>>::Output {
+    let mut _0: <fn() as std::ops::FnOnce<()>>::Output;
+
+    bb0: {
+        _0 = move (*_1)() -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}

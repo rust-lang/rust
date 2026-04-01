@@ -1,0 +1,124 @@
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:8:25
+   |
+LL |     let _ = matches!(f, 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1..=10`
+   |
+   = note: `-D clippy::manual-range-patterns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_range_patterns)]`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:10:25
+   |
+LL |     let _ = matches!(f, 4 | 2 | 3 | 1 | 5 | 6 | 9 | 7 | 8 | 10);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1..=10`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:18:25
+   |
+LL |     let _ = matches!(f, 1 | (2..=4));
+   |                         ^^^^^^^^^^^ help: try: `1..=4`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:20:25
+   |
+LL |     let _ = matches!(f, 1 | (2..4));
+   |                         ^^^^^^^^^^ help: try: `1..4`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:22:25
+   |
+LL |     let _ = matches!(f, (1..=10) | (2..=13) | (14..=48324728) | 48324729);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1..=48324729`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:24:25
+   |
+LL |     let _ = matches!(f, 0 | (1..=10) | 48324730 | (2..=13) | (14..=48324728) | 48324729);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `0..=48324730`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:26:25
+   |
+LL |     let _ = matches!(f, 0..=1 | 0..=2 | 0..=3);
+   |                         ^^^^^^^^^^^^^^^^^^^^^ help: try: `0..=3`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:30:9
+   |
+LL |         1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 => true,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1..=10`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:34:25
+   |
+LL |     let _ = matches!(f, -1 | -5 | 3 | -2 | -4 | -3 | 0 | 1 | 2);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `-5..=3`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:37:25
+   |
+LL |     let _ = matches!(f, -1_000_000..=1_000_000 | -1_000_001 | 1_000_001);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `-1_000_001..=1_000_001`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:41:17
+   |
+LL |     matches!(f, 0x00 | 0x01 | 0x02 | 0x03);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `0x00..=0x03`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:43:17
+   |
+LL |     matches!(f, 0x00..=0x05 | 0x06 | 0x07);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `0x00..=0x07`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:45:17
+   |
+LL |     matches!(f, -0x09 | -0x08 | -0x07..=0x00);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `-0x09..=0x00`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:48:17
+   |
+LL |     matches!(f, 0..5 | 5);
+   |                 ^^^^^^^^ help: try: `0..=5`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:50:17
+   |
+LL |     matches!(f, 0 | 1..5);
+   |                 ^^^^^^^^ help: try: `0..5`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:53:17
+   |
+LL |     matches!(f, 0..=5 | 6..10);
+   |                 ^^^^^^^^^^^^^ help: try: `0..10`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:55:17
+   |
+LL |     matches!(f, 0..5 | 5..=10);
+   |                 ^^^^^^^^^^^^^ help: try: `0..=10`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:57:17
+   |
+LL |     matches!(f, 5..=10 | 0..5);
+   |                 ^^^^^^^^^^^^^ help: try: `0..=10`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:62:26
+   |
+LL |             matches!($e, 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10)
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1..=10`
+...
+LL |     mac!(f);
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 19 previous errors
+

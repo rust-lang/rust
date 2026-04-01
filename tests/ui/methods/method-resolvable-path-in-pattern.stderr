@@ -1,0 +1,9 @@
+error[E0532]: expected unit struct, unit variant or constant, found associated function `MyTrait::trait_bar`
+  --> $DIR/method-resolvable-path-in-pattern.rs:11:9
+   |
+LL |         <Foo as MyTrait>::trait_bar => {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a unit struct, unit variant or constant
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0532`.

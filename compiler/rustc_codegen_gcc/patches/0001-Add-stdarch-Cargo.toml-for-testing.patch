@@ -1,0 +1,39 @@
+From 190e26c9274b3c93a9ee3516b395590e6bd9213b Mon Sep 17 00:00:00 2001
+From: None <none@example.com>
+Date: Sun, 3 Aug 2025 19:54:56 -0400
+Subject: [PATCH] Patch 0001-Add-stdarch-Cargo.toml-for-testing.patch
+
+---
+ library/stdarch/Cargo.toml | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+ create mode 100644 library/stdarch/Cargo.toml
+
+diff --git a/library/stdarch/Cargo.toml b/library/stdarch/Cargo.toml
+new file mode 100644
+index 0000000..bd6725c
+--- /dev/null
++++ b/library/stdarch/Cargo.toml
+@@ -0,0 +1,20 @@
++[workspace]
++resolver = "1"
++members = [
++  "crates/*",
++  #"examples/"
++]
++exclude = [
++  "crates/wasm-assert-instr-tests",
++  "rust_programs",
++]
++
++[profile.release]
++debug = true
++opt-level = 3
++incremental = true
++
++[profile.bench]
++debug = 1
++opt-level = 3
++incremental = true
+-- 
+2.50.1
+

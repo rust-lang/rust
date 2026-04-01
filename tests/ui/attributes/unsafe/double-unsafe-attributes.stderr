@@ -1,0 +1,27 @@
+error: expected identifier, found keyword `unsafe`
+  --> $DIR/double-unsafe-attributes.rs:1:10
+   |
+LL | #[unsafe(unsafe(no_mangle))]
+   |          ^^^^^^ expected identifier, found keyword
+   |
+help: escape `unsafe` to use it as an identifier
+   |
+LL | #[unsafe(r#unsafe(no_mangle))]
+   |          ++
+
+error: cannot find attribute `r#unsafe` in this scope
+  --> $DIR/double-unsafe-attributes.rs:1:10
+   |
+LL | #[unsafe(unsafe(no_mangle))]
+   |          ^^^^^^
+
+error: `r#unsafe` is not an unsafe attribute
+  --> $DIR/double-unsafe-attributes.rs:1:3
+   |
+LL | #[unsafe(unsafe(no_mangle))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: aborting due to 3 previous errors
+

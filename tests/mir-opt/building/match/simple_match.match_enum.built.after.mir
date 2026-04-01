@@ -1,0 +1,56 @@
+// MIR for `match_enum` after built
+
+fn match_enum(_1: E1) -> bool {
+    debug x => _1;
+    let mut _0: bool;
+    let mut _2: isize;
+
+    bb0: {
+        PlaceMention(_1);
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [0: bb2, 1: bb4, 2: bb6, otherwise: bb1];
+    }
+
+    bb1: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb2: {
+        goto -> bb8;
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        goto -> bb8;
+    }
+
+    bb5: {
+        goto -> bb1;
+    }
+
+    bb6: {
+        _0 = const false;
+        goto -> bb10;
+    }
+
+    bb7: {
+        goto -> bb1;
+    }
+
+    bb8: {
+        falseEdge -> [real: bb9, imaginary: bb6];
+    }
+
+    bb9: {
+        _0 = const true;
+        goto -> bb10;
+    }
+
+    bb10: {
+        return;
+    }
+}

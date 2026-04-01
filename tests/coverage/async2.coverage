@@ -1,0 +1,37 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2018
+   LL|       |
+   LL|       |//@ aux-build: executor.rs
+   LL|       |extern crate executor;
+   LL|       |
+   LL|      1|fn non_async_func() {
+   LL|      1|    println!("non_async_func was covered");
+   LL|      1|    let b = true;
+   LL|      1|    if b {
+   LL|      1|        println!("non_async_func println in block");
+   LL|      1|    }
+                  ^0
+   LL|      1|}
+   LL|       |
+   LL|      1|async fn async_func() {
+   LL|      1|    println!("async_func was covered");
+   LL|      1|    let b = true;
+   LL|      1|    if b {
+   LL|      1|        println!("async_func println in block");
+   LL|      1|    }
+                  ^0
+   LL|      1|}
+   LL|       |
+   LL|      1|async fn async_func_just_println() {
+   LL|      1|    println!("async_func_just_println was covered");
+   LL|      1|}
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    println!("codecovsample::main");
+   LL|       |
+   LL|      1|    non_async_func();
+   LL|       |
+   LL|      1|    executor::block_on(async_func());
+   LL|      1|    executor::block_on(async_func_just_println());
+   LL|      1|}
+

@@ -1,0 +1,662 @@
+mod block;
+
+use crate::{DefWithBodyId, ModuleDefId, hir::MatchArm, nameres::crate_def_map, test_db::TestDB};
+use expect_test::{Expect, expect};
+use la_arena::RawIdx;
+use test_fixture::WithFixture;
+
+use super::super::*;
+
+fn lower(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (TestDB, DefWithBodyId) {
+    let db = TestDB::with_files(ra_fixture);
+
+    let krate = db.fetch_test_crate();
+    let def_map = crate_def_map(&db, krate);
+    let mut fn_def = None;
+    'outer: for (_, module) in def_map.modules() {
+        for decl in module.scope.declarations() {
+            if let ModuleDefId::FunctionId(it) = decl {
+                fn_def = Some(it);
+                break 'outer;
+            }
+        }
+    }
+    let fn_def = fn_def.unwrap().into();
+
+    Body::of(&db, fn_def);
+    (db, fn_def)
+}
+
+fn pretty_print(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+    let db = TestDB::with_files(ra_fixture);
+
+    let krate = db.fetch_test_crate();
+    let def_map = crate_def_map(&db, krate);
+    let mut fn_def = None;
+    'outer: for (_, module) in def_map.modules() {
+        for decl in module.scope.declarations() {
+            if let ModuleDefId::FunctionId(it) = decl {
+                fn_def = Some(it);
+                break 'outer;
+            }
+        }
+    }
+    let fn_def = fn_def.unwrap().into();
+
+    expect.assert_eq(&Body::of(&db, fn_def).pretty_print(&db, fn_def, Edition::CURRENT));
+}
+
+fn def_map_at(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
+    let (db, position) = TestDB::with_position(ra_fixture);
+
+    let module = db.module_at_position(position);
+    salsa::plumbing::attach(&db, || module.def_map(&db).dump(&db))
+}
+
+fn check_block_scopes_at(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+    let (db, position) = TestDB::with_position(ra_fixture);
+
+    let module = db.module_at_position(position);
+    let actual = salsa::plumbing::attach(&db, || format!("{module:#?}"));
+    expect.assert_eq(&actual);
+}
+
+fn check_at(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+    let actual = def_map_at(ra_fixture);
+    expect.assert_eq(&actual);
+}
+
+#[test]
+fn your_stack_belongs_to_me() {
+    cov_mark::check!(your_stack_belongs_to_me);
+    lower(
+        r#"
+#![recursion_limit = "32"]
+macro_rules! n_nuple {
+    ($e:tt) => ();
+    ($($rest:tt)*) => {{
+        (n_nuple!($($rest)*)None,)
+    }};
+}
+fn main() { n_nuple!(1,2,3); }
+"#,
+    );
+}
+
+#[test]
+fn your_stack_belongs_to_me2() {
+    cov_mark::check!(overflow_but_not_me);
+    lower(
+        r#"
+#![recursion_limit = "32"]
+macro_rules! foo {
+    () => {{ foo!(); foo!(); }}
+}
+fn main() { foo!(); }
+"#,
+    );
+}
+
+#[test]
+fn recursion_limit() {
+    lower(
+        r#"
+#![recursion_limit = "2"]
+macro_rules! n_nuple {
+    ($e:tt) => ();
+    ($first:tt $($rest:tt)*) => {{
+        n_nuple!($($rest)*)
+    }};
+}
+fn main() { n_nuple!(1,2,3); }
+"#,
+    );
+}
+
+#[test]
+fn issue_3642_bad_macro_stackover() {
+    lower(
+        r#"
+#[macro_export]
+macro_rules! match_ast {
+    (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
+
+    (match ($node:expr) {
+        $( ast::$ast:ident($it:ident) => $res:expr, )*
+        _ => $catch_all:expr $(,)?
+    }) => {{
+        $( if let Some($it) = ast::$ast::cast($node.clone()) { $res } else )*
+        { $catch_all }
+    }};
+}
+
+fn main() {
+    let anchor = match_ast! {
+        match parent {
+            as => {},
+            _ => return None
+        }
+    };
+}"#,
+    );
+}
+
+#[test]
+fn macro_resolve() {
+    // Regression test for a path resolution bug introduced with inner item handling.
+    lower(
+        r#"
+macro_rules! vec {
+    () => { () };
+    ($elem:expr; $n:expr) => { () };
+    ($($x:expr),+ $(,)?) => { () };
+}
+mod m {
+    fn outer() {
+        let _ = vec![FileSet::default(); self.len()];
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn desugar_for_loop() {
+    pretty_print(
+        r#"
+//- minicore: iterator
+fn main() {
+    for ident in 0..10 {
+        foo();
+        bar()
+    }
+}
+"#,
+        expect![[r#"
+        fn main() {
+            match builtin#lang(into_iter)(
+                0..10,
+            ) {
+                mut <ra@gennew>0 => loop {
+                    match builtin#lang(next)(
+                        &mut <ra@gennew>0,
+                    ) {
+                        builtin#lang(None) => break,
+                        builtin#lang(Some)(ident) => {
+                            foo();
+                            bar()
+                        },
+                    }
+                },
+            }
+        }"#]],
+    );
+}
+
+#[test]
+fn desugar_builtin_format_args_before_1_89_0() {
+    pretty_print(
+        r#"
+//- minicore: fmt_before_1_89_0
+fn main() {
+    let are = "are";
+    let count = 10;
+    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
+}
+"#,
+        expect![[r#"
+        fn main() {
+            let are = "are";
+            let count = 10;
+            builtin#lang(Arguments::new_v1_formatted)(
+                &[
+                    "\u{1b}hello ", " ", " friends, we ", " ", "",
+                ],
+                &[
+                    builtin#lang(Argument::new_display)(
+                        &count,
+                    ), builtin#lang(Argument::new_display)(
+                        &"fancy",
+                    ), builtin#lang(Argument::new_debug)(
+                        &are,
+                    ), builtin#lang(Argument::new_display)(
+                        &"!",
+                    ),
+                ],
+                &[
+                    builtin#lang(Placeholder::new)(
+                        0usize,
+                        ' ',
+                        builtin#lang(Alignment::Unknown),
+                        8u32,
+                        builtin#lang(Count::Implied),
+                        builtin#lang(Count::Is)(
+                            2,
+                        ),
+                    ), builtin#lang(Placeholder::new)(
+                        1usize,
+                        ' ',
+                        builtin#lang(Alignment::Unknown),
+                        0u32,
+                        builtin#lang(Count::Implied),
+                        builtin#lang(Count::Implied),
+                    ), builtin#lang(Placeholder::new)(
+                        2usize,
+                        ' ',
+                        builtin#lang(Alignment::Unknown),
+                        0u32,
+                        builtin#lang(Count::Implied),
+                        builtin#lang(Count::Implied),
+                    ), builtin#lang(Placeholder::new)(
+                        1usize,
+                        ' ',
+                        builtin#lang(Alignment::Unknown),
+                        0u32,
+                        builtin#lang(Count::Implied),
+                        builtin#lang(Count::Implied),
+                    ), builtin#lang(Placeholder::new)(
+                        3usize,
+                        ' ',
+                        builtin#lang(Alignment::Unknown),
+                        0u32,
+                        builtin#lang(Count::Implied),
+                        builtin#lang(Count::Implied),
+                    ),
+                ],
+                {
+                    ();
+                    unsafe {
+                        builtin#lang(UnsafeArg::new)()
+                    }
+                },
+            );
+        }"#]],
+    )
+}
+
+#[test]
+fn desugar_builtin_format_args_before_1_93_0() {
+    pretty_print(
+        r#"
+//- minicore: fmt_before_1_93_0
+fn main() {
+    let are = "are";
+    let count = 10;
+    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
+}
+"#,
+        expect![[r#"
+        fn main() {
+            let are = "are";
+            let count = 10;
+            {
+                let <ra@gennew>0 = (&"fancy", &(), &"!", &count, &are, );
+                let <ra@gennew>0 = [
+                    builtin#lang(Argument::new_display)(
+                        <ra@gennew>0.3,
+                    ), builtin#lang(Argument::new_display)(
+                        <ra@gennew>0.0,
+                    ), builtin#lang(Argument::new_debug)(
+                        <ra@gennew>0.4,
+                    ), builtin#lang(Argument::new_display)(
+                        <ra@gennew>0.2,
+                    ),
+                ];
+                unsafe {
+                    builtin#lang(Arguments::new_v1_formatted)(
+                        &[
+                            "\u{1b}hello ", " ", " friends, we ", " ", "",
+                        ],
+                        &<ra@gennew>0,
+                        &[
+                            builtin#lang(Placeholder::new)(
+                                0usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                8u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Is)(
+                                    2,
+                                ),
+                            ), builtin#lang(Placeholder::new)(
+                                1usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ), builtin#lang(Placeholder::new)(
+                                2usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ), builtin#lang(Placeholder::new)(
+                                1usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ), builtin#lang(Placeholder::new)(
+                                3usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ),
+                        ],
+                    )
+                }
+            };
+        }"#]],
+    )
+}
+
+#[test]
+fn desugar_builtin_format_args() {
+    pretty_print(
+        r#"
+//- minicore: fmt
+fn main() {
+    let are = "are";
+    let count = 10;
+    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
+    builtin#format_args("hello world");
+    builtin#format_args("hello world", orphan = ());
+}
+"#,
+        expect![[r#"
+        fn main() {
+            let are = "are";
+            let count = 10;
+            {
+                let <ra@gennew>0 = (&"fancy", &(), &"!", &count, &are, );
+                let <ra@gennew>0 = [
+                    builtin#lang(Argument::new_display)(
+                        <ra@gennew>0.3,
+                    ), builtin#lang(Argument::new_display)(
+                        <ra@gennew>0.0,
+                    ), builtin#lang(Argument::new_debug)(
+                        <ra@gennew>0.4,
+                    ), builtin#lang(Argument::new_display)(
+                        <ra@gennew>0.2,
+                    ),
+                ];
+                ();
+                unsafe {
+                    builtin#lang(Arguments::new)(
+                        "\x07\x1bhello \xc3 \x00\x00i\x02\x00\x01 \xc0\r friends, we \xc0\x01 \xc8\x01\x00\xc8\x03\x00\x00",
+                        &<ra@gennew>0,
+                    )
+                }
+            };
+            builtin#lang(Arguments::from_str)(
+                "hello world",
+            );
+            {
+                ();
+                builtin#lang(Arguments::from_str)(
+                    "hello world",
+                )
+            };
+        }"#]],
+    )
+}
+
+#[test]
+fn test_macro_hygiene() {
+    pretty_print(
+        r##"
+//- minicore: fmt, from
+//- /main.rs
+mod error;
+
+use crate::error::error;
+
+fn main() {
+    // _ = forces body expansion instead of block def map expansion
+    _ = error!("Failed to resolve path `{}`", node.text());
+}
+//- /error.rs
+macro_rules! _error {
+    ($fmt:expr, $($arg:tt)+) => {$crate::error::intermediate!(format_args!($fmt, $($arg)+))}
+}
+pub(crate) use _error as error;
+macro_rules! _intermediate {
+    ($arg:expr) => {$crate::error::SsrError::new($arg)}
+}
+pub(crate) use _intermediate as intermediate;
+
+pub struct SsrError(pub(crate) core::fmt::Arguments);
+
+impl SsrError {
+    pub(crate) fn new(message: impl Into<core::fmt::Arguments>) -> SsrError {
+        SsrError(message.into())
+    }
+}
+"##,
+        expect![[r#"
+        fn main() {
+            _ = ra_test_fixture::error::SsrError::new(
+                {
+                    let <ra@gennew>0 = (&node.text(), );
+                    let <ra@gennew>0 = [
+                        builtin#lang(Argument::new_display)(
+                            <ra@gennew>0.0,
+                        ),
+                    ];
+                    unsafe {
+                        builtin#lang(Arguments::new)(
+                            "\x18Failed to resolve path `\xc0\x01`\x00",
+                            &<ra@gennew>0,
+                        )
+                    }
+                },
+            );
+        }"#]],
+    )
+}
+
+#[test]
+fn regression_10300() {
+    pretty_print(
+        r#"
+//- minicore: concat, panic, fmt_before_1_89_0
+mod private {
+    pub use core::concat;
+}
+
+macro_rules! m {
+    () => {
+        panic!(concat!($crate::private::concat!("cc")));
+    };
+}
+
+fn f(a: i32, b: u32) -> String {
+    m!();
+}
+"#,
+        expect![[r#"
+        fn f(a, b) {
+            {
+                core::panicking::panic_fmt(
+                    builtin#lang(Arguments::new_v1_formatted)(
+                        &[
+                            "cc",
+                        ],
+                        &[],
+                        &[],
+                        unsafe {
+                            builtin#lang(UnsafeArg::new)()
+                        },
+                    ),
+                );
+            };
+        }"#]],
+    )
+}
+
+#[test]
+fn destructuring_assignment_tuple_macro() {
+    // This is a funny one. `let m!()() = Bar()` is an error in rustc, because `m!()()` isn't a valid pattern,
+    // but in destructuring assignment it is valid, because `m!()()` is a valid expression, and destructuring
+    // assignments start their lives as expressions. So we have to do the same.
+
+    pretty_print(
+        r#"
+struct Bar();
+
+macro_rules! m {
+    () => { Bar };
+}
+
+fn foo() {
+    m!()() = Bar();
+}
+"#,
+        expect![[r#"
+        fn foo() {
+            Bar() = Bar();
+        }"#]],
+    )
+}
+
+#[test]
+fn shadowing_record_variant() {
+    let (db, def) = lower(
+        r#"
+enum A {
+    B { field: i32 },
+}
+fn f() {
+    use A::*;
+    match () {
+        B => {}
+    };
+}
+    "#,
+    );
+    let body = Body::of(&db, def);
+    assert_eq!(body.assert_expr_only().bindings.len(), 1, "should have a binding for `B`");
+    assert_eq!(
+        body[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
+        "B",
+        "should have a binding for `B`",
+    );
+}
+
+#[test]
+fn regression_pretty_print_bind_pat() {
+    pretty_print(
+        r#"
+fn foo() {
+    let v @ u = 123;
+}
+"#,
+        expect![[r#"
+        fn foo() {
+            let v @ u = 123;
+        }"#]],
+    );
+}
+
+#[test]
+fn skip_skips_body() {
+    pretty_print(
+        r#"
+#[rust_analyzer::skip]
+async fn foo(a: (), b: i32) -> u32 {
+    0 + 1 + b()
+}
+"#,
+        expect!["fn foo(�, �) �"],
+    );
+}
+
+#[test]
+fn range_bounds_are_hir_exprs() {
+    let (db, body) = lower(
+        r#"
+pub const L: i32 = 6;
+mod x {
+    pub const R: i32 = 100;
+}
+const fn f(x: i32) -> i32 {
+    match x {
+        -1..=5 => x * 10,
+        L..=x::R => x * 100,
+        _ => x,
+    }
+}"#,
+    );
+
+    let body = Body::of(&db, body);
+    let mtch_arms = body
+        .assert_expr_only()
+        .exprs
+        .iter()
+        .find_map(|(_, expr)| {
+            if let Expr::Match { arms, .. } = expr {
+                return Some(arms);
+            }
+
+            None
+        })
+        .unwrap();
+
+    let MatchArm { pat, .. } = mtch_arms[1];
+    match body[pat] {
+        Pat::Range { start, end, range_type: _ } => {
+            let hir_start = &body[start.unwrap()];
+            let hir_end = &body[end.unwrap()];
+
+            assert!(matches!(hir_start, Expr::Path { .. }));
+            assert!(matches!(hir_end, Expr::Path { .. }));
+        }
+        _ => {}
+    }
+}
+
+#[test]
+fn print_hir_precedences() {
+    pretty_print(
+        r#"
+fn main() {
+    _ = &(1 - (2 - 3) + 4 * 5 * (6 + 7));
+    _ = 1 + 2 < 3 && true && 4 < 5 && (a || b || c) || d && e;
+    if let _ = 2 && true && let _ = 3 {}
+    break a && b || (return) || (return 2);
+    let r = &2;
+    let _ = &mut (*r as i32)
+}
+"#,
+        expect![[r#"
+        fn main() {
+            _ = &((1 - (2 - 3)) + (4 * 5) * (6 + 7));
+            _ = 1 + 2 < 3 && true && 4 < 5 && (a || b || c) || d && e;
+            if let _ = 2 && true && let _ = 3 {}
+            break a && b || (return) || (return 2);
+            let r = &2;
+            let _ = &mut (*r as i32);
+        }"#]],
+    )
+}
+
+#[test]
+fn async_fn_weird_param_patterns() {
+    pretty_print(
+        r#"
+async fn main(&self, param1: i32, ref mut param2: i32, _: i32, param4 @ _: i32, 123: i32) {}
+"#,
+        expect![[r#"
+        fn main(self, param1, mut param2, mut <ra@gennew>0, param4 @ _, mut <ra@gennew>1) async {
+            let ref mut param2 = param2;
+            let _ = <ra@gennew>0;
+            let 123 = <ra@gennew>1;
+            {}
+        }"#]],
+    )
+}

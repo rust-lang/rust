@@ -1,0 +1,17 @@
+error[E0505]: cannot move out of value because it is borrowed
+  --> $DIR/nll-problem-case-3-issue-68934.rs:35:14
+   |
+LL |     fn deep_fetch(&mut self, value: Either<A, B>) -> Result<&mut Self, (&mut Self, Either<A, B>)> {
+   |                   - let's call the lifetime of this reference `'1`
+LL |         match (self, value) {
+LL |             (Tree::ABranch(ref mut a, ref v), Either::Left(vv)) if v > &vv => {
+   |                            --------- borrow of value occurs here
+LL |                 a.deep_fetch(Either::Left(vv))
+   |                 ------------------------------ returning this value requires that borrow lasts for `'1`
+...
+LL |             (this, _v) => Err((this, _v)),
+   |              ^^^^ move out of value occurs here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0505`.

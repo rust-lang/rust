@@ -1,0 +1,9 @@
+error[E0749]: negative impls cannot have any items
+  --> $DIR/impl-reuse-negative-traits.rs:6:8
+   |
+LL |     fn foo(&self);
+   |        ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0749`.

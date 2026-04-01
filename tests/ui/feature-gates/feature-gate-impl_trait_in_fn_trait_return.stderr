@@ -1,0 +1,25 @@
+error[E0562]: `impl Trait` is not allowed in the return type of `Fn` trait bounds
+  --> $DIR/feature-gate-impl_trait_in_fn_trait_return.rs:1:24
+   |
+LL | fn f() -> impl Fn() -> impl Sized { || () }
+   |                        ^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+   = note: see issue #99697 <https://github.com/rust-lang/rust/issues/99697> for more information
+   = help: add `#![feature(impl_trait_in_fn_trait_return)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0562]: `impl Trait` is not allowed in the return type of `Fn` trait bounds
+  --> $DIR/feature-gate-impl_trait_in_fn_trait_return.rs:3:32
+   |
+LL | fn g() -> &'static dyn Fn() -> impl Sized { &|| () }
+   |                                ^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+   = note: see issue #99697 <https://github.com/rust-lang/rust/issues/99697> for more information
+   = help: add `#![feature(impl_trait_in_fn_trait_return)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0562`.

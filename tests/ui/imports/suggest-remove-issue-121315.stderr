@@ -1,0 +1,65 @@
+error: the item `TryFrom` is imported redundantly
+  --> $DIR/suggest-remove-issue-121315.rs:7:9
+   |
+LL |     use std::convert::TryFrom;
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
+   |
+   = note: the item `TryFrom` is already defined here
+note: the lint level is defined here
+  --> $DIR/suggest-remove-issue-121315.rs:2:25
+   |
+LL | #![deny(unused_imports, redundant_imports)]
+   |                         ^^^^^^^^^^^^^^^^^
+
+error: the item `TryFrom` is imported redundantly
+  --> $DIR/suggest-remove-issue-121315.rs:14:24
+   |
+LL |     use std::convert::{TryFrom, TryInto};
+   |                        ^^^^^^^
+   |
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
+   |
+   = note: the item `TryFrom` is already defined here
+
+error: the item `TryInto` is imported redundantly
+  --> $DIR/suggest-remove-issue-121315.rs:14:33
+   |
+LL |     use std::convert::{TryFrom, TryInto};
+   |                                 ^^^^^^^
+   |
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
+   |
+   = note: the item `TryInto` is already defined here
+
+error: unused import: `AsMut`
+  --> $DIR/suggest-remove-issue-121315.rs:24:24
+   |
+LL |     use std::convert::{AsMut, Into};
+   |                        ^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/suggest-remove-issue-121315.rs:2:9
+   |
+LL | #![deny(unused_imports, redundant_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: the item `Into` is imported redundantly
+  --> $DIR/suggest-remove-issue-121315.rs:24:31
+   |
+LL |     use std::convert::{AsMut, Into};
+   |                               ^^^^
+   |
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
+   |
+   = note: the item `Into` is already defined here
+
+error: unused import: `From`
+  --> $DIR/suggest-remove-issue-121315.rs:33:24
+   |
+LL |     use std::convert::{From, Infallible};
+   |                        ^^^^
+
+error: aborting due to 6 previous errors
+

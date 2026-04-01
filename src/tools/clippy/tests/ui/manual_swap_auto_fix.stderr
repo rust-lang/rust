@@ -1,0 +1,105 @@
+error: this looks like you are swapping elements of `v` manually
+  --> tests/ui/manual_swap_auto_fix.rs:6:5
+   |
+LL | /     let index = v[0];
+LL | |
+LL | |
+LL | |     v[0] = v[index];
+LL | |     v[index] = index;
+   | |_____________________^
+   |
+   = note: `-D clippy::manual-swap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_swap)]`
+help: try
+   |
+LL ~     let index = v[0];
+LL +     v.swap(0, index);
+   |
+
+error: this looks like you are swapping elements of `v` manually
+  --> tests/ui/manual_swap_auto_fix.rs:15:5
+   |
+LL | /     let tmp = v[0];
+LL | |
+LL | |     v[0] = v[1];
+LL | |     v[1] = tmp;
+   | |_______________^
+   |
+help: try
+   |
+LL ~     let tmp = v[0];
+LL +     v.swap(0, 1);
+   |
+
+error: this looks like you are swapping elements of `v` manually
+  --> tests/ui/manual_swap_auto_fix.rs:27:5
+   |
+LL | /     let temp = v[i1];
+LL | |
+LL | |     v[i1] = v[i2];
+LL | |     v[i2] = temp;
+   | |_________________^ help: try: `v.swap(i1, i2);`
+
+error: this looks like you are swapping elements of `v` manually
+  --> tests/ui/manual_swap_auto_fix.rs:37:5
+   |
+LL | /     let temp = v[i1];
+LL | |
+LL | |     v[i1] = v[i2 + 1];
+LL | |     v[i2 + 1] = temp;
+   | |_____________________^ help: try: `v.swap(i1, i2 + 1);`
+
+error: this looks like you are swapping elements of `v` manually
+  --> tests/ui/manual_swap_auto_fix.rs:47:5
+   |
+LL | /     let temp = v[i1];
+LL | |
+LL | |     v[i1] = v[i2 + 1];
+LL | |     v[i2 + 1] = temp;
+   | |_____________________^ help: try: `v.swap(i1, i2 + 1);`
+
+error: this looks like you are swapping elements of `v` manually
+  --> tests/ui/manual_swap_auto_fix.rs:55:5
+   |
+LL | /     let index = v[0];
+LL | |
+LL | |
+LL | |     v[0] = v[index + 1];
+LL | |     v[index + 1] = index;
+   | |_________________________^
+   |
+help: try
+   |
+LL ~     let index = v[0];
+LL +     v.swap(0, index + 1);
+   |
+
+error: this looks like you are swapping elements of `v` manually
+  --> tests/ui/manual_swap_auto_fix.rs:66:5
+   |
+LL | /     let tmp = v[i1 * 3];
+LL | |
+LL | |     v[i1 * 3] = v[i2 / 2];
+LL | |     v[i2 / 2] = tmp;
+   | |____________________^ help: try: `v.swap(i1 * 3, i2 / 2);`
+
+error: this looks like you are swapping elements of `v` manually
+  --> tests/ui/manual_swap_auto_fix.rs:76:5
+   |
+LL | /     let tmp = v[i1 + i2];
+LL | |
+LL | |     v[i1 + i2] = v[i2];
+LL | |     v[i2] = tmp;
+   | |________________^ help: try: `v.swap(i1 + i2, i2);`
+
+error: this looks like you are swapping elements of `v` manually
+  --> tests/ui/manual_swap_auto_fix.rs:87:9
+   |
+LL | /         let tmp = v[i1];
+LL | |
+LL | |         v[i1] = v[i2];
+LL | |         v[i2] = tmp;
+   | |____________________^ help: try: `v.swap(i1, i2);`
+
+error: aborting due to 9 previous errors
+

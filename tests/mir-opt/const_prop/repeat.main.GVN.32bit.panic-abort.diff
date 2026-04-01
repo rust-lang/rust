@@ -1,0 +1,41 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: u32;
+      let mut _2: u32;
+      let mut _3: [u32; 8];
+      let _4: usize;
+      let mut _5: bool;
+      scope 1 {
+          debug x => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = [const 42_u32; 8];
+          StorageLive(_4);
+          _4 = const 2_usize;
+-         _5 = Lt(copy _4, const 8_usize);
+-         assert(move _5, "index out of bounds: the length is {} but the index is {}", const 8_usize, copy _4) -> [success: bb1, unwind unreachable];
++         _5 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 8_usize, const 2_usize) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _2 = copy _3[_4];
+-         _1 = Add(move _2, const 0_u32);
++         _2 = const 42_u32;
++         _1 = const 42_u32;
+          StorageDead(_2);
+          StorageDead(_4);
+          StorageDead(_3);
+          _0 = const ();
+          StorageDead(_1);
+          return;
+      }
+  }
+  

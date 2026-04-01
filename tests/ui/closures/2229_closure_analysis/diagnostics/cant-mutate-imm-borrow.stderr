@@ -1,0 +1,12 @@
+error[E0596]: cannot borrow `*z.0.0` as mutable, as it is behind a `&` reference
+  --> $DIR/cant-mutate-imm-borrow.rs:13:17
+   |
+LL |     let mut c = || {
+   |                 ^^ cannot borrow as mutable
+LL |
+LL |         z.0.0.0 = format!("X1");
+   |         ------- mutable borrow occurs due to use of `*z.0.0` in closure
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

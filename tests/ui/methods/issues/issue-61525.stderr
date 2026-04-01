@@ -1,0 +1,40 @@
+error[E0277]: the size for values of type `dyn ToString` cannot be known at compilation time
+  --> $DIR/issue-61525.rs:14:19
+   |
+LL |         1.query::<dyn ToString>("")
+   |           -----   ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |           |
+   |           required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `dyn ToString`
+note: required by an implicit `Sized` bound in `Example::query`
+  --> $DIR/issue-61525.rs:2:14
+   |
+LL |     fn query<Q>(self, q: Q);
+   |              ^ required by the implicit `Sized` requirement on this type parameter in `Example::query`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     fn query<Q: ?Sized>(self, q: Q);
+   |               ++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-61525.rs:14:33
+   |
+LL |         1.query::<dyn ToString>("")
+   |           --------------------- ^^ expected `dyn ToString`, found `&str`
+   |           |
+   |           arguments to this method are incorrect
+   |
+   = note: expected trait object `dyn ToString`
+                 found reference `&'static str`
+   = help: `&'static str` implements `ToString` so you could box the found value and coerce it to the trait object `Box<dyn ToString>`, you will have to change the expected type as well
+note: method defined here
+  --> $DIR/issue-61525.rs:2:8
+   |
+LL |     fn query<Q>(self, q: Q);
+   |        ^^^^^          -
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

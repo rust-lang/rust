@@ -1,0 +1,13 @@
+error: implementation of `Send` is not general enough
+  --> $DIR/higher-ranked-auto-trait-5.rs:13:5
+   |
+LL | /     assert_send(async {
+LL | |         call_me.call().await;
+LL | |     });
+   | |______^ implementation of `Send` is not general enough
+   |
+   = note: `Send` would have to be implemented for the type `&'0 str`, for any lifetime `'0`...
+   = note: ...but `Send` is actually implemented for the type `&'1 str`, for some specific lifetime `'1`
+
+error: aborting due to 1 previous error
+

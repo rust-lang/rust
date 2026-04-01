@@ -1,0 +1,12 @@
+error[E0499]: cannot borrow `*elements` as mutable more than once at a time
+  --> $DIR/iterating-updating-cursor-issue-108704.rs:41:26
+   |
+LL |         for (idx, el) in elements.iter_mut().enumerate() {
+   |                          ^^^^^^^^
+   |                          |
+   |                          `*elements` was mutably borrowed here in the previous iteration of the loop
+   |                          first borrow used here, in later iteration of loop
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

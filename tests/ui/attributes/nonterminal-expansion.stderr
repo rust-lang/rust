@@ -1,0 +1,13 @@
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
+  --> $DIR/nonterminal-expansion.rs:7:22
+   |
+LL |         #[repr(align($n))]
+   |                      ^^
+...
+LL | pass_nonterminal!(n!());
+   | ----------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `pass_nonterminal` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

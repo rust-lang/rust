@@ -1,0 +1,71 @@
+- // MIR for `array_bound` before GVN
++ // MIR for `array_bound` after GVN
+  
+  fn array_bound(_1: usize, _2: &[u8; N]) -> u8 {
+      debug index => _1;
+      debug slice => _2;
+      let mut _0: u8;
+      let mut _3: bool;
+      let mut _4: usize;
+      let mut _5: usize;
+      let mut _6: &[u8];
+      let mut _7: &[u8; N];
+      let _8: usize;
+      let mut _9: bool;
+  
+      bb0: {
+-         StorageLive(_3);
++         nop;
+          StorageLive(_4);
+          _4 = copy _1;
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = &(*_2);
+          _6 = move _7 as &[u8] (PointerCoercion(Unsize, Implicit));
+          StorageDead(_7);
+-         _5 = PtrMetadata(move _6);
++         _5 = const N;
+          goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_6);
+-         _3 = Lt(move _4, move _5);
+-         switchInt(move _3) -> [0: bb4, otherwise: bb2];
++         _3 = Lt(copy _1, const N);
++         switchInt(copy _3) -> [0: bb4, otherwise: bb2];
+      }
+  
+      bb2: {
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_8);
+          _8 = copy _1;
+-         _9 = Lt(copy _8, const N);
+-         assert(move _9, "index out of bounds: the length is {} but the index is {}", const N, copy _8) -> [success: bb3, unwind unreachable];
++         _9 = copy _3;
++         assert(copy _3, "index out of bounds: the length is {} but the index is {}", const N, copy _1) -> [success: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+-         _0 = copy (*_2)[_8];
++         _0 = copy (*_2)[_1];
+          StorageDead(_8);
+          goto -> bb5;
+      }
+  
+      bb4: {
+          StorageDead(_5);
+          StorageDead(_4);
+          _0 = const 42_u8;
+          goto -> bb5;
+      }
+  
+      bb5: {
+-         StorageDead(_3);
++         nop;
+          return;
+      }
+  }
+  

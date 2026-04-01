@@ -1,0 +1,33 @@
+error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
+  --> tests/ui/crashes/ice-6255.rs:6:9
+   |
+LL |         extern crate std as core;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | define_other_core!();
+   | -------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0659]: `core` is ambiguous
+  --> tests/ui/crashes/ice-6255.rs:12:5
+   |
+LL |     core::panic!();
+   |     ^^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+   = note: `core` could refer to a built-in crate
+note: `core` could also refer to the crate imported here
+  --> tests/ui/crashes/ice-6255.rs:6:9
+   |
+LL |         extern crate std as core;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | define_other_core!();
+   | -------------------- in this macro invocation
+   = help: use `crate::core` to refer to this crate unambiguously
+   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0659`.

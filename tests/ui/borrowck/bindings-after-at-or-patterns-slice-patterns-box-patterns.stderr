@@ -1,0 +1,215 @@
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:18:5
+   |
+LL | fn bindings_after_at_slice_patterns_move_binding(x: [String; 4]) {
+   |                                                  - move occurs because `x` has type `[String; 4]`, which does not implement the `Copy` trait
+LL |     match x {
+LL |         a @ [.., _] => (),
+   |         - value moved here
+...
+LL |     &x;
+   |     ^^ value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref a @ [.., _] => (),
+   |         +++
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:28:5
+   |
+LL |         ref mut foo @ [.., _] => Some(foo),
+   |         ----------- mutable borrow occurs here
+...
+LL |     &x;
+   |     ^^ immutable borrow occurs here
+...
+LL |     drop(r);
+   |          - mutable borrow later used here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:36:9
+   |
+LL |         ref foo @ [.., ref mut bar] => (),
+   |         ^^^^^^^        ----------- value is mutably borrowed by `bar` here
+   |         |
+   |         value is borrowed by `foo` here
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:50:5
+   |
+LL |         [ref foo @ .., ref bar] => Some(foo),
+   |          ------- immutable borrow occurs here
+...
+LL |     &mut x;
+   |     ^^^^^^ mutable borrow occurs here
+...
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:62:5
+   |
+LL |         ref foo @ [.., ref bar] => Some(foo),
+   |         ------- immutable borrow occurs here
+...
+LL |     &mut x;
+   |     ^^^^^^ mutable borrow occurs here
+...
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:76:5
+   |
+LL | fn bindings_after_at_or_patterns_move(x: Option<Test>) {
+   |                                       - move occurs because `x` has type `Option<Test>`, which does not implement the `Copy` trait
+LL |     match x {
+LL |         foo @ Some(Test::Foo | Test::Bar) => (),
+   |         --- value moved here
+...
+LL |     &x;
+   |     ^^ value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref foo @ Some(Test::Foo | Test::Bar) => (),
+   |         +++
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:86:5
+   |
+LL |         ref foo @ Some(Test::Foo | Test::Bar) => Some(foo),
+   |         ------- immutable borrow occurs here
+...
+LL |     &mut x;
+   |     ^^^^^^ mutable borrow occurs here
+...
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:98:5
+   |
+LL |         ref mut foo @ Some(Test::Foo | Test::Bar) => Some(foo),
+   |         ----------- mutable borrow occurs here
+...
+LL |     &x;
+   |     ^^ immutable borrow occurs here
+...
+LL |     drop(r);
+   |          - mutable borrow later used here
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:112:5
+   |
+LL |         ref foo @ Some(box ref s) => Some(foo),
+   |         ------- immutable borrow occurs here
+...
+LL |     &mut x;
+   |     ^^^^^^ mutable borrow occurs here
+...
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:120:9
+   |
+LL |         ref foo @ Some(box ref mut s) => (),
+   |         ^^^^^^^            --------- value is mutably borrowed by `s` here
+   |         |
+   |         value is borrowed by `foo` here
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:134:5
+   |
+LL | fn bindings_after_at_slice_patterns_or_patterns_moves(x: [Option<Test>; 4]) {
+   |                                                       - move occurs because `x` has type `[Option<Test>; 4]`, which does not implement the `Copy` trait
+LL |     match x {
+LL |         a @ [.., Some(Test::Foo | Test::Bar)] => (),
+   |         - value moved here
+...
+LL |     &x;
+   |     ^^ value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref a @ [.., Some(Test::Foo | Test::Bar)] => (),
+   |         +++
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:144:5
+   |
+LL |         ref a @ [ref b @ .., Some(Test::Foo | Test::Bar)] => Some(a),
+   |         ----- immutable borrow occurs here
+...
+LL |     &mut x;
+   |     ^^^^^^ mutable borrow occurs here
+...
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:156:5
+   |
+LL |         ref a @ [ref b @ .., Some(Test::Foo | Test::Bar)] => Some(b),
+   |                  ----- immutable borrow occurs here
+...
+LL |     &mut x;
+   |     ^^^^^^ mutable borrow occurs here
+...
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:170:5
+   |
+LL |         [_, ref a @ Some(box ref b), ..] => Some(a),
+   |             ----- immutable borrow occurs here
+...
+LL |     &mut x;
+   |     ^^^^^^ mutable borrow occurs here
+...
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:186:5
+   |
+LL |         [_, ref a @ Some(box Test::Foo | box Test::Bar), ..] => Some(a),
+   |             ----- immutable borrow occurs here
+...
+LL |     &mut x;
+   |     ^^^^^^ mutable borrow occurs here
+...
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:200:5
+   |
+LL |         [_, ref mut a @ Some(box Test::Foo | box Test::Bar), ..] => Some(a),
+   |             --------- mutable borrow occurs here
+...
+LL |     &x;
+   |     ^^ immutable borrow occurs here
+...
+LL |     drop(r);
+   |          - mutable borrow later used here
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:214:5
+   |
+LL |         ref a @ [_, ref b @ Some(box Test::Foo | box Test::Bar), ..] => Some(a),
+   |         ----- immutable borrow occurs here
+...
+LL |     &mut x;
+   |     ^^^^^^ mutable borrow occurs here
+...
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error: aborting due to 17 previous errors
+
+Some errors have detailed explanations: E0382, E0502.
+For more information about an error, try `rustc --explain E0382`.

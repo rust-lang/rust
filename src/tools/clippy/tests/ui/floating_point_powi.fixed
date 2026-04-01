@@ -1,0 +1,46 @@
+#![warn(clippy::suboptimal_flops)]
+#![allow(clippy::unnecessary_cast)]
+
+fn main() {
+    let one = 1;
+    let x = 3f32;
+
+    let y = 4f32;
+    let _ = x.mul_add(x, y);
+    //~^ suboptimal_flops
+    let _ = x.mul_add(x, -y);
+    //~^ suboptimal_flops
+    let _ = y.mul_add(y, x);
+    //~^ suboptimal_flops
+    let _ = y.mul_add(-y, x);
+    //~^ suboptimal_flops
+    let _ = (y as f32).mul_add(y as f32, x);
+    //~^ suboptimal_flops
+    let _ = x.mul_add(x, y).sqrt();
+    //~^ suboptimal_flops
+    let _ = y.mul_add(y, x).sqrt();
+    //~^ suboptimal_flops
+
+    let _ = (x - 1.0).mul_add(x - 1.0, -y);
+    //~^ suboptimal_flops
+    let _ = (x - 1.0).mul_add(x - 1.0, -y) + 3.0;
+    //~^ suboptimal_flops
+    let _ = (x - 1.0).mul_add(x - 1.0, -(y + 3.0));
+    //~^ suboptimal_flops
+    let _ = (y + 1.0).mul_add(-(y + 1.0), x);
+    //~^ suboptimal_flops
+    let _ = (3.0 * y).mul_add(-(3.0 * y), x);
+    //~^ suboptimal_flops
+    let _ = (y + 1.0 + x).mul_add(-(y + 1.0 + x), x);
+    //~^ suboptimal_flops
+    let _ = (y + 1.0 + 2.0).mul_add(-(y + 1.0 + 2.0), x);
+    //~^ suboptimal_flops
+
+    // Cases where the lint shouldn't be applied
+    let _ = x.powi(2);
+    let _ = x.powi(1 + 1);
+    let _ = x.powi(3);
+    let _ = x.powi(4) + y;
+    let _ = x.powi(one + 1);
+    let _ = (x.powi(2) + y.powi(2)).sqrt();
+}

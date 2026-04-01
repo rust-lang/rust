@@ -1,0 +1,27 @@
+error[E0641]: cannot cast to a pointer of an unknown kind
+  --> $DIR/issue-45730.rs:3:28
+   |
+LL |     let x: *const _ = 0 as _;
+   |                            ^ needs more type information
+   |
+   = note: the type information given here is insufficient to check whether the pointer cast is valid
+
+error[E0641]: cannot cast to a pointer of an unknown kind
+  --> $DIR/issue-45730.rs:5:28
+   |
+LL |     let x: *const _ = 0 as *const _;
+   |                            ^^^^^^^^ needs more type information
+   |
+   = note: the type information given here is insufficient to check whether the pointer cast is valid
+
+error[E0641]: cannot cast to a pointer of an unknown kind
+  --> $DIR/issue-45730.rs:8:44
+   |
+LL |     let x = 0 as *const i32 as *const _ as *mut _;
+   |                                            ^^^^^^ needs more type information
+   |
+   = note: the type information given here is insufficient to check whether the pointer cast is valid
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0641`.

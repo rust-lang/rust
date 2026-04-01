@@ -1,0 +1,55 @@
+error[E0392]: type parameter `N` is never used
+  --> $DIR/unused-type-param-suggestion.rs:3:10
+   |
+LL | struct S<N>;
+   |          ^ unused type parameter
+   |
+   = help: consider removing `N`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `N` to be a const parameter, use `const N: /* Type */` instead
+
+error[E0392]: type parameter `N` is never used
+  --> $DIR/unused-type-param-suggestion.rs:9:10
+   |
+LL | struct T<N: Copy>;
+   |          ^ unused type parameter
+   |
+   = help: consider removing `N`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0091]: type parameter `N` is never used
+  --> $DIR/unused-type-param-suggestion.rs:13:8
+   |
+LL | type A<N> = ();
+   |        ^ unused type parameter
+   |
+   = help: consider removing `N` or referring to it in the body of the type alias
+   = help: if you intended `N` to be a const parameter, use `const N: /* Type */` instead
+
+error[E0091]: type parameter `N` is never used
+  --> $DIR/unused-type-param-suggestion.rs:19:8
+   |
+LL | type B<N: Copy> = ();
+   |        ^ unused type parameter
+   |
+   = help: consider removing `N` or referring to it in the body of the type alias
+
+error[E0091]: type parameter `N` is never used
+  --> $DIR/unused-type-param-suggestion.rs:22:8
+   |
+LL | type C<N: Sized> = ();
+   |        ^ unused type parameter
+   |
+   = help: consider removing `N` or referring to it in the body of the type alias
+
+error[E0091]: type parameter `N` is never used
+  --> $DIR/unused-type-param-suggestion.rs:25:8
+   |
+LL | type D<N: ?Sized> = ();
+   |        ^ unused type parameter
+   |
+   = help: consider removing `N` or referring to it in the body of the type alias
+   = help: if you intended `N` to be a const parameter, use `const N: /* Type */` instead
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0091, E0392.
+For more information about an error, try `rustc --explain E0091`.

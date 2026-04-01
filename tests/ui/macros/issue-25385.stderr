@@ -1,0 +1,20 @@
+error[E0599]: no method named `foo` found for type `i32` in the current scope
+  --> $DIR/issue-25385.rs:2:23
+   |
+LL |     ($e:expr) => { $e.foo() }
+   |                       ^^^ method not found in `i32`
+...
+LL |     foo!(a);
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: no method named `foo` found for type `i32` in the current scope
+  --> $DIR/issue-25385.rs:10:15
+   |
+LL |     foo!(1i32.foo());
+   |               ^^^ method not found in `i32`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

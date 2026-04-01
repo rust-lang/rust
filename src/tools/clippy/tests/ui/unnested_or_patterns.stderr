@@ -1,0 +1,256 @@
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:21:12
+   |
+LL |     if let box 0 | box 2 = Box::new(0) {}
+   |            ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnested-or-patterns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnested_or_patterns)]`
+help: nest the patterns
+   |
+LL -     if let box 0 | box 2 = Box::new(0) {}
+LL +     if let box (0 | 2) = Box::new(0) {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:23:12
+   |
+LL |     if let box ((0 | 1)) | box (2 | 3) | box 4 = Box::new(0) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let box ((0 | 1)) | box (2 | 3) | box 4 = Box::new(0) {}
+LL +     if let box (0 | 1 | 2 | 3 | 4) = Box::new(0) {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:26:12
+   |
+LL |     if let Some(1) | C0 | Some(2) = None {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let Some(1) | C0 | Some(2) = None {}
+LL +     if let Some(1 | 2) | C0 = None {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:28:12
+   |
+LL |     if let &mut 0 | &mut 2 = &mut 0 {}
+   |            ^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let &mut 0 | &mut 2 = &mut 0 {}
+LL +     if let &mut (0 | 2) = &mut 0 {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:30:12
+   |
+LL |     if let x @ 0 | x @ 2 = 0 {}
+   |            ^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let x @ 0 | x @ 2 = 0 {}
+LL +     if let x @ (0 | 2) = 0 {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:32:12
+   |
+LL |     if let (0, 1) | (0, 2) | (0, 3) = (0, 0) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let (0, 1) | (0, 2) | (0, 3) = (0, 0) {}
+LL +     if let (0, 1 | 2 | 3) = (0, 0) {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:34:12
+   |
+LL |     if let (1, 0) | (2, 0) | (3, 0) = (0, 0) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let (1, 0) | (2, 0) | (3, 0) = (0, 0) {}
+LL +     if let (1 | 2 | 3, 0) = (0, 0) {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:36:12
+   |
+LL |     if let (x, ..) | (x, 1) | (x, 2) = (0, 1) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let (x, ..) | (x, 1) | (x, 2) = (0, 1) {}
+LL +     if let (x, ..) | (x, 1 | 2) = (0, 1) {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:38:12
+   |
+LL |     if let [0] | [1] = [0] {}
+   |            ^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let [0] | [1] = [0] {}
+LL +     if let [0 | 1] = [0] {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:40:12
+   |
+LL |     if let [x, 0] | [x, 1] = [0, 1] {}
+   |            ^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let [x, 0] | [x, 1] = [0, 1] {}
+LL +     if let [x, 0 | 1] = [0, 1] {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:42:12
+   |
+LL |     if let [x, 0] | [x, 1] | [x, 2] = [0, 1] {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let [x, 0] | [x, 1] | [x, 2] = [0, 1] {}
+LL +     if let [x, 0 | 1 | 2] = [0, 1] {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:44:12
+   |
+LL |     if let [x, ..] | [x, 1] | [x, 2] = [0, 1] {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let [x, ..] | [x, 1] | [x, 2] = [0, 1] {}
+LL +     if let [x, ..] | [x, 1 | 2] = [0, 1] {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:47:12
+   |
+LL |     if let TS(0, x) | TS(1, x) = TS(0, 0) {}
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let TS(0, x) | TS(1, x) = TS(0, 0) {}
+LL +     if let TS(0 | 1, x) = TS(0, 0) {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:49:12
+   |
+LL |     if let TS(1, 0) | TS(2, 0) | TS(3, 0) = TS(0, 0) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let TS(1, 0) | TS(2, 0) | TS(3, 0) = TS(0, 0) {}
+LL +     if let TS(1 | 2 | 3, 0) = TS(0, 0) {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:51:12
+   |
+LL |     if let TS(x, ..) | TS(x, 1) | TS(x, 2) = TS(0, 0) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let TS(x, ..) | TS(x, 1) | TS(x, 2) = TS(0, 0) {}
+LL +     if let TS(x, ..) | TS(x, 1 | 2) = TS(0, 0) {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:53:12
+   |
+LL |     if let S { x: 0, y } | S { y, x: 1 } = (S { x: 0, y: 1 }) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let S { x: 0, y } | S { y, x: 1 } = (S { x: 0, y: 1 }) {}
+LL +     if let S { x: 0 | 1, y } = (S { x: 0, y: 1 }) {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:65:12
+   |
+LL |     if let [1] | [53] = [0] {}
+   |            ^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let [1] | [53] = [0] {}
+LL +     if let [1 | 53] = [0] {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:71:13
+   |
+LL |         let (0 | (1 | _)) = 0;
+   |             ^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -         let (0 | (1 | _)) = 0;
+LL +         let (0 | 1 | _) = 0;
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:74:16
+   |
+LL |         if let (0 | (1 | _)) = 0 {}
+   |                ^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -         if let (0 | (1 | _)) = 0 {}
+LL +         if let (0 | 1 | _) = 0 {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:78:20
+   |
+LL |     fn or_in_param((x | (x | x)): i32) {}
+   |                    ^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     fn or_in_param((x | (x | x)): i32) {}
+LL +     fn or_in_param((x | x | x): i32) {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:94:12
+   |
+LL |     if let S { y, x: 0 } | S { y, x: 1 } = (S { x: 0, y: 1 }) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     if let S { y, x: 0 } | S { y, x: 1 } = (S { x: 0, y: 1 }) {}
+LL +     if let S { y, x: 0 | 1 } = (S { x: 0, y: 1 }) {}
+   |
+
+error: aborting due to 21 previous errors
+

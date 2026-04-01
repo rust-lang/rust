@@ -1,0 +1,47 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/path-with-array-access.rs:23:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: First Pass analysis includes:
+  --> $DIR/path-with-array-access.rs:27:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", pent.points[5].x);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing pent[(0, 0)] -> Immutable
+  --> $DIR/path-with-array-access.rs:30:24
+   |
+LL |         println!("{}", pent.points[5].x);
+   |                        ^^^^^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/path-with-array-access.rs:27:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", pent.points[5].x);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture pent[(0, 0)] -> Immutable
+  --> $DIR/path-with-array-access.rs:30:24
+   |
+LL |         println!("{}", pent.points[5].x);
+   |                        ^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

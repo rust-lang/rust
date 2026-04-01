@@ -1,0 +1,29 @@
+error[E0284]: type annotations needed for `Mask<_, _>`
+  --> $DIR/issue-91614.rs:5:9
+   |
+LL |     let y = Mask::<_, _>::splat(false);
+   |         ^   ------------ type must be known at this point
+   |
+note: required by a const generic parameter in `Mask`
+  --> $SRC_DIR/core/src/../../portable-simd/crates/core_simd/src/masks.rs:LL:COL
+help: consider giving `y` an explicit type, where the value of const parameter `N` is specified
+   |
+LL |     let y: Mask<_, N> = Mask::<_, _>::splat(false);
+   |          ++++++++++++
+
+error[E0284]: type annotations needed for `Mask<_, _>`
+  --> $DIR/issue-91614.rs:5:9
+   |
+LL |     let y = Mask::<_, _>::splat(false);
+   |         ^   -------------------------- type must be known at this point
+   |
+note: required by a const generic parameter in `Mask::<T, N>::splat`
+  --> $SRC_DIR/core/src/../../portable-simd/crates/core_simd/src/masks.rs:LL:COL
+help: consider giving `y` an explicit type, where the value of const parameter `N` is specified
+   |
+LL |     let y: Mask<_, N> = Mask::<_, _>::splat(false);
+   |          ++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

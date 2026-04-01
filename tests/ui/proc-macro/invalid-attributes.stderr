@@ -1,0 +1,57 @@
+error[E0565]: malformed `proc_macro` attribute input
+  --> $DIR/invalid-attributes.rs:10:1
+   |
+LL | #[proc_macro = "test"]
+   | ^^^^^^^^^^^^^--------^
+   | |            |
+   | |            didn't expect any arguments here
+   | help: must be of the form: `#[proc_macro]`
+
+error[E0565]: malformed `proc_macro` attribute input
+  --> $DIR/invalid-attributes.rs:15:1
+   |
+LL | #[proc_macro()]
+   | ^^^^^^^^^^^^--^
+   | |           |
+   | |           didn't expect any arguments here
+   | help: must be of the form: `#[proc_macro]`
+
+error[E0565]: malformed `proc_macro` attribute input
+  --> $DIR/invalid-attributes.rs:20:1
+   |
+LL | #[proc_macro(x)]
+   | ^^^^^^^^^^^^---^
+   | |           |
+   | |           didn't expect any arguments here
+   | help: must be of the form: `#[proc_macro]`
+
+error[E0565]: malformed `proc_macro_attribute` attribute input
+  --> $DIR/invalid-attributes.rs:25:1
+   |
+LL | #[proc_macro_attribute = "test"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^--------^
+   | |                      |
+   | |                      didn't expect any arguments here
+   | help: must be of the form: `#[proc_macro_attribute]`
+
+error[E0565]: malformed `proc_macro_attribute` attribute input
+  --> $DIR/invalid-attributes.rs:30:1
+   |
+LL | #[proc_macro_attribute()]
+   | ^^^^^^^^^^^^^^^^^^^^^^--^
+   | |                     |
+   | |                     didn't expect any arguments here
+   | help: must be of the form: `#[proc_macro_attribute]`
+
+error[E0565]: malformed `proc_macro_attribute` attribute input
+  --> $DIR/invalid-attributes.rs:35:1
+   |
+LL | #[proc_macro_attribute(x)]
+   | ^^^^^^^^^^^^^^^^^^^^^^---^
+   | |                     |
+   | |                     didn't expect any arguments here
+   | help: must be of the form: `#[proc_macro_attribute]`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0565`.

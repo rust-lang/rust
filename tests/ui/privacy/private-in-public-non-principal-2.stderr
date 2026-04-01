@@ -1,0 +1,8 @@
+error: trait `PrivNonPrincipal` is private
+  --> $DIR/private-in-public-non-principal-2.rs:12:5
+   |
+LL |     m::leak_dyn_nonprincipal();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ private trait
+
+error: aborting due to 1 previous error
+

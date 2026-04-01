@@ -1,0 +1,314 @@
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:5:10
+   |
+LL | type A = [u8; 4]::AssocTy;
+   |          ^^^^^^^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL | type A = <[u8; 4]>::AssocTy;
+   |          +       +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:9:10
+   |
+LL | type B = [u8]::AssocTy;
+   |          ^^^^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL | type B = <[u8]>::AssocTy;
+   |          +    +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:13:10
+   |
+LL | type C = (u8)::AssocTy;
+   |          ^^^^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL | type C = <(u8)>::AssocTy;
+   |          +    +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:17:10
+   |
+LL | type D = (u8, u8)::AssocTy;
+   |          ^^^^^^^^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL | type D = <(u8, u8)>::AssocTy;
+   |          +        +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:21:10
+   |
+LL | type E = _::AssocTy;
+   |          ^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL | type E = <_>::AssocTy;
+   |          + +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:25:19
+   |
+LL | type F = &'static (u8)::AssocTy;
+   |                   ^^^^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL | type F = &'static <(u8)>::AssocTy;
+   |                   +    +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:31:10
+   |
+LL | type G = dyn 'static + (Send)::AssocTy;
+   |          ^^^^^^^^^^^^^^^^^^^^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL | type G = <dyn 'static + (Send)>::AssocTy;
+   |          +                    +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:51:10
+   |
+LL | type I = ty!()::AssocTy;
+   |          ^^^^^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL | type I = <ty!()>::AssocTy;
+   |          +     +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:44:19
+   |
+LL |     ($ty: ty) => ($ty::AssocTy);
+   |                   ^^^
+...
+LL | type J = ty!(u8);
+   |          ------- in this macro invocation
+   |
+   = note: this error originates in the macro `ty` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL |     ($ty: ty) => (<$ty>::AssocTy);
+   |                   +   +
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:5:10
+   |
+LL | type A = [u8; 4]::AssocTy;
+   |          ^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `AssocTy` implemented for `[u8; 4]`, you could use the fully-qualified path
+   |
+LL - type A = [u8; 4]::AssocTy;
+LL + type A = <[u8; 4] as Example>::AssocTy;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:9:10
+   |
+LL | type B = [u8]::AssocTy;
+   |          ^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `AssocTy` implemented for `[u8]`, you could use the fully-qualified path
+   |
+LL - type B = [u8]::AssocTy;
+LL + type B = <[u8] as Example>::AssocTy;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:13:10
+   |
+LL | type C = (u8)::AssocTy;
+   |          ^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `AssocTy` implemented for `u8`, you could use the fully-qualified path
+   |
+LL - type C = (u8)::AssocTy;
+LL + type C = <u8 as Example>::AssocTy;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:17:10
+   |
+LL | type D = (u8, u8)::AssocTy;
+   |          ^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `AssocTy` implemented for `(u8, u8)`, you could use the fully-qualified path
+   |
+LL - type D = (u8, u8)::AssocTy;
+LL + type D = <(u8, u8) as Example>::AssocTy;
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for type aliases
+  --> $DIR/bad-assoc-ty.rs:21:10
+   |
+LL | type E = _::AssocTy;
+   |          ^ not allowed in type signatures
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:25:19
+   |
+LL | type F = &'static (u8)::AssocTy;
+   |                   ^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `AssocTy` implemented for `u8`, you could use the fully-qualified path
+   |
+LL - type F = &'static (u8)::AssocTy;
+LL + type F = &'static <u8 as Example>::AssocTy;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:31:10
+   |
+LL | type G = dyn 'static + (Send)::AssocTy;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `AssocTy` implemented for `(dyn Send + 'static)`, you could use the fully-qualified path
+   |
+LL - type G = dyn 'static + (Send)::AssocTy;
+LL + type G = <(dyn Send + 'static) as Example>::AssocTy;
+   |
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/bad-assoc-ty.rs:37:10
+   |
+LL | type H = Fn(u8) -> (u8)::Output;
+   |          ^^^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | type H = <dyn Fn(u8) -> (u8)>::Output;
+   |          ++++               +
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:37:10
+   |
+LL | type H = Fn(u8) -> (u8)::Output;
+   |          ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL - type H = Fn(u8) -> (u8)::Output;
+LL + type H = <(dyn Fn(u8) -> u8 + 'static) as BitOr>::Output;
+   |
+LL - type H = Fn(u8) -> (u8)::Output;
+LL + type H = <(dyn Fn(u8) -> u8 + 'static) as IntoFuture>::Output;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:44:19
+   |
+LL |     ($ty: ty) => ($ty::AssocTy);
+   |                   ^^^^^^^^^^^^
+...
+LL | type J = ty!(u8);
+   |          ------- in this macro invocation
+   |
+   = note: this error originates in the macro `ty` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: if there were a trait named `Example` with associated type `AssocTy` implemented for `u8`, you could use the fully-qualified path
+   |
+LL -     ($ty: ty) => ($ty::AssocTy);
+LL +     ($ty: ty) => (<u8 as Example>::AssocTy);
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:51:10
+   |
+LL | type I = ty!()::AssocTy;
+   |          ^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `AssocTy` implemented for `u8`, you could use the fully-qualified path
+   |
+LL - type I = ty!()::AssocTy;
+LL + type I = <u8 as Example>::AssocTy;
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/bad-assoc-ty.rs:56:13
+   |
+LL | fn foo<X: K<_, _>>(x: X) {}
+   |             ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/bad-assoc-ty.rs:56:16
+   |
+LL | fn foo<X: K<_, _>>(x: X) {}
+   |                ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/bad-assoc-ty.rs:60:34
+   |
+LL | fn bar<F>(_: F) where F: Fn() -> _ {}
+   |                                  ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/bad-assoc-ty.rs:63:19
+   |
+LL | fn baz<F: Fn() -> _>(_: F) {}
+   |                   ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
+  --> $DIR/bad-assoc-ty.rs:66:33
+   |
+LL | struct L<F>(F) where F: Fn() -> _;
+   |                                 ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
+  --> $DIR/bad-assoc-ty.rs:68:30
+   |
+LL | struct M<F> where F: Fn() -> _ {
+   |                              ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for enums
+  --> $DIR/bad-assoc-ty.rs:72:28
+   |
+LL | enum N<F> where F: Fn() -> _ {
+   |                            ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for unions
+  --> $DIR/bad-assoc-ty.rs:77:29
+   |
+LL | union O<F> where F: Fn() -> _ {
+   |                             ^ not allowed in type signatures
+
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/bad-assoc-ty.rs:79:5
+   |
+LL |     foo: F,
+   |     ^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     foo: std::mem::ManuallyDrop<F>,
+   |          +++++++++++++++++++++++ +
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for traits
+  --> $DIR/bad-assoc-ty.rs:83:29
+   |
+LL | trait P<F> where F: Fn() -> _ {
+   |                             ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated functions
+  --> $DIR/bad-assoc-ty.rs:88:38
+   |
+LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
+   |                                      ^ not allowed in type signatures
+
+error: aborting due to 30 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0121, E0223, E0740.
+For more information about an error, try `rustc --explain E0121`.

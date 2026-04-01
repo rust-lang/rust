@@ -1,0 +1,30 @@
+error: expected identifier, found keyword `Self`
+  --> $DIR/incorrect-self-res.rs:5:9
+   |
+LL |     mod Self {}
+   |         ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/incorrect-self-res.rs:13:11
+   |
+LL |     trait Self {}
+   |           ^^^^ expected identifier, found keyword
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/incorrect-self-res.rs:2:13
+   |
+LL |     fn test(&mut self) {
+   |             ^^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/incorrect-self-res.rs:10:13
+   |
+LL |     fn test(&mut self) {
+   |             ^^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: aborting due to 4 previous errors
+

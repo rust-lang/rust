@@ -1,0 +1,43 @@
+error[E0271]: type mismatch resolving `<T as Foo>::Y == i32`
+  --> $DIR/associated-types-multiple-types-one-trait.rs:13:12
+   |
+LL |     want_y(t);
+   |     ------ ^ expected `i32`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:         expected type `i32`
+           found associated type `<T as Foo>::Y`
+note: required by a bound in `want_y`
+  --> $DIR/associated-types-multiple-types-one-trait.rs:44:17
+   |
+LL | fn want_y<T:Foo<Y=i32>>(t: &T) { }
+   |                 ^^^^^ required by this bound in `want_y`
+help: consider constraining the associated type `<T as Foo>::Y` to `i32`
+   |
+LL | fn have_x_want_y<T:Foo<X=u32, Y = i32>>(t: &T)
+   |                             +++++++++
+
+error[E0271]: type mismatch resolving `<T as Foo>::X == u32`
+  --> $DIR/associated-types-multiple-types-one-trait.rs:18:12
+   |
+LL |     want_x(t);
+   |     ------ ^ expected `u32`, found associated type
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:         expected type `u32`
+           found associated type `<T as Foo>::X`
+note: required by a bound in `want_x`
+  --> $DIR/associated-types-multiple-types-one-trait.rs:42:17
+   |
+LL | fn want_x<T:Foo<X=u32>>(t: &T) { }
+   |                 ^^^^^ required by this bound in `want_x`
+help: consider constraining the associated type `<T as Foo>::X` to `u32`
+   |
+LL | fn have_y_want_x<T:Foo<Y=i32, X = u32>>(t: &T)
+   |                             +++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

@@ -1,0 +1,39 @@
+error[E0277]: the trait bound `T: !MetaSized` is not satisfied
+  --> $DIR/negative-metasized.rs:12:11
+   |
+LL |     foo::<T>();
+   |           ^ the trait bound `T: !MetaSized` is not satisfied
+   |
+note: required by a bound in `foo`
+  --> $DIR/negative-metasized.rs:9:11
+   |
+LL | fn foo<T: !MetaSized>() {}
+   |           ^^^^^^^^^^ required by this bound in `foo`
+
+error[E0277]: the trait bound `(): !MetaSized` is not satisfied
+  --> $DIR/negative-metasized.rs:17:11
+   |
+LL |     foo::<()>();
+   |           ^^ the trait bound `(): !MetaSized` is not satisfied
+   |
+note: required by a bound in `foo`
+  --> $DIR/negative-metasized.rs:9:11
+   |
+LL | fn foo<T: !MetaSized>() {}
+   |           ^^^^^^^^^^ required by this bound in `foo`
+
+error[E0277]: the trait bound `str: !MetaSized` is not satisfied
+  --> $DIR/negative-metasized.rs:19:11
+   |
+LL |     foo::<str>();
+   |           ^^^ the trait bound `str: !MetaSized` is not satisfied
+   |
+note: required by a bound in `foo`
+  --> $DIR/negative-metasized.rs:9:11
+   |
+LL | fn foo<T: !MetaSized>() {}
+   |           ^^^^^^^^^^ required by this bound in `foo`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

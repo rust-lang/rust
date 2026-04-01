@@ -1,0 +1,107 @@
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/error-festival.rs:16:5
+   |
+LL |     y = 2;
+   |     ^
+   |
+help: a local variable with a similar name exists
+   |
+LL -     y = 2;
+LL +     x = 2;
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let y = 2;
+   |     +++
+
+error[E0603]: constant `FOO` is private
+  --> $DIR/error-festival.rs:24:10
+   |
+LL |     foo::FOO;
+   |          ^^^ private constant
+   |
+note: the constant `FOO` is defined here
+  --> $DIR/error-festival.rs:9:5
+   |
+LL |     const FOO: u32 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error[E0368]: binary assignment operation `+=` cannot be applied to type `&str`
+  --> $DIR/error-festival.rs:14:5
+   |
+LL |     x += 2;
+   |     -^^^^^
+   |     |
+   |     cannot use `+=` on type `&str`
+
+error[E0599]: no method named `z` found for reference `&str` in the current scope
+  --> $DIR/error-festival.rs:18:7
+   |
+LL |     x.z();
+   |       ^ method not found in `&str`
+
+error[E0600]: cannot apply unary operator `!` to type `Question`
+  --> $DIR/error-festival.rs:21:5
+   |
+LL |     !Question::Yes;
+   |     ^^^^^^^^^^^^^^ cannot apply unary operator `!`
+   |
+note: an implementation of `Not` might be missing for `Question`
+  --> $DIR/error-festival.rs:3:1
+   |
+LL | enum Question {
+   | ^^^^^^^^^^^^^ must implement `Not`
+note: the trait `Not` must be implemented
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+
+error[E0604]: only `u8` can be cast as `char`, not `u32`
+  --> $DIR/error-festival.rs:27:5
+   |
+LL |     0u32 as char;
+   |     ^^^^^^^^^^^^ invalid cast
+   |
+help: consider using `char::from_u32` instead
+   |
+LL -     0u32 as char;
+LL +     char::from_u32(0u32);
+   |
+
+error[E0605]: non-primitive cast: `u8` as `Vec<u8>`
+  --> $DIR/error-festival.rs:31:5
+   |
+LL |     x as Vec<u8>;
+   |     ^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error[E0054]: cannot cast `{integer}` as `bool`
+  --> $DIR/error-festival.rs:35:24
+   |
+LL |     let x_is_nonzero = x as bool;
+   |                        ^^^^^^^^^
+   |
+help: compare with zero instead
+   |
+LL -     let x_is_nonzero = x as bool;
+LL +     let x_is_nonzero = x != 0;
+   |
+
+error[E0606]: casting `&u8` as `u32` is invalid
+  --> $DIR/error-festival.rs:39:18
+   |
+LL |     let y: u32 = x as u32;
+   |                  ^^^^^^^^
+   |
+help: dereference the expression
+   |
+LL |     let y: u32 = *x as u32;
+   |                  +
+
+error[E0607]: cannot cast thin pointer `*const u8` to wide pointer `*const [u8]`
+  --> $DIR/error-festival.rs:43:5
+   |
+LL |     v as *const [u8];
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0054, E0368, E0425, E0599, E0600, E0603, E0604, E0605, E0606...
+For more information about an error, try `rustc --explain E0054`.

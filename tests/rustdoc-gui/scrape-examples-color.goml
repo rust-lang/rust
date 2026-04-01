@@ -1,0 +1,95 @@
+// Check that scrape example code blocks have the expected colors.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+show-text: true
+
+define-function: (
+    "check-colors",
+    [theme, highlight, highlight_focus, help_border, help_color, help_hover_border,
+     help_hover_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        wait-for: ".more-examples-toggle"
+        assert-css: (".scraped-example .rust span.highlight:not(.focus)", {
+            "background-color": |highlight|,
+        }, ALL)
+        assert-css: (".scraped-example .rust span.highlight.focus", {
+            "background-color": |highlight_focus|,
+        }, ALL)
+
+        assert-css: (".scraped-example-list .scrape-help", {
+            "border-color": |help_border|,
+            "color": |help_color|,
+        })
+        move-cursor-to: ".scraped-example-list .scrape-help"
+        assert-css: (".scraped-example-list .scrape-help:hover", {
+            "border-color": |help_hover_border|,
+            "color": |help_hover_color|,
+        })
+        // Moving the cursor to another item to not break next runs.
+        move-cursor-to: "#search-button"
+    }
+)
+
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "highlight": "#5b3b01",
+    "highlight_focus": "#7c4b0f",
+    "help_border": "#aaa",
+    "help_color": "#eee",
+    "help_hover_border": "#fff",
+    "help_hover_color": "#fff",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "highlight": "#5b3b01",
+    "highlight_focus": "#7c4b0f",
+    "help_border": "#aaa",
+    "help_color": "#eee",
+    "help_hover_border": "#fff",
+    "help_hover_color": "#fff",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "highlight": "#fcffd6",
+    "highlight_focus": "#f6fdb0",
+    "help_border": "#555",
+    "help_color": "#333",
+    "help_hover_border": "#000",
+    "help_hover_color": "#000",
+})
+
+// Now testing the top and bottom background in case there is only one scraped examples.
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test.html"
+
+define-function: (
+    "check-background",
+    [theme, background_color_start, background_color_end],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: (".scraped-example:not(.expanded) .example-wrap::before", {
+            "background-image": "linear-gradient(" + |background_color_start| + ", " +
+                |background_color_end| + ")",
+        })
+        assert-css: (".scraped-example:not(.expanded) .example-wrap::after", {
+            "background-image": "linear-gradient(to top, " + |background_color_start| + ", " +
+                |background_color_end| + ")",
+        })
+    },
+)
+
+call-function: ("check-background", {
+    "theme": "ayu",
+    "background_color_start": "rgba(15, 20, 25, 1)",
+    "background_color_end": "rgba(15, 20, 25, 0)",
+})
+call-function: ("check-background", {
+    "theme": "dark",
+    "background_color_start": "rgba(53, 53, 53, 1)",
+    "background_color_end": "rgba(53, 53, 53, 0)",
+})
+call-function: ("check-background", {
+    "theme": "light",
+    "background_color_start": "rgba(255, 255, 255, 1)",
+    "background_color_end": "rgba(255, 255, 255, 0)",
+})

@@ -1,0 +1,58 @@
+- // MIR for `bar` before PostAnalysisNormalize
++ // MIR for `bar` after PostAnalysisNormalize
+  
+  fn bar(_1: P) -> () {
+      debug _baz => _1;
+      let mut _0: ();
+      let _2: ();
+-     let mut _3: &impl Fn();
+-     let _4: impl Fn();
++     let mut _3: &fn() {foo};
++     let _4: fn() {foo};
+      let mut _5: ();
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = hide_foo() -> [return: bb1, unwind: bb6];
+      }
+  
+      bb1: {
+          _3 = &_4;
+          StorageLive(_5);
+          _5 = ();
+-         _2 = <impl Fn() as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb5];
++         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb5];
+      }
+  
+      bb2: {
+          StorageDead(_5);
+          StorageDead(_3);
+          drop(_4) -> [return: bb3, unwind: bb6];
+      }
+  
+      bb3: {
+          StorageDead(_4);
+          StorageDead(_2);
+          _0 = const ();
+          drop(_1) -> [return: bb4, unwind continue];
+      }
+  
+      bb4: {
+          return;
+      }
+  
+      bb5 (cleanup): {
+          drop(_4) -> [return: bb6, unwind terminate(cleanup)];
+      }
+  
+      bb6 (cleanup): {
+          drop(_1) -> [return: bb7, unwind terminate(cleanup)];
+      }
+  
+      bb7 (cleanup): {
+          resume;
+      }
+  }
+  

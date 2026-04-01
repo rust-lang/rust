@@ -1,0 +1,19 @@
+error: expected identifier or string literal
+  --> $DIR/empty-input.rs:6:14
+   |
+LL |     () => { ${concat()} }
+   |              ^^^^^^^^^^
+
+error: expected expression, found `$`
+  --> $DIR/empty-input.rs:6:13
+   |
+LL |     () => { ${concat()} }
+   |             ^ expected expression
+...
+LL |     let x = empty!();
+   |             -------- in this macro invocation
+   |
+   = note: this error originates in the macro `empty` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

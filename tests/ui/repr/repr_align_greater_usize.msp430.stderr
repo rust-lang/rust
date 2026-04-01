@@ -1,0 +1,15 @@
+error[E0589]: invalid `repr(align)` attribute: alignment larger than `isize::MAX` bytes (32767 for the current target)
+  --> $DIR/repr_align_greater_usize.rs:23:14
+   |
+LL | #[repr(align(32768))]
+   |              ^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: alignment larger than `isize::MAX` bytes (32767 for the current target)
+  --> $DIR/repr_align_greater_usize.rs:26:14
+   |
+LL | #[repr(align(65536))]
+   |              ^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0589`.

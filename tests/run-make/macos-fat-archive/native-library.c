@@ -1,0 +1,1 @@
+void native_func() {}

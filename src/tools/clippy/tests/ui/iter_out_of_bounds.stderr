@@ -1,0 +1,119 @@
+error: this `.skip()` call skips more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:10:14
+   |
+LL |     for _ in [1, 2, 3].iter().skip(4) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and will create an empty iterator
+note: the lint level is defined here
+  --> tests/ui/iter_out_of_bounds.rs:1:9
+   |
+LL | #![deny(clippy::iter_out_of_bounds)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this `.take()` call takes more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:15:19
+   |
+LL |     for (i, _) in [1, 2, 3].iter().take(4).enumerate() {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and the returned iterator will simply yield the same items
+
+error: this `.take()` call takes more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:22:14
+   |
+LL |     for _ in (&&&&&&[1, 2, 3]).iter().take(4) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and the returned iterator will simply yield the same items
+
+error: this `.skip()` call skips more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:25:14
+   |
+LL |     for _ in [1, 2, 3].iter().skip(4) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and will create an empty iterator
+
+error: this `.skip()` call skips more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:28:14
+   |
+LL |     for _ in [1; 3].iter().skip(4) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and will create an empty iterator
+
+error: this `.skip()` call skips more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:34:14
+   |
+LL |     for _ in vec![1, 2, 3].iter().skip(4) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and will create an empty iterator
+
+error: this `.skip()` call skips more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:37:14
+   |
+LL |     for _ in vec![1; 3].iter().skip(4) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and will create an empty iterator
+
+error: this `.skip()` call skips more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:41:14
+   |
+LL |     for _ in x.iter().skip(4) {}
+   |              ^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and will create an empty iterator
+
+error: this `.skip()` call skips more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:45:14
+   |
+LL |     for _ in x.iter().skip(n) {}
+   |              ^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and will create an empty iterator
+
+error: this `.skip()` call skips more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:50:14
+   |
+LL |     for _ in empty().skip(1) {}
+   |              ^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and will create an empty iterator
+
+error: this `.take()` call takes more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:53:14
+   |
+LL |     for _ in empty().take(1) {}
+   |              ^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and the returned iterator will simply yield the same items
+
+error: this `.skip()` call skips more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:56:14
+   |
+LL |     for _ in std::iter::once(1).skip(2) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and will create an empty iterator
+
+error: this `.take()` call takes more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:59:14
+   |
+LL |     for _ in std::iter::once(1).take(2) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and the returned iterator will simply yield the same items
+
+error: this `.take()` call takes more items than the iterator will produce
+  --> tests/ui/iter_out_of_bounds.rs:62:14
+   |
+LL |     for x in [].iter().take(1) {
+   |              ^^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and the returned iterator will simply yield the same items
+
+error: aborting due to 14 previous errors
+

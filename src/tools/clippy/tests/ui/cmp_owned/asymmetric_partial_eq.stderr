@@ -1,0 +1,47 @@
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:46:12
+   |
+LL |         if borrowed.to_owned() == owned {}
+   |            ^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`
+   |
+   = note: `-D clippy::cmp-owned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:48:21
+   |
+LL |         if owned == borrowed.to_owned() {}
+   |            ---------^^^^^^^^^^^^^^^^^^^
+   |            |
+   |            help: try: `borrowed == owned`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:67:21
+   |
+LL |         if owned == borrowed.to_owned() {}
+   |                     ^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:69:12
+   |
+LL |         if borrowed.to_owned() == owned {}
+   |            ^^^^^^^^^^^^^^^^^^^---------
+   |            |
+   |            help: try: `owned == borrowed`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:96:20
+   |
+LL |         if "Hi" == borrowed.to_string() {}
+   |            --------^^^^^^^^^^^^^^^^^^^^
+   |            |
+   |            help: try: `borrowed == "Hi"`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:98:12
+   |
+LL |         if borrowed.to_string() == "Hi" {}
+   |            ^^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`
+
+error: aborting due to 6 previous errors
+

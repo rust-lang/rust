@@ -1,0 +1,24 @@
+error: generic parameters with a default must be trailing
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:8:12
+   |
+LL | struct Bar<T = [u8; N], const N: usize>(T);
+   |            ^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:5:44
+   |
+LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
+   |                                            ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error[E0128]: generic parameter defaults cannot reference parameters before they are declared
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:8:21
+   |
+LL | struct Bar<T = [u8; N], const N: usize>(T);
+   |                     ^ cannot reference `N` before it is declared
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0128`.

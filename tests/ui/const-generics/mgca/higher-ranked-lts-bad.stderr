@@ -1,0 +1,8 @@
+error: cannot capture late-bound lifetime in constant
+  --> $DIR/higher-ranked-lts-bad.rs:8:38
+   |
+LL |     for<'a> T: Trait<const { let a: &'a (); 1 }>
+   |         -- lifetime defined here     ^^
+
+error: aborting due to 1 previous error
+

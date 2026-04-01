@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `f32: From<<T as Iterator>::Item>` is not satisfied
+  --> $DIR/next-solver-ice.rs:5:6
+   |
+LL |     <f32 as From<<T as Iterator>::Item>>::from;
+   |      ^^^ the nightly-only, unstable trait `ZeroablePrimitive` is not implemented for `f32`
+   |
+   = help: the following other types implement trait `ZeroablePrimitive`:
+             i128
+             i16
+             i32
+             i64
+             i8
+             isize
+             u128
+             u16
+           and 4 others
+   = note: required for `f32` to implement `From<<T as Iterator>::Item>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

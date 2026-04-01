@@ -1,0 +1,111 @@
+error[E0277]: `impl Sync` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:4:13
+   |
+LL |     is_send(val);
+   |     ------- ^^^ `impl Sync` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `is_send`
+  --> $DIR/restrict-type-argument.rs:1:15
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |               ^^^^ required by this bound in `is_send`
+help: consider restricting opaque type `impl Sync` with trait `Send`
+   |
+LL | fn use_impl_sync(val: impl Sync + std::marker::Send) {
+   |                                 +++++++++++++++++++
+
+error[E0277]: `S` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:8:13
+   |
+LL |     is_send(val);
+   |     ------- ^^^ `S` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `is_send`
+  --> $DIR/restrict-type-argument.rs:1:15
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |               ^^^^ required by this bound in `is_send`
+help: consider further restricting type parameter `S` with trait `Send`
+   |
+LL | fn use_where<S>(val: S) where S: Sync + std::marker::Send {
+   |                                       +++++++++++++++++++
+
+error[E0277]: `S` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:12:13
+   |
+LL |     is_send(val);
+   |     ------- ^^^ `S` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `is_send`
+  --> $DIR/restrict-type-argument.rs:1:15
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |               ^^^^ required by this bound in `is_send`
+help: consider further restricting type parameter `S` with trait `Send`
+   |
+LL | fn use_bound<S: Sync + std::marker::Send>(val: S) {
+   |                      +++++++++++++++++++
+
+error[E0277]: `S` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:20:13
+   |
+LL |     is_send(val);
+   |     ------- ^^^ `S` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `is_send`
+  --> $DIR/restrict-type-argument.rs:1:15
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |               ^^^^ required by this bound in `is_send`
+help: consider further restricting type parameter `S` with trait `Send`
+   |
+LL |     Sync + std::marker::Send
+   |          +++++++++++++++++++
+
+error[E0277]: `S` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:24:13
+   |
+LL |     is_send(val);
+   |     ------- ^^^ `S` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `is_send`
+  --> $DIR/restrict-type-argument.rs:1:15
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |               ^^^^ required by this bound in `is_send`
+help: consider further restricting type parameter `S` with trait `Send`
+   |
+LL | fn use_bound_and_where<S: Sync + std::marker::Send>(val: S) where S: std::fmt::Debug {
+   |                                +++++++++++++++++++
+
+error[E0277]: `S` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:28:13
+   |
+LL |     is_send(val);
+   |     ------- ^^^ `S` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `is_send`
+  --> $DIR/restrict-type-argument.rs:1:15
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |               ^^^^ required by this bound in `is_send`
+help: consider restricting type parameter `S` with trait `Send`
+   |
+LL | fn use_unbound<S: std::marker::Send>(val: S) {
+   |                 +++++++++++++++++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

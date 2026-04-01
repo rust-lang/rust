@@ -1,0 +1,35 @@
+error[E0805]: malformed `doc` attribute input
+  --> $DIR/doc-cfg.rs:4:1
+   |
+LL | #[doc(cfg(), cfg(foo, bar))]
+   | ^^^^^^^^^--^^^^^^^^^^^^^^^^^
+   |          |
+   |          expected a single argument here
+
+error[E0805]: malformed `doc` attribute input
+  --> $DIR/doc-cfg.rs:4:1
+   |
+LL | #[doc(cfg(), cfg(foo, bar))]
+   | ^^^^^^^^^^^^^^^^----------^^
+   |                 |
+   |                 expected a single argument here
+
+error[E0805]: malformed `doc` attribute input
+  --> $DIR/doc-cfg.rs:7:1
+   |
+LL | #[doc(cfg())]
+   | ^^^^^^^^^--^^
+   |          |
+   |          expected a single argument here
+
+error[E0805]: malformed `doc` attribute input
+  --> $DIR/doc-cfg.rs:8:1
+   |
+LL | #[doc(cfg(foo, bar))]
+   | ^^^^^^^^^----------^^
+   |          |
+   |          expected a single argument here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0805`.

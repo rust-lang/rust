@@ -1,0 +1,89 @@
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:9:13
+   |
+LL |     let _ = x.powi(2) + y;
+   |             ^^^^^^^^^^^^^ help: consider using: `x.mul_add(x, y)`
+   |
+   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:11:13
+   |
+LL |     let _ = x.powi(2) - y;
+   |             ^^^^^^^^^^^^^ help: consider using: `x.mul_add(x, -y)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:13:13
+   |
+LL |     let _ = x + y.powi(2);
+   |             ^^^^^^^^^^^^^ help: consider using: `y.mul_add(y, x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:15:13
+   |
+LL |     let _ = x - y.powi(2);
+   |             ^^^^^^^^^^^^^ help: consider using: `y.mul_add(-y, x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:17:13
+   |
+LL |     let _ = x + (y as f32).powi(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(y as f32).mul_add(y as f32, x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:19:13
+   |
+LL |     let _ = (x.powi(2) + y).sqrt();
+   |             ^^^^^^^^^^^^^^^ help: consider using: `x.mul_add(x, y)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:21:13
+   |
+LL |     let _ = (x + y.powi(2)).sqrt();
+   |             ^^^^^^^^^^^^^^^ help: consider using: `y.mul_add(y, x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:24:13
+   |
+LL |     let _ = (x - 1.0).powi(2) - y;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x - 1.0).mul_add(x - 1.0, -y)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:26:13
+   |
+LL |     let _ = (x - 1.0).powi(2) - y + 3.0;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x - 1.0).mul_add(x - 1.0, -y)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:28:13
+   |
+LL |     let _ = (x - 1.0).powi(2) - (y + 3.0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x - 1.0).mul_add(x - 1.0, -(y + 3.0))`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:30:13
+   |
+LL |     let _ = x - (y + 1.0).powi(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(y + 1.0).mul_add(-(y + 1.0), x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:32:13
+   |
+LL |     let _ = x - (3.0 * y).powi(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(3.0 * y).mul_add(-(3.0 * y), x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:34:13
+   |
+LL |     let _ = x - (y + 1.0 + x).powi(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(y + 1.0 + x).mul_add(-(y + 1.0 + x), x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_powi.rs:36:13
+   |
+LL |     let _ = x - (y + 1.0 + 2.0).powi(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(y + 1.0 + 2.0).mul_add(-(y + 1.0 + 2.0), x)`
+
+error: aborting due to 14 previous errors
+

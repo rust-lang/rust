@@ -1,0 +1,63 @@
+error[E0425]: cannot find type `F` in this scope
+  --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:11:17
+   |
+LL |          let f: F = async { 1 };
+   |                 ^
+   |
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+   = note: similarly named trait `Fn` defined here
+help: a trait with a similar name exists
+   |
+LL |          let f: Fn = async { 1 };
+   |                  +
+help: you might be missing a type parameter
+   |
+LL | fn f<T, F>(
+   |       +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:27
+   |
+LL | ) -> impl Iterator<Item = SubAssign> {
+   |                           ^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | ) -> impl Iterator<Item = dyn SubAssign> {
+   |                           +++
+help: you might have meant to write a bound here
+   |
+LL - ) -> impl Iterator<Item = SubAssign> {
+LL + ) -> impl Iterator<Item: SubAssign> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:27
+   |
+LL | ) -> impl Iterator<Item = SubAssign> {
+   |                           ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | ) -> impl Iterator<Item = dyn SubAssign> {
+   |                           +++
+help: you might have meant to write a bound here
+   |
+LL - ) -> impl Iterator<Item = SubAssign> {
+LL + ) -> impl Iterator<Item: SubAssign> {
+   |
+
+error[E0277]: `()` is not an iterator
+  --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:6
+   |
+LL | ) -> impl Iterator<Item = SubAssign> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0425, E0782.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,0 +1,9 @@
+error[E0463]: can't find crate for `fake_crate`
+  --> $DIR/use-meta-mismatch.rs:1:1
+   |
+LL | extern crate fake_crate as extra;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0463`.

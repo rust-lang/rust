@@ -1,0 +1,45 @@
+error[E0596]: cannot borrow data in an index of `HashMap<&str, String>` as mutable
+  --> $DIR/index-mut-help.rs:10:5
+   |
+LL |     map["peter"].clear();
+   |     ^^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<&str, String>`
+help: to modify a `HashMap<&str, String>` use `.get_mut()`
+   |
+LL -     map["peter"].clear();
+LL +     if let Some(val) = map.get_mut("peter") { val.clear(); };
+   |
+
+error[E0594]: cannot assign to data in an index of `HashMap<&str, String>`
+  --> $DIR/index-mut-help.rs:11:5
+   |
+LL |     map["peter"] = "0".to_string();
+   |     ^^^^^^^^^^^^ cannot assign
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<&str, String>`
+help: use `.insert()` to insert a value into a `HashMap<&str, String>`, `.get_mut()` to modify it, or the entry API for more flexibility
+   |
+LL -     map["peter"] = "0".to_string();
+LL +     map.insert("peter", "0".to_string());
+   |
+LL -     map["peter"] = "0".to_string();
+LL +     if let Some(val) = map.get_mut("peter") { *val = "0".to_string(); };
+   |
+LL -     map["peter"] = "0".to_string();
+LL +     let val = map.entry("peter").or_insert("0".to_string());
+   |
+
+error[E0596]: cannot borrow data in an index of `HashMap<&str, String>` as mutable
+  --> $DIR/index-mut-help.rs:12:13
+   |
+LL |     let _ = &mut map["peter"];
+   |             ^^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<&str, String>`
+   = help: to modify a `HashMap<&str, String>`, use `.get_mut()`, `.insert()` or the entry API
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

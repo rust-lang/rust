@@ -1,0 +1,18 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/bad-multiply.rs:7:16
+   |
+LL |     SmallVec<{ D * 2 }>:,
+   |                ^ cannot perform const operation using `D`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `D`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error[E0747]: constant provided when a type was expected
+  --> $DIR/bad-multiply.rs:7:14
+   |
+LL |     SmallVec<{ D * 2 }>:,
+   |              ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0747`.

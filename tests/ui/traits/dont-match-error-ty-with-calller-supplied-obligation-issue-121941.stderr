@@ -1,0 +1,21 @@
+error[E0425]: cannot find value `foo` in this scope
+  --> $DIR/dont-match-error-ty-with-calller-supplied-obligation-issue-121941.rs:2:5
+   |
+LL |     foo == 2;
+   |     ^^^ not found in this scope
+
+error[E0308]: mismatched types
+  --> $DIR/dont-match-error-ty-with-calller-supplied-obligation-issue-121941.rs:2:12
+   |
+LL | fn function<T: PartialEq>() {
+   |             - expected this type parameter
+LL |     foo == 2;
+   |            ^ expected type parameter `T`, found integer
+   |
+   = note: expected type parameter `T`
+                        found type `{integer}`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

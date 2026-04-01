@@ -1,0 +1,18 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/collect-in-dead-fn-behind-opaque-type.rs:11:23
+   |
+LL |         const C: () = panic!();
+   |                       ^^^^^^^^ evaluation of `m::Fail::<i32>::C` failed here
+
+note: erroneous constant encountered
+  --> $DIR/collect-in-dead-fn-behind-opaque-type.rs:19:21
+   |
+LL |             let _ = Fail::<T>::C;
+   |                     ^^^^^^^^^^^^
+
+note: the above error was encountered while instantiating `fn not_called::<i32>`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

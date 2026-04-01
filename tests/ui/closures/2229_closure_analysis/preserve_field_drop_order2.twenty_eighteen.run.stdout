@@ -1,0 +1,13 @@
+Dropable("y") Dropable("x")
+Dropable("b.d.y") Dropable("b.d.x") Dropable("b.c.y") Dropable("b.c.x")
+Dropable("r.d.y") Dropable("r.d.x") Dropable("r.c.y") Dropable("r.c.x")
+Dropping r.d.x
+Dropping r.d.y
+Dropping r.c.x
+Dropping r.c.y
+Dropping b.c.x
+Dropping b.c.y
+Dropping b.d.x
+Dropping b.d.y
+Dropping x
+Dropping y

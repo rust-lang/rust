@@ -1,0 +1,16 @@
+error: expected one of `!`, `(`, `+`, `::`, `<`, `where`, or `{`, found `wheree`
+  --> $DIR/where-clause.rs:2:1
+   |
+LL | fn code<T>() -> u8
+   |                   - expected one of 7 possible tokens
+LL | wheree
+   | ^^^^^^ unexpected token
+   |
+help: there is a keyword `where` with a similar name
+   |
+LL - wheree
+LL + where
+   |
+
+error: aborting due to 1 previous error
+

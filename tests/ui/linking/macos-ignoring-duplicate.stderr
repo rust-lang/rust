@@ -1,0 +1,11 @@
+error: ld: warning: ignoring duplicate libraries: '-lc'
+       
+   |
+note: the lint level is defined here
+  --> $DIR/macos-ignoring-duplicate.rs:4:9
+   |
+LL | #![deny(linker_info)]
+   |         ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

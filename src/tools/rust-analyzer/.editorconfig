@@ -1,0 +1,20 @@
+# https://EditorConfig.org
+root = true
+
+[*]
+charset = utf-8
+trim_trailing_whitespace = true
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+[*.md]
+indent_size = 2
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[COMMIT_EDITMSG]
+max_line_length = unset

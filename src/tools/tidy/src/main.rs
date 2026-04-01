@@ -1,0 +1,185 @@
+//! Tidy checks source code in this repository.
+//!
+//! This program runs all of the various tidy checks for style, cleanliness,
+//! etc. This is run by default on `./x.py test` and as part of the auto
+//! builders. The tidy checks can be executed with `./x.py test tidy`.
+
+use std::collections::VecDeque;
+use std::thread::{self, ScopedJoinHandle, scope};
+use std::{env, process};
+
+use tidy::arg_parser::TidyArgParser;
+use tidy::diagnostics::{COLOR_ERROR, COLOR_SUCCESS, TidyCtx, TidyFlags, output_message};
+use tidy::*;
+
+fn main() {
+    // Enable nightly, because Cargo will read the libstd Cargo.toml
+    // which uses the unstable `public-dependency` feature.
+    // SAFETY: no other threads have been spawned
+    unsafe {
+        env::set_var("RUSTC_BOOTSTRAP", "1");
+    }
+
+    let parsed_args = TidyArgParser::parse();
+
+    let root_path = parsed_args.root_path;
+    let cargo = parsed_args.cargo;
+    let output_directory = parsed_args.output_directory;
+    let concurrency = parsed_args.concurrency.get();
+    let npm = parsed_args.npm;
+
+    let root_manifest = root_path.join("Cargo.toml");
+    let typos_toml = root_path.join("typos.toml");
+    let src_path = root_path.join("src");
+    let tests_path = root_path.join("tests");
+    let library_path = root_path.join("library");
+    let compiler_path = root_path.join("compiler");
+    let librustdoc_path = src_path.join("librustdoc");
+    let tools_path = src_path.join("tools");
+    let crashes_path = tests_path.join("crashes");
+
+    let verbose = parsed_args.verbose;
+    let bless = parsed_args.bless;
+    let ci = parsed_args.ci;
+    let extra_checks = parsed_args.extra_checks;
+    let pos_args = parsed_args.pos_args;
+
+    let tidy_ctx = TidyCtx::new(&root_path, verbose, ci, TidyFlags::new(bless));
+
+    let drain_handles = |handles: &mut VecDeque<ScopedJoinHandle<'_, ()>>| {
+        // poll all threads for completion before awaiting the oldest one
+        for i in (0..handles.len()).rev() {
+            if handles[i].is_finished() {
+                handles.swap_remove_back(i).unwrap().join().unwrap();
+            }
+        }
+
+        while handles.len() >= concurrency {
+            handles.pop_front().unwrap().join().unwrap();
+        }
+    };
+
+    scope(|s| {
+        let mut handles: VecDeque<ScopedJoinHandle<'_, ()>> = VecDeque::with_capacity(concurrency);
+
+        macro_rules! check {
+            ($p:ident) => {
+                check!(@ $p, name=format!("{}", stringify!($p)));
+            };
+            ($p:ident, $path:expr $(, $args:expr)* ) => {
+                let shortened = $path.strip_prefix(&root_path).unwrap();
+                let name = if shortened == std::path::Path::new("") {
+                    format!("{} (.)", stringify!($p))
+                } else {
+                    format!("{} ({})", stringify!($p), shortened.display())
+                };
+                check!(@ $p, name=name, $path $(,$args)*);
+            };
+            (@ $p:ident, name=$name:expr $(, $args:expr)* ) => {
+                drain_handles(&mut handles);
+
+                let tidy_ctx = tidy_ctx.clone();
+                let handle = thread::Builder::new().name($name).spawn_scoped(s, || {
+                    $p::check($($args, )* tidy_ctx);
+                }).unwrap();
+                handles.push_back(handle);
+            }
+        }
+
+        check!(target_specific_tests, &tests_path);
+
+        // Checks that are done on the cargo workspace.
+        check!(deps, &root_path, &cargo);
+        check!(extdeps, &root_path);
+
+        // Checks over tests.
+        check!(tests_placement, &root_path);
+        check!(tests_revision_unpaired_stdout_stderr, &tests_path);
+        check!(debug_artifacts, &tests_path);
+        check!(ui_tests, &root_path);
+        check!(mir_opt_tests, &tests_path);
+        check!(rustdoc_gui_tests, &tests_path);
+        check!(rustdoc_css_themes, &librustdoc_path);
+        check!(rustdoc_templates, &librustdoc_path);
+        check!(rustdoc_json, &src_path);
+        check!(known_bug, &crashes_path);
+        check!(unknown_revision, &tests_path);
+
+        // Checks that only make sense for the compiler.
+        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path]);
+        check!(target_policy, &root_path);
+        check!(gcc_submodule, &root_path, &compiler_path);
+        check!(codegen, &compiler_path);
+
+        // Checks that only make sense for the std libs.
+        check!(pal, &library_path);
+
+        // Checks that need to be done for both the compiler and std libraries.
+        check!(unit_tests, &src_path, false);
+        check!(unit_tests, &compiler_path, false);
+        check!(unit_tests, &library_path, true);
+
+        if bins::check_filesystem_support(&[&root_path], &output_directory) {
+            check!(bins, &root_path);
+        }
+
+        check!(style, &src_path);
+        check!(style, &tests_path);
+        check!(style, &compiler_path);
+        check!(style, &library_path);
+
+        check!(edition, &src_path);
+        check!(edition, &compiler_path);
+        check!(edition, &library_path);
+
+        check!(alphabetical, &root_manifest);
+        check!(alphabetical, &typos_toml);
+        check!(alphabetical, &src_path);
+        check!(alphabetical, &tests_path);
+        check!(alphabetical, &compiler_path);
+        check!(alphabetical, &library_path);
+
+        check!(x_version, &root_path, &cargo);
+
+        check!(triagebot, &root_path);
+        check!(filenames, &root_path);
+
+        let collected = {
+            drain_handles(&mut handles);
+
+            features::check(&src_path, &tests_path, &compiler_path, &library_path, tidy_ctx.clone())
+        };
+        check!(unstable_book, &src_path, collected);
+
+        check!(
+            extra_checks,
+            &root_path,
+            &output_directory,
+            &librustdoc_path,
+            &tools_path,
+            &npm,
+            &cargo,
+            extra_checks,
+            pos_args
+        );
+    });
+
+    let failed_checks = tidy_ctx.into_failed_checks();
+    if !failed_checks.is_empty() {
+        let mut failed: Vec<String> =
+            failed_checks.into_iter().map(|c| c.id().to_string()).collect();
+        failed.sort();
+        output_message(
+            &format!(
+                "The following check{} failed: {}",
+                if failed.len() > 1 { "s" } else { "" },
+                failed.join(", ")
+            ),
+            None,
+            Some(COLOR_ERROR),
+        );
+        process::exit(1);
+    } else {
+        output_message("All tidy checks succeeded", None, Some(COLOR_SUCCESS));
+    }
+}

@@ -1,0 +1,19 @@
+error: lifetime may not live long enough
+  --> $DIR/hr-subtype.rs:54:13
+   |
+LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {
+   |                        --  -- lifetime `'y` defined here
+   |                        |
+   |                        lifetime `'x` defined here
+LL |               gimme::<$t1>(None::<$t2>);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'x` must outlive `'y`
+...
+LL | / check! { free_x_vs_free_y: (fn(&'x u32),
+LL | | fn(&'y u32)) }
+   | |______________- in this macro invocation
+   |
+   = help: consider adding the following bound: `'x: 'y`
+   = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

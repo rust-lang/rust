@@ -1,0 +1,15 @@
+error: item does not constrain `ReturnType::{opaque#0}`
+  --> $DIR/issue-109054.rs:14:8
+   |
+LL |     fn deref(&self) -> &Self::Target {
+   |        ^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/issue-109054.rs:7:23
+   |
+LL | type ReturnType<'a> = impl std::future::Future<Output = u32> + 'a;
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

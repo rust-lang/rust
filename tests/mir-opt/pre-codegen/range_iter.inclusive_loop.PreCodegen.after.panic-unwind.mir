@@ -1,0 +1,85 @@
+// MIR for `inclusive_loop` after PreCodegen
+
+fn inclusive_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
+    debug start => _1;
+    debug end => _2;
+    debug f => _3;
+    let mut _0: ();
+    let mut _4: std::ops::RangeInclusive<u32>;
+    let mut _5: std::ops::RangeInclusive<u32>;
+    let mut _6: &mut std::ops::RangeInclusive<u32>;
+    let mut _7: std::option::Option<u32>;
+    let mut _8: isize;
+    let mut _10: &impl Fn(u32);
+    let mut _11: (u32,);
+    let _12: ();
+    scope 1 {
+        debug iter => _5;
+        let _9: u32;
+        scope 2 {
+            debug x => _9;
+        }
+        scope 5 (inlined iter::range::<impl Iterator for std::ops::RangeInclusive<u32>>::next) {
+        }
+    }
+    scope 3 (inlined std::ops::RangeInclusive::<u32>::new) {
+    }
+    scope 4 (inlined <std::ops::RangeInclusive<u32> as IntoIterator>::into_iter) {
+    }
+
+    bb0: {
+        _4 = std::ops::RangeInclusive::<u32> { start: copy _1, end: copy _2, exhausted: const false };
+        StorageLive(_5);
+        _5 = copy _4;
+        goto -> bb1;
+    }
+
+    bb1: {
+        StorageLive(_7);
+        _6 = &mut _5;
+        _7 = <std::ops::RangeInclusive<u32> as iter::range::RangeInclusiveIteratorImpl>::spec_next(move _6) -> [return: bb2, unwind: bb8];
+    }
+
+    bb2: {
+        _8 = discriminant(_7);
+        switchInt(move _8) -> [0: bb3, 1: bb5, otherwise: bb7];
+    }
+
+    bb3: {
+        StorageDead(_7);
+        StorageDead(_5);
+        drop(_3) -> [return: bb4, unwind continue];
+    }
+
+    bb4: {
+        return;
+    }
+
+    bb5: {
+        _9 = copy ((_7 as Some).0: u32);
+        StorageLive(_10);
+        _10 = &_3;
+        StorageLive(_11);
+        _11 = (copy _9,);
+        _12 = <impl Fn(u32) as Fn<(u32,)>>::call(move _10, move _11) -> [return: bb6, unwind: bb8];
+    }
+
+    bb6: {
+        StorageDead(_11);
+        StorageDead(_10);
+        StorageDead(_7);
+        goto -> bb1;
+    }
+
+    bb7: {
+        unreachable;
+    }
+
+    bb8 (cleanup): {
+        drop(_3) -> [return: bb9, unwind terminate(cleanup)];
+    }
+
+    bb9 (cleanup): {
+        resume;
+    }
+}

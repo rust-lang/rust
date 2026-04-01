@@ -1,0 +1,72 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-109991.rs:11:11
+   |
+LL |     let c: usize;
+   |            ----- expected due to this type
+LL |
+LL |     (c) = (&123);
+   |           ^^^^^^ expected `usize`, found `&{integer}`
+   |
+help: consider removing the borrow
+   |
+LL -     (c) = (&123);
+LL +     (c) = (123);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-109991.rs:12:9
+   |
+LL |     let b: usize;
+   |            ----- expected due to this type
+...
+LL |     (a, b) = (123, &mut 123);
+   |         ^ expected `usize`, found `&mut {integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-109991.rs:15:6
+   |
+LL |     let x: String;
+   |            ------ expected due to this type
+LL |     (x,) = (1,);
+   |      ^ expected `String`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/issue-109991.rs:18:6
+   |
+LL |     let x: i32;
+   |            --- expected due to this type
+LL |     [x] = [&1];
+   |      ^ expected `i32`, found `&{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-109991.rs:21:6
+   |
+LL |     let x: &i32;
+   |            ---- expected due to this type
+LL |     [x] = [1];
+   |      ^ expected `&i32`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/issue-109991.rs:24:9
+   |
+LL |     let b: usize;
+   |            ----- expected due to this type
+...
+LL |     (a, b) = x;
+   |         ^ expected `usize`, found `&mut {integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-109991.rs:26:31
+   |
+LL |     S { a, b } = S { a: 1, b: &mut 2 };
+   |                               ^^^^^^ expected `usize`, found `&mut {integer}`
+   |
+help: consider removing the borrow
+   |
+LL -     S { a, b } = S { a: 1, b: &mut 2 };
+LL +     S { a, b } = S { a: 1, b: 2 };
+   |
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,48 @@
+error[E0539]: malformed `rustc_layout_scalar_valid_range_start` attribute input
+  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:3:1
+   |
+LL | #[rustc_layout_scalar_valid_range_start(u32::MAX)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------^^
+   | |                                       |
+   | |                                       expected an integer literal here
+   | help: must be of the form: `#[rustc_layout_scalar_valid_range_start(start)]`
+
+error[E0805]: malformed `rustc_layout_scalar_valid_range_end` attribute input
+  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:6:1
+   |
+LL | #[rustc_layout_scalar_valid_range_end(1, 2)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------^
+   | |                                    |
+   | |                                    expected a single argument here
+   | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
+
+error[E0539]: malformed `rustc_layout_scalar_valid_range_end` attribute input
+  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:9:1
+   |
+LL | #[rustc_layout_scalar_valid_range_end(a = "a")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^
+   | |                                     |
+   | |                                     expected an integer literal here
+   | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
+
+error: `#[rustc_layout_scalar_valid_range_end]` attribute cannot be used on enums
+  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:12:1
+   |
+LL | #[rustc_layout_scalar_valid_range_end(1)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_layout_scalar_valid_range_end]` can only be applied to structs
+
+error[E0539]: malformed `rustc_layout_scalar_valid_range_start` attribute input
+  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:18:1
+   |
+LL | #[rustc_layout_scalar_valid_range_start(rustc_layout_scalar_valid_range_start)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------------------------^^
+   | |                                       |
+   | |                                       expected an integer literal here
+   | help: must be of the form: `#[rustc_layout_scalar_valid_range_start(start)]`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0539, E0805.
+For more information about an error, try `rustc --explain E0539`.

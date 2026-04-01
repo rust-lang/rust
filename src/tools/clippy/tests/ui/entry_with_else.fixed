@@ -1,0 +1,78 @@
+#![allow(unused, clippy::needless_pass_by_value, clippy::collapsible_if)]
+#![warn(clippy::map_entry)]
+
+use std::collections::{BTreeMap, HashMap};
+use std::hash::Hash;
+
+macro_rules! m {
+    ($e:expr) => {{ $e }};
+}
+
+fn foo() {}
+
+fn insert_if_absent0<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, k: K, v: V, v2: V) {
+    match m.entry(k) {
+        std::collections::hash_map::Entry::Vacant(e) => {
+            //~^ map_entry
+            e.insert(v);
+        }
+        std::collections::hash_map::Entry::Occupied(mut e) => {
+            e.insert(v2);
+        }
+    }
+
+    match m.entry(k) {
+        std::collections::hash_map::Entry::Occupied(mut e) => {
+            //~^ map_entry
+            e.insert(v);
+        }
+        std::collections::hash_map::Entry::Vacant(e) => {
+            e.insert(v2);
+        }
+    }
+
+    if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+        //~^ map_entry
+        e.insert(v);
+    } else {
+        foo();
+    }
+
+    if let std::collections::hash_map::Entry::Occupied(mut e) = m.entry(k) {
+        e.insert(v);
+    } else {
+        //~^ map_entry
+        foo();
+    }
+
+    match m.entry(k) {
+        std::collections::hash_map::Entry::Vacant(e) => {
+            //~^ map_entry
+            e.insert(v);
+        }
+        std::collections::hash_map::Entry::Occupied(mut e) => {
+            e.insert(v2);
+        }
+    }
+
+    match m.entry(k) {
+        std::collections::hash_map::Entry::Occupied(mut e) => {
+            //~^ map_entry
+            if true { Some(e.insert(v)) } else { Some(e.insert(v2)) }
+        }
+        std::collections::hash_map::Entry::Vacant(e) => {
+            e.insert(v);
+            None
+        }
+    };
+
+    if let std::collections::hash_map::Entry::Occupied(mut e) = m.entry(k) {
+        //~^ map_entry
+        foo();
+        Some(e.insert(v))
+    } else {
+        None
+    };
+}
+
+fn main() {}

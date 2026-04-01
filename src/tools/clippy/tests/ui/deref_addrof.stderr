@@ -1,0 +1,113 @@
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:23:13
+   |
+LL |     let b = *&a;
+   |             ^^^ help: try: `a`
+   |
+   = note: `-D clippy::deref-addrof` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::deref_addrof)]`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:26:13
+   |
+LL |     let b = *&get_number();
+   |             ^^^^^^^^^^^^^^ help: try: `get_number()`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:32:13
+   |
+LL |     let b = *&bytes[1..2][0];
+   |             ^^^^^^^^^^^^^^^^ help: try: `bytes[1..2][0]`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:37:13
+   |
+LL |     let b = *&(a);
+   |             ^^^^^ help: try: `(a)`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:40:13
+   |
+LL |     let b = *(&a);
+   |             ^^^^^ help: try: `a`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:44:13
+   |
+LL |     let b = *((&a));
+   |             ^^^^^^^ help: try: `a`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:47:13
+   |
+LL |     let b = *&&a;
+   |             ^^^^ help: try: `&a`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:50:14
+   |
+LL |     let b = **&aref;
+   |              ^^^^^^ help: try: `aref`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:55:19
+   |
+LL |     let _repeat = *&[0; 64];
+   |                   ^^^^^^^^^ help: try: `[0; 64]`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:104:9
+   |
+LL |         (*&mut a.padding) = [1; size_of::<DataWithPadding>()];
+   |         ^^^^^^^^^^^^^^^^^ help: try: `a.padding`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:106:9
+   |
+LL |         (*&mut a.tup).1 = ();
+   |         ^^^^^^^^^^^^^ help: try: `a.tup`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:108:10
+   |
+LL |         **&mut a.prim = 0;
+   |          ^^^^^^^^^^^^ help: try: `a.prim`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:111:9
+   |
+LL |         (*&mut a.data).num = 42;
+   |         ^^^^^^^^^^^^^^ help: try: `(*a.data)`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:113:9
+   |
+LL |         (*&mut a.indirect.md)[3] = 1;
+   |         ^^^^^^^^^^^^^^^^^^^^^ help: try: `(*a.indirect.md)`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:115:9
+   |
+LL |         (*&mut a.indirect_arr[1].md)[3] = 1;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(*a.indirect_arr[1].md)`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:117:9
+   |
+LL |         (*&mut a.indirect_ref.md)[3] = 1;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(*a.indirect_ref.md)`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:121:10
+   |
+LL |         **&raw mut a.prim = 0;
+   |          ^^^^^^^^^^^^^^^^ help: try: `a.prim`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:123:9
+   |
+LL |         (*&raw mut a.data).num = 42;
+   |         ^^^^^^^^^^^^^^^^^^ help: try: `(*a.data)`
+
+error: aborting due to 18 previous errors
+

@@ -1,0 +1,36 @@
+error[E0658]: `Ptr<Bar>` cannot be used as the type of `self` without the `arbitrary_self_types` feature
+  --> $DIR/feature-gate-arbitrary-self-types.rs:22:18
+   |
+LL |     fn foo(self: Ptr<Self>) {}
+   |                  ^^^^^^^^^
+   |
+   = note: see issue #44874 <https://github.com/rust-lang/rust/issues/44874> for more information
+   = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+error[E0658]: `Box<Ptr<Bar>>` cannot be used as the type of `self` without the `arbitrary_self_types` feature
+  --> $DIR/feature-gate-arbitrary-self-types.rs:26:18
+   |
+LL |     fn bar(self: Box<Ptr<Self>>) {}
+   |                  ^^^^^^^^^^^^^^
+   |
+   = note: see issue #44874 <https://github.com/rust-lang/rust/issues/44874> for more information
+   = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+error[E0658]: `Ptr<Self>` cannot be used as the type of `self` without the `arbitrary_self_types` feature
+  --> $DIR/feature-gate-arbitrary-self-types.rs:16:18
+   |
+LL |     fn foo(self: Ptr<Self>);
+   |                  ^^^^^^^^^
+   |
+   = note: see issue #44874 <https://github.com/rust-lang/rust/issues/44874> for more information
+   = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

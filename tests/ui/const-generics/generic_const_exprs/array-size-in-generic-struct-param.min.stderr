@@ -1,0 +1,32 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/array-size-in-generic-struct-param.rs:8:48
+   |
+LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
+   |                                                ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/array-size-in-generic-struct-param.rs:23:15
+   |
+LL |     arr: [u8; CFG.arr_size],
+   |               ^^^ cannot perform const operation using `CFG`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `CFG`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: `Config` is forbidden as the type of a const generic parameter
+  --> $DIR/array-size-in-generic-struct-param.rs:21:21
+   |
+LL | struct B<const CFG: Config> {
+   |                     ^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,95 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=condition
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|       |use core::hint::black_box;
+   LL|       |
+   LL|      2|fn simple_assign(a: bool) {
+   LL|      2|    let x = a;
+   LL|      2|    black_box(x);
+   LL|      2|}
+   LL|       |
+   LL|      3|fn assign_and(a: bool, b: bool) {
+   LL|      3|    let x = a && b;
+                               ^2
+  ------------------
+  |  Branch (LL:13): [True: 2, False: 1]
+  |  Branch (LL:18): [True: 1, False: 1]
+  ------------------
+   LL|      3|    black_box(x);
+   LL|      3|}
+   LL|       |
+   LL|      3|fn assign_or(a: bool, b: bool) {
+   LL|      3|    let x = a || b;
+                               ^1
+  ------------------
+  |  Branch (LL:13): [True: 2, False: 1]
+  |  Branch (LL:18): [True: 0, False: 1]
+  ------------------
+   LL|      3|    black_box(x);
+   LL|      3|}
+   LL|       |
+   LL|      4|fn assign_3_or_and(a: bool, b: bool, c: bool) {
+   LL|      4|    let x = a || b && c;
+                               ^2   ^1
+  ------------------
+  |  Branch (LL:13): [True: 2, False: 2]
+  |  Branch (LL:18): [True: 1, False: 1]
+  |  Branch (LL:23): [True: 1, False: 0]
+  ------------------
+   LL|      4|    black_box(x);
+   LL|      4|}
+   LL|       |
+   LL|      4|fn assign_3_and_or(a: bool, b: bool, c: bool) {
+   LL|      4|    let x = a && b || c;
+                               ^2   ^3
+  ------------------
+  |  Branch (LL:13): [True: 2, False: 2]
+  |  Branch (LL:18): [True: 1, False: 1]
+  |  Branch (LL:23): [True: 2, False: 1]
+  ------------------
+   LL|      4|    black_box(x);
+   LL|      4|}
+   LL|       |
+   LL|      3|fn foo(a: bool) -> bool {
+   LL|      3|    black_box(a)
+   LL|      3|}
+   LL|       |
+   LL|      3|fn func_call(a: bool, b: bool) {
+   LL|      3|    foo(a && b);
+                           ^2
+  ------------------
+  |  Branch (LL:9): [True: 2, False: 1]
+  |  Branch (LL:14): [True: 1, False: 1]
+  ------------------
+   LL|      3|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    simple_assign(true);
+   LL|       |    simple_assign(false);
+   LL|       |
+   LL|       |    assign_and(true, false);
+   LL|       |    assign_and(true, true);
+   LL|       |    assign_and(false, false);
+   LL|       |
+   LL|       |    assign_or(true, false);
+   LL|       |    assign_or(true, true);
+   LL|       |    assign_or(false, false);
+   LL|       |
+   LL|       |    assign_3_or_and(true, false, false);
+   LL|       |    assign_3_or_and(true, true, false);
+   LL|       |    assign_3_or_and(false, false, true);
+   LL|       |    assign_3_or_and(false, true, true);
+   LL|       |
+   LL|       |    assign_3_and_or(true, false, false);
+   LL|       |    assign_3_and_or(true, true, false);
+   LL|       |    assign_3_and_or(false, false, true);
+   LL|       |    assign_3_and_or(false, true, true);
+   LL|       |
+   LL|       |    func_call(true, false);
+   LL|       |    func_call(true, true);
+   LL|       |    func_call(false, false);
+   LL|       |}
+

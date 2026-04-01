@@ -1,0 +1,38 @@
+- // MIR for `keep_fallthrough` before UnreachableEnumBranching
++ // MIR for `keep_fallthrough` after UnreachableEnumBranching
+  
+  fn keep_fallthrough(_1: S) -> u32 {
+      debug s => _1;
+      let mut _0: u32;
+      let mut _2: isize;
+  
+      bb0: {
+          _2 = discriminant(_1);
+-         switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
++         switchInt(move _2) -> [0: bb5, 1: bb2, 2: bb1, otherwise: bb5];
+      }
+  
+      bb1: {
+          _0 = const 3_u32;
+          goto -> bb4;
+      }
+  
+      bb2: {
+          _0 = const 2_u32;
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _0 = const 1_u32;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          return;
++     }
++ 
++     bb5: {
++         unreachable;
+      }
+  }
+  

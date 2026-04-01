@@ -1,0 +1,72 @@
+- // MIR for `dedup_multiple_bounds_checks_lengths` before GVN
++ // MIR for `dedup_multiple_bounds_checks_lengths` after GVN
+  
+  fn dedup_multiple_bounds_checks_lengths(_1: &[i32]) -> [i32; 3] {
+      debug x => _1;
+      let mut _0: [i32; 3];
+      let mut _2: i32;
+      let _3: usize;
+      let mut _4: usize;
+      let mut _5: bool;
+      let mut _6: i32;
+      let _7: usize;
+      let mut _8: usize;
+      let mut _9: bool;
+      let mut _10: i32;
+      let _11: usize;
+      let mut _12: usize;
+      let mut _13: bool;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = const 42_usize;
+          _4 = PtrMetadata(copy _1);
+-         _5 = Lt(copy _3, copy _4);
+-         assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, copy _3) -> [success: bb1, unwind continue];
++         _5 = Lt(const 42_usize, copy _4);
++         assert(move _5, "index out of bounds: the length is {} but the index is {}", copy _4, const 42_usize) -> [success: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         _2 = copy (*_1)[_3];
++         _2 = copy (*_1)[42 of 43];
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = const 13_usize;
+-         _8 = PtrMetadata(copy _1);
+-         _9 = Lt(copy _7, copy _8);
+-         assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, copy _7) -> [success: bb2, unwind continue];
++         _8 = copy _4;
++         _9 = Lt(const 13_usize, copy _4);
++         assert(move _9, "index out of bounds: the length is {} but the index is {}", copy _4, const 13_usize) -> [success: bb2, unwind continue];
+      }
+  
+      bb2: {
+-         _6 = copy (*_1)[_7];
++         _6 = copy (*_1)[13 of 14];
+          StorageLive(_10);
+          StorageLive(_11);
+          _11 = const 7_usize;
+-         _12 = PtrMetadata(copy _1);
+-         _13 = Lt(copy _11, copy _12);
+-         assert(move _13, "index out of bounds: the length is {} but the index is {}", move _12, copy _11) -> [success: bb3, unwind continue];
++         _12 = copy _4;
++         _13 = Lt(const 7_usize, copy _4);
++         assert(move _13, "index out of bounds: the length is {} but the index is {}", copy _4, const 7_usize) -> [success: bb3, unwind continue];
+      }
+  
+      bb3: {
+-         _10 = copy (*_1)[_11];
++         _10 = copy (*_1)[7 of 8];
+          _0 = [move _2, move _6, move _10];
+          StorageDead(_10);
+          StorageDead(_6);
+          StorageDead(_2);
+          StorageDead(_11);
+          StorageDead(_7);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

@@ -1,0 +1,16 @@
+error: rustc_peek: bit not set
+  --> $DIR/liveness-projection.rs:11:18
+   |
+LL |         unsafe { rustc_peek(x); }
+   |                  ^^^^^^^^^^^^^
+
+error: rustc_peek: bit not set
+  --> $DIR/liveness-projection.rs:28:18
+   |
+LL |         unsafe { rustc_peek(&p); }
+   |                  ^^^^^^^^^^^^^^
+
+error: stop_after_dataflow ended compilation
+
+error: aborting due to 3 previous errors
+

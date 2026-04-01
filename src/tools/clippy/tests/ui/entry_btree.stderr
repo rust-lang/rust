@@ -1,0 +1,23 @@
+error: usage of `contains_key` followed by `insert` on a `BTreeMap`
+  --> tests/ui/entry_btree.rs:10:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |
+LL | |         m.insert(k, v);
+LL | |         foo();
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::map-entry` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
+help: try
+   |
+LL ~     if let std::collections::btree_map::Entry::Vacant(e) = m.entry(k) {
+LL +
+LL +         e.insert(v);
+LL +         foo();
+LL +     }
+   |
+
+error: aborting due to 1 previous error
+

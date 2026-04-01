@@ -1,0 +1,18 @@
+error: reached the recursion limit while instantiating `recur::<{async closure@$DIR/post-mono-higher-ranked-hang-2.rs:13:24: 13:32}>`
+  --> $DIR/post-mono-higher-ranked-hang-2.rs:13:17
+   |
+LL |           let _ = recur(&async || {
+   |  _________________^
+LL | |
+LL | |             let _ = closure();
+LL | |         });
+   | |__________^
+   |
+note: `recur` defined here
+  --> $DIR/post-mono-higher-ranked-hang-2.rs:10:1
+   |
+LL | fn recur<'l>(closure: &'l impl AsyncFn()) -> Pin<Box<dyn Future<Output = ()> + 'l>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,60 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:6:5
+   |
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     where T : X + 'static
+   |                 +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:12:5
+   |
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn p2<T: 'static>(v: Box<T>) -> Box<dyn X + 'static>
+   |        +++++++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:18:5
+   |
+LL | fn p3<'a,T>(v: T) -> Box<dyn X + 'a>
+   |       -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     where T : X + 'a
+   |                 ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:24:5
+   |
+LL | fn p4<'a,T>(v: Box<T>) -> Box<dyn X + 'a>
+   |       -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn p4<'a,T: 'a>(v: Box<T>) -> Box<dyn X + 'a>
+   |           ++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0309, E0310.
+For more information about an error, try `rustc --explain E0309`.

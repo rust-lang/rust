@@ -1,0 +1,21 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/issue-62878.rs:5:38
+   |
+LL | fn foo<const N: usize, const A: [u8; N]>() {}
+   |                                      ^ the type must not depend on the parameter `N`
+
+error: `[u8; N]` is forbidden as the type of a const generic parameter
+  --> $DIR/issue-62878.rs:5:33
+   |
+LL | fn foo<const N: usize, const A: [u8; N]>() {}
+   |                                 ^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0770`.

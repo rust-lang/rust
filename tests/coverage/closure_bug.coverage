@@ -1,0 +1,54 @@
+   LL|       |// Regression test for #115930.
+   LL|       |// All of these closures are identical, and should produce identical output in
+   LL|       |// the coverage report. However, an unstable sort was causing them to be treated
+   LL|       |// inconsistently when preparing coverage spans.
+   LL|       |
+   LL|       |#[rustfmt::skip]
+   LL|      1|fn main() {
+   LL|      1|    let truthy = std::env::args().len() == 1;
+   LL|       |
+   LL|      1|    let a
+   LL|       |        =
+   LL|       |        |
+   LL|       |        |
+   LL|      2|        if truthy { true } else { false };
+                                                ^0
+   LL|       |
+   LL|      1|    a();
+   LL|      1|    if truthy { a(); }
+                                   ^0
+   LL|       |
+   LL|      1|    let b
+   LL|       |        =
+   LL|       |        |
+   LL|       |        |
+   LL|      2|        if truthy { true } else { false };
+                                                ^0
+   LL|       |
+   LL|      1|    b();
+   LL|      1|    if truthy { b(); }
+                                   ^0
+   LL|       |
+   LL|      1|    let c
+   LL|       |        =
+   LL|       |        |
+   LL|       |        |
+   LL|      2|        if truthy { true } else { false };
+                                                ^0
+   LL|       |
+   LL|      1|    c();
+   LL|      1|    if truthy { c(); }
+                                   ^0
+   LL|       |
+   LL|      1|    let d
+   LL|       |        =
+   LL|       |        |
+   LL|       |        |
+   LL|      2|        if truthy { true } else { false };
+                                                ^0
+   LL|       |
+   LL|      1|    d();
+   LL|      1|    if truthy { d(); }
+                                   ^0
+   LL|      1|}
+

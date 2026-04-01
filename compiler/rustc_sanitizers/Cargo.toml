@@ -1,0 +1,18 @@
+[package]
+name = "rustc_sanitizers"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+bitflags = "2.5.0"
+rustc_abi = { path = "../rustc_abi" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
+tracing = "0.1"
+twox-hash = "1.6.3"
+# tidy-alphabetical-end

@@ -1,0 +1,41 @@
+error[E0582]: binding for associated type `Assoc` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/ice-wf-missing-span-in-error-130012.rs:9:28
+   |
+LL | trait MyTrait: for<'a> Fun<Assoc = &'a ()> {}
+   |                            ^^^^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Assoc` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/ice-wf-missing-span-in-error-130012.rs:9:28
+   |
+LL | trait MyTrait: for<'a> Fun<Assoc = &'a ()> {}
+   |                            ^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0582]: binding for associated type `Assoc` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/ice-wf-missing-span-in-error-130012.rs:9:28
+   |
+LL | trait MyTrait: for<'a> Fun<Assoc = &'a ()> {}
+   |                            ^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0582]: binding for associated type `Assoc` references lifetime `'b`, which does not appear in the trait input types
+  --> $DIR/ice-wf-missing-span-in-error-130012.rs:14:21
+   |
+LL | impl<F: for<'b> Fun<Assoc = &'b ()>> MyTrait for F {}
+   |                     ^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/ice-wf-missing-span-in-error-130012.rs:14:50
+   |
+LL | impl<F: for<'b> Fun<Assoc = &'b ()>> MyTrait for F {}
+   |                                                  ^ lifetime mismatch
+   |
+   = note: expected reference `&()`
+              found reference `&'b ()`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0308, E0582.
+For more information about an error, try `rustc --explain E0308`.

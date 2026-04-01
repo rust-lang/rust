@@ -1,0 +1,83 @@
+error[E0599]: no method named `method` found for struct `RefCell<T>` in the current scope
+  --> $DIR/inner_type.rs:17:16
+   |
+LL |     other_item.method();
+   |                ^^^^^^ method not found in `RefCell<Struct<u32>>`
+   |
+note: the method `method` exists on the type `Struct<u32>`
+  --> $DIR/inner_type.rs:9:5
+   |
+LL |     pub fn method(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: use `.borrow()` to borrow the `Struct<u32>`, panicking if a mutable borrow exists
+   |
+LL |     other_item.borrow().method();
+   |               +++++++++
+
+error[E0599]: no method named `some_mutable_method` found for struct `RefCell<T>` in the current scope
+  --> $DIR/inner_type.rs:21:16
+   |
+LL |     other_item.some_mutable_method();
+   |                ^^^^^^^^^^^^^^^^^^^ method not found in `RefCell<Struct<u32>>`
+   |
+note: the method `some_mutable_method` exists on the type `Struct<u32>`
+  --> $DIR/inner_type.rs:11:5
+   |
+LL |     pub fn some_mutable_method(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use `.borrow_mut()` to mutably borrow the `Struct<u32>`, panicking if any borrows exist
+   |
+LL |     other_item.borrow_mut().some_mutable_method();
+   |               +++++++++++++
+
+error[E0599]: no method named `method` found for struct `std::sync::Mutex<T>` in the current scope
+  --> $DIR/inner_type.rs:27:18
+   |
+LL |     another_item.method();
+   |                  ^^^^^^ method not found in `std::sync::Mutex<Struct<u32>>`
+   |
+note: the method `method` exists on the type `Struct<u32>`
+  --> $DIR/inner_type.rs:9:5
+   |
+LL |     pub fn method(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: use `.lock().unwrap()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
+   |
+LL |     another_item.lock().unwrap().method();
+   |                 ++++++++++++++++
+
+error[E0599]: no method named `method` found for struct `std::sync::RwLock<T>` in the current scope
+  --> $DIR/inner_type.rs:33:18
+   |
+LL |     another_item.method();
+   |                  ^^^^^^ method not found in `std::sync::RwLock<Struct<u32>>`
+   |
+note: the method `method` exists on the type `Struct<u32>`
+  --> $DIR/inner_type.rs:9:5
+   |
+LL |     pub fn method(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: use `.read().unwrap()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
+   |
+LL |     another_item.read().unwrap().method();
+   |                 ++++++++++++++++
+
+error[E0599]: no method named `some_mutable_method` found for struct `std::sync::RwLock<T>` in the current scope
+  --> $DIR/inner_type.rs:37:18
+   |
+LL |     another_item.some_mutable_method();
+   |                  ^^^^^^^^^^^^^^^^^^^ method not found in `std::sync::RwLock<Struct<u32>>`
+   |
+note: the method `some_mutable_method` exists on the type `Struct<u32>`
+  --> $DIR/inner_type.rs:11:5
+   |
+LL |     pub fn some_mutable_method(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use `.write().unwrap()` to mutably borrow the `Struct<u32>`, blocking the current thread until it can be acquired
+   |
+LL |     another_item.write().unwrap().some_mutable_method();
+   |                 +++++++++++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

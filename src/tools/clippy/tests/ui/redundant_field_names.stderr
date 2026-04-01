@@ -1,0 +1,64 @@
+error: redundant field names in struct initialization
+  --> tests/ui/redundant_field_names.rs:33:9
+   |
+LL |         gender: gender,
+   |         ^^^^^^^^^^^^^^ help: replace it with: `gender`
+   |
+   = note: `-D clippy::redundant-field-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_field_names)]`
+
+error: redundant field names in struct initialization
+  --> tests/ui/redundant_field_names.rs:35:9
+   |
+LL |         age: age,
+   |         ^^^^^^^^ help: replace it with: `age`
+
+error: redundant field names in struct initialization
+  --> tests/ui/redundant_field_names.rs:56:25
+   |
+LL |     let _ = RangeFrom { start: start };
+   |                         ^^^^^^^^^^^^ help: replace it with: `start`
+
+error: redundant field names in struct initialization
+  --> tests/ui/redundant_field_names.rs:58:23
+   |
+LL |     let _ = RangeTo { end: end };
+   |                       ^^^^^^^^ help: replace it with: `end`
+
+error: redundant field names in struct initialization
+  --> tests/ui/redundant_field_names.rs:60:21
+   |
+LL |     let _ = Range { start: start, end: end };
+   |                     ^^^^^^^^^^^^ help: replace it with: `start`
+
+error: redundant field names in struct initialization
+  --> tests/ui/redundant_field_names.rs:60:35
+   |
+LL |     let _ = Range { start: start, end: end };
+   |                                   ^^^^^^^^ help: replace it with: `end`
+
+error: redundant field names in struct initialization
+  --> tests/ui/redundant_field_names.rs:64:32
+   |
+LL |     let _ = RangeToInclusive { end: end };
+   |                                ^^^^^^^^ help: replace it with: `end`
+
+error: redundant field names in struct initialization
+  --> tests/ui/redundant_field_names.rs:77:25
+   |
+LL |             let _ = S { v: v };
+   |                         ^^^^ help: replace it with: `v`
+...
+LL |     internal!(v);
+   |     ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `internal` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: redundant field names in struct initialization
+  --> tests/ui/redundant_field_names.rs:106:25
+   |
+LL |     let _ = RangeFrom { start: start };
+   |                         ^^^^^^^^^^^^ help: replace it with: `start`
+
+error: aborting due to 9 previous errors
+

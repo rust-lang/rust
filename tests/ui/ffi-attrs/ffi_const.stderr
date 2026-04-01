@@ -1,0 +1,37 @@
+error: `#[ffi_const]` attribute cannot be used on functions
+  --> $DIR/ffi_const.rs:4:1
+   |
+LL | #[unsafe(ffi_const)]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[ffi_const]` can only be applied to foreign functions
+
+error: `#[ffi_const]` attribute cannot be used on macro defs
+  --> $DIR/ffi_const.rs:7:1
+   |
+LL | #[unsafe(ffi_const)]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[ffi_const]` can only be applied to foreign functions
+
+error: `#[ffi_const]` attribute cannot be used on foreign statics
+  --> $DIR/ffi_const.rs:13:5
+   |
+LL |     #[unsafe(ffi_const)]
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[ffi_const]` can only be applied to foreign functions
+
+error: unsafe attribute used without unsafe
+  --> $DIR/ffi_const.rs:16:7
+   |
+LL |     #[ffi_const]
+   |       ^^^^^^^^^ usage of unsafe attribute
+   |
+help: wrap the attribute in `unsafe(...)`
+   |
+LL |     #[unsafe(ffi_const)]
+   |       +++++++         +
+
+error: aborting due to 4 previous errors
+

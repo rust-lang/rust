@@ -1,0 +1,10 @@
+warning: trait `Foo` is never used
+  --> $DIR/multidispatch-conditional-impl-not-considered.rs:9:7
+   |
+LL | trait Foo {
+   |       ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,76 @@
+error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
+  --> tests/ui/linkedlist.rs:8:10
+   |
+LL | const C: LinkedList<i32> = LinkedList::new();
+   |          ^^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+   = note: `-D clippy::linkedlist` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::linkedlist)]`
+
+error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
+  --> tests/ui/linkedlist.rs:11:11
+   |
+LL | static S: LinkedList<i32> = LinkedList::new();
+   |           ^^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
+  --> tests/ui/linkedlist.rs:15:16
+   |
+LL |     type Baz = LinkedList<u8>;
+   |                ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
+  --> tests/ui/linkedlist.rs:18:15
+   |
+LL |     fn foo(_: LinkedList<u8>);
+   |               ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
+  --> tests/ui/linkedlist.rs:21:23
+   |
+LL |     const BAR: Option<LinkedList<u8>>;
+   |                       ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
+  --> tests/ui/linkedlist.rs:32:29
+   |
+LL |     priv_linked_list_field: LinkedList<u8>,
+   |                             ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
+  --> tests/ui/linkedlist.rs:37:15
+   |
+LL |     fn foo(_: LinkedList<u8>) {}
+   |               ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
+  --> tests/ui/linkedlist.rs:43:34
+   |
+LL | fn test(my_favorite_linked_list: LinkedList<u8>) {}
+   |                                  ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
+  --> tests/ui/linkedlist.rs:46:25
+   |
+LL | fn test_ret() -> Option<LinkedList<u8>> {
+   |                         ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: aborting due to 9 previous errors
+

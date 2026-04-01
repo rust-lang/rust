@@ -1,0 +1,11 @@
+error[E0275]: overflow normalizing the type alias `X`
+  --> $DIR/infinite-vec-type-recursion.rs:6:1
+   |
+LL | type X = Vec<X>;
+   | ^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

@@ -1,0 +1,419 @@
+//! Renderer for macro invocations.
+
+use hir::{HirDisplay, db::HirDatabase};
+use ide_db::{SymbolKind, documentation::Documentation};
+use syntax::{SmolStr, ToSmolStr, format_smolstr};
+
+use crate::{
+    context::{PathCompletionCtx, PathKind, PatternContext},
+    item::{Builder, CompletionItem},
+    render::RenderContext,
+};
+
+pub(crate) fn render_macro(
+    ctx: RenderContext<'_>,
+    PathCompletionCtx { kind, has_macro_bang, has_call_parens, .. }: &PathCompletionCtx<'_>,
+
+    name: hir::Name,
+    macro_: hir::Macro,
+) -> Builder {
+    let _p = tracing::info_span!("render_macro").entered();
+    render(ctx, *kind == PathKind::Use, *has_macro_bang, *has_call_parens, name, macro_)
+}
+
+pub(crate) fn render_macro_pat(
+    ctx: RenderContext<'_>,
+    _pattern_ctx: &PatternContext,
+    name: hir::Name,
+    macro_: hir::Macro,
+) -> Builder {
+    let _p = tracing::info_span!("render_macro_pat").entered();
+    render(ctx, false, false, false, name, macro_)
+}
+
+fn render(
+    ctx @ RenderContext { completion, .. }: RenderContext<'_>,
+    is_use_path: bool,
+    has_macro_bang: bool,
+    has_call_parens: bool,
+    name: hir::Name,
+    macro_: hir::Macro,
+) -> Builder {
+    let source_range = if ctx.is_immediately_after_macro_bang() {
+        cov_mark::hit!(completes_macro_call_if_cursor_at_bang_token);
+        completion.token.parent().map_or_else(|| ctx.source_range(), |it| it.text_range())
+    } else {
+        ctx.source_range()
+    };
+
+    let (name, escaped_name) =
+        (name.as_str(), name.display(ctx.db(), completion.edition).to_smolstr());
+    let docs = ctx.docs(macro_);
+    let is_fn_like = macro_.is_fn_like(completion.db);
+    let (bra, ket) = if is_fn_like {
+        guess_macro_braces(ctx.db(), macro_, name, docs.as_ref())
+    } else {
+        ("", "")
+    };
+
+    let needs_bang = is_fn_like && !is_use_path && !has_macro_bang;
+
+    let mut item = CompletionItem::new(
+        SymbolKind::from(macro_.kind(completion.db)),
+        source_range,
+        label(&ctx, needs_bang, bra, ket, &name.to_smolstr()),
+        completion.edition,
+    );
+    item.set_deprecated(ctx.is_deprecated(macro_))
+        .detail(macro_.display(completion.db, completion.display_target).to_string())
+        .set_documentation(docs)
+        .set_relevance(ctx.completion_relevance());
+
+    match ctx.snippet_cap() {
+        Some(cap) if needs_bang && !has_call_parens => {
+            let snippet = format!("{escaped_name}!{bra}$0{ket}");
+            let lookup = banged_name(name);
+            item.insert_snippet(cap, snippet).lookup_by(lookup);
+        }
+        _ if needs_bang => {
+            item.insert_text(banged_name(&escaped_name)).lookup_by(banged_name(name));
+        }
+        _ => {
+            cov_mark::hit!(dont_insert_macro_call_parens_unnecessary);
+            item.insert_text(escaped_name);
+        }
+    };
+    if let Some(import_to_add) = ctx.import_to_add {
+        item.add_import(import_to_add);
+    }
+
+    item
+}
+
+fn label(
+    ctx: &RenderContext<'_>,
+    needs_bang: bool,
+    bra: &str,
+    ket: &str,
+    name: &SmolStr,
+) -> SmolStr {
+    if needs_bang {
+        if ctx.snippet_cap().is_some() {
+            format_smolstr!("{name}!{bra}…{ket}",)
+        } else {
+            banged_name(name)
+        }
+    } else {
+        name.clone()
+    }
+}
+
+fn banged_name(name: &str) -> SmolStr {
+    SmolStr::from_iter([name, "!"])
+}
+
+fn guess_macro_braces(
+    db: &dyn HirDatabase,
+    macro_: hir::Macro,
+    macro_name: &str,
+    docs: Option<&Documentation<'_>>,
+) -> (&'static str, &'static str) {
+    if let Some(style) = macro_.preferred_brace_style(db) {
+        return match style {
+            hir::MacroBraces::Braces => (" {", "}"),
+            hir::MacroBraces::Brackets => ("[", "]"),
+            hir::MacroBraces::Parentheses => ("(", ")"),
+        };
+    }
+
+    let orig_name = macro_.name(db);
+    let docs = docs.map(Documentation::as_str).unwrap_or_default();
+
+    let mut votes = [0, 0, 0];
+    for (idx, s) in docs.match_indices(macro_name).chain(docs.match_indices(orig_name.as_str())) {
+        let (before, after) = (&docs[..idx], &docs[idx + s.len()..]);
+        // Ensure to match the full word
+        if after.starts_with('!')
+            && !before.ends_with(|c: char| c == '_' || c.is_ascii_alphanumeric())
+        {
+            // It may have spaces before the braces like `foo! {}`
+            match after[1..].chars().find(|&c| !c.is_whitespace()) {
+                Some('{') => votes[0] += 1,
+                Some('[') => votes[1] += 1,
+                Some('(') => votes[2] += 1,
+                _ => {}
+            }
+        }
+    }
+
+    // Insert a space before `{}`.
+    // We prefer the last one when some votes equal.
+    let (_vote, (bra, ket)) = votes
+        .iter()
+        .zip(&[(" {", "}"), ("[", "]"), ("(", ")")])
+        .max_by_key(|&(&vote, _)| vote)
+        .unwrap();
+    (*bra, *ket)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests::check_edit;
+
+    #[test]
+    fn dont_insert_macro_call_parens_unnecessary() {
+        cov_mark::check!(dont_insert_macro_call_parens_unnecessary);
+        check_edit(
+            "frobnicate",
+            r#"
+//- /main.rs crate:main deps:foo
+use foo::$0;
+//- /foo/lib.rs crate:foo
+#[macro_export]
+macro_rules! frobnicate { () => () }
+"#,
+            r#"
+use foo::frobnicate;
+"#,
+        );
+
+        check_edit(
+            "frobnicate",
+            r#"
+macro_rules! frobnicate { () => () }
+fn main() { frob$0!(); }
+"#,
+            r#"
+macro_rules! frobnicate { () => () }
+fn main() { frobnicate!(); }
+"#,
+        );
+    }
+
+    #[test]
+    fn add_bang_to_parens() {
+        check_edit(
+            "frobnicate!",
+            r#"
+macro_rules! frobnicate { () => () }
+fn main() {
+    frob$0()
+}
+"#,
+            r#"
+macro_rules! frobnicate { () => () }
+fn main() {
+    frobnicate!()
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn preferred_macro_braces() {
+        check_edit(
+            "vec!",
+            r#"
+#[rust_analyzer::macro_style(brackets)]
+macro_rules! vec { () => {} }
+
+fn main() { v$0 }
+"#,
+            r#"
+#[rust_analyzer::macro_style(brackets)]
+macro_rules! vec { () => {} }
+
+fn main() { vec![$0] }
+"#,
+        );
+
+        check_edit(
+            "foo!",
+            r#"
+#[rust_analyzer::macro_style(braces)]
+macro_rules! foo { () => {} }
+fn main() { $0 }
+"#,
+            r#"
+#[rust_analyzer::macro_style(braces)]
+macro_rules! foo { () => {} }
+fn main() { foo! {$0} }
+"#,
+        );
+
+        check_edit(
+            "bar!",
+            r#"
+#[macro_export]
+#[rust_analyzer::macro_style(brackets)]
+macro_rules! foo { () => {} }
+pub use crate::foo as bar;
+fn main() { $0 }
+"#,
+            r#"
+#[macro_export]
+#[rust_analyzer::macro_style(brackets)]
+macro_rules! foo { () => {} }
+pub use crate::foo as bar;
+fn main() { bar![$0] }
+"#,
+        );
+    }
+
+    #[test]
+    fn guesses_macro_braces() {
+        check_edit(
+            "vec!",
+            r#"
+/// Creates a [`Vec`] containing the arguments.
+///
+/// ```
+/// let v = vec![1, 2, 3];
+/// assert_eq!(v[0], 1);
+/// assert_eq!(v[1], 2);
+/// assert_eq!(v[2], 3);
+/// ```
+macro_rules! vec { () => {} }
+
+fn main() { v$0 }
+"#,
+            r#"
+/// Creates a [`Vec`] containing the arguments.
+///
+/// ```
+/// let v = vec![1, 2, 3];
+/// assert_eq!(v[0], 1);
+/// assert_eq!(v[1], 2);
+/// assert_eq!(v[2], 3);
+/// ```
+macro_rules! vec { () => {} }
+
+fn main() { vec![$0] }
+"#,
+        );
+
+        check_edit(
+            "foo!",
+            r#"
+/// Foo
+///
+/// Don't call `fooo!()` `fooo!()`, or `_foo![]` `_foo![]`,
+/// call as `let _=foo!  { hello world };`
+macro_rules! foo { () => {} }
+fn main() { $0 }
+"#,
+            r#"
+/// Foo
+///
+/// Don't call `fooo!()` `fooo!()`, or `_foo![]` `_foo![]`,
+/// call as `let _=foo!  { hello world };`
+macro_rules! foo { () => {} }
+fn main() { foo! {$0} }
+"#,
+        );
+
+        check_edit(
+            "bar!",
+            r#"
+/// `foo![]`
+#[macro_export]
+macro_rules! foo { () => {} }
+pub use crate::foo as bar;
+fn main() { $0 }
+"#,
+            r#"
+/// `foo![]`
+#[macro_export]
+macro_rules! foo { () => {} }
+pub use crate::foo as bar;
+fn main() { bar![$0] }
+"#,
+        );
+    }
+
+    #[test]
+    fn completes_macro_call_if_cursor_at_bang_token() {
+        // Regression test for https://github.com/rust-lang/rust-analyzer/issues/9904
+        cov_mark::check!(completes_macro_call_if_cursor_at_bang_token);
+        check_edit(
+            "foo!",
+            r#"
+macro_rules! foo {
+    () => {}
+}
+
+fn main() {
+    foo!$0
+}
+"#,
+            r#"
+macro_rules! foo {
+    () => {}
+}
+
+fn main() {
+    foo!($0)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn complete_missing_macro_arg() {
+        // Regression test for https://github.com/rust-lang/rust-analyzer/issues/14246
+        check_edit(
+            "BAR",
+            r#"
+macro_rules! foo {
+    ($val:ident,  $val2: ident) => {
+        $val $val2
+    };
+}
+
+const BAR: u32 = 9;
+fn main() {
+    foo!(BAR, $0)
+}
+"#,
+            r#"
+macro_rules! foo {
+    ($val:ident,  $val2: ident) => {
+        $val $val2
+    };
+}
+
+const BAR: u32 = 9;
+fn main() {
+    foo!(BAR, BAR)
+}
+"#,
+        );
+        check_edit(
+            "BAR",
+            r#"
+macro_rules! foo {
+    ($val:ident,  $val2: ident) => {
+        $val $val2
+    };
+}
+
+const BAR: u32 = 9;
+fn main() {
+    foo!($0)
+}
+"#,
+            r#"
+macro_rules! foo {
+    ($val:ident,  $val2: ident) => {
+        $val $val2
+    };
+}
+
+const BAR: u32 = 9;
+fn main() {
+    foo!(BAR)
+}
+"#,
+        );
+    }
+}

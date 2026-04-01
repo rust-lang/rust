@@ -1,0 +1,115 @@
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:50:5
+   |
+LL | /     pub fn new(_: String) -> impl R<Item = u32> {
+LL | |
+LL | |
+LL | |         S3
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::new_ret_no_self)]`
+
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:84:5
+   |
+LL | /     pub fn new() -> u32 {
+LL | |
+LL | |
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
+
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:95:5
+   |
+LL | /     pub fn new(_: String) -> u32 {
+LL | |
+LL | |
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
+
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:133:5
+   |
+LL | /     pub fn new() -> (u32, u32) {
+LL | |
+LL | |
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
+
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:162:5
+   |
+LL | /     pub fn new() -> *mut V {
+LL | |
+LL | |
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
+
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:182:5
+   |
+LL | /     pub fn new() -> Option<u32> {
+LL | |
+LL | |
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
+
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:237:9
+   |
+LL |         fn new() -> String;
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:250:9
+   |
+LL |         fn new(_: String) -> String;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:286:9
+   |
+LL | /         fn new() -> (u32, u32) {
+LL | |
+LL | |
+LL | |             unimplemented!();
+LL | |         }
+   | |_________^
+
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:315:9
+   |
+LL | /         fn new() -> *mut V {
+LL | |
+LL | |
+LL | |             unimplemented!();
+LL | |         }
+   | |_________^
+
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:387:9
+   |
+LL | /         fn new(t: T) -> impl Into<i32> {
+LL | |
+LL | |
+LL | |             1
+LL | |         }
+   | |_________^
+
+error: methods called `new` usually return `Self`
+  --> tests/ui/new_ret_no_self.rs:408:9
+   |
+LL | /         fn new(t: T) -> impl Trait2<(), i32> {
+LL | |
+LL | |         }
+   | |_________^
+
+error: aborting due to 12 previous errors
+

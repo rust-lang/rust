@@ -1,0 +1,77 @@
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/naked-with-invalid-repr-attr.rs:10:8
+   |
+LL |   #[repr(C)]
+   |          ^
+...
+LL | / extern "C" fn example1() {
+LL | |
+LL | |     naked_asm!("")
+LL | | }
+   | |_- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/naked-with-invalid-repr-attr.rs:18:8
+   |
+LL |   #[repr(transparent)]
+   |          ^^^^^^^^^^^
+...
+LL | / extern "C" fn example2() {
+LL | |
+LL | |     naked_asm!("")
+LL | | }
+   | |_- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/naked-with-invalid-repr-attr.rs:26:8
+   |
+LL |   #[repr(C)]
+   |          ^
+...
+LL | / extern "C" fn example3() {
+LL | |
+LL | |     naked_asm!("")
+LL | | }
+   | |_- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/naked-with-invalid-repr-attr.rs:36:8
+   |
+LL |   #[repr(C, packed)]
+   |          ^
+...
+LL | / extern "C" fn example4() {
+LL | |
+LL | |
+LL | |     naked_asm!("")
+LL | | }
+   | |_- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct or union
+  --> $DIR/naked-with-invalid-repr-attr.rs:36:11
+   |
+LL |   #[repr(C, packed)]
+   |             ^^^^^^
+...
+LL | / extern "C" fn example4() {
+LL | |
+LL | |
+LL | |     naked_asm!("")
+LL | | }
+   | |_- not a struct or union
+
+error[E0517]: attribute should be applied to an enum
+  --> $DIR/naked-with-invalid-repr-attr.rs:46:8
+   |
+LL |   #[repr(u8)]
+   |          ^^
+...
+LL | / extern "C" fn example5() {
+LL | |
+LL | |     naked_asm!("")
+LL | | }
+   | |_- not an enum
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0517`.

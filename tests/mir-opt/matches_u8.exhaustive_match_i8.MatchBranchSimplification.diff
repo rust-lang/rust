@@ -1,0 +1,37 @@
+- // MIR for `exhaustive_match_i8` before MatchBranchSimplification
++ // MIR for `exhaustive_match_i8` after MatchBranchSimplification
+  
+  fn exhaustive_match_i8(_1: E) -> i8 {
+      debug e => _1;
+      let mut _0: i8;
+      let mut _2: isize;
++     let mut _3: isize;
+  
+      bb0: {
+          _2 = discriminant(_1);
+-         switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
+-     }
+- 
+-     bb1: {
+-         unreachable;
+-     }
+- 
+-     bb2: {
+-         _0 = const 1_i8;
+-         goto -> bb4;
+-     }
+- 
+-     bb3: {
+-         _0 = const 0_i8;
+-         goto -> bb4;
+-     }
+- 
+-     bb4: {
++         StorageLive(_3);
++         _3 = move _2;
++         _0 = copy _3 as i8 (IntToInt);
++         StorageDead(_3);
+          return;
+      }
+  }
+  

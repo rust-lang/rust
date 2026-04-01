@@ -1,0 +1,34 @@
+error: items in `extern` blocks cannot use non-ascii identifiers
+  --> $DIR/extern_block_nonascii_forbidden.rs:4:10
+   |
+LL | extern "C" {
+   | ---------- in this `extern` block
+LL |     type 一;
+   |          ^^
+   |
+   = note: this limitation may be lifted in the future; see issue #83942 <https://github.com/rust-lang/rust/issues/83942> for more information
+
+error: items in `extern` blocks cannot use non-ascii identifiers
+  --> $DIR/extern_block_nonascii_forbidden.rs:5:8
+   |
+LL | extern "C" {
+   | ---------- in this `extern` block
+LL |     type 一;
+LL |     fn 二();
+   |        ^^
+   |
+   = note: this limitation may be lifted in the future; see issue #83942 <https://github.com/rust-lang/rust/issues/83942> for more information
+
+error: items in `extern` blocks cannot use non-ascii identifiers
+  --> $DIR/extern_block_nonascii_forbidden.rs:6:12
+   |
+LL | extern "C" {
+   | ---------- in this `extern` block
+...
+LL |     static 三: usize;
+   |            ^^
+   |
+   = note: this limitation may be lifted in the future; see issue #83942 <https://github.com/rust-lang/rust/issues/83942> for more information
+
+error: aborting due to 3 previous errors
+

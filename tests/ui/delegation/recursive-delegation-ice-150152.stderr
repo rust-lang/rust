@@ -1,0 +1,74 @@
+error[E0405]: cannot find trait `Item` in this scope
+  --> $DIR/recursive-delegation-ice-150152.rs:9:10
+   |
+LL |     impl Item for S<S> {
+   |          ^^^^ not found in this scope
+
+error[E0425]: cannot find type `S` in this scope
+  --> $DIR/recursive-delegation-ice-150152.rs:24:20
+   |
+LL |     impl Trait for S {
+   |                    ^ not found in this scope
+   |
+note: struct `first_example::S` exists but is inaccessible
+  --> $DIR/recursive-delegation-ice-150152.rs:6:5
+   |
+LL |     struct S< S >;
+   |     ^^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/recursive-delegation-ice-150152.rs:26:15
+   |
+LL |         reuse foo;
+   |               ^^^ not found in this scope
+   |
+note: these functions exist but are inaccessible
+  --> $DIR/recursive-delegation-ice-150152.rs:5:20
+   |
+LL |     mod to_reuse { pub fn foo() {} }
+   |                    ^^^^^^^^^^^^ `first_example::to_reuse::foo`: not accessible
+...
+LL |         fn foo() {}
+   |         ^^^^^^^^ `second_example::to_reuse::foo`: not accessible
+
+error[E0603]: function `foo` is private
+  --> $DIR/recursive-delegation-ice-150152.rs:18:25
+   |
+LL |         reuse to_reuse::foo;
+   |                         ^^^ private function
+   |
+note: the function `foo` is defined here
+  --> $DIR/recursive-delegation-ice-150152.rs:22:9
+   |
+LL |         fn foo() {}
+   |         ^^^^^^^^
+
+error[E0392]: type parameter `S` is never used
+  --> $DIR/recursive-delegation-ice-150152.rs:6:15
+   |
+LL |     struct S< S >;
+   |               ^ unused type parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `S` to be a const parameter, use `const S: /* Type */` instead
+
+error[E0107]: missing generics for struct `S`
+  --> $DIR/recursive-delegation-ice-150152.rs:9:21
+   |
+LL |     impl Item for S<S> {
+   |                     ^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `S`
+  --> $DIR/recursive-delegation-ice-150152.rs:6:12
+   |
+LL |     struct S< S >;
+   |            ^  -
+help: add missing generic argument
+   |
+LL |     impl Item for S<S<S>> {
+   |                      +++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0107, E0392, E0405, E0425, E0603.
+For more information about an error, try `rustc --explain E0107`.

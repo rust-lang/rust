@@ -1,0 +1,13 @@
+error[E0731]: transparent enum needs exactly one variant, but has 2
+  --> $DIR/transparent-enum-too-many-variants.rs:4:1
+   |
+LL | enum Foo {
+   | ^^^^^^^^ needs exactly one variant, but has 2
+LL |     A(u8), B(u8),
+   |     -      - too many variants in `Foo`
+   |     |
+   |     variant here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0731`.

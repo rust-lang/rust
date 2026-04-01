@@ -1,0 +1,8 @@
+error: cannot link together two panic runtimes: panic_runtime_unwind and panic_runtime_abort
+
+error: the linked panic runtime `panic_runtime_abort` is not compiled with this crate's panic strategy `unwind`
+
+error: the crate `wants_panic_runtime_abort` requires panic strategy `abort` which is incompatible with this crate's strategy of `unwind`
+
+error: aborting due to 3 previous errors
+

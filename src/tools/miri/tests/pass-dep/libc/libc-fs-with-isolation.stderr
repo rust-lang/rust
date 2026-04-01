@@ -1,0 +1,4 @@
+warning: `readlink` was made to return an error due to isolation
+
+warning: `$STAT` was made to return an error due to isolation
+

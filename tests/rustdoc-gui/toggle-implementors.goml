@@ -1,0 +1,4 @@
+// This test ensures that the implementors toggle are not open by default.
+go-to: "file://" + |DOC_PATH| + "/implementors/trait.Whatever.html"
+
+assert-attribute-false: ("#implementors-list > details", {"open": ""}, ALL)

@@ -1,0 +1,19 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/const-param-type-depends-on-type-param.rs:11:34
+   |
+LL | pub struct Dependent<T, const X: T>([(); X]);
+   |                                  ^ the type must not depend on the parameter `T`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/const-param-type-depends-on-type-param.rs:11:22
+   |
+LL | pub struct Dependent<T, const X: T>([(); X]);
+   |                      ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0392, E0770.
+For more information about an error, try `rustc --explain E0392`.

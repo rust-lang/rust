@@ -1,0 +1,280 @@
+error: this bound is already specified as the supertrait of `DerefMut<Target = T>`
+  --> tests/ui/implied_bounds_in_impls.rs:13:36
+   |
+LL | fn deref_derefmut<T>(x: T) -> impl Deref<Target = T> + DerefMut<Target = T> {
+   |                                    ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::implied-bounds-in-impls` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::implied_bounds_in_impls)]`
+help: try removing this bound
+   |
+LL - fn deref_derefmut<T>(x: T) -> impl Deref<Target = T> + DerefMut<Target = T> {
+LL + fn deref_derefmut<T>(x: T) -> impl DerefMut<Target = T> {
+   |
+
+error: this bound is already specified as the supertrait of `GenericSubtrait<U, W, U>`
+  --> tests/ui/implied_bounds_in_impls.rs:31:37
+   |
+LL | fn generics_implied<U, W>() -> impl GenericTrait<W> + GenericSubtrait<U, W, U>
+   |                                     ^^^^^^^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL - fn generics_implied<U, W>() -> impl GenericTrait<W> + GenericSubtrait<U, W, U>
+LL + fn generics_implied<U, W>() -> impl GenericSubtrait<U, W, U>
+   |
+
+error: this bound is already specified as the supertrait of `GenericSubtrait<(), i32, V>`
+  --> tests/ui/implied_bounds_in_impls.rs:38:40
+   |
+LL | fn generics_implied_multi<V>() -> impl GenericTrait<i32> + GenericTrait2<V> + GenericSubtrait<(), i32, V> {}
+   |                                        ^^^^^^^^^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL - fn generics_implied_multi<V>() -> impl GenericTrait<i32> + GenericTrait2<V> + GenericSubtrait<(), i32, V> {}
+LL + fn generics_implied_multi<V>() -> impl GenericTrait2<V> + GenericSubtrait<(), i32, V> {}
+   |
+
+error: this bound is already specified as the supertrait of `GenericSubtrait<(), i32, V>`
+  --> tests/ui/implied_bounds_in_impls.rs:38:60
+   |
+LL | fn generics_implied_multi<V>() -> impl GenericTrait<i32> + GenericTrait2<V> + GenericSubtrait<(), i32, V> {}
+   |                                                            ^^^^^^^^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL - fn generics_implied_multi<V>() -> impl GenericTrait<i32> + GenericTrait2<V> + GenericSubtrait<(), i32, V> {}
+LL + fn generics_implied_multi<V>() -> impl GenericTrait<i32> + GenericSubtrait<(), i32, V> {}
+   |
+
+error: this bound is already specified as the supertrait of `GenericSubtrait<(), T, V>`
+  --> tests/ui/implied_bounds_in_impls.rs:42:44
+   |
+LL | fn generics_implied_multi2<T, V>() -> impl GenericTrait<T> + GenericTrait2<V> + GenericSubtrait<(), T, V>
+   |                                            ^^^^^^^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL - fn generics_implied_multi2<T, V>() -> impl GenericTrait<T> + GenericTrait2<V> + GenericSubtrait<(), T, V>
+LL + fn generics_implied_multi2<T, V>() -> impl GenericTrait2<V> + GenericSubtrait<(), T, V>
+   |
+
+error: this bound is already specified as the supertrait of `GenericSubtrait<(), T, V>`
+  --> tests/ui/implied_bounds_in_impls.rs:42:62
+   |
+LL | fn generics_implied_multi2<T, V>() -> impl GenericTrait<T> + GenericTrait2<V> + GenericSubtrait<(), T, V>
+   |                                                              ^^^^^^^^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL - fn generics_implied_multi2<T, V>() -> impl GenericTrait<T> + GenericTrait2<V> + GenericSubtrait<(), T, V>
+LL + fn generics_implied_multi2<T, V>() -> impl GenericTrait<T> + GenericSubtrait<(), T, V>
+   |
+
+error: this bound is already specified as the supertrait of `GenericSubtrait<(), i32, ()>`
+  --> tests/ui/implied_bounds_in_impls.rs:54:28
+   |
+LL | fn generics_same() -> impl GenericTrait<i32> + GenericSubtrait<(), i32, ()> {}
+   |                            ^^^^^^^^^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL - fn generics_same() -> impl GenericTrait<i32> + GenericSubtrait<(), i32, ()> {}
+LL + fn generics_same() -> impl GenericSubtrait<(), i32, ()> {}
+   |
+
+error: this bound is already specified as the supertrait of `DerefMut<Target = u8>`
+  --> tests/ui/implied_bounds_in_impls.rs:59:20
+   |
+LL |     fn f() -> impl Deref + DerefMut<Target = u8>;
+   |                    ^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn f() -> impl Deref + DerefMut<Target = u8>;
+LL +     fn f() -> impl DerefMut<Target = u8>;
+   |
+
+error: this bound is already specified as the supertrait of `DerefMut<Target = u8>`
+  --> tests/ui/implied_bounds_in_impls.rs:65:20
+   |
+LL |     fn f() -> impl Deref + DerefMut<Target = u8> {
+   |                    ^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn f() -> impl Deref + DerefMut<Target = u8> {
+LL +     fn f() -> impl DerefMut<Target = u8> {
+   |
+
+error: this bound is already specified as the supertrait of `DerefMut<Target = u8>`
+  --> tests/ui/implied_bounds_in_impls.rs:72:20
+   |
+LL |     fn f() -> impl Deref + DerefMut<Target = u8> {
+   |                    ^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn f() -> impl Deref + DerefMut<Target = u8> {
+LL +     fn f() -> impl DerefMut<Target = u8> {
+   |
+
+error: this bound is already specified as the supertrait of `PartialOrd`
+  --> tests/ui/implied_bounds_in_impls.rs:84:41
+   |
+LL |     fn default_generic_param1() -> impl PartialEq + PartialOrd + Debug {}
+   |                                         ^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn default_generic_param1() -> impl PartialEq + PartialOrd + Debug {}
+LL +     fn default_generic_param1() -> impl PartialOrd + Debug {}
+   |
+
+error: this bound is already specified as the supertrait of `PartialOrd`
+  --> tests/ui/implied_bounds_in_impls.rs:86:54
+   |
+LL |     fn default_generic_param2() -> impl PartialOrd + PartialEq + Debug {}
+   |                                                      ^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn default_generic_param2() -> impl PartialOrd + PartialEq + Debug {}
+LL +     fn default_generic_param2() -> impl PartialOrd + Debug {}
+   |
+
+error: this bound is already specified as the supertrait of `DoubleEndedIterator`
+  --> tests/ui/implied_bounds_in_impls.rs:100:26
+   |
+LL |     fn my_iter() -> impl Iterator<Item = u32> + DoubleEndedIterator {
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn my_iter() -> impl Iterator<Item = u32> + DoubleEndedIterator {
+LL +     fn my_iter() -> impl DoubleEndedIterator<Item = u32> {
+   |
+
+error: this bound is already specified as the supertrait of `Copy`
+  --> tests/ui/implied_bounds_in_impls.rs:106:27
+   |
+LL |     fn f() -> impl Copy + Clone {
+   |                           ^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn f() -> impl Copy + Clone {
+LL +     fn f() -> impl Copy {
+   |
+
+error: this bound is already specified as the supertrait of `Trait2<i32>`
+  --> tests/ui/implied_bounds_in_impls.rs:121:21
+   |
+LL |     fn f2() -> impl Trait1<i32, U = i64> + Trait2<i32> {}
+   |                     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn f2() -> impl Trait1<i32, U = i64> + Trait2<i32> {}
+LL +     fn f2() -> impl Trait2<i32, U = i64> {}
+   |
+
+error: this bound is already specified as the supertrait of `Trait4<i8, X = i32>`
+  --> tests/ui/implied_bounds_in_impls.rs:137:21
+   |
+LL |     fn f3() -> impl Trait3<i8, i16, i64, X = i32, Y = i128> + Trait4<i8, X = i32> {}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn f3() -> impl Trait3<i8, i16, i64, X = i32, Y = i128> + Trait4<i8, X = i32> {}
+LL +     fn f3() -> impl Trait4<i8, X = i32, Y = i128> {}
+   |
+
+error: this bound is already specified as the supertrait of `Y`
+  --> tests/ui/implied_bounds_in_impls.rs:165:21
+   |
+LL |     fn f3() -> impl X + Y {}
+   |                     ^
+   |
+help: try removing this bound
+   |
+LL -     fn f3() -> impl X + Y {}
+LL +     fn f3() -> impl Y {}
+   |
+
+error: this bound is already specified as the supertrait of `Y<T = u32>`
+  --> tests/ui/implied_bounds_in_impls.rs:167:21
+   |
+LL |     fn f4() -> impl X + Y<T = u32> {}
+   |                     ^
+   |
+help: try removing this bound
+   |
+LL -     fn f4() -> impl X + Y<T = u32> {}
+LL +     fn f4() -> impl Y<T = u32> {}
+   |
+
+error: this bound is already specified as the supertrait of `Y<T = u32>`
+  --> tests/ui/implied_bounds_in_impls.rs:169:21
+   |
+LL |     fn f5() -> impl X<U = String> + Y<T = u32> {}
+   |                     ^^^^^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn f5() -> impl X<U = String> + Y<T = u32> {}
+LL +     fn f5() -> impl Y<T = u32, U = String> {}
+   |
+
+error: this bound is already specified as the supertrait of `DerefMut`
+  --> tests/ui/implied_bounds_in_impls.rs:173:17
+   |
+LL | fn apit(_: impl Deref + DerefMut) {}
+   |                 ^^^^^
+   |
+help: try removing this bound
+   |
+LL - fn apit(_: impl Deref + DerefMut) {}
+LL + fn apit(_: impl DerefMut) {}
+   |
+
+error: this bound is already specified as the supertrait of `DerefMut`
+  --> tests/ui/implied_bounds_in_impls.rs:177:20
+   |
+LL |     fn f() -> impl Deref + DerefMut;
+   |                    ^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn f() -> impl Deref + DerefMut;
+LL +     fn f() -> impl DerefMut;
+   |
+
+error: this bound is already specified as the supertrait of `DerefMut`
+  --> tests/ui/implied_bounds_in_impls.rs:186:23
+   |
+LL |     type Assoc = impl Deref + DerefMut;
+   |                       ^^^^^
+   |
+help: try removing this bound
+   |
+LL -     type Assoc = impl Deref + DerefMut;
+LL +     type Assoc = impl DerefMut;
+   |
+
+error: this bound is already specified as the supertrait of `DerefMut`
+  --> tests/ui/implied_bounds_in_impls.rs:193:18
+   |
+LL | type Tait = impl Deref + DerefMut;
+   |                  ^^^^^
+   |
+help: try removing this bound
+   |
+LL - type Tait = impl Deref + DerefMut;
+LL + type Tait = impl DerefMut;
+   |
+
+error: aborting due to 23 previous errors
+

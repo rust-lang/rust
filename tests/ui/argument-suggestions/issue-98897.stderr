@@ -1,0 +1,19 @@
+error[E0057]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/issue-98897.rs:2:5
+   |
+LL |     (|_, ()| ())([return, ()]);
+   |     ^^^^^^^^^^^^-------------- argument #2 of type `()` is missing
+   |
+note: closure defined here
+  --> $DIR/issue-98897.rs:2:6
+   |
+LL |     (|_, ()| ())([return, ()]);
+   |      ^^^^^^^
+help: provide the argument
+   |
+LL |     (|_, ()| ())([return, ()], ());
+   |                              ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0057`.

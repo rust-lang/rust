@@ -1,0 +1,126 @@
+// This test ensures that the macro expansion is generated and working as expected.
+go-to: "file://" + |DOC_PATH| + "/src/macro_expansion/lib.rs.html"
+
+define-function: (
+    "check-expansion",
+    [line, original_content],
+    block {
+        assert-text: ("a[id='" + |line| + "'] + .expansion .original", |original_content|)
+        // The "original" content should be expanded.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .original", {"display": "inline"})
+        // The expanded macro should be hidden.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .expanded", {"display": "none"})
+
+        // We "expand" the macro.
+        click: "a[id='" + |line| + "'] + .expansion input[type=checkbox]"
+        // The "original" content is hidden.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .original", {"display": "none"})
+        // The expanded macro is visible.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .expanded", {"display": "inline"})
+
+        // We collapse the macro.
+        click: "a[id='" + |line| + "'] + .expansion input[type=checkbox]"
+        // The "original" content is expanded.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .original", {"display": "inline"})
+        // The expanded macro is hidden.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .expanded", {"display": "none"})
+    }
+)
+
+// First we check the derive macro expansion at line 33.
+call-function: ("check-expansion", {"line": 35, "original_content": "Debug"})
+// Then we check the `bar` macro expansion at line 41.
+call-function: ("check-expansion", {"line": 43, "original_content": "bar!(y)"})
+// Then we check the `println` macro expansion at line 42-44.
+call-function: ("check-expansion", {"line": 44, "original_content": 'println!("
+45    {y}
+46    ")'})
+
+// Then finally we check when there are two macro calls on a same line.
+assert-count: ("#expand-52 ~ .original", 2)
+assert-count: ("#expand-52 ~ .expanded", 2)
+
+store-value: (repeat_o, '/following-sibling::*[@class="original"]')
+store-value: (repeat_e, '/following-sibling::*[@class="expanded"]')
+store-value: (expand_id, "expand-52")
+assert-text: ('//*[@id="' + |expand_id| + '"]' + |repeat_o|, "stringify!(foo)")
+assert-text: ('//*[@id="' + |expand_id| + '"]' + |repeat_o| + |repeat_o|, "stringify!(bar)")
+assert-text: ('//*[@id="' + |expand_id| + '"]' + |repeat_e|, '"foo"')
+assert-text: ('//*[@id="' + |expand_id| + '"]' + |repeat_e| + |repeat_e|, '"bar"')
+
+// The "original" content should be expanded.
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o|, {"display": "inline"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o| + |repeat_o|, {"display": "inline"})
+// The expanded macro should be hidden.
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e|, {"display": "none"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e| + |repeat_e|, {"display": "none"})
+
+// We "expand" the macro (because the line starts with a string, the label is not at the "top
+// level" of the `<code>`, so we need to use a different selector).
+click: "#" + |expand_id|
+// The "original" content is hidden.
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o|, {"display": "none"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o| + |repeat_o|, {"display": "none"})
+// The expanded macro is visible.
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e|, {"display": "inline"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e| + |repeat_e|, {"display": "inline"})
+
+// We collapse the macro.
+click: "#" + |expand_id|
+// The "original" content is expanded.
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o|, {"display": "inline"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o| + |repeat_o|, {"display": "inline"})
+// The expanded macro is hidden.
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e|, {"display": "none"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e| + |repeat_e|, {"display": "none"})
+
+// Checking the line 48 `println` which needs to be handled differently because the line number is
+// inside a "comment" span.
+store-value: (expand_id, "expand-48")
+assert-text: ("#" + |expand_id| + " ~ .original", 'println!("
+49    {y}
+50    ")')
+// The "original" content should be expanded.
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "inline"})
+// The expanded macro should be hidden.
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "none"})
+
+// We "expand" the macro.
+click: "#" + |expand_id|
+// The "original" content is hidden.
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "none"})
+// The expanded macro is visible.
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "inline"})
+
+// We collapse the macro.
+click: "#" + |expand_id|
+// The "original" content is expanded.
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "inline"})
+// The expanded macro is hidden.
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "none"})
+
+// Ensure that the toggles are focusable and can be interacted with keyboard.
+focus: "//a[@id='29']"
+press-key: "Tab"
+store-value: (expand_id, "expand-29")
+assert: "#" + |expand_id| + ":focus"
+assert-css: ("#" + |expand_id| +" ~ .expanded", {"display": "none"})
+assert-css: ("#" + |expand_id| +" ~ .original", {"display": "inline"})
+// We now expand the macro.
+press-key: "Space"
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "inline"})
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "none"})
+// We collapse the macro.
+press-key: "Space"
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "none"})
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "inline"})
+
+// Now we check a macro coming from another file.
+store-value: (expand_id, "expand-55")
+// We "expand" the macro.
+click: "#" + |expand_id|
+// The "original" content is hidden.
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "none"})
+// The expanded macro is visible.
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "inline"})
+assert-text: ("#" + |expand_id| + " ~ .expanded", "{ y += 2; };")

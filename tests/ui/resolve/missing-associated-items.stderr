@@ -1,0 +1,39 @@
+error[E0599]: no variant, associated function, or constant named `Homura` found for enum `Token` in the current scope
+  --> $DIR/missing-associated-items.rs:17:23
+   |
+LL | enum Token {
+   | ---------- variant, associated function, or constant `Homura` not found for this enum
+...
+LL |     use_token(&Token::Homura);
+   |                       ^^^^^^ variant, associated function, or constant not found in `Token`
+
+error[E0599]: no associated function or constant named `method` found for struct `Struct` in the current scope
+  --> $DIR/missing-associated-items.rs:18:13
+   |
+LL | struct Struct {
+   | ------------- associated function or constant `method` not found for this struct
+...
+LL |     Struct::method();
+   |             ^^^^^^ associated function or constant not found in `Struct`
+
+error[E0599]: no associated function or constant named `method` found for struct `Struct` in the current scope
+  --> $DIR/missing-associated-items.rs:19:13
+   |
+LL | struct Struct {
+   | ------------- associated function or constant `method` not found for this struct
+...
+LL |     Struct::method;
+   |             ^^^^^^ associated function or constant not found in `Struct`
+
+error[E0599]: no associated function or constant named `Assoc` found for struct `Struct` in the current scope
+  --> $DIR/missing-associated-items.rs:20:13
+   |
+LL | struct Struct {
+   | ------------- associated function or constant `Assoc` not found for this struct
+...
+LL |     Struct::Assoc;
+   |             ^^^^^ associated function or constant not found in `Struct`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

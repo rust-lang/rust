@@ -1,0 +1,1 @@
+use foo as _;

@@ -1,0 +1,25 @@
+error: expected one of `:`, `;`, or `=`, found `a`
+  --> $DIR/static-mut.rs:1:13
+   |
+LL | static muta a: u8 = 0;
+   |             ^ expected one of `:`, `;`, or `=`
+   |
+help: there is a keyword `mut` with a similar name
+   |
+LL - static muta a: u8 = 0;
+LL + static mut a: u8 = 0;
+   |
+
+error: missing type for `static` item
+  --> $DIR/static-mut.rs:1:12
+   |
+LL | static muta a: u8 = 0;
+   |            ^
+   |
+help: provide a type for the item
+   |
+LL | static muta: <type> a: u8 = 0;
+   |            ++++++++
+
+error: aborting due to 2 previous errors
+

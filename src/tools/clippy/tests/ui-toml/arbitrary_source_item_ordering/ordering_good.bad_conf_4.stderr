@@ -1,0 +1,8 @@
+error: error reading Clippy's configuration file: data did not match any variant of untagged enum StringOrVecOfString  The available options for configuring an ordering within module item groups are: "all", "none", or a list of module item group names (as configured with the `module-item-order-groupings` configuration option).
+  --> $DIR/tests/ui-toml/arbitrary_source_item_ordering/bad_conf_4/clippy.toml:1:41
+   |
+LL | module-items-ordered-within-groupings = true
+   |                                         ^^^^
+
+error: aborting due to 1 previous error
+

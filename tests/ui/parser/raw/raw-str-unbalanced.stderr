@@ -1,0 +1,36 @@
+error: too many `#` when terminating raw string
+  --> $DIR/raw-str-unbalanced.rs:2:10
+   |
+LL |     r#""##
+   |     -----^ help: remove the extra `#`
+   |     |
+   |     this raw string started with 1 `#`
+
+error: too many `#` when terminating raw string
+  --> $DIR/raw-str-unbalanced.rs:7:9
+   |
+LL | /     r#"
+LL | |       "####
+   | |        -^^^ help: remove the extra `#`s
+   | |________|
+   |          this raw string started with 1 `#`
+
+error: expected `;`, found `#`
+  --> $DIR/raw-str-unbalanced.rs:10:28
+   |
+LL | const A: &'static str = r""
+   |                            ^ help: add `;` here
+...
+LL | #[test]
+   | - unexpected token
+
+error: too many `#` when terminating raw string
+  --> $DIR/raw-str-unbalanced.rs:16:28
+   |
+LL | const B: &'static str = r""##
+   |                         ---^^ help: remove the extra `#`s
+   |                         |
+   |                         this raw string started with 0 `#`s
+
+error: aborting due to 4 previous errors
+

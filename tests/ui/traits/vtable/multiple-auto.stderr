@@ -1,0 +1,46 @@
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as T>::method),
+       ]
+  --> $DIR/multiple-auto.rs:35:1
+   |
+LL | impl A for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as T>::method),
+       ]
+  --> $DIR/multiple-auto.rs:39:1
+   |
+LL | impl B for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as T>::method),
+       ]
+  --> $DIR/multiple-auto.rs:43:1
+   |
+LL | impl C for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as T>::method),
+       ]
+  --> $DIR/multiple-auto.rs:47:1
+   |
+LL | impl D for S {}
+   | ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

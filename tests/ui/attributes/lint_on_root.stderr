@@ -1,0 +1,31 @@
+error: `#[inline]` attribute cannot be used on crates
+  --> $DIR/lint_on_root.rs:3:1
+   |
+LL | #![inline = ""]
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: valid forms for the attribute are `#![inline(always)]`, `#![inline(never)]`, and `#![inline]`
+  --> $DIR/lint_on_root.rs:3:1
+   |
+LL | #![inline = ""]
+   | ^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: aborting due to 2 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: valid forms for the attribute are `#![inline(always)]`, `#![inline(never)]`, and `#![inline]`
+  --> $DIR/lint_on_root.rs:3:1
+   |
+LL | #![inline = ""]
+   | ^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
+

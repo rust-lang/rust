@@ -1,0 +1,130 @@
+error[E0599]: no method named `push` found for struct `BTreeSet<T, A>` in the current scope
+  --> $DIR/rustc_confusables_std_cases.rs:6:7
+   |
+LL |     x.push(1);
+   |       ^^^^ method not found in `BTreeSet<_>`
+   |
+help: you might have meant to use `insert`
+   |
+LL -     x.push(1);
+LL +     x.insert(1);
+   |
+
+error[E0599]: no method named `push_back` found for struct `Vec<_>` in the current scope
+  --> $DIR/rustc_confusables_std_cases.rs:9:7
+   |
+LL |     x.push_back(1);
+   |       ^^^^^^^^^ method not found in `Vec<_>`
+   |
+help: you might have meant to use `push`
+   |
+LL -     x.push_back(1);
+LL +     x.push(1);
+   |
+
+error[E0599]: no method named `push` found for struct `VecDeque<T, A>` in the current scope
+  --> $DIR/rustc_confusables_std_cases.rs:12:7
+   |
+LL |     x.push(1);
+   |       ^^^^ method not found in `VecDeque<_>`
+   |
+note: there's an earlier shadowed binding `x` of type `Vec<_>` that has method `push` available
+  --> $DIR/rustc_confusables_std_cases.rs:8:9
+   |
+LL |     let mut x = Vec::new();
+   |         ^^^^^ `x` of type `Vec<_>` that has method `push` defined earlier here
+...
+LL |     let mut x = VecDeque::new();
+   |         ----- earlier `x` shadowed here with type `VecDeque<_>`
+help: you might have meant to use `push_back`
+   |
+LL |     x.push_back(1);
+   |           +++++
+
+error[E0599]: no method named `length` found for struct `Vec<{integer}>` in the current scope
+  --> $DIR/rustc_confusables_std_cases.rs:15:7
+   |
+LL |     x.length();
+   |       ^^^^^^
+   |
+help: you might have meant to use `len`
+   |
+LL -     x.length();
+LL +     x.len();
+   |
+
+error[E0599]: no method named `size` found for struct `Vec<{integer}>` in the current scope
+  --> $DIR/rustc_confusables_std_cases.rs:17:7
+   |
+LL |     x.size();
+   |       ^^^^
+   |
+help: there is a method `resize` with a similar name, but with different arguments
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: you might have meant to use `len`
+   |
+LL -     x.size();
+LL +     x.len();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/rustc_confusables_std_cases.rs:20:14
+   |
+LL |     x.append(42);
+   |       ------ ^^ expected `&mut Vec<{integer}>`, found integer
+   |       |
+   |       arguments to this method are incorrect
+   |
+   = note: expected mutable reference `&mut Vec<{integer}>`
+                           found type `{integer}`
+note: method defined here
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: you might have meant to use `push`
+   |
+LL -     x.append(42);
+LL +     x.push(42);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/rustc_confusables_std_cases.rs:22:24
+   |
+LL |     String::new().push("");
+   |                   ---- ^^ expected `char`, found `&str`
+   |                   |
+   |                   arguments to this method are incorrect
+   |
+note: method defined here
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+help: you might have meant to use `push_str`
+   |
+LL |     String::new().push_str("");
+   |                       ++++
+
+error[E0599]: no method named `append` found for struct `String` in the current scope
+  --> $DIR/rustc_confusables_std_cases.rs:24:19
+   |
+LL |     String::new().append("");
+   |                   ^^^^^^ method not found in `String`
+   |
+help: you might have meant to use `push_str`
+   |
+LL -     String::new().append("");
+LL +     String::new().push_str("");
+   |
+
+error[E0599]: no method named `get_line` found for struct `Stdin` in the current scope
+  --> $DIR/rustc_confusables_std_cases.rs:28:11
+   |
+LL |     stdin.get_line(&mut buffer).unwrap();
+   |           ^^^^^^^^ method not found in `Stdin`
+   |
+help: you might have meant to use `read_line`
+   |
+LL -     stdin.get_line(&mut buffer).unwrap();
+LL +     stdin.read_line(&mut buffer).unwrap();
+   |
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0308, E0599.
+For more information about an error, try `rustc --explain E0308`.

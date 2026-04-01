@@ -1,0 +1,16 @@
+error: lifetime may not live long enough
+  --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:17:9
+   |
+LL |     doit(0, &|x, y| {
+   |               -  - has type `&'1 i32`
+   |               |
+   |               has type `&Cell<&'2 i32>`
+LL |         x.set(y);
+   |         ^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `Cell<&i32>`, which makes the generic argument `&i32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,119 @@
+#![feature(type_alias_impl_trait)]
+#![warn(clippy::from_over_into)]
+#![allow(non_local_definitions)]
+#![allow(unused)]
+
+// this should throw an error
+struct StringWrapper(String);
+
+impl From<String> for StringWrapper {
+    //~^ from_over_into
+    fn from(val: String) -> Self {
+        StringWrapper(val)
+    }
+}
+
+struct SelfType(String);
+
+impl From<String> for SelfType {
+    //~^ from_over_into
+    fn from(val: String) -> Self {
+        SelfType(String::new())
+    }
+}
+
+#[derive(Default)]
+struct X;
+
+impl X {
+    const FOO: &'static str = "a";
+}
+
+struct SelfKeywords;
+
+impl From<X> for SelfKeywords {
+    //~^ from_over_into
+    fn from(val: X) -> Self {
+        let _ = X;
+        let _ = X::FOO;
+        let _: X = val;
+
+        SelfKeywords
+    }
+}
+
+struct ExplicitPaths(bool);
+
+impl core::convert::From<crate::ExplicitPaths> for bool {
+    //~^ from_over_into
+    fn from(mut val: crate::ExplicitPaths) -> Self {
+        let in_closure = || val.0;
+
+        val.0 = false;
+        val.0
+    }
+}
+
+// this is fine
+struct A(String);
+
+impl From<String> for A {
+    fn from(s: String) -> A {
+        A(s)
+    }
+}
+
+struct PathInExpansion;
+
+impl From<PathInExpansion> for String {
+    //~^ from_over_into
+    fn from(val: PathInExpansion) -> Self {
+        // non self/Self paths in expansions are fine
+        panic!()
+    }
+}
+
+#[clippy::msrv = "1.40"]
+fn msrv_1_40() {
+    struct FromOverInto<T>(Vec<T>);
+
+    impl<T> Into<FromOverInto<T>> for Vec<T> {
+        fn into(self) -> FromOverInto<T> {
+            FromOverInto(self)
+        }
+    }
+}
+
+#[clippy::msrv = "1.41"]
+fn msrv_1_41() {
+    struct FromOverInto<T>(Vec<T>);
+
+    impl<T> From<Vec<T>> for FromOverInto<T> {
+        //~^ from_over_into
+        fn from(val: Vec<T>) -> Self {
+            FromOverInto(val)
+        }
+    }
+}
+
+fn issue_12138() {
+    struct Hello;
+
+    impl From<Hello> for () {
+        //~^ from_over_into
+        fn from(val: Hello) {}
+    }
+}
+
+fn issue_112502() {
+    struct MyInt(i64);
+
+    impl From<MyInt> for i64 {
+        //~^ from_over_into
+        fn from(val: MyInt) -> Self {
+            val.0
+        }
+    }
+}
+
+fn main() {}

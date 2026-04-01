@@ -1,0 +1,38 @@
+warning: `#[inline]` attribute cannot be used on macro calls
+  --> $DIR/inert-attr-macro.rs:10:5
+   |
+LL |     #[inline] foo!();
+   |     ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[inline]` can only be applied to functions
+note: the lint level is defined here
+  --> $DIR/inert-attr-macro.rs:3:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_attributes)]` implied by `#[warn(unused)]`
+
+warning: unused attribute `allow`
+  --> $DIR/inert-attr-macro.rs:15:5
+   |
+LL |     #[allow(warnings)] #[inline] foo!();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `foo`
+  --> $DIR/inert-attr-macro.rs:15:34
+   |
+LL |     #[allow(warnings)] #[inline] foo!();
+   |                                  ^^^
+
+warning: `#[inline]` attribute cannot be used on macro calls
+  --> $DIR/inert-attr-macro.rs:15:24
+   |
+LL |     #[allow(warnings)] #[inline] foo!();
+   |                        ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[inline]` can only be applied to functions
+
+warning: 3 warnings emitted
+

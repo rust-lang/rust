@@ -1,0 +1,11 @@
+error[E0496]: lifetime name `'a` shadows a lifetime name that is already in scope
+  --> $DIR/captured-invalid-lifetime.rs:15:13
+   |
+LL | impl<'a> Foo<'a> {
+   |      -- first declared here
+LL |     fn pass<'a>() -> impl Sized {}
+   |             ^^ lifetime `'a` already in scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0496`.

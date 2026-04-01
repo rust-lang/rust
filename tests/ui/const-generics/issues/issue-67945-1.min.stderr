@@ -1,0 +1,30 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-67945-1.rs:10:16
+   |
+LL |         let x: S = MaybeUninit::uninit();
+   |                ^ cannot perform const operation using `S`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-67945-1.rs:13:45
+   |
+LL |         let b = &*(&x as *const _ as *const S);
+   |                                             ^ cannot perform const operation using `S`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error[E0392]: type parameter `S` is never used
+  --> $DIR/issue-67945-1.rs:7:12
+   |
+LL | struct Bug<S> {
+   |            ^ unused type parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `S` to be a const parameter, use `const S: /* Type */` instead
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

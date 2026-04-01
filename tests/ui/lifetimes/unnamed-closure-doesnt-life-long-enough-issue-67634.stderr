@@ -1,0 +1,21 @@
+error[E0373]: closure may outlive the current function, but it borrows `a`, which is owned by the current function
+  --> $DIR/unnamed-closure-doesnt-life-long-enough-issue-67634.rs:2:44
+   |
+LL |     [0].iter().flat_map(|a| [0].iter().map(|_| &a));
+   |                                            ^^^  - `a` is borrowed here
+   |                                            |
+   |                                            may outlive borrowed value `a`
+   |
+note: closure is returned here
+  --> $DIR/unnamed-closure-doesnt-life-long-enough-issue-67634.rs:2:29
+   |
+LL |     [0].iter().flat_map(|a| [0].iter().map(|_| &a));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `a` (and any other referenced variables), use the `move` keyword
+   |
+LL |     [0].iter().flat_map(|a| [0].iter().map(move |_| &a));
+   |                                            ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0373`.

@@ -1,0 +1,31 @@
+error: `attr` rule argument matchers require parentheses
+  --> $DIR/macro-attr-recovery.rs:5:9
+   |
+LL |     attr[$($args:tt)*] { $($body:tt)* } => {
+   |         ^^^^^^^^^^^^^^
+   |
+help: the delimiters should be `(` and `)`
+   |
+LL -     attr[$($args:tt)*] { $($body:tt)* } => {
+LL +     attr($($args:tt)*) { $($body:tt)* } => {
+   |
+
+error: attr: args="" body="struct S;"
+  --> $DIR/macro-attr-recovery.rs:8:9
+   |
+LL | /         compile_error!(concat!(
+LL | |             "attr: args=\"",
+LL | |             stringify!($($args)*),
+LL | |             "\" body=\"",
+LL | |             stringify!($($body)*),
+LL | |             "\"",
+LL | |         ));
+   | |__________^
+...
+LL |   #[attr]
+   |   ------- in this attribute macro expansion
+   |
+   = note: this error originates in the attribute macro `attr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

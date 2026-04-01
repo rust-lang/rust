@@ -1,0 +1,30 @@
+error: at least one trait must be specified
+  --> $DIR/issue-86719.rs:7:14
+   |
+LL |     type E = impl ;
+   |              ^^^^
+
+error[E0407]: method `foo` is not a member of trait `Bar`
+  --> $DIR/issue-86719.rs:8:5
+   |
+LL | /     fn foo() -> Self::E {
+LL | |
+LL | |         |_| true
+LL | |     }
+   | |_____^ not a member of trait `Bar`
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-86719.rs:10:10
+   |
+LL |         |_| true
+   |          ^
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |         |_: /* Type */| true
+   |           ++++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0407.
+For more information about an error, try `rustc --explain E0282`.
