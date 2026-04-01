@@ -184,7 +184,7 @@ fn generate_item_with_correct_attrs(
     import_ids: &[LocalDefId],
     renamed: Option<Symbol>,
 ) -> Item {
-    let target_attrs = inline::load_attrs(cx, def_id);
+    let target_attrs = inline::load_attrs(cx.tcx, def_id);
     let attrs = if !import_ids.is_empty() {
         let mut attrs = Vec::with_capacity(import_ids.len());
         let mut is_inline = false;
@@ -196,7 +196,7 @@ fn generate_item_with_correct_attrs(
             // cfgs on the path up until the glob can be removed, and only cfgs on the globbed item
             // itself matter), for non-inlined re-exports see #85043.
             let import_is_inline = find_attr!(
-                inline::load_attrs(cx, import_id.to_def_id()),
+                inline::load_attrs(cx.tcx, import_id.to_def_id()),
                 Doc(d)
                 if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
             ) || (is_glob_import(cx.tcx, import_id)
@@ -2663,7 +2663,7 @@ fn get_all_import_attributes<'hir>(
         .iter()
         .flat_map(|reexport| reexport.id())
     {
-        let import_attrs = inline::load_attrs(cx, def_id);
+        let import_attrs = inline::load_attrs(cx.tcx, def_id);
         if first {
             // This is the "original" reexport so we get all its attributes without filtering them.
             attrs = import_attrs.iter().map(|attr| (Cow::Borrowed(attr), Some(def_id))).collect();

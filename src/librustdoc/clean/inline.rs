@@ -218,10 +218,10 @@ pub(crate) fn try_inline_glob(
     }
 }
 
-pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [hir::Attribute] {
+pub(crate) fn load_attrs<'hir>(tcx: TyCtxt<'hir>, did: DefId) -> &'hir [hir::Attribute] {
     // FIXME: all uses should use `find_attr`!
     #[allow(deprecated)]
-    cx.tcx.get_all_attrs(did)
+    tcx.get_all_attrs(did)
 }
 
 pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> {
@@ -623,7 +623,8 @@ pub(crate) fn build_impl(
     // doesn't matter at this point.
     //
     // We need to pass this empty `CfgInfo` because `merge_attrs` is used when computing the `cfg`.
-    let (merged_attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs, &mut CfgInfo::default());
+    let (merged_attrs, cfg) =
+        merge_attrs(cx, load_attrs(cx.tcx, did), attrs, &mut CfgInfo::default());
     trace!("merged_attrs={merged_attrs:?}");
 
     trace!(
