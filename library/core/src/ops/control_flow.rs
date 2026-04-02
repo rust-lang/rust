@@ -107,11 +107,6 @@ const impl<B, C> ops::Try for ControlFlow<B, C> {
     type Residual = ControlFlow<B, convert::Infallible>;
 
     #[inline]
-    fn from_output(output: Self::Output) -> Self {
-        ControlFlow::Continue(output)
-    }
-
-    #[inline]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             ControlFlow::Continue(c) => ControlFlow::Continue(c),
@@ -119,7 +114,14 @@ const impl<B, C> ops::Try for ControlFlow<B, C> {
         }
     }
 }
-
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl<B, C> const ops::FromOutput for ControlFlow<B, C> {
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        ControlFlow::Continue(output)
+    }
+}
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 // Note: manually specifying the residual type instead of using the default to work around

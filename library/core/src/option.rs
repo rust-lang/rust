@@ -2860,16 +2860,20 @@ const impl<T> ops::Try for Option<T> {
     type Residual = Option<convert::Infallible>;
 
     #[inline]
-    fn from_output(output: Self::Output) -> Self {
-        Some(output)
-    }
-
-    #[inline]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Some(v) => ControlFlow::Continue(v),
             None => ControlFlow::Break(None),
         }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl<T> const ops::FromOutput for Option<T> {
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        Some(output)
     }
 }
 

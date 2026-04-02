@@ -227,6 +227,7 @@ symbols! {
         Found,
         From,
         FromIterator,
+        FromOutput,
         FromResidual,
         GlobalAlloc,
         Hash,

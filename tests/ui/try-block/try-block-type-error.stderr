@@ -1,10 +1,10 @@
-error[E0271]: type mismatch resolving `<Option<f32> as Try>::Output == {integer}`
+error[E0271]: type mismatch resolving `<Option<f32> as Branch>::Output == {integer}`
   --> $DIR/try-block-type-error.rs:10:9
    |
 LL |         42
    |         ^^ expected integer, found `f32`
 
-error[E0271]: type mismatch resolving `<Option<i32> as Try>::Output == ()`
+error[E0271]: type mismatch resolving `<Option<i32> as Branch>::Output == ()`
   --> $DIR/try-block-type-error.rs:16:5
    |
 LL |     };
