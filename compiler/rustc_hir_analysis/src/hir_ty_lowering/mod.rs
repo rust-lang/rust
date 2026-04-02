@@ -387,7 +387,7 @@ impl<'tcx> ForbidMCGParamUsesFolder<'tcx> {
     fn error(&self) -> ErrorGuaranteed {
         let msg = if self.is_self_alias {
             "generic `Self` types are currently not permitted in anonymous constants"
-        } else if self.tcx.features().opaque_generic_const_args() {
+        } else if self.tcx.features().generic_const_args() {
             "generic parameters in const blocks are only allowed as the direct value of a `type const`"
         } else {
             "generic parameters may not be used in const operations"
@@ -408,8 +408,8 @@ impl<'tcx> ForbidMCGParamUsesFolder<'tcx> {
             }
         }
         if self.tcx.features().min_generic_const_args() {
-            if !self.tcx.features().opaque_generic_const_args() {
-                diag.help("add `#![feature(opaque_generic_const_args)]` to allow generic expressions as the RHS of const items");
+            if !self.tcx.features().generic_const_args() {
+                diag.help("add `#![feature(generic_const_args)]` to allow generic expressions as the RHS of const items");
             } else {
                 diag.help("consider factoring the expression into a `type const` item and use it as the const argument instead");
             }
