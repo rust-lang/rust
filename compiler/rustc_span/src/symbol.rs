@@ -663,6 +663,7 @@ symbols! {
         const_fn_transmute,
         const_fn_union,
         const_fn_unsize,
+        const_attr_paths,
         const_for,
         const_format_args,
         const_generics,

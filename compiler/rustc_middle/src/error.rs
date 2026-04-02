@@ -85,6 +85,40 @@ pub(crate) struct ConstEvalNonIntError {
 }
 
 #[derive(Diagnostic)]
+#[diag("const item used in `{$attr_name}` must have an integer type, found `{$ty}`")]
+pub(crate) struct AttrConstNonInt<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: &'static str,
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag("const item used in `{$attr_name}` must evaluate to a non-negative integer")]
+pub(crate) struct AttrConstNegative {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("const item used in `{$attr_name}` cannot depend on generic parameters")]
+pub(crate) struct AttrConstTooGeneric {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("invalid value for `{$attr_name}`: {$reason}")]
+pub(crate) struct InvalidAttrValue {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: &'static str,
+    pub reason: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(
     "to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled"
 )]

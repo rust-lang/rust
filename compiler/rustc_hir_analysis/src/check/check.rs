@@ -1599,7 +1599,8 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
             for (r, _) in reprs {
                 if let ReprPacked(pack) = r
                     && let Some(repr_pack) = repr.pack
-                    && pack != &repr_pack
+                    && let Some(pack) = tcx.eval_attr_alignment(*pack, "repr(packed)")
+                    && pack != repr_pack
                 {
                     struct_span_code_err!(
                         tcx.dcx(),
