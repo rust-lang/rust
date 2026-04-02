@@ -1149,8 +1149,8 @@ impl char {
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
-    /// If this `char` requires special considerations (e.g. multiple `char`s) the iterator yields
-    /// the `char`(s) given by [`SpecialCasing.txt`].
+    /// If this `char` expands to multiple `char`s, the iterator yields the `char`s given by
+    /// [`SpecialCasing.txt`]. The maximum number of `char`s in a case mapping is 3.
     ///
     /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
     ///
@@ -1265,8 +1265,8 @@ impl char {
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
-    /// If this `char` requires special considerations (e.g. multiple `char`s) the iterator yields
-    /// the `char`(s) given by [`SpecialCasing.txt`].
+    /// If this `char` expands to multiple `char`s, the iterator yields the `char`s given by
+    /// [`SpecialCasing.txt`]. The maximum number of `char`s in a case mapping is 3.
     ///
     /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
     ///
@@ -1442,8 +1442,8 @@ impl char {
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
-    /// If this `char` requires special considerations (e.g. multiple `char`s) the iterator yields
-    /// the `char`(s) given by [`SpecialCasing.txt`].
+    /// If this `char` expands to multiple `char`s, the iterator yields the `char`s given by
+    /// [`SpecialCasing.txt`]. The maximum number of `char`s in a case mapping is 3.
     ///
     /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
     ///
