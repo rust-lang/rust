@@ -279,6 +279,8 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
 
     fn error_reported(&self) -> Result<(), I::ErrorGuaranteed>;
 
+    fn non_region_error_reported(&self) -> Result<(), I::ErrorGuaranteed>;
+
     fn has_non_region_param(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PARAM - TypeFlags::HAS_RE_PARAM)
     }
@@ -352,6 +354,11 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
     fn still_further_specializable(&self) -> bool {
         self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
     }
+
+    /// True if a type or const error is reachable
+    fn has_non_region_error(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_NON_REGION_ERROR)
+    }
 }
 
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitableExt<I> for T {
@@ -371,6 +378,18 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitableExt<I> for T {
                 Err(guar)
             } else {
                 panic!("type flags said there was an error, but now there is not")
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    fn non_region_error_reported(&self) -> Result<(), I::ErrorGuaranteed> {
+        if self.has_non_region_error() {
+            if let ControlFlow::Break(guar) = self.visit_with(&mut HasErrorVisitor) {
+                Err(guar)
+            } else {
+                panic!("type flags said there was an non region error, but now there is not")
             }
         } else {
             Ok(())
