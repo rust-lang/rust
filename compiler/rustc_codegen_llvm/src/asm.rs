@@ -647,7 +647,10 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             | Arm(ArmInlineAsmRegClass::qreg_low4) => "x",
             Arm(ArmInlineAsmRegClass::dreg) | Arm(ArmInlineAsmRegClass::qreg) => "w",
             Hexagon(HexagonInlineAsmRegClass::reg) => "r",
+            Hexagon(HexagonInlineAsmRegClass::reg_pair) => "r",
             Hexagon(HexagonInlineAsmRegClass::preg) => unreachable!("clobber-only"),
+            Hexagon(HexagonInlineAsmRegClass::vreg) => "v",
+            Hexagon(HexagonInlineAsmRegClass::qreg) => unreachable!("clobber-only"),
             LoongArch(LoongArchInlineAsmRegClass::reg) => "r",
             LoongArch(LoongArchInlineAsmRegClass::freg) => "f",
             Mips(MipsInlineAsmRegClass::reg) => "r",
@@ -828,7 +831,18 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         | Arm(ArmInlineAsmRegClass::qreg_low8)
         | Arm(ArmInlineAsmRegClass::qreg_low4) => cx.type_vector(cx.type_i64(), 2),
         Hexagon(HexagonInlineAsmRegClass::reg) => cx.type_i32(),
+        Hexagon(HexagonInlineAsmRegClass::reg_pair) => cx.type_i64(),
         Hexagon(HexagonInlineAsmRegClass::preg) => unreachable!("clobber-only"),
+        Hexagon(HexagonInlineAsmRegClass::vreg) => {
+            // HVX vector register size depends on the HVX mode.
+            // LLVM's "v" constraint requires the exact vector width.
+            if cx.tcx.sess.unstable_target_features.contains(&sym::hvx_length128b) {
+                cx.type_vector(cx.type_i32(), 32) // 1024-bit for 128B mode
+            } else {
+                cx.type_vector(cx.type_i32(), 16) // 512-bit for 64B mode
+            }
+        }
+        Hexagon(HexagonInlineAsmRegClass::qreg) => unreachable!("clobber-only"),
         LoongArch(LoongArchInlineAsmRegClass::reg) => cx.type_i32(),
         LoongArch(LoongArchInlineAsmRegClass::freg) => cx.type_f32(),
         Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
