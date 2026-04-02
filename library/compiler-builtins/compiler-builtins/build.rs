@@ -1,21 +1,19 @@
+#[path = "../libm/configure.rs"]
 mod configure;
 
 use std::env;
 
-use configure::{Config, configure_aliases, set_cfg};
+use configure::{Config, Library, set_cfg};
 
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
-    println!("cargo::rerun-if-changed=configure.rs");
+    println!("cargo::rerun-if-changed=../libm/configure.rs");
 
-    let cfg = Config::from_env();
-    let cwd = env::current_dir().unwrap();
-
+    let cfg = Config::from_env(Library::CompilerBuiltins);
+    configure::emit(&cfg);
     configure_check_cfg();
-    configure_aliases(&cfg);
 
-    configure_libm(&cfg);
-
+    let cwd = env::current_dir().unwrap();
     println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
 
     println!("cargo::rustc-check-cfg=cfg(kernel_user_helpers)");
@@ -80,32 +78,6 @@ fn main() {
     set_cfg("kernel_user_helpers", kernel_user_helpers);
 }
 
-/// Run configuration for `libm` since it is included directly.
-///
-/// Much of this is copied from `libm/configure.rs`.
-fn configure_libm(cfg: &Config) {
-    println!("cargo:rustc-check-cfg=cfg(feature, values(\"unstable-public-internals\"))");
-
-    // Always use intrinsics
-    set_cfg("intrinsics_enabled", true);
-
-    let opt = !matches!(cfg.opt_level.as_str(), "0" | "1");
-    set_cfg("optimizations_enabled", opt);
-
-    println!(
-        "cargo:rustc-env=CFG_CARGO_FEATURES={:?}",
-        cfg.cargo_features
-    );
-    println!("cargo:rustc-env=CFG_OPT_LEVEL={}", cfg.opt_level);
-    println!(
-        "cargo:rustc-env=CFG_TARGET_FEATURES={:?}",
-        cfg.target_features
-    );
-
-    // Activate libm's unstable features to make full use of Nightly.
-    println!("cargo:rustc-cfg=feature=\"unstable-intrinsics\"");
-}
-
 /// Emit directives for features we expect to support that aren't in `Cargo.toml`.
 ///
 /// These are mostly cfg elements emitted by this `build.rs`.
@@ -165,10 +137,6 @@ fn configure_check_cfg() {
     // Rustc is unaware of sparc target features, but this does show up from
     // `rustc --print target-features --target sparc64-unknown-linux-gnu`.
     println!("cargo::rustc-check-cfg=cfg(target_feature, values(\"vis3\"))");
-
-    // FIXME: these come from libm and should be changed there
-    println!("cargo::rustc-check-cfg=cfg(feature, values(\"checked\"))");
-    println!("cargo::rustc-check-cfg=cfg(assert_no_panic)");
 }
 
 #[cfg(feature = "c")]

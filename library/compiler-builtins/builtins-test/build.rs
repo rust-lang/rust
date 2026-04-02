@@ -1,8 +1,9 @@
+#[path = "../libm/configure.rs"]
+mod configure;
+
 use std::collections::HashSet;
 
-mod builtins_configure {
-    include!("../compiler-builtins/configure.rs");
-}
+use configure::{Config, Library, set_cfg};
 
 /// Features to enable
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -45,9 +46,11 @@ impl SetCfg {
 }
 
 fn main() {
-    println!("cargo::rerun-if-changed=../configure.rs");
+    println!("cargo::rerun-if-changed=../libm/configure.rs");
 
-    let cfg = builtins_configure::Config::from_env();
+    let cfg = Config::from_env(Library::BuiltinsTest);
+    configure::emit(&cfg);
+
     let mut to_set = HashSet::new();
 
     // These platforms do not have f128 symbols available in their system libraries, so
@@ -113,8 +116,6 @@ fn main() {
     );
 
     for cfg in SetCfg::ALL {
-        builtins_configure::set_cfg(cfg.name(), to_set.contains(cfg));
+        set_cfg(cfg.name(), to_set.contains(cfg));
     }
-
-    builtins_configure::configure_aliases(&cfg);
 }

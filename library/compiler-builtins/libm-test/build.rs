@@ -1,9 +1,10 @@
 #[path = "../libm/configure.rs"]
 mod configure;
-use configure::Config;
+
+use configure::{Config, Library};
 
 fn main() {
     println!("cargo:rerun-if-changed=../libm/configure.rs");
-    let cfg = Config::from_env();
-    configure::emit_test_config(&cfg);
+    let cfg = Config::from_env(Library::LibmTest);
+    configure::emit(&cfg);
 }
