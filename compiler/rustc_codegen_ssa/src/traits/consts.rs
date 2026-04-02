@@ -20,6 +20,7 @@ pub trait ConstCodegenMethods: BackendTypes {
     fn const_i8(&self, i: i8) -> Self::Value;
     fn const_i16(&self, i: i16) -> Self::Value;
     fn const_i32(&self, i: i32) -> Self::Value;
+    fn const_i64(&self, i: i64) -> Self::Value;
     fn const_int(&self, t: Self::Type, i: i64) -> Self::Value;
     fn const_u8(&self, i: u8) -> Self::Value;
     fn const_u32(&self, i: u32) -> Self::Value;
