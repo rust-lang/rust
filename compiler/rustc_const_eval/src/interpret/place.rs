@@ -417,22 +417,22 @@ where
         self.ptr_with_meta_to_mplace(ptr, MemPlaceMeta::None, layout, /*unaligned*/ true)
     }
 
-    /// Take a value, which represents a (thin or wide) reference, and make it a place.
-    /// Alignment is just based on the type. This is the inverse of `mplace_to_ref()`.
+    /// Take a value, which represents a (thin or wide) pointer, and make it a place.
+    /// Alignment is just based on the type. This is the inverse of `mplace_to_imm_ptr()`.
     ///
     /// Only call this if you are sure the place is "valid" (aligned and inbounds), or do not
     /// want to ever use the place for memory access!
     /// Generally prefer `deref_pointer`.
-    pub fn ref_to_mplace(
+    pub fn imm_ptr_to_mplace(
         &self,
         val: &ImmTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let pointee_type =
-            val.layout.ty.builtin_deref(true).expect("`ref_to_mplace` called on non-ptr type");
+            val.layout.ty.builtin_deref(true).expect("`imm_ptr_to_mplace` called on non-ptr type");
         let layout = self.layout_of(pointee_type)?;
         let (ptr, meta) = val.to_scalar_and_meta();
 
-        // `ref_to_mplace` is called on raw pointers even if they don't actually get dereferenced;
+        // `imm_ptr_to_mplace` is called on raw pointers even if they don't actually get dereferenced;
         // we hence can't call `size_and_align_of` since that asserts more validity than we want.
         let ptr = ptr.to_pointer(self)?;
         interp_ok(self.ptr_with_meta_to_mplace(ptr, meta, layout, /*unaligned*/ false))
@@ -440,8 +440,8 @@ where
 
     /// Turn a mplace into a (thin or wide) mutable raw pointer, pointing to the same space.
     /// `align` information is lost!
-    /// This is the inverse of `ref_to_mplace`.
-    pub fn mplace_to_ref(
+    /// This is the inverse of `imm_ptr_to_mplace`.
+    pub fn mplace_to_imm_ptr(
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
@@ -467,7 +467,7 @@ where
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
 
-        let mplace = self.ref_to_mplace(&val)?;
+        let mplace = self.imm_ptr_to_mplace(&val)?;
         interp_ok(mplace)
     }
 

@@ -165,7 +165,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             match field_def.name {
                 sym::name => {
                     let name_place = self.allocate_str_dedup(variant_def.name.as_str())?;
-                    let ptr = self.mplace_to_ref(&name_place)?;
+                    let ptr = self.mplace_to_imm_ptr(&name_place)?;
                     self.write_immediate(*ptr, &field_place)?
                 }
                 sym::fields => {

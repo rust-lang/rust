@@ -415,7 +415,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         new_perm: NewPermission,
     ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
-        let place = this.ref_to_mplace(val)?;
+        let place = this.imm_ptr_to_mplace(val)?;
         let new_place = this.tb_retag_place(&place, new_perm)?;
         interp_ok(ImmTy::from_immediate(new_place.to_ref(this), val.layout))
     }
