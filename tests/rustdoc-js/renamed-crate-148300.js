@@ -6,7 +6,7 @@ const EXPECTED = [
     {
         query: 'st2',
         others: [
-            { name: 'st2', href: 'https://doc.rust-lang.org/nightly/std/index.html' }
+            { name: 'st2', href: 'https://doc.rust-lang.org/$CHANNEL/std/index.html' }
         ],
     },
 ];

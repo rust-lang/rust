@@ -9,7 +9,7 @@ const EXPECTED = [
             {
                 'path': 'foo',
                 'name': 'st2',
-                'href': 'https://doc.rust-lang.org/nightly/std/index.html'
+                'href': 'https://doc.rust-lang.org/$CHANNEL/std/index.html'
             },
         ],
     },
@@ -19,7 +19,7 @@ const EXPECTED = [
             {
                 'path': 'foo',
                 'name': 'st2',
-                'href': 'https://doc.rust-lang.org/nightly/std/index.html'
+                'href': 'https://doc.rust-lang.org/$CHANNEL/std/index.html'
             },
         ],
     },
