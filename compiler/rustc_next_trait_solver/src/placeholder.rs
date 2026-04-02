@@ -113,7 +113,7 @@ where
         }
     }
 
-    fn fold_ty(&mut self, t: ty::Ty<I>) -> ty::Ty<I> {
+    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         match t.kind() {
             ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), _)
                 if debruijn.as_usize() + 1
