@@ -108,7 +108,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_slice(interner: I, ty: Self) -> Self;
 
-    fn new_tup(interner: I, tys: &[ty::Ty<I>]) -> Self;
+    fn new_tup(interner: I, tys: &[I::Ty]) -> Self;
 
     fn new_tup_from_iter<It, T>(interner: I, iter: It) -> T::Output
     where
@@ -121,7 +121,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_pat(interner: I, ty: Self, pat: I::Pat) -> Self;
 
-    fn new_unsafe_binder(interner: I, ty: ty::Binder<I, ty::Ty<I>>) -> Self;
+    fn new_unsafe_binder(interner: I, ty: ty::Binder<I, I::Ty>) -> Self;
 
     fn tuple_fields(self) -> I::Tys;
 
@@ -158,7 +158,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
         self.kind().fn_sig(interner)
     }
 
-    fn discriminant_ty(self, interner: I) -> ty::Ty<I>;
+    fn discriminant_ty(self, interner: I) -> I::Ty;
 
     fn is_known_rigid(self) -> bool {
         self.kind().is_known_rigid()
@@ -198,11 +198,11 @@ pub trait Ty<I: Interner<Ty = Self>>:
 }
 
 pub trait Tys<I: Interner<Tys = Self>>:
-    Copy + Debug + Hash + Eq + SliceLike<Item = ty::Ty<I>> + TypeFoldable<I> + Default
+    Copy + Debug + Hash + Eq + SliceLike<Item = I::Ty> + TypeFoldable<I> + Default
 {
     fn inputs(self) -> I::FnInputTys;
 
-    fn output(self) -> ty::Ty<I>;
+    fn output(self) -> I::Ty;
 }
 
 pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
@@ -290,7 +290,7 @@ pub trait Const<I: Interner<Const = Self>>:
 }
 
 pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
-    fn ty(self) -> ty::Ty<I>;
+    fn ty(self) -> I::Ty;
     fn valtree(self) -> I::ValTree;
 }
 
@@ -310,7 +310,7 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     + IntoKind<Kind = ty::GenericArgKind<I>>
     + TypeVisitable<I>
     + Relate<I>
-    + From<ty::Ty<I>>
+    + From<I::Ty>
     + From<I::Region>
     + From<I::Const>
     + From<I::Term>
@@ -323,11 +323,11 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
         }
     }
 
-    fn as_type(&self) -> Option<ty::Ty<I>> {
+    fn as_type(&self) -> Option<I::Ty> {
         if let ty::GenericArgKind::Type(ty) = self.kind() { Some(ty) } else { None }
     }
 
-    fn expect_ty(&self) -> ty::Ty<I> {
+    fn expect_ty(&self) -> I::Ty {
         self.as_type().expect("expected a type")
     }
 
@@ -359,11 +359,11 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
 pub trait Term<I: Interner<Term = Self>>:
     Copy + Debug + Hash + Eq + IntoKind<Kind = ty::TermKind<I>> + TypeFoldable<I> + Relate<I>
 {
-    fn as_type(&self) -> Option<ty::Ty<I>> {
+    fn as_type(&self) -> Option<I::Ty> {
         if let ty::TermKind::Ty(ty) = self.kind() { Some(ty) } else { None }
     }
 
-    fn expect_ty(&self) -> ty::Ty<I> {
+    fn expect_ty(&self) -> I::Ty {
         self.as_type().expect("expected a type, but found a const")
     }
 
@@ -413,7 +413,7 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
         target: I::GenericArgs,
     ) -> I::GenericArgs;
 
-    fn type_at(self, i: usize) -> ty::Ty<I>;
+    fn type_at(self, i: usize) -> I::Ty;
 
     fn region_at(self, i: usize) -> I::Region;
 
@@ -459,7 +459,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitPredicate<I>>
-    + UpcastFrom<I, ty::OutlivesPredicate<I, ty::Ty<I>>>
+    + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
     + Elaboratable<I>
@@ -578,7 +578,7 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     /// Returns the type of the struct tail.
     ///
     /// Expects the `AdtDef` to be a struct. If it is not, then this will panic.
-    fn struct_tail_ty(self, interner: I) -> Option<ty::EarlyBinder<I, ty::Ty<I>>>;
+    fn struct_tail_ty(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
 
     fn is_phantom_data(self) -> bool;
 
@@ -591,13 +591,13 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     ) -> Option<FieldInfo<I>>;
 
     // FIXME: perhaps use `all_fields` and expose `FieldDef`.
-    fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = ty::Ty<I>>>;
+    fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
 
     fn sizedness_constraint(
         self,
         interner: I,
         sizedness: SizedTraitKind,
-    ) -> Option<ty::EarlyBinder<I, ty::Ty<I>>>;
+    ) -> Option<ty::EarlyBinder<I, I::Ty>>;
 
     fn is_fundamental(self) -> bool;
 
