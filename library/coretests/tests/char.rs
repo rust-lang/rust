@@ -213,6 +213,41 @@ fn test_to_uppercase() {
 }
 
 #[test]
+fn test_to_casefold() {
+    fn fold(c: char) -> String {
+        let to_casefold = c.to_casefold();
+        assert_eq!(to_casefold.len(), to_casefold.count());
+        let iter: String = c.to_casefold().collect();
+        let disp: String = c.to_casefold().to_string();
+        assert_eq!(iter, disp);
+        let iter_rev: String = c.to_casefold().rev().collect();
+        let disp_rev: String = disp.chars().rev().collect();
+        assert_eq!(iter_rev, disp_rev);
+        iter
+    }
+    assert_eq!(fold('A'), "a");
+    assert_eq!(fold('Ö'), "ö");
+    assert_eq!(fold('ß'), "ss");
+    assert_eq!(fold('ẞ'), "ss");
+    assert_eq!(fold('Ü'), "ü");
+    assert_eq!(fold('💩'), "💩");
+    assert_eq!(fold('Σ'), "σ");
+    assert_eq!(fold('ς'), "σ");
+    assert_eq!(fold('Τ'), "τ");
+    assert_eq!(fold('Ι'), "ι");
+    assert_eq!(fold('Γ'), "γ");
+    assert_eq!(fold('Μ'), "μ");
+    assert_eq!(fold('Α'), "α");
+    assert_eq!(fold('ǅ'), "ǆ");
+    assert_eq!(fold('ﬁ'), "fi");
+    assert_eq!(fold('İ'), "i\u{307}");
+    assert_eq!(fold('ꮿ'), "Ꮿ");
+    assert_eq!(fold('Ꮿ'), "Ꮿ");
+    assert_eq!(fold('ῲ'), "ὼι");
+    assert_eq!(fold('\u{0345}'), "ι");
+}
+
+#[test]
 fn test_is_control() {
     assert!('\u{0}'.is_control());
     assert!('\u{3}'.is_control());

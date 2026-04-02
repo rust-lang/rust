@@ -6085,6 +6085,7 @@ checksum = "f6ccf251212114b54433ec949fd6a7841275f9ada20dddd2f29e9ceea4501493"
 name = "unicode-table-generator"
 version = "0.1.0"
 dependencies = [
+ "rustc-hash 2.1.1",
  "ucd-parse",
 ]
 
