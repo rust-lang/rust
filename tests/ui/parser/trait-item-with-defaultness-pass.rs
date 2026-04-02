@@ -1,4 +1,5 @@
 //@ check-pass
+#![feature(specialization)]
 
 fn main() {}
 
