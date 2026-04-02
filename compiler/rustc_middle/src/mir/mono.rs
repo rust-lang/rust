@@ -330,7 +330,7 @@ impl ToStableHashKey<StableHashingContext<'_>> for MonoItem<'_> {
 
     fn to_stable_hash_key(&self, hcx: &StableHashingContext<'_>) -> Self::KeyType {
         let mut hasher = StableHasher::new();
-        self.hash_stable(&hcx.clone(), &mut hasher);
+        self.hash_stable(hcx, &mut hasher);
         hasher.finish()
     }
 }

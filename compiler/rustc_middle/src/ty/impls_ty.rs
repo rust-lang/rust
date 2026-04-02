@@ -55,8 +55,7 @@ where
     #[inline]
     fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> Fingerprint {
         let mut hasher = StableHasher::new();
-        let hcx: StableHashingContext<'a> = hcx.clone();
-        self.hash_stable(&hcx, &mut hasher);
+        self.hash_stable(hcx, &mut hasher);
         hasher.finish()
     }
 }

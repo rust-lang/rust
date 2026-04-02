@@ -50,14 +50,13 @@ pub enum SimplifiedType<DefId> {
 }
 
 #[cfg(feature = "nightly")]
-impl<Hcx: Clone, DefId: HashStable<Hcx>> ToStableHashKey<Hcx> for SimplifiedType<DefId> {
+impl<Hcx, DefId: HashStable<Hcx>> ToStableHashKey<Hcx> for SimplifiedType<DefId> {
     type KeyType = Fingerprint;
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &Hcx) -> Fingerprint {
         let mut hasher = StableHasher::new();
-        let hcx: Hcx = hcx.clone();
-        self.hash_stable(&hcx, &mut hasher);
+        self.hash_stable(hcx, &mut hasher);
         hasher.finish()
     }
 }
