@@ -21,7 +21,7 @@ LL | |             Simd::<u8, 4>([9; 4]),
 LL | |         );
    | |_________^
 note: function defined here
-  --> $SRC_DIR/core/src/intrinsics/simd.rs:LL:COL
+  --> $SRC_DIR/core/src/intrinsics/simd/mod.rs:LL:COL
 
 error[E0308]: mismatched types
   --> $DIR/masked-load-store-check-fail.rs:25:13
@@ -46,7 +46,7 @@ LL | |             default,
 LL | |         );
    | |_________^
 note: function defined here
-  --> $SRC_DIR/core/src/intrinsics/simd.rs:LL:COL
+  --> $SRC_DIR/core/src/intrinsics/simd/mod.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

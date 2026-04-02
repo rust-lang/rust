@@ -232,6 +232,10 @@ pub enum TagEncoding {
     },
 }
 
+/// How many scalable vectors are in a `ValueAbi::ScalableVector`?
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct NumScalableVectors(pub(crate) u8);
+
 /// Describes how values of the type are passed by target ABIs,
 /// in terms of categories of C types there are ABI rules for.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -245,6 +249,7 @@ pub enum ValueAbi {
     ScalableVector {
         element: Scalar,
         count: u64,
+        number_of_vectors: NumScalableVectors,
     },
     Aggregate {
         /// If true, the size is exact, otherwise it's only a lower bound.
