@@ -1335,6 +1335,7 @@ where
                 TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_INFER | TypeFlags::HAS_ALIAS,
             ) =>
             {
+                // FIXME(mgca): we should also check the recursion limit here
                 ct.super_visit_with(self)
             }
             _ => ControlFlow::Continue(()),
