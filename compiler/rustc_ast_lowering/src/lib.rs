@@ -2683,7 +2683,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 overly_complex_const(self)
             }
             ExprKind::Lit(literal) => {
-                let span = expr.span;
+                let span = self.lower_span(expr.span);
                 let literal = self.lower_lit(literal, span);
 
                 ConstArg {
@@ -2695,7 +2695,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             ExprKind::Unary(UnOp::Neg, inner_expr)
                 if let ExprKind::Lit(literal) = &inner_expr.kind =>
             {
-                let span = expr.span;
+                let span = self.lower_span(expr.span);
                 let literal = self.lower_lit(literal, span);
 
                 if !matches!(literal.node, LitKind::Int(..)) {
