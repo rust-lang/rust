@@ -1,4 +1,4 @@
-// This test checks that the compiler correctly handles lifetime requirements 
+// This test checks that the compiler correctly handles lifetime requirements
 // on the `Termination` trait for the `main` function return type.
 // See https://github.com/rust-lang/rust/issues/148421
 
