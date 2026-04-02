@@ -941,7 +941,7 @@ pub struct InterpResult<'tcx, T = ()> {
     res: Result<T, InterpErrorInfo<'tcx>>,
     guard: Guard,
 }
-
+#[cfg(bootstrap)]
 impl<'tcx, T> ops::Try for InterpResult<'tcx, T> {
     type Output = T;
     type Residual = InterpResult<'tcx, convert::Infallible>;
@@ -957,6 +957,26 @@ impl<'tcx, T> ops::Try for InterpResult<'tcx, T> {
             Ok(v) => ops::ControlFlow::Continue(v),
             Err(e) => ops::ControlFlow::Break(InterpResult::new(Err(e))),
         }
+    }
+}
+#[cfg(not(bootstrap))]
+impl<'tcx, T> ops::Branch for InterpResult<'tcx, T> {
+    type Output = T;
+    type Residual = InterpResult<'tcx, convert::Infallible>;
+
+    #[inline]
+    fn branch(self) -> ops::ControlFlow<Self::Residual, Self::Output> {
+        match self.disarm() {
+            Ok(v) => ops::ControlFlow::Continue(v),
+            Err(e) => ops::ControlFlow::Break(InterpResult::new(Err(e))),
+        }
+    }
+}
+#[cfg(not(bootstrap))]
+impl<'tcx, T> ops::FromOutput for InterpResult<'tcx, T> {
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        InterpResult::new(Ok(output))
     }
 }
 

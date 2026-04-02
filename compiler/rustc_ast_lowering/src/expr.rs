@@ -564,8 +564,8 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         hir::ExprKind::Loop(block, opt_label, hir::LoopSource::While, span)
     }
 
-    /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_output(<expr>) }`,
-    /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::Try::from_output(()) }`
+    /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::FromOutput::from_output(<expr>) }`,
+    /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::FromOutput::from_output(()) }`
     /// and save the block id to use it as a break target for desugaring of the `?` operator.
     fn lower_expr_try_block(&mut self, body: &Block, opt_ty: Option<&Ty>) -> hir::ExprKind<'hir> {
         let body_hir_id = self.lower_node_id(body.id);
@@ -600,7 +600,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             let ok_wrapped_span =
                 this.mark_span_with_reason(DesugaringKind::TryBlock, tail_expr.span, None);
 
-            // `::std::ops::Try::from_output($tail_expr)`
+            // `::std::ops::FromOutput::from_output($tail_expr)`
             block.expr = Some(this.wrap_in_try_constructor(
                 hir::LangItem::TryTraitFromOutput,
                 try_span,

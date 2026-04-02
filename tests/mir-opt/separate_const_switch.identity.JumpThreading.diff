@@ -27,7 +27,7 @@
           scope 4 {
           }
       }
-      scope 5 (inlined <Result<i32, i32> as Try>::branch) {
+      scope 5 (inlined <Result<i32, i32> as Branch>::branch) {
           let mut _6: isize;
           let _7: i32;
           let _8: i32;

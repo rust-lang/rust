@@ -16,6 +16,7 @@ pub fn main() {
 
     let res: () = try { };
     //~^ ERROR a `try` block must return `Result` or `Option`
+    //~| ERROR a `try` block must return `Result` or `Option`
 
     let res: i32 = try { 5 }; //~ ERROR a `try` block must return `Result` or `Option`
 }
