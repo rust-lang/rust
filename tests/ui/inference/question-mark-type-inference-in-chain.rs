@@ -55,7 +55,7 @@ pub fn error3(lines: &[&str]) -> Result<Vec<Version>> {
     let mut tags = lines.iter().map(|e| parse(e)).collect::<Vec<_>>()?;
     //~^ ERROR: the `?` operator can only be applied to values that implement `Try`
     //~| NOTE: the `?` operator cannot be applied to type `Vec<std::result::Result<Version, Error>>`
-    //~| HELP: the nightly-only, unstable trait `Try` is not implemented
+    //~| HELP: the nightly-only, unstable trait `Branch` is not implemented
     //~| NOTE: in this expansion of desugaring of operator `?`
     //~| NOTE: in this expansion of desugaring of operator `?`
     tags.sort();

@@ -21,7 +21,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
         scope 4 {
         }
     }
-    scope 5 (inlined <Option<i32> as Try>::branch) {
+    scope 5 (inlined <Option<i32> as Branch>::branch) {
         let mut _2: isize;
         let _6: i32;
         scope 6 {

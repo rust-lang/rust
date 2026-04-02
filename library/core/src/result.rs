@@ -2159,14 +2159,9 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-impl<T, E> const ops::Try for Result<T, E> {
+impl<T, E> const ops::Branch for Result<T, E> {
     type Output = T;
     type Residual = Result<convert::Infallible, E>;
-
-    #[inline]
-    fn from_output(output: Self::Output) -> Self {
-        Ok(output)
-    }
 
     #[inline]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
@@ -2174,6 +2169,15 @@ impl<T, E> const ops::Try for Result<T, E> {
             Ok(v) => ControlFlow::Continue(v),
             Err(e) => ControlFlow::Break(Err(e)),
         }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl<T, E> const ops::FromOutput for Result<T, E> {
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        Ok(output)
     }
 }
 

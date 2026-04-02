@@ -207,10 +207,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let is_question_mark = matches!(
                             root_obligation.cause.code().peel_derives(),
                             ObligationCauseCode::QuestionMark,
-                        ) && !(self
-                            .tcx
-                            .is_diagnostic_item(sym::FromResidual, main_trait_predicate.def_id())
-                            || self.tcx.is_lang_item(main_trait_predicate.def_id(), LangItem::Try));
+                        ) && !(
+                            self.tcx.is_diagnostic_item(sym::FromResidual, main_trait_predicate.def_id())
+                            || self.tcx.is_diagnostic_item(sym::FromOutput, main_trait_predicate.def_id())
+                                || self.tcx.is_lang_item(main_trait_predicate.def_id(), LangItem::Try)
+                        );
                         let is_unsize =
                             self.tcx.is_lang_item(leaf_trait_predicate.def_id(), LangItem::Unsize);
                         let question_mark_message = "the question mark operation (`?`) implicitly \
@@ -399,8 +400,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 // `std::marker::Sized` is not implemented for `T`" as we will point
                                 // at the type param with a label to suggest constraining it.
                                 && !self.tcx.is_diagnostic_item(sym::FromResidual, leaf_trait_predicate.def_id())
-                            // Don't say "the trait `FromResidual<Option<Infallible>>` is
-                            // not implemented for `Result<T, E>`".
+==== BASE ====
+                                    // Don't say "the trait `FromResidual<Option<Infallible>>` is
+                                    // not implemented for `Result<T, E>`".
+==== BASE ====
                             {
                                 // We do this just so that the JSON output's `help` position is the
                                 // right one and not `file.rs:1:1`. The render is the same.
@@ -2295,7 +2298,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 candidates = specific_candidates;
             }
             if let &[(cand, def_id)] = &candidates[..] {
-                if self.tcx.is_diagnostic_item(sym::FromResidual, cand.def_id)
+                if (self.tcx.is_diagnostic_item(sym::FromResidual, cand.def_id)
+                    || self.tcx.is_diagnostic_item(sym::FromOutput, cand.def_id))
                     && !self.tcx.features().enabled(sym::try_trait_v2)
                 {
                     return false;

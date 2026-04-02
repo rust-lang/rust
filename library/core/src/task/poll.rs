@@ -231,14 +231,9 @@ impl<T> const From<T> for Poll<T> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-impl<T, E> ops::Try for Poll<Result<T, E>> {
+impl<T, E> ops::Branch for Poll<Result<T, E>> {
     type Output = Poll<T>;
     type Residual = Result<convert::Infallible, E>;
-
-    #[inline]
-    fn from_output(c: Self::Output) -> Self {
-        c.map(Ok)
-    }
 
     #[inline]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
@@ -247,6 +242,14 @@ impl<T, E> ops::Try for Poll<Result<T, E>> {
             Poll::Ready(Err(e)) => ControlFlow::Break(Err(e)),
             Poll::Pending => ControlFlow::Continue(Poll::Pending),
         }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+impl<T, E> ops::FromOutput for Poll<Result<T, E>> {
+    #[inline]
+    fn from_output(c: Self::Output) -> Self {
+        c.map(Ok)
     }
 }
 
@@ -261,14 +264,9 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Pol
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
+impl<T, E> ops::Branch for Poll<Option<Result<T, E>>> {
     type Output = Poll<Option<T>>;
     type Residual = Result<convert::Infallible, E>;
-
-    #[inline]
-    fn from_output(c: Self::Output) -> Self {
-        c.map(|x| x.map(Ok))
-    }
 
     #[inline]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
@@ -278,6 +276,14 @@ impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
             Poll::Ready(None) => ControlFlow::Continue(Poll::Ready(None)),
             Poll::Pending => ControlFlow::Continue(Poll::Pending),
         }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+impl<T, E> ops::FromOutput for Poll<Option<Result<T, E>>> {
+    #[inline]
+    fn from_output(c: Self::Output) -> Self {
+        c.map(|x| x.map(Ok))
     }
 }
 
