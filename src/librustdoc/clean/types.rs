@@ -13,7 +13,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Attribute, BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
@@ -743,6 +743,18 @@ impl Item {
         }
     }
 
+    /// Generates the HTML file name based on the item kind.
+    pub(crate) fn html_filename(&self) -> String {
+        let type_ = if self.is_macro_placeholder() { ItemType::Macro } else { self.type_() };
+        format!("{type_}.{}.html", self.name.unwrap())
+    }
+
+    /// If the current item is a "fake" macro (ie, `AttrMacroItem | ItemKind::DeriveMacroItem` which
+    /// don't hold any data), it returns `true`.
+    pub(crate) fn is_macro_placeholder(&self) -> bool {
+        matches!(self.kind, ItemKind::AttrMacroItem | ItemKind::DeriveMacroItem)
+    }
+
     /// Returns a `FnHeader` if `self` is a function item, otherwise returns `None`.
     pub(crate) fn fn_header(&self, tcx: TyCtxt<'_>) -> Option<hir::FnHeader> {
         fn build_fn_header(
@@ -902,7 +914,13 @@ pub(crate) enum ItemKind {
     ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
     ForeignTypeItem,
-    MacroItem(Macro),
+    MacroItem(Macro, MacroKinds),
+    /// This is NOT an attribute proc-macro but a bang macro with support for being used as an
+    /// attribute macro.
+    AttrMacroItem,
+    /// This is NOT an attribute proc-macro but a bang macro with support for being used as a
+    /// derive macro.
+    DeriveMacroItem,
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
@@ -957,7 +975,9 @@ impl ItemKind {
             | ForeignFunctionItem(_, _)
             | ForeignStaticItem(_, _)
             | ForeignTypeItem
-            | MacroItem(_)
+            | MacroItem(..)
+            | AttrMacroItem
+            | DeriveMacroItem
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | RequiredAssocConstItem(..)

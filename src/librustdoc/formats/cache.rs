@@ -2,6 +2,7 @@ use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::StabilityLevel;
+use rustc_hir::def::MacroKinds;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, TyCtxt};
@@ -382,8 +383,10 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::RequiredAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
-            | clean::KeywordItem
-            | clean::AttributeItem => {
+            | clean::AttributeItem
+            | clean::AttrMacroItem
+            | clean::DeriveMacroItem
+            | clean::KeywordItem => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
                 // So would rather leave them to an expert,
@@ -486,6 +489,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     // Item has a name, so it must also have a DefId (can't be an impl, let alone a blanket or auto impl).
     let item_def_id = item.item_id.as_def_id().unwrap();
     let (parent_did, parent_path) = match item.kind {
+        clean::MacroItem(_, kinds) if !kinds.contains(MacroKinds::BANG) => return,
         clean::StrippedItem(..) => return,
         clean::ProvidedAssocConstItem(..)
         | clean::ImplAssocConstItem(..)
