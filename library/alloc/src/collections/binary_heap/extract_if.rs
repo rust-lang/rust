@@ -1,5 +1,6 @@
+use core::fmt;
 use core::iter::FusedIterator;
-use core::{fmt, ptr};
+use core::mem::ManuallyDrop;
 
 use super::BinaryHeap;
 use crate::alloc::{Allocator, Global};
@@ -26,91 +27,55 @@ pub struct ExtractIf<
     F,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
-    heap: &'a mut BinaryHeap<T, A>,
-    old_len: usize,
-    del: usize,
-    index: usize,
-    predicate: F,
+    heap_ptr: *mut BinaryHeap<T, A>,
+    extract_if: ManuallyDrop<super::vec::ExtractIf<'a, T, F, A>>,
 }
 
-impl<T: Ord, F, A: Allocator> ExtractIf<'_, T, F, A> {
+impl<T: Ord, F, A: Allocator> ExtractIf<'_, T, F, A>
+where
+    F: FnMut(&mut T) -> bool,
+{
     pub(super) fn new<'a>(heap: &'a mut BinaryHeap<T, A>, predicate: F) -> ExtractIf<'a, T, F, A> {
-        // This breaks the heap invariant but we artificially change the length to 0 below and don't change it back until we have fixed this invariant
-        heap.sort_inner_vec();
+        // We need to keep a reference around to the heap so that we can
+        let heap_ptr: *mut BinaryHeap<T, A> = heap;
+        let extract_if = ManuallyDrop::new(heap.data.extract_if(.., predicate));
 
-        let old_len = heap.len();
-        // SAFETY: leak enlargement
-        unsafe { heap.data.set_len(0) };
-
-        ExtractIf { heap, predicate, index: 0, old_len, del: 0 }
+        ExtractIf { heap_ptr, extract_if }
     }
 }
 
 #[unstable(feature = "binary_heap_extract_if", issue = "42849")]
 impl<T: Ord, F, A: Allocator> Iterator for ExtractIf<'_, T, F, A>
 where
-    F: FnMut(&T) -> bool,
+    F: FnMut(&mut T) -> bool,
 {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while self.index < self.old_len {
-            let i = self.index;
-            // SAFETY:
-            //  We know that `i < self.end` from the if guard and that `self.end <= self.old_len` from
-            //  the validity of `Self`. Therefore `i` points to an element within `vec`.
-            //
-            //  Additionally, the i-th element is valid because each element is visited at most once
-            //  and it is the first time we access vec[i].
-            //
-            //  Note: we can't use `vec.get_unchecked_mut(i)` here since the precondition for that
-            //  function is that i < vec.len(), but we've set vec's length to zero.
-            let cur = unsafe { &mut *self.heap.data.as_mut_ptr().add(i) };
-            let extract = (self.predicate)(cur);
-            // Update the index *after* the predicate is called. If the index
-            // is updated prior and the predicate panics, the element at this
-            // index would be leaked.
-            self.index += 1;
-            if extract {
-                self.del += 1;
-                // SAFETY: We never touch this element again after returning it.
-                return Some(unsafe { ptr::read(cur) });
-            } else if self.del > 0 {
-                // SAFETY: `self.del` > 0, so the hole slot must not overlap with current element.
-                // We use copy for move, and never touch this element again.
-                unsafe {
-                    let hole_slot = self.heap.data.as_mut_ptr().add(i - self.del);
-                    ptr::copy_nonoverlapping(cur, hole_slot, 1);
-                }
-            }
-        }
-        None
+        self.extract_if.next()
     }
 }
 
 #[unstable(feature = "binary_heap_extract_if", issue = "42849")]
-impl<T: Ord, F, A: Allocator> Drop for ExtractIf<'_, T, F, A> {
+impl<'a, T: Ord, F, A: Allocator> Drop for ExtractIf<'a, T, F, A> {
     fn drop(&mut self) {
-        if self.del > 0 {
-            // SAFETY: Trailing unchecked items must be valid since we never touch them.
-            unsafe {
-                ptr::copy(
-                    self.heap.data.as_ptr().add(self.index),
-                    self.heap.data.as_mut_ptr().add(self.index - self.del),
-                    self.old_len - self.index,
-                );
-            }
-        }
-        // SAFETY: After filling holes, all items are in contiguous memory.
+        // SAFETY: We need to drop this before we rebuild the heap so that its descructor resets the vec info
+        //      We also are only calling this hear during the drop of ExtractIf and then never using it again
         unsafe {
-            self.heap.data.set_len(self.old_len - self.del);
+            ManuallyDrop::drop(&mut self.extract_if);
         }
-        self.heap.rebuild();
+
+        // SAFETY: We only generate this ptr from a reference so we know that it is never null
+        let heap = unsafe { self.heap_ptr.as_mut_unchecked() };
+
+        // Removing some items from the heap almost certainly has invalidated its invarients, we need to fix this up here
+        heap.rebuild();
     }
 }
 
 #[unstable(feature = "binary_heap_extract_if", issue = "42849")]
-impl<T: Ord, F, A: Allocator> FusedIterator for ExtractIf<'_, T, F, A> where F: FnMut(&T) -> bool {}
+impl<T: Ord, F, A: Allocator> FusedIterator for ExtractIf<'_, T, F, A> where F: FnMut(&mut T) -> bool
+{}
 
 #[unstable(feature = "binary_heap_extract_if", issue = "42849")]
 impl<T: Ord, F, A> fmt::Debug for ExtractIf<'_, T, F, A>
