@@ -89,7 +89,7 @@ what is needed *during* const evaluation, while [`ConstValue`] is shaped by the
 needs of the remaining parts of the compiler that consume the results of const
 evaluation.  As part of this conversion, for types with scalar values, even if
 the resulting [`Operand`] is `Indirect`, it will return an immediate
-`ConstValue::Scalar(computed_value)` (instead of the usual `ConstValue::ByRef`).
+`ConstValue::Scalar(computed_value)` (instead of the usual `ConstValue::Indirect`).
 This makes using the result much more efficient and also more convenient, as no
 further queries need to be executed in order to get at something as simple as a
 `usize`.
@@ -110,7 +110,7 @@ The interpreter's outside-facing datastructures can be found in
 This is mainly the error enum and the [`ConstValue`] and [`Scalar`] types. A
 `ConstValue` can be either `Scalar` (a single `Scalar`, i.e., integer or thin
 pointer), `Slice` (to represent byte slices and strings, as needed for pattern
-matching) or `ByRef`, which is used for anything else and refers to a virtual
+matching) or `Indirect`, which is used for anything else and refers to a virtual
 allocation. These allocations can be accessed via the methods on
 `tcx.interpret_interner`.  A `Scalar` is either some `Raw` integer or a pointer;
 see [the next section](#memory) for more on that.
@@ -207,7 +207,7 @@ values.
 Although the main entry point to constant evaluation is the `tcx.const_eval_*`
 functions, there are additional functions in
 [rustc_const_eval/src/const_eval](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/index.html)
-that allow accessing the fields of a `ConstValue` (`ByRef` or otherwise). You should
+that allow accessing the fields of a `ConstValue` (`Indirect` or otherwise). You should
 never have to access an `Allocation` directly except for translating it to the
 compilation target (at the moment just LLVM).
 
