@@ -8,7 +8,7 @@ use smallvec::{SmallVec, smallvec};
 use crate::data_structures::SsoHashSet;
 use crate::inherent::*;
 use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _, TypeVisitor};
-use crate::{self as ty, Interner, Ty};
+use crate::{self as ty, Interner};
 
 #[derive_where(Debug; I: Interner)]
 pub enum Component<I: Interner> {
@@ -55,7 +55,7 @@ pub enum Component<I: Interner> {
 /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
 pub fn push_outlives_components<I: Interner>(
     cx: I,
-    ty: Ty<I>,
+    ty: I::Ty,
     out: &mut SmallVec<[Component<I>; 4]>,
 ) {
     ty.visit_with(&mut OutlivesCollector { cx, out, visited: Default::default() });
@@ -64,14 +64,14 @@ pub fn push_outlives_components<I: Interner>(
 struct OutlivesCollector<'a, I: Interner> {
     cx: I,
     out: &'a mut SmallVec<[Component<I>; 4]>,
-    visited: SsoHashSet<Ty<I>>,
+    visited: SsoHashSet<I::Ty>,
 }
 
 impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
     #[cfg(not(feature = "nightly"))]
     type Result = ();
 
-    fn visit_ty(&mut self, ty: Ty<I>) -> Self::Result {
+    fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
         if !self.visited.insert(ty) {
             return;
         }
