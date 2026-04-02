@@ -759,11 +759,11 @@ impl UdpSocket {
     }
 
     pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
+        let ttl: u8 = multicast_ttl_v4
+            .try_into()
+            .map_err(|_| io::Error::from(io::ErrorKind::InvalidInput))?;
         unsafe {
-            let ttl: IpV4MultiCastType = multicast_ttl_v4
-                .try_into()
-                .map_err(|_| io::Error::from(io::ErrorKind::InvalidInput))?;
-            setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL, ttl)
+            setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL, ttl as IpV4MultiCastType)
         }
     }
 
