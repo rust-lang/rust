@@ -128,8 +128,8 @@ pub(crate) fn query_feed<'tcx, C>(
             // That's OK if both values are the same, i.e. they have the same hash,
             // so now we check their hashes.
             if let Some(hash_value_fn) = query.hash_value_fn {
-                let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
-                    (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
+                let (old_hash, value_hash) = tcx.with_stable_hashing_context(|hcx| {
+                    (hash_value_fn(&hcx, &old), hash_value_fn(&hcx, &value))
                 });
                 if old_hash != value_hash {
                     // We have an inconsistency. This can happen if one of the two

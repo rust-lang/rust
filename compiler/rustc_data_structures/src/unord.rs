@@ -417,7 +417,7 @@ impl<V: Hash + Eq, I: Iterator<Item = V>> From<UnordItems<V, I>> for UnordSet<V>
 
 impl<Hcx, V: Hash + Eq + HashStable<Hcx>> HashStable<Hcx> for UnordSet<V> {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
     }
 }
@@ -640,7 +640,7 @@ where
 
 impl<Hcx, K: Hash + Eq + HashStable<Hcx>, V: HashStable<Hcx>> HashStable<Hcx> for UnordMap<K, V> {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
     }
 }
@@ -703,7 +703,7 @@ impl<T, I: Iterator<Item = T>> From<UnordItems<T, I>> for UnordBag<T> {
 
 impl<Hcx, V: Hash + Eq + HashStable<Hcx>> HashStable<Hcx> for UnordBag<V> {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
     }
 }
@@ -735,7 +735,7 @@ fn hash_iter_order_independent<
     I: Iterator<Item = T> + ExactSizeIterator,
 >(
     mut it: I,
-    hcx: &mut Hcx,
+    hcx: &Hcx,
     hasher: &mut StableHasher,
 ) {
     let len = it.len();

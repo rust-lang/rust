@@ -602,9 +602,9 @@ fn compute_hir_hash(
         .collect();
     hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
-    tcx.with_stable_hashing_context(|mut hcx| {
+    tcx.with_stable_hashing_context(|hcx| {
         let mut stable_hasher = StableHasher::new();
-        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
+        hir_body_nodes.hash_stable(&hcx, &mut stable_hasher);
         stable_hasher.finish()
     })
 }

@@ -1102,7 +1102,7 @@ impl ExpnData {
     }
 
     #[inline]
-    fn hash_expn(&self, hcx: &mut impl HashStableContext) -> Hash64 {
+    fn hash_expn(&self, hcx: &impl HashStableContext) -> Hash64 {
         let mut hasher = StableHasher::new();
         self.hash_stable(hcx, &mut hasher);
         hasher.finish()
@@ -1482,11 +1482,11 @@ pub fn raw_encode_syntax_context(
 /// `set_expn_data`). It is *not* called for foreign `ExpnId`s deserialized
 /// from another crate's metadata - since `ExpnHash` includes the stable crate id,
 /// collisions are only possible between `ExpnId`s within the same crate.
-fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl HashStableContext) -> ExpnHash {
+fn update_disambiguator(expn_data: &mut ExpnData, hcx: impl HashStableContext) -> ExpnHash {
     // This disambiguator should not have been set yet.
     assert_eq!(expn_data.disambiguator, 0, "Already set disambiguator for ExpnData: {expn_data:?}");
     hcx.assert_default_hashing_controls("ExpnData (disambiguator)");
-    let mut expn_hash = expn_data.hash_expn(&mut hcx);
+    let mut expn_hash = expn_data.hash_expn(&hcx);
 
     let disambiguator = HygieneData::with(|data| {
         // If this is the first ExpnData with a given hash, then keep our
@@ -1501,7 +1501,7 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl HashStableContex
         debug!("Set disambiguator for expn_data={:?} expn_hash={:?}", expn_data, expn_hash);
 
         expn_data.disambiguator = disambiguator;
-        expn_hash = expn_data.hash_expn(&mut hcx);
+        expn_hash = expn_data.hash_expn(&hcx);
 
         // Verify that the new disambiguator makes the hash unique
         #[cfg(debug_assertions)]
@@ -1518,7 +1518,7 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl HashStableContex
 }
 
 impl<Hcx: HashStableContext> HashStable<Hcx> for SyntaxContext {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
@@ -1534,7 +1534,7 @@ impl<Hcx: HashStableContext> HashStable<Hcx> for SyntaxContext {
 }
 
 impl<Hcx: HashStableContext> HashStable<Hcx> for ExpnId {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         hcx.assert_default_hashing_controls("ExpnId");
         let hash = if *self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.
@@ -1548,7 +1548,7 @@ impl<Hcx: HashStableContext> HashStable<Hcx> for ExpnId {
 }
 
 impl<Hcx: HashStableContext> HashStable<Hcx> for LocalExpnId {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         self.to_expn_id().hash_stable(hcx, hasher);
     }
 }

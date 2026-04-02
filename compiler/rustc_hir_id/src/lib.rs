@@ -56,7 +56,7 @@ impl rustc_index::Idx for OwnerId {
 
 impl<Hcx: HashStableContext> HashStable<Hcx> for OwnerId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }

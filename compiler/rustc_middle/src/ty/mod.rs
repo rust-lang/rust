@@ -512,7 +512,7 @@ impl<'tcx> From<Const<'tcx>> for Term<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Term<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.kind().hash_stable(hcx, hasher);
     }
 }

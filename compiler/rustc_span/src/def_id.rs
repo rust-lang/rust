@@ -404,21 +404,21 @@ rustc_data_structures::define_id_collections!(
 
 impl<Hcx: HashStableContext> HashStable<Hcx> for DefId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         hcx.def_path_hash(*self).hash_stable(hcx, hasher);
     }
 }
 
 impl<Hcx: HashStableContext> HashStable<Hcx> for LocalDefId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         hcx.def_path_hash(self.to_def_id()).local_hash().hash_stable(hcx, hasher);
     }
 }
 
 impl<Hcx: HashStableContext> HashStable<Hcx> for CrateNum {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         self.as_def_id().to_stable_hash_key(hcx).stable_crate_id().hash_stable(hcx, hasher);
     }
 }

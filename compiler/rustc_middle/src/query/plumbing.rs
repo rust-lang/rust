@@ -109,7 +109,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// Function pointer that hashes this query's result values.
     ///
     /// For `no_hash` queries, this function pointer is None.
-    pub hash_value_fn: Option<fn(&mut StableHashingContext<'_>, &C::Value) -> Fingerprint>,
+    pub hash_value_fn: Option<fn(&StableHashingContext<'_>, &C::Value) -> Fingerprint>,
 
     /// Function pointer that handles a cycle error. `error` must be consumed, e.g. with `emit` (if
     /// it should be emitted) or `delay_as_bug` (if it need not be emitted because an alternative

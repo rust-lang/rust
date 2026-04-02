@@ -688,7 +688,7 @@ impl UnifyKey for FloatVid {
 
 #[cfg(feature = "nightly")]
 impl<Hcx> HashStable<Hcx> for InferTy {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         use InferTy::*;
         std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {

@@ -225,7 +225,7 @@ where
     I::Symbol: HashStable<Hcx>,
 {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
             ReErased | ReStatic | ReError(_) => {

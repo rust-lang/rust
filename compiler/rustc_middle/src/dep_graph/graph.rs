@@ -123,7 +123,7 @@ pub struct DepGraphData {
     debug_loaded_from_disk: Lock<FxHashSet<DepNode>>,
 }
 
-pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Fingerprint
+pub fn hash_result<R>(hcx: &StableHashingContext<'_>, result: &R) -> Fingerprint
 where
     R: for<'a> HashStable<StableHashingContext<'a>>,
 {
@@ -283,7 +283,7 @@ impl DepGraph {
         tcx: TyCtxt<'tcx>,
         task_arg: A,
         task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+        hash_result: Option<fn(&StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         match self.data() {
             Some(data) => data.with_task(dep_node, tcx, task_arg, task_fn, hash_result),
@@ -334,7 +334,7 @@ impl DepGraphData {
         tcx: TyCtxt<'tcx>,
         task_arg: A,
         task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+        hash_result: Option<fn(&StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
@@ -452,12 +452,11 @@ impl DepGraphData {
         node: DepNode,
         edges: EdgesVec,
         result: &R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+        hash_result: Option<fn(&StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> DepNodeIndex {
         let hashing_timer = tcx.prof.incr_result_hashing();
-        let current_fingerprint = hash_result.map(|hash_result| {
-            tcx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result))
-        });
+        let current_fingerprint = hash_result
+            .map(|hash_result| tcx.with_stable_hashing_context(|hcx| hash_result(&hcx, result)));
         let dep_node_index = self.alloc_and_color_node(node, edges, current_fingerprint);
         hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
         dep_node_index
@@ -577,7 +576,7 @@ impl DepGraph {
         node: DepNode,
         tcx: TyCtxt<'tcx>,
         result: &R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+        hash_result: Option<fn(&StableHashingContext<'_>, &R) -> Fingerprint>,
         format_value_fn: fn(&R) -> String,
     ) -> DepNodeIndex {
         if let Some(data) = self.data.as_ref() {

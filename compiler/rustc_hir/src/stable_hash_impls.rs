@@ -67,7 +67,7 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ForeignItemId
 // in "DefPath Mode".
 
 impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'tcx> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &HirCtx, hasher: &mut StableHasher) {
         // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
         // `local_id_to_def_id` is also ignored because is dependent on the body, then just hashing
@@ -79,14 +79,14 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for DelayedLints {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &HirCtx, hasher: &mut StableHasher) {
         let DelayedLints { opt_hash, .. } = *self;
         opt_hash.unwrap().hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap<'tcx> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &HirCtx, hasher: &mut StableHasher) {
         // We ignore the `map` since it refers to information included in `opt_hash` which is
         // hashed in the collector and used for the crate hash.
         let AttributeMap { opt_hash, define_opaque: _, map: _ } = *self;
@@ -95,7 +95,7 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for HashIgnoredAttrId {
-    fn hash_stable(&self, _hcx: &mut HirCtx, _hasher: &mut StableHasher) {
+    fn hash_stable(&self, _hcx: &HirCtx, _hasher: &mut StableHasher) {
         /* we don't hash HashIgnoredAttrId, we ignore them */
     }
 }

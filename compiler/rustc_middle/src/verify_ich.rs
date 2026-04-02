@@ -14,16 +14,15 @@ pub fn incremental_verify_ich<'tcx, V>(
     dep_graph_data: &DepGraphData,
     result: &V,
     prev_index: SerializedDepNodeIndex,
-    hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
+    hash_result: Option<fn(&StableHashingContext<'_>, &V) -> Fingerprint>,
     format_value: fn(&V) -> String,
 ) {
     if !dep_graph_data.is_index_green(prev_index) {
         incremental_verify_ich_not_green(tcx, prev_index)
     }
 
-    let new_hash = hash_result.map_or(Fingerprint::ZERO, |f| {
-        tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
-    });
+    let new_hash = hash_result
+        .map_or(Fingerprint::ZERO, |f| tcx.with_stable_hashing_context(|hcx| f(&hcx, result)));
 
     let old_hash = dep_graph_data.prev_value_fingerprint_of(prev_index);
 

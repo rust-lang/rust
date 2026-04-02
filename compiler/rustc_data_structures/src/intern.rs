@@ -107,7 +107,7 @@ impl<T, Hcx> HashStable<Hcx> for Interned<'_, T>
 where
     T: HashStable<Hcx>,
 {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         self.0.hash_stable(hcx, hasher);
     }
 }

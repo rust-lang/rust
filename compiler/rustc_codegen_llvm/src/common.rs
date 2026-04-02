@@ -302,9 +302,9 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                             };
                             if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty()
                             {
-                                let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
+                                let hash = self.tcx.with_stable_hashing_context(|hcx| {
                                     let mut hasher = StableHasher::new();
-                                    alloc.hash_stable(&mut hcx, &mut hasher);
+                                    alloc.hash_stable(&hcx, &mut hasher);
                                     hasher.finish::<Hash128>()
                                 });
                                 llvm::set_value_name(

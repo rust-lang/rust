@@ -1161,12 +1161,12 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         .map(DebuggerVisualizerFile::path_erased)
         .collect();
 
-    let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
+    let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|hcx| {
         let mut stable_hasher = StableHasher::new();
-        hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
-        upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
-        source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
-        debugger_visualizers.hash_stable(&mut hcx, &mut stable_hasher);
+        hir_body_hash.hash_stable(&hcx, &mut stable_hasher);
+        upstream_crates.hash_stable(&hcx, &mut stable_hasher);
+        source_file_names.hash_stable(&hcx, &mut stable_hasher);
+        debugger_visualizers.hash_stable(&hcx, &mut stable_hasher);
         if tcx.sess.opts.incremental.is_some() {
             let definitions = tcx.untracked().definitions.freeze();
             let mut owner_spans: Vec<_> = tcx
@@ -1180,17 +1180,17 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
                 })
                 .collect();
             owner_spans.sort_unstable_by_key(|bn| bn.0);
-            owner_spans.hash_stable(&mut hcx, &mut stable_hasher);
+            owner_spans.hash_stable(&hcx, &mut stable_hasher);
         }
-        tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
-        tcx.stable_crate_id(LOCAL_CRATE).hash_stable(&mut hcx, &mut stable_hasher);
+        tcx.sess.opts.dep_tracking_hash(true).hash_stable(&hcx, &mut stable_hasher);
+        tcx.stable_crate_id(LOCAL_CRATE).hash_stable(&hcx, &mut stable_hasher);
         // Hash visibility information since it does not appear in HIR.
         // FIXME: Figure out how to remove `visibilities_for_hashing` by hashing visibilities on
         // the fly in the resolver, storing only their accumulated hash in `ResolverGlobalCtxt`,
         // and combining it with other hashes here.
-        resolutions.visibilities_for_hashing.hash_stable(&mut hcx, &mut stable_hasher);
+        resolutions.visibilities_for_hashing.hash_stable(&hcx, &mut stable_hasher);
         with_metavar_spans(|mspans| {
-            mspans.freeze_and_get_read_spans().hash_stable(&mut hcx, &mut stable_hasher);
+            mspans.freeze_and_get_read_spans().hash_stable(&hcx, &mut stable_hasher);
         });
         stable_hasher.finish()
     });

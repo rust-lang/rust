@@ -45,7 +45,7 @@ fn test_attribute_permutation() {
             }
 
             impl<Hcx> HashStable<Hcx> for Foo {
-                fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+                fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
                     self.a.hash_stable(hcx, hasher);
                     self.b.hash_stable(hcx, hasher);
                 }

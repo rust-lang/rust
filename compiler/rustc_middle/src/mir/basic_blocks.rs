@@ -173,5 +173,5 @@ impl<D: Decoder> Decodable<D> for Cache {
 
 impl<Hcx> HashStable<Hcx> for Cache {
     #[inline]
-    fn hash_stable(&self, _: &mut Hcx, _: &mut StableHasher) {}
+    fn hash_stable(&self, _: &Hcx, _: &mut StableHasher) {}
 }

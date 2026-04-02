@@ -33,7 +33,7 @@ unsafe impl Tag for Tag2 {
 }
 
 impl<Hcx> crate::stable_hasher::HashStable<Hcx> for Tag2 {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut crate::stable_hasher::StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut crate::stable_hasher::StableHasher) {
         (*self as u8).hash_stable(hcx, hasher);
     }
 }
@@ -65,13 +65,13 @@ fn smoke() {
 fn stable_hash_hashes_as_tuple() {
     let hash_packed = {
         let mut hasher = StableHasher::new();
-        TaggedRef::new(&12, Tag2::B11).hash_stable(&mut (), &mut hasher);
+        TaggedRef::new(&12, Tag2::B11).hash_stable(&(), &mut hasher);
         hasher.finish::<Hash128>()
     };
 
     let hash_tupled = {
         let mut hasher = StableHasher::new();
-        (&12, Tag2::B11).hash_stable(&mut (), &mut hasher);
+        (&12, Tag2::B11).hash_stable(&(), &mut hasher);
         hasher.finish::<Hash128>()
     };
 

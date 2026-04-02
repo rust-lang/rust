@@ -152,7 +152,7 @@ impl Hash for AdtDefData {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &StableHashingContext<'a>, hasher: &mut StableHasher) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<(usize, HashingControls), Fingerprint>> = Default::default();
         }

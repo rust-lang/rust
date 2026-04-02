@@ -135,7 +135,7 @@ fn get_symbol_hash<'tcx>(
         // the main symbol name is not necessarily unique; hash in the
         // compiler's internal def-path, guaranteeing each symbol has a
         // truly unique path
-        tcx.def_path_hash(def_id).hash_stable(&mut hcx, &mut hasher);
+        tcx.def_path_hash(def_id).hash_stable(&hcx, &mut hasher);
 
         // Include the main item-type. Note that, in this case, the
         // assertions about `has_param` may not hold, but this item-type

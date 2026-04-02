@@ -217,9 +217,9 @@ impl Hash for ExternAbi {
 }
 
 #[cfg(feature = "nightly")]
-impl<C> HashStable<C> for ExternAbi {
+impl<Hcx> HashStable<Hcx> for ExternAbi {
     #[inline]
-    fn hash_stable(&self, _: &mut C, hasher: &mut StableHasher) {
+    fn hash_stable(&self, _: &Hcx, hasher: &mut StableHasher) {
         Hash::hash(self, hasher);
     }
 }

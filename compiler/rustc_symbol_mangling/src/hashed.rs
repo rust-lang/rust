@@ -25,9 +25,9 @@ pub(super) fn mangle<'tcx>(
     let mut symbol = "_RNxC".to_string();
     v0::push_ident(tcx.crate_name(crate_num).as_str(), &mut symbol);
 
-    let hash = tcx.with_stable_hashing_context(|mut hcx| {
+    let hash = tcx.with_stable_hashing_context(|hcx| {
         let mut hasher = StableHasher::new();
-        full_mangling_name().hash_stable(&mut hcx, &mut hasher);
+        full_mangling_name().hash_stable(&hcx, &mut hasher);
         hasher.finish::<Hash64>().as_u64()
     });
 

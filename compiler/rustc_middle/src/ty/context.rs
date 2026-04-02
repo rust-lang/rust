@@ -264,8 +264,8 @@ impl<'tcx> CtxtInterners<'tcx> {
             Fingerprint::ZERO
         } else {
             let mut hasher = StableHasher::new();
-            let mut hcx = StableHashingContext::new(sess, untracked);
-            val.hash_stable(&mut hcx, &mut hasher);
+            let hcx = StableHashingContext::new(sess, untracked);
+            val.hash_stable(&hcx, &mut hasher);
             hasher.finish()
         }
     }

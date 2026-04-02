@@ -361,8 +361,8 @@ fn check_feedable_consistency<'tcx, C: QueryCache>(
         );
     };
 
-    let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
-        (hash_value_fn(&mut hcx, &cached_value), hash_value_fn(&mut hcx, value))
+    let (old_hash, new_hash) = tcx.with_stable_hashing_context(|hcx| {
+        (hash_value_fn(&hcx, &cached_value), hash_value_fn(&hcx, value))
     });
     let formatter = query.format_value;
     if old_hash != new_hash {
@@ -400,8 +400,8 @@ fn execute_job_non_incr<'tcx, C: QueryCache>(
     if cfg!(debug_assertions) {
         let _ = key.to_fingerprint(tcx);
         if let Some(hash_value_fn) = query.hash_value_fn {
-            tcx.with_stable_hashing_context(|mut hcx| {
-                hash_value_fn(&mut hcx, &value);
+            tcx.with_stable_hashing_context(|hcx| {
+                hash_value_fn(&hcx, &value);
             });
         }
     }

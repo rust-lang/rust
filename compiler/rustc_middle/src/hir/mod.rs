@@ -78,7 +78,7 @@ impl<'hir> Crate<'hir> {
 }
 
 impl<HirCtx: HashStableContext> HashStable<HirCtx> for Crate<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &HirCtx, hasher: &mut StableHasher) {
         let Crate { opt_hir_hash, .. } = self;
         opt_hir_hash.unwrap().hash_stable(hcx, hasher)
     }
@@ -247,24 +247,24 @@ impl<'tcx> TyCtxt<'tcx> {
             };
         }
 
-        self.with_stable_hashing_context(|mut hcx| {
+        self.with_stable_hashing_context(|hcx| {
             let mut stable_hasher = StableHasher::new();
-            node.hash_stable(&mut hcx, &mut stable_hasher);
+            node.hash_stable(&hcx, &mut stable_hasher);
             // Bodies are stored out of line, so we need to pull them explicitly in the hash.
-            bodies.hash_stable(&mut hcx, &mut stable_hasher);
+            bodies.hash_stable(&hcx, &mut stable_hasher);
             let h1 = stable_hasher.finish();
 
             let mut stable_hasher = StableHasher::new();
-            attrs.hash_stable(&mut hcx, &mut stable_hasher);
+            attrs.hash_stable(&hcx, &mut stable_hasher);
 
             // Hash the defined opaque types, which are not present in the attrs.
-            define_opaque.hash_stable(&mut hcx, &mut stable_hasher);
+            define_opaque.hash_stable(&hcx, &mut stable_hasher);
 
             let h2 = stable_hasher.finish();
 
             // hash lints emitted during ast lowering
             let mut stable_hasher = StableHasher::new();
-            delayed_lints.hash_stable(&mut hcx, &mut stable_hasher);
+            delayed_lints.hash_stable(&hcx, &mut stable_hasher);
             let h3 = stable_hasher.finish();
 
             Hashes {

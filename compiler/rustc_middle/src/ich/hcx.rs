@@ -92,7 +92,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     ///
     /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
     #[inline]
-    fn span_hash_stable(&mut self, span: Span, hasher: &mut StableHasher) {
+    fn span_hash_stable(&self, span: Span, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;

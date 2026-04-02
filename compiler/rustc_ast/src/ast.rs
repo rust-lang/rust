@@ -121,7 +121,7 @@ impl PartialEq<&[Symbol]> for Path {
 }
 
 impl<Hcx: rustc_span::HashStableContext> HashStable<Hcx> for Path {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
             segment.ident.hash_stable(hcx, hasher);

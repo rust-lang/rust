@@ -62,7 +62,7 @@ impl fmt::UpperHex for Pu128 {
 
 impl<Hcx> HashStable<Hcx> for Pu128 {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         { self.0 }.hash_stable(hcx, hasher)
     }
 }

@@ -111,7 +111,7 @@ fn hash_stable_derive_with_mode(
             #[inline]
             fn hash_stable(
                 &self,
-                __hcx: &mut #context,
+                __hcx: &#context,
                 __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
                 #discriminant
                 match *self { #body }

@@ -139,7 +139,7 @@ impl<D: SpanDecoder> Decodable<D> for LazyAttrTokenStream {
 }
 
 impl<Hcx> HashStable<Hcx> for LazyAttrTokenStream {
-    fn hash_stable(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
+    fn hash_stable(&self, _hcx: &Hcx, _hasher: &mut StableHasher) {
         panic!("Attempted to compute stable hash for LazyAttrTokenStream");
     }
 }
@@ -828,7 +828,7 @@ impl<Hcx> HashStable<Hcx> for TokenStream
 where
     Hcx: crate::HashStableContext,
 {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         for sub_tt in self.iter() {
             sub_tt.hash_stable(hcx, hasher);
         }

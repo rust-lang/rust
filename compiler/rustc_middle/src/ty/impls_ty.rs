@@ -19,7 +19,7 @@ impl<'a, 'tcx, H, T> HashStable<StableHashingContext<'a>> for &'tcx ty::list::Ra
 where
     T: HashStable<StableHashingContext<'a>>,
 {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &StableHashingContext<'a>, hasher: &mut StableHasher) {
         // Note: this cache makes an *enormous* performance difference on certain benchmarks. E.g.
         // without it, compiling `diesel-2.2.10` can be 74% slower, and compiling
         // `deeply-nested-multi` can be ~4,000x slower(!)
@@ -55,21 +55,21 @@ where
     #[inline]
     fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> Fingerprint {
         let mut hasher = StableHasher::new();
-        let mut hcx: StableHashingContext<'a> = hcx.clone();
-        self.hash_stable(&mut hcx, &mut hasher);
+        let hcx: StableHashingContext<'a> = hcx.clone();
+        self.hash_stable(&hcx, &mut hasher);
         hasher.finish()
     }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::GenericArg<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.kind().hash_stable(hcx, hasher);
     }
 }
 
 // AllocIds get resolved to whatever they point to (to be stable)
 impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &StableHashingContext<'a>, hasher: &mut StableHasher) {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
@@ -79,7 +79,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::CtfeProvenance {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.into_parts().hash_stable(hcx, hasher);
     }
 }

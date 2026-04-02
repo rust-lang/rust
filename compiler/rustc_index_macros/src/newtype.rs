@@ -166,7 +166,11 @@ impl Parse for Newtype {
             quote! {
                 #gate_rustc_only
                 impl<'__ctx> ::rustc_data_structures::stable_hasher::HashStable<::rustc_middle::ich::StableHashingContext<'__ctx>> for #name {
-                    fn hash_stable(&self, hcx: &mut ::rustc_middle::ich::StableHashingContext<'__ctx>, hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+                    fn hash_stable(
+                        &self,
+                        hcx: &::rustc_middle::ich::StableHashingContext<'__ctx>,
+                        hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher
+                    ) {
                         self.as_u32().hash_stable(hcx, hasher)
                     }
                 }
@@ -175,7 +179,11 @@ impl Parse for Newtype {
             quote! {
                 #gate_rustc_only
                 impl<Hcx> ::rustc_data_structures::stable_hasher::HashStable<Hcx> for #name {
-                    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+                    fn hash_stable(
+                        &self,
+                        hcx: &Hcx,
+                        hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher
+                    ) {
                         self.as_u32().hash_stable(hcx, hasher)
                     }
                 }

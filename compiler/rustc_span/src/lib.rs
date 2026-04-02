@@ -2802,7 +2802,7 @@ impl InnerSpan {
 /// instead of implementing everything in rustc_middle.
 pub trait HashStableContext {
     /// The main event: stable hashing of a span.
-    fn span_hash_stable(&mut self, span: Span, hasher: &mut StableHasher);
+    fn span_hash_stable(&self, span: Span, hasher: &mut StableHasher);
 
     /// Compute a `DefPathHash`.
     fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
@@ -2816,7 +2816,7 @@ impl<Hcx> HashStable<Hcx> for Span
 where
     Hcx: HashStableContext,
 {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         // `span_hash_stable` does all the work.
         hcx.span_hash_stable(*self, hasher)
     }

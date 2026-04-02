@@ -2603,7 +2603,7 @@ impl fmt::Display for Symbol {
 
 impl<Hcx> HashStable<Hcx> for Symbol {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         self.as_str().hash_stable(hcx, hasher);
     }
 }
@@ -2663,7 +2663,7 @@ impl fmt::Debug for ByteSymbol {
 
 impl<Hcx> HashStable<Hcx> for ByteSymbol {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         self.as_byte_str().hash_stable(hcx, hasher);
     }
 }

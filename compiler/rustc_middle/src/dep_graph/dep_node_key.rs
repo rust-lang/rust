@@ -41,9 +41,9 @@ where
 
     #[inline(always)]
     default fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
-        tcx.with_stable_hashing_context(|mut hcx| {
+        tcx.with_stable_hashing_context(|hcx| {
             let mut hasher = StableHasher::new();
-            self.hash_stable(&mut hcx, &mut hasher);
+            self.hash_stable(&hcx, &mut hasher);
             hasher.finish()
         })
     }

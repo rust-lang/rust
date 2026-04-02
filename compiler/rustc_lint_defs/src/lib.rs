@@ -140,7 +140,7 @@ impl LintExpectationId {
 
 impl<Hcx: HashStableContext> HashStable<Hcx> for LintExpectationId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 hir_id.hash_stable(hcx, hasher);
@@ -623,7 +623,7 @@ impl LintId {
 
 impl<Hcx> HashStable<Hcx> for LintId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &Hcx, hasher: &mut StableHasher) {
         self.lint_name_raw().hash_stable(hcx, hasher);
     }
 }

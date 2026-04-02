@@ -56,8 +56,8 @@ impl<Hcx: Clone, DefId: HashStable<Hcx>> ToStableHashKey<Hcx> for SimplifiedType
     #[inline]
     fn to_stable_hash_key(&self, hcx: &Hcx) -> Fingerprint {
         let mut hasher = StableHasher::new();
-        let mut hcx: Hcx = hcx.clone();
-        self.hash_stable(&mut hcx, &mut hasher);
+        let hcx: Hcx = hcx.clone();
+        self.hash_stable(&hcx, &mut hasher);
         hasher.finish()
     }
 }
