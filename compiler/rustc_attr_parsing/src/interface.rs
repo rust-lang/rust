@@ -2,16 +2,16 @@ use std::convert::identity;
 
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
-use rustc_ast::{AttrItemKind, AttrStyle, NodeId, Safety};
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_ast::{AttrItemKind, AttrStyle, NodeId, Path, Safety};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::{AttributeTemplate, Features};
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttrResolution, AttrResolutionKind, AttrResolved, AttributeKind};
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_session::Session;
 use rustc_session::lint::{BuiltinLintDiag, LintId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_span::{AttrId, DUMMY_SP, Span, Symbol, sym};
 
 use crate::context::{AcceptContext, FinalizeContext, FinalizeFn, SharedContext, Stage};
 use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
@@ -19,13 +19,27 @@ use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
 use crate::{Early, Late, OmitDoc, ShouldEmit};
 
+/// A parser-discovered attribute argument path that should be resolved later.
+#[derive(Clone, Debug)]
+pub struct AttrResolutionRequest {
+    pub kind: AttrResolutionKind,
+    pub path: Path,
+}
+
+struct LimitedParseResult {
+    attributes: Vec<Attribute>,
+    attr_resolution_requests: FxIndexMap<AttrId, Vec<AttrResolutionRequest>>,
+}
+
 /// Context created once, for example as part of the ast lowering
 /// context, through which all attributes can be lowered.
 pub struct AttributeParser<'sess, S: Stage = Late> {
-    pub(crate) tools: Option<&'sess FxIndexSet<Ident>>,
+    pub(crate) tools: Vec<Symbol>,
     pub(crate) features: Option<&'sess Features>,
     pub(crate) sess: &'sess Session,
     pub(crate) stage: S,
+    pub(crate) attr_res_map: FxIndexMap<AttrId, Vec<AttrResolution<NodeId>>>,
+    pub(crate) attr_resolution_requests: FxIndexMap<AttrId, Vec<AttrResolutionRequest>>,
 
     /// *Only* parse attributes with this symbol.
     ///
@@ -48,8 +62,6 @@ impl<'sess> AttributeParser<'sess, Early> {
     /// No diagnostics will be emitted when parsing limited. Lints are not emitted at all, while
     /// errors will be emitted as a delayed bugs. in other words, we *expect* attributes parsed
     /// with `parse_limited` to be reparsed later during ast lowering where we *do* emit the errors
-    ///
-    /// Due to this function not taking in RegisteredTools (`FxIndexSet<Ident>`), *do not* use this for parsing any lint attributes
     pub fn parse_limited(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -71,8 +83,6 @@ impl<'sess> AttributeParser<'sess, Early> {
 
     /// This does the same as `parse_limited`, except it has a `should_emit` parameter which allows it to emit errors.
     /// Usually you want `parse_limited`, which emits no errors.
-    ///
-    /// Due to this function not taking in RegisteredTools (`FxIndexSet<Ident>`), *do not* use this for parsing any lint attributes
     pub fn parse_limited_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -82,7 +92,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
     ) -> Option<Attribute> {
-        let mut parsed = Self::parse_limited_all(
+        let mut parsed = Self::parse_limited_inner(
             sess,
             attrs,
             Some(sym),
@@ -91,10 +101,53 @@ impl<'sess> AttributeParser<'sess, Early> {
             target_node_id,
             features,
             should_emit,
-            None,
-        );
+        )
+        .attributes;
         assert!(parsed.len() <= 1);
         parsed.pop()
+    }
+
+    /// This does the same parse as `parse_limited_should_emit`, but returns any late resolution
+    /// requests discovered while parsing the selected attribute.
+    pub fn parse_limited_attr_resolution_requests_should_emit(
+        sess: &'sess Session,
+        attrs: &[ast::Attribute],
+        sym: Symbol,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        should_emit: ShouldEmit,
+    ) -> FxIndexMap<AttrId, Vec<AttrResolutionRequest>> {
+        Self::parse_limited_inner(
+            sess,
+            attrs,
+            Some(sym),
+            Target::Crate, // Does not matter, we're not going to emit errors anyways
+            target_span,
+            target_node_id,
+            features,
+            should_emit,
+        )
+        .attr_resolution_requests
+    }
+
+    pub fn parse_limited_attr_resolution_requests(
+        sess: &'sess Session,
+        attrs: &[ast::Attribute],
+        sym: Symbol,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+    ) -> FxIndexMap<AttrId, Vec<AttrResolutionRequest>> {
+        Self::parse_limited_attr_resolution_requests_should_emit(
+            sess,
+            attrs,
+            sym,
+            target_span,
+            target_node_id,
+            features,
+            ShouldEmit::Nothing,
+        )
     }
 
     /// This method allows you to parse a list of attributes *before* `rustc_ast_lowering`.
@@ -104,19 +157,49 @@ impl<'sess> AttributeParser<'sess, Early> {
     /// `rustc_ast_lowering`. Some attributes require access to features to parse, which would
     /// crash if you tried to do so through [`parse_limited_all`](Self::parse_limited_all).
     /// Therefore, if `parse_only` is None, then features *must* be provided.
-    pub fn parse_limited_all<'a>(
+    pub fn parse_limited_all(
         sess: &'sess Session,
-        attrs: impl IntoIterator<Item = &'a ast::Attribute>,
+        attrs: &[ast::Attribute],
         parse_only: Option<Symbol>,
         target: Target,
         target_span: Span,
         target_node_id: NodeId,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
-        tools: Option<&'sess FxIndexSet<Ident>>,
     ) -> Vec<Attribute> {
-        let mut p = Self { features, tools, parse_only, sess, stage: Early { emit_errors } };
-        p.parse_attribute_list(
+        Self::parse_limited_inner(
+            sess,
+            attrs,
+            parse_only,
+            target,
+            target_span,
+            target_node_id,
+            features,
+            emit_errors,
+        )
+        .attributes
+    }
+
+    fn parse_limited_inner(
+        sess: &'sess Session,
+        attrs: &[ast::Attribute],
+        parse_only: Option<Symbol>,
+        target: Target,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        emit_errors: ShouldEmit,
+    ) -> LimitedParseResult {
+        let mut p = Self {
+            features,
+            tools: Vec::new(),
+            parse_only,
+            sess,
+            stage: Early { emit_errors },
+            attr_res_map: Default::default(),
+            attr_resolution_requests: Default::default(),
+        };
+        let attributes = p.parse_attribute_list(
             attrs,
             target_span,
             target,
@@ -130,33 +213,8 @@ impl<'sess> AttributeParser<'sess, Early> {
                     BuiltinLintDiag::AttributeLint(kind),
                 )
             },
-        )
-    }
-
-    /// This method provides the same functionality as [`parse_limited_all`](Self::parse_limited_all) except filtered,
-    /// making sure that only allow-listed symbols are parsed
-    pub fn parse_limited_all_filtered<'a>(
-        sess: &'sess Session,
-        attrs: impl IntoIterator<Item = &'a ast::Attribute>,
-        filter: &[Symbol],
-        target: Target,
-        target_span: Span,
-        target_node_id: NodeId,
-        features: Option<&'sess Features>,
-        emit_errors: ShouldEmit,
-        tools: &'sess FxIndexSet<Ident>,
-    ) -> Vec<Attribute> {
-        Self::parse_limited_all(
-            sess,
-            attrs.into_iter().filter(|attr| attr.has_any_name(filter)),
-            None,
-            target,
-            target_span,
-            target_node_id,
-            features,
-            emit_errors,
-            Some(tools),
-        )
+        );
+        LimitedParseResult { attributes, attr_resolution_requests: p.attr_resolution_requests }
     }
 
     /// This method parses a single attribute, using `parse_fn`.
@@ -225,8 +283,15 @@ impl<'sess> AttributeParser<'sess, Early> {
         parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &I) -> T,
         template: &AttributeTemplate,
     ) -> T {
-        let mut parser =
-            Self { features, tools: None, parse_only: None, sess, stage: Early { emit_errors } };
+        let mut parser = Self {
+            features,
+            tools: Vec::new(),
+            parse_only: None,
+            sess,
+            stage: Early { emit_errors },
+            attr_res_map: Default::default(),
+            attr_resolution_requests: Default::default(),
+        };
         let mut emit_lint = |lint_id: LintId, span: Span, kind: AttributeLintKind| {
             sess.psess.buffer_lint(
                 lint_id.lint,
@@ -238,7 +303,6 @@ impl<'sess> AttributeParser<'sess, Early> {
         if let Some(safety) = attr_safety {
             parser.check_attribute_safety(&attr_path, inner_span, safety, &mut emit_lint)
         }
-        let attr_id = sess.psess.attr_id_generator.mk_attr_id();
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
             shared: SharedContext {
                 cx: &mut parser,
@@ -246,13 +310,13 @@ impl<'sess> AttributeParser<'sess, Early> {
                 target,
                 emit_lint: &mut emit_lint,
             },
+            attr_id: None,
             attr_span,
             inner_span,
             attr_style,
             parsed_description,
             template,
             attr_path,
-            attr_id,
         };
         parse_fn(&mut cx, args)
     }
@@ -262,10 +326,19 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
     pub fn new(
         sess: &'sess Session,
         features: &'sess Features,
-        tools: &'sess FxIndexSet<Ident>,
+        tools: Vec<Symbol>,
+        attr_res_map: FxIndexMap<AttrId, Vec<AttrResolution<NodeId>>>,
         stage: S,
     ) -> Self {
-        Self { features: Some(features), tools: Some(tools), parse_only: None, sess, stage }
+        Self {
+            features: Some(features),
+            tools,
+            parse_only: None,
+            sess,
+            stage,
+            attr_res_map,
+            attr_resolution_requests: Default::default(),
+        }
     }
 
     pub(crate) fn sess(&self) -> &'sess Session {
@@ -284,13 +357,49 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         self.sess().dcx()
     }
 
+    pub(crate) fn attr_resolution(
+        &self,
+        attr_id: AttrId,
+        kind: AttrResolutionKind,
+        path_span: Span,
+    ) -> Option<AttrResolved<NodeId>> {
+        self.attr_res_map.get(&attr_id).and_then(|resolutions| {
+            let mut fallback = None;
+            let mut saw_multiple = false;
+
+            for resolution in resolutions {
+                if resolution.kind != kind {
+                    continue;
+                }
+                if resolution.path_span == path_span {
+                    return Some(resolution.resolved);
+                }
+                if fallback.is_some() {
+                    saw_multiple = true;
+                } else {
+                    fallback = Some(resolution.resolved);
+                }
+            }
+
+            if saw_multiple { None } else { fallback }
+        })
+    }
+
+    pub(crate) fn record_attr_resolution_request(
+        &mut self,
+        attr_id: AttrId,
+        request: AttrResolutionRequest,
+    ) {
+        self.attr_resolution_requests.entry(attr_id).or_default().push(request);
+    }
+
     /// Parse a list of attributes.
     ///
     /// `target_span` is the span of the thing this list of attributes is applied to,
     /// and when `omit_doc` is set, doc attributes are filtered out.
-    pub fn parse_attribute_list<'a>(
+    pub fn parse_attribute_list(
         &mut self,
-        attrs: impl IntoIterator<Item = &'a ast::Attribute>,
+        attrs: &[ast::Attribute],
         target_span: Span,
         target: Target,
         omit_doc: OmitDoc,
@@ -306,9 +415,9 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut early_parsed_state = EarlyParsedState::default();
 
-        let mut finalizers: Vec<&FinalizeFn<S>> = Vec::new();
+        let mut finalizers: Vec<&FinalizeFn<S>> = Vec::with_capacity(attrs.len());
 
-        for attr in attrs.into_iter() {
+        for attr in attrs {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
             if let Some(expected) = self.parse_only {
                 if !attr.has_name(expected) {
@@ -412,13 +521,13 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                 target,
                                 emit_lint: &mut emit_lint,
                             },
+                            attr_id: Some(attr.id),
                             attr_span,
                             inner_span: lower_span(n.item.span()),
                             attr_style: attr.style,
                             parsed_description: ParsedDescription::Attribute,
                             template: &accept.template,
                             attr_path: attr_path.clone(),
-                            attr_id: attr.id,
                         };
 
                         (accept.accept_fn)(&mut cx, &args);
@@ -445,9 +554,11 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
 
                         let attr = Attribute::Unparsed(Box::new(attr));
 
-                        if self
-                            .tools
-                            .is_some_and(|tools| tools.iter().any(|tool| tool.name == parts[0]))
+                        if self.tools.contains(&parts[0])
+                            // FIXME: this can be removed once #152369 has been merged.
+                            // https://github.com/rust-lang/rust/pull/152369
+                            || [sym::allow, sym::deny, sym::expect, sym::forbid, sym::warn]
+                                .contains(&parts[0])
                         {
                             attributes.push(attr);
                         } else {

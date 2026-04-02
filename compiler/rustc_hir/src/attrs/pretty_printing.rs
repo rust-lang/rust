@@ -17,8 +17,7 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
-use crate::HashIgnoredAttrId;
-use crate::attrs::LintInstance;
+use crate::attrs::AttrIntValue;
 use crate::limit::Limit;
 
 /// This trait is used to print attributes in `rustc_hir_pretty`.
@@ -120,6 +119,19 @@ impl PrintAttribute for Path {
     }
 }
 
+impl PrintAttribute for AttrIntValue {
+    fn should_render(&self) -> bool {
+        true
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        match self {
+            AttrIntValue::Lit(value) => p.word(format!("Lit({value})")),
+            AttrIntValue::Const { .. } => p.word("Const"),
+        }
+    }
+}
+
 macro_rules! print_skip {
     ($($t: ty),* $(,)?) => {$(
         impl PrintAttribute for $t {
@@ -193,8 +205,8 @@ macro_rules! print_tup {
 }
 
 print_tup!(A B C D E F G H);
-print_skip!(Span, (), ErrorGuaranteed, AttrId, HashIgnoredAttrId);
-print_disp!(u8, u16, u32, u128, usize, bool, NonZero<u32>, Limit, LintInstance);
+print_skip!(Span, (), ErrorGuaranteed, AttrId);
+print_disp!(u8, u16, u32, u128, usize, bool, NonZero<u32>, Limit);
 print_debug!(
     Symbol,
     Ident,

@@ -416,6 +416,7 @@ pub struct Late;
 /// Gives [`AttributeParser`]s enough information to create errors, for example.
 pub struct AcceptContext<'f, 'sess, S: Stage> {
     pub(crate) shared: SharedContext<'f, 'sess, S>,
+    pub(crate) attr_id: Option<AttrId>,
 
     /// The outer span of the attribute currently being parsed
     ///
@@ -501,6 +502,13 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
 impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     pub(crate) fn adcx(&mut self) -> AttributeDiagnosticContext<'_, 'f, 'sess, S> {
         AttributeDiagnosticContext { ctx: self, custom_suggestions: Vec::new() }
+
+    pub(crate) fn attr_const_resolution(
+        &self,
+        path_span: Span,
+    ) -> Option<rustc_hir::attrs::AttrConstResolved<NodeId>> {
+        self.attr_id.and_then(|attr_id| self.shared.cx.attr_const_resolution(attr_id, path_span))
+    }
     }
 }
 
