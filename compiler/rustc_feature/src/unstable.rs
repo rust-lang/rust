@@ -426,10 +426,10 @@ declare_features! (
     (unstable, closure_track_caller, "1.57.0", Some(87417)),
     /// Allows `extern "cmse-nonsecure-entry" fn()`.
     (unstable, cmse_nonsecure_entry, "1.48.0", Some(75835)),
-    /// Allows paths to const items in selected builtin attribute arguments.
-    (unstable, const_attr_paths, "1.96.0", None),
     /// Allows `async {}` expressions in const contexts.
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
+    /// Allows paths to const items in selected builtin attribute arguments.
+    (unstable, const_attr_paths, "CURRENT_RUSTC_VERSION", Some(52840)),
     /// Allows `const { ... }` as a shorthand for `const _: () = const { ... };` for module items.
     (unstable, const_block_items, "1.95.0", Some(149226)),
     /// Allows defining and calling c-variadic functions in const contexts.
