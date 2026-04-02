@@ -282,7 +282,6 @@ pub(crate) mod rustc {
                 | LayoutError::InvalidSimd { .. }
                 | LayoutError::NormalizationFailure(..) => Self::UnknownLayout,
                 LayoutError::SizeOverflow(..) => Self::SizeOverflow,
-                LayoutError::Cycle(err) => Self::TypeError(*err),
             }
         }
     }
