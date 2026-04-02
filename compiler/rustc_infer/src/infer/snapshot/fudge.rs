@@ -101,7 +101,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // going to be popped, so we will have to
             // eliminate any references to them.
             let snapshot_vars = SnapshotVarData::new(self, variable_lengths);
-            Ok((snapshot_vars, self.resolve_vars_if_possible_for_fudging(value)))
+            Ok((snapshot_vars, self.resolve_vars_if_possible(value)))
         })?;
 
         // At this point, we need to replace any of the now-popped
