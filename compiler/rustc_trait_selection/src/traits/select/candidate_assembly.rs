@@ -99,11 +99,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         SizedTraitKind::Sized,
                     );
                 }
-                Some(LangItem::MetaSized) => {
+                Some(LangItem::SizeOfVal) => {
                     self.assemble_builtin_sized_candidate(
                         obligation.predicate.self_ty().skip_binder(),
                         &mut candidates,
-                        SizedTraitKind::MetaSized,
+                        SizedTraitKind::SizeOfVal,
                     );
                 }
                 Some(LangItem::PointeeSized) => {
@@ -912,7 +912,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         if self.tcx().is_sizedness_trait(obligation.predicate.def_id()) {
-            // `dyn MetaSized` is valid, but should get its `MetaSized` impl from
+            // `dyn SizeOfVal` is valid, but should get its `SizeOfVal` impl from
             // being `dyn` (SizedCandidate), not from the object candidate.
             return;
         }
@@ -1232,7 +1232,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    /// Assembles the `Sized` and `MetaSized` traits which are built-in to the language itself.
+    /// Assembles the `Sized` and `SizeOfVal` traits which are built-in to the language itself.
     #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_builtin_sized_candidate(
         &mut self,
@@ -1277,15 +1277,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.vec.push(SizedCandidate);
             }
 
-            // `MetaSized` but not `Sized`.
+            // `SizeOfVal` but not `Sized`.
             ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
                 SizedTraitKind::Sized => {}
-                SizedTraitKind::MetaSized => {
+                SizedTraitKind::SizeOfVal => {
                     candidates.vec.push(SizedCandidate);
                 }
             },
 
-            // Not `MetaSized` or `Sized`.
+            // Not `SizeOfVal` or `Sized`.
             ty::Foreign(..) => {}
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => {}

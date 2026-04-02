@@ -7,7 +7,7 @@
 trait Trait {}
 
 fn f<T: Trait + std::marker::PointeeSized>() {
-    require_metasized::<T>();
+    require_sizeofval::<T>();
 }
 
-fn require_metasized<T: std::marker::MetaSized>() {}
+fn require_sizeofval<T: std::marker::SizeOfVal>() {}

@@ -1,6 +1,6 @@
 #![allow(clippy::enum_clike_unportable_variant)]
 
-use crate::marker::MetaSized;
+use crate::marker::SizeOfVal;
 use crate::num::NonZero;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{cmp, fmt, hash, mem, num};
@@ -73,7 +73,7 @@ impl Alignment {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-    pub const fn of_val<T: MetaSized>(val: &T) -> Self {
+    pub const fn of_val<T: SizeOfVal>(val: &T) -> Self {
         let align = mem::align_of_val(val);
         // SAFETY: `align_of_val` returns valid alignment
         unsafe { Alignment::new_unchecked(align) }
@@ -120,7 +120,7 @@ impl Alignment {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-    pub const unsafe fn of_val_raw<T: MetaSized>(val: *const T) -> Self {
+    pub const unsafe fn of_val_raw<T: SizeOfVal>(val: *const T) -> Self {
         // SAFETY: precondition propagated to the caller
         let align = unsafe { mem::align_of_val_raw(val) };
         // SAFETY: `align_of_val_raw` returns valid alignment

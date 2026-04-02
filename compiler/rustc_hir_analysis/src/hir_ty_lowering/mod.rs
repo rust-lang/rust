@@ -62,7 +62,7 @@ use crate::{NoVariantNamed, check_c_variadic_abi};
 #[derive(Clone, Copy)]
 pub(crate) enum ImpliedBoundsContext<'tcx> {
     /// An implied bound is added to a trait definition (i.e. a new supertrait), used when adding
-    /// a default `MetaSized` supertrait
+    /// a default `SizeOfVal` supertrait
     TraitDef(LocalDefId),
     /// An implied bound is added to a type parameter
     TyParam(LocalDefId, &'tcx [hir::WherePredicate<'tcx>]),

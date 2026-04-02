@@ -140,7 +140,7 @@ where
         // impl {Meta,}Sized for str, [T], dyn Trait
         ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
             SizedTraitKind::Sized => Err(NoSolution),
-            SizedTraitKind::MetaSized => Ok(ty::Binder::dummy(vec![])),
+            SizedTraitKind::SizeOfVal => Ok(ty::Binder::dummy(vec![])),
         },
 
         // impl {} for extern type

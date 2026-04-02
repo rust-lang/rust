@@ -34,11 +34,11 @@ pub fn is_min_const_fn<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, msrv: Ms
     }
     if !msrv.meets(cx, msrvs::CONST_FN_TRAIT_BOUND)
         && let Some(sized_did) = cx.tcx.lang_items().sized_trait()
-        && let Some(meta_sized_did) = cx.tcx.lang_items().meta_sized_trait()
+        && let Some(size_of_val_did) = cx.tcx.lang_items().size_of_val_trait()
         && cx.tcx.param_env(def_id).caller_bounds().iter().any(|bound| {
             bound.as_trait_clause().is_some_and(|clause| {
                 let did = clause.def_id();
-                did != sized_did && did != meta_sized_did
+                did != sized_did && did != size_of_val_did
             })
         })
     {

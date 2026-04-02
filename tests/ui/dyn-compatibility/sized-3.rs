@@ -1,4 +1,4 @@
-//! This test and `metasized.rs` and `pointeesized.rs` test that dyn-compatibility correctly
+//! This test and `sizeofval.rs` and `pointeesized.rs` test that dyn-compatibility correctly
 //! handles the different sizedness traits, which are special in several parts of the compiler.
 
 trait Foo: std::fmt::Debug + Sized {}

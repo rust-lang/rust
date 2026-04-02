@@ -8,10 +8,10 @@
 // It isn't possible to write a test that matches the multiline note containing the important
 // diagnostic output being tested - so check the stderr changes carefully!
 
-use std::marker::{MetaSized, PointeeSized};
+use std::marker::{SizeOfVal, PointeeSized};
 
 extern crate pretty_print_dep;
-use pretty_print_dep::{SizedTr, MetaSizedTr, PointeeSizedTr};
+use pretty_print_dep::{SizedTr, SizeOfValTr, PointeeSizedTr};
 
 struct X<T>(T);
 
@@ -21,8 +21,8 @@ impl<T: Sized> SizedTr for X<T> {}
 impl<T: ?Sized> pretty_print_dep::NegSizedTr for X<T> {}
 //~^ ERROR conflicting implementations of trait `NegSizedTr` for type `X<_>`
 
-impl<T: MetaSized> MetaSizedTr for X<T> {}
-//~^ ERROR conflicting implementations of trait `MetaSizedTr` for type `X<_>`
+impl<T: SizeOfVal> SizeOfValTr for X<T> {}
+//~^ ERROR conflicting implementations of trait `SizeOfValTr` for type `X<_>`
 
 impl<T: PointeeSized> PointeeSizedTr for X<T> {}
 //~^ ERROR conflicting implementations of trait `PointeeSizedTr` for type `X<_>`

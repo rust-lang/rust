@@ -7,11 +7,11 @@ trait Copy {}
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
+#[lang = "size_of_val"]
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-trait Sized: MetaSized {}
+trait Sized: SizeOfVal {}
 
 #[lang = "freeze"]
 auto trait Freeze {}

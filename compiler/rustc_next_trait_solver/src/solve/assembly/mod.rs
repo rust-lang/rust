@@ -218,8 +218,8 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
 
-    /// A type is `Sized` if its tail component is `Sized` and a type is `MetaSized` if its tail
-    /// component is `MetaSized`.
+    /// A type is `Sized` if its tail component is `Sized` and a type is `SizeOfVal` if its tail
+    /// component is `SizeOfVal`.
     ///
     /// These components are given by built-in rules from
     /// [`structural_traits::instantiate_constituent_tys_for_sizedness_trait`].
@@ -551,8 +551,8 @@ where
                 Some(SolverTraitLangItem::Sized) => {
                     G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::Sized)
                 }
-                Some(SolverTraitLangItem::MetaSized) => {
-                    G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::MetaSized)
+                Some(SolverTraitLangItem::SizeOfVal) => {
+                    G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::SizeOfVal)
                 }
                 Some(SolverTraitLangItem::PointeeSized) => {
                     unreachable!("`PointeeSized` is removed during lowering");
@@ -802,7 +802,7 @@ where
     ) {
         let cx = self.cx();
         if cx.is_sizedness_trait(goal.predicate.trait_def_id(cx)) {
-            // `dyn MetaSized` is valid, but should get its `MetaSized` impl from
+            // `dyn SizeOfVal` is valid, but should get its `SizeOfVal` impl from
             // being `dyn` (SizedCandidate), not from the object candidate.
             return;
         }

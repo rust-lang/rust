@@ -370,7 +370,7 @@ pub fn sizedness_fast_path<'tcx>(
     predicate: ty::Predicate<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> bool {
-    // Proving `Sized`/`MetaSized`, very often on "obviously sized" types like
+    // Proving `Sized`/`SizeOfVal`, very often on "obviously sized" types like
     // `&T`, accounts for about 60% percentage of the predicates we have to prove. No need to
     // canonicalize and all that for such cases.
     if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) =
@@ -379,7 +379,7 @@ pub fn sizedness_fast_path<'tcx>(
     {
         let sizedness = match tcx.as_lang_item(trait_pred.def_id()) {
             Some(LangItem::Sized) => SizedTraitKind::Sized,
-            Some(LangItem::MetaSized) => SizedTraitKind::MetaSized,
+            Some(LangItem::SizeOfVal) => SizedTraitKind::SizeOfVal,
             _ => return false,
         };
 
@@ -394,7 +394,7 @@ pub fn sizedness_fast_path<'tcx>(
                     && clause_pred.polarity == ty::PredicatePolarity::Positive
                     && clause_pred.self_ty() == trait_pred.self_ty()
                     && (clause_pred.def_id() == trait_pred.def_id()
-                        || (sizedness == SizedTraitKind::MetaSized
+                        || (sizedness == SizedTraitKind::SizeOfVal
                             && tcx.is_lang_item(clause_pred.def_id(), LangItem::Sized)))
                 {
                     return true;
@@ -407,14 +407,14 @@ pub fn sizedness_fast_path<'tcx>(
 }
 
 /// To improve performance, sizedness traits are not elaborated and so special-casing is required
-/// in the trait solver to find a `Sized` candidate for a `MetaSized` obligation. Returns the
+/// in the trait solver to find a `Sized` candidate for a `SizeOfVal` obligation. Returns the
 /// predicate to used in the candidate for such a `obligation`, given a `candidate`.
 pub(crate) fn lazily_elaborate_sizedness_candidate<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: &PolyTraitObligation<'tcx>,
     candidate: PolyTraitPredicate<'tcx>,
 ) -> PolyTraitPredicate<'tcx> {
-    if !infcx.tcx.is_lang_item(obligation.predicate.def_id(), LangItem::MetaSized)
+    if !infcx.tcx.is_lang_item(obligation.predicate.def_id(), LangItem::SizeOfVal)
         || !infcx.tcx.is_lang_item(candidate.def_id(), LangItem::Sized)
     {
         return candidate;

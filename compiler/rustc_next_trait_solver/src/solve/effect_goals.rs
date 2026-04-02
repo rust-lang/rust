@@ -233,7 +233,7 @@ where
         _goal: Goal<I, Self>,
         _sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution> {
-        unreachable!("Sized/MetaSized is never const")
+        unreachable!("Sized/SizeOfVal is never const")
     }
 
     fn consider_builtin_copy_clone_candidate(

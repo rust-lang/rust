@@ -422,7 +422,7 @@ where
         goal: Goal<I, Self>,
         _sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution> {
-        panic!("`Sized`/`MetaSized` does not have an associated type: {:?}", goal);
+        panic!("`Sized`/`SizeOfVal` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_copy_clone_candidate(

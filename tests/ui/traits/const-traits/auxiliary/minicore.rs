@@ -21,11 +21,11 @@
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
+#[lang = "size_of_val"]
+pub trait SizeOfVal: PointeeSized {}
 
 #[lang = "sized"]
-pub trait Sized: MetaSized {}
+pub trait Sized: SizeOfVal {}
 
 #[lang = "copy"]
 pub trait Copy {}
@@ -114,10 +114,10 @@ impl<T: PointeeSized> LegacyReceiver for &mut T {}
 #[lang = "receiver"]
 pub trait Receiver {
     #[lang = "receiver_target"]
-    type Target: MetaSized;
+    type Target: SizeOfVal;
 }
 
-impl<T: Deref + MetaSized> Receiver for T {
+impl<T: Deref + SizeOfVal> Receiver for T {
     type Target = <T as Deref>::Target;
 }
 
@@ -160,13 +160,13 @@ fn panic_fmt() {}
 
 #[lang = "index"]
 pub const trait Index<Idx: PointeeSized> {
-    type Output: MetaSized;
+    type Output: SizeOfVal;
 
     fn index(&self, index: Idx) -> &Self::Output;
 }
 
 pub const unsafe trait SliceIndex<T: PointeeSized> {
-    type Output: MetaSized;
+    type Output: SizeOfVal;
     fn index(self, slice: &T) -> &Self::Output;
 }
 
@@ -205,12 +205,12 @@ impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a
 #[lang = "deref"]
 pub const trait Deref {
     #[lang = "deref_target"]
-    type Target: MetaSized;
+    type Target: SizeOfVal;
 
     fn deref(&self) -> &Self::Target;
 }
 
-impl<T: MetaSized> const Deref for &T {
+impl<T: SizeOfVal> const Deref for &T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -218,7 +218,7 @@ impl<T: MetaSized> const Deref for &T {
     }
 }
 
-impl<T: MetaSized> const Deref for &mut T {
+impl<T: SizeOfVal> const Deref for &mut T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -435,7 +435,7 @@ struct Ref<'b, T: PointeeSized + 'b> {
     borrow: &'b UnsafeCell<()>,
 }
 
-impl<T: MetaSized> Deref for Ref<'_, T> {
+impl<T: SizeOfVal> Deref for Ref<'_, T> {
     type Target = T;
 
     #[inline]

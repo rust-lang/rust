@@ -4,7 +4,7 @@
 //@[next] compile-flags: -Znext-solver
 #![feature(sized_hierarchy)]
 
-use std::marker::{PointeeSized, MetaSized};
+use std::marker::{PointeeSized, SizeOfVal};
 
 trait Id: PointeeSized {
     type This: PointeeSized;
@@ -14,7 +14,7 @@ impl<T: PointeeSized> Id for T {
     type This = T;
 }
 
-fn requires_metasized<T: MetaSized>() {}
+fn requires_sizeofval<T: SizeOfVal>() {}
 
 fn foo<T>()
 where
@@ -23,6 +23,6 @@ where
 {
     // `T: Sized` from where bounds (`T: PointeeSized` removes any default bounds and
     // `<T as Id>::This: Sized` normalizes to `T: Sized`). This should trivially satisfy
-    // `T: MetaSized`.
-    requires_metasized::<T>();
+    // `T: SizeOfVal`.
+    requires_sizeofval::<T>();
 }

@@ -1,5 +1,5 @@
 //@ run-pass
-//! This test and `sized-*.rs` and `metasized.rs` test that dyn-compatibility correctly
+//! This test and `sized-*.rs` and `sizeofval.rs` test that dyn-compatibility correctly
 //! handles sizedness traits, which are special in several parts of the compiler.
 #![feature(sized_hierarchy)]
 // PointeeSized is effectively removed before reaching the trait solver,
