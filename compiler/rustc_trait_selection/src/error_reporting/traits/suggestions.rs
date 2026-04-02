@@ -8,7 +8,6 @@ use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, EmissionGuarantee, MultiSpan, Style, SuggestionStyle, pluralize,
@@ -249,25 +248,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) {
-        let mut hir_ids = UnordMap::default();
+        let mut hir_ids = Vec::new();
+        let mut push_hir_id = |hir_id| {
+            if !hir_ids.contains(&hir_id) {
+                hir_ids.push(hir_id);
+            }
+        };
         // Walk the parent chain so we can recover
         // the source expression from whichever layer carries them.
         let mut next_code = Some(cause.code());
         while let Some(cause_code) = next_code {
             match cause_code {
                 ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, .. } => {
-                    hir_ids.insert(lhs_hir_id.local_id.as_u32(), *lhs_hir_id);
-                    hir_ids.insert(rhs_hir_id.local_id.as_u32(), *rhs_hir_id);
+                    push_hir_id(*lhs_hir_id);
+                    push_hir_id(*rhs_hir_id);
                 }
                 ObligationCauseCode::FunctionArg { arg_hir_id, .. }
                 | ObligationCauseCode::ReturnValue(arg_hir_id)
                 | ObligationCauseCode::AwaitableExpr(arg_hir_id)
                 | ObligationCauseCode::BlockTailExpression(arg_hir_id, _)
                 | ObligationCauseCode::UnOp { hir_id: arg_hir_id } => {
-                    hir_ids.insert(arg_hir_id.local_id.as_u32(), *arg_hir_id);
+                    push_hir_id(*arg_hir_id);
                 }
                 ObligationCauseCode::OpaqueReturnType(Some((_, hir_id))) => {
-                    hir_ids.insert(hir_id.local_id.as_u32(), *hir_id);
+                    push_hir_id(*hir_id);
                 }
                 _ => {}
             }
@@ -280,12 +284,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let mut expr_finder = FindExprBySpan::new(cause.span, self.tcx);
             expr_finder.visit_body(body);
             if let Some(expr) = expr_finder.result {
-                hir_ids.insert(expr.hir_id.local_id.as_u32(), expr.hir_id);
+                push_hir_id(expr.hir_id);
             }
         }
 
-        let hir_ids = hir_ids.into_sorted_stable_ord();
-        for (_, hir_id) in hir_ids {
+        let source_map = self.tcx.sess.source_map();
+        hir_ids.sort_by_cached_key(|hir_id| {
+            let span = self.tcx.hir_span(*hir_id);
+            let lo = source_map.lookup_byte_offset(span.lo());
+            let hi = source_map.lookup_byte_offset(span.hi());
+            (lo.sf.name.prefer_remapped_unconditionally().to_string(), lo.pos.0, hi.pos.0)
+        });
+
+        for hir_id in hir_ids {
             self.note_field_shadowed_by_private_candidate(err, hir_id, param_env);
         }
     }
