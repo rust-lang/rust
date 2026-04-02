@@ -125,7 +125,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn self_ty(self) -> ty::Ty<I> {
+    fn self_ty(self) -> I::Ty {
         self.self_ty()
     }
 
@@ -133,7 +133,7 @@ where
         self.alias.trait_ref(cx)
     }
 
-    fn with_replaced_self_ty(self, cx: I, self_ty: ty::Ty<I>) -> Self {
+    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
         self.with_replaced_self_ty(cx, self_ty)
     }
 

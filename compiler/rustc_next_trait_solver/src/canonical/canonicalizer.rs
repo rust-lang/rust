@@ -78,7 +78,7 @@ pub(super) struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner
 
     /// We can simply cache based on the ty itself, because we use
     /// `ty::BoundVarIndexKind::Canonical`.
-    cache: HashMap<ty::Ty<I>, ty::Ty<I>>,
+    cache: HashMap<I::Ty, I::Ty>,
 }
 
 impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
@@ -316,7 +316,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         (max_universe, self.variables, var_kinds)
     }
 
-    fn inner_fold_ty(&mut self, t: ty::Ty<I>) -> ty::Ty<I> {
+    fn inner_fold_ty(&mut self, t: I::Ty) -> I::Ty {
         let kind = match t.kind() {
             ty::Infer(i) => match i {
                 ty::TyVar(vid) => {
@@ -475,7 +475,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
         Region::new_canonical_bound(self.cx(), var)
     }
 
-    fn fold_ty(&mut self, t: ty::Ty<I>) -> ty::Ty<I> {
+    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         if !t.flags().intersects(NEEDS_CANONICAL) {
             t
         } else if let Some(&ty) = self.cache.get(&t) {
