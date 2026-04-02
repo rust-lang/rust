@@ -364,10 +364,32 @@ pub struct CommonTypes<'tcx> {
     pub never: Ty<'tcx>,
     pub self_param: Ty<'tcx>,
 
-    /// Dummy type used for the `Self` of a `TraitRef` created for converting
-    /// a trait object, and which gets removed in `ExistentialTraitRef`.
-    /// This type must not appear anywhere in other converted types.
-    /// `Infer(ty::FreshTy(0))` does the job.
+    /// A dummy type that can be used as the self type of trait object types outside of
+    /// [`ty::ExistentialTraitRef`], [`ty::ExistentialProjection`], etc.
+    ///
+    /// This is most useful or even necessary when you want to manipulate existential predicates
+    /// together with normal predicates or if you want to pass them to an API that only expects
+    /// normal predicates.
+    ///
+    /// Indeed, you can sometimes use the trait object type itself as the self type instead of this
+    /// dummy type. However, that's not always correct: For example, if said trait object type can
+    /// also appear "naturally" in whatever type system entity you're working with (like predicates)
+    /// but you still need to be able to identify the erased self type later on.
+    /// That's when this dummy type comes in handy.
+    ///
+    /// HIR ty lowering guarantees / has to guarantee that this dummy type doesn't appear in the
+    /// lowered types, so you can "freely" use it (see warning below).
+    ///
+    /// <div class="warning">
+    ///
+    /// Under the hood, this type is just `ty::Infer(ty::FreshTy(0))`. Consequently, you must be
+    /// sure that fresh types cannot appear by other means in whatever type system entity you're
+    /// working with.
+    ///
+    /// Keep uses of this dummy type as local as possible and try not to leak it to subsequent
+    /// passes!
+    ///
+    /// </div>
     pub trait_object_dummy_self: Ty<'tcx>,
 
     /// Pre-interned `Infer(ty::TyVar(n))` for small values of `n`.

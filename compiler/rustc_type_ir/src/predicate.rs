@@ -330,14 +330,13 @@ impl<I: Interner> ty::Binder<I, ExistentialPredicate<I>> {
     }
 }
 
-/// An existential reference to a trait, where `Self` is erased.
+/// An existential reference to a trait where the self type `Self` is erased.
 ///
-/// For example, the trait object `Trait<'a, 'b, X, Y>` is:
+/// For example, the trait object type `Trait<'a, T, N>` can be understood as:
 /// ```ignore (illustrative)
-/// exists T. T: Trait<'a, 'b, X, Y>
+/// exists<X> X: Trait<'a, T, N>
 /// ```
-/// The generic parameters don't include the erased `Self`, only trait
-/// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
+/// The generic arguments don't include the erased self type (so it's only `['a, T, N]`).
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
@@ -380,13 +379,14 @@ impl<I: Interner> ExistentialTraitRef<I> {
         }
     }
 
-    /// Object types don't have a self type specified. Therefore, when
-    /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self type. A common choice is `mk_err()`
-    /// or some placeholder type.
+    /// Convert the *existential* trait ref into a normal one by providing a self type.
+    ///
+    /// Existential trait refs don't contain a self type, it's erased.
+    /// Therefore, you must specify *some* self type to perform the conversion.
+    /// A common choice is the trait object type itself or some kind of dummy type.
     pub fn with_self_ty(self, interner: I, self_ty: ty::Ty<I>) -> TraitRef<I> {
         // otherwise the escaping vars would be captured by the binder
-        // debug_assert!(!self_ty.has_escaping_bound_vars());
+        debug_assert!(!self_ty.has_escaping_bound_vars());
 
         TraitRef::new(interner, self.def_id, [self_ty.into()].into_iter().chain(self.args.iter()))
     }
@@ -397,10 +397,9 @@ impl<I: Interner> ty::Binder<I, ExistentialTraitRef<I>> {
         self.skip_binder().def_id
     }
 
-    /// Object types don't have a self type specified. Therefore, when
-    /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self type. A common choice is `mk_err()`
-    /// or some placeholder type.
+    /// Convert the *existential* polymorphic trait ref into a normal one by providing a self type.
+    ///
+    /// See also [`ExistentialTraitRef::with_self_ty`].
     pub fn with_self_ty(&self, cx: I, self_ty: ty::Ty<I>) -> ty::Binder<I, TraitRef<I>> {
         self.map_bound(|trait_ref| trait_ref.with_self_ty(cx, self_ty))
     }
