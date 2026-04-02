@@ -2,6 +2,21 @@ use core::arch::global_asm;
 
 global_asm!(include_str!("hexagon/func_macro.s"), options(raw));
 
+global_asm!(
+    include_str!("hexagon/common_entry_exit_abi1.s"),
+    options(raw)
+);
+
+global_asm!(
+    include_str!("hexagon/common_entry_exit_abi2.s"),
+    options(raw)
+);
+
+global_asm!(
+    include_str!("hexagon/common_entry_exit_legacy.s"),
+    options(raw)
+);
+
 global_asm!(include_str!("hexagon/dfaddsub.s"), options(raw));
 
 global_asm!(include_str!("hexagon/dfdiv.s"), options(raw));
