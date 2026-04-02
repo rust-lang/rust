@@ -20,7 +20,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.call_function(
             panic,
             ExternAbi::Rust,
-            &[this.mplace_to_ref(&msg)?],
+            &[this.mplace_to_imm_ptr(&msg)?],
             None,
             ReturnContinuation::Goto { ret: None, unwind },
         )
@@ -39,7 +39,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.call_function(
             panic,
             ExternAbi::Rust,
-            &[this.mplace_to_ref(&msg)?],
+            &[this.mplace_to_imm_ptr(&msg)?],
             None,
             ReturnContinuation::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
         )
