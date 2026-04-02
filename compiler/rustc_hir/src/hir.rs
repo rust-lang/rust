@@ -1676,7 +1676,14 @@ impl<'tcx> MaybeOwner<'tcx> {
     }
 
     pub fn expect_delayed(self) -> DelayedOwner {
-        if let MaybeOwner::Delayed(owner) = self { owner } else { panic!("not a delayed owner") }
+        self.as_delayed().unwrap_or_else(|| panic!("not a delayed owner"))
+    }
+
+    pub fn as_delayed(self) -> Option<DelayedOwner> {
+        match self {
+            MaybeOwner::Delayed(delayed_owner) => Some(delayed_owner),
+            _ => None,
+        }
     }
 }
 
