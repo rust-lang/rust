@@ -1,5 +1,5 @@
 error: implementation of `IsStatic` is not general enough
-  --> $DIR/main-termination-lifetime-issue-148421.rs:15:14
+  --> $DIR/main-termination-lifetime-issue-148421.rs:17:14
    |
 LL | fn main() -> Thing { Thing }
    |              ^^^^^ implementation of `IsStatic` is not general enough
