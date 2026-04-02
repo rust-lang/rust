@@ -186,7 +186,11 @@ pub struct Flatten<I: Iterator<Item: IntoIterator>> {
 }
 
 impl<I: Iterator<Item: IntoIterator>> Flatten<I> {
-    pub(in super::super) fn new(iter: I) -> Flatten<I> {
+    #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+    pub(in super::super) const fn new(iter: I) -> Flatten<I>
+    where
+        I: [const] Iterator,
+    {
         Flatten { inner: FlattenCompat::new(iter) }
     }
 }
@@ -363,7 +367,11 @@ where
     I: Iterator,
 {
     /// Adapts an iterator by flattening it, for use in `flatten()` and `flat_map()`.
-    fn new(iter: I) -> FlattenCompat<I, U> {
+    #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+    const fn new(iter: I) -> FlattenCompat<I, U>
+    where
+        I: [const] Iterator,
+    {
         FlattenCompat { iter: iter.fuse(), frontiter: None, backiter: None }
     }
 }
