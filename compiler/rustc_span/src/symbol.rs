@@ -374,6 +374,7 @@ symbols! {
         align,
         align_of,
         align_of_val,
+        align_type,
         alignment,
         all,
         alloc,

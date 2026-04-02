@@ -686,10 +686,25 @@ fn layout_of_uncached<'tcx>(
                     !tcx.type_of(last_field.did).instantiate_identity().is_sized(tcx, typing_env)
                 });
 
+            let mut repr = def.repr();
+
+            // FIXME: should this have a flag on the adtdef?
+            if tcx.is_lang_item(def.did(), hir::LangItem::AlignType) {
+                let align_value = extract_const_value(cx, ty, args.const_at(0))?
+                    .try_to_target_usize(tcx)
+                    .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+
+                // FIXME: actual error message
+                let align = abi::Align::from_bytes(align_value)
+                    .map_err(|_| error(cx, LayoutError::Unknown(ty)))?;
+
+                repr.align = Some(align);
+            }
+
             let layout = cx
                 .calc
                 .layout_of_struct_or_enum(
-                    &def.repr(),
+                    &repr,
                     &variants,
                     def.is_enum(),
                     is_special_no_niche,
