@@ -3,11 +3,6 @@ error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
    |
 LL |     fn foo(_: Option()) {}
    |               ^^^^^^^^ only `Fn` traits may use parentheses
-   |
-help: use angle brackets instead
-   |
-LL |     fn foo(_: Option<()>) {}
-   |                     +  +
 
 error[E0107]: enum takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/suboptimal-generic-suggestion-154220.rs:2:15
@@ -17,8 +12,9 @@ LL |     fn foo(_: Option()) {}
    |
 help: add missing generic argument
    |
-LL |     fn foo(_: Option(T)) {}
-   |                      +
+LL -     fn foo(_: Option()) {}
+LL +     fn foo(_: Option<()>) {}
+   |
 
 error: aborting due to 2 previous errors
 

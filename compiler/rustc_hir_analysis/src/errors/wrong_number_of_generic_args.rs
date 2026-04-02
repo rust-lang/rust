@@ -723,12 +723,39 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 );
             }
             AngleBrackets::Available => {
-                let gen_args_span = self.gen_args.span().unwrap();
+                let gen_args_span = self.gen_args.span_ext().unwrap();
                 let sugg_offset =
                     self.get_lifetime_args_offset() + self.num_provided_type_or_const_args();
+                let is_parenthesized =
+                    matches!(self.gen_args.parenthesized, rustc_hir::GenericArgsParentheses::No);
+                // HACK cries in hacky b/c idk how to diff () and <> other than incidental stuff
+                // recalculate in face of possibility that one of the types is unit: `()`, which is
+                // detected as an empty angle bracket...
+                // so if we are detected to be parenthesized, but the gen_args does *not* contain any types
+                // (we are trying to write some form of empty parens),
+                // *and* the kind that is missing is at least 1 generic), *then* fudge the
+                // suggested args with the unit type instead.
+                // FIXME figure out the wizardry for more than one missing generic
+                let suggested_args = if is_parenthesized
+                    && num_missing_args == 1
+                    && self.kind() == "generic"
+                    && let None = self.gen_args.paren_sugar_inputs_output()
+                {
+                    "()".to_owned()
+                } else {
+                    format!("{suggested_args}",)
+                };
 
                 let (sugg_span, is_first) = if sugg_offset == 0 {
-                    (gen_args_span.shrink_to_lo(), true)
+                    // do not shrink to low if not parenthesized
+                    (
+                        if is_parenthesized && self.kind() == "generic" {
+                            gen_args_span
+                        } else {
+                            gen_args_span.shrink_to_lo()
+                        },
+                        true,
+                    )
                 } else {
                     let arg_span = self.gen_args.args[sugg_offset - 1].span();
                     // If we came here then inferred lifetime's spans can only point
@@ -741,9 +768,10 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     (arg_span.shrink_to_hi(), arg_span.hi() <= gen_args_span.lo())
                 };
 
-                let sugg_prefix = if is_first { "" } else { ", " };
+                let [prefix, suffix] = if is_parenthesized { ["<", ">"] } else { ["(", ")"] };
+                let sugg_prefix = if is_first { prefix } else { ", " };
                 let sugg_suffix =
-                    if is_first && !self.gen_args.constraints.is_empty() { ", " } else { "" };
+                    if is_first && !self.gen_args.constraints.is_empty() { ", " } else { suffix };
 
                 let sugg = format!("{sugg_prefix}{suggested_args}{sugg_suffix}");
                 debug!("sugg: {:?}", sugg);

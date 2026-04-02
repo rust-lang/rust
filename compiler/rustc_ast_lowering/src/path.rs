@@ -318,9 +318,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                         ),
                     GenericArgsMode::Err => {
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
-                        let sub = if !matches!(itctx, ImplTraitContext::Disallowed(_))
-                            || !data.inputs.is_empty()
-                        {
+                        let sub = if !data.inputs.is_empty() {
                             // Start of the span to the 1st character of 1st argument
                             // (or just the first character if empty)
                             let open_param = if let Some(first) = data.inputs.first() {
