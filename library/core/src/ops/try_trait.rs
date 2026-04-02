@@ -1,5 +1,79 @@
 use crate::marker::{Destruct, PhantomData};
 use crate::ops::ControlFlow;
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[lang = "Try"]
+#[rustc_on_unimplemented(
+    on(
+        all(from_desugaring = "TryBlock"),
+        message = "a `try` block must return `Result` or `Option` \
+                    (or another type that implements `{This}`)",
+        label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
+    ),
+    on(
+        all(from_desugaring = "QuestionMark"),
+        message = "the `?` operator can only be applied to values that implement `Try`",
+        label = "the `?` operator cannot be applied to type `{Self}`"
+    )
+)]
+/// The core part of a `Try`.
+/// Exists because there are some `Branch` that cannot be [`Try`], for lack of [`FromOutput`] or lack of [`FromResidual`], consider `impl Try for &R`.
+pub const trait Branch {
+    /// The type of the value produced by `?` when *not* short-circuiting.
+    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+    type Output;
+
+    /// The type of the value passed to [`FromResidual::from_residual`]
+    /// as part of `?` when short-circuiting.
+    ///
+    /// This represents the possible values of the `Self` type which are *not*
+    /// represented by the `Output` type.
+    ///
+    /// # Note to Implementors
+    ///
+    /// The choice of this type is critical to interconversion.
+    /// Unlike the `Output` type, which will often be a raw generic type,
+    /// this type is typically a newtype of some sort to "color" the type
+    /// so that it's distinguishable from the residuals of other types.
+    ///
+    /// This is why `Result<T, E>::Residual` is not `E`, but `Result<Infallible, E>`.
+    /// That way it's distinct from `ControlFlow<E>::Residual`, for example,
+    /// and thus `?` on `ControlFlow` cannot be used in a method returning `Result`.
+    ///
+    /// If you're making a generic type `Foo<T>` that implements `Try<Output = T>`,
+    /// then typically you can use `Foo<std::convert::Infallible>` as its `Residual`
+    /// type: that type will have a "hole" in the correct place, and will maintain the
+    /// "foo-ness" of the residual so other types need to opt-in to interconversion.
+    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+    type Residual;
+
+    /// Used in `?` to decide whether the operator should produce a value
+    /// (because this returned [`ControlFlow::Continue`])
+    /// or propagate a value back to the caller
+    /// (because this returned [`ControlFlow::Break`]).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_trait_v2)]
+    /// use std::ops::{ControlFlow, Try};
+    ///
+    /// assert_eq!(Ok::<_, String>(3).branch(), ControlFlow::Continue(3));
+    /// assert_eq!(Err::<String, _>(3).branch(), ControlFlow::Break(Err(3)));
+    ///
+    /// assert_eq!(Some(3).branch(), ControlFlow::Continue(3));
+    /// assert_eq!(None::<String>.branch(), ControlFlow::Break(None));
+    ///
+    /// assert_eq!(ControlFlow::<String, _>::Continue(3).branch(), ControlFlow::Continue(3));
+    /// assert_eq!(
+    ///     ControlFlow::<_, String>::Break(3).branch(),
+    ///     ControlFlow::Break(ControlFlow::Break(3)),
+    /// );
+    /// ```
+    #[lang = "branch"]
+    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
+}
 
 /// The `?` operator and `try {}` blocks.
 ///
@@ -53,7 +127,7 @@ use crate::ops::ControlFlow;
 /// ```
 ///
 /// If we get through the entire iterator, we need to wrap up the accumulator
-/// into the return type using [`Try::from_output`]:
+/// into the return type using [`FromOutput::from_output`]:
 /// ```
 /// # #![feature(try_trait_v2)]
 /// # use std::ops::{ControlFlow, Try};
@@ -114,110 +188,9 @@ use crate::ops::ControlFlow;
 /// }
 /// ```
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-#[rustc_on_unimplemented(
-    on(
-        all(from_desugaring = "TryBlock"),
-        message = "a `try` block must return `Result` or `Option` \
-                    (or another type that implements `{This}`)",
-        label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
-    ),
-    on(
-        all(from_desugaring = "QuestionMark"),
-        message = "the `?` operator can only be applied to values that implement `{This}`",
-        label = "the `?` operator cannot be applied to type `{Self}`"
-    )
-)]
 #[doc(alias = "?")]
-#[lang = "Try"]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
-pub const trait Try: [const] FromResidual {
-    /// The type of the value produced by `?` when *not* short-circuiting.
-    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-    type Output;
-
-    /// The type of the value passed to [`FromResidual::from_residual`]
-    /// as part of `?` when short-circuiting.
-    ///
-    /// This represents the possible values of the `Self` type which are *not*
-    /// represented by the `Output` type.
-    ///
-    /// # Note to Implementors
-    ///
-    /// The choice of this type is critical to interconversion.
-    /// Unlike the `Output` type, which will often be a raw generic type,
-    /// this type is typically a newtype of some sort to "color" the type
-    /// so that it's distinguishable from the residuals of other types.
-    ///
-    /// This is why `Result<T, E>::Residual` is not `E`, but `Result<Infallible, E>`.
-    /// That way it's distinct from `ControlFlow<E>::Residual`, for example,
-    /// and thus `?` on `ControlFlow` cannot be used in a method returning `Result`.
-    ///
-    /// If you're making a generic type `Foo<T>` that implements `Try<Output = T>`,
-    /// then typically you can use `Foo<std::convert::Infallible>` as its `Residual`
-    /// type: that type will have a "hole" in the correct place, and will maintain the
-    /// "foo-ness" of the residual so other types need to opt-in to interconversion.
-    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-    type Residual;
-
-    /// Constructs the type from its `Output` type.
-    ///
-    /// This should be implemented consistently with the `branch` method
-    /// such that applying the `?` operator will get back the original value:
-    /// `Try::from_output(x).branch() --> ControlFlow::Continue(x)`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(try_trait_v2)]
-    /// use std::ops::Try;
-    ///
-    /// assert_eq!(<Result<_, String> as Try>::from_output(3), Ok(3));
-    /// assert_eq!(<Option<_> as Try>::from_output(4), Some(4));
-    /// assert_eq!(
-    ///     <std::ops::ControlFlow<String, _> as Try>::from_output(5),
-    ///     std::ops::ControlFlow::Continue(5),
-    /// );
-    ///
-    /// # fn make_question_mark_work() -> Option<()> {
-    /// assert_eq!(Option::from_output(4)?, 4);
-    /// # None }
-    /// # make_question_mark_work();
-    ///
-    /// // This is used, for example, on the accumulator in `try_fold`:
-    /// let r = std::iter::empty().try_fold(4, |_, ()| -> Option<_> { unreachable!() });
-    /// assert_eq!(r, Some(4));
-    /// ```
-    #[lang = "from_output"]
-    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-    fn from_output(output: Self::Output) -> Self;
-
-    /// Used in `?` to decide whether the operator should produce a value
-    /// (because this returned [`ControlFlow::Continue`])
-    /// or propagate a value back to the caller
-    /// (because this returned [`ControlFlow::Break`]).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(try_trait_v2)]
-    /// use std::ops::{ControlFlow, Try};
-    ///
-    /// assert_eq!(Ok::<_, String>(3).branch(), ControlFlow::Continue(3));
-    /// assert_eq!(Err::<String, _>(3).branch(), ControlFlow::Break(Err(3)));
-    ///
-    /// assert_eq!(Some(3).branch(), ControlFlow::Continue(3));
-    /// assert_eq!(None::<String>.branch(), ControlFlow::Break(None));
-    ///
-    /// assert_eq!(ControlFlow::<String, _>::Continue(3).branch(), ControlFlow::Continue(3));
-    /// assert_eq!(
-    ///     ControlFlow::<_, String>::Break(3).branch(),
-    ///     ControlFlow::Break(ControlFlow::Break(3)),
-    /// );
-    /// ```
-    #[lang = "branch"]
-    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-}
+// #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+pub const trait Try = [const] Branch + [const] FromResidual + [const] FromOutput;
 
 /// Used to specify which residuals can be converted into which [`crate::ops::Try`] types.
 ///
@@ -307,7 +280,7 @@ pub const trait Try: [const] FromResidual {
 #[rustc_diagnostic_item = "FromResidual"]
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-pub const trait FromResidual<R = <Self as Try>::Residual> {
+pub const trait FromResidual<R = <Self as Branch>::Residual> {
     /// Constructs the type from a compatible `Residual` type.
     ///
     /// This should be implemented consistently with the `branch` method such
@@ -331,6 +304,57 @@ pub const trait FromResidual<R = <Self as Try>::Residual> {
     #[lang = "from_residual"]
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     fn from_residual(residual: R) -> Self;
+}
+
+/// Allows creating a `Try` from its Output. This is the `return`.
+#[rustc_diagnostic_item = "FromOutput"]
+#[rustc_on_unimplemented(
+    on(
+        all(from_desugaring = "TryBlock"),
+        message = "a `try` block must return `Result` or `Option` \
+                    (or another type that implements `Try`)",
+        label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
+    ),
+    on(
+        all(from_desugaring = "QuestionMark"),
+        message = "the `?` operator can only be applied to values that implement `Try`",
+        label = "the `?` operator cannot be applied to type `{Self}`"
+    ),
+)]
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+pub const trait FromOutput<O = <Self as Branch>::Output>: Branch {
+    /// Constructs the type from its `Output` type.
+    ///
+    /// This should be implemented consistently with the `branch` method
+    /// such that applying the `?` operator will get back the original value:
+    /// `FromOutput::from_output(x).branch() --> ControlFlow::Continue(x)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_trait_v2)]
+    /// use std::ops::FromOutput;
+    ///
+    /// assert_eq!(<Result<_, String> as FromOutput>::from_output(3), Ok(3));
+    /// assert_eq!(<Option<_> as FromOutput>::from_output(4), Some(4));
+    /// assert_eq!(
+    ///     <std::ops::ControlFlow<String, _> as FromOutput>::from_output(5),
+    ///     std::ops::ControlFlow::Continue(5),
+    /// );
+    ///
+    /// # fn make_question_mark_work() -> Option<()> {
+    /// assert_eq!(Option::from_output(4)?, 4);
+    /// # None }
+    /// # make_question_mark_work();
+    ///
+    /// // This is used, for example, on the accumulator in `try_fold`:
+    /// let r = std::iter::empty().try_fold(4, |_, ()| -> Option<_> { unreachable!() });
+    /// assert_eq!(r, Some(4));
+    /// ```
+    #[lang = "from_output"]
+    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+    fn from_output(output: Self::Output) -> Self;
 }
 
 #[unstable(
@@ -440,7 +464,7 @@ impl<T> NeverShortCircuit<T> {
 pub(crate) enum NeverShortCircuitResidual {}
 
 #[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
-impl<T> const Try for NeverShortCircuit<T> {
+impl<T> const Branch for NeverShortCircuit<T> {
     type Output = T;
     type Residual = NeverShortCircuitResidual;
 
@@ -448,7 +472,9 @@ impl<T> const Try for NeverShortCircuit<T> {
     fn branch(self) -> ControlFlow<NeverShortCircuitResidual, T> {
         ControlFlow::Continue(self.0)
     }
-
+}
+#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+impl<T> const FromOutput for NeverShortCircuit<T> {
     #[inline]
     fn from_output(x: T) -> Self {
         NeverShortCircuit(x)
