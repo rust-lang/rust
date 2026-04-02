@@ -9,6 +9,7 @@
 #![feature(async_iterator)]
 #![feature(bool_to_result)]
 #![feature(bstr)]
+#![feature(casefold)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_internals)]
 #![feature(char_max_len)]
