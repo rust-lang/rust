@@ -255,7 +255,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
 fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinter<'a, 'tcx> {
     let mut p = FmtPrinter::new(infcx.tcx, ns);
     let ty_getter = move |ty_vid| {
-        if infcx.probe_ty_var(ty_vid).is_ok() {
+        if infcx.try_resolve_ty_var(ty_vid).is_ok() {
             warn!("resolved ty var in error message");
         }
 
