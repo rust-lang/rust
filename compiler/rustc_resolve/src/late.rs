@@ -24,6 +24,7 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, Diagnostic, ErrorGuaranteed, IntoDiagArg, MultiSpan,
     StashKey, Suggestions, elided_lifetime_in_path_suggestion, pluralize,
 };
+use rustc_hir::attrs::AttrConstResolved;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
@@ -824,9 +825,8 @@ struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
 impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
-    fn visit_attribute(&mut self, _: &'ast Attribute) {
-        // We do not want to resolve expressions that appear in attributes,
-        // as they do not correspond to actual code.
+    fn visit_attribute(&mut self, attr: &'ast Attribute) {
+        self.resolve_attr_const_paths(attr);
     }
     fn visit_item(&mut self, item: &'ast Item) {
         let prev = replace(&mut self.diag_metadata.current_item, Some(item));
@@ -1467,6 +1467,90 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         if let Some(v) = &default {
             self.resolve_anon_const(v, AnonConstKind::FieldDefaultValue);
         }
+    }
+}
+
+impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
+    fn resolve_attr_const_paths(&mut self, attr: &'ast Attribute) {
+        match attr.name() {
+            Some(sym::repr) => {
+                let Some(items) = attr.meta_item_list() else {
+                    return;
+                };
+                for item in &items {
+                    let Some(meta) = item.meta_item() else {
+                        continue;
+                    };
+                    let Some(name) = meta.name() else {
+                        continue;
+                    };
+                    if !matches!(name, sym::align | sym::packed) {
+                        continue;
+                    }
+                    let Some([arg]) = meta.meta_item_list() else {
+                        continue;
+                    };
+                    let Some(path_meta) = arg.meta_item() else {
+                        continue;
+                    };
+                    if !path_meta.is_word() {
+                        continue;
+                    }
+                    if !self.should_resolve_attr_const_path(path_meta.path.span) {
+                        continue;
+                    }
+                    self.resolve_attr_const_path(attr.id, &path_meta.path);
+                }
+            }
+            Some(sym::rustc_align | sym::rustc_align_static) => {
+                let Some(items) = attr.meta_item_list() else {
+                    return;
+                };
+                let [arg] = items.as_slice() else {
+                    return;
+                };
+                let Some(path_meta) = arg.meta_item() else {
+                    return;
+                };
+                if !path_meta.is_word() {
+                    return;
+                }
+                if !self.should_resolve_attr_const_path(path_meta.path.span) {
+                    return;
+                }
+                self.resolve_attr_const_path(attr.id, &path_meta.path);
+            }
+            _ => {}
+        }
+    }
+
+    fn should_resolve_attr_const_path(&self, span: Span) -> bool {
+        self.r.tcx.features().const_attr_paths() || span.allows_unstable(sym::const_attr_paths)
+    }
+
+    fn resolve_attr_const_path(&mut self, attr_id: AttrId, path: &Path) {
+        let path_segments = path
+            .segments
+            .iter()
+            .map(|segment| Segment::from_ident(segment.ident))
+            .collect::<Vec<_>>();
+        let partial_res = self.smart_resolve_path_fragment(
+            &None,
+            &path_segments,
+            PathSource::Expr(None),
+            Finalize::new(DUMMY_NODE_ID, path.span),
+            RecordPartialRes::No,
+            None,
+        );
+        let resolved = match partial_res.full_res() {
+            Some(Res::Err) | None => AttrConstResolved::Error,
+            Some(res) => AttrConstResolved::Resolved(res),
+        };
+        self.r
+            .attr_const_resolutions
+            .entry(attr_id)
+            .or_default()
+            .push(rustc_hir::attrs::AttrConstResolution { path_span: path.span, resolved });
     }
 }
 
@@ -2789,6 +2873,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
 
         debug!("(resolving item) resolving {:?} ({:?})", item.kind.ident(), item.kind);
+        walk_list!(self, visit_attribute, &item.attrs);
 
         let def_kind = self.r.local_def_kind(item.id);
         match &item.kind {

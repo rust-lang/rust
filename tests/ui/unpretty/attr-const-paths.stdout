@@ -1,0 +1,17 @@
+#![attr = Feature([const_attr_paths#0])]
+extern crate std;
+#[attr = PreludeImport]
+use ::std::prelude::rust_2015::*;
+//@ compile-flags: -Zunpretty=hir
+//@ check-pass
+
+
+const ALIGN: usize = 8;
+
+#[attr = Repr {reprs: [ReprAlign(Const)]}]
+struct Aligned;
+
+#[attr = Repr {reprs: [ReprPacked(Lit(2))]}]
+struct Packed(u32);
+
+fn main() { }

@@ -9,13 +9,13 @@ use private::Sealed;
 use rustc_ast::{AttrStyle, MetaItemLit, NodeId};
 use rustc_errors::{Diag, Diagnostic, Level, MultiSpan};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttrResolutionKind, AttributeKind};
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrPath, HirId};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{AttrId, ErrorGuaranteed, Span, Symbol};
 
 use crate::AttributeParser;
 // Glob imports to avoid big, bitrotty import lists
@@ -38,6 +38,7 @@ use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
 use crate::attributes::instruction_set::*;
 use crate::attributes::link_attrs::*;
+use crate::attributes::lint::*;
 use crate::attributes::lint_helpers::*;
 use crate::attributes::loop_match::*;
 use crate::attributes::macro_attrs::*;
@@ -150,6 +151,7 @@ attribute_parsers!(
         ConfusablesParser,
         ConstStabilityParser,
         DocParser,
+        LintParser,
         MacroUseParser,
         NakedParser,
         OnConstParser,
@@ -449,6 +451,8 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
 
     /// The name of the attribute we're currently accepting.
     pub(crate) attr_path: AttrPath,
+
+    pub(crate) attr_id: AttrId,
 }
 
 impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
@@ -536,6 +540,25 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         };
 
         Some(single)
+    }
+
+    pub(crate) fn attr_resolution(
+        &self,
+        kind: AttrResolutionKind,
+        path_span: Span,
+    ) -> Option<rustc_hir::attrs::AttrResolved<NodeId>> {
+        self.shared.cx.attr_resolution(self.attr_id, kind, path_span)
+    }
+
+    pub(crate) fn record_attr_resolution_request(
+        &mut self,
+        kind: AttrResolutionKind,
+        path: rustc_ast::Path,
+    ) {
+        self.shared.cx.record_attr_resolution_request(
+            self.attr_id,
+            crate::interface::AttrResolutionRequest { kind, path },
+        );
     }
 }
 
@@ -861,6 +884,17 @@ where
                 strings: true,
                 list: false,
             },
+        )
+    }
+
+    pub(crate) fn expected_nv_as_last_argument(
+        &mut self,
+        span: Span,
+        name_value_key: Symbol,
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedNameValueAsLastArgument { span, name_value_key },
         )
     }
 
