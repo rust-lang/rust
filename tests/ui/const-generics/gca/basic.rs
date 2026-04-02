@@ -2,7 +2,7 @@
 
 #![feature(generic_const_items)]
 #![feature(min_generic_const_args)]
-#![feature(opaque_generic_const_args)]
+#![feature(generic_const_args)]
 #![expect(incomplete_features)]
 
 type const ADD1<const N: usize>: usize = const { N + 1 };

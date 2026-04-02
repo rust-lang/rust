@@ -1598,8 +1598,8 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             let parent_hir_node = tcx.hir_node(tcx.parent_hir_id(const_arg_id));
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
-            } else if tcx.features().opaque_generic_const_args() {
-                // Only anon consts that are the RHS of a const item can be OGCA.
+            } else if tcx.features().generic_const_args() {
+                // Only anon consts that are the RHS of a const item can be GCA.
                 // Note: We can't just check tcx.parent because it needs to be EXACTLY
                 // the RHS, not just part of the RHS.
                 if !is_anon_const_rhs_of_const_item(tcx, def) {
@@ -1607,9 +1607,9 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
                 }
 
                 let body = tcx.hir_body_owned_by(def);
-                let mut visitor = OGCAParamVisitor(tcx);
+                let mut visitor = GCAParamVisitor(tcx);
                 match visitor.visit_body(body) {
-                    ControlFlow::Break(UsesParam) => ty::AnonConstKind::OGCA,
+                    ControlFlow::Break(UsesParam) => ty::AnonConstKind::GCA,
                     ControlFlow::Continue(()) => ty::AnonConstKind::MCG,
                 }
             } else if tcx.features().min_generic_const_args() {
@@ -1650,11 +1650,11 @@ fn is_anon_const_rhs_of_const_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) 
     def_id == rhs_anon.def_id
 }
 
-struct OGCAParamVisitor<'tcx>(TyCtxt<'tcx>);
+struct GCAParamVisitor<'tcx>(TyCtxt<'tcx>);
 
 struct UsesParam;
 
-impl<'tcx> Visitor<'tcx> for OGCAParamVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for GCAParamVisitor<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
     type Result = ControlFlow<UsesParam>;
 

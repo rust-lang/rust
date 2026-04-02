@@ -3,6 +3,6 @@
 
 type const INC<const N: usize>: usize = const { N + 1 };
 //~^ ERROR generic parameters may not be used in const operations
-//~| HELP add `#![feature(opaque_generic_const_args)]`
+//~| HELP add `#![feature(generic_const_args)]`
 
 fn main() {}
