@@ -149,15 +149,17 @@ struct QueryModifiers {
 }
 
 fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
+    // tidy-alphabetical-start
     let mut arena_cache = None;
     let mut cache_on_disk = None;
+    let mut depth_limit = None;
     let mut desc = None;
+    let mut eval_always = None;
+    let mut feedable = None;
     let mut no_force = None;
     let mut no_hash = None;
-    let mut eval_always = None;
-    let mut depth_limit = None;
     let mut separate_provide_extern = None;
-    let mut feedable = None;
+    // tidy-alphabetical-end
 
     while !input.is_empty() {
         let modifier: Ident = input.parse()?;
@@ -171,29 +173,29 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             };
         }
 
-        if modifier == "desc" {
+        if modifier == "arena_cache" {
+            try_insert!(arena_cache = modifier);
+        } else if modifier == "cache_on_disk" {
+            try_insert!(cache_on_disk = modifier);
+        } else if modifier == "depth_limit" {
+            try_insert!(depth_limit = modifier);
+        } else if modifier == "desc" {
             // Parse a description modifier like:
             // `desc { "foo {}", tcx.item_path(key) }`
             let attr_content;
             braced!(attr_content in input);
             let expr_list = attr_content.parse_terminated(Expr::parse, Token![,])?;
             try_insert!(desc = Desc { modifier, expr_list });
-        } else if modifier == "cache_on_disk" {
-            try_insert!(cache_on_disk = modifier);
-        } else if modifier == "arena_cache" {
-            try_insert!(arena_cache = modifier);
+        } else if modifier == "eval_always" {
+            try_insert!(eval_always = modifier);
+        } else if modifier == "feedable" {
+            try_insert!(feedable = modifier);
         } else if modifier == "no_force" {
             try_insert!(no_force = modifier);
         } else if modifier == "no_hash" {
             try_insert!(no_hash = modifier);
-        } else if modifier == "eval_always" {
-            try_insert!(eval_always = modifier);
-        } else if modifier == "depth_limit" {
-            try_insert!(depth_limit = modifier);
         } else if modifier == "separate_provide_extern" {
             try_insert!(separate_provide_extern = modifier);
-        } else if modifier == "feedable" {
-            try_insert!(feedable = modifier);
         } else {
             return Err(Error::new(modifier.span(), "unknown query modifier"));
         }
@@ -202,15 +204,17 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         return Err(input.error("no description provided"));
     };
     Ok(QueryModifiers {
+        // tidy-alphabetical-start
         arena_cache,
         cache_on_disk,
+        depth_limit,
         desc,
+        eval_always,
+        feedable,
         no_force,
         no_hash,
-        eval_always,
-        depth_limit,
         separate_provide_extern,
-        feedable,
+        // tidy-alphabetical-end
     })
 }
 
@@ -248,15 +252,18 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         // tidy-alphabetical-end
     } = &query.modifiers;
 
+    // tidy-alphabetical-start
     let arena_cache = arena_cache.is_some();
     let cache_on_disk = cache_on_disk.is_some();
     let depth_limit = depth_limit.is_some();
+    // `desc` is not handled here
     let eval_always = eval_always.is_some();
     let feedable = feedable.is_some();
     let no_force = no_force.is_some();
     let no_hash = no_hash.is_some();
     let returns_error_guaranteed = returns_error_guaranteed(&query.return_ty);
     let separate_provide_extern = separate_provide_extern.is_some();
+    // tidy-alphabetical-end
 
     // Giving an input span to the modifier names in the modifier list seems
     // to give slightly more helpful errors when one of the callback macros
@@ -269,6 +276,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         arena_cache: #arena_cache,
         cache_on_disk: #cache_on_disk,
         depth_limit: #depth_limit,
+        // `desc` is not handled here
         eval_always: #eval_always,
         feedable: #feedable,
         no_force: #no_force,
@@ -367,6 +375,7 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
         arena_cache,
         cache_on_disk,
         depth_limit,
+        // `desc` is handled above
         eval_always,
         feedable,
         no_force,
