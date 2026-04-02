@@ -5,7 +5,7 @@ use derive_where::derive_where;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::{self as ty, Interner, Ty};
+use crate::{self as ty, Interner};
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
@@ -25,7 +25,7 @@ pub enum ClauseKind<I: Interner> {
     RegionOutlives(ty::OutlivesPredicate<I, I::Region>),
 
     /// `where T: 'r`
-    TypeOutlives(ty::OutlivesPredicate<I, Ty<I>>),
+    TypeOutlives(ty::OutlivesPredicate<I, I::Ty>),
 
     /// `where <T as TraitRef>::Name == X`, approximately.
     /// See the `ProjectionPredicate` struct for details.
@@ -33,7 +33,7 @@ pub enum ClauseKind<I: Interner> {
 
     /// Ensures that a const generic argument to a parameter `const N: u8`
     /// is of type `u8`.
-    ConstArgHasType(I::Const, Ty<I>),
+    ConstArgHasType(I::Const, I::Ty),
 
     /// No syntax: `T` well-formed.
     WellFormed(I::Term),
