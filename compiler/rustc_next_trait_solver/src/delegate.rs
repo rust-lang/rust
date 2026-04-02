@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use rustc_type_ir::solve::{Certainty, Goal, NoSolution};
-use rustc_type_ir::{self as ty, InferCtxtLike, Interner, Ty, TypeFoldable};
+use rustc_type_ir::{self as ty, InferCtxtLike, Interner, TypeFoldable};
 
 pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     type Infcx: InferCtxtLike<Interner = Self::Interner>;
@@ -70,7 +70,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         def_id: <Self::Interner as Interner>::DefId,
         args: <Self::Interner as Interner>::GenericArgs,
         param_env: <Self::Interner as Interner>::ParamEnv,
-        hidden_ty: Ty<Self::Interner>,
+        hidden_ty: <Self::Interner as Interner>::Ty,
         goals: &mut Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
     );
 
@@ -86,8 +86,8 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
 
     fn is_transmutable(
         &self,
-        src: Ty<Self::Interner>,
-        dst: Ty<Self::Interner>,
+        src: <Self::Interner as Interner>::Ty,
+        dst: <Self::Interner as Interner>::Ty,
         assume: <Self::Interner as Interner>::Const,
     ) -> Result<Certainty, NoSolution>;
 }

@@ -5,7 +5,7 @@ use crate::data_structures::DelayedSet;
 use crate::relate::combine::combine_ty_args;
 pub use crate::relate::*;
 use crate::solve::Goal;
-use crate::{self as ty, InferCtxtLike, Interner, Ty};
+use crate::{self as ty, InferCtxtLike, Interner};
 
 pub trait RelateExt: InferCtxtLike {
     fn relate<T: Relate<Self::Interner>>(
@@ -104,7 +104,7 @@ pub struct SolverRelating<'infcx, Infcx, I: Interner> {
     /// constrain `?1` to `u32`. When using the cache entry from the
     /// first time we've related these types, this only happens when
     /// later proving the `Subtype(?0, ?1)` goal from the first relation.
-    cache: DelayedSet<(ty::Variance, Ty<I>, Ty<I>)>,
+    cache: DelayedSet<(ty::Variance, I::Ty, I::Ty)>,
 }
 
 impl<'infcx, Infcx, I> SolverRelating<'infcx, Infcx, I>
@@ -142,13 +142,13 @@ where
 
     fn relate_ty_args(
         &mut self,
-        a_ty: Ty<I>,
-        b_ty: Ty<I>,
+        a_ty: I::Ty,
+        b_ty: I::Ty,
         def_id: I::DefId,
         a_args: I::GenericArgs,
         b_args: I::GenericArgs,
-        _: impl FnOnce(I::GenericArgs) -> Ty<I>,
-    ) -> RelateResult<I, Ty<I>> {
+        _: impl FnOnce(I::GenericArgs) -> I::Ty,
+    ) -> RelateResult<I, I::Ty> {
         if self.ambient_variance == ty::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
@@ -178,7 +178,7 @@ where
     }
 
     #[instrument(skip(self), level = "trace")]
-    fn tys(&mut self, a: Ty<I>, b: Ty<I>) -> RelateResult<I, Ty<I>> {
+    fn tys(&mut self, a: I::Ty, b: I::Ty) -> RelateResult<I, I::Ty> {
         if a == b {
             return Ok(a);
         }
@@ -383,7 +383,7 @@ where
         self.goals.extend(obligations);
     }
 
-    fn register_alias_relate_predicate(&mut self, a: Ty<I>, b: Ty<I>) {
+    fn register_alias_relate_predicate(&mut self, a: I::Ty, b: I::Ty) {
         self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
             ty::Covariant => ty::PredicateKind::AliasRelate(
                 a.into(),

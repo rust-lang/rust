@@ -52,7 +52,7 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::inherent::*;
-use crate::{self as ty, Interner, Ty, TypeFlags};
+use crate::{self as ty, Interner, TypeFlags};
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
@@ -98,7 +98,7 @@ pub trait TypeVisitor<I: Interner>: Sized {
         t.super_visit_with(self)
     }
 
-    fn visit_ty(&mut self, t: Ty<I>) -> Self::Result {
+    fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
         t.super_visit_with(self)
     }
 
@@ -436,7 +436,7 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
     }
 
     #[inline]
-    fn visit_ty(&mut self, t: Ty<I>) -> Self::Result {
+    fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
         // Note: no `super_visit_with` call.
         let flags = t.flags();
         if flags.intersects(self.flags) {
@@ -541,7 +541,7 @@ impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
     }
 
     #[inline]
-    fn visit_ty(&mut self, t: Ty<I>) -> Self::Result {
+    fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
         // If the outer-exclusive-binder is *strictly greater* than
         // `outer_index`, that means that `t` contains some content
         // bound at `outer_index` or above (because

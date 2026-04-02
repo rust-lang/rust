@@ -2,7 +2,7 @@ use derive_where::derive_where;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::solve::NoSolution;
-use crate::{self as ty, Interner, Ty};
+use crate::{self as ty, Interner};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[derive(TypeFoldable_Generic, TypeVisitable_Generic, GenericTypeVisitable)]
@@ -36,15 +36,15 @@ pub enum TypeError<I: Interner> {
     RegionsInsufficientlyPolymorphic(ty::BoundRegion<I>, I::Region),
     RegionsPlaceholderMismatch,
 
-    Sorts(ExpectedFound<Ty<I>>),
-    ArgumentSorts(ExpectedFound<Ty<I>>, usize),
+    Sorts(ExpectedFound<I::Ty>),
+    ArgumentSorts(ExpectedFound<I::Ty>, usize),
     Traits(ExpectedFound<I::TraitId>),
     VariadicMismatch(ExpectedFound<bool>),
 
     /// Instantiating a type variable with the given type would have
     /// created a cycle (because it appears somewhere within that
     /// type).
-    CyclicTy(Ty<I>),
+    CyclicTy(I::Ty),
     CyclicConst(I::Const),
     ProjectionMismatched(ExpectedFound<I::DefId>),
     ExistentialMismatch(ExpectedFound<I::BoundExistentialPredicates>),
