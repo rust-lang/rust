@@ -3,14 +3,17 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableContext, RawDefId, RawDefPathHash, StableHasher, StableOrd,
+    ToStableHashKey,
+};
 use rustc_data_structures::unhash::Unhasher;
 use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
 
-use crate::{HashStableContext, SpanDecoder, SpanEncoder, Symbol};
+use crate::{SpanDecoder, SpanEncoder, Symbol};
 
 pub type StableCrateIdMap =
     indexmap::IndexMap<StableCrateId, CrateNum, BuildHasherDefault<Unhasher>>;
@@ -113,6 +116,16 @@ impl DefPathHash {
     #[inline]
     pub fn new(stable_crate_id: StableCrateId, local_hash: Hash64) -> DefPathHash {
         DefPathHash(Fingerprint::new(stable_crate_id.0, local_hash))
+    }
+
+    #[inline]
+    pub fn to_raw_def_path_hash(self) -> RawDefPathHash {
+        RawDefPathHash(self.0.to_le_bytes())
+    }
+
+    #[inline]
+    pub fn from_raw_def_path_hash(RawDefPathHash(a): RawDefPathHash) -> DefPathHash {
+        DefPathHash(Fingerprint::from_le_bytes(a))
     }
 }
 
@@ -312,6 +325,18 @@ impl DefId {
     pub fn is_top_level_module(self) -> bool {
         self.is_local() && self.is_crate_root()
     }
+
+    #[inline]
+    pub fn to_raw_def_id(self) -> RawDefId {
+        // Field order must match `from_raw_def_id`.
+        RawDefId(self.krate.as_u32(), self.index.as_u32())
+    }
+
+    #[inline]
+    pub fn from_raw_def_id(RawDefId(a, b): RawDefId) -> DefId {
+        // Field order must match `to_raw_def_id`.
+        DefId { krate: a.into(), index: b.into() }
+    }
 }
 
 impl From<LocalDefId> for DefId {
@@ -428,7 +453,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for DefId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
-        hcx.def_path_hash(*self)
+        DefPathHash::from_raw_def_path_hash(hcx.def_path_hash(self.to_raw_def_id()))
     }
 }
 

@@ -15,6 +15,34 @@ pub use rustc_stable_hash::{
     FromStableHash, SipHasher128Hash as StableHasherHash, StableSipHasher128 as StableHasher,
 };
 
+/// This trait lets `HashStable` and `derive(HashStable_Generic)` be used in
+/// this crate (and other crates upstream of `rustc_middle`), while leaving
+/// certain operations to be defined in `rustc_middle` where more things are
+/// visible.
+pub trait HashStableContext {
+    /// The main event: stable hashing of a span.
+    fn span_hash_stable(&mut self, span: RawSpan, hasher: &mut StableHasher);
+
+    /// Compute a `DefPathHash`.
+    fn def_path_hash(&self, def_id: RawDefId) -> RawDefPathHash;
+
+    /// Assert that the provided `HashStableContext` is configured with the default
+    /// `HashingControls`. We should always have bailed out before getting to here with a
+    fn assert_default_hashing_controls(&self, msg: &str);
+}
+
+// A type used to work around `Span` not being visible in this crate. It is the same layout as
+// `Span`.
+pub struct RawSpan(pub u32, pub u16, pub u16);
+
+// A type used to work around `DefId` not being visible in this crate. It is the same size as
+// `DefId`.
+pub struct RawDefId(pub u32, pub u32);
+
+// A type used to work around `DefPathHash` not being visible in this crate. It is the same size as
+// `DefPathHash`.
+pub struct RawDefPathHash(pub [u8; 16]);
+
 /// Something that implements `HashStable<Hcx>` can be hashed in a way that is
 /// stable across multiple compilation sessions.
 ///

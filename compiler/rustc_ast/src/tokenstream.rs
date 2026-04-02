@@ -10,11 +10,11 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::{cmp, fmt, iter, mem};
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
 use rustc_data_structures::sync;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 use rustc_serialize::{Decodable, Encodable};
-use rustc_span::{DUMMY_SP, HashStableContext, Span, SpanDecoder, SpanEncoder, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::ast::AttrStyle;

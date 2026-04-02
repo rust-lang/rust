@@ -5,14 +5,14 @@ use rustc_ast::AttrId;
 use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
-    HashStable, StableCompare, StableHasher, ToStableHashKey,
+    HashStable, HashStableContext, StableCompare, StableHasher, ToStableHashKey,
 };
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::{HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
-use rustc_span::{HashStableContext, Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;

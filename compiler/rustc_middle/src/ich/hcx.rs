@@ -1,12 +1,13 @@
 use std::hash::Hash;
 
-use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableContext, HashingControls, RawDefId, RawDefPathHash, RawSpan, StableHasher,
+};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::definitions::DefPathHash;
 use rustc_session::Session;
 use rustc_session::cstore::Untracked;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{CachingSourceMapView, DUMMY_SP, HashStableContext, Pos, Span};
+use rustc_span::{CachingSourceMapView, DUMMY_SP, Pos, Span};
 
 // Very often, we are hashing something that does not need the `CachingSourceMapView`, so we
 // initialize it lazily.
@@ -84,7 +85,7 @@ impl<'a> HashStableContext for StableHashingContext<'a> {
     ///
     /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
     #[inline]
-    fn span_hash_stable(&mut self, span: Span, hasher: &mut StableHasher) {
+    fn span_hash_stable(&mut self, raw_span: RawSpan, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;
@@ -93,6 +94,7 @@ impl<'a> HashStableContext for StableHashingContext<'a> {
             return;
         }
 
+        let span = Span::from_raw_span(raw_span);
         let span = span.data_untracked();
         span.ctxt.hash_stable(self, hasher);
         span.parent.hash_stable(self, hasher);
@@ -157,12 +159,14 @@ impl<'a> HashStableContext for StableHashingContext<'a> {
     }
 
     #[inline]
-    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
+    fn def_path_hash(&self, raw_def_id: RawDefId) -> RawDefPathHash {
+        let def_id = DefId::from_raw_def_id(raw_def_id);
         if let Some(def_id) = def_id.as_local() {
             self.untracked.definitions.read().def_path_hash(def_id)
         } else {
             self.untracked.cstore.read().def_path_hash(def_id)
         }
+        .to_raw_def_path_hash()
     }
 
     /// Assert that the provided `HashStableContext` is configured with the default
