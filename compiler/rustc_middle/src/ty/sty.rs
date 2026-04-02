@@ -1630,6 +1630,9 @@ impl<'tcx> Ty<'tcx> {
             TyKind::Coroutine(def_id, args) => {
                 Some(args.as_coroutine().variant_range(*def_id, tcx))
             }
+            TyKind::UnsafeBinder(bound_ty) => {
+                tcx.instantiate_bound_regions_with_erased((*bound_ty).into()).variant_range(tcx)
+            }
             _ => None,
         }
     }
@@ -1651,6 +1654,9 @@ impl<'tcx> Ty<'tcx> {
             TyKind::Coroutine(def_id, args) => {
                 Some(args.as_coroutine().discriminant_for_variant(*def_id, tcx, variant_index))
             }
+            TyKind::UnsafeBinder(bound_ty) => tcx
+                .instantiate_bound_regions_with_erased((*bound_ty).into())
+                .discriminant_for_variant(tcx, variant_index),
             _ => None,
         }
     }
@@ -1669,6 +1675,9 @@ impl<'tcx> Ty<'tcx> {
             }
 
             ty::Pat(ty, _) => ty.discriminant_ty(tcx),
+            ty::UnsafeBinder(bound_ty) => {
+                tcx.instantiate_bound_regions_with_erased((*bound_ty).into()).discriminant_ty(tcx)
+            }
 
             ty::Bool
             | ty::Char
@@ -1690,7 +1699,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::UnsafeBinder(_)
             | ty::Error(_)
             | ty::Infer(IntVar(_) | FloatVar(_)) => tcx.types.u8,
 
