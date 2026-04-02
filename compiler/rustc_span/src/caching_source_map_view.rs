@@ -82,13 +82,13 @@ impl<'sm> CachingSourceMapView<'sm> {
     pub fn span_data_to_lines_and_cols(
         &mut self,
         span_data: &SpanData,
-    ) -> Option<(&SourceFile, usize, BytePos, usize, BytePos)> {
+    ) -> Option<(Arc<SourceFile>, usize, BytePos, usize, BytePos)> {
         let lo_hit = self.line_bounds.contains(&span_data.lo);
         let hi_hit = self.line_bounds.contains(&span_data.hi);
         if lo_hit && hi_hit {
             // span_data.lo and span_data.hi are cached (i.e. both in the same line).
             return Some((
-                &self.file,
+                Arc::clone(&self.file),
                 self.line_number,
                 span_data.lo - self.line_bounds.start,
                 self.line_number,
@@ -138,7 +138,7 @@ impl<'sm> CachingSourceMapView<'sm> {
         assert!(self.file.contains(span_data.hi));
 
         Some((
-            &self.file,
+            Arc::clone(&self.file),
             lo_line_number,
             span_data.lo - lo_line_bounds.start,
             hi_line_number,

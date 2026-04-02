@@ -1,18 +1,19 @@
+use std::cell::RefCell;
 use std::hash::Hash;
+use std::sync::Arc;
 
 use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::DefPathHash;
 use rustc_session::Session;
 use rustc_session::cstore::Untracked;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{CachingSourceMapView, DUMMY_SP, Pos, Span};
+use rustc_span::{BytePos, CachingSourceMapView, DUMMY_SP, Pos, SourceFile, Span, SpanData};
 
 // Very often, we are hashing something that does not need the `CachingSourceMapView`, so we
 // initialize it lazily.
 #[derive(Clone)]
 enum CachingSourceMap<'a> {
-    Unused(&'a SourceMap),
+    Unused(&'a Session),
     InUse(CachingSourceMapView<'a>),
 }
 
@@ -26,7 +27,7 @@ pub struct StableHashingContext<'a> {
     // The value of `-Z incremental-ignore-spans`.
     // This field should only be used by `unstable_opts_incremental_ignore_span`
     incremental_ignore_spans: bool,
-    caching_source_map: CachingSourceMap<'a>,
+    caching_source_map: RefCell<CachingSourceMap<'a>>,
     hashing_controls: HashingControls,
 }
 
@@ -38,7 +39,7 @@ impl<'a> StableHashingContext<'a> {
         StableHashingContext {
             untracked,
             incremental_ignore_spans: sess.opts.unstable_opts.incremental_ignore_spans,
-            caching_source_map: CachingSourceMap::Unused(sess.source_map()),
+            caching_source_map: RefCell::new(CachingSourceMap::Unused(sess)),
             hashing_controls: HashingControls { hash_spans: hash_spans_initial },
         }
     }
@@ -51,13 +52,18 @@ impl<'a> StableHashingContext<'a> {
         self.hashing_controls.hash_spans = prev_hash_spans;
     }
 
-    #[inline]
-    fn source_map(&mut self) -> &mut CachingSourceMapView<'a> {
-        match self.caching_source_map {
-            CachingSourceMap::InUse(ref mut sm) => sm,
-            CachingSourceMap::Unused(sm) => {
-                self.caching_source_map = CachingSourceMap::InUse(CachingSourceMapView::new(sm));
-                self.source_map() // this recursive call will hit the `InUse` case
+    fn span_data_to_lines_and_cols(
+        &self,
+        span_data: &SpanData,
+    ) -> Option<(Arc<SourceFile>, usize, BytePos, usize, BytePos)> {
+        let mut caching_source_map = self.caching_source_map.borrow_mut();
+        match *caching_source_map {
+            CachingSourceMap::InUse(ref mut csmv) => csmv.span_data_to_lines_and_cols(span_data),
+            CachingSourceMap::Unused(sess) => {
+                let mut csmv = CachingSourceMapView::new(sess.source_map());
+                let res = csmv.span_data_to_lines_and_cols(span_data);
+                *caching_source_map = CachingSourceMap::InUse(csmv);
+                res
             }
         }
     }
@@ -120,7 +126,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
         // If this is not an empty or invalid span, we want to hash the last position that belongs
         // to it, as opposed to hashing the first position past it.
         let Some((file, line_lo, col_lo, line_hi, col_hi)) =
-            self.source_map().span_data_to_lines_and_cols(&span)
+            self.span_data_to_lines_and_cols(&span)
         else {
             Hash::hash(&TAG_INVALID_SPAN, hasher);
             return;
