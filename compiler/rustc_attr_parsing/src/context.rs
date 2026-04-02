@@ -399,11 +399,11 @@ impl Stage for Late {
     }
 }
 
-/// used when parsing attributes for miscellaneous things *before* ast lowering
+/// Used when parsing attributes for miscellaneous things *before* ast lowering
 pub struct Early {
-    /// Whether to emit errors or delay them as a bug
-    /// For most attributes, the attribute will be parsed again in the `Late` stage and in this case the errors should be delayed
-    /// But for some, such as `cfg`, the attribute will be removed before the `Late` stage so errors must be emitted
+    /// Whether to emit errors or delay them as a bug.
+    /// For most attributes, the attribute will be parsed again in the `Late` stage and in this case the errors should be delayed.
+    /// But for some, such as `cfg`, the attribute will be removed before the `Late` stage so errors must be emitted.
     pub emit_errors: ShouldEmit,
 }
 /// used when parsing attributes during ast lowering
@@ -416,19 +416,25 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
     pub(crate) shared: SharedContext<'f, 'sess, S>,
 
     /// The outer span of the attribute currently being parsed
+    ///
+    /// ```none
     /// #[attribute(...)]
     /// ^^^^^^^^^^^^^^^^^ outer span
+    /// ```
     /// For attributes in `cfg_attr`, the outer span and inner spans are equal.
     pub(crate) attr_span: Span,
-    /// The inner span of the attribute currently being parsed
+    /// The inner span of the attribute currently being parsed.
+    ///
+    /// ```none
     /// #[attribute(...)]
     ///   ^^^^^^^^^^^^^^  inner span
+    /// ```
     pub(crate) inner_span: Span,
 
-    /// Whether it is an inner or outer attribute
+    /// Whether it is an inner or outer attribute.
     pub(crate) attr_style: AttrStyle,
 
-    /// A description of the thing we are parsing using this attribute parser
+    /// A description of the thing we are parsing using this attribute parser.
     /// We are not only using these parsers for attributes, but also for macros such as the `cfg!()` macro.
     pub(crate) parsed_description: ParsedDescription,
 
@@ -715,12 +721,12 @@ where
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNoArgs)
     }
 
-    /// emit an error that a `name` was expected here
+    /// Emit an error that a `name` was expected here
     pub(crate) fn expected_identifier(&mut self, span: Span) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedIdentifier)
     }
 
-    /// emit an error that a `name = value` pair was expected at this span. The symbol can be given for
+    /// Emit an error that a `name = value` pair was expected at this span. The symbol can be given for
     /// a nicer error message talking about the specific name that was found lacking a value.
     pub(crate) fn expected_name_value(
         &mut self,
@@ -730,12 +736,12 @@ where
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNameValue(name))
     }
 
-    /// emit an error that a `name = value` pair was found where that name was already seen.
+    /// Emit an error that a `name = value` pair was found where that name was already seen.
     pub(crate) fn duplicate_key(&mut self, span: Span, key: Symbol) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::DuplicateKey(key))
     }
 
-    /// an error that should be emitted when a [`MetaItemOrLitParser`](crate::parser::MetaItemOrLitParser)
+    /// An error that should be emitted when a [`MetaItemOrLitParser`](crate::parser::MetaItemOrLitParser)
     /// was expected *not* to be a literal, but instead a meta item.
     pub(crate) fn unexpected_literal(&mut self, span: Span) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::UnexpectedLiteral)
@@ -749,7 +755,7 @@ where
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedAtLeastOneArgument)
     }
 
-    /// produces an error along the lines of `expected one of [foo, meow]`
+    /// Produces an error along the lines of `expected one of [foo, meow]`
     pub(crate) fn expected_specific_argument(
         &mut self,
         span: Span,
@@ -765,7 +771,7 @@ where
         )
     }
 
-    /// produces an error along the lines of `expected one of [foo, meow] as an argument`.
+    /// Produces an error along the lines of `expected one of [foo, meow] as an argument`.
     /// i.e. slightly different wording to [`expected_specific_argument`](Self::expected_specific_argument).
     pub(crate) fn expected_specific_argument_and_list(
         &mut self,
@@ -830,7 +836,7 @@ where
 
         self.template.suggestions(style, &self.attr_path)
     }
-    /// error that a string literal was expected.
+    /// Error that a string literal was expected.
     /// You can optionally give the literal you did find (which you found not to be a string literal)
     /// which can make better errors. For example, if the literal was a byte string it will suggest
     /// removing the `b` prefix.
