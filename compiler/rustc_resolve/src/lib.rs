@@ -358,6 +358,9 @@ struct Segment {
     has_generic_args: bool,
     /// Signals whether this `PathSegment` has lifetime arguments.
     has_lifetime_args: bool,
+    /// Signals whether this `PathSegment` has non-lifetime generic arguments (type, const, etc.).
+    /// Used to determine whether a trailing comma is needed after suggested lifetime parameters.
+    has_non_lifetime_args: bool,
     args_span: Span,
 }
 
@@ -372,6 +375,7 @@ impl Segment {
             id: None,
             has_generic_args: false,
             has_lifetime_args: false,
+            has_non_lifetime_args: false,
             args_span: DUMMY_SP,
         }
     }
@@ -384,26 +388,30 @@ impl Segment {
 impl<'a> From<&'a ast::PathSegment> for Segment {
     fn from(seg: &'a ast::PathSegment) -> Segment {
         let has_generic_args = seg.args.is_some();
-        let (args_span, has_lifetime_args) = if let Some(args) = seg.args.as_deref() {
-            match args {
-                GenericArgs::AngleBracketed(args) => {
-                    let found_lifetimes = args
-                        .args
-                        .iter()
-                        .any(|arg| matches!(arg, AngleBracketedArg::Arg(GenericArg::Lifetime(_))));
-                    (args.span, found_lifetimes)
+        let (args_span, has_lifetime_args, has_non_lifetime_args) =
+            if let Some(args) = seg.args.as_deref() {
+                match args {
+                    GenericArgs::AngleBracketed(args) => {
+                        let found_lifetimes = args.args.iter().any(|arg| {
+                            matches!(arg, AngleBracketedArg::Arg(GenericArg::Lifetime(_)))
+                        });
+                        let found_non_lifetimes = args.args.iter().any(|arg| {
+                            !matches!(arg, AngleBracketedArg::Arg(GenericArg::Lifetime(_)))
+                        });
+                        (args.span, found_lifetimes, found_non_lifetimes)
+                    }
+                    GenericArgs::Parenthesized(args) => (args.span, true, false),
+                    GenericArgs::ParenthesizedElided(span) => (*span, true, false),
                 }
-                GenericArgs::Parenthesized(args) => (args.span, true),
-                GenericArgs::ParenthesizedElided(span) => (*span, true),
-            }
-        } else {
-            (DUMMY_SP, false)
-        };
+            } else {
+                (DUMMY_SP, false, false)
+            };
         Segment {
             ident: seg.ident,
             id: Some(seg.id),
             has_generic_args,
             has_lifetime_args,
+            has_non_lifetime_args,
             args_span,
         }
     }

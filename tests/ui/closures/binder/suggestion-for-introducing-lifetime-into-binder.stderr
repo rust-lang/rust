@@ -6,8 +6,8 @@ LL |     for<> |_: &'a ()| -> () {};
    |
 help: consider introducing lifetime `'a` here
    |
-LL |     for<'a, > |_: &'a ()| -> () {};
-   |         +++
+LL |     for<'a> |_: &'a ()| -> () {};
+   |         ++
 help: consider introducing lifetime `'a` here
    |
 LL | fn main<'a>() {

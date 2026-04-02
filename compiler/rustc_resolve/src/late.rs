@@ -1850,6 +1850,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             kind,
             count: 1,
             id_for_lint,
+            has_non_lifetime_args: false,
         };
         let elision_candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
         for (i, rib) in self.lifetime_ribs.iter().enumerate().rev() {
@@ -2235,6 +2236,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 span: elided_lifetime_span,
                 kind,
                 count: expected_lifetimes,
+                has_non_lifetime_args: segment.has_non_lifetime_args,
             };
             let mut should_lint = true;
             for rib in self.lifetime_ribs.iter().rev() {

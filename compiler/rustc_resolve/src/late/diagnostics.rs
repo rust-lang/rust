@@ -130,6 +130,9 @@ pub(super) struct MissingLifetime {
     pub kind: MissingLifetimeKind,
     /// Number of elided lifetimes, used for elision in path.
     pub count: usize,
+    /// Whether the path segment has non-lifetime generic arguments (type, const, etc.).
+    /// Used to determine whether a trailing comma is needed after suggested lifetime parameters.
+    pub has_non_lifetime_args: bool,
 }
 
 /// Description of the lifetimes appearing in a function parameter.
@@ -3826,16 +3829,27 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         );
                         (span, sugg)
                     } else {
-                        let span = self
-                            .r
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_through_char(span, '<')
-                            .shrink_to_hi();
-                        let sugg =
-                            format!("{}, ", name.map(|i| i.to_string()).as_deref().unwrap_or("'a"));
-                        (span, sugg)
+                        let source_map = self.r.tcx.sess.source_map();
+                        let insert_span =
+                            source_map.span_through_char(span, '<').shrink_to_hi();
+                        let name_str =
+                            name.map(|i| i.to_string()).unwrap_or_else(|| "'a".to_string());
+                        let has_existing_params = source_map
+                            .span_to_snippet(span)
+                            .is_ok_and(|s| {
+                                s.find('<')
+                                    .and_then(|start| {
+                                        let inner = &s[start + 1..];
+                                        inner.find('>').map(|end| &inner[..end])
+                                    })
+                                    .is_some_and(|inner| !inner.trim().is_empty())
+                            });
+                        let sugg = if has_existing_params {
+                            format!("{name_str}, ")
+                        } else {
+                            name_str
+                        };
+                        (insert_span, sugg)
                     };
 
                     if higher_ranked {
@@ -4074,10 +4088,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 (lt.span.shrink_to_hi(), format!("{existing_name} "))
             }
             MissingLifetimeKind::Comma => {
-                let sugg: String = std::iter::repeat_n([existing_name.as_str(), ", "], lt.count)
-                    .flatten()
+                let sugg: String = std::iter::repeat_n(existing_name.as_str(), lt.count)
+                    .intersperse(", ")
                     .collect();
-                (lt.span.shrink_to_hi(), sugg)
+                if lt.has_non_lifetime_args {
+                    (lt.span.shrink_to_hi(), format!("{sugg}, "))
+                } else {
+                    (lt.span.shrink_to_hi(), sugg)
+                }
             }
             MissingLifetimeKind::Brackets => {
                 let sugg: String = std::iter::once("<")
