@@ -1,11 +1,11 @@
 error: invalid preceding whitespace for frontmatter close
-  --> $DIR/fence-unclosed-3.rs:12:1
+  --> $DIR/fence-unclosed-3.rs:10:1
    |
 LL |     ---x
    | ^^^^^^^^
    |
 note: frontmatter close should not be preceded by whitespace
-  --> $DIR/fence-unclosed-3.rs:12:1
+  --> $DIR/fence-unclosed-3.rs:10:1
    |
 LL |     ---x
    | ^^^^
@@ -26,13 +26,13 @@ LL | |     ---x
    |   ...while the close has 3 dashes
 
 error: extra characters after frontmatter close are not allowed
-  --> $DIR/fence-unclosed-3.rs:12:1
+  --> $DIR/fence-unclosed-3.rs:10:1
    |
 LL |     ---x
    | ^^^^^^^^
 
 error: unexpected closing delimiter: `}`
-  --> $DIR/fence-unclosed-3.rs:15:1
+  --> $DIR/fence-unclosed-3.rs:13:1
    |
 LL | }
    | ^ unexpected closing delimiter
