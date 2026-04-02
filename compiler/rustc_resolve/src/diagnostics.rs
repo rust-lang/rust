@@ -1011,14 +1011,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::ParamInTyOfConstParam { name } => {
                 self.dcx().create_err(errs::ParamInTyOfConstParam { span, name })
             }
-            ResolutionError::ParamInNonTrivialAnonConst { is_ogca, name, param_kind: is_type } => {
+            ResolutionError::ParamInNonTrivialAnonConst { is_gca, name, param_kind: is_type } => {
                 self.dcx().create_err(errs::ParamInNonTrivialAnonConst {
                     span,
                     name,
                     param_kind: is_type,
                     help: self.tcx.sess.is_nightly_build(),
-                    is_ogca,
-                    help_ogca: is_ogca,
+                    is_gca,
+                    help_gca: is_gca,
                 })
             }
             ResolutionError::ParamInEnumDiscriminant { name, param_kind: is_type } => self
