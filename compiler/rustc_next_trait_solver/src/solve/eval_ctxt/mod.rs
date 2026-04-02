@@ -1219,13 +1219,12 @@ where
 
     fn fold_ty(&mut self, ty: Ty<I>) -> Ty<I> {
         match ty.kind() {
-            ty::Alias(..) if !ty.has_escaping_bound_vars() => {
+            ty::Alias(_, alias) if !ty.has_escaping_bound_vars() => {
                 let infer_ty = self.ecx.next_ty_infer();
-                let normalizes_to = ty::PredicateKind::AliasRelate(
-                    ty.into(),
-                    infer_ty.into(),
-                    ty::AliasRelationDirection::Equate,
-                );
+                let normalizes_to = ty::PredicateKind::NormalizesTo(ty::NormalizesTo {
+                    alias: ty::AliasTerm::new_from_args(self.cx(), alias.def_id, alias.args),
+                    term: infer_ty.into(),
+                });
                 self.ecx.add_goal(
                     self.normalization_goal_source,
                     Goal::new(self.cx(), self.param_env, normalizes_to),
@@ -1248,13 +1247,12 @@ where
 
     fn fold_const(&mut self, ct: I::Const) -> I::Const {
         match ct.kind() {
-            ty::ConstKind::Unevaluated(..) if !ct.has_escaping_bound_vars() => {
+            ty::ConstKind::Unevaluated(uc) if !ct.has_escaping_bound_vars() => {
                 let infer_ct = self.ecx.next_const_infer();
-                let normalizes_to = ty::PredicateKind::AliasRelate(
-                    ct.into(),
-                    infer_ct.into(),
-                    ty::AliasRelationDirection::Equate,
-                );
+                let normalizes_to = ty::PredicateKind::NormalizesTo(ty::NormalizesTo {
+                    alias: ty::AliasTerm::new_from_args(self.cx(), uc.def.into(), uc.args),
+                    term: infer_ct.into(),
+                });
                 self.ecx.add_goal(
                     self.normalization_goal_source,
                     Goal::new(self.cx(), self.param_env, normalizes_to),

@@ -31,7 +31,6 @@ impl X for Y {
     //[current]~^^ ERROR `()` is not a future
     //[next]~^^^ ERROR type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> == ()`
     //[next]~| ERROR type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> normalizes-to _`
-    //[next]~| ERROR type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> normalizes-to _`
 }
 
 pub fn main() {}

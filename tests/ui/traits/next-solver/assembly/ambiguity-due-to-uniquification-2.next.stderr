@@ -1,21 +1,21 @@
-error[E0283]: type annotations needed: cannot satisfy `impl Trait<'_> + Trait<'_>: Trait<'_>`
+error[E0271]: type mismatch resolving `foo<'_, '_>::{opaque#0}<'_, '_> normalizes-to impl Trait<'_> + Trait<'_>`
+  --> $DIR/ambiguity-due-to-uniquification-2.rs:16:26
+   |
+LL |     impls_trait::<'y, _>(foo::<'x, 'y>());
+   |                          ^^^^^^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `foo<'_, '_>::{opaque#0}<'_, '_> normalizes-to impl Trait<'_> + Trait<'_>`
   --> $DIR/ambiguity-due-to-uniquification-2.rs:16:5
    |
 LL |     impls_trait::<'y, _>(foo::<'x, 'y>());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: cannot satisfy `impl Trait<'_> + Trait<'_>: Trait<'_>`
-help: the trait `Trait<'t>` is implemented for `()`
-  --> $DIR/ambiguity-due-to-uniquification-2.rs:9:1
-   |
-LL | impl<'t> Trait<'t> for () {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required by a bound in `impls_trait`
-  --> $DIR/ambiguity-due-to-uniquification-2.rs:13:23
-   |
-LL | fn impls_trait<'x, T: Trait<'x>>(_: T) {}
-   |                       ^^^^^^^^^ required by this bound in `impls_trait`
+   |     ^^^^^^^^^^^^^^^^^^^^ types differ
 
-error: aborting due to 1 previous error
+error[E0271]: type mismatch resolving `foo<'_, '_>::{opaque#0}<'_, '_> normalizes-to impl Trait<'_> + Trait<'_>`
+  --> $DIR/ambiguity-due-to-uniquification-2.rs:16:23
+   |
+LL |     impls_trait::<'y, _>(foo::<'x, 'y>());
+   |                       ^ types differ
 
-For more information about this error, try `rustc --explain E0283`.
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

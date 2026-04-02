@@ -35,7 +35,7 @@ where
             cx.const_of_item(free_alias.def_id).instantiate(cx, free_alias.args).into()
         };
 
-        self.instantiate_normalizes_to_term(goal, actual);
+        self.eq(goal.param_env, goal.predicate.term, actual)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }

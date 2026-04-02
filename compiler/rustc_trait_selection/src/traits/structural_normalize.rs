@@ -35,9 +35,9 @@ impl<'tcx> At<'_, 'tcx> {
         assert!(!term.is_infer(), "should have resolved vars before calling");
 
         if self.infcx.next_trait_solver() {
-            if let None = term.to_alias_term() {
+            let Some(alias) = term.to_alias_term() else {
                 return Ok(term);
-            }
+            };
 
             let new_infer = self.infcx.next_term_var_of_kind(term, self.cause.span);
 
@@ -48,7 +48,7 @@ impl<'tcx> At<'_, 'tcx> {
                 self.infcx.tcx,
                 self.cause.clone(),
                 self.param_env,
-                ty::PredicateKind::AliasRelate(term, new_infer, ty::AliasRelationDirection::Equate),
+                ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term: new_infer }),
             );
 
             fulfill_cx.register_predicate_obligation(self.infcx, obligation);

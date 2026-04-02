@@ -48,7 +48,12 @@ where
                     .filter(|&def_id| defining_opaque_types.contains(&def_id))
                 else {
                     // If we're not in the defining scope, treat the alias as rigid.
-                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    self.relate_rigid_alias_non_alias(
+                        goal.param_env,
+                        goal.predicate.alias,
+                        ty::Invariant,
+                        goal.predicate.term,
+                    )?;
                     return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 };
 
@@ -111,7 +116,12 @@ where
                     .as_local()
                     .filter(|&def_id| defined_opaque_types.contains(&def_id))
                 else {
-                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    self.relate_rigid_alias_non_alias(
+                        goal.param_env,
+                        goal.predicate.alias,
+                        ty::Invariant,
+                        goal.predicate.term,
+                    )?;
                     return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 };
 

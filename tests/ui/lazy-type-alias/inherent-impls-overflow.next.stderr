@@ -1,22 +1,22 @@
-error[E0271]: type mismatch resolving `Loop normalizes-to _`
+error[E0271]: type mismatch resolving `_ == Loop`
   --> $DIR/inherent-impls-overflow.rs:8:1
    |
 LL | type Loop = Loop;
    | ^^^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `Loop normalizes-to _`
+error[E0271]: type mismatch resolving `_ == Loop`
   --> $DIR/inherent-impls-overflow.rs:12:1
    |
 LL | impl Loop {}
    | ^^^^^^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `Loop normalizes-to _`
+error[E0271]: type mismatch resolving `_ == Loop`
   --> $DIR/inherent-impls-overflow.rs:12:6
    |
 LL | impl Loop {}
    |      ^^^^ types differ
 
-error[E0275]: overflow evaluating the requirement `Poly1<(T,)> == _`
+error[E0275]: overflow evaluating the requirement `Poly1<(T,)> normalizes-to _`
   --> $DIR/inherent-impls-overflow.rs:17:1
    |
 LL | type Poly0<T> = Poly1<(T,)>;
@@ -35,7 +35,7 @@ LL | type Poly0<T> = Poly1<(T,)>;
    = help: consider removing `T` or referring to it in the body of the type alias
    = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
-error[E0275]: overflow evaluating the requirement `Poly0<(T,)> == _`
+error[E0275]: overflow evaluating the requirement `Poly0<(T,)> normalizes-to _`
   --> $DIR/inherent-impls-overflow.rs:21:1
    |
 LL | type Poly1<T> = Poly0<(T,)>;
@@ -54,7 +54,7 @@ LL | type Poly1<T> = Poly0<(T,)>;
    = help: consider removing `T` or referring to it in the body of the type alias
    = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
-error[E0275]: overflow evaluating the requirement `Poly0<()> == _`
+error[E0275]: overflow evaluating the requirement `Poly0<()> normalizes-to _`
   --> $DIR/inherent-impls-overflow.rs:26:1
    |
 LL | impl Poly0<()> {}
@@ -62,7 +62,7 @@ LL | impl Poly0<()> {}
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
 
-error[E0275]: overflow evaluating the requirement `Poly0<()> == _`
+error[E0275]: overflow evaluating the requirement `Poly0<()> normalizes-to _`
   --> $DIR/inherent-impls-overflow.rs:26:6
    |
 LL | impl Poly0<()> {}

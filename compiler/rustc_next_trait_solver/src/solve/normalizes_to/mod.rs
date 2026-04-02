@@ -39,9 +39,6 @@ where
                         ecx.compute_trait_goal(trait_goal)
                     })?;
 
-                let term = self.next_term_infer_of_kind(goal.predicate.term);
-                self.eq(goal.param_env, goal.predicate.term, term)?;
-
                 let (probed_term, certainty) =
                     self.probe_with_unconstrained_projection_term(goal, |ecx, goal| {
                         ecx.assemble_and_merge_candidates(
@@ -93,7 +90,11 @@ where
                         )
                     })?;
 
-                self.eq_structurally_relating_aliases(goal.param_env, term, probed_term)?;
+                self.eq_structurally_relating_aliases(
+                    goal.param_env,
+                    goal.predicate.term,
+                    probed_term,
+                )?;
 
                 self.evaluate_added_goals_and_make_canonical_response(certainty)
             }
@@ -113,18 +114,14 @@ where
     /// We know `term` to always be a fully unconstrained inference variable, so
     /// `eq` should never fail here. However, in case `term` contains aliases, we
     /// emit nested `AliasRelate` goals to structurally normalize the alias.
-    pub fn instantiate_normalizes_to_term(
-        &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
-        term: I::Term,
-    ) {
+    fn instantiate_normalizes_to_term(&mut self, goal: Goal<I, NormalizesTo<I>>, term: I::Term) {
         self.eq(goal.param_env, goal.predicate.term, term)
             .expect("expected goal term to be fully unconstrained");
     }
 
     /// Unlike `instantiate_normalizes_to_term` this instantiates the expected term
     /// with a rigid alias. Using this is pretty much always wrong.
-    pub fn structurally_instantiate_normalizes_to_term(
+    fn structurally_instantiate_normalizes_to_term(
         &mut self,
         goal: Goal<I, NormalizesTo<I>>,
         term: ty::AliasTerm<I>,

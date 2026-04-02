@@ -14,7 +14,9 @@ fn impls_trait<'x, T: Trait<'x>>(_: T) {}
 
 fn bar<'x, 'y>() {
     impls_trait::<'y, _>(foo::<'x, 'y>());
-    //[next]~^ ERROR type annotations needed: cannot satisfy `impl Trait<'_> + Trait<'_>: Trait<'_>`
+    //[next]~^ ERROR type mismatch resolving `foo<'_, '_>::{opaque#0}<'_, '_> normalizes-to impl Trait<'_> + Trait<'_>`
+    //[next]~| ERROR type mismatch resolving `foo<'_, '_>::{opaque#0}<'_, '_> normalizes-to impl Trait<'_> + Trait<'_>`
+    //[next]~| ERROR type mismatch resolving `foo<'_, '_>::{opaque#0}<'_, '_> normalizes-to impl Trait<'_> + Trait<'_>`
 }
 
 fn main() {}
