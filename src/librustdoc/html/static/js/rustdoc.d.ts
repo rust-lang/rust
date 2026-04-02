@@ -244,7 +244,7 @@ declare namespace rustdoc {
         traitParent: number?,
         deprecated: boolean,
         unstable: boolean,
-        associatedItemDisambiguator: string?,
+        associatedItemDisambiguatorOrExternCrateUrl: string?,
     }
 
     /**
