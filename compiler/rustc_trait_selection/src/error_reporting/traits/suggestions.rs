@@ -22,8 +22,10 @@ use rustc_hir::{
     expr_needs_parens,
 };
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
+use rustc_infer::traits::ImplSource;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::traits::IsConstable;
+use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
     PrintPolyTraitPredicateExt as _, PrintPolyTraitRefExt, PrintTraitPredicateExt as _,
@@ -49,7 +51,7 @@ use crate::error_reporting::TypeErrCtxt;
 use crate::errors;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt};
+use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt, SelectionContext};
 
 #[derive(Debug)]
 pub enum CoroutineInteriorOrUpvar {
@@ -248,46 +250,44 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) {
-        let mut hir_ids = Vec::new();
-        let mut push_hir_id = |hir_id| {
-            if !hir_ids.contains(&hir_id) {
-                hir_ids.push(hir_id);
-            }
-        };
+        let mut hir_ids = FxHashSet::default();
         // Walk the parent chain so we can recover
         // the source expression from whichever layer carries them.
         let mut next_code = Some(cause.code());
         while let Some(cause_code) = next_code {
             match cause_code {
                 ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, .. } => {
-                    push_hir_id(*lhs_hir_id);
-                    push_hir_id(*rhs_hir_id);
+                    hir_ids.insert(*lhs_hir_id);
+                    hir_ids.insert(*rhs_hir_id);
                 }
                 ObligationCauseCode::FunctionArg { arg_hir_id, .. }
                 | ObligationCauseCode::ReturnValue(arg_hir_id)
                 | ObligationCauseCode::AwaitableExpr(arg_hir_id)
                 | ObligationCauseCode::BlockTailExpression(arg_hir_id, _)
                 | ObligationCauseCode::UnOp { hir_id: arg_hir_id } => {
-                    push_hir_id(*arg_hir_id);
+                    hir_ids.insert(*arg_hir_id);
                 }
                 ObligationCauseCode::OpaqueReturnType(Some((_, hir_id))) => {
-                    push_hir_id(*hir_id);
+                    hir_ids.insert(*hir_id);
                 }
                 _ => {}
             }
             next_code = cause_code.parent();
         }
 
-        if cause.span != DUMMY_SP
+        if !cause.span.is_dummy()
             && let Some(body) = self.tcx.hir_maybe_body_owned_by(cause.body_id)
         {
             let mut expr_finder = FindExprBySpan::new(cause.span, self.tcx);
             expr_finder.visit_body(body);
             if let Some(expr) = expr_finder.result {
-                push_hir_id(expr.hir_id);
+                hir_ids.insert(expr.hir_id);
             }
         }
 
+        // we will sort immediately by source order before emitting any diagnostics
+        #[allow(rustc::potential_query_instability)]
+        let mut hir_ids: Vec<_> = hir_ids.into_iter().collect();
         let source_map = self.tcx.sess.source_map();
         hir_ids.sort_by_cached_key(|hir_id| {
             let span = self.tcx.hir_span(*hir_id);
@@ -326,7 +326,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         let fn_body_hir_id = self.tcx.local_def_id_to_hir_id(typeck_results.hir_owner.def_id);
-        let mut private_candidate = None;
+        let mut private_candidate: Option<(Ty<'tcx>, Ty<'tcx>, Span)> = None;
 
         for (deref_base_ty, _) in (self.autoderef_steps)(base_ty) {
             let ty::Adt(base_def, args) = deref_base_ty.kind() else {
@@ -347,20 +347,107 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             else {
                 continue;
             };
+            let field_span = self
+                .tcx
+                .def_ident_span(field_def.did)
+                .unwrap_or_else(|| self.tcx.def_span(field_def.did));
 
             if field_def.vis.is_accessible_from(def_scope, self.tcx) {
                 let accessible_field_ty = field_def.ty(self.tcx, args);
-                if let Some((private_base_ty, private_field_ty)) = private_candidate
+                if let Some((private_base_ty, private_field_ty, private_field_span)) =
+                    private_candidate
                     && !self.can_eq(param_env, private_field_ty, accessible_field_ty)
                 {
-                    err.note(format!(
-                        "there is a field `{field_ident}` on `{private_base_ty}` with type `{private_field_ty}`, but it is private"
-                    ));
+                    let private_struct_span = match private_base_ty.kind() {
+                        ty::Adt(private_base_def, _) => self
+                            .tcx
+                            .def_ident_span(private_base_def.did())
+                            .unwrap_or_else(|| self.tcx.def_span(private_base_def.did())),
+                        _ => DUMMY_SP,
+                    };
+                    let accessible_struct_span = self
+                        .tcx
+                        .def_ident_span(base_def.did())
+                        .unwrap_or_else(|| self.tcx.def_span(base_def.did()));
+                    let deref_impl_span = (typeck_results
+                        .expr_adjustments(base_expr)
+                        .iter()
+                        .filter(|adj| {
+                            matches!(adj.kind, Adjust::Deref(DerefAdjustKind::Overloaded(_)))
+                        })
+                        .count()
+                        == 1)
+                        .then(|| {
+                            self.probe(|_| {
+                                let deref_trait_did =
+                                    self.tcx.require_lang_item(LangItem::Deref, DUMMY_SP);
+                                let trait_ref =
+                                    ty::TraitRef::new(self.tcx, deref_trait_did, [private_base_ty]);
+                                let obligation: Obligation<'tcx, ty::Predicate<'tcx>> =
+                                    Obligation::new(
+                                        self.tcx,
+                                        ObligationCause::dummy(),
+                                        param_env,
+                                        trait_ref,
+                                    );
+                                let Ok(Some(ImplSource::UserDefined(impl_data))) =
+                                    SelectionContext::new(self)
+                                        .select(&obligation.with(self.tcx, trait_ref))
+                                else {
+                                    return None;
+                                };
+                                Some(self.tcx.def_span(impl_data.impl_def_id))
+                            })
+                        })
+                        .flatten();
+
+                    let mut note_spans: MultiSpan = private_struct_span.into();
+                    if private_struct_span != DUMMY_SP {
+                        note_spans.push_span_label(private_struct_span, "in this struct");
+                    }
+                    if private_field_span != DUMMY_SP {
+                        note_spans.push_span_label(
+                            private_field_span,
+                            "if this field wasn't private, it would be accessible",
+                        );
+                    }
+                    if accessible_struct_span != DUMMY_SP {
+                        note_spans.push_span_label(
+                            accessible_struct_span,
+                            "this struct is accessible through auto-deref",
+                        );
+                    }
+                    if field_span != DUMMY_SP {
+                        note_spans
+                            .push_span_label(field_span, "this is the field that was accessed");
+                    }
+                    if let Some(deref_impl_span) = deref_impl_span
+                        && deref_impl_span != DUMMY_SP
+                    {
+                        note_spans.push_span_label(
+                            deref_impl_span,
+                            "the field was accessed through this `Deref`",
+                        );
+                    }
+
+                    err.span_note(
+                        note_spans,
+                        format!(
+                            "there is a field `{field_ident}` on `{private_base_ty}` with type `{private_field_ty}` but it is private; `{field_ident}` from `{deref_base_ty}` was accessed through auto-deref instead"
+                        ),
+                    );
                 }
+
+                // we finally get to the accessible field,
+                // so we can return early without checking the rest of the autoderef candidates
                 return;
             }
 
-            private_candidate.get_or_insert((deref_base_ty, field_def.ty(self.tcx, args)));
+            private_candidate.get_or_insert((
+                deref_base_ty,
+                field_def.ty(self.tcx, args),
+                field_span,
+            ));
         }
     }
 
