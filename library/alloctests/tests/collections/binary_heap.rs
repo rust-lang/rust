@@ -611,7 +611,7 @@ fn given_some_binary_heap_with_one_item_when_extracting_if_true_extracts_all_ite
 }
 
 #[test]
-fn given_some_binary_heap_with_three_items_when_extracting_if_true_extracts_all_items_in_arbitray_order()
+fn given_some_binary_heap_with_three_items_when_extracting_if_true_extracts_all_items_in_arbitrary_order()
  {
     let mut heap = BinaryHeap::new();
     heap.push(10);

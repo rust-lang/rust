@@ -68,7 +68,7 @@ impl<'a, T: Ord, F, A: Allocator> Drop for ExtractIf<'a, T, F, A> {
         // SAFETY: We only generate this ptr from a reference so we know that it is never null
         let heap = unsafe { self.heap_ptr.as_mut_unchecked() };
 
-        // Removing some items from the heap almost certainly has invalidated its invarients, we need to fix this up here
+        // Removing some items from the heap almost certainly has invalidated its invariants, we need to fix this up here
         heap.rebuild();
     }
 }
