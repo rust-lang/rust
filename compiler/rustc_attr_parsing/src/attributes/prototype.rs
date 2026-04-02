@@ -26,7 +26,8 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return None;
         };
 
@@ -36,7 +37,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 
         for item in list.mixed() {
             let Some(meta_item) = item.meta_item() else {
-                cx.expected_name_value(item.span(), None);
+                cx.adcx().expected_name_value(item.span(), None);
                 failed = true;
                 break;
             };
@@ -46,10 +47,10 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
             } else if let Some(arg) = meta_item.word_is(sym::phase) {
                 extract_value(cx, sym::phase, arg, meta_item.span(), &mut phase, &mut failed);
             } else if let Some(..) = meta_item.path().word() {
-                cx.expected_specific_argument(meta_item.span(), &[sym::dialect, sym::phase]);
+                cx.adcx().expected_specific_argument(meta_item.span(), &[sym::dialect, sym::phase]);
                 failed = true;
             } else {
-                cx.expected_name_value(meta_item.span(), None);
+                cx.adcx().expected_name_value(meta_item.span(), None);
                 failed = true;
             };
         }
@@ -75,19 +76,19 @@ fn extract_value<S: Stage>(
     failed: &mut bool,
 ) {
     if out_val.is_some() {
-        cx.duplicate_key(span, key);
+        cx.adcx().duplicate_key(span, key);
         *failed = true;
         return;
     }
 
     let Some(val) = arg.name_value() else {
-        cx.expected_single_argument(arg.span().unwrap_or(span));
+        cx.adcx().expected_single_argument(arg.span().unwrap_or(span));
         *failed = true;
         return;
     };
 
     let Some(value_sym) = val.value_as_str() else {
-        cx.expected_string_literal(val.value_span, Some(val.value_as_lit()));
+        cx.adcx().expected_string_literal(val.value_span, Some(val.value_as_lit()));
         *failed = true;
         return;
     };
@@ -108,7 +109,7 @@ fn parse_dialect<S: Stage>(
         sym::runtime => MirDialect::Runtime,
 
         _ => {
-            cx.expected_specific_argument(span, &[sym::analysis, sym::built, sym::runtime]);
+            cx.adcx().expected_specific_argument(span, &[sym::analysis, sym::built, sym::runtime]);
             *failed = true;
             return None;
         }
@@ -130,7 +131,10 @@ fn parse_phase<S: Stage>(
         sym::optimized => MirPhase::Optimized,
 
         _ => {
-            cx.expected_specific_argument(span, &[sym::initial, sym::post_cleanup, sym::optimized]);
+            cx.adcx().expected_specific_argument(
+                span,
+                &[sym::initial, sym::post_cleanup, sym::optimized],
+            );
             *failed = true;
             return None;
         }

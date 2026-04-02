@@ -1306,6 +1306,8 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     fn declared_idents(&self) -> Vec<Ident> {
         vec![]
     }
+
+    fn as_target(&self) -> Target;
 }
 
 impl InvocationCollectorNode for Box<ast::Item> {
@@ -1457,6 +1459,10 @@ impl InvocationCollectorNode for Box<ast::Item> {
             self.kind.ident().into_iter().collect()
         }
     }
+
+    fn as_target(&self) -> Target {
+        Target::from_ast_item(&*self)
+    }
 }
 
 struct TraitItemTag;
@@ -1497,6 +1503,9 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTa
     }
     fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
         items.flatten().collect()
+    }
+    fn as_target(&self) -> Target {
+        Target::from_assoc_item_kind(&self.wrapped.kind, AssocCtxt::Trait)
     }
 }
 
@@ -1539,6 +1548,9 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag
     fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
         items.flatten().collect()
     }
+    fn as_target(&self) -> Target {
+        Target::from_assoc_item_kind(&self.wrapped.kind, AssocCtxt::Impl { of_trait: false })
+    }
 }
 
 struct TraitImplItemTag;
@@ -1580,6 +1592,9 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitImplIt
     fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
         items.flatten().collect()
     }
+    fn as_target(&self) -> Target {
+        Target::from_assoc_item_kind(&self.wrapped.kind, AssocCtxt::Impl { of_trait: true })
+    }
 }
 
 impl InvocationCollectorNode for Box<ast::ForeignItem> {
@@ -1602,6 +1617,14 @@ impl InvocationCollectorNode for Box<ast::ForeignItem> {
             _ => unreachable!(),
         }
     }
+    fn as_target(&self) -> Target {
+        match &self.kind {
+            ForeignItemKind::Static(_) => Target::ForeignStatic,
+            ForeignItemKind::Fn(_) => Target::ForeignFn,
+            ForeignItemKind::TyAlias(_) => Target::ForeignTy,
+            ForeignItemKind::MacCall(_) => Target::MacroCall,
+        }
+    }
 }
 
 impl InvocationCollectorNode for ast::Variant {
@@ -1614,6 +1637,9 @@ impl InvocationCollectorNode for ast::Variant {
     }
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_variant(collector, self)
+    }
+    fn as_target(&self) -> Target {
+        Target::Variant
     }
 }
 
@@ -1628,6 +1654,9 @@ impl InvocationCollectorNode for ast::WherePredicate {
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_where_predicate(collector, self)
     }
+    fn as_target(&self) -> Target {
+        Target::WherePredicate
+    }
 }
 
 impl InvocationCollectorNode for ast::FieldDef {
@@ -1640,6 +1669,9 @@ impl InvocationCollectorNode for ast::FieldDef {
     }
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_field_def(collector, self)
+    }
+    fn as_target(&self) -> Target {
+        Target::Field
     }
 }
 
@@ -1654,6 +1686,9 @@ impl InvocationCollectorNode for ast::PatField {
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_pat_field(collector, self)
     }
+    fn as_target(&self) -> Target {
+        Target::PatField
+    }
 }
 
 impl InvocationCollectorNode for ast::ExprField {
@@ -1666,6 +1701,9 @@ impl InvocationCollectorNode for ast::ExprField {
     }
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_expr_field(collector, self)
+    }
+    fn as_target(&self) -> Target {
+        Target::ExprField
     }
 }
 
@@ -1680,6 +1718,9 @@ impl InvocationCollectorNode for ast::Param {
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_param(collector, self)
     }
+    fn as_target(&self) -> Target {
+        Target::Param
+    }
 }
 
 impl InvocationCollectorNode for ast::GenericParam {
@@ -1693,6 +1734,25 @@ impl InvocationCollectorNode for ast::GenericParam {
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_generic_param(collector, self)
     }
+    fn as_target(&self) -> Target {
+        let mut has_default = false;
+        Target::GenericParam {
+            kind: match &self.kind {
+                rustc_ast::GenericParamKind::Lifetime => {
+                    rustc_hir::target::GenericParamKind::Lifetime
+                }
+                rustc_ast::GenericParamKind::Type { default } => {
+                    has_default = default.is_some();
+                    rustc_hir::target::GenericParamKind::Type
+                }
+                rustc_ast::GenericParamKind::Const { default, .. } => {
+                    has_default = default.is_some();
+                    rustc_hir::target::GenericParamKind::Const
+                }
+            },
+            has_default,
+        }
+    }
 }
 
 impl InvocationCollectorNode for ast::Arm {
@@ -1705,6 +1765,9 @@ impl InvocationCollectorNode for ast::Arm {
     }
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_arm(collector, self)
+    }
+    fn as_target(&self) -> Target {
+        Target::Arm
     }
 }
 
@@ -1779,6 +1842,9 @@ impl InvocationCollectorNode for ast::Stmt {
             }
         }
     }
+    fn as_target(&self) -> Target {
+        Target::Statement
+    }
 }
 
 impl InvocationCollectorNode for ast::Crate {
@@ -1804,6 +1870,9 @@ impl InvocationCollectorNode for ast::Crate {
         self.attrs.truncate(pos);
         // Standard prelude imports are left in the crate for backward compatibility.
         self.items.truncate(collector.cx.num_standard_library_imports);
+    }
+    fn as_target(&self) -> Target {
+        Target::Crate
     }
 }
 
@@ -1838,6 +1907,10 @@ impl InvocationCollectorNode for ast::Ty {
             _ => unreachable!(),
         }
     }
+    fn as_target(&self) -> Target {
+        // This is only used for attribute parsing, which are not allowed on types.
+        unreachable!()
+    }
 }
 
 impl InvocationCollectorNode for ast::Pat {
@@ -1860,6 +1933,9 @@ impl InvocationCollectorNode for ast::Pat {
             PatKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
             _ => unreachable!(),
         }
+    }
+    fn as_target(&self) -> Target {
+        todo!();
     }
 }
 
@@ -1886,6 +1962,9 @@ impl InvocationCollectorNode for ast::Expr {
             ExprKind::MacCall(mac) => (mac, self.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
+    }
+    fn as_target(&self) -> Target {
+        Target::Expression
     }
 }
 
@@ -1915,6 +1994,9 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::Expr>, OptExprTag> {
     }
     fn pre_flat_map_node_collect_attr(cfg: &StripUnconfigured<'_>, attr: &ast::Attribute) {
         cfg.maybe_emit_expr_attr_err(attr);
+    }
+    fn as_target(&self) -> Target {
+        Target::Expression
     }
 }
 
@@ -1946,6 +2028,9 @@ impl InvocationCollectorNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
             ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
+    }
+    fn as_target(&self) -> Target {
+        Target::Expression
     }
 }
 
@@ -2210,7 +2295,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn expand_cfg_true(
         &mut self,
-        node: &mut (impl HasAttrs + HasNodeId),
+        node: &mut impl InvocationCollectorNode,
         attr: ast::Attribute,
         pos: usize,
     ) -> EvalConfigResult {
@@ -2219,8 +2304,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             &attr,
             attr.span,
             self.cfg().lint_node_id,
-            // Target doesn't matter for `cfg` parsing.
-            Target::Crate,
+            node.as_target(),
             self.cfg().features,
             ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             parse_cfg,

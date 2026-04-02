@@ -247,7 +247,7 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for Without
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
+            cx.adcx().expected_no_args(span);
         }
         Some(T::CREATE(cx.attr_span))
     }
