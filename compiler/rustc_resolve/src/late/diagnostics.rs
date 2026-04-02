@@ -1535,9 +1535,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let [segment] = path else { return };
         let None = following_seg else { return };
         for rib in self.ribs[ValueNS].iter().rev() {
-            let patterns_with_skipped_bindings = self.r.tcx.with_stable_hashing_context(|hcx| {
-                rib.patterns_with_skipped_bindings.to_sorted(&hcx, true)
-            });
+            let patterns_with_skipped_bindings =
+                self.r.tcx.with_stable_hashing_context(|mut hcx| {
+                    rib.patterns_with_skipped_bindings.to_sorted(&mut hcx, true)
+                });
             for (def_id, spans) in patterns_with_skipped_bindings {
                 if let DefKind::Struct | DefKind::Variant = self.r.tcx.def_kind(*def_id)
                     && let Some(fields) = self.r.field_idents(*def_id)

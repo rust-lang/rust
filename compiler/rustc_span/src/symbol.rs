@@ -2611,7 +2611,7 @@ impl<Hcx> HashStable<Hcx> for Symbol {
 impl<Hcx> ToStableHashKey<Hcx> for Symbol {
     type KeyType = String;
     #[inline]
-    fn to_stable_hash_key(&self, _: &Hcx) -> String {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> String {
         self.as_str().to_string()
     }
 }
