@@ -116,10 +116,25 @@ fn annotation_level_for_level(level: Level) -> annotate_snippets::level::Level<'
         Level::Fatal | Level::Error => annotate_snippets::level::ERROR,
         Level::ForceWarning | Level::Warning => annotate_snippets::Level::WARNING,
         Level::Note | Level::OnceNote => annotate_snippets::Level::NOTE,
+        Level::BulletPoint => annotate_snippets::Level::NOTE.no_name(),
         Level::Help | Level::OnceHelp => annotate_snippets::Level::HELP,
         Level::FailureNote => annotate_snippets::Level::NOTE.no_name(),
         Level::Allow => panic!("Should not call with Allow"),
         Level::Expect => panic!("Should not call with Expect"),
+    }
+}
+
+fn message_level_for_level(level: Level) -> annotate_snippets::level::Level<'static> {
+    match level {
+        Level::BulletPoint => annotate_snippets::Level::NOTE.no_name(),
+        _ => annotation_level_for_level(level),
+    }
+}
+
+fn format_message_for_level(level: Level, msg: Cow<'static, str>) -> Cow<'static, str> {
+    match level {
+        Level::BulletPoint => Cow::Owned(format!("   - {msg}")),
+        _ => msg,
     }
 }
 
@@ -174,11 +189,26 @@ impl AnnotateSnippetEmitter {
 
         // If we don't have span information, emit and exit
         let Some(sm) = self.sm.as_ref() else {
-            group = group.elements(children.iter().map(|c| {
-                let msg = format_diag_messages(&c.messages, args).to_string();
-                let level = annotation_level_for_level(c.level);
-                level.message(msg)
-            }));
+            for c in children {
+                let msg = format_message_for_level(
+                    c.level,
+                    Cow::Owned(format_diag_messages(&c.messages, args).to_string()),
+                );
+                let annotation_level = annotation_level_for_level(c.level);
+                let message_level = message_level_for_level(c.level);
+
+                if c.level == Level::BulletPoint
+                    && !c.span.has_primary_spans()
+                    && !c.span.has_span_labels()
+                {
+                    report.push(std::mem::replace(
+                        &mut group,
+                        Group::with_title(annotation_level.secondary_title(msg)),
+                    ));
+                } else {
+                    group = group.element(message_level.message(msg));
+                }
+            }
 
             report.push(group);
             if let Err(e) = emit_to_destination(
@@ -239,7 +269,8 @@ impl AnnotateSnippetEmitter {
         }
 
         for c in children {
-            let level = annotation_level_for_level(c.level);
+            let annotation_level = annotation_level_for_level(c.level);
+            let message_level = message_level_for_level(c.level);
 
             // If at least one portion of the message is styled, we need to
             // "pre-style" the message
@@ -248,16 +279,24 @@ impl AnnotateSnippetEmitter {
             } else {
                 format_diag_messages(&c.messages, args)
             };
+            let msg = format_message_for_level(c.level, msg);
 
             // This is a secondary message with no span info
             if !c.span.has_primary_spans() && !c.span.has_span_labels() {
-                group = group.element(level.clone().message(msg));
+                if c.level == Level::BulletPoint {
+                    report.push(std::mem::replace(
+                        &mut group,
+                        Group::with_title(annotation_level.secondary_title(msg)),
+                    ));
+                } else {
+                    group = group.element(message_level.message(msg));
+                }
                 continue;
             }
 
             report.push(std::mem::replace(
                 &mut group,
-                Group::with_title(level.clone().secondary_title(msg)),
+                Group::with_title(annotation_level.clone().secondary_title(msg)),
             ));
 
             let mut file_ann = collect_annotations(args, &c.span, sm);
@@ -286,7 +325,7 @@ impl AnnotateSnippetEmitter {
                         file_idx,
                         &mut report,
                         group,
-                        &level,
+                        &annotation_level,
                     );
                 }
             }

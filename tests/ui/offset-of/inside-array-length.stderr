@@ -33,32 +33,32 @@ error[E0391]: cycle detected when evaluating type-level constant
 LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires const-evaluating + checking `foo::{constant#0}`...
+   - which requires const-evaluating + checking `foo::{constant#0}`...
   --> $DIR/inside-array-length.rs:9:27
    |
 LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires caching mir of `foo::{constant#0}` for CTFE...
+   - which requires caching mir of `foo::{constant#0}` for CTFE...
   --> $DIR/inside-array-length.rs:9:27
    |
 LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires elaborating drops for `foo::{constant#0}`...
+   - which requires elaborating drops for `foo::{constant#0}`...
   --> $DIR/inside-array-length.rs:9:27
    |
 LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires borrow-checking `foo::{constant#0}`...
+   - which requires borrow-checking `foo::{constant#0}`...
   --> $DIR/inside-array-length.rs:9:27
    |
 LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires normalizing `Binder { value: ConstEvaluatable(UnevaluatedConst { def: DefId(0:7 ~ inside_array_length[07d6]::foo::{constant#0}), args: ['^c_1, T/#1] }), bound_vars: [] }`...
+   - which requires normalizing `Binder { value: ConstEvaluatable(UnevaluatedConst { def: DefId(0:7 ~ inside_array_length[07d6]::foo::{constant#0}), args: ['^c_1, T/#1] }), bound_vars: [] }`...
   --> $DIR/inside-array-length.rs:9:27
    |
 LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires evaluating type-level constant, completing the cycle
+   - which again requires evaluating type-level constant, completing the cycle
 note: cycle used when normalizing `inside_array_length::::foo::{constant#0}`
   --> $DIR/inside-array-length.rs:9:27
    |

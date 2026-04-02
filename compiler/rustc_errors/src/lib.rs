@@ -600,8 +600,8 @@ impl<'a> DiagCtxtHandle<'a> {
             DelayedBug => {
                 return self.inner.borrow_mut().emit_diagnostic(diag, self.tainted_with_errors);
             }
-            ForceWarning | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
-            | Expect => None,
+            ForceWarning | Warning | Note | BulletPoint | OnceNote | Help | OnceHelp
+            | FailureNote | Allow | Expect => None,
         };
 
         // FIXME(Centril, #69537): Consider reintroducing panic on overwriting a stashed diagnostic
@@ -1261,7 +1261,7 @@ impl DiagCtxtInner {
                     return None;
                 }
             }
-            Note | Help | FailureNote => {}
+            Note | BulletPoint | Help | FailureNote => {}
             OnceNote | OnceHelp => panic!("bad level: {:?}", diagnostic.level),
             Allow => {
                 // Nothing emitted for allowed lints.
@@ -1531,6 +1531,7 @@ impl DelayedDiagInner {
 /// | ForceWarning | -        | ()                           | yes       | -   | lint-only
 /// | Warning      | -        | ()                           | yes       | yes | yes
 /// | Note         | -        | ()                           | rare      | yes | -
+/// | BulletPoint  | -        | ()                           | -         | yes | -
 /// | OnceNote     | -        | ()                           | -         | yes | lint-only
 /// | Help         | -        | ()                           | rare      | yes | -
 /// | OnceHelp     | -        | ()                           | -         | yes | lint-only
@@ -1574,6 +1575,9 @@ pub enum Level {
     /// A message giving additional context.
     Note,
 
+    /// A message rendered as a bullet point.
+    BulletPoint,
+
     /// A note that is only emitted once.
     OnceNote,
 
@@ -1611,7 +1615,7 @@ impl Level {
                     AnsiColor::Yellow.on_default()
                 }
             }
-            Note | OnceNote => AnsiColor::BrightGreen.on_default(),
+            Note | BulletPoint | OnceNote => AnsiColor::BrightGreen.on_default(),
             Help | OnceHelp => AnsiColor::BrightCyan.on_default(),
             FailureNote => anstyle::Style::new(),
             Allow | Expect => unreachable!(),
@@ -1624,6 +1628,7 @@ impl Level {
             Fatal | Error => "error",
             ForceWarning | Warning => "warning",
             Note | OnceNote => "note",
+            BulletPoint => "bullet-point",
             Help | OnceHelp => "help",
             FailureNote => "failure-note",
             Allow | Expect => unreachable!(),

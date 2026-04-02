@@ -4,22 +4,22 @@ error[E0391]: cycle detected when checking if `A` is a trivial const
 LL | const A: i32 = B;
    | ^^^^^^^^^^^^
    |
-note: ...which requires building MIR for `A`...
+   - which requires building MIR for `A`...
   --> $DIR/issue-23302-3.rs:1:1
    |
 LL | const A: i32 = B;
    | ^^^^^^^^^^^^
-note: ...which requires checking if `B` is a trivial const...
+   - which requires checking if `B` is a trivial const...
   --> $DIR/issue-23302-3.rs:3:1
    |
 LL | const B: i32 = A;
    | ^^^^^^^^^^^^
-note: ...which requires building MIR for `B`...
+   - which requires building MIR for `B`...
   --> $DIR/issue-23302-3.rs:3:1
    |
 LL | const B: i32 = A;
    | ^^^^^^^^^^^^
-   = note: ...which again requires checking if `A` is a trivial const, completing the cycle
+   - which again requires checking if `A` is a trivial const, completing the cycle
 note: cycle used when simplifying constant for the type system `A`
   --> $DIR/issue-23302-3.rs:1:1
    |

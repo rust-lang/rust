@@ -560,6 +560,8 @@ pub(super) enum SubdiagnosticKind {
     Label,
     /// `#[note(...)]`
     Note,
+    /// `#[bullet_point(...)]`
+    BulletPoint,
     /// `#[note_once(...)]`
     NoteOnce,
     /// `#[help(...)]`
@@ -612,6 +614,7 @@ impl SubdiagnosticVariant {
         let mut kind = match name {
             "label" => SubdiagnosticKind::Label,
             "note" => SubdiagnosticKind::Note,
+            "bullet_point" => SubdiagnosticKind::BulletPoint,
             "note_once" => SubdiagnosticKind::NoteOnce,
             "help" => SubdiagnosticKind::Help,
             "help_once" => SubdiagnosticKind::HelpOnce,
@@ -672,6 +675,7 @@ impl SubdiagnosticVariant {
                 match kind {
                     SubdiagnosticKind::Label
                     | SubdiagnosticKind::Note
+                    | SubdiagnosticKind::BulletPoint
                     | SubdiagnosticKind::NoteOnce
                     | SubdiagnosticKind::Help
                     | SubdiagnosticKind::HelpOnce
@@ -819,6 +823,7 @@ impl SubdiagnosticVariant {
             }
             SubdiagnosticKind::Label
             | SubdiagnosticKind::Note
+            | SubdiagnosticKind::BulletPoint
             | SubdiagnosticKind::NoteOnce
             | SubdiagnosticKind::Help
             | SubdiagnosticKind::HelpOnce
@@ -834,6 +839,7 @@ impl quote::IdentFragment for SubdiagnosticKind {
         match self {
             SubdiagnosticKind::Label => write!(f, "label"),
             SubdiagnosticKind::Note => write!(f, "note"),
+            SubdiagnosticKind::BulletPoint => write!(f, "bullet_point"),
             SubdiagnosticKind::NoteOnce => write!(f, "note_once"),
             SubdiagnosticKind::Help => write!(f, "help"),
             SubdiagnosticKind::HelpOnce => write!(f, "help_once"),

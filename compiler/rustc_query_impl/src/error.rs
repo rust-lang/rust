@@ -25,7 +25,7 @@ pub(crate) struct QueryOverflowNote {
 }
 
 #[derive(Subdiagnostic)]
-#[note("...which requires {$desc}...")]
+#[bullet_point("which requires {$desc}...")]
 pub(crate) struct CycleStack {
     #[primary_span]
     pub span: Span,
@@ -34,9 +34,9 @@ pub(crate) struct CycleStack {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum StackCount {
-    #[note("...which immediately requires {$stack_bottom} again")]
+    #[bullet_point("which immediately requires {$stack_bottom} again")]
     Single { stack_bottom: String },
-    #[note("...which again requires {$stack_bottom}, completing the cycle")]
+    #[bullet_point("which again requires {$stack_bottom}, completing the cycle")]
     Multiple { stack_bottom: String },
 }
 

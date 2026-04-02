@@ -4,17 +4,18 @@ error[E0391]: cycle detected when expanding type alias `X1`
 LL | type X1 = X2;
    |           ^^
    |
-note: ...which requires expanding type alias `X2`...
+   - which requires expanding type alias `X2`...
   --> $DIR/infinite-type-alias-mutual-recursion.rs:9:11
    |
 LL | type X2 = X3;
    |           ^^
-note: ...which requires expanding type alias `X3`...
+   - which requires expanding type alias `X3`...
   --> $DIR/infinite-type-alias-mutual-recursion.rs:11:11
    |
 LL | type X3 = X1;
    |           ^^
-   = note: ...which again requires expanding type alias `X1`, completing the cycle
+   - which again requires expanding type alias `X1`, completing the cycle
+   |
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information

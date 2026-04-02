@@ -4,12 +4,12 @@ error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsup
 LL |         reuse to_reuse::opaque_ret;
    |                         ^^^^^^^^^^
    |
-note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+   - which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
   --> $DIR/unsupported.rs:30:25
    |
 LL |         reuse to_reuse::opaque_ret;
    |                         ^^^^^^^^^^
-   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:29:5: 29:24>::opaque_ret::{anon_assoc#0}`, completing the cycle
+   - which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:29:5: 29:24>::opaque_ret::{anon_assoc#0}`, completing the cycle
 note: cycle used when checking assoc item `opaque::<impl at $DIR/unsupported.rs:29:5: 29:24>::opaque_ret` is compatible with trait definition
   --> $DIR/unsupported.rs:30:25
    |
@@ -23,12 +23,12 @@ error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsup
 LL |         reuse ToReuse::opaque_ret;
    |                        ^^^^^^^^^^
    |
-note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+   - which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
   --> $DIR/unsupported.rs:33:24
    |
 LL |         reuse ToReuse::opaque_ret;
    |                        ^^^^^^^^^^
-   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret::{anon_assoc#0}`, completing the cycle
+   - which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret::{anon_assoc#0}`, completing the cycle
 note: cycle used when checking assoc item `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret` is compatible with trait definition
   --> $DIR/unsupported.rs:33:24
    |

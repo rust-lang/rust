@@ -4,12 +4,12 @@ error[E0391]: cycle detected when checking if `FOO` is a trivial const
 LL | const FOO: usize = FOO;
    | ^^^^^^^^^^^^^^^^
    |
-note: ...which requires building MIR for `FOO`...
+   - which requires building MIR for `FOO`...
   --> $DIR/cycle_crash-issue-135870.rs:6:1
    |
 LL | const FOO: usize = FOO;
    | ^^^^^^^^^^^^^^^^
-   = note: ...which again requires checking if `FOO` is a trivial const, completing the cycle
+   - which again requires checking if `FOO` is a trivial const, completing the cycle
 note: cycle used when simplifying constant for the type system `FOO`
   --> $DIR/cycle_crash-issue-135870.rs:6:1
    |

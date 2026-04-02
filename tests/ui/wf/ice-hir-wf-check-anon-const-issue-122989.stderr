@@ -31,12 +31,12 @@ error[E0391]: cycle detected when computing type of `Foo::N`
 LL | trait Foo<const N: Bar<2>> {
    |           ^^^^^^^^^^^^^^^
    |
-note: ...which requires computing type of `Bar::M`...
+   - which requires computing type of `Bar::M`...
   --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:10:11
    |
 LL | trait Bar<const M: Foo<2>> {}
    |           ^^^^^^^^^^^^^^^
-   = note: ...which again requires computing type of `Foo::N`, completing the cycle
+   - which again requires computing type of `Foo::N`, completing the cycle
 note: cycle used when checking that `Foo` is well-formed
   --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:3:1
    |
