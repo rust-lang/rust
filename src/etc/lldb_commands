@@ -77,6 +77,7 @@ type synthetic add -l lldb_lookup.synthetic_lookup -x "^enum2\$<.+>::.*$" --cate
 
 # Tuple
 type synthetic add -l lldb_lookup.TupleSyntheticProvider -x "^\(.*\)$" --category Rust
+type summary add -F lldb_lookup.TupleSummaryProvider -x "^\(.*\)$" --category Rust
 
 ## MSVC
 type synthetic add -l lldb_lookup.MSVCTupleSyntheticProvider -x "^tuple\$<.+>$" --category Rust
