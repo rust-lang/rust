@@ -519,6 +519,21 @@ casemappingiter_impls! {
     ToLowercase
 }
 
+casemappingiter_impls! {
+    #[unstable(feature = "casefold", issue = "none")]
+    #[unstable(feature = "casefold", issue = "none")]
+    #[unstable(feature = "casefold", issue = "none")]
+    #[unstable(feature = "casefold", issue = "none")]
+    #[unstable(feature = "casefold", issue = "none")]
+    /// Returns an iterator that yields the case-folded equivalent of a `char`.
+    ///
+    /// This `struct` is created by the [`to_casefold`] method on [`char`]. See
+    /// its documentation for more.
+    ///
+    /// [`to_casefold`]: char::to_casefold
+    ToCasefold
+}
+
 #[derive(Debug, Clone)]
 struct CaseMappingIter(core::array::IntoIter<char, 3>);
 
