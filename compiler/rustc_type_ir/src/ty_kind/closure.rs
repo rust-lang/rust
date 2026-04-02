@@ -308,6 +308,7 @@ impl<I: Interner> CoroutineClosureArgs<I> {
                 yield_ty,
                 return_ty,
                 c_variadic: hdr.c_variadic,
+                splatted: hdr.splatted,
                 safety: hdr.safety,
                 abi: hdr.abi,
             }
@@ -368,6 +369,8 @@ pub struct CoroutineClosureSignature<I: Interner> {
     // from scratch just for good measure.
     /// Always false
     pub c_variadic: bool,
+    // FIXME(splat): is this always false?
+    pub splatted: bool,
     /// Always `Normal` (safe)
     #[type_visitable(ignore)]
     #[type_foldable(identity)]

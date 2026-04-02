@@ -1137,6 +1137,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         // Split the rust-call tupled arguments off.
+        // FIXME(splat): un-tuple splatted arguments in codegen, for performance
         let (first_args, untuple) = if sig.abi() == ExternAbi::RustCall
             && let Some((tup, args)) = args.split_last()
         {

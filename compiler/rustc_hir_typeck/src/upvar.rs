@@ -442,6 +442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         [],
                         tupled_upvars_ty_for_borrow,
                         false,
+                        false,
                         hir::Safety::Safe,
                         rustc_abi::ExternAbi::Rust,
                     ),

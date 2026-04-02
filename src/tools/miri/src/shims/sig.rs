@@ -276,6 +276,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let fn_sig_binder = Binder::dummy(FnSig {
             inputs_and_output: this.machine.tcx.mk_type_list(&inputs_and_output),
             c_variadic: false,
+            splatted: false,
             // This does not matter for the ABI.
             safety: Safety::Safe,
             abi: shim_sig.abi,

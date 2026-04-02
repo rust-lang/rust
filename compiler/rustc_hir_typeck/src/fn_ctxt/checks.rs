@@ -1,5 +1,5 @@
 use std::ops::Deref;
-use std::{fmt, iter};
+use std::{assert_matches, fmt, iter};
 
 use itertools::Itertools;
 use rustc_ast as ast;
@@ -188,6 +188,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         tuple_arguments: TupleArgumentsFlag,
         // The DefId for the function being called, for better error messages
         fn_def_id: Option<DefId>,
+        // The kind of function being called, with its generics. Only used for splatting. Closures aren't supported.
+        is_method_call: bool,
+        callee_def_kind: Option<DefKind>,
+        callee_generic_args: Option<ty::GenericArgsRef<'tcx>>,
     ) {
         let tcx = self.tcx;
 
@@ -216,9 +220,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // First, let's unify the formal method signature with the expectation eagerly.
-        // We use this to guide coercion inference; it's output is "fudged" which means
+        // We use this to guide coercion inference; its output is "fudged" which means
         // any remaining type variables are assigned to new, unrelated variables. This
         // is because the inference guidance here is only speculative.
+        // FIXME(splat): do we need to splat arguments before this type inference?
         let formal_output = self.resolve_vars_with_obligations(formal_output);
         let expected_input_tys: Option<Vec<_>> = expectation
             .only_has_type(self)
@@ -289,39 +294,156 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut err_code = E0061;
 
-        // If the arguments should be wrapped in a tuple (ex: closures), unwrap them here
-        let (formal_input_tys, expected_input_tys) = if tuple_arguments == TupleArguments {
-            let tuple_type = self.structurally_resolve_type(call_span, formal_input_tys[0]);
+        // If the arguments should be wrapped in a tuple (ex: closures, splats), unwrap them here
+        let (formal_input_tys, expected_input_tys) = if tuple_arguments.last_argument_is_tupled() {
+            // An empty argument list should be a single unit type argument in the callee.
+            // The Fn* traits ensure this by construction, and `#[splat]` can only be applied to an actual argument.
+            let tupled_arg_index =
+                formal_input_tys.len().checked_sub(1).expect("must have a tuple argument");
+            // Keep the type variable if the argument is splatted, so we can force it to be a tuple later.
+            let tuple_type = if tuple_arguments.is_splatted() {
+                let calee_tuple_type = self
+                    .try_structurally_resolve_type(call_span, formal_input_tys[tupled_arg_index]);
+                if calee_tuple_type.is_ty_var() {
+                    let tuple_len = provided_args.len().checked_sub(tupled_arg_index);
+                    if let Some(tuple_len) = tuple_len {
+                        // Make the original type variable resolve to a tuple containing new type variables
+                        let ocx = ObligationCtxt::new(self);
+                        let origin = self.misc(call_span);
+
+                        let new_tupled_type = Ty::new_tup_from_iter(
+                            self.tcx,
+                            iter::repeat_with(|| self.next_ty_var(call_span)).take(tuple_len),
+                        );
+
+                        // FIXME(splat): should this be a sub/super type relationship?
+                        let ocx_error =
+                            ocx.eq(&origin, self.param_env, calee_tuple_type, new_tupled_type);
+                        if let Err(ocx_error) = ocx_error {
+                            struct_span_code_err!(
+                                self.dcx(),
+                                call_span,
+                                // FIXME(splat): add a new error code before stabilization
+                                E0277,
+                                "cannot resolve splatted arguments; the last type parameter \
+                                for the function {:?} must be a tuple or unit: {:?}",
+                                callee_def_kind,
+                                ocx_error,
+                            )
+                            .emit();
+                        }
+
+                        let type_errors = ocx.try_evaluate_obligations();
+                        if type_errors.is_empty() {
+                            assert_matches!(new_tupled_type.kind(), ty::Tuple(_));
+                            new_tupled_type
+                        } else {
+                            let guar = struct_span_code_err!(
+                                self.dcx(),
+                                call_span,
+                                // FIXME(splat): add a new error code before stabilization
+                                E0277,
+                                "cannot resolve splatted arguments; the last type parameter \
+                                for the function {:?} must be a tuple or unit: {:?}",
+                                callee_def_kind,
+                                type_errors,
+                            )
+                            .emit();
+                            Ty::new_error(self.tcx, guar)
+                        }
+                    } else {
+                        // Just let it likely fail later
+                        calee_tuple_type
+                    }
+                } else {
+                    calee_tuple_type
+                }
+            } else {
+                self.structurally_resolve_type(call_span, formal_input_tys[tupled_arg_index])
+            };
             match tuple_type.kind() {
-                // We expected a tuple and got a tuple
+                // We expected a tuple and got a tuple (or made one ourselves)
                 ty::Tuple(arg_types) => {
                     // Argument length differs
-                    if arg_types.len() != provided_args.len() {
+                    // FIXME(splat): update the error code E0057 docs when splat is stabilized
+                    if Some(arg_types.len()) != provided_args.len().checked_sub(tupled_arg_index) {
                         err_code = E0057;
                     }
                     let expected_input_tys = match expected_input_tys {
-                        Some(expected_input_tys) => match expected_input_tys.get(0) {
-                            Some(ty) => match ty.kind() {
-                                ty::Tuple(tys) => Some(tys.iter().collect()),
-                                _ => None,
-                            },
-                            None => None,
-                        },
+                        Some(expected_input_tys) => {
+                            match expected_input_tys.get(tupled_arg_index) {
+                                Some(ty) => match ty.kind() {
+                                    ty::Tuple(tys) => Some(
+                                        expected_input_tys
+                                            .into_iter()
+                                            .take(tupled_arg_index)
+                                            .chain(tys.iter())
+                                            .collect::<Vec<_>>(),
+                                    ),
+                                    _ => None,
+                                },
+                                None => None,
+                            }
+                        }
                         None => None,
                     };
-                    (arg_types.iter().collect(), expected_input_tys)
+                    // If splatting, record this call in a side-table, so MIR lowering can tuple the caller's arguments
+                    if tuple_arguments.is_splatted() {
+                        // FIXME(const_trait_impl): does not enforce constness yet
+                        self.write_splatted_call(
+                            call_expr.hir_id,
+                            call_span,
+                            is_method_call,
+                            // FIXME(splat): there's probably a nicer way to do this
+                            callee_def_kind.expect(
+                                "splatting is not implemented for closures or Fn* trait calls",
+                            ),
+                            fn_def_id.expect("splatting is not implemented for FnPtrs"),
+                            callee_generic_args.expect(
+                                "splatting is not implemented for FnPtrs, closures, or Fn* trait calls",
+                            ),
+                            tupled_arg_index.try_into().unwrap(),
+                        );
+                    }
+
+                    (
+                        formal_input_tys[..tupled_arg_index]
+                            .into_iter()
+                            .cloned()
+                            .chain(arg_types.into_iter())
+                            .collect(),
+                        expected_input_tys,
+                    )
                 }
                 _ => {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
                     // our input types to err_args so we don't blow up the error messages
-                    let guar = struct_span_code_err!(
-                        self.dcx(),
-                        call_span,
-                        E0059,
-                        "cannot use call notation; the first type parameter \
-                         for the function trait is neither a tuple nor unit"
-                    )
-                    .emit();
+                    let guar = match tuple_arguments {
+                        TupleAllArguments => struct_span_code_err!(
+                            self.dcx(),
+                            call_span,
+                            E0059,
+                            "cannot use call notation; the first type parameter \
+                            for the function trait is neither a tuple nor unit"
+                        )
+                        .emit(),
+                        TupleSplattedArguments { .. } => struct_span_code_err!(
+                            self.dcx(),
+                            call_span,
+                            // FIXME(splat): add a new error code before stabilization
+                            E0277,
+                            "cannot use splat attribute; the last type parameter \
+                            for the function must be a tuple or unit, not a {:?} ({:?})",
+                            tuple_type.kind(),
+                            self.structurally_resolve_type(
+                                call_span,
+                                formal_input_tys[tupled_arg_index]
+                            )
+                            .kind(),
+                        )
+                        .emit(),
+                        DontTupleArguments => unreachable!(),
+                    };
                     (self.err_args(provided_args.len(), guar), None)
                 }
             }
@@ -1376,8 +1498,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we're calling a method of a Fn/FnMut/FnOnce trait object implicitly
         // (eg invoking a closure) we want to point at the underlying callable,
         // not the method implicitly invoked (eg call_once).
-        // TupleArguments is set only when this is an implicit call (my_closure(...)) rather than explicit (my_closure.call(...))
-        if tuple_arguments == TupleArguments
+        // TupleAllArguments is set only when this is an implicit call `my_closure(...)` rather
+        // than explicit `my_closure.call(...)`.
+        if tuple_arguments == TupleAllArguments
             && let Some(assoc_item) = self.tcx.opt_associated_item(def_id)
             // Since this is an associated item, it might point at either an impl or a trait item.
             // We want it to always point to the trait item.

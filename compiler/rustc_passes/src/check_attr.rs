@@ -371,6 +371,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcTrivialFieldReads
                     | AttributeKind::RustcUnsafeSpecializationMarker(..)
                     | AttributeKind::ShouldPanic { .. }
+                    | AttributeKind::Splat(..)
                     | AttributeKind::Stability { .. }
                     | AttributeKind::TestRunner(..)
                     | AttributeKind::ThreadLocal
@@ -1720,6 +1721,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 },
             ),
             token_stream,
+            false,
             false,
             Safety::Safe,
             ExternAbi::Rust,

@@ -613,9 +613,9 @@ fn report_unexpected_variant_res(
 }
 
 /// Controls whether the arguments are tupled. This is used for the call
-/// operator.
+/// operator and function argument splatting.
 ///
-/// Tupling means that all call-side arguments are packed into a tuple and
+/// Tupling means that trailing call-side arguments are packed into a tuple and
 /// passed as a single parameter. For example, if tupling is enabled, this
 /// function:
 /// ```
@@ -631,10 +631,34 @@ fn report_unexpected_variant_res(
 /// # fn f(x: (isize, isize)) {}
 /// f((1, 2));
 /// ```
-#[derive(Copy, Clone, Eq, PartialEq)]
+///
+/// For the call operator, all arguments are tupled. For splatting, trailing arguments after
+/// `#[splat]` in the function signature are tupled.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum TupleArgumentsFlag {
+    /// Arguments are typechecked unchanged.
     DontTupleArguments,
-    TupleArguments,
+    /// All arguments are tupled before typechecking.
+    TupleAllArguments,
+    /// Only the splatted final argument is tupled before typechecking.
+    TupleSplattedArguments,
+}
+
+impl TupleArgumentsFlag {
+    // Is the last argument in the callee tupled?
+    fn last_argument_is_tupled(&self) -> bool {
+        match self {
+            Self::DontTupleArguments => false,
+            // The callee always has a single tuple argument.
+            Self::TupleAllArguments => true,
+            // The last argument of the callee is a splatted tuple in the caller.
+            Self::TupleSplattedArguments { .. } => true,
+        }
+    }
+
+    fn is_splatted(&self) -> bool {
+        matches!(self, Self::TupleSplattedArguments { .. })
+    }
 }
 
 fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {

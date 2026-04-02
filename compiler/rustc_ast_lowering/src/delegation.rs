@@ -144,7 +144,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
                 let is_method = self.is_method(sig_id, span);
 
-                let (param_count, c_variadic) = self.param_count(sig_id);
+                let (param_count, c_variadic, splatted) = self.param_count(sig_id);
 
                 let mut generics = self.uplift_delegation_generics(delegation, sig_id, item_id);
 
@@ -156,8 +156,14 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     span,
                 );
 
-                let decl =
-                    self.lower_delegation_decl(sig_id, param_count, c_variadic, span, &generics);
+                let decl = self.lower_delegation_decl(
+                    sig_id,
+                    param_count,
+                    c_variadic,
+                    splatted,
+                    span,
+                    &generics,
+                );
 
                 let sig = self.lower_delegation_sig(sig_id, decl, span);
                 let ident = self.lower_ident(delegation.ident);
@@ -271,10 +277,10 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         self.resolver.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
     }
 
-    // Function parameter count, including C variadic `...` if present.
-    fn param_count(&self, def_id: DefId) -> (usize, bool /*c_variadic*/) {
+    // Function parameter count, including C variadic `...` and `#[splat]` if present.
+    fn param_count(&self, def_id: DefId) -> (usize, bool /*c_variadic*/, bool /*splatted*/) {
         let sig = self.tcx.fn_sig(def_id).skip_binder().skip_binder();
-        (sig.inputs().len() + usize::from(sig.c_variadic), sig.c_variadic)
+        (sig.inputs().len() + usize::from(sig.c_variadic), sig.c_variadic, sig.splatted)
     }
 
     fn lower_delegation_decl(
@@ -282,6 +288,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         sig_id: DefId,
         param_count: usize,
         c_variadic: bool,
+        splatted: bool,
         span: Span,
         generics: &GenericsGenerationResults<'hir>,
     ) -> &'hir hir::FnDecl<'hir> {
@@ -313,6 +320,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             inputs,
             output: hir::FnRetTy::Return(output),
             c_variadic,
+            splatted,
             lifetime_elision_allowed: true,
             implicit_self: hir::ImplicitSelfKind::None,
         })
@@ -612,6 +620,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             inputs: &[],
             output: hir::FnRetTy::DefaultReturn(span),
             c_variadic: false,
+            splatted: false,
             lifetime_elision_allowed: true,
             implicit_self: hir::ImplicitSelfKind::None,
         });

@@ -905,6 +905,15 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, pin_ergonomics, experimental!(pin_v2),
     ),
 
+    // The `#[splat]` attribute is part of the `splat` experiment
+    // that improves the ergonomics of function overloading, tracked in:
+    //
+    // - https://github.com/rust-lang/rust/issues/153629
+    gated!(
+        splat, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::Yes, experimental!(splat)
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

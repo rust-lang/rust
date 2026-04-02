@@ -323,19 +323,85 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let kind = match expr.kind {
             // Here comes the interesting stuff:
             hir::ExprKind::MethodCall(segment, receiver, args, fn_span) => {
-                // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
-                let expr = self.method_callee(expr, segment.ident.span, None);
-                info!("Using method span: {:?}", expr.span);
-                let args = std::iter::once(receiver)
-                    .chain(args.iter())
-                    .map(|expr| self.mirror_expr(expr))
-                    .collect();
-                ExprKind::Call {
-                    ty: expr.ty,
-                    fun: self.thir.exprs.push(expr),
-                    args,
-                    from_hir_call: true,
-                    fn_span,
+                // FIXME(splat): abstract this into a helper function that handles both method and function calls
+                if self.typeck_results.is_splatted_method_call(expr) {
+                    // The callee has a splatted tuple argument.
+                    let (method, tupled_arg_index) = self.splatted_method_callee(expr, fn_span);
+                    let tupled_arg_index = usize::from(tupled_arg_index);
+
+                    // Splatting an empty tuple is permitted: `a.f() -> Trait::f(a, #[splat] ())`.
+                    // In that case, the tupled arg index is one past the end of the args.
+                    if tupled_arg_index > args.len() {
+                        span_bug!(
+                            expr.span,
+                            "splatted arg index out of bounds of method args: {:?} >= {:?} for method call {:?}, receiver {:?}, args {:?}",
+                            tupled_arg_index,
+                            args.len(),
+                            segment,
+                            receiver,
+                            args,
+                        );
+                    }
+
+                    // rewrite `a.f(b, c)` into `Trait::f(a, #[splat] (b, c))`
+                    let expr = self.method_callee(expr, segment.ident.span, None);
+                    info!("Using splatted method span: {:?}", expr.span);
+
+                    // Split into non-tupled and tupled arguments
+                    let non_tupled_args = args
+                        .iter()
+                        .take(tupled_arg_index)
+                        .map(|e| self.mirror_expr(e))
+                        .collect_vec();
+                    let tupled_args = if tupled_arg_index == args.len() {
+                        // Splatting an empty tuple
+                        Default::default()
+                    } else {
+                        &args[tupled_arg_index..]
+                    };
+
+                    let tupled_arg_tys = args
+                        .iter()
+                        .skip(tupled_arg_index)
+                        .map(|e| self.typeck_results.expr_ty_adjusted(e));
+
+                    let tupled_args = Expr {
+                        ty: Ty::new_tup_from_iter(tcx, tupled_arg_tys),
+                        temp_scope_id: expr.temp_scope_id,
+                        span: expr.span,
+                        kind: ExprKind::Tuple { fields: self.mirror_exprs(tupled_args) },
+                    };
+                    let tupled_args = self.thir.exprs.push(tupled_args);
+
+                    let mut args = vec![self.mirror_expr(receiver)];
+                    args.extend(non_tupled_args);
+                    args.push(tupled_args);
+
+                    // FIXME(splat): codegen should de-tuple the caller and calee
+                    // This is only done for performance, we need the tupled arguments in HIR/MIR for type checking
+                    ExprKind::Call {
+                        ty: method.ty,
+                        fun: self.thir.exprs.push(method),
+                        args: args.into_boxed_slice(),
+                        from_hir_call: true,
+                        fn_span: expr.span,
+                    }
+                } else {
+                    // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
+                    let expr = self.method_callee(expr, segment.ident.span, None);
+                    info!("Using method span: {:?}", expr.span);
+
+                    let args = std::iter::once(receiver)
+                        .chain(args.iter())
+                        .map(|expr| self.mirror_expr(expr))
+                        .collect();
+                    ExprKind::Call {
+                        ty: expr.ty,
+                        fun: self.thir.exprs.push(expr),
+                        args,
+                        from_hir_call: true,
+                        fn_span,
+                    }
                 }
             }
 
@@ -363,6 +429,65 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         ty: method.ty,
                         fun: self.thir.exprs.push(method),
                         args: Box::new([self.mirror_expr(fun), tupled_args]),
+                        from_hir_call: true,
+                        fn_span: expr.span,
+                    }
+                } else if self.typeck_results.is_splatted_function_call(expr) {
+                    // The callee has a splatted tuple argument.
+                    // rewrite `f(a, u, v)` into `f(a, #[splat] (u, v))`
+
+                    let (function, tupled_arg_index) =
+                        self.splatted_function_callee(expr, fun.span);
+                    let tupled_arg_index = usize::from(tupled_arg_index);
+
+                    // Splatting an empty tuple is permitted: `f() -> f(#[splat] ())`.
+                    // In that case, the tupled arg index is one past the end of the args.
+                    if tupled_arg_index > args.len() {
+                        span_bug!(
+                            expr.span,
+                            "splatted arg index out of bounds of function args: {:?} >= {:?} for function {:?}, args {:?}",
+                            tupled_arg_index,
+                            args.len(),
+                            fun,
+                            args,
+                        );
+                    }
+
+                    // Split into non-tupled and tupled arguments
+                    let non_tupled_args = args
+                        .iter()
+                        .take(tupled_arg_index)
+                        .map(|e| self.mirror_expr(e))
+                        .collect_vec();
+                    let tupled_args = if tupled_arg_index == args.len() {
+                        // Splatting an empty tuple
+                        Default::default()
+                    } else {
+                        &args[tupled_arg_index..]
+                    };
+
+                    let tupled_arg_tys = args
+                        .iter()
+                        .skip(tupled_arg_index)
+                        .map(|e| self.typeck_results.expr_ty_adjusted(e));
+
+                    let tupled_args = Expr {
+                        ty: Ty::new_tup_from_iter(tcx, tupled_arg_tys),
+                        temp_scope_id: expr.hir_id.local_id,
+                        span: expr.span,
+                        kind: ExprKind::Tuple { fields: self.mirror_exprs(tupled_args) },
+                    };
+                    let tupled_args = self.thir.exprs.push(tupled_args);
+
+                    let mut args = non_tupled_args;
+                    args.push(tupled_args);
+
+                    // FIXME(splat): codegen should de-tuple the caller and calee
+                    // This is only done for performance, we need the tupled arguments in HIR/MIR for type checking
+                    ExprKind::Call {
+                        ty: function.ty,
+                        fun: self.thir.exprs.push(function),
+                        args: args.into_boxed_slice(),
                         from_hir_call: true,
                         fn_span: expr.span,
                     }
@@ -1157,6 +1282,80 @@ impl<'tcx> ThirBuildCx<'tcx> {
             span,
             kind: ExprKind::ZstLiteral { user_ty },
         }
+    }
+
+    fn splatted_function_callee(
+        &mut self,
+        expr: &hir::Expr<'_>,
+        span: Span,
+    ) -> (Expr<'tcx>, u16 /* arg_index */) {
+        let (is_method_call, def_kind, def_id, arg_index) = self
+            .typeck_results
+            .splatted_def(expr.hir_id)
+            .unwrap_or_else(|| span_bug!(expr.span, "no splatted def for function callee"));
+        if is_method_call {
+            span_bug!(
+                expr.span,
+                "wanted function def for function callee, got method {:?}",
+                def_kind
+            );
+        }
+        let user_ty = self.user_args_applied_to_res(expr.hir_id, Res::Def(def_kind, def_id));
+        debug!(
+            "splatted_function_callee: {:?} user_ty={:?} def_kind={:?} def_id={:?} arg_index={:?}",
+            if is_method_call { "method" } else { "free or assoc fn" },
+            user_ty,
+            def_kind,
+            def_id,
+            arg_index
+        );
+
+        (
+            Expr {
+                temp_scope_id: expr.hir_id.local_id,
+                ty: Ty::new_fn_def(self.tcx, def_id, self.typeck_results.node_args(expr.hir_id)),
+                span,
+                kind: ExprKind::ZstLiteral { user_ty },
+            },
+            arg_index,
+        )
+    }
+
+    fn splatted_method_callee(
+        &mut self,
+        expr: &hir::Expr<'_>,
+        span: Span,
+    ) -> (Expr<'tcx>, u16 /* arg_index */) {
+        let (is_method_call, def_kind, def_id, arg_index) = self
+            .typeck_results
+            .splatted_def(expr.hir_id)
+            .unwrap_or_else(|| span_bug!(expr.span, "no splatted def for method callee"));
+        if !is_method_call || def_kind != DefKind::AssocFn {
+            span_bug!(
+                expr.span,
+                "wanted method def for function callee, got free or assoc fn {:?}",
+                def_kind
+            );
+        }
+        let user_ty = self.user_args_applied_to_res(expr.hir_id, Res::Def(def_kind, def_id));
+        debug!(
+            "splatted_method_callee: {:?} user_ty={:?} def_kind={:?} def_id={:?} arg_index={:?}",
+            if is_method_call { "method" } else { "free or assoc fn" },
+            user_ty,
+            def_kind,
+            def_id,
+            arg_index
+        );
+
+        (
+            Expr {
+                temp_scope_id: expr.hir_id.local_id,
+                ty: Ty::new_fn_def(self.tcx, def_id, self.typeck_results.node_args(expr.hir_id)),
+                span,
+                kind: ExprKind::ZstLiteral { user_ty },
+            },
+            arg_index,
+        )
     }
 
     fn convert_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> ArmId {

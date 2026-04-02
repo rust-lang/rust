@@ -1928,6 +1928,7 @@ symbols! {
         specialization,
         speed,
         spirv,
+        splat,
         spotlight,
         sqrtf16,
         sqrtf32,
