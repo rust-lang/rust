@@ -1,8 +1,8 @@
-error[E0382]: use of moved value: `results`
+error[E0382]: the type `Arc` does not implement `Copy`
   --> $DIR/arc-consumed-in-looped-closure.rs:30:22
    |
 LL |     let results = Arc::new(Mutex::new(Vec::new()));
-   |         ------- move occurs because `results` has type `Arc<std::sync::Mutex<Vec<i32>>>`, which does not implement the `Copy` trait
+   |         ------- this move could be avoided by cloning the original `Arc`, which is inexpensive
 ...
 LL |     for i in 0..20 {
    |     -------------- inside of this loop
@@ -13,10 +13,12 @@ LL |         pool.execute(move || {
 LL |             let mut r = results.lock().unwrap();
    |                         ------- use occurs due to use in closure
    |
+   = note: consider using `Arc::clone`
 help: consider cloning the value before moving it into the closure
    |
 LL ~         let value = results.clone();
 LL ~         pool.execute(move || {
+LL |
 LL |
 LL |
 LL ~             let mut r = value.lock().unwrap();
