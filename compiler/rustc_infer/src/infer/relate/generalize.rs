@@ -300,10 +300,10 @@ impl<'tcx> InferCtxt<'tcx> {
         assert!(!source_term.has_escaping_bound_vars());
         let (for_universe, root_vid) = match target_vid {
             TermVid::Ty(ty_vid) => {
-                (self.probe_ty_var(ty_vid).unwrap_err(), TermVid::Ty(self.root_var(ty_vid)))
+                (self.try_resolve_ty_var(ty_vid).unwrap_err(), TermVid::Ty(self.root_var(ty_vid)))
             }
             TermVid::Const(ct_vid) => (
-                self.probe_const_var(ct_vid).unwrap_err(),
+                self.try_resolve_const_var(ct_vid).unwrap_err(),
                 TermVid::Const(self.inner.borrow_mut().const_unification_table().find(ct_vid).vid),
             ),
         };
