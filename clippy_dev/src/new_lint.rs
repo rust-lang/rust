@@ -319,7 +319,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 
             impl {pass_type}{pass_lifetimes} for {name_camel} {{{extract_msrv}}}
 
-            // TODO: Add MSRV level to `clippy_config/src/msrvs.rs` if needed.
+            // TODO: Add MSRV level to `clippy_utils/src/msrvs.rs` if needed.
             // TODO: Update msrv config comment in `clippy_config/src/conf.rs`
         "
         );
