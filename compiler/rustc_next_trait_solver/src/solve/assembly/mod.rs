@@ -9,7 +9,6 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
-use rustc_type_ir::solve::Certainty::Maybe;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{
     self as ty, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -1286,28 +1285,34 @@ where
             return ControlFlow::Break(Err(NoSolution));
         };
 
-        if let ty::Placeholder(p) = ty.kind() {
-            if p.universe() == ty::UniverseIndex::ROOT {
-                ControlFlow::Break(Ok(Certainty::Yes))
-            } else {
-                ControlFlow::Continue(())
+        match ty.kind() {
+            ty::Placeholder(p) => {
+                if p.universe() == ty::UniverseIndex::ROOT {
+                    ControlFlow::Break(Ok(Certainty::Yes))
+                } else {
+                    ControlFlow::Continue(())
+                }
             }
-        } else if ty.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_RE_INFER) {
-            self.recursion_depth += 1;
-            if self.recursion_depth > self.ecx.cx().recursion_limit() {
-                return ControlFlow::Break(Ok(Maybe {
-                    cause: MaybeCause::Overflow {
-                        suggest_increasing_limit: true,
-                        keep_constraints: false,
-                    },
-                    opaque_types_jank: OpaqueTypesJank::AllGood,
-                }));
+            ty::Infer(_) => ControlFlow::Break(Ok(Certainty::AMBIGUOUS)),
+            _ if ty.has_type_flags(
+                TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_INFER | TypeFlags::HAS_ALIAS,
+            ) =>
+            {
+                self.recursion_depth += 1;
+                if self.recursion_depth > self.ecx.cx().recursion_limit() {
+                    return ControlFlow::Break(Ok(Certainty::Maybe {
+                        cause: MaybeCause::Overflow {
+                            suggest_increasing_limit: true,
+                            keep_constraints: false,
+                        },
+                        opaque_types_jank: OpaqueTypesJank::AllGood,
+                    }));
+                }
+                let result = ty.super_visit_with(self);
+                self.recursion_depth -= 1;
+                result
             }
-            let result = ty.super_visit_with(self);
-            self.recursion_depth -= 1;
-            result
-        } else {
-            ControlFlow::Continue(())
+            _ => ControlFlow::Continue(()),
         }
     }
 
@@ -1317,16 +1322,23 @@ where
             return ControlFlow::Break(Err(NoSolution));
         };
 
-        if let ty::ConstKind::Placeholder(p) = ct.kind() {
-            if p.universe() == ty::UniverseIndex::ROOT {
-                ControlFlow::Break(Ok(Certainty::Yes))
-            } else {
-                ControlFlow::Continue(())
+        match ct.kind() {
+            ty::ConstKind::Placeholder(p) => {
+                if p.universe() == ty::UniverseIndex::ROOT {
+                    ControlFlow::Break(Ok(Certainty::Yes))
+                } else {
+                    ControlFlow::Continue(())
+                }
             }
-        } else if ct.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_RE_INFER) {
-            ct.super_visit_with(self)
-        } else {
-            ControlFlow::Continue(())
+            ty::ConstKind::Infer(_) => ControlFlow::Break(Ok(Certainty::AMBIGUOUS)),
+            _ if ct.has_type_flags(
+                TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_INFER | TypeFlags::HAS_ALIAS,
+            ) =>
+            {
+                // FIXME(mgca): we should also check the recursion limit here
+                ct.super_visit_with(self)
+            }
+            _ => ControlFlow::Continue(()),
         }
     }
 
