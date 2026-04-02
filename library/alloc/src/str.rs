@@ -335,8 +335,9 @@ impl str {
 
     /// Returns the lowercase equivalent of this string slice, as a new [`String`].
     ///
-    /// 'Lowercase' is defined according to the terms of the Unicode Derived Core Property
-    /// `Lowercase`.
+    /// 'Lowercase' is defined according to the terms of
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G34432)
+    /// of the Unicode standard.
     ///
     /// Since some characters can expand into multiple characters when changing
     /// the case, this function returns a [`String`] instead of modifying the
@@ -431,8 +432,9 @@ impl str {
 
     /// Returns the uppercase equivalent of this string slice, as a new [`String`].
     ///
-    /// 'Uppercase' is defined according to the terms of the Unicode Derived Core Property
-    /// `Uppercase`.
+    /// 'Uppercase' is defined according to the terms of
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G34431)
+    /// of the Unicode standard.
     ///
     /// Since some characters can expand into multiple characters when changing
     /// the case, this function returns a [`String`] instead of modifying the
