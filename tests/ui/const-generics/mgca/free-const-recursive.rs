@@ -5,7 +5,7 @@
 #![expect(incomplete_features)]
 
 type const A: () = A;
-//~^ ERROR type mismatch resolving `A normalizes-to _`
+//~^ ERROR type mismatch resolving `_ == A`
 //~| ERROR the constant `A` is not of type `()`
 
 fn main() {

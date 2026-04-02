@@ -18,13 +18,13 @@ error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == String`
 LL |     let _ = identity(<() as Foo>::copy_me(&x));
    |                                           ^^
 
-error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item normalizes-to _`
   --> $DIR/alias-bound-unsound.rs:28:22
    |
 LL |     let _ = identity(<() as Foo>::copy_me(&x));
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item normalizes-to _`
   --> $DIR/alias-bound-unsound.rs:28:22
    |
 LL |     let _ = identity(<() as Foo>::copy_me(&x));
@@ -44,7 +44,7 @@ error[E0275]: overflow evaluating whether `<() as Foo>::Item` is well-formed
 LL |     let _ = identity(<() as Foo>::copy_me(&x));
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item normalizes-to _`
   --> $DIR/alias-bound-unsound.rs:28:22
    |
 LL |     let _ = identity(<() as Foo>::copy_me(&x));

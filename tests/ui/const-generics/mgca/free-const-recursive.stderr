@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `A normalizes-to _`
+error[E0271]: type mismatch resolving `_ == A`
   --> $DIR/free-const-recursive.rs:7:1
    |
 LL | type const A: () = A;

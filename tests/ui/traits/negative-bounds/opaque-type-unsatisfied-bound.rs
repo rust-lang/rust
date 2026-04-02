@@ -13,9 +13,9 @@ fn main() {
 }
 
 fn weird0() -> impl Sized + !Sized {}
-//~^ ERROR the trait bound `(): !Sized` is not satisfied
+//~^ ERROR type mismatch resolving `impl !Sized + Sized == ()`
 fn weird1() -> impl !Sized + Sized {}
-//~^ ERROR the trait bound `(): !Sized` is not satisfied
+//~^ ERROR type mismatch resolving `impl !Sized + Sized == ()`
 fn weird2() -> impl !Sized {}
-//~^ ERROR the trait bound `(): !Sized` is not satisfied
+//~^ ERROR type mismatch resolving `impl !Sized == ()`
 //~| ERROR the size for values of type

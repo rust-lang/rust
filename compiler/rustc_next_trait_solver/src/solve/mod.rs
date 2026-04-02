@@ -344,20 +344,16 @@ where
         param_env: I::ParamEnv,
         term: I::Term,
     ) -> Result<I::Term, NoSolution> {
-        if let Some(_) = term.to_alias_term() {
+        if let Some(alias) = term.to_alias_term() {
             let normalized_term = self.next_term_infer_of_kind(term);
-            let alias_relate_goal = Goal::new(
+            let normalizes_to_goal = Goal::new(
                 self.cx(),
                 param_env,
-                ty::PredicateKind::AliasRelate(
-                    term,
-                    normalized_term,
-                    ty::AliasRelationDirection::Equate,
-                ),
+                ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term: normalized_term }),
             );
             // We normalize the self type to be able to relate it with
             // types from candidates.
-            self.add_goal(GoalSource::TypeRelating, alias_relate_goal);
+            self.add_goal(GoalSource::TypeRelating, normalizes_to_goal);
             self.try_evaluate_added_goals()?;
             Ok(self.resolve_vars_if_possible(normalized_term))
         } else {

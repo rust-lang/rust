@@ -102,11 +102,10 @@ where
         let infcx = self.at.infcx;
         let tcx = infcx.tcx;
         let recursion_limit = tcx.recursion_limit();
+        let alias = alias_term.to_alias_term().unwrap();
         if !recursion_limit.value_within_limit(self.depth) {
-            let term = alias_term.to_alias_term().unwrap();
-
             self.at.infcx.err_ctxt().report_overflow_error(
-                OverflowCause::DeeplyNormalize(term),
+                OverflowCause::DeeplyNormalize(alias),
                 self.at.cause.span,
                 true,
                 |_| {},
@@ -120,11 +119,7 @@ where
             tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::PredicateKind::AliasRelate(
-                alias_term.into(),
-                infer_term.into(),
-                ty::AliasRelationDirection::Equate,
-            ),
+            ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term: infer_term }),
         );
 
         self.fulfill_cx.register_predicate_obligation(infcx, obligation);

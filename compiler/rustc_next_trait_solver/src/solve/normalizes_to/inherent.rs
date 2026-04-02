@@ -56,7 +56,7 @@ where
         } else {
             cx.const_of_item(inherent.def_id).instantiate(cx, inherent_args).into()
         };
-        self.instantiate_normalizes_to_term(goal, normalized);
+        self.eq(goal.param_env, goal.predicate.term, normalized)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }

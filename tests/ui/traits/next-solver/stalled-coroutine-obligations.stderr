@@ -29,13 +29,13 @@ note: captured value does not implement `Valid`
 LL |     let foo: T = async { a };
    |                          ^ has type `False` which does not implement `Valid`
 
-error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/stalled-coroutine-obligations.rs:42:9: 42:19}`
+error[E0271]: type mismatch resolving `impl Future + Send normalizes-to {async block@$DIR/stalled-coroutine-obligations.rs:42:9: 42:19}`
   --> $DIR/stalled-coroutine-obligations.rs:39:5
    |
 LL |     fn stalled_send(&self, b: *mut ()) -> impl Future + Send {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/stalled-coroutine-obligations.rs:42:9: 42:19}`
+error[E0271]: type mismatch resolving `impl Future + Send normalizes-to {async block@$DIR/stalled-coroutine-obligations.rs:42:9: 42:19}`
   --> $DIR/stalled-coroutine-obligations.rs:42:9
    |
 LL | /         async move {
