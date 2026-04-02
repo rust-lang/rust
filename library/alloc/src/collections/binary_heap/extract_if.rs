@@ -18,7 +18,7 @@ use crate::alloc::{Allocator, Global};
 ///
 /// let mut heap: BinaryHeap<u32> = (0..128).collect();
 /// let iter: Vec<u32> = heap.extract_if(|x| *x % 2 == 0).collect();
-#[unstable(feature = "binary_heap_extract_if", issue = "42849")]
+#[unstable(feature = "binary_heap_extract_if", issue = "154721")]
 #[must_use = "iterators are lazy and do nothing unless consumed; \
     use `retain_mut` or `extract_if().for_each(drop)` to remove and discard elements"]
 pub struct ExtractIf<
@@ -44,7 +44,7 @@ where
     }
 }
 
-#[unstable(feature = "binary_heap_extract_if", issue = "42849")]
+#[unstable(feature = "binary_heap_extract_if", issue = "154721")]
 impl<T: Ord, F, A: Allocator> Iterator for ExtractIf<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
@@ -56,7 +56,7 @@ where
     }
 }
 
-#[unstable(feature = "binary_heap_extract_if", issue = "42849")]
+#[unstable(feature = "binary_heap_extract_if", issue = "154721")]
 impl<'a, T: Ord, F, A: Allocator> Drop for ExtractIf<'a, T, F, A> {
     fn drop(&mut self) {
         // SAFETY: We need to drop this before we rebuild the heap so that its descructor resets the vec info
@@ -73,11 +73,11 @@ impl<'a, T: Ord, F, A: Allocator> Drop for ExtractIf<'a, T, F, A> {
     }
 }
 
-#[unstable(feature = "binary_heap_extract_if", issue = "42849")]
+#[unstable(feature = "binary_heap_extract_if", issue = "154721")]
 impl<T: Ord, F, A: Allocator> FusedIterator for ExtractIf<'_, T, F, A> where F: FnMut(&mut T) -> bool
 {}
 
-#[unstable(feature = "binary_heap_extract_if", issue = "42849")]
+#[unstable(feature = "binary_heap_extract_if", issue = "154721")]
 impl<T: Ord, F, A> fmt::Debug for ExtractIf<'_, T, F, A>
 where
     T: fmt::Debug,

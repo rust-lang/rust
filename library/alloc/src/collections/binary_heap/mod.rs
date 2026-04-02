@@ -150,7 +150,7 @@ use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
 
-#[unstable(feature = "binary_heap_extract_if", issue = "42849")]
+#[unstable(feature = "binary_heap_extract_if", issue = "154721")]
 pub use self::extract_if::ExtractIf;
 
 mod extract_if;
@@ -1048,7 +1048,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// The items are checked in sorted order
     ///
     /// If the closure returns `true`, the element is marked to be removed and yielded
-    #[unstable(feature = "binary_heap_extract_if", issue = "42849")]
+    #[unstable(feature = "binary_heap_extract_if", issue = "154721")]
     #[must_use]
     pub fn extract_if<F>(&mut self, predicate: F) -> ExtractIf<'_, T, F, A>
     where
