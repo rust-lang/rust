@@ -19,15 +19,14 @@ mod dyn_trait;
 pub mod errors;
 pub mod generics;
 
-use std::slice;
+use std::{assert_matches, slice};
 
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, FatalError, Level,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, FatalError, Level, StashKey,
     struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -2831,6 +2830,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             | Res::SelfCtor(_)
             | Res::Local(_)
             | Res::ToolMod
+            | Res::OpenMod(..)
             | Res::NonMacroAttr(_)
             | Res::Err) => Const::new_error_with_message(
                 tcx,
@@ -2875,6 +2875,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) -> Const<'tcx> {
         let tcx = self.tcx();
+
+        let ty = if !ty.has_infer() { Some(ty) } else { None };
+
         if let LitKind::Err(guar) = *kind {
             return ty::Const::new_error(tcx, guar);
         }
@@ -2906,16 +2909,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let lit_input = match expr.kind {
-            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: lit.node, ty, neg: false }),
+            hir::ExprKind::Lit(lit) => {
+                Some(LitToConstInput { lit: lit.node, ty: Some(ty), neg: false })
+            }
             hir::ExprKind::Unary(hir::UnOp::Neg, expr) => match expr.kind {
-                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: lit.node, ty, neg: true }),
+                hir::ExprKind::Lit(lit) => {
+                    Some(LitToConstInput { lit: lit.node, ty: Some(ty), neg: true })
+                }
                 _ => None,
             },
             _ => None,
         };
 
         lit_input.and_then(|l| {
-            if const_lit_matches_ty(tcx, &l.lit, l.ty, l.neg) {
+            if const_lit_matches_ty(tcx, &l.lit, ty, l.neg) {
                 tcx.at(expr.span)
                     .lit_to_const(l)
                     .map(|value| ty::Const::new_value(tcx, value.valtree, value.ty))
@@ -2940,7 +2947,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
             if def_id.is_local() {
                 let name = tcx.def_path_str(def_id);
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     tcx.def_span(def_id).shrink_to_lo(),
                     format!("add `type` before `const` for `{name}`"),
                     format!("type "),
@@ -2953,12 +2960,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    fn lower_delegation_ty(&self, idx: hir::InferDelegationKind<'tcx>) -> Ty<'tcx> {
-        let delegation_sig = self.tcx().inherit_sig_for_delegation_item(self.item_def_id());
+    fn lower_delegation_ty(&self, infer: hir::InferDelegation<'tcx>) -> Ty<'tcx> {
+        match infer {
+            hir::InferDelegation::DefId(def_id) => {
+                self.tcx().type_of(def_id).instantiate_identity()
+            }
+            rustc_hir::InferDelegation::Sig(_, idx) => {
+                let delegation_sig = self.tcx().inherit_sig_for_delegation_item(self.item_def_id());
 
-        match idx {
-            hir::InferDelegationKind::Input(idx) => delegation_sig[idx],
-            hir::InferDelegationKind::Output { .. } => *delegation_sig.last().unwrap(),
+                match idx {
+                    hir::InferDelegationSig::Input(idx) => delegation_sig[idx],
+                    hir::InferDelegationSig::Output { .. } => *delegation_sig.last().unwrap(),
+                }
+            }
         }
     }
 
@@ -2968,7 +2982,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         let result_ty = match &hir_ty.kind {
-            hir::TyKind::InferDelegation(_, idx) => self.lower_delegation_ty(*idx),
+            hir::TyKind::InferDelegation(infer) => self.lower_delegation_ty(*infer),
             hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.lower_ty(ty)),
             hir::TyKind::Ptr(mt) => Ty::new_ptr(tcx, self.lower_ty(mt.ty), mt.mutbl),
             hir::TyKind::Ref(region, mt) => {
@@ -3009,7 +3023,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     matches!(args.parenthesized, hir::GenericArgsParentheses::ReturnTypeNotation)
                 }) =>
             {
-                let guar = self.dcx().emit_err(BadReturnTypeNotation { span: hir_ty.span });
+                let guar = self
+                    .dcx()
+                    .emit_err(BadReturnTypeNotation { span: hir_ty.span, suggestion: None });
                 Ty::new_error(tcx, guar)
             }
             hir::TyKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
@@ -3071,12 +3087,95 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // If we encounter a type relative path with RTN generics, then it must have
             // *not* gone through `lower_ty_maybe_return_type_notation`, and therefore
             // it's certainly in an illegal position.
-            hir::TyKind::Path(hir::QPath::TypeRelative(_, segment))
+            hir::TyKind::Path(hir::QPath::TypeRelative(hir_self_ty, segment))
                 if segment.args.is_some_and(|args| {
                     matches!(args.parenthesized, hir::GenericArgsParentheses::ReturnTypeNotation)
                 }) =>
             {
-                let guar = self.dcx().emit_err(BadReturnTypeNotation { span: hir_ty.span });
+                let guar = if let hir::Node::LetStmt(stmt) = tcx.parent_hir_node(hir_ty.hir_id)
+                    && let None = stmt.init
+                    && let hir::TyKind::Path(hir::QPath::Resolved(_, self_ty_path)) =
+                        hir_self_ty.kind
+                    && let Res::Def(DefKind::Enum | DefKind::Struct | DefKind::Union, def_id) =
+                        self_ty_path.res
+                    && let Some(_) = tcx
+                        .inherent_impls(def_id)
+                        .iter()
+                        .flat_map(|imp| {
+                            tcx.associated_items(*imp).filter_by_name_unhygienic(segment.ident.name)
+                        })
+                        .filter(|assoc| {
+                            matches!(assoc.kind, ty::AssocKind::Fn { has_self: false, .. })
+                        })
+                        .next()
+                {
+                    // `let x: S::new(valid_in_ty_ctxt);` -> `let x = S::new(valid_in_ty_ctxt);`
+                    let err = tcx
+                        .dcx()
+                        .struct_span_err(
+                            hir_ty.span,
+                            "expected type, found associated function call",
+                        )
+                        .with_span_suggestion_verbose(
+                            stmt.pat.span.between(hir_ty.span),
+                            "use `=` if you meant to assign",
+                            " = ".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    self.dcx().try_steal_replace_and_emit_err(
+                        hir_ty.span,
+                        StashKey::ReturnTypeNotation,
+                        err,
+                    )
+                } else if let hir::Node::LetStmt(stmt) = tcx.parent_hir_node(hir_ty.hir_id)
+                    && let None = stmt.init
+                    && let hir::TyKind::Path(hir::QPath::Resolved(_, self_ty_path)) =
+                        hir_self_ty.kind
+                    && let Res::PrimTy(_) = self_ty_path.res
+                    && self.dcx().has_stashed_diagnostic(hir_ty.span, StashKey::ReturnTypeNotation)
+                {
+                    // `let x: i32::something(valid_in_ty_ctxt);` -> `let x = i32::something(valid_in_ty_ctxt);`
+                    // FIXME: Check that `something` is a valid function in `i32`.
+                    let err = tcx
+                        .dcx()
+                        .struct_span_err(
+                            hir_ty.span,
+                            "expected type, found associated function call",
+                        )
+                        .with_span_suggestion_verbose(
+                            stmt.pat.span.between(hir_ty.span),
+                            "use `=` if you meant to assign",
+                            " = ".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    self.dcx().try_steal_replace_and_emit_err(
+                        hir_ty.span,
+                        StashKey::ReturnTypeNotation,
+                        err,
+                    )
+                } else {
+                    let suggestion = if self
+                        .dcx()
+                        .has_stashed_diagnostic(hir_ty.span, StashKey::ReturnTypeNotation)
+                    {
+                        // We already created a diagnostic complaining that `foo(bar)` is wrong and
+                        // should have been `foo(..)`. Instead, emit only the current error and
+                        // include that prior suggestion. Changes are that the problems go further,
+                        // but keep the suggestion just in case. Either way, we want a single error
+                        // instead of two.
+                        Some(segment.ident.span.shrink_to_hi().with_hi(hir_ty.span.hi()))
+                    } else {
+                        None
+                    };
+                    let err = self
+                        .dcx()
+                        .create_err(BadReturnTypeNotation { span: hir_ty.span, suggestion });
+                    self.dcx().try_steal_replace_and_emit_err(
+                        hir_ty.span,
+                        StashKey::ReturnTypeNotation,
+                        err,
+                    )
+                };
                 Ty::new_error(tcx, guar)
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(hir_self_ty, segment)) => {

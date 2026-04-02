@@ -6,7 +6,7 @@ LL |     let _ = foo([0; 1]);
    |             |
    |             required by a bound introduced by this call
    |
-   = note: cannot satisfy `_: Foo`
+   = note: the type must implement `Foo`
 help: the trait `Foo` is implemented for `u8`
   --> $DIR/issue-83249.rs:8:1
    |
@@ -17,10 +17,10 @@ note: required by a bound in `foo`
    |
 LL | fn foo<T: Foo>(_: [u8; T::N]) -> T {
    |           ^^^ required by this bound in `foo`
-help: consider giving this pattern a type
+help: consider giving this pattern a type, where the type for type parameter `T` is specified
    |
-LL |     let _: /* Type */ = foo([0; 1]);
-   |          ++++++++++++
+LL |     let _: u8 = foo([0; 1]);
+   |          ++++
 
 error: aborting due to 1 previous error
 

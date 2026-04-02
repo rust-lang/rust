@@ -105,7 +105,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         if !sp.contains(p_span) {
                             diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
-                        let parent = p_def_id.as_local().and_then(|id| {
+                        let param_def_id = match *proj.self_ty().kind() {
+                            ty::Param(param) => {
+                                tcx.generics_of(body_owner_def_id).type_param(param, tcx).def_id
+                            }
+                            _ => p_def_id,
+                        };
+                        let parent = param_def_id.as_local().and_then(|id| {
                             let local_id = tcx.local_def_id_to_hir_id(id);
                             let generics = tcx.parent_hir_node(local_id).generics()?;
                             Some((id, generics))
@@ -263,8 +269,13 @@ impl<T> Trait<T> for X {
                             cause.code(),
                         );
                     }
+                    // Don't suggest constraining a projection to something
+                    // containing itself, e.g. `Item = &<I as Iterator>::Item`.
                     (_, ty::Alias(ty::Projection | ty::Inherent, proj_ty))
-                        if !tcx.is_impl_trait_in_trait(proj_ty.def_id) =>
+                        if !tcx.is_impl_trait_in_trait(proj_ty.def_id)
+                            && !tcx
+                                .erase_and_anonymize_regions(values.expected)
+                                .contains(tcx.erase_and_anonymize_regions(values.found)) =>
                     {
                         let msg = || {
                             format!(
@@ -272,18 +283,21 @@ impl<T> Trait<T> for X {
                                 values.found, values.expected,
                             )
                         };
-                        if !(self.suggest_constraining_opaque_associated_type(
-                            diag,
-                            msg,
-                            proj_ty,
-                            values.expected,
-                        ) || self.suggest_constraint(
-                            diag,
-                            &msg,
-                            body_owner_def_id,
-                            proj_ty,
-                            values.expected,
-                        )) {
+                        let suggested_projection_constraint = proj_ty.kind(tcx)
+                            == ty::AliasTyKind::Projection
+                            && (self.suggest_constraining_opaque_associated_type(
+                                diag,
+                                msg,
+                                proj_ty,
+                                values.expected,
+                            ) || self.suggest_constraint(
+                                diag,
+                                &msg,
+                                body_owner_def_id,
+                                proj_ty,
+                                values.expected,
+                            ));
+                        if !suggested_projection_constraint {
                             diag.help(msg());
                             diag.note(
                                 "for more information, visit \

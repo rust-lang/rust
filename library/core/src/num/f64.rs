@@ -1008,7 +1008,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn max(self, other: f64) -> f64 {
-        intrinsics::maxnumf64(self, other)
+        intrinsics::maximum_number_nsz_f64(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -1035,7 +1035,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn min(self, other: f64) -> f64 {
-        intrinsics::minnumf64(self, other)
+        intrinsics::minimum_number_nsz_f64(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -1566,7 +1566,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn abs(self) -> f64 {
-        intrinsics::fabsf64(self)
+        intrinsics::fabs(self)
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -1690,7 +1690,7 @@ impl f64 {
 /// They will be stabilized as inherent methods._
 pub mod math {
     use crate::intrinsics;
-    use crate::num::libm;
+    use crate::num::imp::libm;
 
     /// Experimental version of `floor` in `core`. See [`f64::floor`] for details.
     ///

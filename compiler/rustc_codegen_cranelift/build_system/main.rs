@@ -17,6 +17,7 @@ mod prepare;
 mod rustc_info;
 mod shared_utils;
 mod tests;
+mod todo;
 mod utils;
 
 fn usage() {
@@ -38,6 +39,7 @@ enum Command {
     Test,
     AbiCafe,
     Bench,
+    CheckTodo,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -66,6 +68,7 @@ fn main() {
         Some("test") => Command::Test,
         Some("abi-cafe") => Command::AbiCafe,
         Some("bench") => Command::Bench,
+        Some("check-todo") => Command::CheckTodo,
         Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
         Some(command) => arg_error!("Unknown command {}", command),
         None => {
@@ -139,6 +142,10 @@ fn main() {
         process::exit(0);
     }
 
+    if command == Command::CheckTodo {
+        todo::run();
+    }
+
     let rustup_toolchain_name = match (env::var("CARGO"), env::var("RUSTC"), env::var("RUSTDOC")) {
         (Ok(_), Ok(_), Ok(_)) => None,
         (_, Err(_), Err(_)) => Some(rustc_info::get_toolchain_name()),
@@ -202,7 +209,7 @@ fn main() {
         ))
     };
     match command {
-        Command::Prepare => {
+        Command::Prepare | Command::CheckTodo => {
             // Handled above
         }
         Command::Test => {

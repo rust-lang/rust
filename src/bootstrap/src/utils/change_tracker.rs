@@ -73,7 +73,7 @@ pub fn human_readable_changes(changes: &[ChangeInfo]) -> String {
 /// Keeps track of major changes made to the bootstrap configuration.
 ///
 /// If you make any major changes (such as adding new values or changing default values),
-/// please ensure adding `ChangeInfo` to the end(because the list must be sorted by the merge date)
+/// please ensure adding `ChangeInfo` to the end (because the list must be sorted by the merge date)
 /// of this list.
 pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
@@ -610,5 +610,15 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         change_id: 148671,
         severity: ChangeSeverity::Info,
         summary: "New option `llvm.offload-clang-dir` to allow building an in-tree llvm offload and openmp runtime with an external clang.",
+    },
+    ChangeInfo {
+        change_id: 153143,
+        severity: ChangeSeverity::Warning,
+        summary: "`x.py test --no-doc` is renamed to `--all-targets`. Additionally `--tests` is added which only executes unit and integration tests.",
+    },
+    ChangeInfo {
+        change_id: 154508,
+        severity: ChangeSeverity::Info,
+        summary: "`x.py` stopped accepting partial argument names. Use full names to avoid errors.",
     },
 ];

@@ -1,8 +1,14 @@
-//@ only-aarch64
-//@ needs-asm-support
 //@ run-rustfix
+//@ add-minicore
+//@ compile-flags: --target aarch64-unknown-linux-gnu
+//@ needs-llvm-components: aarch64
+//@ needs-asm-support
+//@ ignore-backends: gcc
+#![feature(no_core)]
+#![no_core]
 
-use std::arch::asm;
+extern crate minicore;
+use minicore::*;
 
 fn main() {
     unsafe {

@@ -1,5 +1,5 @@
 //@ revisions: feature gated
-
+//@ ignore-parallel-frontend query cycle
 #![cfg_attr(feature, feature(lazy_type_alias))]
 #![allow(incomplete_features)]
 

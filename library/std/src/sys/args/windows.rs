@@ -12,9 +12,9 @@ use crate::num::NonZero;
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sys::helpers::WStrUnits;
-use crate::sys::pal::os::current_exe;
 use crate::sys::pal::{ensure_no_nuls, fill_utf16_buf};
 use crate::sys::path::get_long_path;
+use crate::sys::paths::current_exe;
 use crate::sys::{AsInner, c, to_u16s};
 use crate::{io, iter, ptr};
 
@@ -106,7 +106,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
             // If not `in_quotes`, a space or tab ends the argument.
             SPACE | TAB if !in_quotes => {
                 ret_val.push(OsString::from_wide(&cur[..]));
-                cur.truncate(0);
+                cur.clear();
 
                 // Skip whitespace.
                 code_units.advance_while(|w| w == SPACE || w == TAB);

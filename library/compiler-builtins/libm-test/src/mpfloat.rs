@@ -162,8 +162,12 @@ libm_macros::for_each_function! {
         fmodf16,
         frexp,
         frexpf,
+        frexpf128,
+        frexpf16,
         ilogb,
         ilogbf,
+        ilogbf128,
+        ilogbf16,
         jn,
         jnf,
         ldexp,
@@ -324,43 +328,6 @@ macro_rules! impl_op_for_ty {
                 }
             }
 
-            impl MpOp for crate::op::[<frexp $suffix>]::Routine {
-                type MpTy = MpFloat;
-
-                fn new_mp() -> Self::MpTy {
-                    new_mpfloat::<Self::FTy>()
-                }
-
-                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
-                    this.assign(input.0);
-                    let exp = this.frexp_mut();
-                    (prep_retval::<Self::FTy>(this, Ordering::Equal), exp)
-                }
-            }
-
-            impl MpOp for crate::op::[<ilogb $suffix>]::Routine {
-                type MpTy = MpFloat;
-
-                fn new_mp() -> Self::MpTy {
-                    new_mpfloat::<Self::FTy>()
-                }
-
-                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
-                    this.assign(input.0);
-
-                    // `get_exp` follows `frexp` for `0.5 <= |m| < 1.0`. Adjust the exponent by
-                    // one to scale the significand to `1.0 <= |m| < 2.0`.
-                    this.get_exp().map(|v| v - 1).unwrap_or_else(|| {
-                        if this.is_infinite() {
-                            i32::MAX
-                        } else {
-                            // Zero or NaN
-                            i32::MIN
-                        }
-                    })
-                }
-            }
-
             impl MpOp for crate::op::[<jn $suffix>]::Routine {
                 type MpTy = MpFloat;
 
@@ -502,6 +469,43 @@ macro_rules! impl_op_for_ty_all {
                         this.0.min_round(&this.1, Nearest)
                     };
                     prep_retval::<Self::RustRet>(&mut this.0, ord)
+                }
+            }
+
+            impl MpOp for crate::op::[<frexp $suffix>]::Routine {
+                type MpTy = MpFloat;
+
+                fn new_mp() -> Self::MpTy {
+                    new_mpfloat::<Self::FTy>()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    let exp = this.frexp_mut();
+                    (prep_retval::<Self::FTy>(this, Ordering::Equal), exp)
+                }
+            }
+
+            impl MpOp for crate::op::[<ilogb $suffix>]::Routine {
+                type MpTy = MpFloat;
+
+                fn new_mp() -> Self::MpTy {
+                    new_mpfloat::<Self::FTy>()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+
+                    // `get_exp` follows `frexp` for `0.5 <= |m| < 1.0`. Adjust the exponent by
+                    // one to scale the significand to `1.0 <= |m| < 2.0`.
+                    this.get_exp().map(|v| v - 1).unwrap_or_else(|| {
+                        if this.is_infinite() {
+                            i32::MAX
+                        } else {
+                            // Zero or NaN
+                            i32::MIN
+                        }
+                    })
                 }
             }
 

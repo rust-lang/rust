@@ -11,6 +11,7 @@ use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::{
     Obligation, ObligationCause, ObligationCauseCode, PolyTraitObligation, PredicateObligation,
 };
+use rustc_middle::ty::print::PrintPolyTraitPredicateExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _};
 use rustc_session::parse::feature_err_unstable_feature_bound;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
@@ -245,12 +246,37 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .find(|s| s.has_non_region_infer());
 
                 let mut err = if let Some(term) = term {
-                    self.emit_inference_failure_err(
+                    let candidates: Vec<_> = self
+                        .tcx
+                        .all_impls(trait_pred.def_id())
+                        .filter_map(|def_id| {
+                            let imp = self.tcx.impl_trait_header(def_id);
+                            if imp.polarity != ty::ImplPolarity::Positive
+                                || !self.tcx.is_user_visible_dep(def_id.krate)
+                            {
+                                return None;
+                            }
+                            let imp = imp.trait_ref.skip_binder();
+                            if imp
+                                .with_replaced_self_ty(self.tcx, trait_pred.skip_binder().self_ty())
+                                == trait_pred.skip_binder().trait_ref
+                            {
+                                Some(imp.self_ty())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    self.emit_inference_failure_err_with_type_hint(
                         obligation.cause.body_id,
                         span,
                         term,
                         TypeAnnotationNeeded::E0283,
                         true,
+                        match &candidates[..] {
+                            [candidate] => Some(*candidate),
+                            _ => None,
+                        },
                     )
                 } else {
                     struct_span_code_err!(
@@ -306,8 +332,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err.cancel();
                         return e;
                     }
-                    let pred = self.tcx.short_string(predicate, &mut err.long_ty_path());
-                    err.note(format!("cannot satisfy `{pred}`"));
+                    if let Some(clause) = predicate.as_trait_clause()
+                        && let ty::Infer(_) = clause.self_ty().skip_binder().kind()
+                    {
+                        let tr = self.tcx.short_string(
+                            clause.print_modifiers_and_trait_path(),
+                            &mut err.long_ty_path(),
+                        );
+                        err.note(format!("the type must implement `{tr}`"));
+                    } else {
+                        let pred = self.tcx.short_string(predicate, &mut err.long_ty_path());
+                        err.note(format!("cannot satisfy `{pred}`"));
+                    }
                     let impl_candidates =
                         self.find_similar_impl_candidates(predicate.as_trait_clause().unwrap());
                     if impl_candidates.len() < 40 {

@@ -4,7 +4,6 @@ use std::num::NonZero;
 use rustc_abi::Size;
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
-use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use crate::ty::TyCtxt;
@@ -137,14 +136,6 @@ impl std::fmt::Debug for ConstInt {
     }
 }
 
-impl IntoDiagArg for ConstInt {
-    // FIXME this simply uses the Debug impl, but we could probably do better by converting both
-    // to an inherent method that returns `Cow`.
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        DiagArgValue::Str(format!("{self:?}").into())
-    }
-}
-
 /// The raw bytes of a simple value.
 ///
 /// This is a packed struct in order to allow this type to be optimally embedded in enums
@@ -160,8 +151,8 @@ pub struct ScalarInt {
 
 // Cannot derive these, as the derives take references to the fields, and we
 // can't take references to fields of packed structs.
-impl<CTX> crate::ty::HashStable<CTX> for ScalarInt {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut crate::ty::StableHasher) {
+impl<Hcx> crate::ty::HashStable<Hcx> for ScalarInt {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut crate::ty::StableHasher) {
         // Using a block `{self.data}` here to force a copy instead of using `self.data`
         // directly, because `hash_stable` takes `&self` and would thus borrow `self.data`.
         // Since `Self` is a packed struct, that would create a possibly unaligned reference,

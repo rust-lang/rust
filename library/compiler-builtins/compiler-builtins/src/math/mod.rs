@@ -28,8 +28,10 @@ pub mod full_availability {
         fn fdimf16(x: f16, y: f16) -> f16;
         fn floorf16(x: f16) -> f16;
         fn fmaxf16(x: f16, y: f16) -> f16;
+        fn fmaximum_numf16(x: f16, y: f16) -> f16;
         fn fmaximumf16(x: f16, y: f16) -> f16;
         fn fminf16(x: f16, y: f16) -> f16;
+        fn fminimum_numf16(x: f16, y: f16) -> f16;
         fn fminimumf16(x: f16, y: f16) -> f16;
         fn fmodf16(x: f16, y: f16) -> f16;
         fn rintf16(x: f16) -> f16;
@@ -81,8 +83,12 @@ pub mod full_availability {
     // however, so we still provide a fallback.
     libm_intrinsics! {
         fn fmaximum(x: f64, y: f64) -> f64;
+        fn fmaximum_num(x: f64, y: f64) -> f64;
+        fn fmaximum_numf(x: f32, y: f32) -> f32;
         fn fmaximumf(x: f32, y: f32) -> f32;
         fn fminimum(x: f64, y: f64) -> f64;
+        fn fminimum_num(x: f64, y: f64) -> f64;
+        fn fminimum_numf(x: f32, y: f32) -> f32;
         fn fminimumf(x: f32, y: f32) -> f32;
         fn roundeven(x: f64) -> f64;
         fn roundevenf(x: f32) -> f32;
@@ -97,8 +103,10 @@ pub mod full_availability {
         fn floorf128(x: f128) -> f128;
         fn fmaf128(x: f128, y: f128, z: f128) -> f128;
         fn fmaxf128(x: f128, y: f128) -> f128;
+        fn fmaximum_numf128(x: f128, y: f128) -> f128;
         fn fmaximumf128(x: f128, y: f128) -> f128;
         fn fminf128(x: f128, y: f128) -> f128;
+        fn fminimum_numf128(x: f128, y: f128) -> f128;
         fn fminimumf128(x: f128, y: f128) -> f128;
         fn fmodf128(x: f128, y: f128) -> f128;
         fn rintf128(x: f128) -> f128;

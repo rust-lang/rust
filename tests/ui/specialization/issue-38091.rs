@@ -1,5 +1,4 @@
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
 
 trait Iterate<'a> {
     type Ty: Valid;

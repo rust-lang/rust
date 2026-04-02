@@ -329,14 +329,16 @@ complete -c x -n "__fish_x_using_subcommand test" -l reproducible-artifact -d 'A
 complete -c x -n "__fish_x_using_subcommand test" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x -n "__fish_x_using_subcommand test" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x -n "__fish_x_using_subcommand test" -l no-fail-fast -d 'run all tests regardless of failure'
-complete -c x -n "__fish_x_using_subcommand test" -l no-doc -d 'do not run doc tests'
-complete -c x -n "__fish_x_using_subcommand test" -l doc -d 'only run doc tests'
+complete -c x -n "__fish_x_using_subcommand test" -l all-targets -d 'Run all test targets (no doc tests)'
+complete -c x -n "__fish_x_using_subcommand test" -l doc -d 'Only run doc tests'
+complete -c x -n "__fish_x_using_subcommand test" -l tests -d 'Only run unit and integration tests'
 complete -c x -n "__fish_x_using_subcommand test" -l bless -d 'whether to automatically update stderr/stdout files'
 complete -c x -n "__fish_x_using_subcommand test" -l force-rerun -d 'rerun tests even if the inputs are unchanged'
 complete -c x -n "__fish_x_using_subcommand test" -l only-modified -d 'only run tests that result has been changed'
 complete -c x -n "__fish_x_using_subcommand test" -l rustfix-coverage -d 'enable this to generate a Rustfix coverage file, which is saved in `/<build_base>/rustfix_missing_coverage.txt`'
 complete -c x -n "__fish_x_using_subcommand test" -l no-capture -d 'don\'t capture stdout/stderr of tests'
 complete -c x -n "__fish_x_using_subcommand test" -l bypass-ignore-backends -d 'Ignore `//@ ignore-backends` directives'
+complete -c x -n "__fish_x_using_subcommand test" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
 complete -c x -n "__fish_x_using_subcommand test" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x -n "__fish_x_using_subcommand test" -s i -l incremental -d 'use incremental compilation'
 complete -c x -n "__fish_x_using_subcommand test" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -374,8 +376,10 @@ complete -c x -n "__fish_x_using_subcommand miri" -l reproducible-artifact -d 'A
 complete -c x -n "__fish_x_using_subcommand miri" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x -n "__fish_x_using_subcommand miri" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x -n "__fish_x_using_subcommand miri" -l no-fail-fast -d 'run all tests regardless of failure'
-complete -c x -n "__fish_x_using_subcommand miri" -l no-doc -d 'do not run doc tests'
-complete -c x -n "__fish_x_using_subcommand miri" -l doc -d 'only run doc tests'
+complete -c x -n "__fish_x_using_subcommand miri" -l all-targets -d 'Run all test targets (no doc tests)'
+complete -c x -n "__fish_x_using_subcommand miri" -l doc -d 'Only run doc tests'
+complete -c x -n "__fish_x_using_subcommand miri" -l tests -d 'Only run unit and integration tests'
+complete -c x -n "__fish_x_using_subcommand miri" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
 complete -c x -n "__fish_x_using_subcommand miri" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x -n "__fish_x_using_subcommand miri" -s i -l incremental -d 'use incremental compilation'
 complete -c x -n "__fish_x_using_subcommand miri" -l include-default-paths -d 'include default paths in addition to the provided ones'

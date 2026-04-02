@@ -3,6 +3,6 @@
 // also inadvertently a test for the (non-)co-inductiveness of WF predicates.
 
 pub struct Bar<'a>(&'a Self) where Self: ;
-//~^ ERROR overflow evaluating the requirement `Bar<'a> well-formed`
+//~^ ERROR overflow evaluating whether `Bar<'a>` is well-formed
 
 fn main() {}

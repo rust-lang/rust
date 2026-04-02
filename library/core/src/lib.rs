@@ -48,7 +48,7 @@
     html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(deny(warnings))),
-    test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
+    test(attr(allow(dead_code, deprecated, unused_variables, unused_mut, duplicate_features)))
 )]
 #![doc(rust_logo)]
 #![doc(auto_cfg(hide(
@@ -107,11 +107,10 @@
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
 #![feature(disjoint_bitor)]
-#![feature(internal_impls_macro)]
-#![feature(link_cfg)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(pattern_type_macro)]
+#![feature(sealed)]
 #![feature(ub_checks)]
 // tidy-alphabetical-end
 //
@@ -144,6 +143,7 @@
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
+#![feature(link_cfg)]
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
 #![feature(macro_metavar_expr_concat)]
@@ -182,6 +182,7 @@
 #![feature(hexagon_target_feature)]
 #![feature(loongarch_target_feature)]
 #![feature(mips_target_feature)]
+#![feature(movrs_target_feature)]
 #![feature(nvptx_target_feature)]
 #![feature(powerpc_target_feature)]
 #![feature(riscv_target_feature)]
@@ -214,6 +215,14 @@ pub use crate::macros::{assert_matches, debug_assert_matches};
 pub mod from {
     #[unstable(feature = "derive_from", issue = "144889")]
     pub use crate::macros::builtin::From;
+}
+
+mod sealed {
+    /// This trait being unreachable from outside the crate
+    /// prevents outside implementations of our extension traits.
+    /// This allows adding more trait methods in the future.
+    #[unstable(feature = "sealed", issue = "none")]
+    pub trait Sealed {}
 }
 
 // We don't export this through #[macro_export] for now, to avoid breakage.

@@ -44,7 +44,7 @@ pub enum VarianceDiagInfo<I: Interner> {
     Invariant {
         /// The generic type containing the generic parameter
         /// that changes the variance (e.g. `*mut T`, `MyStruct<T>`)
-        ty: I::Ty,
+        ty: ty::Ty<I>,
         /// The index of the generic parameter being used
         /// (e.g. `0` for `*mut T`, `1` for `MyStruct<'CovariantParam, 'InvariantParam>`)
         param_index: u32,
@@ -75,13 +75,13 @@ pub trait TypeRelation<I: Interner>: Sized {
 
     fn relate_ty_args(
         &mut self,
-        a_ty: I::Ty,
-        b_ty: I::Ty,
+        a_ty: ty::Ty<I>,
+        b_ty: ty::Ty<I>,
         ty_def_id: I::DefId,
         a_arg: I::GenericArgs,
         b_arg: I::GenericArgs,
-        mk: impl FnOnce(I::GenericArgs) -> I::Ty,
-    ) -> RelateResult<I, I::Ty>;
+        mk: impl FnOnce(I::GenericArgs) -> ty::Ty<I>,
+    ) -> RelateResult<I, ty::Ty<I>>;
 
     /// Switch variance for the purpose of relating `a` and `b`.
     fn relate_with_variance<T: Relate<I>>(
@@ -98,7 +98,7 @@ pub trait TypeRelation<I: Interner>: Sized {
     // additional hooks for other types in the future if needed
     // without making older code, which called `relate`, obsolete.
 
-    fn tys(&mut self, a: I::Ty, b: I::Ty) -> RelateResult<I, I::Ty>;
+    fn tys(&mut self, a: ty::Ty<I>, b: ty::Ty<I>) -> RelateResult<I, ty::Ty<I>>;
 
     fn regions(&mut self, a: I::Region, b: I::Region) -> RelateResult<I, I::Region>;
 
@@ -332,9 +332,9 @@ impl<I: Interner> Relate<I> for ty::ExistentialTraitRef<I> {
 #[instrument(level = "trace", skip(relation), ret)]
 pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
     relation: &mut R,
-    a: I::Ty,
-    b: I::Ty,
-) -> RelateResult<I, I::Ty> {
+    a: ty::Ty<I>,
+    b: ty::Ty<I>,
+) -> RelateResult<I, ty::Ty<I>> {
     let cx = relation.cx();
     match (a.kind(), b.kind()) {
         (ty::Infer(_), _) | (_, ty::Infer(_)) => {

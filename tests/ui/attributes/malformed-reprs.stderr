@@ -6,12 +6,6 @@ LL | #![repr]
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
-error[E0589]: invalid `repr(align)` attribute: not a power of two
-  --> $DIR/malformed-reprs.rs:9:14
-   |
-LL | #[repr(align(0))]
-   |              ^
-
 error: `repr` attribute cannot be used at crate level
   --> $DIR/malformed-reprs.rs:4:1
    |
@@ -19,13 +13,19 @@ LL | #![repr]
    | ^^^^^^^^
 ...
 LL | enum Foo {}
-   |      --- the inner attribute doesn't annotate this enum
+   | ----------- the inner attribute doesn't annotate this item
    |
 help: perhaps you meant to use an outer attribute
    |
 LL - #![repr]
 LL + #[repr]
    |
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/malformed-reprs.rs:9:14
+   |
+LL | #[repr(align(0))]
+   |              ^
 
 error[E0084]: unsupported representation for zero-variant enum
   --> $DIR/malformed-reprs.rs:9:1

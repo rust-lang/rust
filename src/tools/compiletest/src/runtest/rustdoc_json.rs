@@ -14,6 +14,11 @@ impl TestCx<'_> {
         });
 
         let proc_res = self.document(&out_dir, DocKind::Json);
+
+        if !self.config.capture {
+            writeln!(self.stdout, "{}", proc_res.format_info());
+        }
+
         if !proc_res.status.success() {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }

@@ -588,14 +588,14 @@ fn test_fn() {
     fn test_fill_struct_fields_default() {
         check_fix(
             r#"
-//- minicore: default, option
+//- minicore: default, option, slice
 struct TestWithDefault(usize);
 impl Default for TestWithDefault {
     pub fn default() -> Self {
         Self(0)
     }
 }
-struct TestStruct { one: i32, two: TestWithDefault }
+struct TestStruct { one: i32, two: TestWithDefault, r: &'static [i32] }
 
 fn test_fn() {
     let s = TestStruct{ $0 };
@@ -608,10 +608,10 @@ impl Default for TestWithDefault {
         Self(0)
     }
 }
-struct TestStruct { one: i32, two: TestWithDefault }
+struct TestStruct { one: i32, two: TestWithDefault, r: &'static [i32] }
 
 fn test_fn() {
-    let s = TestStruct{ one: 0, two: TestWithDefault::default()  };
+    let s = TestStruct{ one: 0, two: TestWithDefault::default(), r: <&'static [i32]>::default()  };
 }
 ",
         );

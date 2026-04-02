@@ -17,6 +17,7 @@ use std::ptr;
 use std::simd::StdFloat;
 use std::simd::prelude::*;
 
+// The `portable_simd` crate currently does not support f16 or f128 vectors, so we define our own.
 #[repr(simd, packed)]
 #[derive(Copy)]
 struct PackedSimd<T, const N: usize>([T; N]);
@@ -41,6 +42,7 @@ impl<T: Debug + Copy, const N: usize> Debug for PackedSimd<T, N> {
 
 type f16x2 = PackedSimd<f16, 2>;
 type f16x4 = PackedSimd<f16, 4>;
+type f16x8 = PackedSimd<f16, 8>;
 
 type f128x2 = PackedSimd<f128, 2>;
 type f128x4 = PackedSimd<f128, 4>;
@@ -88,11 +90,11 @@ fn simd_ops_f16() {
         assert_eq!(simd_rem(a, b), f16x4::from_array([0.0, 0.0, 1.0, 2.0]));
         assert_eq!(simd_fabs(b), f16x4::from_array([1.0, 2.0, 3.0, 4.0]));
         assert_eq!(
-            simd_fmax(a, simd_mul(b, f16x4::splat(4.0))),
+            simd_maximum_number_nsz(a, simd_mul(b, f16x4::splat(4.0))),
             f16x4::from_array([10.0, 10.0, 12.0, 10.0])
         );
         assert_eq!(
-            simd_fmin(a, simd_mul(b, f16x4::splat(4.0))),
+            simd_minimum_number_nsz(a, simd_mul(b, f16x4::splat(4.0))),
             f16x4::from_array([4.0, 8.0, 10.0, -16.0])
         );
 
@@ -112,6 +114,9 @@ fn simd_ops_f16() {
             f16x4::splat(f16::NEG_INFINITY)
         );
 
+        assert_eq!(simd_fsqrt(simd_mul(a, a)), a);
+        assert_eq!(simd_fsqrt(simd_mul(b, b)), simd_fabs(b));
+
         assert_eq!(simd_eq(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([0, !0, 0, 0]));
         assert_eq!(simd_ne(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([!0, 0, !0, !0]));
         assert_eq!(simd_le(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([0, !0, !0, 0]));
@@ -129,13 +134,19 @@ fn simd_ops_f16() {
         assert_eq!(simd_reduce_min(b), -4.0f16);
 
         assert_eq!(
-            simd_fmax(f16x2::from_array([0.0, f16::NAN]), f16x2::from_array([f16::NAN, 0.0])),
+            simd_maximum_number_nsz(
+                f16x2::from_array([0.0, f16::NAN]),
+                f16x2::from_array([f16::NAN, 0.0])
+            ),
             f16x2::from_array([0.0, 0.0])
         );
         assert_eq!(simd_reduce_max(f16x2::from_array([0.0, f16::NAN])), 0.0f16);
         assert_eq!(simd_reduce_max(f16x2::from_array([f16::NAN, 0.0])), 0.0f16);
         assert_eq!(
-            simd_fmin(f16x2::from_array([0.0, f16::NAN]), f16x2::from_array([f16::NAN, 0.0])),
+            simd_minimum_number_nsz(
+                f16x2::from_array([0.0, f16::NAN]),
+                f16x2::from_array([f16::NAN, 0.0])
+            ),
             f16x2::from_array([0.0, 0.0])
         );
         assert_eq!(simd_reduce_min(f16x2::from_array([0.0, f16::NAN])), 0.0f16);
@@ -299,11 +310,11 @@ fn simd_ops_f128() {
         assert_eq!(simd_rem(a, b), f128x4::from_array([0.0, 0.0, 1.0, 2.0]));
         assert_eq!(simd_fabs(b), f128x4::from_array([1.0, 2.0, 3.0, 4.0]));
         assert_eq!(
-            simd_fmax(a, simd_mul(b, f128x4::splat(4.0))),
+            simd_maximum_number_nsz(a, simd_mul(b, f128x4::splat(4.0))),
             f128x4::from_array([10.0, 10.0, 12.0, 10.0])
         );
         assert_eq!(
-            simd_fmin(a, simd_mul(b, f128x4::splat(4.0))),
+            simd_minimum_number_nsz(a, simd_mul(b, f128x4::splat(4.0))),
             f128x4::from_array([4.0, 8.0, 10.0, -16.0])
         );
 
@@ -323,6 +334,9 @@ fn simd_ops_f128() {
             f128x4::splat(f128::NEG_INFINITY)
         );
 
+        assert_eq!(simd_fsqrt(simd_mul(a, a)), a);
+        assert_eq!(simd_fsqrt(simd_mul(b, b)), simd_fabs(b));
+
         assert_eq!(simd_eq(a, simd_mul(f128x4::splat(5.0), b)), i32x4::from_array([0, !0, 0, 0]));
         assert_eq!(simd_ne(a, simd_mul(f128x4::splat(5.0), b)), i32x4::from_array([!0, 0, !0, !0]));
         assert_eq!(simd_le(a, simd_mul(f128x4::splat(5.0), b)), i32x4::from_array([0, !0, !0, 0]));
@@ -340,13 +354,19 @@ fn simd_ops_f128() {
         assert_eq!(simd_reduce_min(b), -4.0f128);
 
         assert_eq!(
-            simd_fmax(f128x2::from_array([0.0, f128::NAN]), f128x2::from_array([f128::NAN, 0.0])),
+            simd_maximum_number_nsz(
+                f128x2::from_array([0.0, f128::NAN]),
+                f128x2::from_array([f128::NAN, 0.0])
+            ),
             f128x2::from_array([0.0, 0.0])
         );
         assert_eq!(simd_reduce_max(f128x2::from_array([0.0, f128::NAN])), 0.0f128);
         assert_eq!(simd_reduce_max(f128x2::from_array([f128::NAN, 0.0])), 0.0f128);
         assert_eq!(
-            simd_fmin(f128x2::from_array([0.0, f128::NAN]), f128x2::from_array([f128::NAN, 0.0])),
+            simd_minimum_number_nsz(
+                f128x2::from_array([0.0, f128::NAN]),
+                f128x2::from_array([f128::NAN, 0.0])
+            ),
             f128x2::from_array([0.0, 0.0])
         );
         assert_eq!(simd_reduce_min(f128x2::from_array([0.0, f128::NAN])), 0.0f128);
@@ -935,6 +955,18 @@ fn simd_float_intrinsics() {
 
     // These are just smoke tests to ensure the intrinsics can be called.
     unsafe {
+        let a = f16x8::splat(10.0);
+        simd_fsqrt(a);
+        simd_fsin(a);
+        simd_fcos(a);
+        simd_fexp(a);
+        simd_fexp2(a);
+        simd_flog(a);
+        simd_flog2(a);
+        simd_flog10(a);
+    }
+
+    unsafe {
         let a = f32x4::splat(10.0);
         simd_fsqrt(a);
         simd_fsin(a);
@@ -944,6 +976,23 @@ fn simd_float_intrinsics() {
         simd_flog(a);
         simd_flog2(a);
         simd_flog10(a);
+    }
+
+    unsafe {
+        let a = f64x2::splat(10.0);
+        simd_fsqrt(a);
+        simd_fsin(a);
+        simd_fcos(a);
+        simd_fexp(a);
+        simd_fexp2(a);
+        simd_flog(a);
+        simd_flog2(a);
+        simd_flog10(a);
+    }
+
+    unsafe {
+        let a = f128x2::splat(10.0);
+        simd_fsqrt(a);
     }
 }
 

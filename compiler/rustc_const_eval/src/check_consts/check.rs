@@ -1,11 +1,10 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
 use std::borrow::Cow;
-use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
+use std::{assert_matches, mem};
 
-use rustc_data_structures::assert_matches;
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;

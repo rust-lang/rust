@@ -1,9 +1,8 @@
-use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::{assert_matches, cmp};
 
 use rustc_abi::FieldIdx;
 use rustc_ast as ast;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -1637,69 +1636,77 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span_bug!(pat_span, "unexpected resolution for path pattern: {resolved_pat:?}");
         };
 
-        if let Some(span) = self.tcx.hir_res_span(pat_res) {
+        let span = match (self.tcx.hir_res_span(pat_res), res.opt_def_id()) {
+            (Some(span), _) => span,
+            (None, Some(def_id)) => self.tcx.def_span(def_id),
+            (None, None) => {
+                e.emit();
+                return;
+            }
+        };
+        if let [hir::PathSegment { ident, args: None, .. }] = segments
+            && e.suggestions.len() == 0
+        {
             e.span_label(span, format!("{} defined here", res.descr()));
-            if let [hir::PathSegment { ident, .. }] = segments {
-                e.span_label(
-                    pat_span,
-                    format!(
-                        "`{}` is interpreted as {} {}, not a new binding",
-                        ident,
-                        res.article(),
-                        res.descr(),
-                    ),
-                );
-                match self.tcx.parent_hir_node(hir_id) {
-                    hir::Node::PatField(..) => {
+            e.span_label(
+                pat_span,
+                format!(
+                    "`{}` is interpreted as {} {}, not a new binding",
+                    ident,
+                    res.article(),
+                    res.descr(),
+                ),
+            );
+            match self.tcx.parent_hir_node(hir_id) {
+                hir::Node::PatField(..) => {
+                    e.span_suggestion_verbose(
+                        ident.span.shrink_to_hi(),
+                        "bind the struct field to a different name instead",
+                        format!(": other_{}", ident.as_str().to_lowercase()),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+                _ => {
+                    let (type_def_id, item_def_id) = match resolved_pat.ty.kind() {
+                        ty::Adt(def, _) => match res {
+                            Res::Def(DefKind::Const { .. }, def_id) => {
+                                (Some(def.did()), Some(def_id))
+                            }
+                            _ => (None, None),
+                        },
+                        _ => (None, None),
+                    };
+
+                    let is_range = matches!(
+                        type_def_id.and_then(|id| self.tcx.as_lang_item(id)),
+                        Some(
+                            LangItem::Range
+                                | LangItem::RangeFrom
+                                | LangItem::RangeTo
+                                | LangItem::RangeFull
+                                | LangItem::RangeInclusiveStruct
+                                | LangItem::RangeToInclusive,
+                        )
+                    );
+                    if is_range {
+                        if !self.maybe_suggest_range_literal(&mut e, item_def_id, *ident) {
+                            let msg = "constants only support matching by type, \
+                                if you meant to match against a range of values, \
+                                consider using a range pattern like `min ..= max` in the match block";
+                            e.note(msg);
+                        }
+                    } else {
+                        let msg = "introduce a new binding instead";
+                        let sugg = format!("other_{}", ident.as_str().to_lowercase());
                         e.span_suggestion_verbose(
-                            ident.span.shrink_to_hi(),
-                            "bind the struct field to a different name instead",
-                            format!(": other_{}", ident.as_str().to_lowercase()),
+                            ident.span,
+                            msg,
+                            sugg,
                             Applicability::HasPlaceholders,
                         );
                     }
-                    _ => {
-                        let (type_def_id, item_def_id) = match resolved_pat.ty.kind() {
-                            ty::Adt(def, _) => match res {
-                                Res::Def(DefKind::Const { .. }, def_id) => {
-                                    (Some(def.did()), Some(def_id))
-                                }
-                                _ => (None, None),
-                            },
-                            _ => (None, None),
-                        };
-
-                        let is_range = matches!(
-                            type_def_id.and_then(|id| self.tcx.as_lang_item(id)),
-                            Some(
-                                LangItem::Range
-                                    | LangItem::RangeFrom
-                                    | LangItem::RangeTo
-                                    | LangItem::RangeFull
-                                    | LangItem::RangeInclusiveStruct
-                                    | LangItem::RangeToInclusive,
-                            )
-                        );
-                        if is_range {
-                            if !self.maybe_suggest_range_literal(&mut e, item_def_id, *ident) {
-                                let msg = "constants only support matching by type, \
-                                    if you meant to match against a range of values, \
-                                    consider using a range pattern like `min ..= max` in the match block";
-                                e.note(msg);
-                            }
-                        } else {
-                            let msg = "introduce a new binding instead";
-                            let sugg = format!("other_{}", ident.as_str().to_lowercase());
-                            e.span_suggestion(
-                                ident.span,
-                                msg,
-                                sugg,
-                                Applicability::HasPlaceholders,
-                            );
-                        }
-                    }
-                };
-            }
+                }
+            };
         }
         e.emit();
     }

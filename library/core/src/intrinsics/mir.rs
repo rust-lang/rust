@@ -62,7 +62,9 @@
 //!
 //! # Examples
 //!
-//! ```rust
+#![cfg_attr(panic = "unwind", doc = "```rust")]
+// This test can't support panic=abort because it generates an UnwindContinue MIR terminator.
+#![cfg_attr(panic = "abort", doc = "```ignore")]
 //! #![feature(core_intrinsics, custom_mir)]
 //! #![allow(internal_features)]
 //! #![allow(unused_assignments)]

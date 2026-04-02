@@ -2,6 +2,7 @@ use crate::{
     GenericDefId, ModuleDefId,
     expr_store::pretty::{print_function, print_struct},
     nameres::crate_def_map,
+    signatures::{FunctionSignature, StructSignature},
     test_db::TestDB,
 };
 use expect_test::{Expect, expect};
@@ -41,7 +42,7 @@ fn lower_and_print(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expe
                     out += &print_struct(
                         &db,
                         struct_id,
-                        &db.struct_signature(struct_id),
+                        StructSignature::of(&db, struct_id),
                         Edition::CURRENT,
                     );
                 }
@@ -53,7 +54,7 @@ fn lower_and_print(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expe
                 out += &print_function(
                     &db,
                     function_id,
-                    &db.function_signature(function_id),
+                    FunctionSignature::of(&db, function_id),
                     Edition::CURRENT,
                 )
             }

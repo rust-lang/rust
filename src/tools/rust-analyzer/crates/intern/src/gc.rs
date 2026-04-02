@@ -110,6 +110,10 @@ impl GarbageCollector {
     ///    the added storages must form a DAG.
     ///  - [`GcInternedVisit`] and [`GcInternedSliceVisit`] must mark all values reachable from the node.
     pub unsafe fn collect(mut self) {
+        if cfg!(feature = "prevent-gc") {
+            return;
+        }
+
         let total_nodes = self.storages.iter().map(|storage| storage.len()).sum();
         self.alive.clear();
         self.alive.reserve(total_nodes);

@@ -7,15 +7,17 @@
 // Don't break whenever Symbol numbering changes
 //@ normalize-stdout: "\d+#" -> "0#"
 
-#![feature /* 0#0 */(decl_macro)]
-#![feature /* 0#0 */(no_core)]
+#![feature /* 0#0 */(decl_macro /* 0#0 */)]
+#![feature /* 0#0 */(no_core /* 0#0 */)]
 #![no_core /* 0#0 */]
 
 macro lifetime_hygiene
     /*
     0#0
     */ {
-    ($f:ident<$a:lifetime>) => { fn $f<$a, 'a>() {} }
+    ($f /* 0#0 */:ident /* 0#0 */<$a /* 0#0 */:lifetime /* 0#0 */>)
+    =>
+    { fn /* 0#0 */ $f /* 0#0 */<$a /* 0#0 */, 'a /* 0#0 */>() {} }
 }
 fn f /* 0#0 */<'a /* 0#0 */, 'a /* 0#1 */>() {}
 

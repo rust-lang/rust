@@ -103,9 +103,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 let guarantee = format!("that {}", suggestion);
                 let suggestion = sm
                     .indentation_before(span)
-                    .map(|indent| {
-                        format!("{}// TODO: Audit that {}.\n", indent, suggestion) // ignore-tidy-todo
-                    })
+                    .map(|indent| format!("{}// FIXME: Audit that {}.\n", indent, suggestion))
                     .unwrap_or_default();
 
                 self.tcx.emit_node_span_lint(
@@ -317,6 +315,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 | PatKind::Range { .. }
                 | PatKind::Slice { .. }
                 | PatKind::Array { .. }
+                | PatKind::Guard { .. }
                 // Never constitutes a witness of uninhabitedness.
                 | PatKind::Never => {
                     self.requires_unsafe(pat.span, AccessToUnionField);

@@ -4,7 +4,7 @@ use clippy_utils::{eq_expr_value, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment};
 use rustc_lint::LateContext;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 
 use super::SUBOPTIMAL_FLOPS;
 

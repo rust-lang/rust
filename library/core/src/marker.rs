@@ -46,15 +46,12 @@ use crate::pin::UnsafePinned;
 /// marker_impls! {
 ///     MarkerTrait for
 ///         u8, i8,
-///         {T: ?Sized} *const T,
-///         {T: ?Sized} *mut T,
+///         {T: PointeeSized} *const T,
+///         {T: PointeeSized} *mut T,
 ///         {T: MarkerTrait} PhantomData<T>,
 ///         u32,
 /// }
 /// ```
-#[unstable(feature = "internal_impls_macro", issue = "none")]
-// Allow implementations of `UnsizedConstParamTy` even though std cannot use that feature.
-#[allow_internal_unstable(unsized_const_params)]
 macro marker_impls {
     ( $(#[$($meta:tt)*])* $Trait:ident for $({$($bounds:tt)*})? $T:ty $(, $($rest:tt)*)? ) => {
         $(#[$($meta)*])* impl< $($($bounds)*)? > $Trait for $T {}
@@ -931,15 +928,15 @@ marker_impls! {
 pub unsafe auto trait UnsafeUnpin {}
 
 #[unstable(feature = "unsafe_unpin", issue = "125735")]
-impl<T: ?Sized> !UnsafeUnpin for UnsafePinned<T> {}
+impl<T: PointeeSized> !UnsafeUnpin for UnsafePinned<T> {}
 marker_impls! {
 #[unstable(feature = "unsafe_unpin", issue = "125735")]
     unsafe UnsafeUnpin for
-        {T: ?Sized} PhantomData<T>,
-        {T: ?Sized} *const T,
-        {T: ?Sized} *mut T,
-        {T: ?Sized} &T,
-        {T: ?Sized} &mut T,
+        {T: PointeeSized} PhantomData<T>,
+        {T: PointeeSized} *const T,
+        {T: PointeeSized} *mut T,
+        {T: PointeeSized} &T,
+        {T: PointeeSized} &mut T,
 }
 
 /// Types that do not require any pinning guarantees.
@@ -1080,7 +1077,7 @@ pub trait Tuple {}
 /// that all fields are also `ConstParamTy`, which implies that recursively, all fields
 /// are `StructuralPartialEq`.
 #[lang = "const_param_ty"]
-#[unstable(feature = "unsized_const_params", issue = "95174")]
+#[unstable(feature = "const_param_ty_trait", issue = "95174", implied_by = "unsized_const_params")]
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 #[allow(multiple_supertrait_upcastable)]
 // We name this differently than the derive macro so that the `adt_const_params` can
@@ -1090,7 +1087,7 @@ pub trait ConstParamTy_: StructuralPartialEq + Eq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.
 #[rustc_builtin_macro]
-#[allow_internal_unstable(unsized_const_params)]
+#[allow_internal_unstable(const_param_ty_trait)]
 #[unstable(feature = "adt_const_params", issue = "95174")]
 pub macro ConstParamTy($item:item) {
     /* compiler built-in */

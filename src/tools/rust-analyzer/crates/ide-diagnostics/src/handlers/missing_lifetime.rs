@@ -115,4 +115,20 @@ struct A<'a, T> {
         "#,
         );
     }
+
+    // FIXME: Ideally, should emit generic default forbidden as well
+    #[test]
+    fn regression_16280() {
+        check_diagnostics(
+            r#"
+trait Traitor<'a, const M: Traitor = Traitor> {
+    fn crash<const Traitor: Traitor = Traitor, const M: Traitor = Traitor>(&self) -> Traitor {
+                         // ^^^^^^^ error: missing lifetime specifier
+                                                     // ^^^^^^^ error: missing lifetime specifier
+        Traitor
+    }
+}
+"#,
+        );
+    }
 }

@@ -5,7 +5,7 @@
 //@ only-64bit
 //@ revisions: attribute option
 //@ [option]compile-flags: -Zmove-size-limit=1000
-
+//@ ignore-parallel-frontend post-monomorphization errors
 //@ edition:2018
 //@ compile-flags: -Zmir-opt-level=0
 

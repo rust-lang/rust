@@ -2,21 +2,19 @@ pub use super::common::Env;
 use crate::collections::HashMap;
 use crate::ffi::{OsStr, OsString};
 use crate::io;
-use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
-use crate::sync::{Mutex, Once};
+use crate::sync::{Mutex, OnceLock};
 use crate::sys::pal::params;
 
-static ENV: Atomic<usize> = AtomicUsize::new(0);
-static ENV_INIT: Once = Once::new();
 type EnvStore = Mutex<HashMap<OsString, OsString>>;
 
+static ENV: OnceLock<EnvStore> = OnceLock::new();
+
 fn get_env_store() -> &'static EnvStore {
-    ENV_INIT.call_once(|| {
-        let env_store = EnvStore::default();
+    ENV.get_or_init(|| {
+        let mut env_store = HashMap::new();
         if let Some(params) = params::get() {
             for param in params {
                 if let Ok(envs) = params::EnvironmentBlock::try_from(&param) {
-                    let mut env_store = env_store.lock().unwrap();
                     for env in envs {
                         env_store.insert(env.key.into(), env.value.into());
                     }
@@ -24,17 +22,12 @@ fn get_env_store() -> &'static EnvStore {
                 }
             }
         }
-        ENV.store(Box::into_raw(Box::new(env_store)) as _, Ordering::Relaxed)
-    });
-    unsafe { &*core::ptr::with_exposed_provenance::<EnvStore>(ENV.load(Ordering::Relaxed)) }
+        Mutex::new(env_store)
+    })
 }
 
 pub fn env() -> Env {
-    let clone_to_vec = |map: &HashMap<OsString, OsString>| -> Vec<_> {
-        map.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
-    };
-
-    let env = clone_to_vec(&*get_env_store().lock().unwrap());
+    let env = get_env_store().lock().unwrap().iter().map(|(k, v)| (k.clone(), v.clone())).collect();
     Env::new(env)
 }
 

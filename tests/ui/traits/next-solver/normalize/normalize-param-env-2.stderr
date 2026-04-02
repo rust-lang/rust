@@ -27,7 +27,7 @@ error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc: A<T>`
 LL |         Self::Assoc: A<T>,
    |                      ^^^^
 
-error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc well-formed`
+error[E0275]: overflow evaluating whether `<() as A<T>>::Assoc` is well-formed
   --> $DIR/normalize-param-env-2.rs:24:22
    |
 LL |         Self::Assoc: A<T>,

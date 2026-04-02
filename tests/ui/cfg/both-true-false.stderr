@@ -1,11 +1,11 @@
 error[E0425]: cannot find function `foo` in this scope
-  --> $DIR/both-true-false.rs:13:5
+  --> $DIR/both-true-false.rs:14:5
    |
 LL |     foo();
    |     ^^^ not found in this scope
    |
 note: found an item that was configured out
-  --> $DIR/both-true-false.rs:6:4
+  --> $DIR/both-true-false.rs:7:4
    |
 LL | #[cfg(false)]
    |       ----- the item is gated here
@@ -13,7 +13,7 @@ LL | #[cfg(true)]
 LL | fn foo() {}
    |    ^^^
 note: found an item that was configured out
-  --> $DIR/both-true-false.rs:10:4
+  --> $DIR/both-true-false.rs:11:4
    |
 LL | #[cfg(false)]
    |       ----- the item is gated here

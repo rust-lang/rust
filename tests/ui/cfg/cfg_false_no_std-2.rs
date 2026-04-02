@@ -7,6 +7,7 @@
 //@ compile-flags: -Cpanic=abort
 
 //@ aux-build: cfg_false_lib_no_std_before.rs
+//@ reference: cfg.attr.crate-level-attrs
 
 #![no_std]
 

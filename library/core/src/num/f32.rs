@@ -990,7 +990,7 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn max(self, other: f32) -> f32 {
-        intrinsics::maxnumf32(self, other)
+        intrinsics::maximum_number_nsz_f32(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -1017,7 +1017,7 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn min(self, other: f32) -> f32 {
-        intrinsics::minnumf32(self, other)
+        intrinsics::minimum_number_nsz_f32(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -1568,7 +1568,7 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn abs(self) -> f32 {
-        intrinsics::fabsf32(self)
+        intrinsics::fabs(self)
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -1692,7 +1692,7 @@ impl f32 {
 #[unstable(feature = "core_float_math", issue = "137578")]
 pub mod math {
     use crate::intrinsics;
-    use crate::num::libm;
+    use crate::num::imp::libm;
 
     /// Experimental version of `floor` in `core`. See [`f32::floor`] for details.
     ///

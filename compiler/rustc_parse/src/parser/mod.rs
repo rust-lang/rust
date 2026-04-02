@@ -16,7 +16,7 @@ mod ty;
 pub mod asm;
 pub mod cfg_select;
 
-use std::{fmt, mem, slice};
+use std::{debug_assert_matches, fmt, mem, slice};
 
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
 pub use diagnostics::AttemptLocalParseRecovery;
@@ -40,7 +40,6 @@ use rustc_ast::{
     VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_index::interval::IntervalSet;
@@ -1789,4 +1788,5 @@ pub enum ParseNtResult {
     Meta(Box<ast::AttrItem>),
     Path(Box<ast::Path>),
     Vis(Box<ast::Visibility>),
+    Guard(Box<ast::Guard>),
 }

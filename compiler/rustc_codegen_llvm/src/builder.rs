@@ -1297,10 +1297,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         ret
     }
 
-    fn get_funclet_cleanuppad(&self, funclet: &Funclet<'ll>) -> &'ll Value {
-        funclet.cleanuppad()
-    }
-
     // Atomic Operations
     fn atomic_cmpxchg(
         &mut self,
@@ -1605,12 +1601,16 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         *self = Self::build(self.cx, next_bb);
     }
 
-    pub(crate) fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.minnum", &[self.val_ty(lhs)], &[lhs, rhs])
+    pub(crate) fn minimum_number_nsz(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        let call = self.call_intrinsic("llvm.minimumnum", &[self.val_ty(lhs)], &[lhs, rhs]);
+        unsafe { llvm::LLVMRustSetNoSignedZeros(call) };
+        call
     }
 
-    pub(crate) fn maxnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.maxnum", &[self.val_ty(lhs)], &[lhs, rhs])
+    pub(crate) fn maximum_number_nsz(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        let call = self.call_intrinsic("llvm.maximumnum", &[self.val_ty(lhs)], &[lhs, rhs]);
+        unsafe { llvm::LLVMRustSetNoSignedZeros(call) };
+        call
     }
 
     pub(crate) fn insert_element(

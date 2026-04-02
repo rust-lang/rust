@@ -1,7 +1,7 @@
 // This test previously tried to use a tainted `EvalCtxt` when emitting
 // an error during coherence.
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
+
 trait Iterate<'a> {
     type Ty: Valid;
 }

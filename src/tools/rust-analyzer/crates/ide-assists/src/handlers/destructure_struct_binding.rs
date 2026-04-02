@@ -17,7 +17,7 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
-    utils::ref_field_expr::determine_ref_and_parens,
+    utils::{cover_edit_range, ref_field_expr::determine_ref_and_parens},
 };
 
 // Assist: destructure_struct_binding
@@ -358,6 +358,7 @@ fn update_usages(
     data: &StructEditData,
     field_names: &FxHashMap<SmolStr, SmolStr>,
 ) {
+    let source = ctx.source_file().syntax();
     let make = SyntaxFactory::with_mappings();
     let edits = data
         .usages
@@ -366,7 +367,9 @@ fn update_usages(
         .collect_vec();
     editor.add_mappings(make.finish_with_mappings());
     for (old, new) in edits {
-        editor.replace(old, new);
+        if let Some(range) = ctx.sema.original_range_opt(&old) {
+            editor.replace_all(cover_edit_range(source, range.range), vec![new.into()]);
+        }
     }
 }
 
@@ -381,23 +384,20 @@ fn build_usage_edit(
         Some(field_expr) => Some({
             let field_name: SmolStr = field_expr.name_ref()?.to_string().into();
             let new_field_name = field_names.get(&field_name)?;
-            let new_expr = ast::make::expr_path(ast::make::ext::ident_path(new_field_name));
+            let new_expr = make.expr_path(make.ident_path(new_field_name));
 
             // If struct binding is a reference, we might need to deref field usages
             if data.is_ref {
                 let (replace_expr, ref_data) = determine_ref_and_parens(ctx, &field_expr);
-                (
-                    replace_expr.syntax().clone_for_update(),
-                    ref_data.wrap_expr(new_expr).syntax().clone_for_update(),
-                )
+                (replace_expr.syntax().clone(), ref_data.wrap_expr(new_expr, make).syntax().clone())
             } else {
-                (field_expr.syntax().clone(), new_expr.syntax().clone_for_update())
+                (field_expr.syntax().clone(), new_expr.syntax().clone())
             }
         }),
         None => Some((
             usage.name.syntax().as_node().unwrap().clone(),
             make.expr_macro(
-                ast::make::ext::ident_path("todo"),
+                make.ident_path("todo"),
                 make.token_tree(syntax::SyntaxKind::L_PAREN, []),
             )
             .syntax()
@@ -1007,6 +1007,35 @@ mod tests {
             //- /main.rs crate:main deps:dep
             fn main($0foo: dep::Foo) {}
             "#,
+        )
+    }
+
+    #[test]
+    fn record_struct_usage_in_macro_call() {
+        // exact repro from #20716: struct field access inside write! must not panic
+        check_assist(
+            destructure_struct_binding,
+            r#"
+//- minicore: write, fmt
+use core::fmt::Write;
+struct Foo { y: i8 }
+
+fn main() {
+    let mut s = String::new();
+    let $0x = Foo { y: 8 };
+    write!(s, "{}", x.y).unwrap();
+}
+"#,
+            r#"
+use core::fmt::Write;
+struct Foo { y: i8 }
+
+fn main() {
+    let mut s = String::new();
+    let Foo { y } = Foo { y: 8 };
+    write!(s, "{}", y).unwrap();
+}
+"#,
         )
     }
 }

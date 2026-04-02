@@ -1,13 +1,17 @@
 //! Functions to detect special lang items
 
-use hir_def::{AdtId, TraitId, lang_item::LangItems, signatures::StructFlags};
+use hir_def::{
+    AdtId, TraitId,
+    lang_item::LangItems,
+    signatures::{StructFlags, StructSignature},
+};
 use intern::{Symbol, sym};
 
 use crate::db::HirDatabase;
 
 pub fn is_box(db: &dyn HirDatabase, adt: AdtId) -> bool {
     let AdtId::StructId(id) = adt else { return false };
-    db.struct_signature(id).flags.contains(StructFlags::IS_BOX)
+    StructSignature::of(db, id).flags.contains(StructFlags::IS_BOX)
 }
 
 pub fn lang_items_for_bin_op(

@@ -1,6 +1,5 @@
 //@ check-pass
 #![feature(deref_patterns)]
-#![expect(incomplete_features)]
 
 fn foo(s: &String) -> i32 {
     match *s {

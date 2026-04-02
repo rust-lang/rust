@@ -1,8 +1,8 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
+use std::debug_assert_matches;
 use std::ops::Deref;
 
-use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};

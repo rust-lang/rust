@@ -38,14 +38,6 @@ LL |     #[inline]
    |
    = help: `#[inline]` can only be applied to functions
 
-error: unconstrained opaque type
-  --> $DIR/inline-trait-and-foreign-items.rs:26:14
-   |
-LL |     type U = impl Trait;
-   |              ^^^^^^^^^^
-   |
-   = note: `U` must be used in combination with a concrete type within the same impl
-
 warning: `#[inline]` attribute cannot be used on associated consts
   --> $DIR/inline-trait-and-foreign-items.rs:7:5
    |
@@ -68,6 +60,14 @@ LL |     #[inline]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[inline]` can only be applied to functions
+
+error: unconstrained opaque type
+  --> $DIR/inline-trait-and-foreign-items.rs:26:14
+   |
+LL |     type U = impl Trait;
+   |              ^^^^^^^^^^
+   |
+   = note: `U` must be used in combination with a concrete type within the same impl
 
 error: aborting due to 6 previous errors; 2 warnings emitted
 

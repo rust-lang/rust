@@ -22,3 +22,6 @@ rayon.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+prevent-gc = []

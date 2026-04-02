@@ -9,8 +9,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, traits};
-use rustc_span::DUMMY_SP;
-use rustc_span::source_map::{Spanned, dummy_spanned};
+use rustc_span::{DUMMY_SP, Spanned, dummy_spanned};
 use tracing::{debug, instrument};
 
 use crate::patch::MirPatch;

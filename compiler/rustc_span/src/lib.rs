@@ -90,6 +90,20 @@ use sha2::Sha256;
 #[cfg(test)]
 mod tests;
 
+#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable_Generic)]
+pub struct Spanned<T> {
+    pub node: T,
+    pub span: Span,
+}
+
+pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
+    Spanned { node: t, span: sp }
+}
+
+pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
+    respan(DUMMY_SP, t)
+}
+
 /// Per-session global variables: this struct is stored in thread-local storage
 /// in such a way that it is accessible without any kind of handle to all
 /// threads within the compilation session, but is not accessible outside the
@@ -2798,13 +2812,13 @@ pub trait HashStableContext {
     fn assert_default_hashing_controls(&self, msg: &str);
 }
 
-impl<CTX> HashStable<CTX> for Span
+impl<Hcx> HashStable<Hcx> for Span
 where
-    CTX: HashStableContext,
+    Hcx: HashStableContext,
 {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // `span_hash_stable` does all the work.
-        ctx.span_hash_stable(*self, hasher)
+        hcx.span_hash_stable(*self, hasher)
     }
 }
 

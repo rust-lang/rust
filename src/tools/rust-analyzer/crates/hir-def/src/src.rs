@@ -7,7 +7,7 @@ use syntax::{AstNode, AstPtr, ast};
 
 use crate::{
     AstIdLoc, GenericDefId, LocalFieldId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
-    UseId, VariantId, attrs::AttrFlags, db::DefDatabase,
+    UseId, VariantId, attrs::AttrFlags, db::DefDatabase, hir::generics::GenericParams,
 };
 
 pub trait HasSource {
@@ -76,7 +76,7 @@ impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
         &self,
         db: &dyn DefDatabase,
     ) -> InFile<ArenaMap<LocalTypeOrConstParamId, Self::Value>> {
-        let generic_params = db.generic_params(*self);
+        let generic_params = GenericParams::of(db, *self);
         let mut idx_iter = generic_params.iter_type_or_consts().map(|(idx, _)| idx);
 
         let (file_id, generic_params_list) = self.file_id_and_params_of(db);
@@ -110,7 +110,7 @@ impl HasChildSource<LocalLifetimeParamId> for GenericDefId {
         &self,
         db: &dyn DefDatabase,
     ) -> InFile<ArenaMap<LocalLifetimeParamId, Self::Value>> {
-        let generic_params = db.generic_params(*self);
+        let generic_params = GenericParams::of(db, *self);
         let idx_iter = generic_params.iter_lt().map(|(idx, _)| idx);
 
         let (file_id, generic_params_list) = self.file_id_and_params_of(db);

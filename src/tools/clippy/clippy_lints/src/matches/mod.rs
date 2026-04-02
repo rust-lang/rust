@@ -1093,12 +1093,11 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     }
 
                     redundant_pattern_match::check_match(cx, expr, ex, arms);
-                    let source_map = cx.tcx.sess.source_map();
-                    let mut match_comments = span_extract_comments(source_map, expr.span);
+                    let mut match_comments = span_extract_comments(cx, expr.span);
                     // We remove comments from inside arms block.
                     if !match_comments.is_empty() {
                         for arm in arms {
-                            for comment in span_extract_comments(source_map, arm.body.span) {
+                            for comment in span_extract_comments(cx, arm.body.span) {
                                 if let Some(index) = match_comments
                                     .iter()
                                     .enumerate()

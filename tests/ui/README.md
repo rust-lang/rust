@@ -36,6 +36,8 @@ These tests exercise the [`annotate-snippets`]-based emitter implementation.
 
 [`annotate-snippets`]: https://github.com/rust-lang/annotate-snippets-rs
 
+**FIXME**: merge this with `error-emitter`
+
 ## `tests/ui/anon-params`
 
 These tests deal with anonymous parameters (no name, only type), a deprecated feature that becomes a hard error in Edition 2018.
@@ -133,13 +135,15 @@ Runtime panics and error handling generate backtraces to assist in debugging and
 
 This directory was originally meant to contain tests related to time complexity and benchmarking.
 
-However, only a single test was ever added to this category: https://github.com/rust-lang/rust/pull/32062
+However, only a single test was ever added to this category: <https://github.com/rust-lang/rust/pull/32062>
 
 **FIXME**: It is also unclear what would happen were this test to "fail" - would it cause the test suite to remain stuck on this test for a much greater duration than normal?
 
 ## `tests/ui/binding/`: Pattern Binding
 
 Tests for pattern binding in match expressions, let statements, and other binding contexts. E.g. binding modes and refutability. See [Patterns | Reference](https://doc.rust-lang.org/reference/patterns.html).
+
+**FIXME**: quite some overlap with `tests/ui/pattern` and `tests/ui/match`.
 
 ## `tests/ui/binop/`: Binary operators
 
@@ -272,7 +276,7 @@ This directory is actually for the standard library [`std::process::Command`](ht
 
 Some traits' implementation must be compared with their definition, checking for problems such as the implementation having stricter requirements (such as needing to implement `Copy`).
 
-This subdirectory is *not* intended comparison traits (`PartialEq`, `Eq`, `PartialOrd`, `Ord`).
+This subdirectory is *not* intended for comparison traits (`PartialEq`, `Eq`, `PartialOrd`, `Ord`).
 
 ## `tests/ui/compile-flags/`
 
@@ -343,10 +347,6 @@ Tests for `#![feature(coverage_attribute)]`. See [Tracking issue for function at
 ## `tests/ui/crate-loading/`: Crate Loading
 
 Tests for crate resolution and loading behavior, including `extern crate` declarations, `--extern` flags, or the `use` keyword.
-
-## `tests/ui/cross/`: Various tests related to the concept of "cross"
-
-**FIXME**: The unifying topic of these tests appears to be that their filenames begin with the word "cross". The similarities end there - one test is about "cross-borrowing" a `Box<T>` into `&T`, while another is about a global trait used "across" files. Some of this terminology is really outdated and does not match the current terminology. Additionally, "cross" is also way too generic, it's easy to confuse with cross-compile.
 
 ## `tests/ui/cross-crate/`: Cross-Crate Interaction
 
@@ -452,6 +452,8 @@ Exercises diagnostics for when a code block attempts to gain ownership of a non-
 
 Exercises diagnostics for disallowed struct destructuring.
 
+**FIXME**: does this really need to be its own immediate subdirectory?
+
 ## `tests/ui/dist`
 
 Tests that require distribution artifacts.
@@ -498,10 +500,6 @@ See:
 
 Previously known as "object safety".
 
-## `tests/ui/dyn-drop/`: `dyn Drop`
-
-**FIXME**: Contains a single test, used only to check the `dyn_drop` lint (which is normally `warn` level).
-
 ## `tests/ui/dyn-keyword/`: `dyn` and Dynamic Dispatch
 
 The `dyn` keyword is used to highlight that calls to methods on the associated Trait are dynamically dispatched. To use the trait this way, it must be dyn-compatible - tests about dyn-compatibility belong in `tests/ui/dyn-compatibility/`, while more general tests on dynamic dispatch belong here.
@@ -516,11 +514,7 @@ These tests run in specific Rust editions, such as Rust 2015 or Rust 2018, and c
 
 ## `tests/ui/eii`: Externally Implementable Items
 
-Exercises `eii` keyword.
-
-## `tests/ui/empty/`: Various tests related to the concept of "empty"
-
-**FIXME**: These tests need better homes, this is not very informative.
+Exercises the `#[eii]` attribute and related features.
 
 ## `tests/ui/entry-point/`: `main` function
 
@@ -623,8 +617,6 @@ Tests for `#![feature(fn_traits)]`. See [`fn_traits` | The Unstable book](https:
 
 Anything to do with loops and `for`, `loop` and `while` keywords to express them.
 
-**FIXME**: After `ui/for` is merged into this, also carry over its SUMMARY text.
-
 ## `tests/ui/force-inlining/`: `#[rustc_force_inline]`
 
 Tests for `#[rustc_force_inline]`, which will force a function to always be labelled as inline by the compiler (it will be inserted at the point of its call instead of being used as a normal function call.) If the compiler is unable to inline the function, an error will be reported. See <https://github.com/rust-lang/rust/pull/134082>.
@@ -706,9 +698,7 @@ This test category revolves around trait objects with `Sized` having illegal ope
 Tests on lifetime elision in impl function signatures. See [Lifetime elision | Nomicon](https://doc.rust-lang.org/nomicon/lifetime-elision.html).
 
 ## `tests/ui/impl-restriction/`
-Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077
-](https://github.com/rust-lang/rust/issues/105077).
-
+Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077](https://github.com/rust-lang/rust/issues/105077).
 
 ## `tests/ui/impl-trait/`
 
@@ -744,6 +734,8 @@ Tests on type inference.
 
 Tests for diagnostics on infinitely recursive types without indirection.
 
+**FIXME**: check for overlap with `structs-enums/enum-rec` and `structs-enums/struct-rec`
+
 ## `tests/ui/inline-const/`
 
 These tests revolve around the inline `const` block that forces the compiler to const-eval its content.
@@ -768,12 +760,6 @@ Tests for rustc-internal lints.
 
 Tests for the `{std,core}::intrinsics`, internal implementation detail.
 
-## `tests/ui/invalid/`
-
-Various tests related to rejecting invalid inputs.
-
-**FIXME**: This is rather uninformative, possibly rehome into more meaningful directories.
-
 ## `tests/ui/io-checks/`: Input Output
 
 Tests for I/O related behaviour, covering stdout/stderr handling and error propagation.
@@ -796,10 +782,6 @@ These tests revolve around the `--json` compiler flag. See [JSON Output](https:/
 
 Tests exercising keywords, such as attempting to use them as identifiers when not contextual keywords.
 
-## `tests/ui/kindck/`
-
-**FIXME**: `kindck` is no longer a thing, these tests probably need to be audited and rehomed.
-
 ## `tests/ui/label/`
 
 Exercises block and loop `'label`s.
@@ -818,8 +800,7 @@ See [Type Layout | Reference](https://doc.rust-lang.org/reference/type-layout.ht
 
 ## `tests/ui/lazy-type-alias/`
 
-Tests for `#![feature(lazy_type_alias)]`. See [Tracking issue for lazy type aliases #112792
-](https://github.com/rust-lang/rust/issues/112792).
+Tests for `#![feature(lazy_type_alias)]`. See [Tracking issue for lazy type aliases #112792](https://github.com/rust-lang/rust/issues/112792).
 
 ## `tests/ui/lazy-type-alias-impl-trait/`
 
@@ -874,11 +855,13 @@ See:
 
 Tests exercising analysis for unused variables, unreachable statements, functions which are supposed to return a value but do not, as well as values moved elsewhere before they could be used by a function.
 
-**FIXME**: This seems unrelated to "liveness" as defined in the rustc compiler guide. Is this misleadingly named? https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/lifetime_parameters.html#liveness-and-universal-regions
+**FIXME**: This seems unrelated to "liveness" as defined in the rustc compiler guide. Is this misleadingly named? <https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/lifetime_parameters.html#liveness-and-universal-regions>
 
 ## `tests/ui/loop-match`
 
-Tests for `loop` with `match` expressions.
+Tests for the `loop_match` feature to optimize `loop`s consisting of one big `match` expressions.
+
+See [Tracking issue for way to express intraprocedural finite state machines #132306](https://github.com/rust-lang/rust/issues/132306).
 
 ## `tests/ui/loops/`
 
@@ -916,6 +899,8 @@ See [Tracking issue for allowing overlapping implementations for marker trait #2
 
 Broad category of tests on `match` constructs.
 
+**FIXME**: many tests overlap with `tests/ui/bindings`, try to reduce duplication.
+
 ## `tests/ui/methods/`
 
 A broad category for anything related to methods and method resolution.
@@ -923,6 +908,8 @@ A broad category for anything related to methods and method resolution.
 ## `tests/ui/mir/`
 
 Certain mir-opt regression tests.
+
+**FIXME**: many tests in this directory are not about MIR or optimizations, relocate these.
 
 ## `tests/ui/mir-dataflow`
 
@@ -939,12 +926,6 @@ Exercises on mismatched type diagnostics.
 Something is missing which could be added to fix (e.g. suggestions).
 
 **FIXME**: this is way too vague, tests should be rehomed.
-
-## `tests/ui/missing-trait-bounds/`
-
-Tests for checking missing trait bounds, and their diagnostics.
-
-**FIXME**: Maybe a subdirectory of `ui/trait-bounds` would be more appropriate.
 
 ## `tests/ui/modules/`
 
@@ -1008,17 +989,13 @@ Tests that exercises edge cases, such as specific floats, large or very small nu
 
 Tests that checks numeric types and their interactions, such as casting among them with `as` or providing the wrong numeric suffix.
 
+**FIXME**: these tests could get moved to other directories, in particular `cast/` or `parser/`.
+
 ## `tests/ui/object-lifetime/`
 
 Tests on lifetimes on objects, such as a lifetime bound not being able to be deduced from context, or checking that lifetimes are inherited properly.
 
 **FIXME**: Just a more specific subset of `ui/lifetimes`.
-
-## `tests/ui/obsolete-in-place/`
-
-Contains a single test. Check that we reject the ancient Rust syntax `x <- y` and `in(BINDING) {}` construct.
-
-**FIXME**: Definitely should be rehomed, maybe to `tests/ui/deprecation/`.
 
 ## `tests/ui/offload`
 
@@ -1036,10 +1013,6 @@ Exercises the [`std::mem::offset_of` macro](https://doc.rust-lang.org/beta/std/m
 ## `tests/ui/on-unimplemented/`
 
 Exercises the `#[rustc_on_unimplemented]`.
-
-## `tests/ui/operator-recovery/`
-
-**FIXME**: Probably move under `tests/ui/binop/` or `tests/ui/parser/`.
 
 ## `tests/ui/or-patterns/`
 
@@ -1172,12 +1145,6 @@ See [Tracking Issue for Reborrow trait lang experiment #145612](https://github.c
 Broad category of tests exercising recursions (compile test and run time), in functions, macros, `type` definitions, and more.
 
 Also exercises the `#![recursion_limit = ""]` attribute.
-
-## `tests/ui/recursion_limit/`: `#![recursion_limit = ""]`
-
-Sets a recursion limit on recursive code.
-
-**FIXME**: Should be merged with `tests/ui/recursion/`.
 
 ## `tests/ui/reflection/`
 
@@ -1355,7 +1322,7 @@ Some standard library tests which are too inconvenient or annoying to implement 
 
 ## `tests/ui/str/`
 
-Exercise `str` keyword and string slices.
+Exercise `str` primitive and string slices.
 
 ## `tests/ui/structs/`
 
@@ -1467,7 +1434,7 @@ Tests for the `#[doc(hidden)]` items.
 
 ## `tests/ui/try-block/`
 
-`#![feature(try_blocks)]`. See [Tracking issue for `?` operator and `try` blocks (RFC 243, `question_mark` & `try_blocks` features)](https://github.com/rust-lang/rust/issues/31436).
+`#![feature(try_blocks)]` & `#![feature(try_blocks_heterogeneous)]`. See [Tracking Issue for homogeneous `try_blocks`](https://github.com/rust-lang/rust/issues/154391) & [Experimental Tracking Issue for Heterogeneous Try Blocks](https://github.com/rust-lang/rust/issues/149488).
 
 ## `tests/ui/try-trait/`
 
@@ -1510,6 +1477,8 @@ See [RFC 0132 Unified Function Call Syntax](https://github.com/rust-lang/rfcs/bl
 ## `tests/ui/unboxed-closures/`
 
 `#![feature(unboxed_closures)]`, `Fn`, `FnMut` and `FnOnce` traits
+
+**FIXME**: many tests have `unboxed-closure` in their name but only test normal closures, rename these.
 
 See [Tracking issue for Fn traits (`unboxed_closures` & `fn_traits` feature)](https://github.com/rust-lang/rust/issues/29625).
 
@@ -1600,10 +1569,6 @@ See [Variance | Reference](https://doc.rust-lang.org/reference/subtyping.html#va
 Tests on `enum` variants.
 
 **FIXME**: Should be rehomed with `tests/ui/enum/`.
-
-## `tests/ui/version/`
-
-**FIXME**: Contains a single test described as "Check that rustc accepts various version info flags.", should be rehomed.
 
 ## `tests/ui/wasm/`
 

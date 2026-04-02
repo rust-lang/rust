@@ -3868,6 +3868,8 @@ fn main() {
             208..209 'c': u8
             213..214 'a': A
             213..221 'a.into()': [u8; 2]
+            33..34 '2': usize
+            111..112 '3': usize
         "#]],
     );
 }
@@ -4061,6 +4063,8 @@ fn foo() {
             248..282 'LazyLo..._LOCK)': &'? [u32; _]
             264..281 '&VALUE...Y_LOCK': &'? LazyLock<[u32; _]>
             265..281 'VALUES...Y_LOCK': LazyLock<[u32; _]>
+            197..202 '{ 0 }': usize
+            199..200 '0': usize
         "#]],
     );
 }
@@ -4107,5 +4111,40 @@ fn foo() {
  // ^^^^^^^^^^^^^^ {unknown}
 }
     "#,
+    );
+}
+
+#[test]
+fn signature_inference() {
+    check_infer(
+        r#"
+trait Trait<const A: u8> {}
+struct S<T: Trait<2>, const C: f32 = 0.0>
+where
+    (): Trait<2>
+{
+    field: [(); { C as usize }],
+    field2: *mut S<T, 5.0>
+}
+
+struct S2<const C: u16>;
+
+type Alias = S2<0>;
+impl S2<0> {}
+enum E {
+    V(S2<0>) = 0,
+}
+union U {
+    field: S2<0>
+}
+    "#,
+        expect![[r#"
+            242..243 '0': isize
+            46..47 '2': i32
+            65..68 '0.0': f32
+            90..91 '2': i32
+            200..201 '0': i32
+            212..213 '0': i32
+        "#]],
     );
 }

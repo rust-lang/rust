@@ -170,7 +170,7 @@ impl LateLintPass<'_> for SemicolonBlock {
             StmtKind::Semi(Expr {
                 kind: ExprKind::Block(block, _),
                 ..
-            }) if !block.span.from_expansion() => {
+            }) if !block.span.from_expansion() && !block.targeted_by_break => {
                 let attrs = cx.tcx.hir_attrs(stmt.hir_id);
                 if !attrs.is_empty() && !cx.tcx.features().stmt_expr_attributes() {
                     return;

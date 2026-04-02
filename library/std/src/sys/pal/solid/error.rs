@@ -3,6 +3,14 @@ use super::{abi, itron};
 use crate::io;
 use crate::sys::net;
 
+// SOLID directly maps `errno`s to μITRON error codes.
+impl SolidError {
+    #[inline]
+    pub(crate) fn as_io_error(self) -> crate::io::Error {
+        crate::io::Error::from_raw_os_error(self.as_raw())
+    }
+}
+
 /// Describe the specified SOLID error code. Returns `None` if it's an
 /// undefined error code.
 ///

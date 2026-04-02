@@ -4,7 +4,6 @@ use hir::{
 };
 use ide_db::{
     FileId, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
-    assists::ExprFillDefaultMode,
     defs::{Definition, NameRefClass},
     famous_defs::FamousDefs,
     helpers::is_editable_crate,
@@ -24,7 +23,7 @@ use syntax::{
 
 use crate::{
     AssistContext, AssistId, Assists,
-    utils::{convert_reference_type, find_struct_impl},
+    utils::{convert_reference_type, expr_fill_default, find_struct_impl},
 };
 
 // Assist: generate_function
@@ -286,11 +285,7 @@ impl FunctionBuilder {
                 target_module,
                 &mut necessary_generic_params,
             );
-            let placeholder_expr = match ctx.config.expr_fill_default {
-                ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-                ExprFillDefaultMode::Default => make::ext::expr_todo(),
-            };
+            let placeholder_expr = expr_fill_default(ctx.config);
             fn_body = make::block_expr(vec![], Some(placeholder_expr));
         };
 
@@ -345,11 +340,7 @@ impl FunctionBuilder {
         let (generic_param_list, where_clause) =
             fn_generic_params(ctx, necessary_generic_params, &target)?;
 
-        let placeholder_expr = match ctx.config.expr_fill_default {
-            ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-            ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-            ExprFillDefaultMode::Default => make::ext::expr_todo(),
-        };
+        let placeholder_expr = expr_fill_default(ctx.config);
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
 
         Some(Self {
@@ -465,11 +456,7 @@ fn make_fn_body_as_new_function(
     let adt_info = adt_info.as_ref()?;
 
     let path_self = make::ext::ident_path("Self");
-    let placeholder_expr = match ctx.config.expr_fill_default {
-        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-        ExprFillDefaultMode::Default => make::ext::expr_todo(),
-    };
+    let placeholder_expr = expr_fill_default(ctx.config);
     let tail_expr = if let Some(strukt) = adt_info.adt.as_struct() {
         match strukt.kind(ctx.db()) {
             StructKind::Record => {

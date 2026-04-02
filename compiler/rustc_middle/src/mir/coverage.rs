@@ -10,7 +10,7 @@ use rustc_span::Span;
 rustc_index::newtype_index! {
     /// Used by [`CoverageKind::BlockMarker`] to mark blocks during THIR-to-MIR
     /// lowering, so that those blocks can be identified later.
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[debug_format = "BlockMarkerId({})"]
     pub struct BlockMarkerId {}
@@ -26,7 +26,7 @@ rustc_index::newtype_index! {
     ///
     /// Note that LLVM handles counter IDs as `uint32_t`, so there is no need
     /// to use a larger representation on the Rust side.
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "CounterId({})"]
@@ -43,7 +43,7 @@ rustc_index::newtype_index! {
     ///
     /// Note that LLVM handles expression IDs as `uint32_t`, so there is no need
     /// to use a larger representation on the Rust side.
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "ExpressionId({})"]
@@ -203,7 +203,7 @@ rustc_index::newtype_index! {
     ///
     /// After that pass is complete, the coverage graph no longer exists, so a
     /// BCB is effectively an opaque ID.
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "bcb{}"]

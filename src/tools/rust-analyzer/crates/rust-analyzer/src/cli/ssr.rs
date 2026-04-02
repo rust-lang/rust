@@ -20,6 +20,7 @@ impl flags::Ssr {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
+            num_worker_threads: 1,
             proc_macro_processes: 1,
         };
         let (ref db, vfs, _proc_macro) = load_workspace_at(
@@ -57,6 +58,7 @@ impl flags::Search {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
+            num_worker_threads: 1,
             proc_macro_processes: 1,
         };
         let (ref db, _vfs, _proc_macro) = load_workspace_at(
@@ -74,7 +76,7 @@ impl flags::Search {
                 let sr = db.source_root(root).source_root(db);
                 for file_id in sr.iter() {
                     for debug_info in match_finder.debug_where_text_equal(
-                        EditionedFileId::current_edition_guess_origin(db, file_id),
+                        EditionedFileId::current_edition(db, file_id),
                         debug_snippet,
                     ) {
                         println!("{debug_info:#?}");

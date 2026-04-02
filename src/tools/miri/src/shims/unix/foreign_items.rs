@@ -174,6 +174,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.getpid()?;
                 this.write_scalar(result, dest)?;
             }
+            "uname" => {
+                // Not all Unixes have the `uname` symbol, e.g. FreeBSD does not.
+                this.check_target_os(
+                    &[Os::Linux, Os::Android, Os::MacOs, Os::Solaris, Os::Illumos],
+                    link_name,
+                )?;
+                let [uname] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*mut _) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.uname(uname, None)?;
+                this.write_scalar(result, dest)?;
+            }
             "sysconf" => {
                 let [val] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32) -> isize),
@@ -550,6 +565,84 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.socket(domain, type_, protocol)?;
                 this.write_scalar(result, dest)?;
             }
+            "bind" => {
+                let [socket, address, address_len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *const _, libc::socklen_t) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.bind(socket, address, address_len)?;
+                this.write_scalar(result, dest)?;
+            }
+            "listen" => {
+                let [socket, backlog] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, i32) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.listen(socket, backlog)?;
+                this.write_scalar(result, dest)?;
+            }
+            "accept" => {
+                let [socket, address, address_len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *mut _, *mut _) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                this.accept4(socket, address, address_len, /* flags */ None, dest)?;
+            }
+            "accept4" => {
+                let [socket, address, address_len, flags] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *mut _, *mut _, i32) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                this.accept4(socket, address, address_len, Some(flags), dest)?;
+            }
+            "connect" => {
+                let [socket, address, address_len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *const _, libc::socklen_t) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                this.connect(socket, address, address_len, dest)?;
+            }
+            "setsockopt" => {
+                let [socket, level, option_name, option_value, option_len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, i32, i32, *const _, libc::socklen_t) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result =
+                    this.setsockopt(socket, level, option_name, option_value, option_len)?;
+                this.write_scalar(result, dest)?;
+            }
+            "getsockname" => {
+                let [socket, address, address_len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *mut _, *mut _) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.getsockname(socket, address, address_len)?;
+                this.write_scalar(result, dest)?;
+            }
+            "getpeername" => {
+                let [socket, address, address_len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *mut _, *mut _) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.getpeername(socket, address, address_len)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // Time
             "gettimeofday" => {
@@ -644,10 +737,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.read_target_usize(handle)?;
                 let symbol = this.read_pointer(symbol)?;
                 let name = this.read_c_str(symbol)?;
-                if let Ok(name) = str::from_utf8(name)
-                    && is_dyn_sym(name, &this.tcx.sess.target.os)
-                {
+                let Ok(name) = str::from_utf8(name) else {
+                    throw_unsup_format!("dlsym: non UTF-8 symbol name not supported")
+                };
+                if is_dyn_sym(name, &this.tcx.sess.target.os) {
                     let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str(name)));
+                    this.write_pointer(ptr, dest)?;
+                } else if let Some(&ptr) = this.machine.extern_statics.get(&Symbol::intern(name)) {
                     this.write_pointer(ptr, dest)?;
                 } else {
                     this.write_null(dest)?;

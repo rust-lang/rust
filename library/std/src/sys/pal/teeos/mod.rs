@@ -6,7 +6,7 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
-pub mod os;
+pub mod conf;
 #[path = "../unix/time.rs"]
 pub mod time;
 

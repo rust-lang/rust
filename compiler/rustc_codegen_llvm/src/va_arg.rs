@@ -8,7 +8,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
-use rustc_target::spec::{Arch, Env, RustcAbi};
+use rustc_target::spec::{Arch, Env, LlvmAbi, RustcAbi};
 
 use crate::builder::Builder;
 use crate::llvm::{Type, Value};
@@ -551,7 +551,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
             registers_for_primitive(scalar1.primitive());
             registers_for_primitive(scalar2.primitive());
         }
-        BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => {
+        BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => {
             // Because no instance of VaArgSafe uses a non-scalar `BackendRepr`.
             unreachable!(
                 "No x86-64 SysV va_arg implementation for {:?}",
@@ -692,7 +692,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
         }
         // The Previous match on `BackendRepr` means control flow already escaped.
         BackendRepr::SimdVector { .. }
-        | BackendRepr::ScalableVector { .. }
+        | BackendRepr::SimdScalableVector { .. }
         | BackendRepr::Memory { .. } => unreachable!(),
     };
 
@@ -1077,7 +1077,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             AllowHigherAlign::Yes,
             ForceRightAdjust::Yes,
         ),
-        Arch::RiscV32 if target.llvm_abiname == "ilp32e" => {
+        Arch::RiscV32 if target.llvm_abiname == LlvmAbi::Ilp32e => {
             // FIXME: clang manually adjusts the alignment for this ABI. It notes:
             //
             // > To be compatible with GCC's behaviors, we force arguments with
@@ -1186,9 +1186,10 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             // Clang uses the LLVM implementation for these architectures.
             bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
         }
-        Arch::Other(_) => {
-            // For custom targets, use the LLVM va_arg instruction as a fallback.
-            bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
+        Arch::Other(ref arch) => {
+            // Just to be safe we error out explicitly here, instead of crossing our fingers that
+            // the default LLVM implementation has the correct behavior for this target.
+            bug!("c-variadic functions are not currently implemented for custom target {arch}")
         }
     }
 }

@@ -7,7 +7,7 @@
 //! ```
 use hir::{
     DefWithBody,
-    db::{DefDatabase as _, HirDatabase as _},
+    db::HirDatabase as _,
     mir::{MirSpan, TerminatorKind},
 };
 use ide_db::{FileRange, famous_defs::FamousDefs};
@@ -35,7 +35,7 @@ pub(super) fn hints(
     let def: DefWithBody = def.into();
 
     let def = def.try_into().ok()?;
-    let (hir, source_map) = sema.db.body_with_source_map(def);
+    let (hir, source_map) = hir::Body::with_source_map(sema.db, def);
 
     let mir = sema.db.mir_body(def).ok()?;
 

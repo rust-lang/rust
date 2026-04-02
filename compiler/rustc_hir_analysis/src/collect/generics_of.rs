@@ -1,6 +1,6 @@
+use std::assert_matches;
 use std::ops::ControlFlow;
 
-use rustc_data_structures::assert_matches;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -76,12 +76,12 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         | Node::Ctor(..)
         | Node::Field(_) => {
             let parent_id = tcx.hir_get_parent_item(hir_id);
-            Some(parent_id.to_def_id())
+            Some(parent_id.def_id)
         }
         // FIXME(#43408) always enable this once `lazy_normalization` is
         // stable enough and does not need a feature gate anymore.
         Node::AnonConst(_) => {
-            let parent_did = tcx.parent(def_id.to_def_id());
+            let parent_did = tcx.local_parent(def_id);
             debug!(?parent_did);
 
             let mut in_param_ty = false;
@@ -175,7 +175,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         }
         Node::ConstBlock(_)
         | Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
-            Some(tcx.typeck_root_def_id(def_id.to_def_id()))
+            Some(tcx.typeck_root_def_id_local(def_id))
         }
         Node::OpaqueTy(&hir::OpaqueTy {
             origin:
@@ -188,7 +188,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             } else {
                 assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn);
             }
-            Some(fn_def_id.to_def_id())
+            Some(fn_def_id)
         }
         Node::OpaqueTy(&hir::OpaqueTy {
             origin: hir::OpaqueTyOrigin::TyAlias { parent, in_assoc_ty },
@@ -202,7 +202,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent);
             // Opaque types are always nested within another item, and
             // inherit the generics of the item.
-            Some(parent.to_def_id())
+            Some(parent)
         }
 
         // All of these nodes have no parent from which to inherit generics.
@@ -380,7 +380,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         own_params.iter().map(|param| (param.def_id, param.index)).collect();
 
     ty::Generics {
-        parent: parent_def_id,
+        parent: parent_def_id.map(LocalDefId::to_def_id),
         parent_count,
         own_params,
         param_def_id_to_index,

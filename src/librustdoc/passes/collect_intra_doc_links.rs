@@ -1067,17 +1067,27 @@ impl LinkCollector<'_, '_> {
     #[instrument(level = "debug", skip_all)]
     fn resolve_links(&mut self, item: &Item) {
         let tcx = self.cx.tcx;
-        if !self.cx.document_private()
-            && let Some(def_id) = item.item_id.as_def_id()
-            && let Some(def_id) = def_id.as_local()
-            && !tcx.effective_visibilities(()).is_exported(def_id)
-            && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
+        let document_private = self.cx.document_private();
+        let effective_visibilities = tcx.effective_visibilities(());
+        let should_skip_link_resolution = |item_id: DefId| {
+            !document_private
+                && item_id
+                    .as_local()
+                    .is_some_and(|local_def_id| !effective_visibilities.is_exported(local_def_id))
+                && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
+        };
+
+        if let Some(def_id) = item.item_id.as_def_id()
+            && should_skip_link_resolution(def_id)
         {
             // Skip link resolution for non-exported items.
             return;
         }
 
-        let mut insert_links = |item_id, doc: &str| {
+        let mut try_insert_links = |item_id, doc: &str| {
+            if should_skip_link_resolution(item_id) {
+                return;
+            }
             let module_id = match tcx.def_kind(item_id) {
                 DefKind::Mod if item.inner_docs(tcx) => item_id,
                 _ => find_nearest_parent_module(tcx, item_id).unwrap(),
@@ -1108,7 +1118,7 @@ impl LinkCollector<'_, '_> {
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
-            insert_links(item_id, &doc)
+            try_insert_links(item_id, &doc)
         }
 
         // Also resolve links in the note text of `#[deprecated]`.
@@ -1137,7 +1147,7 @@ impl LinkCollector<'_, '_> {
             } else {
                 item.item_id.expect_def_id()
             };
-            insert_links(item_id, note)
+            try_insert_links(item_id, note)
         }
     }
 
@@ -1914,61 +1924,70 @@ fn report_diagnostic(
 
     let sp = item.attr_span(tcx);
 
-    tcx.node_span_lint(lint, hir_id, sp, |lint| {
-        lint.primary_message(msg);
+    tcx.emit_node_span_lint(
+        lint,
+        hir_id,
+        sp,
+        rustc_errors::DiagDecorator(|lint| {
+            lint.primary_message(msg);
 
-        let (span, link_range) = match link_range {
-            MarkdownLinkRange::Destination(md_range) => {
-                let mut md_range = md_range.clone();
-                let sp =
-                    source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings)
-                        .map(|(mut sp, _)| {
-                            while dox.as_bytes().get(md_range.start) == Some(&b' ')
-                                || dox.as_bytes().get(md_range.start) == Some(&b'`')
-                            {
-                                md_range.start += 1;
-                                sp = sp.with_lo(sp.lo() + BytePos(1));
-                            }
-                            while dox.as_bytes().get(md_range.end - 1) == Some(&b' ')
-                                || dox.as_bytes().get(md_range.end - 1) == Some(&b'`')
-                            {
-                                md_range.end -= 1;
-                                sp = sp.with_hi(sp.hi() - BytePos(1));
-                            }
-                            sp
-                        });
-                (sp, MarkdownLinkRange::Destination(md_range))
-            }
-            MarkdownLinkRange::WholeLink(md_range) => (
-                source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings)
-                    .map(|(sp, _)| sp),
-                link_range.clone(),
-            ),
-        };
+            let (span, link_range) = match link_range {
+                MarkdownLinkRange::Destination(md_range) => {
+                    let mut md_range = md_range.clone();
+                    let sp = source_span_for_markdown_range(
+                        tcx,
+                        dox,
+                        &md_range,
+                        &item.attrs.doc_strings,
+                    )
+                    .map(|(mut sp, _)| {
+                        while dox.as_bytes().get(md_range.start) == Some(&b' ')
+                            || dox.as_bytes().get(md_range.start) == Some(&b'`')
+                        {
+                            md_range.start += 1;
+                            sp = sp.with_lo(sp.lo() + BytePos(1));
+                        }
+                        while dox.as_bytes().get(md_range.end - 1) == Some(&b' ')
+                            || dox.as_bytes().get(md_range.end - 1) == Some(&b'`')
+                        {
+                            md_range.end -= 1;
+                            sp = sp.with_hi(sp.hi() - BytePos(1));
+                        }
+                        sp
+                    });
+                    (sp, MarkdownLinkRange::Destination(md_range))
+                }
+                MarkdownLinkRange::WholeLink(md_range) => (
+                    source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings)
+                        .map(|(sp, _)| sp),
+                    link_range.clone(),
+                ),
+            };
 
-        if let Some(sp) = span {
-            lint.span(sp);
-        } else {
-            // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
-            //                       ^     ~~~~
-            //                       |     link_range
-            //                       last_new_line_offset
-            let md_range = link_range.inner_range().clone();
-            let last_new_line_offset = dox[..md_range.start].rfind('\n').map_or(0, |n| n + 1);
-            let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+            if let Some(sp) = span {
+                lint.span(sp);
+            } else {
+                // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+                //                       ^     ~~~~
+                //                       |     link_range
+                //                       last_new_line_offset
+                let md_range = link_range.inner_range().clone();
+                let last_new_line_offset = dox[..md_range.start].rfind('\n').map_or(0, |n| n + 1);
+                let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
-            // Print the line containing the `md_range` and manually mark it with '^'s.
-            lint.note(format!(
-                "the link appears in this line:\n\n{line}\n\
+                // Print the line containing the `md_range` and manually mark it with '^'s.
+                lint.note(format!(
+                    "the link appears in this line:\n\n{line}\n\
                      {indicator: <before$}{indicator:^<found$}",
-                indicator = "",
-                before = md_range.start - last_new_line_offset,
-                found = md_range.len(),
-            ));
-        }
+                    indicator = "",
+                    before = md_range.start - last_new_line_offset,
+                    found = md_range.len(),
+                ));
+            }
 
-        decorate(lint, span, link_range);
-    });
+            decorate(lint, span, link_range);
+        }),
+    );
 }
 
 /// Reports a link that failed to resolve.

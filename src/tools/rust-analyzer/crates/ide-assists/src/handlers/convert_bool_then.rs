@@ -102,11 +102,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
                 ast::Expr::BlockExpr(block) => unwrap_trivial_block(block),
                 e => e,
             };
-            let cond = if invert_cond {
-                invert_boolean_expression(&make, cond)
-            } else {
-                cond.clone_for_update()
-            };
+            let cond = if invert_cond { invert_boolean_expression(&make, cond) } else { cond };
 
             let parenthesize = matches!(
                 cond,
@@ -241,7 +237,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
 fn option_variants(
     sema: &Semantics<'_, RootDatabase>,
     expr: &SyntaxNode,
-) -> Option<(hir::Variant, hir::Variant)> {
+) -> Option<(hir::EnumVariant, hir::EnumVariant)> {
     let fam = FamousDefs(sema, sema.scope(expr)?.krate());
     let option_variants = fam.core_option_Option()?.variants(sema.db);
     match &*option_variants {
@@ -258,7 +254,7 @@ fn option_variants(
 /// If any of these conditions are met it is impossible to rewrite this as a `bool::then` call.
 fn is_invalid_body(
     sema: &Semantics<'_, RootDatabase>,
-    some_variant: hir::Variant,
+    some_variant: hir::EnumVariant,
     expr: &ast::Expr,
 ) -> bool {
     let mut invalid = false;
@@ -281,7 +277,7 @@ fn is_invalid_body(
                 && let Some(ast::Expr::PathExpr(p)) = call.expr()
             {
                 let res = p.path().and_then(|p| sema.resolve_path(&p));
-                if let Some(hir::PathResolution::Def(hir::ModuleDef::Variant(v))) = res {
+                if let Some(hir::PathResolution::Def(hir::ModuleDef::EnumVariant(v))) = res {
                     return invalid |= v != some_variant;
                 }
             }
@@ -294,11 +290,11 @@ fn is_invalid_body(
 fn block_is_none_variant(
     sema: &Semantics<'_, RootDatabase>,
     block: &ast::BlockExpr,
-    none_variant: hir::Variant,
+    none_variant: hir::EnumVariant,
 ) -> bool {
     block_as_lone_tail(block).and_then(|e| match e {
         ast::Expr::PathExpr(pat) => match sema.resolve_path(&pat.path()?)? {
-            hir::PathResolution::Def(hir::ModuleDef::Variant(v)) => Some(v),
+            hir::PathResolution::Def(hir::ModuleDef::EnumVariant(v)) => Some(v),
             _ => None,
         },
         _ => None,

@@ -1,4 +1,4 @@
-use core::num::dec2flt::decimal::Decimal;
+use core::num::imp::dec2flt::decimal::Decimal;
 
 type FPath<F> = ((i64, u64, bool, bool), Option<F>);
 

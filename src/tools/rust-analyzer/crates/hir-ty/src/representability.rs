@@ -1,6 +1,6 @@
 //! Detecting whether a type is infinitely-sized.
 
-use hir_def::{AdtId, VariantId};
+use hir_def::{AdtId, VariantId, hir::generics::GenericParams};
 use rustc_type_ir::inherent::{AdtDef, IntoKind};
 
 use crate::{
@@ -88,7 +88,7 @@ fn representability_adt_ty<'db>(
 }
 
 fn params_in_repr(db: &dyn HirDatabase, def_id: AdtId) -> Box<[bool]> {
-    let generics = db.generic_params(def_id.into());
+    let generics = GenericParams::of(db, def_id.into());
     let mut params_in_repr = (0..generics.len_lifetimes() + generics.len_type_or_consts())
         .map(|_| false)
         .collect::<Box<[bool]>>();

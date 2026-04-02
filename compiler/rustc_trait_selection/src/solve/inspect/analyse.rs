@@ -9,7 +9,8 @@
 //! coherence right now and was annoying to implement, so I am leaving it
 //! as is until we start using it for something else.
 
-use rustc_data_structures::assert_matches;
+use std::assert_matches;
+
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::Obligation;
 use rustc_macros::extension;

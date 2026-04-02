@@ -3,12 +3,11 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html#selection
 
 use std::cell::{Cell, RefCell};
-use std::cmp;
 use std::fmt::{self, Display};
 use std::ops::ControlFlow;
+use std::{assert_matches, cmp};
 
 use hir::def::DefKind;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
@@ -2039,7 +2038,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
-                | PointerLikeCandidate
                 | BikeshedGuaranteedNoDropCandidate => false,
                 // Non-global param candidates have already been handled, global
                 // where-bounds get ignored.
@@ -2405,15 +2403,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // We can resolve the opaque type to its hidden type,
                     // which enforces a DAG between the functions requiring
                     // the auto trait bounds in question.
-                    match self.tcx().type_of_opaque(def_id) {
-                        Ok(ty) => ty::Binder::dummy(AutoImplConstituents {
-                            types: vec![ty.instantiate(self.tcx(), args)],
-                            assumptions: vec![],
-                        }),
-                        Err(_) => {
-                            return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
-                        }
-                    }
+                    let ty = self.tcx().type_of_opaque(def_id);
+                    ty::Binder::dummy(AutoImplConstituents {
+                        types: vec![ty.instantiate(self.tcx(), args)],
+                        assumptions: vec![],
+                    })
                 }
             }
         })

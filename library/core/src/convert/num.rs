@@ -70,8 +70,8 @@ impl_from_bool!(i8 i16 i32 i64 i128 isize);
 
 /// Implement `From<$small>` for `$large`
 macro_rules! impl_from {
-    ($small:ty => $large:ty, #[$attr:meta]) => {
-        #[$attr]
+    ($small:ty => $large:ty, $(#[$attrs:meta]),+) => {
+        $(#[$attrs])+
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
         impl const From<$small> for $large {
             #[doc = concat!("Converts from [`", stringify!($small), "`] to [`", stringify!($large), "`] losslessly.")]
@@ -157,8 +157,7 @@ impl_from!(i16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 impl_from!(i16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-// FIXME(f128): This impl would allow using `f128` on stable before it is stabilised.
-// impl_from!(i64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(i64 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 
 // unsigned integer -> float
 impl_from!(u8 => f16, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
@@ -170,8 +169,7 @@ impl_from!(u16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 impl_from!(u16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-// FIXME(f128): This impl would allow using `f128` on stable before it is stabilised.
-// impl_from!(u64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(u64 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 
 // float -> float
 // FIXME(f16,f128): adding additional `From<{float}>` impls to `f32` breaks inference. See

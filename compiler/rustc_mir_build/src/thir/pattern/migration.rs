@@ -3,7 +3,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan, pluralize};
 use rustc_hir::{BindingMode, ByRef, HirId, Mutability};
-use rustc_lint as lint;
+use rustc_lint_defs::builtin::RUST_2024_INCOMPATIBLE_PAT;
 use rustc_middle::ty::{self, Rust2024IncompatiblePatInfo, TyCtxt};
 use rustc_span::{Ident, Span};
 
@@ -55,10 +55,15 @@ impl<'a> PatMigration<'a> {
             self.format_subdiagnostics(&mut err);
             err.emit();
         } else {
-            tcx.node_span_lint(lint::builtin::RUST_2024_INCOMPATIBLE_PAT, pat_id, spans, |diag| {
-                diag.primary_message(primary_message);
-                self.format_subdiagnostics(diag);
-            });
+            tcx.emit_node_span_lint(
+                RUST_2024_INCOMPATIBLE_PAT,
+                pat_id,
+                spans,
+                rustc_errors::DiagDecorator(|diag| {
+                    diag.primary_message(primary_message);
+                    self.format_subdiagnostics(diag);
+                }),
+            );
         }
     }
 

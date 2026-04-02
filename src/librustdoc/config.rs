@@ -322,8 +322,8 @@ pub(crate) enum ModuleSorting {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum EmitType {
-    Toolchain,
-    InvocationSpecific,
+    HtmlStaticFiles,
+    HtmlNonStaticFiles,
     DepInfo(Option<OutFileName>),
 }
 
@@ -332,8 +332,12 @@ impl FromStr for EmitType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "toolchain-shared-resources" => Ok(Self::Toolchain),
-            "invocation-specific" => Ok(Self::InvocationSpecific),
+            // old nightly-only choices that are going away soon
+            "toolchain-shared-resources" => Ok(Self::HtmlStaticFiles),
+            "invocation-specific" => Ok(Self::HtmlNonStaticFiles),
+            // modern choices
+            "html-static-files" => Ok(Self::HtmlStaticFiles),
+            "html-non-static-files" => Ok(Self::HtmlNonStaticFiles),
             "dep-info" => Ok(Self::DepInfo(None)),
             option => match option.strip_prefix("dep-info=") {
                 Some("-") => Ok(Self::DepInfo(Some(OutFileName::Stdout))),
@@ -346,7 +350,7 @@ impl FromStr for EmitType {
 
 impl RenderOptions {
     pub(crate) fn should_emit_crate(&self) -> bool {
-        self.emit.is_empty() || self.emit.contains(&EmitType::InvocationSpecific)
+        self.emit.is_empty() || self.emit.contains(&EmitType::HtmlNonStaticFiles)
     }
 
     pub(crate) fn dep_info(&self) -> Option<Option<&OutFileName>> {
@@ -458,8 +462,13 @@ impl Options {
             return None;
         }
 
+        let should_test = matches.opt_present("test");
+
         let mut emit = FxIndexMap::<_, EmitType>::default();
         for list in matches.opt_strs("emit") {
+            if should_test {
+                dcx.fatal("the `--test` flag and the `--emit` flag are not supported together");
+            }
             for kind in list.split(',') {
                 match kind.parse() {
                     Ok(kind) => {
@@ -510,6 +519,18 @@ impl Options {
                 dcx.fatal(
                     "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/134529)",
                 );
+            }
+        }
+
+        if output_format == OutputFormat::Json {
+            if let Some(emit_flag) = emit.iter().find_map(|emit| match emit {
+                EmitType::HtmlStaticFiles => Some("html-static-files"),
+                EmitType::HtmlNonStaticFiles => Some("html-non-static-files"),
+                EmitType::DepInfo(_) => None,
+            }) {
+                dcx.fatal(format!(
+                    "the `--emit={emit_flag}` flag is not supported with `--output-format=json`",
+                ));
             }
         }
 
@@ -630,7 +651,6 @@ impl Options {
         let test_args: Vec<String> =
             test_args.iter().flat_map(|s| s.split_whitespace()).map(|s| s.to_string()).collect();
 
-        let should_test = matches.opt_present("test");
         let no_run = matches.opt_present("no-run");
 
         if !should_test && no_run {

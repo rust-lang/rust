@@ -5,6 +5,6 @@
 pub struct Bar
 where
     for<'a> &'a mut Self:;
-//~^ ERROR overflow evaluating the requirement `for<'a> &'a mut Bar well-formed`
+//~^ ERROR: overflow evaluating whether `&'a mut Bar` is well-formed
 
 fn main() {}

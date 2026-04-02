@@ -17,6 +17,7 @@
 #![feature(const_bool)]
 #![feature(const_cell_traits)]
 #![feature(const_clone)]
+#![feature(const_closures)]
 #![feature(const_cmp)]
 #![feature(const_convert)]
 #![feature(const_default)]
@@ -84,10 +85,10 @@
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(new_range_api)]
 #![feature(next_index)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![feature(nonzero_from_str_radix)]
+#![feature(num_internals)]
 #![feature(numfmt)]
 #![feature(one_sided_range)]
 #![feature(panic_internals)]
@@ -111,6 +112,7 @@
 #![feature(step_trait)]
 #![feature(str_internals)]
 #![feature(strict_provenance_lints)]
+#![feature(titlecase)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
 #![feature(try_blocks)]
@@ -120,6 +122,7 @@
 #![feature(uint_bit_width)]
 #![feature(uint_carryless_mul)]
 #![feature(uint_gather_scatter_bits)]
+#![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
 #![feature(widening_mul)]
@@ -180,7 +183,6 @@ mod cmp;
 mod const_ptr;
 mod convert;
 mod ffi;
-mod floats;
 mod fmt;
 mod future;
 mod hash;

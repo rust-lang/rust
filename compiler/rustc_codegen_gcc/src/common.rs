@@ -26,13 +26,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     fn global_string(&self, string: &str) -> LValue<'gcc> {
-        // TODO(antoyo): handle non-null-terminated strings.
+        // FIXME(antoyo): handle non-null-terminated strings.
         let string = self.context.new_string_literal(string);
         let sym = self.generate_local_symbol_name("str");
         let global = self.declare_private_global(&sym, self.val_ty(string));
         global.global_set_initializer_rvalue(string);
         global
-        // TODO(antoyo): set linkage.
+        // FIXME(antoyo): set linkage.
     }
 
     pub fn const_bitcast(&self, value: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
@@ -204,7 +204,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
 
     fn const_struct(&self, values: &[RValue<'gcc>], packed: bool) -> RValue<'gcc> {
         let fields: Vec<_> = values.iter().map(|value| value.get_type()).collect();
-        // TODO(antoyo): cache the type? It's anonymous, so probably not.
+        // FIXME(antoyo): cache the type? It's anonymous, so probably not.
         let typ = self.type_struct(&fields, packed);
         let struct_type = typ.is_struct().expect("struct type");
         self.context.new_struct_constructor(None, struct_type.as_type(), None, values)
@@ -216,12 +216,12 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
     }
 
     fn const_to_opt_uint(&self, _v: RValue<'gcc>) -> Option<u64> {
-        // TODO(antoyo)
+        // FIXME(antoyo)
         None
     }
 
     fn const_to_opt_u128(&self, _v: RValue<'gcc>, _sign_ext: bool) -> Option<u128> {
-        // TODO(antoyo)
+        // FIXME(antoyo)
         None
     }
 
@@ -236,10 +236,10 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                     // NOTE: since the intrinsic _xabort is called with a bitcast, which
                     // is non-const, but expects a constant, do a normal cast instead of a bitcast.
                     // FIXME(antoyo): fix bitcast to work in constant contexts.
-                    // TODO(antoyo): perhaps only use bitcast for pointers?
+                    // FIXME(antoyo): perhaps only use bitcast for pointers?
                     self.context.new_cast(None, value, ty)
                 } else {
-                    // TODO(bjorn3): assert size is correct
+                    // FIXME(bjorn3): assert size is correct
                     self.const_bitcast(value, ty)
                 }
             }
@@ -270,7 +270,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                             _ => self.static_addr_of(alloc, None),
                         };
                         if !self.sess().fewer_names() {
-                            // TODO(antoyo): set value name.
+                            // FIXME(antoyo): set value name.
                         }
                         value
                     }

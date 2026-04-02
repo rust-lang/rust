@@ -44,8 +44,8 @@ fn test_attribute_permutation() {
                 b: $ty,
             }
 
-            impl<CTX> HashStable<CTX> for Foo {
-                fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+            impl<Hcx> HashStable<Hcx> for Foo {
+                fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
                     self.a.hash_stable(hcx, hasher);
                     self.b.hash_stable(hcx, hasher);
                 }

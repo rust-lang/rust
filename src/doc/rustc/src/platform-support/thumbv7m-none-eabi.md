@@ -25,6 +25,7 @@ only option because there is no FPU support in [Armv7-M].
 
 - [Rust Embedded Devices Working Group Arm Team](https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team)
 - [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
+    - Use `@rustbot ping arm-maintainers` to ping us
 
 [arm_maintainers]: https://github.com/rust-lang/team/blob/master/teams/arm-maintainers.toml
 [arm_email]: mailto:rust@arm.com

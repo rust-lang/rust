@@ -16,7 +16,7 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldabl
 use crate::inherent::*;
 use crate::lift::Lift;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex};
+use crate::{self as ty, DebruijnIndex, Interner, Ty, UniverseIndex};
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
@@ -26,11 +26,7 @@ use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex};
 /// for more details.
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
-// FIXME(derive-where#136): Need to use separate `derive_where` for
-// `Copy` and `Ord` to prevent the emitted `Clone` and `PartialOrd`
-// impls from incorrectly relying on `T: Copy` and `T: Ord`.
-#[derive_where(Copy; I: Interner, T: Copy)]
-#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, T)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner, T)]
 #[derive(GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct Binder<I: Interner, T> {
@@ -278,7 +274,7 @@ pub struct ValidateBoundVars<I: Interner> {
     // We only cache types because any complex const will have to step through
     // a type at some point anyways. We may encounter the same variable at
     // different levels of binding, so this can't just be `Ty`.
-    visited: SsoHashSet<(ty::DebruijnIndex, I::Ty)>,
+    visited: SsoHashSet<(ty::DebruijnIndex, Ty<I>)>,
 }
 
 impl<I: Interner> ValidateBoundVars<I> {
@@ -301,7 +297,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         result
     }
 
-    fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
+    fn visit_ty(&mut self, t: Ty<I>) -> Self::Result {
         if t.outer_exclusive_binder() < self.binder_index
             || !self.visited.insert((self.binder_index, t))
         {
@@ -365,12 +361,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 /// `instantiate`.
 ///
 /// See <https://rustc-dev-guide.rust-lang.org/ty_module/early_binder.html> for more details.
-// FIXME(derive-where#136): Need to use separate `derive_where` for
-// `Copy` and `Ord` to prevent the emitted `Clone` and `PartialOrd`
-// impls from incorrectly relying on `T: Copy` and `T: Ord`.
-#[derive_where(Ord; I: Interner, T: Ord)]
-#[derive_where(Copy; I: Interner, T: Copy)]
-#[derive_where(Clone, PartialOrd, PartialEq, Hash, Debug; I: Interner, T)]
+#[derive_where(Clone, Copy, PartialOrd, Ord, PartialEq, Hash, Debug; I: Interner, T)]
 #[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
@@ -733,7 +724,7 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
         }
     }
 
-    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
+    fn fold_ty(&mut self, t: Ty<I>) -> Ty<I> {
         if !t.has_param() {
             return t;
         }
@@ -762,7 +753,7 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
 }
 
 impl<'a, I: Interner> ArgFolder<'a, I> {
-    fn ty_for_param(&self, p: I::ParamTy, source_ty: I::Ty) -> I::Ty {
+    fn ty_for_param(&self, p: I::ParamTy, source_ty: Ty<I>) -> Ty<I> {
         // Look up the type in the args. It really should be in there.
         let opt_ty = self.args.get(p.index() as usize).map(|arg| arg.kind());
         let ty = match opt_ty {
@@ -776,7 +767,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 
     #[cold]
     #[inline(never)]
-    fn type_param_expected(&self, p: I::ParamTy, ty: I::Ty, kind: ty::GenericArgKind<I>) -> ! {
+    fn type_param_expected(&self, p: I::ParamTy, ty: Ty<I>, kind: ty::GenericArgKind<I>) -> ! {
         panic!(
             "expected type for `{:?}` ({:?}/{}) but found {:?} when instantiating, args={:?}",
             p,
@@ -789,7 +780,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 
     #[cold]
     #[inline(never)]
-    fn type_param_out_of_range(&self, p: I::ParamTy, ty: I::Ty) -> ! {
+    fn type_param_out_of_range(&self, p: I::ParamTy, ty: Ty<I>) -> ! {
         panic!(
             "type parameter `{:?}` ({:?}/{}) out of range when instantiating, args={:?}",
             p,
@@ -964,12 +955,7 @@ pub enum BoundVarIndexKind {
 /// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
 /// regions/types/consts within the same universe simply have an unknown relationship to one
-// FIXME(derive-where#136): Need to use separate `derive_where` for
-// `Copy` and `Ord` to prevent the emitted `Clone` and `PartialOrd`
-// impls from incorrectly relying on `T: Copy` and `T: Ord`.
-#[derive_where(Ord; I: Interner, T: Ord)]
-#[derive_where(Copy; I: Interner, T: Copy)]
-#[derive_where(Clone, PartialOrd, PartialEq, Eq, Hash; I: Interner, T)]
+#[derive_where(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash; I: Interner, T)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -1291,7 +1277,7 @@ impl<I: Interner> PlaceholderConst<I> {
         Self { universe: ui, bound, _tcx: PhantomData }
     }
 
-    pub fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {
+    pub fn find_const_ty_from_env(self, env: I::ParamEnv) -> Ty<I> {
         let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {

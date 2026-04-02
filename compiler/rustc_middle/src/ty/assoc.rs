@@ -137,8 +137,8 @@ impl AssocItem {
         self.kind.as_def_kind()
     }
 
-    pub fn is_const(&self) -> bool {
-        matches!(self.kind, ty::AssocKind::Const { .. })
+    pub fn is_type_const(&self) -> bool {
+        matches!(self.kind, ty::AssocKind::Const { is_type_const: true, .. })
     }
 
     pub fn is_fn(&self) -> bool {

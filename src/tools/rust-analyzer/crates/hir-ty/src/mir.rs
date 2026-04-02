@@ -6,7 +6,7 @@ use base_db::Crate;
 use either::Either;
 use hir_def::{
     DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
-    expr_store::Body,
+    expr_store::ExpressionStore,
     hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
@@ -40,7 +40,10 @@ pub use borrowck::{BorrowckResult, MutabilityReason, borrowck_query};
 pub use eval::{
     Evaluator, MirEvalError, VTableMap, interpret_mir, pad16, render_const_using_debug_impl,
 };
-pub use lower::{MirLowerError, lower_to_mir, mir_body_for_closure_query, mir_body_query};
+pub use lower::{
+    MirLowerError, lower_body_to_mir, lower_to_mir_with_store, mir_body_for_closure_query,
+    mir_body_query,
+};
 pub use monomorphization::{
     monomorphized_mir_body_for_closure_query, monomorphized_mir_body_query,
 };
@@ -1207,12 +1210,12 @@ pub enum MirSpan {
 }
 
 impl MirSpan {
-    pub fn is_ref_span(&self, body: &Body) -> bool {
+    pub fn is_ref_span(&self, store: &ExpressionStore) -> bool {
         match *self {
-            MirSpan::ExprId(expr) => matches!(body[expr], Expr::Ref { .. }),
+            MirSpan::ExprId(expr) => matches!(store[expr], Expr::Ref { .. }),
             // FIXME: Figure out if this is correct wrt. match ergonomics.
             MirSpan::BindingId(binding) => {
-                matches!(body[binding].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut)
+                matches!(store[binding].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut)
             }
             MirSpan::PatId(_) | MirSpan::SelfParam | MirSpan::Unknown => false,
         }

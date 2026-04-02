@@ -26,7 +26,7 @@ use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
     Determinacy, Finalize, IdentKey, ImportKind, LateDecl, Module, ModuleKind, ModuleOrUniformRoot,
     ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet,
-    Segment, Stage, Used, errors,
+    Segment, Stage, Symbol, Used, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -386,7 +386,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Resolve an identifier in the specified set of scopes.
-    #[instrument(level = "debug", skip(self))]
     pub(crate) fn resolve_ident_in_scope_set<'r>(
         self: CmResolver<'r, 'ra, 'tcx>,
         orig_ident: Ident,
@@ -638,6 +637,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Err(ControlFlow::Continue(determinacy)) => Err(determinacy),
                     Err(ControlFlow::Break(..)) => return decl,
                 }
+            }
+            Scope::ModuleGlobs(module, _)
+                if let ModuleKind::Def(_, def_id, _) = module.kind
+                    && !def_id.is_local() =>
+            {
+                // Fast path: external module decoding only creates non-glob declarations.
+                Err(Determined)
             }
             Scope::ModuleGlobs(module, derive_fallback_lint_id) => {
                 let (adjusted_parent_scope, adjusted_finalize) = if matches!(
@@ -975,6 +981,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ignore_decl,
                     ignore_import,
                 )
+            }
+            ModuleOrUniformRoot::OpenModule(sym) => {
+                let open_ns_name = format!("{}::{}", sym.as_str(), ident.name);
+                let ns_ident = IdentKey::with_root_ctxt(Symbol::intern(&open_ns_name));
+                match self.extern_prelude_get_flag(ns_ident, ident.span, finalize.is_some()) {
+                    Some(decl) => Ok(decl),
+                    None => Err(Determinacy::Determined),
+                }
             }
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => self.resolve_ident_in_scope_set(
                 ident,
@@ -1366,7 +1380,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 &single_import.parent_scope,
                 None,
                 ignore_decl,
-                ignore_import,
+                None,
             ) {
                 Err(Determined) => continue,
                 Ok(binding)
@@ -1962,7 +1976,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
 
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(res);
-                    if let Some(def_id) = binding.res().module_like_def_id() {
+                    if let Res::OpenMod(sym) = binding.res() {
+                        module = Some(ModuleOrUniformRoot::OpenModule(sym));
+                        record_segment_res(self.reborrow(), finalize, res, id);
+                    } else if let Some(def_id) = binding.res().module_like_def_id() {
                         if self.mods_with_parse_errors.contains(&def_id) {
                             module_had_parse_errors = true;
                         }

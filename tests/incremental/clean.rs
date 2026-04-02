@@ -36,14 +36,14 @@ mod y {
         //[cfail2]~| ERROR `predicates_of(y)` should be dirty but is not
         //[cfail2]~| ERROR `type_of(y)` should be dirty but is not
         //[cfail2]~| ERROR `fn_sig(y)` should be dirty but is not
-        //[cfail2]~| ERROR `typeck(y)` should be clean but is not
+        //[cfail2]~| ERROR `typeck_root(y)` should be clean but is not
         x::x();
     }
 }
 
 mod z {
-    #[rustc_clean(except="typeck", cfg="cfail2")]
+    #[rustc_clean(except="typeck_root", cfg="cfail2")]
     pub fn z() {
-        //[cfail2]~^ ERROR `typeck(z)` should be dirty but is not
+        //[cfail2]~^ ERROR `typeck_root(z)` should be dirty but is not
     }
 }

@@ -14,6 +14,7 @@ use rustc_hash::FxHashSet;
 use crate::{
     FindPathConfig, ModuleDefId, ModuleId,
     db::DefDatabase,
+    import_map::ImportMap,
     item_scope::ItemInNs,
     nameres::DefMap,
     visibility::{Visibility, VisibilityExplicitness},
@@ -426,7 +427,7 @@ fn find_in_dep(
     best_choice: &mut Option<Choice>,
     dep: Crate,
 ) {
-    let import_map = ctx.db.import_map(dep);
+    let import_map = ImportMap::of(ctx.db, dep);
     let Some(import_info_for) = import_map.import_info_for(item) else {
         return;
     };

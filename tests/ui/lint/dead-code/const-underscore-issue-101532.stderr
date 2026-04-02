@@ -1,0 +1,32 @@
+warning: struct `B` is never constructed
+  --> $DIR/const-underscore-issue-101532.rs:8:12
+   |
+LL |     struct B {}
+   |            ^
+   |
+note: the lint level is defined here
+  --> $DIR/const-underscore-issue-101532.rs:4:9
+   |
+LL | #![warn(dead_code)]
+   |         ^^^^^^^^^
+
+warning: enum `C` is never used
+  --> $DIR/const-underscore-issue-101532.rs:9:10
+   |
+LL |     enum C {}
+   |          ^
+
+warning: function `d` is never used
+  --> $DIR/const-underscore-issue-101532.rs:10:8
+   |
+LL |     fn d() {}
+   |        ^
+
+warning: constant `E` is never used
+  --> $DIR/const-underscore-issue-101532.rs:11:11
+   |
+LL |     const E: () = {};
+   |           ^
+
+warning: 4 warnings emitted
+

@@ -6,12 +6,11 @@
 //! function parameters.
 
 use std::borrow::Borrow;
-use std::mem;
 use std::sync::Arc;
+use std::{debug_assert_matches, mem};
 
 use itertools::{Itertools, Position};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node};
@@ -944,6 +943,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for subpattern in pats.iter() {
                     visit_subpat(self, subpattern, user_tys, f);
                 }
+            }
+            PatKind::Guard { ref subpattern, .. } => {
+                visit_subpat(self, subpattern, user_tys, f);
             }
         }
     }

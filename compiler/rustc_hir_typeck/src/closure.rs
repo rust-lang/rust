@@ -72,7 +72,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!(?bound_sig, ?liberated_sig);
 
         let parent_args =
-            GenericArgs::identity_for_item(tcx, tcx.typeck_root_def_id(expr_def_id.to_def_id()));
+            GenericArgs::identity_for_item(tcx, tcx.typeck_root_def_id_local(expr_def_id));
 
         let tupled_upvars_ty = self.next_ty_var(expr_span);
 

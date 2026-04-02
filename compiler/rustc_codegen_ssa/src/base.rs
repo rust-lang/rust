@@ -1118,7 +1118,7 @@ pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> 
         )
     });
 
-    if tcx.try_mark_green(&dep_node) {
+    if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
         // We can re-use either the pre- or the post-thinlto state. If no LTO is
         // being performed then we can use post-LTO artifacts, otherwise we must
         // reuse pre-LTO artifacts
