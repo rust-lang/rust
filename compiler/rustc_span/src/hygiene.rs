@@ -30,7 +30,9 @@ use std::{fmt, iter, mem};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableContext, StableHasher, ToStableHashKey,
+};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hashes::Hash64;
@@ -43,7 +45,7 @@ use crate::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, StableCrateId};
 use crate::edition::Edition;
 use crate::source_map::SourceMap;
 use crate::symbol::{Symbol, kw, sym};
-use crate::{DUMMY_SP, HashStableContext, Span, SpanDecoder, SpanEncoder, with_session_globals};
+use crate::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, with_session_globals};
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
 ///

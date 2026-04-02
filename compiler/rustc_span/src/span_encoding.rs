@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::stable_hasher::RawSpan;
 // This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
 // See https://github.com/rust-lang/rust/pull/119440#issuecomment-1874255727
 use rustc_serialize::int_overflow::DebugStrictAdd;
@@ -440,6 +441,19 @@ impl Span {
             PartiallyInterned(span) => interned_parent(span.index),
             Interned(span) => interned_parent(span.index),
         }
+    }
+
+    #[inline]
+    pub(crate) fn to_raw_span(self) -> RawSpan {
+        // SAFETY: we call `to_raw_span` and then `from_raw_span` immediately after, only when
+        // calling `HashStableContext::span_hash_stable`.
+        unsafe { std::mem::transmute::<Span, RawSpan>(self) }
+    }
+
+    #[inline]
+    pub fn from_raw_span(raw_span: RawSpan) -> Span {
+        // SAFETY: see the comment in `to_raw_span`.
+        unsafe { std::mem::transmute::<RawSpan, Span>(raw_span) }
     }
 }
 

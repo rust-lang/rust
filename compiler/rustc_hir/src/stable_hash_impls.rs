@@ -1,5 +1,6 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_span::HashStableContext;
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableContext, StableHasher, ToStableHashKey,
+};
 use rustc_span::def_id::DefPathHash;
 
 use crate::HashIgnoredAttrId;

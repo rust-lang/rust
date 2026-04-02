@@ -3,14 +3,17 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableContext, RawDefId, RawDefPathHash, StableHasher, StableOrd,
+    ToStableHashKey,
+};
 use rustc_data_structures::unhash::Unhasher;
 use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
 
-use crate::{HashStableContext, SpanDecoder, SpanEncoder, Symbol};
+use crate::{SpanDecoder, SpanEncoder, Symbol};
 
 pub type StableCrateIdMap =
     indexmap::IndexMap<StableCrateId, CrateNum, BuildHasherDefault<Unhasher>>;
@@ -113,6 +116,19 @@ impl DefPathHash {
     #[inline]
     pub fn new(stable_crate_id: StableCrateId, local_hash: Hash64) -> DefPathHash {
         DefPathHash(Fingerprint::new(stable_crate_id.0, local_hash))
+    }
+
+    #[inline]
+    pub fn to_raw_def_path_hash(self) -> RawDefPathHash {
+        // SAFETY: we call `to_raw_def_path_hash` and then `from_raw_def_path_hash` immediately
+        // after, only when returning from `HashStableContext::def_path_hash`.
+        unsafe { std::mem::transmute::<DefPathHash, RawDefPathHash>(self) }
+    }
+
+    #[inline]
+    pub fn from_raw_def_path_hash(raw_def_path_hash: RawDefPathHash) -> DefPathHash {
+        // SAFETY: see the comment in `to_raw_def_path_hash`.
+        unsafe { std::mem::transmute::<RawDefPathHash, DefPathHash>(raw_def_path_hash) }
     }
 }
 
@@ -312,6 +328,19 @@ impl DefId {
     pub fn is_top_level_module(self) -> bool {
         self.is_local() && self.is_crate_root()
     }
+
+    #[inline]
+    pub fn to_raw_def_id(self) -> RawDefId {
+        // SAFETY: we call `to_raw_def_id` and then `from_raw_def_id` immediately after, only when
+        // calling `HashStableContext::def_path_hash`.
+        unsafe { std::mem::transmute::<DefId, RawDefId>(self) }
+    }
+
+    #[inline]
+    pub fn from_raw_def_id(raw_def_id: RawDefId) -> DefId {
+        // SAFETY: see the comment in `to_raw_def_id`.
+        unsafe { std::mem::transmute::<RawDefId, DefId>(raw_def_id) }
+    }
 }
 
 impl From<LocalDefId> for DefId {
@@ -428,7 +457,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for DefId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
-        hcx.def_path_hash(*self)
+        DefPathHash::from_raw_def_path_hash(hcx.def_path_hash(self.to_raw_def_id()))
     }
 }
 

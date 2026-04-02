@@ -31,6 +31,7 @@
 extern crate self as rustc_span;
 
 use derive_where::derive_where;
+use rustc_data_structures::stable_hasher::HashStableContext;
 use rustc_data_structures::{AtomicRef, outline};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
@@ -53,7 +54,7 @@ pub use hygiene::{
     DesugaringKind, ExpnData, ExpnHash, ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext,
 };
 pub mod def_id;
-use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LOCAL_CRATE, LocalDefId, StableCrateId};
+use def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId};
 pub mod edit_distance;
 mod span_encoding;
 pub use span_encoding::{DUMMY_SP, Span};
@@ -2796,29 +2797,13 @@ impl InnerSpan {
     }
 }
 
-/// This trait lets `HashStable` and `derive(HashStable_Generic)` be used in
-/// this crate (and other crates upstream of `rustc_middle`), while leaving
-/// certain operations to be defined in `rustc_middle` where more things are
-/// visible.
-pub trait HashStableContext {
-    /// The main event: stable hashing of a span.
-    fn span_hash_stable(&mut self, span: Span, hasher: &mut StableHasher);
-
-    /// Compute a `DefPathHash`.
-    fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
-
-    /// Assert that the provided `HashStableContext` is configured with the default
-    /// `HashingControls`. We should always have bailed out before getting to here with a
-    fn assert_default_hashing_controls(&self, msg: &str);
-}
-
 impl<Hcx> HashStable<Hcx> for Span
 where
     Hcx: HashStableContext,
 {
     fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // `span_hash_stable` does all the work.
-        hcx.span_hash_stable(*self, hasher)
+        hcx.span_hash_stable(self.to_raw_span(), hasher)
     }
 }
 

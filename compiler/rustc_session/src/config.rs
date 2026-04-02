@@ -14,7 +14,9 @@ use std::{cmp, fs, iter};
 
 use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::stable_hasher::{StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    HashStableContext, StableHasher, StableOrd, ToStableHashKey,
+};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtFlags};
 use rustc_feature::UnstableFeatures;
@@ -23,8 +25,7 @@ use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{
-    FileName, HashStableContext, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm,
-    Symbol, sym,
+    FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, Symbol, sym,
 };
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, PanicStrategy, SplitDebuginfo,
