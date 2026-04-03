@@ -1,0 +1,45 @@
+error[E0425]: cannot find type `Variant` in this scope
+ --> $DIR/ice-region-param-142913.rs:9:25
+  |
+LL | fn foo<'a, const N: &'a Variant = { () as isize }>() {}
+  |                         ^^^^^^^ not found in this scope
+
+warning: the feature `unsized_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> $DIR/ice-region-param-142913.rs:5:12
+  |
+LL | #![feature(unsized_const_params, adt_const_params, generic_const_parameter_types)]
+  |            ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+  = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `generic_const_parameter_types` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> $DIR/ice-region-param-142913.rs:5:52
+  |
+LL | #![feature(unsized_const_params, adt_const_params, generic_const_parameter_types)]
+  |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: see issue #137626 <https://github.com/rust-lang/rust/issues/137626> for more information
+
+error: defaults for generic parameters are not allowed here
+ --> $DIR/ice-region-param-142913.rs:9:12
+  |
+LL | fn foo<'a, const N: &'a Variant = { () as isize }>() {}
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: anonymous constants with lifetimes in their type are not yet supported
+ --> $DIR/ice-region-param-142913.rs:9:35
+  |
+LL | fn foo<'a, const N: &'a Variant = { () as isize }>() {}
+  |                                   ^^^^^^^^^^^^^^^
+
+error[E0605]: non-primitive cast: `()` as `isize`
+ --> $DIR/ice-region-param-142913.rs:9:37
+  |
+LL | fn foo<'a, const N: &'a Variant = { () as isize }>() {}
+  |                                     ^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error: aborting due to 4 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0425, E0605.
+For more information about an error, try `rustc --explain E0425`.
