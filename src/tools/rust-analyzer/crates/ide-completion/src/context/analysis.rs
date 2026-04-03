@@ -828,10 +828,15 @@ fn expected_type_and_name<'db>(
                         .unwrap_or((None, None))
                 },
                 ast::Variant(it) => {
+                    let is_simple_field = |field: ast::TupleField| {
+                        let Some(ty) = field.ty() else { return true };
+                        matches!(ty, ast::Type::PathType(_)) && ty.generic_arg_list().is_none()
+                    };
                     let is_simple_variant = matches!(
                         it.field_list(),
                         Some(ast::FieldList::TupleFieldList(list))
                         if list.syntax().children_with_tokens().all(|it| it.kind() != T![,])
+                            && list.fields().next().is_none_or(is_simple_field)
                     );
                     (None, it.name().filter(|_| is_simple_variant).map(NameOrNameRef::Name))
                 },
