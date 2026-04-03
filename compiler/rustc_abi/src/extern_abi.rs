@@ -3,7 +3,9 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableContext, StableHasher, StableOrd,
+};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable};
 #[cfg(feature = "nightly")]
@@ -240,9 +242,9 @@ impl Hash for ExternAbi {
 }
 
 #[cfg(feature = "nightly")]
-impl<C> HashStable<C> for ExternAbi {
+impl HashStable for ExternAbi {
     #[inline]
-    fn hash_stable(&self, _: &mut C, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
         Hash::hash(self, hasher);
     }
 }

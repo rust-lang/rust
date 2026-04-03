@@ -125,7 +125,7 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
-    #[stable_hash_no_context]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "DebruijnIndex({})"]
@@ -335,7 +335,7 @@ rustc_index::newtype_index! {
     /// declared, but a type name in a non-zero universe is a placeholder
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
-    #[stable_hash_no_context]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "U{}"]
@@ -390,7 +390,7 @@ impl Default for UniverseIndex {
 }
 
 rustc_index::newtype_index! {
-    #[stable_hash_generic]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "{}"]

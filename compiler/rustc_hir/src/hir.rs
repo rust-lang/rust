@@ -1250,7 +1250,7 @@ pub struct AttrItem {
     pub span: Span,
 }
 
-/// The derived implementation of [`HashStable_Generic`] on [`Attribute`]s shouldn't hash
+/// The derived implementation of [`HashStable`] on [`Attribute`]s shouldn't hash
 /// [`AttrId`]s. By wrapping them in this, we make sure we never do.
 #[derive(Copy, Debug, Encodable, Decodable, Clone)]
 pub struct HashIgnoredAttrId {

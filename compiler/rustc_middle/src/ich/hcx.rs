@@ -190,4 +190,9 @@ impl<'a> HashStableContext for StableHashingContext<'a> {
             "Attempted hashing of {msg} with non-default HashingControls: {hashing_controls:?}"
         );
     }
+
+    #[inline]
+    fn hashing_controls(&self) -> HashingControls {
+        self.hashing_controls
+    }
 }

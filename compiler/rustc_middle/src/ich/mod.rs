@@ -3,4 +3,3 @@
 pub use self::hcx::StableHashingContext;
 
 mod hcx;
-mod impls_syntax;

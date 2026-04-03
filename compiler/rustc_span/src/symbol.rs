@@ -8,7 +8,7 @@ use std::{fmt, str};
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
-    HashStable, StableCompare, StableHasher, ToStableHashKey,
+    HashStable, HashStableContext, StableCompare, StableHasher, ToStableHashKey,
 };
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, symbols};
@@ -2631,17 +2631,17 @@ impl fmt::Display for Symbol {
     }
 }
 
-impl<Hcx> HashStable<Hcx> for Symbol {
+impl HashStable for Symbol {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_str().hash_stable(hcx, hasher);
     }
 }
 
-impl<Hcx> ToStableHashKey<Hcx> for Symbol {
+impl ToStableHashKey for Symbol {
     type KeyType = String;
     #[inline]
-    fn to_stable_hash_key(&self, _: &mut Hcx) -> String {
+    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> String {
         self.as_str().to_string()
     }
 }
@@ -2691,9 +2691,9 @@ impl fmt::Debug for ByteSymbol {
     }
 }
 
-impl<Hcx> HashStable<Hcx> for ByteSymbol {
+impl HashStable for ByteSymbol {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_byte_str().hash_stable(hcx, hasher);
     }
 }

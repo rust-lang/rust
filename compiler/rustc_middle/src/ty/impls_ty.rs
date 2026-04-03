@@ -7,19 +7,18 @@ use std::ptr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashingControls, StableHasher, ToStableHashKey,
+    HashStable, HashStableContext, HashingControls, StableHasher, ToStableHashKey,
 };
 use tracing::trace;
 
-use crate::ich::StableHashingContext;
 use crate::middle::region;
 use crate::{mir, ty};
 
-impl<'a, 'tcx, H, T> HashStable<StableHashingContext<'a>> for &'tcx ty::list::RawList<H, T>
+impl<'tcx, H, T> HashStable for &'tcx ty::list::RawList<H, T>
 where
-    T: HashStable<StableHashingContext<'a>>,
+    T: HashStable,
 {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // Note: this cache makes an *enormous* performance difference on certain benchmarks. E.g.
         // without it, compiling `diesel-2.2.10` can be 74% slower, and compiling
         // `deeply-nested-multi` can be ~4,000x slower(!)
@@ -46,29 +45,29 @@ where
     }
 }
 
-impl<'a, 'tcx, H, T> ToStableHashKey<StableHashingContext<'a>> for &'tcx ty::list::RawList<H, T>
+impl<'tcx, H, T> ToStableHashKey for &'tcx ty::list::RawList<H, T>
 where
-    T: HashStable<StableHashingContext<'a>>,
+    T: HashStable,
 {
     type KeyType = Fingerprint;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut StableHashingContext<'a>) -> Fingerprint {
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Fingerprint {
         let mut hasher = StableHasher::new();
         self.hash_stable(hcx, &mut hasher);
         hasher.finish()
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::GenericArg<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+impl<'tcx> HashStable for ty::GenericArg<'tcx> {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.kind().hash_stable(hcx, hasher);
     }
 }
 
 // AllocIds get resolved to whatever they point to (to be stable)
-impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+impl HashStable for mir::interpret::AllocId {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
@@ -77,17 +76,17 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::CtfeProvenance {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+impl HashStable for mir::interpret::CtfeProvenance {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.into_parts().hash_stable(hcx, hasher);
     }
 }
 
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for region::Scope {
+impl ToStableHashKey for region::Scope {
     type KeyType = region::Scope;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &mut StableHashingContext<'a>) -> region::Scope {
+    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> region::Scope {
         *self
     }
 }

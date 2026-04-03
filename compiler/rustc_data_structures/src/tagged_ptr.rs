@@ -12,7 +12,7 @@ use std::ops::Deref;
 use std::ptr::NonNull;
 
 use crate::aligned::Aligned;
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hasher::{HashStable, HashStableContext, StableHasher};
 
 /// This describes tags that the [`TaggedRef`] struct can hold.
 ///
@@ -259,12 +259,12 @@ impl<P, T: Tag> Hash for TaggedRef<'_, P, T> {
     }
 }
 
-impl<'a, P, T, Hcx> HashStable<Hcx> for TaggedRef<'a, P, T>
+impl<'a, P, T> HashStable for TaggedRef<'a, P, T>
 where
-    P: HashStable<Hcx> + Aligned + ?Sized,
-    T: Tag + HashStable<Hcx>,
+    P: HashStable + Aligned + ?Sized,
+    T: Tag + HashStable,
 {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.pointer().hash_stable(hcx, hasher);
         self.tag().hash_stable(hcx, hasher);
     }

@@ -2,7 +2,7 @@ use std::fmt;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use rustc_type_ir_macros::GenericTypeVisitable;
@@ -16,7 +16,7 @@ rustc_index::newtype_index! {
     #[orderable]
     #[debug_format = "'?{}"]
     #[gate_rustc_only]
-    #[stable_hash_no_context]
+    #[stable_hash]
     pub struct RegionVid {}
 }
 
@@ -217,15 +217,15 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 
 #[cfg(feature = "nightly")]
 // This is not a derived impl because a derive would require `I: HashStable`
-impl<Hcx, I: Interner> HashStable<Hcx> for RegionKind<I>
+impl<I: Interner> HashStable for RegionKind<I>
 where
-    I::EarlyParamRegion: HashStable<Hcx>,
-    I::LateParamRegion: HashStable<Hcx>,
-    I::DefId: HashStable<Hcx>,
-    I::Symbol: HashStable<Hcx>,
+    I::EarlyParamRegion: HashStable,
+    I::LateParamRegion: HashStable,
+    I::DefId: HashStable,
+    I::Symbol: HashStable,
 {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
             ReErased | ReStatic | ReError(_) => {

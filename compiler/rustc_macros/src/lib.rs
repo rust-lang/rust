@@ -58,17 +58,15 @@ pub fn extension(attr: TokenStream, input: TokenStream) -> TokenStream {
     extension::extension(attr, input)
 }
 
-decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);
 decl_derive!(
-    [HashStable_Generic, attributes(stable_hasher)] =>
-    hash_stable::hash_stable_generic_derive
+    [HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive
 );
 decl_derive!(
-    [HashStable_NoContext, attributes(stable_hasher)] =>
-    /// `HashStable` implementation that has no `HashStableContext` bound and
-    /// which adds `where` bounds for `HashStable` based off of fields and not
-    /// generics. This is suitable for use in crates like `rustc_type_ir`.
-    hash_stable::hash_stable_no_context_derive
+    // FIXME: synonym of `HashStable`, will be removed shortly
+    [HashStable_Generic, attributes(stable_hasher)] => hash_stable::hash_stable_derive
+);
+decl_derive!(
+    [HashStable_NoContext, attributes(stable_hasher)] => hash_stable::hash_stable_no_context_derive
 );
 
 // Encoding and Decoding derives

@@ -138,9 +138,9 @@ impl LintExpectationId {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for LintExpectationId {
+impl HashStable for LintExpectationId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 hir_id.hash_stable(hcx, hasher);
@@ -156,11 +156,11 @@ impl<Hcx: HashStableContext> HashStable<Hcx> for LintExpectationId {
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for LintExpectationId {
+impl ToStableHashKey for LintExpectationId {
     type KeyType = (DefPathHash, ItemLocalId, u16, u16);
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> Self::KeyType {
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Self::KeyType {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
@@ -621,18 +621,18 @@ impl LintId {
     }
 }
 
-impl<Hcx> HashStable<Hcx> for LintId {
+impl HashStable for LintId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.lint_name_raw().hash_stable(hcx, hasher);
     }
 }
 
-impl<Hcx> ToStableHashKey<Hcx> for LintId {
+impl ToStableHashKey for LintId {
     type KeyType = &'static str;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &mut Hcx) -> &'static str {
+    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> &'static str {
         self.lint_name_raw()
     }
 }
