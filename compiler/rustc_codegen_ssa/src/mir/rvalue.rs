@@ -423,7 +423,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     args,
                                 )
                                 .unwrap();
-                                OperandValue::Immediate(bx.get_fn_addr(instance))
+                                OperandValue::Immediate(bx.get_fn_addr(instance,
+                                        Some(PacMetadata::default()),
+                                        ))
                             }
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }
@@ -437,7 +439,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     args,
                                     ty::ClosureKind::FnOnce,
                                 );
-                                OperandValue::Immediate(bx.cx().get_fn_addr(instance))
+                                OperandValue::Immediate(bx.cx().get_fn_addr(instance,
+                                        Some(PacMetadata::default()),
+                                        ))
                             }
                             _ => bug!("{} cannot be cast to a fn ptr", operand.layout.ty),
                         }
@@ -636,7 +640,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         def: ty::InstanceKind::ThreadLocalShim(def_id),
                         args: ty::GenericArgs::empty(),
                     };
-                    let fn_ptr = bx.get_fn_addr(instance);
+                    let fn_ptr = bx.get_fn_addr(instance, Some(PacMetadata::default()));
                     let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
                     let fn_ty = bx.fn_decl_backend_type(fn_abi);
                     let fn_attrs = if bx.tcx().def_kind(instance.def_id()).has_codegen_attrs() {
