@@ -1,0 +1,26 @@
+error[E0107]: trait alias takes 0 generic arguments but 1 generic argument was supplied
+ --> $DIR/ice-fresh-type-canonicalization-138891.rs:9:20
+  |
+LL | fn _f3<Fut>(a: dyn F<Fut>) {}
+  |                    ^----- help: remove the unnecessary generics
+  |                    |
+  |                    expected 0 generic arguments
+  |
+note: trait alias defined here, with 0 generic parameters
+ --> $DIR/ice-fresh-type-canonicalization-138891.rs:7:7
+  |
+LL | trait F = Fn() -> Self;
+  |       ^
+
+error: associated type binding in trait object type mentions `Self`
+ --> $DIR/ice-fresh-type-canonicalization-138891.rs:9:16
+  |
+LL | trait F = Fn() -> Self;
+  |                   ---- this binding mentions `Self`
+...
+LL | fn _f3<Fut>(a: dyn F<Fut>) {}
+  |                ^^^^^^^^^^ contains a mention of `Self`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.
