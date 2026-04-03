@@ -497,6 +497,103 @@ impl str {
         s
     }
 
+    /// Returns the case-folded equivalent of this string slice, as a new [`String`].
+    ///
+    /// Case folding is a transformation, mostly matching lowercase, that is meant to be used
+    /// for case-insensitive string comparisons. Case-folded strings should not usually
+    /// be exposed directly to users.
+    ///
+    /// For the precise specification of case folding, see
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G63737)
+    /// of the Unicode standard.
+    ///
+    /// Since some characters can expand into multiple characters when case folding,
+    /// this function returns a [`String`] instead of modifying the parameter in-place.
+    ///
+    /// This function does not perform any normalization (e.g. NFC).
+    ///
+    /// Like [`char::to_casefold()`] this method does not handle language-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
+    /// for more information.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let s0 = "HELLO";
+    /// let s1 = "Hello";
+    ///
+    /// assert_eq!(s0.to_casefold(), s1.to_casefold());
+    /// assert_eq!(s0.to_casefold(), "hello")
+    /// ```
+    ///
+    /// Scripts without case are not changed:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let new_year = "农历新年";
+    ///
+    /// assert_eq!(new_year, new_year.to_casefold());
+    /// ```
+    ///
+    /// One character can become multiple:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let s0 = "TSCHÜẞ";
+    /// let s1 = "TSCHÜSS";
+    /// let s2 = "tschüß";
+    ///
+    /// assert_eq!(s0.to_casefold(), s1.to_casefold());
+    /// assert_eq!(s0.to_casefold(), s2.to_casefold());
+    /// assert_eq!(s0.to_casefold(), "tschüss");
+    /// ```
+    ///
+    /// No NFC normalization is performed:
+    ///
+    /// ```rust
+    /// #![feature(casefold)]
+    /// // These two strings are visually and semantically identical...
+    /// let comp = "Á";
+    /// let decomp = "Á";
+    ///
+    /// // ... but not codepoint-for-codepoint equal.
+    ///
+    /// assert_eq!(comp, "\u{C1}");
+    /// assert_eq!(decomp, "A\u{0301}");
+    ///
+    /// // Their case-foldings are likewise unequal:
+    ///
+    /// assert_eq!(comp.to_casefold(), "\u{E1}");
+    /// assert_eq!(decomp.to_casefold(), "a\u{0301}");
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "this returns the case-folded string as a new String, \
+                  without modifying the original"]
+    #[unstable(feature = "casefold", issue = "none")]
+    pub fn to_casefold(&self) -> String {
+        let (mut s, rest) = convert_while_ascii(self, u8::to_ascii_lowercase);
+
+        for c in rest.chars() {
+            match conversions::to_casefold(c) {
+                [a, '\0', _] => s.push(a),
+                [a, b, '\0'] => {
+                    s.push(a);
+                    s.push(b);
+                }
+                [a, b, c] => {
+                    s.push(a);
+                    s.push(b);
+                    s.push(c);
+                }
+            }
+        }
+        s
+    }
+
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
     ///
     /// # Examples
