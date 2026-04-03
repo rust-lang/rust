@@ -1,0 +1,18 @@
+error[E0277]: the trait bound `u32: Id` is not satisfied
+  --> $DIR/ice-normalize-erasing-regions-132767.rs:20:13
+   |
+LL | fn bar() -> impl Copy + Id {
+   |             ^^^^^^^^^^^^^^ the trait `Id` is not implemented for `u32`
+LL |
+LL |     0u32
+   |     ---- return type was inferred to be `u32` here
+   |
+help: the trait `Id` is implemented for `i32`
+  --> $DIR/ice-normalize-erasing-regions-132767.rs:14:1
+   |
+LL | impl Id for i32 {
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
