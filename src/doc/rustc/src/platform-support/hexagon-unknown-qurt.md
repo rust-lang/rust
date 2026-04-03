@@ -278,7 +278,7 @@ called from Rust via `extern "C"` declarations:
 To link QHL libraries, add these paths and libraries (in `build.rs` or as
 `-C link-args`):
 
-```rust
+```rust,ignore
 // In build.rs, inside the hexagon-unknown-qurt block:
 let qhl = PathBuf::from(&sdk).join("libs/qhl/prebuilt/hexagon_toolv19_v69");
 let qhl_hvx = PathBuf::from(&sdk).join("libs/qhl_hvx/prebuilt/hexagon_toolv19_v69");
@@ -292,7 +292,7 @@ for lib in ["qhmath", "qhblas", "qhdsp", "qhcomplex",
 
 Example Rust usage:
 
-```rust
+```rust,ignore
 extern "C" {
     fn qhmath_sqrt_f(x: f32) -> f32;
     fn qhblas_hvx_vector_add_af(
