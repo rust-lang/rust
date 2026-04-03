@@ -738,7 +738,7 @@ fn resolve_sub_span(
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::RootQueryDb;
+    use ide_db::base_db::all_crates;
     use vfs::file_set::FileSetConfigBuilder;
 
     use super::*;
@@ -766,7 +766,7 @@ mod tests {
         let (db, _vfs, _proc_macro) =
             load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config).unwrap();
 
-        let n_crates = db.all_crates().len();
+        let n_crates = all_crates(&db).len();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);
     }

@@ -63,11 +63,12 @@ use std::panic::{AssertUnwindSafe, UnwindSafe};
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
 use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, sym};
+use ide_db::base_db::relevant_crates;
 use ide_db::ra_fixture::RaFixtureAnalysis;
 use ide_db::{
     FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
-        CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, VfsPath,
+        CrateOrigin, CrateWorkspaceData, Env, FileSet, SourceDatabase, VfsPath,
         salsa::{Cancelled, Database},
     },
     prime_caches, symbol_index,
@@ -342,7 +343,7 @@ impl Analysis {
         self.with_db(|db| {
             let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
 
-            db.parse(editioned_file_id_wrapper).tree()
+            editioned_file_id_wrapper.parse(db).tree()
         })
     }
 
@@ -370,7 +371,7 @@ impl Analysis {
     pub fn matching_brace(&self, position: FilePosition) -> Cancellable<Option<TextSize>> {
         self.with_db(|db| {
             let file_id = EditionedFileId::current_edition(&self.db, position.file_id);
-            let parse = db.parse(file_id);
+            let parse = file_id.parse(db);
             let file = parse.tree();
             matching_brace::matching_brace(&file, position.offset)
         })
@@ -431,7 +432,7 @@ impl Analysis {
         self.with_db(|db| {
             let editioned_file_id_wrapper =
                 EditionedFileId::current_edition(&self.db, frange.file_id);
-            let parse = db.parse(editioned_file_id_wrapper);
+            let parse = editioned_file_id_wrapper.parse(db);
             join_lines::join_lines(config, &parse.tree(), frange.range)
         })
     }
@@ -472,7 +473,7 @@ impl Analysis {
         // FIXME: Edition
         self.with_db(|db| {
             let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
-            let source_file = db.parse(editioned_file_id_wrapper).tree();
+            let source_file = editioned_file_id_wrapper.parse(db).tree();
             file_structure::file_structure(&source_file, config)
         })
     }
@@ -505,7 +506,7 @@ impl Analysis {
             let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
 
             folding_ranges::folding_ranges(
-                &db.parse(editioned_file_id_wrapper).tree(),
+                &editioned_file_id_wrapper.parse(db).tree(),
                 collapsed_text,
             )
         })
@@ -658,7 +659,7 @@ impl Analysis {
 
     /// Returns crates that this file *might* belong to.
     pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<Crate>> {
-        self.with_db(|db| db.relevant_crates(file_id).iter().copied().collect())
+        self.with_db(|db| relevant_crates(db, file_id).to_vec())
     }
 
     /// Returns the edition of the given crate.

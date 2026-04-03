@@ -1,7 +1,6 @@
 //! Handles the `Enter` key press. At the momently, this only continues
 //! comments, but should handle indent some time in the future as well.
 
-use ide_db::base_db::RootQueryDb;
 use ide_db::{FilePosition, RootDatabase};
 use syntax::{
     AstNode, SmolStr, SourceFile,
@@ -52,7 +51,7 @@ use ide_db::text_edit::TextEdit;
 pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<TextEdit> {
     let editioned_file_id_wrapper =
         ide_db::base_db::EditionedFileId::current_edition(db, position.file_id);
-    let parse = db.parse(editioned_file_id_wrapper);
+    let parse = editioned_file_id_wrapper.parse(db);
     let file = parse.tree();
     let token = file.syntax().token_at_offset(position.offset).left_biased()?;
 

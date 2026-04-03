@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 use hir::{Crate, Module, Semantics, db::HirDatabase};
 use ide_db::{
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
-    base_db::{RootQueryDb, SourceDatabase, VfsPath},
+    base_db::{SourceDatabase, VfsPath},
     defs::{Definition, IdentClass},
     documentation::Documentation,
     famous_defs::FamousDefs,
@@ -124,16 +124,8 @@ fn documentation_for_definition(
         _ => None,
     };
 
-    def.docs(
-        sema.db,
-        famous_defs.as_ref(),
-        def.krate(sema.db)
-            .unwrap_or_else(|| {
-                (*sema.db.all_crates().last().expect("no crate graph present")).into()
-            })
-            .to_display_target(sema.db),
-    )
-    .map(Documentation::into_owned)
+    def.docs(sema.db, famous_defs.as_ref(), def.krate(sema.db)?.to_display_target(sema.db))
+        .map(Documentation::into_owned)
 }
 
 // FIXME: This is a weird function
