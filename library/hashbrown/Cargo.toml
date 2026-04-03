@@ -10,6 +10,8 @@ keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 exclude = [".github", "/ci/*"]
 edition = "2024"
+
+# Make sure to sync this MSRV in the README badge and CI workflows
 rust-version = "1.85.0"
 
 [lints.rust]
