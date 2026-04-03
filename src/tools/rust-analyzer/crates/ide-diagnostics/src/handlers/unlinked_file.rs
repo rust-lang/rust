@@ -102,7 +102,7 @@ fn fixes(
 
     // check crate roots, i.e. main.rs, lib.rs, ...
     let relevant_crates = base_db::relevant_crates(db, file_id);
-    'crates: for &krate in &*relevant_crates {
+    'crates: for &krate in relevant_crates {
         // FIXME: This shouldnt need to access the crate def map directly
         let crate_def_map = crate_def_map(ctx.sema.db, krate);
 
