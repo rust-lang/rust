@@ -6,7 +6,7 @@ mod tests;
 
 use std::iter;
 
-use base_db::RootQueryDb as _;
+use base_db::toolchain_channel;
 use hir::{
     DisplayTarget, HasAttrs, InFile, Local, ModuleDef, ModuleSource, Name, PathResolution,
     ScopeDef, Semantics, SemanticsScope, Symbol, Type, TypeInfo,
@@ -715,7 +715,7 @@ impl<'db> CompletionContext<'db> {
         // actual completion.
         let file_with_fake_ident = {
             let (_, edition) = editioned_file_id.unpack(db);
-            let parse = db.parse(editioned_file_id);
+            let parse = editioned_file_id.parse(db);
             parse.reparse(TextRange::empty(offset), COMPLETION_MARKER, edition).tree()
         };
 
@@ -768,7 +768,7 @@ impl<'db> CompletionContext<'db> {
         let containing_function = scope.containing_function();
         let edition = krate.edition(db);
 
-        let toolchain = db.toolchain_channel(krate.into());
+        let toolchain = toolchain_channel(db, krate.into());
         // `toolchain == None` means we're in some detached files. Since we have no information on
         // the toolchain being used, let's just allow unstable items to be listed.
         let is_nightly = matches!(toolchain, Some(base_db::ReleaseChannel::Nightly) | None);

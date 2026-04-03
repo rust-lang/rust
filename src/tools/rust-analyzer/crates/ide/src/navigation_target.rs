@@ -11,7 +11,7 @@ use hir::{
 };
 use ide_db::{
     FileId, FileRange, RootDatabase, SymbolKind,
-    base_db::{CrateOrigin, LangCrateOrigin, RootQueryDb},
+    base_db::{CrateOrigin, LangCrateOrigin, all_crates},
     defs::{Definition, find_std_module},
     documentation::{Documentation, HasDocs},
     famous_defs::FamousDefs,
@@ -861,8 +861,7 @@ impl TryToNav for hir::BuiltinType {
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
-        let krate = db
-            .all_crates()
+        let krate = all_crates(db)
             .iter()
             .copied()
             .find(|&krate| matches!(krate.data(db).origin, CrateOrigin::Lang(LangCrateOrigin::Std)))

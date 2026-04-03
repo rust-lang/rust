@@ -5,10 +5,10 @@ use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{AsAssocItem, HasAttrs, HasCrate, HasSource, Semantics, Symbol, sym};
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
+use ide_db::base_db::all_crates;
 use ide_db::impl_empty_upmap_from_ra_fixture;
 use ide_db::{
     FilePosition, FxHashMap, FxIndexMap, FxIndexSet, RootDatabase, SymbolKind,
-    base_db::RootQueryDb,
     defs::Definition,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
@@ -505,7 +505,7 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
     let krate = def.krate(db);
     let edition = krate.map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
     let display_target = krate
-        .unwrap_or_else(|| (*db.all_crates().last().expect("no crate graph present")).into())
+        .unwrap_or_else(|| (*all_crates(db).last().expect("no crate graph present")).into())
         .to_display_target(db);
     if !has_runnable_doc_test(db, &attrs) {
         return None;
