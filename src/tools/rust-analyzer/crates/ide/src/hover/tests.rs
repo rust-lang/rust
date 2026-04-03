@@ -11658,3 +11658,79 @@ struct Bar {
         "#]],
     );
 }
+
+#[test]
+fn test_hover_doc_attr_macro_on_outlined_mod_resolves_from_parent() {
+    // Outer doc-macro on `mod foo;` should resolve from the parent module,
+    // and combine with inner `//!` docs from the module file.
+    check(
+        r#"
+//- /main.rs
+macro_rules! doc_str {
+    () => { "expanded from parent" };
+}
+
+/// plain outer doc
+#[doc = doc_str!()]
+mod foo$0;
+
+//- /foo.rs
+//! inner module docs
+pub struct Bar;
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            mod foo
+            ```
+
+            ---
+
+            plain outer doc
+            expanded from parent
+            inner module docs
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_macro_on_outlined_mod_combined_with_inner_docs() {
+    // Outer doc macro on `mod foo;` (resolved from parent) should combine with
+    // inner docs from the module file.
+    check(
+        r#"
+//- /main.rs
+macro_rules! doc_str {
+    () => { "outer doc from macro" };
+}
+
+#[doc = doc_str!()]
+mod foo$0;
+
+//- /foo.rs
+//! inner module docs
+pub struct Bar;
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            mod foo
+            ```
+
+            ---
+
+            outer doc from macro
+            inner module docs
+        "#]],
+    );
+}
