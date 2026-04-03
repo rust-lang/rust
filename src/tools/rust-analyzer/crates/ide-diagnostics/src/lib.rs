@@ -430,7 +430,10 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::TraitImplRedundantAssocItems(d) => handlers::trait_impl_redundant_assoc_item::trait_impl_redundant_assoc_item(&ctx, &d),
             AnyDiagnostic::TraitImplOrphan(d) => handlers::trait_impl_orphan::trait_impl_orphan(&ctx, &d),
             AnyDiagnostic::TypedHole(d) => handlers::typed_hole::typed_hole(&ctx, &d),
-            AnyDiagnostic::TypeMismatch(d) => handlers::type_mismatch::type_mismatch(&ctx, &d),
+            AnyDiagnostic::TypeMismatch(d) => match handlers::type_mismatch::type_mismatch(&ctx, &d) {
+                Some(diag) => diag,
+                None => continue,
+            },
             AnyDiagnostic::UndeclaredLabel(d) => handlers::undeclared_label::undeclared_label(&ctx, &d),
             AnyDiagnostic::UnimplementedBuiltinMacro(d) => handlers::unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
             AnyDiagnostic::UnreachableLabel(d) => handlers::unreachable_label::unreachable_label(&ctx, &d),

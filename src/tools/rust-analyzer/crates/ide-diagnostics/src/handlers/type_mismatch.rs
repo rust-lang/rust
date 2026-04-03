@@ -20,7 +20,14 @@ use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_dis
 //
 // This diagnostic is triggered when the type of an expression or pattern does not match
 // the expected type.
-pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<'_>) -> Diagnostic {
+pub(crate) fn type_mismatch(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::TypeMismatch<'_>,
+) -> Option<Diagnostic> {
+    if d.expected.is_unknown() || d.actual.is_unknown() {
+        return None;
+    }
+
     let display_range = adjusted_display_range(ctx, d.expr_or_pat, &|node| {
         let Either::Left(expr) = node else { return None };
         let salient_token_range = match expr {
@@ -39,21 +46,23 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<
         cov_mark::hit!(type_mismatch_range_adjustment);
         Some(salient_token_range)
     });
-    Diagnostic::new(
-        DiagnosticCode::RustcHardError("E0308"),
-        format!(
-            "expected {}, found {}",
-            d.expected
-                .display(ctx.sema.db, ctx.display_target)
-                .with_closure_style(ClosureStyle::ClosureWithId),
-            d.actual
-                .display(ctx.sema.db, ctx.display_target)
-                .with_closure_style(ClosureStyle::ClosureWithId),
-        ),
-        display_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::RustcHardError("E0308"),
+            format!(
+                "expected {}, found {}",
+                d.expected
+                    .display(ctx.sema.db, ctx.display_target)
+                    .with_closure_style(ClosureStyle::ClosureWithId),
+                d.actual
+                    .display(ctx.sema.db, ctx.display_target)
+                    .with_closure_style(ClosureStyle::ClosureWithId),
+            ),
+            display_range,
+        )
+        .stable()
+        .with_fixes(fixes(ctx, d)),
     )
-    .stable()
-    .with_fixes(fixes(ctx, d))
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<'_>) -> Option<Vec<Assist>> {
@@ -1249,6 +1258,25 @@ fn main() {
     enum E { V() }
     let E::V() = &S {};
      // ^^^^^^ error: expected S, found E
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_ignore_unknown_mismatch() {
+        check_diagnostics(
+            r#"
+pub trait Foo {
+    type Out;
+}
+impl Foo for [i32; 1] {
+    type Out = ();
+}
+pub fn foo<T: Foo>(_: T) -> (T::Out,) { loop { } }
+
+fn main() {
+    let _x = foo(2);
 }
 "#,
         );
