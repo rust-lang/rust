@@ -559,6 +559,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             );
                         }
 
+                        self.note_field_shadowed_by_private_candidate_in_cause(
+                            &mut err,
+                            &obligation.cause,
+                            obligation.param_env,
+                        );
                         self.try_to_add_help_message(
                             &root_obligation,
                             &obligation,
