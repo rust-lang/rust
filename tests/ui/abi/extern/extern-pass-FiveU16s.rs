@@ -16,7 +16,8 @@ pub struct FiveU16s {
     five: u16,
 }
 
-#[link(name = "rust_test_helpers", kind = "static")]
+#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
+#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
 extern "C" {
     pub fn rust_dbg_extern_identity_FiveU16s(v: FiveU16s) -> FiveU16s;
 }

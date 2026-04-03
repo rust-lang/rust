@@ -41,7 +41,8 @@ fn main() {
     assert_eq!(unsafe { f2() }, 2);
 }
 
-#[link(name = "rust_test_helpers", kind = "static")]
+#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
+#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
 extern "C" {
     returns_isize!(rust_get_test_int);
     takes_u32_returns_u32!(rust_dbg_extern_identity_u32);
