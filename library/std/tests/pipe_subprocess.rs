@@ -12,10 +12,15 @@ fn main() {
 
         fn parent() {
             let me = env::current_exe().unwrap();
+            // If `runner` is set up for current target, we'll be executing `./runner ./test`, not
+            // just `./test`. For such a case, use the same arguments for child to avoid executing
+            // `runner` without actual executable.
+            let args = env::args();
 
             let (rx, tx) = pipe().unwrap();
             assert!(
                 process::Command::new(me)
+                    .args(args)
                     .env("I_AM_THE_CHILD", "1")
                     .stdout(tx)
                     .status()

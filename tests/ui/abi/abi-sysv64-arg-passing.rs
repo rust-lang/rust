@@ -106,7 +106,8 @@ mod tests {
         Some(u64),
     }
 
-    #[link(name = "rust_test_helpers", kind = "static")]
+    #[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
+    #[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
     extern "sysv64" {
         pub fn rust_int8_to_int32(_: i8) -> i32;
         pub fn rust_dbg_extern_identity_u8(v: u8) -> u8;
