@@ -4,10 +4,10 @@ use std::iter;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
+use rustc_data_structures::unord::{ExtendUnord, UnordItems};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::{
     self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
@@ -157,7 +157,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Set of trait imports actually used in the method resolution.
     /// This is used for warning unused imports.
-    pub used_trait_imports: UnordSet<LocalDefId>,
+    pub used_trait_imports: LocalDefIdSet,
 
     /// If any errors occurred while type-checking this body,
     /// this field will be set to `Some(ErrorGuaranteed)`.

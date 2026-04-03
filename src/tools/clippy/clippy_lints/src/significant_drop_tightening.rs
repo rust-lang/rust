@@ -3,11 +3,11 @@ use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{indent_of, snippet};
 use clippy_utils::{expr_or_init, get_builtin_attr, peel_hir_expr_unary, sym};
 use rustc_ast::BindingMode;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{self as hir, HirId};
+use rustc_hir::{self as hir, HirId, HirIdMap};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{GenericArgKind, Ty};
 use rustc_session::impl_lint_pass;
@@ -58,7 +58,7 @@ impl_lint_pass!(SignificantDropTightening<'_> => [SIGNIFICANT_DROP_TIGHTENING]);
 
 #[derive(Default)]
 pub struct SignificantDropTightening<'tcx> {
-    apas: FxIndexMap<HirId, AuxParamsAttr>,
+    apas: HirIdMap<AuxParamsAttr>,
     /// Auxiliary structure used to avoid having to verify the same type multiple times.
     type_cache: FxHashMap<Ty<'tcx>, bool>,
 }
@@ -345,7 +345,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
 /// Auxiliary parameters used on each block check of an item
 struct AuxParams<'others, 'stmt, 'tcx> {
     //// See [AuxParamsAttr].
-    apas: &'others mut FxIndexMap<HirId, AuxParamsAttr>,
+    apas: &'others mut HirIdMap<AuxParamsAttr>,
     /// The current block identifier that is being visited.
     curr_block_hir_id: HirId,
     /// The current block span that is being visited.
@@ -355,7 +355,7 @@ struct AuxParams<'others, 'stmt, 'tcx> {
 }
 
 impl<'others, 'stmt, 'tcx> AuxParams<'others, 'stmt, 'tcx> {
-    fn new(apas: &'others mut FxIndexMap<HirId, AuxParamsAttr>, curr_stmt: &'stmt hir::Stmt<'tcx>) -> Self {
+    fn new(apas: &'others mut HirIdMap<AuxParamsAttr>, curr_stmt: &'stmt hir::Stmt<'tcx>) -> Self {
         Self {
             apas,
             curr_block_hir_id: HirId::INVALID,

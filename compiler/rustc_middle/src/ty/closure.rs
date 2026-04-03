@@ -1,9 +1,8 @@
 use std::fmt::Write;
 
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
-use rustc_hir::HirId;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::{HirId, HirIdMap};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{Ident, Span, Symbol};
@@ -68,7 +67,7 @@ pub type MinCaptureInformationMap<'tcx> = LocalDefIdMap<RootVariableMinCaptureLi
 ///
 /// This provides a convenient and quick way of checking if a variable being used within
 /// a closure is a capture of a local variable.
-pub type RootVariableMinCaptureList<'tcx> = FxIndexMap<HirId, MinCaptureList<'tcx>>;
+pub type RootVariableMinCaptureList<'tcx> = HirIdMap<MinCaptureList<'tcx>>;
 
 /// Part of `MinCaptureInformationMap`; List of `CapturePlace`s.
 pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;

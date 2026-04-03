@@ -11,7 +11,7 @@ use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, std
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefIdSet};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path};
 use rustc_lint::{MissingDoc, late_lint_mod};
@@ -305,7 +305,7 @@ pub(crate) fn create_config(
                 |tcx, module_def_id| late_lint_mod(tcx, module_def_id, MissingDoc);
             // hack so that `used_trait_imports` won't try to call typeck
             providers.queries.used_trait_imports = |_, _| {
-                static EMPTY_SET: LazyLock<UnordSet<LocalDefId>> = LazyLock::new(UnordSet::default);
+                static EMPTY_SET: LazyLock<LocalDefIdSet> = LazyLock::new(UnordSet::default);
                 &EMPTY_SET
             };
             // In case typeck does end up being called, don't ICE in case there were name resolution errors

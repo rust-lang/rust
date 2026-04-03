@@ -1226,7 +1226,7 @@ rustc_queries! {
         cache_on_disk
     }
 
-    query used_trait_imports(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
+    query used_trait_imports(key: LocalDefId) -> &'tcx LocalDefIdSet {
         desc { "finding used_trait_imports `{}`", tcx.def_path_str(key) }
         cache_on_disk
     }
@@ -1288,7 +1288,7 @@ rustc_queries! {
 
     /// Return the set of (transitive) callees that may result in a recursive call to `key`,
     /// if we were able to walk all callees.
-    query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx Option<UnordSet<LocalDefId>> {
+    query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx Option<LocalDefIdSet> {
         arena_cache
         desc {
             "computing (transitive) callees of `{}` that may recurse",

@@ -6,10 +6,10 @@ use clippy_utils::is_lint_allowed;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::ty::is_copy;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::HirId;
+use rustc_hir::{HirId, HirIdMap};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
@@ -87,9 +87,9 @@ impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
     }
 }
 
-fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<HirId, SliceLintInformation> {
+fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> HirIdMap<SliceLintInformation> {
     let mut removed_pat: FxHashSet<HirId> = FxHashSet::default();
-    let mut slices: FxIndexMap<HirId, SliceLintInformation> = FxIndexMap::default();
+    let mut slices: HirIdMap<SliceLintInformation> = HirIdMap::default();
     pat.walk_always(|pat| {
         // We'll just ignore mut and ref mut for simplicity sake right now
         if let hir::PatKind::Binding(hir::BindingMode(by_ref, hir::Mutability::Not), value_hir_id, ident, sub_pat) =
@@ -197,10 +197,10 @@ impl SliceLintInformation {
 
 fn filter_lintable_slices<'tcx>(
     cx: &LateContext<'tcx>,
-    slice_lint_info: FxIndexMap<HirId, SliceLintInformation>,
+    slice_lint_info: HirIdMap<SliceLintInformation>,
     max_suggested_slice: u64,
     scope: &'tcx hir::Expr<'tcx>,
-) -> FxIndexMap<HirId, SliceLintInformation> {
+) -> HirIdMap<SliceLintInformation> {
     let mut visitor = SliceIndexLintingVisitor {
         cx,
         slice_lint_info,
@@ -214,7 +214,7 @@ fn filter_lintable_slices<'tcx>(
 
 struct SliceIndexLintingVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    slice_lint_info: FxIndexMap<HirId, SliceLintInformation>,
+    slice_lint_info: HirIdMap<SliceLintInformation>,
     max_suggested_slice: u64,
 }
 

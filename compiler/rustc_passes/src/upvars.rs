@@ -1,10 +1,10 @@
 //! Upvar (closure capture) collection from cross-body HIR uses of `Res::Local`s.
 
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self, HirId};
+use rustc_hir::{HirId, HirIdMap};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -21,11 +21,8 @@ pub(crate) fn provide(providers: &mut Providers) {
         let mut local_collector = LocalCollector::default();
         local_collector.visit_body(&body);
 
-        let mut capture_collector = CaptureCollector {
-            tcx,
-            locals: &local_collector.locals,
-            upvars: FxIndexMap::default(),
-        };
+        let mut capture_collector =
+            CaptureCollector { tcx, locals: &local_collector.locals, upvars: HirIdMap::default() };
         capture_collector.visit_body(&body);
 
         if !capture_collector.upvars.is_empty() {
@@ -54,7 +51,7 @@ impl<'tcx> Visitor<'tcx> for LocalCollector {
 struct CaptureCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     locals: &'a FxHashSet<HirId>,
-    upvars: FxIndexMap<HirId, hir::Upvar>,
+    upvars: HirIdMap<hir::Upvar>,
 }
 
 impl CaptureCollector<'_, '_> {

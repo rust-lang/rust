@@ -34,7 +34,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
 use rustc_hir as hir;
 use rustc_hir::attrs::StrippedCfgItem;
@@ -174,9 +174,9 @@ mod visit;
 pub struct ResolverGlobalCtxt {
     pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
-    pub expn_that_defined: UnordMap<LocalDefId, ExpnId>,
+    pub expn_that_defined: LocalDefIdMap<ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
-    pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
+    pub extern_crate_map: LocalDefIdMap<CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,
     pub ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>>,

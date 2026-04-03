@@ -12,10 +12,9 @@ use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def::{CtorOf, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir, HirId, PatExpr, PatExprKind, PatKind};
+use rustc_hir::{self as hir, HirId, HirIdMap, PatExpr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::place::ProjectionKind;
 // Export these here so that Clippy can use them.
@@ -283,7 +282,7 @@ pub struct ExprUseVisitor<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>
     /// We use a `RefCell` here so that delegates can mutate themselves, but we can
     /// still have calls to our own helper functions.
     delegate: RefCell<D>,
-    upvars: Option<&'tcx FxIndexMap<HirId, hir::Upvar>>,
+    upvars: Option<&'tcx HirIdMap<hir::Upvar>>,
 }
 
 impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'tcx, (&'a LateContext<'tcx>, LocalDefId), D> {
@@ -988,7 +987,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     #[instrument(skip(self), level = "debug")]
     fn walk_captures(&self, closure_expr: &hir::Closure<'_>) -> Result<(), Cx::Error> {
         fn upvar_is_local_variable(
-            upvars: Option<&FxIndexMap<HirId, hir::Upvar>>,
+            upvars: Option<&HirIdMap<hir::Upvar>>,
             upvar_id: HirId,
             body_owner_is_closure: bool,
         ) -> bool {

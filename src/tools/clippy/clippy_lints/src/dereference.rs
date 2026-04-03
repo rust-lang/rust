@@ -7,12 +7,11 @@ use clippy_utils::{
     DefinedTy, ExprUseNode, expr_use_ctxt, get_parent_expr, is_block_like, is_from_proc_macro, is_lint_allowed, sym,
 };
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
-    self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, Item, MatchSource, Mutability,
+    self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirIdMap, HirId, Item, MatchSource, Mutability,
     Node, OwnerId, Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -169,7 +168,7 @@ pub struct Dereferencing<'tcx> {
     /// be.
     ///
     /// e.g. `m!(x) | Foo::Bar(ref x)`
-    ref_locals: FxIndexMap<HirId, Option<RefPat>>,
+    ref_locals: HirIdMap<Option<RefPat>>,
 
     /// The outermost `impl Deref` we're currently in. While we're in one,
     /// `explicit_deref_methods` is deactivated
