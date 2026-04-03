@@ -172,9 +172,6 @@ pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            &AttributeLintKind::UnusedDuplicate { this, other, warning } => {
-                lints::UnusedDuplicate { this, other, warning }.into_diag(dcx, level)
-            }
             AttributeLintKind::IllFormedAttributeInput { suggestions, docs } => {
                 lints::IllFormedAttributeInput {
                     num_suggestions: suggestions.len(),
@@ -218,15 +215,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                 target,
             }
             .into_diag(dcx, level),
-            &AttributeLintKind::UnsafeAttrOutsideUnsafe { attribute_name_span, sugg_spans } => {
-                lints::UnsafeAttrOutsideUnsafeLint {
-                    span: attribute_name_span,
-                    suggestion: sugg_spans.map(|(left, right)| {
-                        lints::UnsafeAttrOutsideUnsafeSuggestion { left, right }
-                    }),
-                }
-                .into_diag(dcx, level)
-            }
             &AttributeLintKind::UnexpectedCfgName(name, value) => {
                 check_cfg::unexpected_cfg_name(self.sess, self.tcx, name, value)
                     .into_diag(dcx, level)

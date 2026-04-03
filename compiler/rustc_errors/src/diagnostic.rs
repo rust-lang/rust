@@ -129,6 +129,18 @@ impl<'a> Diagnostic<'a, ()>
     }
 }
 
+pub struct DiagCallback<'a>(
+    pub  &'a Box<
+        dyn for<'b> Fn(DiagCtxtHandle<'b>, Level) -> Diag<'b, ()> + DynSend + DynSync + 'static,
+    >,
+);
+
+impl<'a, 'b> Diagnostic<'a, ()> for DiagCallback<'b> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        (self.0)(dcx, level)
+    }
+}
+
 /// Type used to emit diagnostic through a closure instead of implementing the `Diagnostic` trait.
 pub struct DiagDecorator<F: FnOnce(&mut Diag<'_, ()>)>(pub F);
 

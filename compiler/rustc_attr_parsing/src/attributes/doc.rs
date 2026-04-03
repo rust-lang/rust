@@ -1,5 +1,5 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
-use rustc_errors::msg;
+use rustc_errors::{Diagnostic, msg};
 use rustc_feature::template;
 use rustc_hir::Target;
 use rustc_hir::attrs::{
@@ -171,12 +171,15 @@ impl DocParser {
 
                 if let Some(used_span) = self.attribute.no_crate_inject {
                     let unused_span = path.span();
-                    cx.emit_lint(
+                    cx.emit_dyn_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        AttributeLintKind::UnusedDuplicate {
-                            this: unused_span,
-                            other: used_span,
-                            warning: true,
+                        move |dcx, level| {
+                            rustc_errors::lints::UnusedDuplicate {
+                                this: unused_span,
+                                other: used_span,
+                                warning: true,
+                            }
+                            .into_diag(dcx, level)
                         },
                         unused_span,
                     );
