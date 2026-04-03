@@ -731,7 +731,11 @@ impl CStore {
             }
             Err(err) => {
                 debug!("failed to resolve crate {} {:?}", name, dep_kind);
-                if !tcx.sess.dcx().has_errors().is_some() {
+                // crate maybe injrected with `standard_library_imports::inject`, their span is dummy.
+                // we ignore compiler-injected prelude/sysroot loads here so they don't suppress
+                // unrelated diagnostics, such as `unsupported targets for std library` etc,
+                // these maybe helpful for users to resolve crate loading failure.
+                if !tcx.sess.dcx().has_errors().is_some() && !span.is_dummy() {
                     self.has_crate_resolve_with_fail = true;
                 }
                 let missing_core = self
