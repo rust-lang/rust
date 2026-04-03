@@ -336,7 +336,10 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) -> bool {
                     .filter_by_name_unhygienic(sym::is_empty)
                     .any(|item| is_is_empty_and_stable(cx, item, msrv))
             }),
-            ty::Alias(ty::Projection, proj) => has_is_empty_impl(cx, proj.def_id, msrv),
+            &ty::Alias(ty::AliasTy {
+                kind: ty::Projection { def_id },
+                ..
+            }) => has_is_empty_impl(cx, def_id, msrv),
             ty::Adt(id, _) => {
                 has_is_empty_impl(cx, id.did(), msrv)
                     || (cx.tcx.recursion_limit().value_within_limit(depth)
