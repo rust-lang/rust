@@ -539,7 +539,7 @@ pub(crate) fn extract_docs<'a, 'db>(
     let mut indent = usize::MAX;
     // For inline docs, use the item's own resolver.
     let needs_expansion = has_doc_macro_attr(source.value.syntax())
-        || inner_attrs_node.as_ref().is_some_and(|n| has_doc_macro_attr(n));
+        || inner_attrs_node.as_ref().is_some_and(has_doc_macro_attr);
     let (mut inline_expander, inline_source_ctx) = if needs_expansion {
         let resolver = inline_resolver();
         let def_map = resolver.top_level_def_map();
