@@ -211,7 +211,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             | Change::Replace(_, Some(SyntaxElement::Node(node))) => {
                 if node.parent().is_some() {
                     *node = node.clone_subtree().clone_for_update();
-                } else if *node == tree_mutator.immutable {
+                } else if !node.is_mutable() {
                     *node = node.clone_for_update();
                 }
             }
@@ -222,7 +222,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
                     if let SyntaxElement::Node(node) = element {
                         if node.parent().is_some() {
                             *node = node.clone_subtree().clone_for_update();
-                        } else if *node == tree_mutator.immutable {
+                        } else if !node.is_mutable() {
                             *node = node.clone_for_update();
                         }
                     }
