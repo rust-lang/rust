@@ -27,7 +27,7 @@ use rustc_session::lint::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
-use rustc_target::spec::{Arch, Os};
+use rustc_target::spec::{Arch, Env, Os};
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
@@ -36,13 +36,14 @@ use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::builder::gpu_offload::{
     OffloadKernelDims, gen_call_handling, gen_define_handling, register_offload,
 };
+use crate::common::pauth_fn_attrs;
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::errors::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
-use crate::llvm::{self, Type, Value};
+use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
@@ -1686,6 +1687,13 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
         hir::Safety::Unsafe,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
+    if cx.sess().target.env == Env::Pauthtest {
+        let attrs: Vec<&Attribute> =
+            pauth_fn_attrs().iter().map(|name| llvm::CreateAttrString(cx.llcx, name)).collect();
+        let (_ty, rust_try_fn) = rust_try;
+        crate::attributes::apply_to_llfn(rust_try_fn, AttributePlace::Function, &attrs);
+    }
+
     cx.rust_try_fn.set(Some(rust_try));
     rust_try
 }
