@@ -23,7 +23,7 @@ use hir_expand::{
 use span::AstIdMap;
 use syntax::{
     AstNode, AstToken, SyntaxNode,
-    ast::{self, AttrDocCommentIter, HasAttrs, IsString},
+    ast::{self, AttrDocCommentIter, IsString},
 };
 use tt::{TextRange, TextSize};
 
@@ -408,34 +408,25 @@ fn expand_doc_macro_call<'db>(
     Some((expr, new_source_ctx))
 }
 
-/// Quick check: does this syntax node have any `#[doc = expr]` attributes where the
-/// value is not a simple string literal (i.e., it needs macro expansion)?
-fn has_doc_macro_attr(node: &SyntaxNode) -> bool {
-    ast::AnyHasAttrs::cast(node.clone()).is_some_and(|owner| {
-        owner.attrs().any(|attr| {
-            let Some(meta) = attr.meta() else { return false };
-            // Check it's a `doc` attribute with an expression (e.g. `#[doc = expr]`),
-            // but NOT a simple string literal (which wouldn't need macro expansion).
-            meta.path().is_some_and(|path| {
-                path.as_single_name_ref().is_some_and(|name| name.text() == "doc")
-            }) && meta.expr().is_some_and(|expr| !matches!(expr, ast::Expr::Literal(_)))
-        })
-    })
-}
-
 fn extend_with_attrs<'a, 'db>(
     result: &mut Docs,
+    db: &'db dyn DefDatabase,
+    krate: Crate,
     node: &SyntaxNode,
+    file_id: HirFileId,
     expect_inner_attrs: bool,
     indent: &mut usize,
     get_cfg_options: &dyn Fn() -> &'a CfgOptions,
     cfg_options: &mut Option<&'a CfgOptions>,
-    mut expander: Option<&mut DocMacroExpander<'db>>,
-    source_ctx: Option<&DocExprSourceCtx<'db>>,
+    make_resolver: &dyn Fn() -> Option<Resolver<'db>>,
 ) {
+    // Lazily initialised when we first encounter a `#[doc = macro!()]`.
+    let mut expander: Option<Option<(DocMacroExpander<'db>, DocExprSourceCtx<'db>)>> = None;
+
     // FIXME: `#[cfg_attr(..., doc = macro!())]` skips macro expansion because
     // `top_attr` points to the `cfg_attr` node, not the inner `doc = macro!()`.
-    // And expanding `cfg_attr` here or not is not decided yet.
+    // Fixing this is difficult as we need an `Expr` that doesn't exist here for
+    // the ast id and for sanely parsing the macro call.
     expand_cfg_attr_with_doc_comments::<_, Infallible>(
         AttrDocCommentIter::from_syntax_node(node).filter(|attr| match attr {
             Either::Left(attr) => attr.kind().is_inner() == expect_inner_attrs,
@@ -465,11 +456,31 @@ fn extend_with_attrs<'a, 'db>(
                         let is_from_cfg_attr =
                             top_attr.as_simple_call().is_some_and(|(name, _)| name == "cfg_attr");
                         if !is_from_cfg_attr
-                            && let (Some(expander), Some(source_ctx)) =
-                                (expander.as_deref_mut(), source_ctx)
                             && let Some(expr) = top_attr.expr()
+                            && let Some((exp, ctx)) = expander
+                                .get_or_insert_with(|| {
+                                    make_resolver().map(|resolver| {
+                                        let def_map = resolver.top_level_def_map();
+                                        let recursion_limit = def_map.recursion_limit() as usize;
+                                        (
+                                            DocMacroExpander {
+                                                db,
+                                                krate,
+                                                recursion_depth: 0,
+                                                recursion_limit,
+                                            },
+                                            DocExprSourceCtx {
+                                                resolver,
+                                                file_id,
+                                                ast_id_map: db.ast_id_map(file_id),
+                                                span_map: db.span_map(file_id),
+                                            },
+                                        )
+                                    })
+                                })
+                                .as_mut()
                             && let Some(expanded) =
-                                expand_doc_expr_via_macro_pipeline(expander, source_ctx, expr)
+                                expand_doc_expr_via_macro_pipeline(exp, ctx, expr)
                         {
                             result.extend_with_unmapped_doc_str(&expanded, indent);
                         }
@@ -485,10 +496,10 @@ fn extend_with_attrs<'a, 'db>(
 pub(crate) fn extract_docs<'a, 'db>(
     db: &'db dyn DefDatabase,
     krate: Crate,
-    // For outer docs on an outlined module, use the parent module's resolver.
-    // For inline docs (and non-module items), use the item's own resolver.
-    outer_resolver: Option<impl FnOnce() -> Resolver<'db>>,
-    inline_resolver: impl FnOnce() -> Resolver<'db>,
+    // Returns (outer_resolver, inline_resolver).
+    // `outer_resolver` is `Some` only for outlined modules (`mod foo;`) where outer docs
+    // should be resolved in the parent module's scope.
+    resolvers: &dyn Fn() -> (Option<Resolver<'db>>, Resolver<'db>),
     get_cfg_options: &dyn Fn() -> &'a CfgOptions,
     source: InFile<ast::AnyHasAttrs>,
     outer_mod_decl: Option<InFile<ast::Module>>,
@@ -510,33 +521,17 @@ pub(crate) fn extract_docs<'a, 'db>(
         let mut indent = usize::MAX;
         // For outer docs (the `mod foo;` declaration), use the parent module's resolver
         // so that macros are resolved in the parent's scope.
-        let (mut outer_expander, outer_source_ctx) =
-            if has_doc_macro_attr(outer_mod_decl.value.syntax())
-                && let Some(make) = outer_resolver
-            {
-                let resolver = make();
-                let def_map = resolver.top_level_def_map();
-                let recursion_limit = def_map.recursion_limit() as usize;
-                let expander = DocMacroExpander { db, krate, recursion_depth: 0, recursion_limit };
-                let source_ctx = DocExprSourceCtx {
-                    resolver,
-                    file_id: outer_mod_decl.file_id,
-                    ast_id_map: db.ast_id_map(outer_mod_decl.file_id),
-                    span_map: db.span_map(outer_mod_decl.file_id),
-                };
-                (Some(expander), Some(source_ctx))
-            } else {
-                (None, None)
-            };
         extend_with_attrs(
             &mut result,
+            db,
+            krate,
             outer_mod_decl.value.syntax(),
+            outer_mod_decl.file_id,
             false,
             &mut indent,
             get_cfg_options,
             &mut cfg_options,
-            outer_expander.as_mut(),
-            outer_source_ctx.as_ref(),
+            &|| resolvers().0,
         );
         result.remove_indent(indent, 0);
         result.outline_mod = Some((outer_mod_decl.file_id, result.docs_source_map.len()));
@@ -544,45 +539,33 @@ pub(crate) fn extract_docs<'a, 'db>(
 
     let inline_source_map_start = result.docs_source_map.len();
     let mut indent = usize::MAX;
+    let inline_resolver = &|| Some(resolvers().1);
     // For inline docs, use the item's own resolver.
-    let needs_expansion = has_doc_macro_attr(source.value.syntax())
-        || inner_attrs_node.as_ref().is_some_and(has_doc_macro_attr);
-    let (mut inline_expander, inline_source_ctx) = if needs_expansion {
-        let resolver = inline_resolver();
-        let def_map = resolver.top_level_def_map();
-        let recursion_limit = def_map.recursion_limit() as usize;
-        let expander = DocMacroExpander { db, krate, recursion_depth: 0, recursion_limit };
-        let source_ctx = DocExprSourceCtx {
-            resolver,
-            file_id: source.file_id,
-            ast_id_map: db.ast_id_map(source.file_id),
-            span_map: db.span_map(source.file_id),
-        };
-        (Some(expander), Some(source_ctx))
-    } else {
-        (None, None)
-    };
     extend_with_attrs(
         &mut result,
+        db,
+        krate,
         source.value.syntax(),
+        source.file_id,
         false,
         &mut indent,
         get_cfg_options,
         &mut cfg_options,
-        inline_expander.as_mut(),
-        inline_source_ctx.as_ref(),
+        inline_resolver,
     );
     if let Some(inner_attrs_node) = &inner_attrs_node {
         result.inline_inner_docs_start = Some(TextSize::of(&result.docs));
         extend_with_attrs(
             &mut result,
+            db,
+            krate,
             inner_attrs_node,
+            source.file_id,
             true,
             &mut indent,
             get_cfg_options,
             &mut cfg_options,
-            inline_expander.as_mut(),
-            inline_source_ctx.as_ref(),
+            inline_resolver,
         );
     }
     result.remove_indent(indent, inline_source_map_start);

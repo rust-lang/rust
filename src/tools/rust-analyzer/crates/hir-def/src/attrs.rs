@@ -965,20 +965,20 @@ impl AttrFlags {
     pub fn docs(db: &dyn DefDatabase, owner: AttrDefId) -> Option<Box<Docs>> {
         let (source, outer_mod_decl, _extra_crate_attrs, krate) = attrs_source(db, owner);
         let inner_attrs_node = source.value.inner_attributes_node();
-        let parent = if outer_mod_decl.is_some() && AttrDefId::ModuleId(module_id) = owner {
+        let parent = if outer_mod_decl.is_some()
+            && let AttrDefId::ModuleId(module_id) = owner
+        {
             module_id.containing_module(db)
         } else {
             None
         };
-        let outer_resolver = || parent.map(|it| it.resolver(db)); 
         // Note: we don't have to pass down `_extra_crate_attrs` here, since `extract_docs`
         // does not handle crate-level attributes related to docs.
         // See: https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html#at-the-crate-level
         self::docs::extract_docs(
             db,
             krate,
-            outer_resolver,
-            || resolver_for_attr_def_id(db, owner),
+            &|| (parent.map(|it| it.resolver(db)), resolver_for_attr_def_id(db, owner)),
             &|| krate.cfg_options(db),
             source,
             outer_mod_decl,
@@ -998,14 +998,10 @@ impl AttrFlags {
         ) -> ArenaMap<LocalFieldId, Option<Box<Docs>>> {
             let krate = variant.module(db).krate(db);
             collect_field_attrs(db, variant, |cfg_options, field| {
-                fn none_resolver<'db>() -> Option<fn() -> Resolver<'db>> {
-                    None
-                }
                 self::docs::extract_docs(
                     db,
                     krate,
-                    none_resolver(),
-                    || variant.resolver(db),
+                    &|| (None, variant.resolver(db)),
                     &|| cfg_options,
                     field,
                     None,
