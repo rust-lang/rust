@@ -305,7 +305,7 @@ mod imp {
     }
 
     /// Modern kernels on modern hardware can have dynamic signal stack sizes.
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[cfg(all(any(target_os = "linux", target_os = "android"), not(target_env = "uclibc")))]
     fn sigstack_size() -> usize {
         let dynamic_sigstksz = unsafe { libc::getauxval(libc::AT_MINSIGSTKSZ) };
         // If getauxval couldn't find the entry, it returns 0,
@@ -315,7 +315,7 @@ mod imp {
     }
 
     /// Not all OS support hardware where this is needed.
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    #[cfg(not(all(any(target_os = "linux", target_os = "android"), not(target_env = "uclibc"))))]
     fn sigstack_size() -> usize {
         libc::SIGSTKSZ
     }

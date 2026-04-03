@@ -41,15 +41,15 @@ fn is_simple_cfg(cfg: &CfgEntry) -> bool {
     }
 }
 
-/// Returns `false` if is `Any`, otherwise returns `true`.
-fn is_all_cfg(cfg: &CfgEntry) -> bool {
+/// Returns `true` if is [`CfgEntry::Any`], otherwise returns `false`.
+fn is_any_cfg(cfg: &CfgEntry) -> bool {
     match cfg {
         CfgEntry::Bool(..)
         | CfgEntry::NameValue { .. }
         | CfgEntry::Not(..)
         | CfgEntry::Version(..)
-        | CfgEntry::All(..) => true,
-        CfgEntry::Any(..) => false,
+        | CfgEntry::All(..) => false,
+        CfgEntry::Any(..) => true,
     }
 }
 
@@ -370,7 +370,7 @@ impl Display<'_> {
                     } else {
                         Either::Right(
                             Wrapped::with_parens()
-                                .when(!is_all_cfg(sub_cfg))
+                                .when(is_any_cfg(sub_cfg))
                                 .wrap(Display(sub_cfg, self.1)),
                         )
                     }
@@ -394,7 +394,7 @@ impl fmt::Display for Display<'_> {
                     .iter()
                     .map(|sub_cfg| {
                         Wrapped::with_parens()
-                            .when(!is_all_cfg(sub_cfg))
+                            .when(is_any_cfg(sub_cfg))
                             .wrap(Display(sub_cfg, self.1))
                     })
                     .joined(separator, fmt)

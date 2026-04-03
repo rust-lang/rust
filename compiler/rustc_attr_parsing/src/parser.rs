@@ -201,7 +201,7 @@ impl ArgParser {
 
     /// Assert that there were no args.
     /// If there were, get a span to the arguments
-    /// (to pass to [`AcceptContext::expected_no_args`](crate::context::AcceptContext::expected_no_args)).
+    /// (to pass to [`AttributeDiagnosticContext::expected_no_args`](crate::context::AttributeDiagnosticContext::expected_no_args)).
     pub fn no_args(&self) -> Result<(), Span> {
         match self {
             Self::NoArgs => Ok(()),
