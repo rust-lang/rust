@@ -433,10 +433,9 @@ fn extend_with_attrs<'a, 'db>(
     mut expander: Option<&mut DocMacroExpander<'db>>,
     source_ctx: Option<&DocExprSourceCtx<'db>>,
 ) {
-    // FIXME: `#[cfg_attr(..., doc = macro!())]` is not handled correctly here:
-    // macro expansion inside `cfg_attr`-wrapped doc attributes is not supported yet.
-    // Fixing this properly requires changes to `expand_cfg_attr()`.
-    // See https://github.com/rust-lang/rust-analyzer/issues/18444
+    // FIXME: `#[cfg_attr(..., doc = macro!())]` skips macro expansion because
+    // `top_attr` points to the `cfg_attr` node, not the inner `doc = macro!()`.
+    // And expanding `cfg_attr` here or not is not decided yet.
     expand_cfg_attr_with_doc_comments::<_, Infallible>(
         AttrDocCommentIter::from_syntax_node(node).filter(|attr| match attr {
             Either::Left(attr) => attr.kind().is_inner() == expect_inner_attrs,
@@ -458,8 +457,16 @@ fn extend_with_attrs<'a, 'db>(
                     Meta::NamedKeyValue { name: Some(name), value: None, .. }
                         if name.text() == "doc" =>
                     {
-                        if let (Some(expander), Some(source_ctx)) =
-                            (expander.as_deref_mut(), source_ctx)
+                        // When the doc attribute comes from inside a `cfg_attr`,
+                        // `top_attr` points to the `cfg_attr(...)` node, not the
+                        // inner `doc = macro!()`.  In that case `top_attr.expr()`
+                        // would not yield the macro expression we need, so skip
+                        // expansion (see FIXME above).
+                        let is_from_cfg_attr =
+                            top_attr.as_simple_call().is_some_and(|(name, _)| name == "cfg_attr");
+                        if !is_from_cfg_attr
+                            && let (Some(expander), Some(source_ctx)) =
+                                (expander.as_deref_mut(), source_ctx)
                             && let Some(expr) = top_attr.expr()
                             && let Some(expanded) =
                                 expand_doc_expr_via_macro_pipeline(expander, source_ctx, expr)
