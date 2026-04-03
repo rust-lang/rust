@@ -396,7 +396,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     pub fn range<K: ?Sized, R>(&self, range: R) -> Range<'_, T>
     where
         K: Ord,
-        T: Comparable<&K> + Ord,
+        T: for<'a> Comparable<&'a K> + Ord,
         R: RangeBounds<K>,
     {
         Range { iter: self.map.range(range) }

@@ -93,7 +93,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     >
     where
         Q: Ord,
-        K: Comparable<&Q>,
+        K: for<'a> Comparable<&'a Q>,
         R: RangeBounds<Q>,
     {
         // Determine if map or set is being searched

@@ -267,7 +267,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     ) -> LeafRange<BorrowType, K, V>
     where
         Q: Ord,
-        K: Comparable<&Q>,
+        K: for<'a> Comparable<&'a Q>,
         R: RangeBounds<Q>,
     {
         match self.search_tree_for_bifurcation(&range) {
@@ -316,7 +316,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     pub(super) fn range_search<Q, R>(self, range: R) -> LeafRange<marker::Immut<'a>, K, V>
     where
         Q: ?Sized + Ord,
-        K: Comparable<&Q>,
+        K: for<'b> Comparable<&'b Q>,
         R: RangeBounds<Q>,
     {
         // SAFETY: our borrow type is immutable.
@@ -342,7 +342,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
     pub(super) fn range_search<Q, R>(self, range: R) -> LeafRange<marker::ValMut<'a>, K, V>
     where
         Q: ?Sized + Ord,
-        K: Comparable<&Q>,
+        K: for<'b> Comparable<&'b Q>,
         R: RangeBounds<Q>,
     {
         unsafe { self.find_leaf_edges_spanning_range(range) }

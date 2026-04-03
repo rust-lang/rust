@@ -316,7 +316,7 @@ impl<K, A: Allocator + Clone> BTreeMap<K, SetValZST, A> {
         let (map, dormant_map) = DormantMutRef::new(self);
         let root_node =
             map.root.get_or_insert_with(|| Root::new((*map.alloc).clone())).borrow_mut();
-        match root_node.search_tree::<K>(&key) {
+        match root_node.search_tree(&key) {
             Found(mut kv) => Some(mem::replace(kv.key_mut(), key)),
             GoDown(handle) => {
                 VacantEntry {
@@ -1402,7 +1402,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     pub fn range<T: ?Sized, R>(&self, range: R) -> Range<'_, K, V>
     where
         T: Ord,
-        K: Comparable<&T>,
+        K: for<'a> Comparable<&'a T>,
         R: RangeBounds<T>,
     {
         if let Some(root) = &self.root {
@@ -1442,7 +1442,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<'_, K, V>
     where
         T: Ord,
-        K: Comparable<&T>,
+        K: for<'a> Comparable<&'a T>,
         R: RangeBounds<T>,
     {
         if let Some(root) = &mut self.root {
@@ -2608,9 +2608,9 @@ impl<K: Debug, V: Debug, A: Allocator + Clone> Debug for BTreeMap<K, V, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, Q: ?Sized, V, A: Allocator + Clone> Index<&Q> for BTreeMap<K, V, A>
+impl<K, Q: Clone, V, A: Allocator + Clone> Index<Q> for BTreeMap<K, V, A>
 where
-    K: Comparable<&Q> + Ord,
+    K: Comparable<Q> + Ord,
 {
     type Output = V;
 
@@ -2620,7 +2620,7 @@ where
     ///
     /// Panics if the key is not present in the `BTreeMap`.
     #[inline]
-    fn index(&self, key: &Q) -> &V {
+    fn index(&self, key: Q) -> &V {
         self.get(key).expect("no entry found for key")
     }
 }
