@@ -13,7 +13,10 @@ use syntax::{
 
 use crate::{
     AssistContext, AssistId, Assists,
-    utils::{does_pat_match_variant, does_pat_variant_nested_or_literal, unwrap_trivial_block},
+    utils::{
+        does_pat_match_variant, does_pat_variant_nested_or_literal, unwrap_trivial_block,
+        wrap_paren,
+    },
 };
 
 // Assist: replace_if_let_with_match
@@ -289,6 +292,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
                 _ => make.expr_let(if_let_pat, scrutinee).into(),
             };
             let condition = if let Some(guard) = guard {
+                let guard = wrap_paren(guard, &make, ast::prec::ExprPrecedence::LAnd);
                 make.expr_bin(condition, ast::BinaryOp::LogicOp(ast::LogicOp::And), guard).into()
             } else {
                 condition
@@ -2268,14 +2272,35 @@ fn main() {
 "#,
             r#"
 fn main() {
-    if let Some(n) = Some(0) && n % 2 == 0 && n != 6 {
+    if let Some(n) = Some(0) && (n % 2 == 0 && n != 6) {
         ()
     } else {
         code()
     }
 }
 "#,
-        )
+        );
+
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn main() {
+    match$0 Some(0) {
+        Some(n) if n % 2 == 0 || n == 7 => (),
+        _ => code(),
+    }
+}
+"#,
+            r#"
+fn main() {
+    if let Some(n) = Some(0) && (n % 2 == 0 || n == 7) {
+        ()
+    } else {
+        code()
+    }
+}
+"#,
+        );
     }
 
     #[test]
