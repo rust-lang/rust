@@ -1725,7 +1725,7 @@ pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
 }
 
 pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    find_attr!(cx.tcx.hir_attrs(hir_id), Repr { .. })
+    find_attr!(cx.tcx, hir_id, Repr { .. })
 }
 
 pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
@@ -2425,7 +2425,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&
                     && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
                     // We could also check for the type name `test::TestDescAndFn`
                     && let Res::Def(DefKind::Struct, _) = path.res
-                    && find_attr!(tcx.hir_attrs(item.hir_id()), RustcTestMarker(..))
+                    && find_attr!(tcx, item.hir_id(), RustcTestMarker(..))
                 {
                     names.push(ident.name);
                 }
@@ -2483,7 +2483,7 @@ pub fn is_test_function(tcx: TyCtxt<'_>, fn_def_id: LocalDefId) -> bool {
 /// This only checks directly applied attributes, to see if a node is inside a `#[cfg(test)]` parent
 /// use [`is_in_cfg_test`]
 pub fn is_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    if let Some(cfgs) = find_attr!(tcx.hir_attrs(id), CfgTrace(cfgs) => cfgs)
+    if let Some(cfgs) = find_attr!(tcx, id, CfgTrace(cfgs) => cfgs)
         && cfgs
             .iter()
             .any(|(cfg, _)| matches!(cfg, CfgEntry::NameValue { name: sym::test, .. }))
