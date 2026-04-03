@@ -55,6 +55,9 @@
 //@ revisions: aarch64_unknown_linux_ohos
 //@ [aarch64_unknown_linux_ohos] compile-flags: --target aarch64-unknown-linux-ohos
 //@ [aarch64_unknown_linux_ohos] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_linux_pauthtest
+//@ [aarch64_unknown_linux_pauthtest] compile-flags: --target aarch64-unknown-linux-pauthtest
+//@ [aarch64_unknown_linux_pauthtest] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_managarm_mlibc
 //@ [aarch64_unknown_managarm_mlibc] compile-flags: --target aarch64-unknown-managarm-mlibc
 //@ [aarch64_unknown_managarm_mlibc] needs-llvm-components: aarch64
