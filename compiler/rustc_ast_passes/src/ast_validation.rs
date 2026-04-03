@@ -1379,7 +1379,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             this.dcx()
                                 .emit_err(errors::ScalableVectorNotTupleStruct { span: item.span });
                         }
-                        if !self.sess.target.arch.supports_scalable_vectors() {
+                        if !self.sess.target.arch.supports_scalable_vectors()
+                            && !self.sess.opts.actually_rustdoc
+                        {
                             this.dcx().emit_err(errors::ScalableVectorBadArch { span: attr.span });
                         }
                     }
