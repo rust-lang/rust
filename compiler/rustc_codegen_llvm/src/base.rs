@@ -125,7 +125,14 @@ pub(crate) fn compile_codegen_unit(
             if let Some(entry) =
                 maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx, cx.codegen_unit)
             {
-                let attrs = attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default());
+                let mut attrs = attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default());
+                // For pauthtest make sure that the ptrauth-* attributes are also attached to the
+                // entry wrapper.
+                if cx.sess().target.env == Env::Pauthtest {
+                    for &ptrauth_attr in pauth_fn_attrs() {
+                        attrs.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
+                    }
+                }
                 attributes::apply_to_llfn(entry, llvm::AttributePlace::Function, &attrs);
             }
 
@@ -140,6 +147,19 @@ pub(crate) fn compile_codegen_unit(
                     cx.define_objc_module_info();
                 }
                 cx.add_objc_module_flags();
+            }
+
+            if cx.sess().target.env == Env::Pauthtest {
+                // FIXME(jchlanda): In LLVM/Clang, there also `aarch64-elf-pauthabi-platform` and
+                // `aarch64-elf-pauthabi-version` module flags, ending up in PAuth core info
+                // emitted in a special section in resulting ELF. This is used by static and
+                // dynamic linker to check binary compatibility. By default, absence of that info
+                // is treated as being compatible with anything. While not needed now, it will
+                // become relevant when C++ interop is implemented.
+                if cx.sess().opts.unstable_opts.pauth_enable_elf_got {
+                    cx.add_ptrauth_elf_got_flag();
+                }
+                cx.add_ptrauth_sign_personality_flag();
             }
 
             // Finalize code coverage by injecting the coverage map. Note, the coverage map will
