@@ -38,6 +38,7 @@ pub struct Finder {
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
     "powerpc64-unknown-linux-gnuelfv2",
+    "aarch64-unknown-linux-pauthtest", // Stage 0 compiler is not guaranteed to see pauthtest yet.
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
