@@ -2446,10 +2446,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let mut guards = sub_branch.guard_patterns;
             let (arm_span, arm_scope, match_scope) =
                 if let Some((arm, match_scope)) = arm_match_scope {
+                    let mut span = arm.span;
                     if let Some(arm_guard) = arm.guard {
+                        span = span.to(self.thir[arm_guard].span);
                         guards.push(arm_guard);
                     };
-                    (arm.span, arm.scope, match_scope)
+                    (span, arm.scope, match_scope)
                 } else {
                     let span = sub_branch.span;
                     // There must be a scope if a guard pattern is present
@@ -2479,12 +2481,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
-            let mut guard_span = rustc_span::DUMMY_SP;
+            // If we are in this branch, there are definitely some guards here
+            let guard_span = self.thir[*guards.first().unwrap()]
+                .span
+                .to(self.thir[*guards.last().unwrap()].span);
 
             let (post_guard_block, otherwise_post_guard_block) =
                 self.in_if_then_scope(match_scope, guard_span, |this| {
                     guards.into_iter().fold(BlockAnd(block, ()), |block, guard| {
-                        guard_span = this.thir[guard].span;
                         this.then_else_break(
                             block.0,
                             guard,
