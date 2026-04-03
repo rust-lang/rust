@@ -1064,6 +1064,9 @@ impl u8 {
     /// U+0020 SPACE, U+0009 HORIZONTAL TAB, U+000A LINE FEED,
     /// U+000C FORM FEED, or U+000D CARRIAGE RETURN.
     ///
+    /// **Warning:** Because the list above excludes U+000B VERTICAL TAB,
+    /// `b.is_ascii_whitespace()` is **not** equivalent to `char::from(b).is_whitespace()`.
+    ///
     /// Rust uses the WhatWG Infra Standard's [definition of ASCII
     /// whitespace][infra-aw]. There are several other definitions in
     /// wide use. For instance, [the POSIX locale][pct] includes
