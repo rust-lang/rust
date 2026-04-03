@@ -11699,22 +11699,21 @@ pub struct Bar;
 }
 
 #[test]
-fn test_hover_doc_attr_macro_on_outlined_mod_combined_with_inner_docs() {
-    // Outer doc macro on `mod foo;` (resolved from parent) should combine with
-    // inner docs from the module file.
+fn test_hover_doc_attr_inner_doc_macro() {
+    // Inner doc attribute with macro expansion (`#![doc = macro!()]`)
     check(
         r#"
-//- /main.rs
 macro_rules! doc_str {
-    () => { "outer doc from macro" };
+    () => { "inner doc from macro" };
 }
 
-#[doc = doc_str!()]
-mod foo$0;
+/// outer doc
+///
+mod foo$0 {
+    #![doc = doc_str!()]
 
-//- /foo.rs
-//! inner module docs
-pub struct Bar;
+    pub struct Bar;
+}
 "#,
         expect![[r#"
             *foo*
@@ -11729,8 +11728,9 @@ pub struct Bar;
 
             ---
 
-            outer doc from macro
-            inner module docs
+            outer doc
+
+            inner doc from macro
         "#]],
     );
 }
