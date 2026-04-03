@@ -3526,9 +3526,6 @@ fn foo_$0test() {}
                             test_id: Path(
                                 "foo_test",
                             ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
                         },
                         cfg: None,
                         update_test: UpdateTest {
@@ -10707,9 +10704,6 @@ macro_rules! str {
                             test_id: Path(
                                 "test",
                             ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
                         },
                         cfg: None,
                         update_test: UpdateTest {
@@ -10778,9 +10772,6 @@ pub use expect_test;
                             test_id: Path(
                                 "test",
                             ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
                         },
                         cfg: None,
                         update_test: UpdateTest {
