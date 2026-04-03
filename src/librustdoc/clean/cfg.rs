@@ -598,6 +598,7 @@ fn human_readable_target_env(env: Symbol) -> Option<&'static str> {
         P1 => "WASIp1",
         P2 => "WASIp2",
         P3 => "WASIp3",
+        Pauthtest => "pauthtest",
         Relibc => "relibc",
         Sgx => "SGX",
         Sim => "Simulator",
