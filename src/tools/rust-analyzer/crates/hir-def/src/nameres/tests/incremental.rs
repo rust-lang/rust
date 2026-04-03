@@ -1,6 +1,6 @@
 use base_db::{
     CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData,
-    DependencyBuilder, Env, RootQueryDb, SourceDatabase,
+    DependencyBuilder, Env, SourceDatabase, all_crates,
 };
 use expect_test::{Expect, expect};
 use intern::Symbol;
@@ -56,11 +56,11 @@ pub const BAZ: u32 = 0;
     "#,
     );
 
-    for &krate in db.all_crates().iter() {
+    for &krate in all_crates(&db).iter() {
         crate_def_map(&db, krate);
     }
 
-    let all_crates_before = db.all_crates();
+    let all_crates_before = all_crates(&db);
 
     {
         // Add dependencies: c -> b, b -> a.
@@ -100,15 +100,15 @@ pub const BAZ: u32 = 0;
         new_crate_graph.set_in_db(&mut db);
     }
 
-    let all_crates_after = db.all_crates();
+    let all_crates_after = all_crates(&db);
     assert!(
-        Arc::ptr_eq(&all_crates_before, &all_crates_after),
+        std::sync::Arc::ptr_eq(&all_crates_before, &all_crates_after),
         "the all_crates list should not have been invalidated"
     );
     execute_assert_events(
         &db,
         || {
-            for &krate in db.all_crates().iter() {
+            for &krate in all_crates(&db).iter() {
                 crate_def_map(&db, krate);
             }
         },

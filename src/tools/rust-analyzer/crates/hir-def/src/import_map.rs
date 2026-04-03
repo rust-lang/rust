@@ -499,7 +499,7 @@ fn search_maps(
 
 #[cfg(test)]
 mod tests {
-    use base_db::RootQueryDb;
+    use base_db::all_crates;
     use expect_test::{Expect, expect};
     use test_fixture::WithFixture;
 
@@ -536,7 +536,7 @@ mod tests {
         expect: Expect,
     ) {
         let db = TestDB::with_files(ra_fixture);
-        let all_crates = db.all_crates();
+        let all_crates = all_crates(&db);
         let krate = all_crates
             .iter()
             .copied()
@@ -616,7 +616,7 @@ mod tests {
 
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let db = TestDB::with_files(ra_fixture);
-        let all_crates = db.all_crates();
+        let all_crates = all_crates(&db);
 
         let actual = all_crates
             .iter()
