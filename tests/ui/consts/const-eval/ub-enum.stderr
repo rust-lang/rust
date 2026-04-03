@@ -129,6 +129,17 @@ LL |         std::mem::discriminant(&*(&() as *const () as *const Never));
 note: inside `discriminant::<Never>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
-error: aborting due to 14 previous errors
+error[E0080]: constructing invalid value of type WideRangeDiscriminants: at .<enum-tag>, encountered 0x0, but expected a valid enum tag
+  --> $DIR/ub-enum.rs:121:1
+   |
+LL | const BAD_WIDE_RANGE_ENUM: WideRangeDiscriminants = unsafe { mem::transmute(0_i64) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
