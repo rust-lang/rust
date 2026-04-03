@@ -659,7 +659,7 @@ impl Analysis {
 
     /// Returns crates that this file *might* belong to.
     pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<Crate>> {
-        self.with_db(|db| relevant_crates(db, file_id).iter().copied().collect())
+        self.with_db(|db| relevant_crates(db, file_id).to_vec())
     }
 
     /// Returns the edition of the given crate.

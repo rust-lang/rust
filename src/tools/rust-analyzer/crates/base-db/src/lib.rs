@@ -347,8 +347,7 @@ pub fn set_all_crates_with_durability(
 ///
 /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
 pub fn all_crates(db: &dyn salsa::Database) -> std::sync::Arc<[Crate]> {
-    AllCrates::try_get(db)
-        .map_or(std::sync::Arc::default(), |all_crates| all_crates.crates(db).into())
+    AllCrates::try_get(db).map_or(std::sync::Arc::default(), |all_crates| all_crates.crates(db))
 }
 
 // FIXME: VFS rewrite should allow us to get rid of this wrapper
