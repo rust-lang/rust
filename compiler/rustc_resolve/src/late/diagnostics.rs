@@ -1987,10 +1987,23 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         // where a brace being opened means a block is being started. Look
         // ahead for the next text to see if `span` is followed by a `{`.
         let sm = self.r.tcx.sess.source_map();
-        if let Some(followed_brace_span) = sm.span_look_ahead(span, "{", Some(50)) {
+        if let Some(open_brace_span) = sm.span_followed_by(span, "{") {
             // In case this could be a struct literal that needs to be surrounded
             // by parentheses, find the appropriate span.
-            let close_brace_span = sm.span_look_ahead(followed_brace_span, "}", Some(50));
+            let close_brace_span =
+                sm.span_to_next_source(open_brace_span).ok().and_then(|next_source| {
+                    let offset = next_source.find('}')?;
+                    if next_source[..offset].chars().count() >= 50 {
+                        return None;
+                    }
+                    let start = open_brace_span.hi() + rustc_span::BytePos(offset as u32);
+                    Some(Span::new(
+                        start,
+                        start + rustc_span::BytePos(1_u32),
+                        open_brace_span.ctxt(),
+                        None,
+                    ))
+                });
             let closing_brace = close_brace_span.map(|sp| span.to(sp));
             (true, closing_brace)
         } else {

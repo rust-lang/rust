@@ -1100,8 +1100,7 @@ fn report_arm_reachability<'p, 'tcx>(
             let arm_span = cx.tcx.hir_span(hir_id);
             let whole_arm_span = if is_match_arm {
                 // If the arm is followed by a comma, extend the span to include it.
-                let with_whitespace = sm.span_extend_while_whitespace(arm_span);
-                if let Some(comma) = sm.span_look_ahead(with_whitespace, ",", Some(1)) {
+                if let Some(comma) = sm.span_followed_by(arm_span, ",") {
                     Some(arm_span.to(comma))
                 } else {
                     Some(arm_span)
