@@ -38,7 +38,6 @@ use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
 use crate::attributes::instruction_set::*;
 use crate::attributes::link_attrs::*;
-use crate::attributes::lint::*;
 use crate::attributes::lint_helpers::*;
 use crate::attributes::loop_match::*;
 use crate::attributes::macro_attrs::*;
@@ -151,7 +150,6 @@ attribute_parsers!(
         ConfusablesParser,
         ConstStabilityParser,
         DocParser,
-        LintParser,
         MacroUseParser,
         NakedParser,
         OnConstParser,
@@ -878,17 +876,6 @@ where
                 strings: true,
                 list: false,
             },
-        )
-    }
-
-    pub(crate) fn expected_nv_as_last_argument(
-        &mut self,
-        span: Span,
-        name_value_key: Symbol,
-    ) -> ErrorGuaranteed {
-        self.emit_parse_error(
-            span,
-            AttributeParseErrorReason::ExpectedNameValueAsLastArgument { span, name_value_key },
         )
     }
 
