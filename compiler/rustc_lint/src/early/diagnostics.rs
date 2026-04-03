@@ -351,6 +351,28 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::MissingOptionsForOnMove => {
                 lints::MissingOptionsForOnMoveAttr.into_diag(dcx, level)
             }
+            &AttributeLintKind::RenamedLint { name, replace, suggestion } => lints::RenamedLint {
+                name,
+                replace,
+                suggestion: lints::RenamedLintSuggestion::WithSpan { suggestion, replace },
+            }
+            .into_diag(dcx, level),
+            &AttributeLintKind::DeprecatedLintName { name, suggestion, replace } => {
+                lints::DeprecatedLintName { name, suggestion, replace }.into_diag(dcx, level)
+            }
+            &AttributeLintKind::RemovedLint { name, ref reason } => {
+                lints::RemovedLint { name, reason }.into_diag(dcx, level)
+            }
+            &AttributeLintKind::UnknownLint { name, span, suggestion } => lints::UnknownLint {
+                name,
+                suggestion: suggestion.map(|(replace, from_rustc)| {
+                    lints::UnknownLintSuggestion::WithSpan { suggestion: span, replace, from_rustc }
+                }),
+            }
+            .into_diag(dcx, level),
+            &AttributeLintKind::IgnoredUnlessCrateSpecified { level: attr_level, name } => {
+                lints::IgnoredUnlessCrateSpecified { level: attr_level, name }.into_diag(dcx, level)
+            }
         }
     }
 }
