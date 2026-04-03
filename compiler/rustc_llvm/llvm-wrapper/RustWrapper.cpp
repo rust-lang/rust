@@ -1812,6 +1812,32 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
   GV.setSanitizerMetadata(MD);
 }
 
+extern "C" LLVMValueRef LLVMRustConstPtrAuth(LLVMValueRef Ptr, uint32_t Key,
+                                             uint64_t Disc,
+                                             LLVMValueRef AddrDiversity) {
+  auto *V = unwrap<Value>(Ptr);
+  auto *C = dyn_cast<Constant>(V);
+  if (!C)
+    return Ptr;
+  if (!C->getType()->isPointerTy())
+    return Ptr;
+  if (isa<UndefValue>(C) || isa<ConstantPointerNull>(C))
+    return Ptr;
+
+  LLVMContext &Ctx = C->getContext();
+  auto *KeyC = ConstantInt::get(Type::getInt32Ty(Ctx), Key);
+  auto *DiscC = ConstantInt::get(Type::getInt64Ty(Ctx), Disc);
+  auto *PTy = cast<PointerType>(C->getType());
+  Constant *AddrDiv =
+      AddrDiversity ? dyn_cast<Constant>(unwrap<Value>(AddrDiversity))
+                    : ConstantPointerNull::get(cast<PointerType>(C->getType()));
+  assert(AddrDiv && "Failed to get Address Diversity");
+  llvm::Type *PtrTy = llvm::PointerType::get(Ctx, PTy->getAddressSpace());
+  auto *DeactivationSym = llvm::Constant::getNullValue(PtrTy);
+
+  return wrap(ConstantPtrAuth::get(C, KeyC, DiscC, AddrDiv, DeactivationSym));
+}
+
 // Statically assert that the fixed metadata kind IDs declared in
 // `metadata_kind.rs` match the ones actually used by LLVM.
 #define FIXED_MD_KIND(VARIANT, VALUE)                                          \
