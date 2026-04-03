@@ -965,17 +965,12 @@ impl AttrFlags {
     pub fn docs(db: &dyn DefDatabase, owner: AttrDefId) -> Option<Box<Docs>> {
         let (source, outer_mod_decl, _extra_crate_attrs, krate) = attrs_source(db, owner);
         let inner_attrs_node = source.value.inner_attributes_node();
-        let outer_resolver = if outer_mod_decl.is_some() {
-            if let AttrDefId::ModuleId(module_id) = owner {
-                module_id
-                    .containing_module(db)
-                    .map(|parent| move || -> Resolver<'_> { parent.resolver(db) })
-            } else {
-                None
-            }
+        let parent = if outer_mod_decl.is_some() && AttrDefId::ModuleId(module_id) = owner {
+            module_id.containing_module(db)
         } else {
             None
         };
+        let outer_resolver = || parent.map(|it| it.resolver(db)); 
         // Note: we don't have to pass down `_extra_crate_attrs` here, since `extract_docs`
         // does not handle crate-level attributes related to docs.
         // See: https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html#at-the-crate-level
