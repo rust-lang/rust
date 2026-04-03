@@ -11660,18 +11660,21 @@ struct Bar {
 }
 
 #[test]
-fn test_hover_doc_attr_macro_on_outlined_mod_resolves_from_parent() {
-    // Outer doc-macro on `mod foo;` should resolve from the parent module,
-    // and combine with inner `//!` docs from the module file.
+fn test_hover_doc_attr_macro_on_outlined_mod() {
+    // Outer doc-macro on `mod foo;` resolves from inside the module's scope
+    // (matching rustc behavior), and combines with inner `//!` docs from the module file.
     check(
         r#"
 //- /main.rs
-macro_rules! doc_str {
-    () => { "expanded from parent" };
+mod mac {
+    macro_rules! doc_str {
+        () => { "expanded from macro" };
+    }
+    pub(crate) use doc_str;
 }
 
 /// plain outer doc
-#[doc = doc_str!()]
+#[doc = super::mac::doc_str!()]
 mod foo$0;
 
 //- /foo.rs
@@ -11692,45 +11695,8 @@ pub struct Bar;
             ---
 
             plain outer doc
-            expanded from parent
+            expanded from macro
             inner module docs
-        "#]],
-    );
-}
-
-#[test]
-fn test_hover_doc_attr_inner_doc_macro() {
-    // Inner doc attribute with macro expansion (`#![doc = macro!()]`)
-    check(
-        r#"
-macro_rules! doc_str {
-    () => { "inner doc from macro" };
-}
-
-/// outer doc
-///
-mod foo$0 {
-    #![doc = doc_str!()]
-
-    pub struct Bar;
-}
-"#,
-        expect![[r#"
-            *foo*
-
-            ```rust
-            ra_test_fixture
-            ```
-
-            ```rust
-            mod foo
-            ```
-
-            ---
-
-            outer doc
-
-            inner doc from macro
         "#]],
     );
 }

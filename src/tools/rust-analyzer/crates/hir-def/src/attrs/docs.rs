@@ -418,10 +418,10 @@ fn extend_with_attrs<'a, 'db>(
     indent: &mut usize,
     get_cfg_options: &dyn Fn() -> &'a CfgOptions,
     cfg_options: &mut Option<&'a CfgOptions>,
-    make_resolver: &dyn Fn() -> Option<Resolver<'db>>,
+    make_resolver: &dyn Fn() -> Resolver<'db>,
 ) {
     // Lazily initialised when we first encounter a `#[doc = macro!()]`.
-    let mut expander: Option<Option<(DocMacroExpander<'db>, DocExprSourceCtx<'db>)>> = None;
+    let mut expander: Option<(DocMacroExpander<'db>, DocExprSourceCtx<'db>)> = None;
 
     // FIXME: `#[cfg_attr(..., doc = macro!())]` skips macro expansion because
     // `top_attr` points to the `cfg_attr` node, not the inner `doc = macro!()`.
@@ -457,32 +457,31 @@ fn extend_with_attrs<'a, 'db>(
                             top_attr.as_simple_call().is_some_and(|(name, _)| name == "cfg_attr");
                         if !is_from_cfg_attr
                             && let Some(expr) = top_attr.expr()
-                            && let Some((exp, ctx)) = expander
-                                .get_or_insert_with(|| {
-                                    make_resolver().map(|resolver| {
-                                        let def_map = resolver.top_level_def_map();
-                                        let recursion_limit = def_map.recursion_limit() as usize;
-                                        (
-                                            DocMacroExpander {
-                                                db,
-                                                krate,
-                                                recursion_depth: 0,
-                                                recursion_limit,
-                                            },
-                                            DocExprSourceCtx {
-                                                resolver,
-                                                file_id,
-                                                ast_id_map: db.ast_id_map(file_id),
-                                                span_map: db.span_map(file_id),
-                                            },
-                                        )
-                                    })
-                                })
-                                .as_mut()
-                            && let Some(expanded) =
-                                expand_doc_expr_via_macro_pipeline(exp, ctx, expr)
                         {
-                            result.extend_with_unmapped_doc_str(&expanded, indent);
+                            let (exp, ctx) = expander.get_or_insert_with(|| {
+                                let resolver = make_resolver();
+                                let def_map = resolver.top_level_def_map();
+                                let recursion_limit = def_map.recursion_limit() as usize;
+                                (
+                                    DocMacroExpander {
+                                        db,
+                                        krate,
+                                        recursion_depth: 0,
+                                        recursion_limit,
+                                    },
+                                    DocExprSourceCtx {
+                                        resolver,
+                                        file_id,
+                                        ast_id_map: db.ast_id_map(file_id),
+                                        span_map: db.span_map(file_id),
+                                    },
+                                )
+                            });
+                            if let Some(expanded) =
+                                expand_doc_expr_via_macro_pipeline(exp, ctx, expr)
+                            {
+                                result.extend_with_unmapped_doc_str(&expanded, indent);
+                            }
                         }
                     }
                     _ => {}
@@ -496,10 +495,7 @@ fn extend_with_attrs<'a, 'db>(
 pub(crate) fn extract_docs<'a, 'db>(
     db: &'db dyn DefDatabase,
     krate: Crate,
-    // Returns (outer_resolver, inline_resolver).
-    // `outer_resolver` is `Some` only for outlined modules (`mod foo;`) where outer docs
-    // should be resolved in the parent module's scope.
-    resolvers: &dyn Fn() -> (Option<Resolver<'db>>, Resolver<'db>),
+    resolver: &dyn Fn() -> Resolver<'db>,
     get_cfg_options: &dyn Fn() -> &'a CfgOptions,
     source: InFile<ast::AnyHasAttrs>,
     outer_mod_decl: Option<InFile<ast::Module>>,
@@ -519,8 +515,7 @@ pub(crate) fn extract_docs<'a, 'db>(
 
     if let Some(outer_mod_decl) = outer_mod_decl {
         let mut indent = usize::MAX;
-        // For outer docs (the `mod foo;` declaration), use the parent module's resolver
-        // so that macros are resolved in the parent's scope.
+        // For outer docs (the `mod foo;` declaration), use the module's own resolver.
         extend_with_attrs(
             &mut result,
             db,
@@ -531,7 +526,7 @@ pub(crate) fn extract_docs<'a, 'db>(
             &mut indent,
             get_cfg_options,
             &mut cfg_options,
-            &|| resolvers().0,
+            resolver,
         );
         result.remove_indent(indent, 0);
         result.outline_mod = Some((outer_mod_decl.file_id, result.docs_source_map.len()));
@@ -539,7 +534,6 @@ pub(crate) fn extract_docs<'a, 'db>(
 
     let inline_source_map_start = result.docs_source_map.len();
     let mut indent = usize::MAX;
-    let inline_resolver = &|| Some(resolvers().1);
     // For inline docs, use the item's own resolver.
     extend_with_attrs(
         &mut result,
@@ -551,7 +545,7 @@ pub(crate) fn extract_docs<'a, 'db>(
         &mut indent,
         get_cfg_options,
         &mut cfg_options,
-        inline_resolver,
+        resolver,
     );
     if let Some(inner_attrs_node) = &inner_attrs_node {
         result.inline_inner_docs_start = Some(TextSize::of(&result.docs));
@@ -565,7 +559,7 @@ pub(crate) fn extract_docs<'a, 'db>(
             &mut indent,
             get_cfg_options,
             &mut cfg_options,
-            inline_resolver,
+            resolver,
         );
     }
     result.remove_indent(indent, inline_source_map_start);
