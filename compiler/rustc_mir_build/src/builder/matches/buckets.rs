@@ -323,6 +323,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     value: case_val,
                     kind: PatConstKind::Float | PatConstKind::Other,
                 },
+            )
+            | (
+                TestKind::AggregateEq { value: test_val, .. },
+                TestableCase::Constant { value: case_val, kind: PatConstKind::Aggregate },
             ) => {
                 if test_val == case_val {
                     fully_matched = true;
@@ -353,6 +357,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 | TestKind::Range { .. }
                 | TestKind::StringEq { .. }
                 | TestKind::ScalarEq { .. }
+                | TestKind::AggregateEq { .. }
                 | TestKind::Deref { .. },
                 _,
             ) => {
