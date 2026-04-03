@@ -527,6 +527,67 @@ fn msrv_1_50() {
     };
 }
 
+const CONST_U32_MAX: u32 = 100;
+
+fn eq_unsigned_zero_lint() {
+    // == 0 on unsigned with result 1: equivalent to < 1
+    let mut x0: u32 = 5;
+    if x0 == 0 {
+        //~^ manual_clamp
+        x0 = 1;
+    } else if x0 > CONST_U32_MAX {
+        x0 = CONST_U32_MAX;
+    }
+
+    // Flipped: `0 == x`
+    let mut x1: u32 = 5;
+    if 0 == x1 {
+        //~^ manual_clamp
+        x1 = 1;
+    } else if x1 > CONST_U32_MAX {
+        x1 = CONST_U32_MAX;
+    }
+
+    // Two separate if statements
+    let mut x2: u32 = 5;
+    if x2 == 0 {
+        //~^ manual_clamp
+        x2 = 1;
+    }
+    if x2 > CONST_U32_MAX {
+        x2 = CONST_U32_MAX;
+    }
+
+    // if-elseif-else (value) pattern
+    let input: u32 = 5;
+    let x3 = if input == 0 {
+        //~^ manual_clamp
+        1
+    } else if input > CONST_U32_MAX {
+        CONST_U32_MAX
+    } else {
+        input
+    };
+}
+
+fn eq_unsigned_zero_no_lint() {
+    // Result is not 1, so == 0 doesn't cover all values < 5.
+    let mut x0: u32 = 5;
+    if x0 == 0 {
+        x0 = 5;
+    } else if x0 > CONST_U32_MAX {
+        x0 = CONST_U32_MAX;
+    }
+
+    // Signed type: not applicable
+    let mut x1: i32 = 5;
+    if x1 == 0 {
+        x1 = 1;
+    } else if x1 > CONST_MAX {
+        x1 = CONST_MAX;
+    }
+}
+
 const fn _const() {
     let (input, min, max) = (0, -1, 2);
     let _ = if input < min {
