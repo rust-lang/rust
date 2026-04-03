@@ -274,15 +274,13 @@ impl CargoTargetSpec {
         let mut executable_args = Vec::new();
 
         match kind {
-            RunnableKind::Test { test_id, attr } => {
+            RunnableKind::Test { test_id } => {
                 executable_args.push(test_id.to_string());
                 if let TestId::Path(_) = test_id {
                     executable_args.push("--exact".to_owned());
                 }
                 executable_args.extend(extra_test_binary_args);
-                if attr.ignore {
-                    executable_args.push("--ignored".to_owned());
-                }
+                executable_args.push("--include-ignored".to_owned());
             }
             RunnableKind::TestMod { path } => {
                 executable_args.push(path.clone());
