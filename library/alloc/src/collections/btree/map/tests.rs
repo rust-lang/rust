@@ -2796,3 +2796,19 @@ fn test_id_based_merge() {
     assert_eq!(merged_kv_pair.0.id, 0);
     assert_eq!(merged_kv_pair.0.name, "lhs_k".to_string());
 }
+
+#[test]
+fn test_comparable_tuple_lookup() {
+    let mut map = BTreeMap::new();
+    map.insert(("hello".to_string(), "world".to_string()), 1);
+    map.insert(("foo".to_string(), "bar".to_string()), 2);
+
+    assert_eq!(map.get(("hello", "world")), Some(&1));
+    assert_eq!(map.get(("foo", "bar")), Some(&2));
+    assert_eq!(map.get(("missing", "key")), None);
+
+    assert!(map.contains_key(("hello", "world")));
+    assert!(!map.contains_key(("missing", "key")));
+
+    assert_eq!(map[("foo", "bar")], 2);
+}
