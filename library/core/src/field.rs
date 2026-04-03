@@ -1,23 +1,60 @@
-//! Field Reflection
+//! Field Reflection for field projections.
+//!
+//! # Overview
+//!
+//! This module is part of the field projection compiler experiment; see the [tracking
+//! issue](https://github.com/rust-lang/rust/issues/145383) for more information.
+//!
+//! The current approach of field projections makes use of *field representing types*. These are
+//! compiler-generated types that identify a field of a struct, union, enum or tuple. Users can
+//! implement traits for them to store additional information about the *field*.
+//!
+//! # API Surface
+//!
+//! At its core, this module provides the [`field_of!`] macro, which takes a type and the name of a
+//! field of that type and returns the field representing type (FRT) of that field.
+//!
+//! The FRTs of certain well-behaved (at the moment `repr(packed)` and `?Sized` are not supported)
+//! fields implement the [`Field`] trait, which exposes information such as the offset, base type,
+//! and type of the field.
+//!
+//! # Implementation Details
+//!
+//! FRTs are a mix of compiler and library implemented. The perma-unstable `FieldRepresentingType`
+//! struct is used to ultimately represent a field by the variant and field index; while the
+//! compiler performs existence and coherence checks before allowing access to it.
+//!
+//! FRTs are intended to contain only *static* information about a field and as such they are
+//! inhabited ZSTs. For this reason, they also implement [`Copy`], [`Send`], and [`Sync`] regardless
+//! of the properties of the base type.
 
 use crate::marker::PhantomData;
 
-/// Field Representing Type
+/// A type representing a field of a struct, union, enum or tuple.
+///
+/// This perma-unstable type is part of the implementation details of the [`field_of!`] macro. This
+/// type is only instantiated by the compiler when the type `T` has a variant with the index
+/// `VARIANT` and that variant has a field with index `FIELD`. This type will then represent that
+/// specific field.
+///
+/// Since this type is marked as `#[fundamental]`, downstream crates may implement types as long as
+/// `T` is local to that crate.
 #[unstable(feature = "field_representing_type_raw", issue = "none")]
 #[lang = "field_representing_type"]
 #[expect(missing_debug_implementations)]
 #[fundamental]
+#[doc(hidden)]
 pub struct FieldRepresentingType<T: ?Sized, const VARIANT: u32, const FIELD: u32> {
     _phantom: PhantomData<T>,
 }
 
-// SAFETY: `FieldRepresentingType` doesn't contain any `T`
+// SAFETY: `FieldRepresentingType` doesn't contain any `T`.
 unsafe impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Send
     for FieldRepresentingType<T, VARIANT, FIELD>
 {
 }
 
-// SAFETY: `FieldRepresentingType` doesn't contain any `T`
+// SAFETY: `FieldRepresentingType` doesn't contain any `T`.
 unsafe impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Sync
     for FieldRepresentingType<T, VARIANT, FIELD>
 {
@@ -36,7 +73,7 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Clone
     }
 }
 
-/// Expands to the field representing type of the given field.
+/// The field representing type of the given field.
 ///
 /// The container type may be a tuple, `struct`, `union` or `enum`. In the case of an enum, the
 /// variant must also be specified. Only a single field is supported.
