@@ -11,7 +11,7 @@ fn range_inclusive(mut r: RangeInclusive<usize>) {
 
     let mut i = r.into_iter();
     i.next();
-    i.remainder();
+    i.remainder(); //~ ERROR unstable
 }
 
 // Unstable module
