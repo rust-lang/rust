@@ -12,6 +12,8 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::TargetTuple;
 
+use crate::context::Suggestion;
+
 #[derive(Diagnostic)]
 #[diag("invalid predicate `{$predicate}`", code = E0537)]
 pub(crate) struct InvalidPredicate {
@@ -591,7 +593,12 @@ pub(crate) struct AttributeParseError<'a> {
     pub(crate) path: AttrPath,
     pub(crate) description: ParsedDescription,
     pub(crate) reason: AttributeParseErrorReason<'a>,
-    pub(crate) suggestions: Vec<String>,
+    pub(crate) suggestions: AttributeParseErrorSuggestions,
+}
+
+pub(crate) enum AttributeParseErrorSuggestions {
+    CreatedByTemplate(Vec<String>),
+    CreatedByParser(Vec<Suggestion>),
 }
 
 impl<'a> AttributeParseError<'a> {
@@ -666,10 +673,54 @@ impl<'a> AttributeParseError<'a> {
         }
     }
 
+    fn render_suggestions<G>(&self, diag: &mut Diag<'_, G>)
+    where
+        G: EmissionGuarantee,
+    {
+        let description = self.description();
+
+        match &self.suggestions {
+            AttributeParseErrorSuggestions::CreatedByTemplate(suggestions) => {
+                diag.span_suggestions(
+                        self.attr_span,
+                        if suggestions.len() == 1 {
+                            "must be of the form".to_string()
+                        } else {
+                            format!(
+                                "try changing it to one of the following valid forms of the {description}"
+                            )
+                        },
+                        suggestions.iter().cloned(),
+                        Applicability::HasPlaceholders,
+                    );
+            }
+
+            AttributeParseErrorSuggestions::CreatedByParser(suggestions) => {
+                for Suggestion { msg, sp, code } in suggestions {
+                    diag.span_suggestion_verbose(
+                        *sp,
+                        msg.to_string(),
+                        code.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        }
+    }
+
     fn description(&self) -> &'static str {
         match self.description {
             ParsedDescription::Attribute => "attribute",
             ParsedDescription::Macro => "macro",
+        }
+    }
+}
+
+impl AttributeParseErrorSuggestions {
+    fn len(&self) -> usize {
+        match self {
+            AttributeParseErrorSuggestions::CreatedByTemplate(items) => items.len(),
+            AttributeParseErrorSuggestions::CreatedByParser(items) => items.len(),
         }
     }
 }
@@ -791,18 +842,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
         }
 
         if self.suggestions.len() < 4 {
-            diag.span_suggestions(
-                self.attr_span,
-                if self.suggestions.len() == 1 {
-                    "must be of the form".to_string()
-                } else {
-                    format!(
-                        "try changing it to one of the following valid forms of the {description}"
-                    )
-                },
-                self.suggestions,
-                Applicability::HasPlaceholders,
-            );
+            self.render_suggestions(&mut diag);
         }
 
         diag

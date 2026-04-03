@@ -21,15 +21,16 @@ impl<S: Stage> CombineAttributeParser<S> for DebuggerViualizerParser {
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         let Some(l) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return None;
         };
         let Some(single) = l.single() else {
-            cx.expected_single_argument(l.span);
+            cx.adcx().expected_single_argument(l.span);
             return None;
         };
         let Some(mi) = single.meta_item() else {
-            cx.expected_name_value(single.span(), None);
+            cx.adcx().expected_name_value(single.span(), None);
             return None;
         };
         let path = mi.path().word_sym();
@@ -37,7 +38,7 @@ impl<S: Stage> CombineAttributeParser<S> for DebuggerViualizerParser {
             Some(sym::natvis_file) => DebuggerVisualizerType::Natvis,
             Some(sym::gdb_script_file) => DebuggerVisualizerType::GdbPrettyPrinter,
             _ => {
-                cx.expected_specific_argument(
+                cx.adcx().expected_specific_argument(
                     mi.path().span(),
                     &[sym::natvis_file, sym::gdb_script_file],
                 );
@@ -46,12 +47,12 @@ impl<S: Stage> CombineAttributeParser<S> for DebuggerViualizerParser {
         };
 
         let Some(path) = mi.args().name_value() else {
-            cx.expected_name_value(single.span(), path);
+            cx.adcx().expected_name_value(single.span(), path);
             return None;
         };
 
         let Some(path) = path.value_as_str() else {
-            cx.expected_string_literal(path.value_span, Some(path.value_as_lit()));
+            cx.adcx().expected_string_literal(path.value_span, Some(path.value_as_lit()));
             return None;
         };
 

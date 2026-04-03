@@ -25,22 +25,34 @@ error[E0805]: malformed `cfg` attribute input
    |
 LL | #[cfg()]
    | ^^^^^--^
-   | |    |
-   | |    expected a single argument here
-   | help: must be of the form: `#[cfg(predicate)]`
+   |      |
+   |      expected a single argument here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: if the struct should be disabled, use `#[cfg(false)]`
+   |
+LL | #[cfg(false)]
+   |       +++++
 
 error[E0805]: malformed `cfg` attribute input
   --> $DIR/cfg-attr-syntax-validation.rs:19:1
    |
 LL | #[cfg(a, b)]
    | ^^^^^------^
-   | |    |
-   | |    expected a single argument here
-   | help: must be of the form: `#[cfg(predicate)]`
+   |      |
+   |      expected a single argument here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: if the struct should be enabled when all these predicates are, wrap them in `all`
+   |
+LL - #[cfg(a, b)]
+LL + #[cfg(all(a, b))]
+   |
+help: alternately, if the struct should be enabled when any of these predicates are, wrap them in `any`
+   |
+LL - #[cfg(a, b)]
+LL + #[cfg(any(a, b))]
+   |
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-attr-syntax-validation.rs:25:1

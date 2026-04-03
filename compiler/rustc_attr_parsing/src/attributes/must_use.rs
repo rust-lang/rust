@@ -32,7 +32,7 @@ impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
                 ArgParser::NoArgs => None,
                 ArgParser::NameValue(name_value) => {
                     let Some(value_str) = name_value.value_as_str() else {
-                        cx.expected_string_literal(
+                        cx.adcx().expected_string_literal(
                             name_value.value_span,
                             Some(&name_value.value_as_lit()),
                         );
@@ -41,7 +41,7 @@ impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
                     Some(value_str)
                 }
                 ArgParser::List(list) => {
-                    cx.expected_nv_or_no_args(list.span);
+                    cx.adcx().expected_nv_or_no_args(list.span);
                     return None;
                 }
             },
