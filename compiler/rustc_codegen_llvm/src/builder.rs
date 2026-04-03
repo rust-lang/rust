@@ -7,8 +7,7 @@ pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
 use libc::{c_char, c_uint};
-use rustc_abi as abi;
-use rustc_abi::{Align, Size, WrappingRange};
+use rustc_abi::{self as abi, Align, Size, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -616,21 +615,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn scalable_alloca(&mut self, elt: u64, align: Align, element_ty: Ty<'_>) -> Self::Value {
+    fn alloca_with_ty(&mut self, layout: TyAndLayout<'tcx>) -> Self::Value {
         let mut bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
-        let llvm_ty = match element_ty.kind() {
-            ty::Bool => bx.type_i1(),
-            ty::Int(int_ty) => self.cx.type_int_from_ty(*int_ty),
-            ty::Uint(uint_ty) => self.cx.type_uint_from_ty(*uint_ty),
-            ty::Float(float_ty) => self.cx.type_float_from_ty(*float_ty),
-            _ => unreachable!("scalable vectors can only contain a bool, int, uint or float"),
-        };
+        let scalable_vector_ty = layout.llvm_type(self.cx);
 
         unsafe {
-            let ty = llvm::LLVMScalableVectorType(llvm_ty, elt.try_into().unwrap());
-            let alloca = llvm::LLVMBuildAlloca(&bx.llbuilder, ty, UNNAMED);
-            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
+            let alloca = llvm::LLVMBuildAlloca(&bx.llbuilder, scalable_vector_ty, UNNAMED);
+            llvm::LLVMSetAlignment(alloca, layout.align.abi.bytes() as c_uint);
             alloca
         }
     }
