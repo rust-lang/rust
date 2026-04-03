@@ -455,9 +455,7 @@ fn extend_with_attrs<'a, 'db>(
                         // expansion (see FIXME above).
                         let is_from_cfg_attr =
                             top_attr.as_simple_call().is_some_and(|(name, _)| name == "cfg_attr");
-                        if !is_from_cfg_attr
-                            && let Some(expr) = top_attr.expr()
-                        {
+                        if !is_from_cfg_attr && let Some(expr) = top_attr.expr() {
                             let (exp, ctx) = expander.get_or_insert_with(|| {
                                 let resolver = make_resolver();
                                 let def_map = resolver.top_level_def_map();
