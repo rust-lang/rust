@@ -491,7 +491,8 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
-    providers.opt_hir_delayed_owner = |tcx, id| tcx.hir_crate(()).owners[id].as_delayed();
+    providers.opt_hir_delayed_owner =
+        |tcx, id| tcx.hir_crate(()).owners.get(id).and_then(|o| o.as_delayed());
     providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.hir_crate(()).owner(tcx, def_id) {
         MaybeOwner::Owner(_) => HirId::make_owner(def_id),
         MaybeOwner::NonOwner(hir_id) => hir_id,
