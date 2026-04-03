@@ -1,0 +1,186 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          # NOTE: cargo-cross doesn't have images for all architectures
+          # supported by this project and so those architectures are commented
+          # out.
+          - arm-linux-androideabi
+          - arm-unknown-linux-gnueabi
+          - armv5te-unknown-linux-gnueabi
+          - armv7-linux-androideabi
+          - armv7-unknown-linux-gnueabi
+          - thumbv7neon-linux-androideabi
+          - thumbv7neon-unknown-linux-gnueabihf
+          - aarch64-unknown-linux-gnu
+          - i686-unknown-linux-gnu
+          - riscv64gc-unknown-linux-gnu
+            #- sparc-unknown-linux-gnu
+            #- sparc64-unknown-linux-gnu
+          - x86_64-unknown-linux-gnu
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: ${{ matrix.target }}
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: test
+          args: --target ${{ matrix.target }}
+
+      - name: Run no-default test
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: test
+          args: --target ${{ matrix.target }} --no-default-features
+
+      - name: Build syscalls-gen
+        # Just test that it builds ok on x86_64
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --package syscalls-gen
+
+  test_nightly:
+    name: Test Suite (Nightly)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - arm-linux-androideabi
+          - arm-unknown-linux-gnueabi
+          - armv5te-unknown-linux-gnueabi
+          - armv7-linux-androideabi
+          - armv7-unknown-linux-gnueabi
+          - thumbv7neon-linux-androideabi
+          - thumbv7neon-unknown-linux-gnueabihf
+            #- mips-unknown-linux-gnu
+            #- mips64-unknown-linux-gnuabi64
+            #- mipsel-unknown-linux-gnu
+            #- mips64el-unknown-linux-gnuabi64
+          - powerpc-unknown-linux-gnu
+            #- powerpc64-unknown-linux-gnu
+          - riscv64gc-unknown-linux-gnu
+          - s390x-unknown-linux-gnu
+          - x86_64-unknown-linux-gnu
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          target: ${{ matrix.target }}
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: test
+          args: --target ${{ matrix.target }}
+
+      - name: Run no-default test
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: test
+          args: --target ${{ matrix.target }} --no-default-features
+
+  rustfmt:
+    name: Check format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            components: clippy
+            override: true
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish_crate:
+    name: Publish Crate
+    # Don't publish unless all the checks pass.
+    needs: [check, test, clippy, rustfmt]
+    # Only publish for tags
+    if: ${{ startsWith(github.event.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v1
+
+      - name: cargo login
+        uses: actions-rs/cargo@v1
+        with:
+          command: login
+          args: ${{ secrets.CARGO_TOKEN }}
+
+      - name: publish
+        run: cargo publish --no-verify
