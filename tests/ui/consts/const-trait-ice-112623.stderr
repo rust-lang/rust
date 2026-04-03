@@ -1,0 +1,62 @@
+error: cannot find attribute `const_trait` in this scope
+ --> $DIR/const-trait-ice-112623.rs:7:3
+  |
+LL | #[const_trait]
+   |   ^^^^^^^^^^^
+
+error: const `impl` for trait `Func` which is not `const`
+  --> $DIR/const-trait-ice-112623.rs:17:12
+   |
+LL | impl const Func<&usize> for Closure {
+   |            ^^^^^^^^^^^^ this trait is not `const`
+   |
+   = note: marking a trait with `const` ensures all default method bodies are `const`
+   = note: adding a non-const method body in the future would be a breaking change
+help: mark `Func` as `const` to allow it to have `const` implementations
+   |
+LL | const trait Func<T> {
+   | +++++
+
+error[E0053]: method `call_once` has an incompatible type for trait
+  --> $DIR/const-trait-ice-112623.rs:21:18
+   |
+LL |     fn call_once(&'static self, arg: &usize) -> Self::Output {
+   |                  ^^^^^^^^^^^^^ expected `Closure`, found `&'static Closure`
+   |
+note: type in trait
+  --> $DIR/const-trait-ice-112623.rs:12:18
+   |
+LL |     fn call_once(self, arg: T) -> Self::Output;
+   |                  ^^^^
+   = note: expected signature `fn(Closure, &_) -> _`
+              found signature `fn(&'static Closure, &_) -> _`
+help: change the self-receiver type to match the trait
+   |
+LL -     fn call_once(&'static self, arg: &usize) -> Self::Output {
+LL +     fn call_once(self, arg: &usize) -> Self::Output {
+   |
+
+error[E0015]: cannot call non-const method `<Closure as Func<&usize>>::call_once` in constants
+  --> $DIR/const-trait-ice-112623.rs:28:27
+   |
+LL | enum Bug<T = [(); Closure.call_once(&0)]> {
+   |                           ^^^^^^^^^^^^^
+   |
+note: method `call_once` is not const because trait `Func` is not const
+  --> $DIR/const-trait-ice-112623.rs:9:1
+   |
+LL | trait Func<T> {
+   | ^^^^^^^^^^^^^ this trait is not const
+...
+LL |     fn call_once(self, arg: T) -> Self::Output;
+   |     ------------------------------------------- this method is not const
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+help: consider making trait `Func` const
+   |
+LL | const trait Func<T> {
+   | +++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0015, E0053.
+For more information about an error, try `rustc --explain E0015`.
