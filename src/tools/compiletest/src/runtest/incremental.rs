@@ -1,4 +1,4 @@
-use super::{FailMode, TestCx, WillExecute};
+use super::{FailMode, ProcRes, TestCx, WillExecute};
 use crate::errors;
 
 impl TestCx<'_> {
@@ -93,16 +93,20 @@ impl TestCx<'_> {
         self.check_if_test_should_compile(Some(FailMode::Build), pm, &proc_res);
         self.check_no_compiler_crash(&proc_res, self.props.should_ice);
 
-        let output_to_check = self.get_output(&proc_res);
-        self.check_expected_errors(&proc_res);
-        self.check_all_error_patterns(&output_to_check, &proc_res);
+        self.check_compiler_output_for_incr(&proc_res);
+
         if self.props.should_ice {
             match proc_res.status.code() {
                 Some(101) => (),
                 _ => self.fatal("expected ICE"),
             }
         }
+    }
 
-        self.check_forbid_output(&output_to_check, &proc_res);
+    fn check_compiler_output_for_incr(&self, proc_res: &ProcRes) {
+        let output_to_check = self.get_output(proc_res);
+        self.check_expected_errors(&proc_res);
+        self.check_all_error_patterns(&output_to_check, proc_res);
+        self.check_forbid_output(&output_to_check, proc_res);
     }
 }
