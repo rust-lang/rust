@@ -28,7 +28,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    Arch, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
+    Arch, CodeModel, DebuginfoKind, Env, Os, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
     TargetTuple, TlsModel, apple,
 };
@@ -1198,6 +1198,11 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && !sess.target.is_like_msvc
     {
         sess.dcx().emit_err(errors::CannotEnableCrtStaticLinux);
+    }
+
+    // Using static linking is prohibited on pauthtest target
+    if sess.crt_static(None) && sess.target.env == Env::Pauthtest {
+        sess.dcx().emit_err(errors::CannotEnableCrtStaticPointerAuth);
     }
 
     // LLVM CFI requires LTO.

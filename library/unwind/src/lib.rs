@@ -94,6 +94,11 @@ cfg_select! {
     }
 }
 
+// For pauthtest the only supported unwinding mechanism is provided by libunwind.
+#[cfg(target_env = "pauthtest")]
+#[link(name = "unwind")]
+unsafe extern "C" {}
+
 // This is the same as musl except that we default to using the system libunwind
 // instead of libgcc.
 #[cfg(target_env = "ohos")]
