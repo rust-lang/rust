@@ -89,6 +89,34 @@ const UNWIND_DATA_REG: (i32, i32) = (10, 11); // x10, x11
 #[cfg(any(target_arch = "loongarch32", target_arch = "loongarch64"))]
 const UNWIND_DATA_REG: (i32, i32) = (4, 5); // a0, a1
 
+unsafe fn sign_lpad(context: *mut uw::_Unwind_Context, lpad: *const u8) -> *const u8 {
+    cfg_select! {
+        all(target_env = "pauthtest", target_arch = "aarch64") => {
+            // DWARF register number for SP on AArch64.
+            const SP_REG: i32 = 31;
+
+            unsafe {
+                let sp = uw::_Unwind_GetGR(context, SP_REG) as u64;
+                let mut addr = lpad as usize;
+
+                // `pacib` corresponds to `ptrauth_key_process_dependent_code` in <ptrauth.h>.
+                core::arch::asm!(
+                    "pacib {addr}, {sp}",
+                    addr = inout(reg) addr,
+                    sp = in(reg) sp,
+                    options(nostack, preserves_flags)
+                );
+
+                lpad.with_addr(addr)
+            }
+        }
+        _ => {
+            let _ = context;
+            lpad
+        }
+    }
+}
+
 // The following code is based on GCC's C and C++ personality routines.  For reference, see:
 // https://github.com/gcc-mirror/gcc/blob/master/libstdc++-v3/libsupc++/eh_personality.cc
 // https://github.com/gcc-mirror/gcc/blob/trunk/libgcc/unwind-c.c
@@ -239,7 +267,8 @@ cfg_select! {
                                 exception_object.cast(),
                             );
                             uw::_Unwind_SetGR(context, UNWIND_DATA_REG.1, core::ptr::null());
-                            uw::_Unwind_SetIP(context, lpad);
+                            let maybe_signed_lpad = sign_lpad(context, lpad);
+                            uw::_Unwind_SetIP(context, maybe_signed_lpad);
                             uw::_URC_INSTALL_CONTEXT
                         }
                         EHAction::Terminate => uw::_URC_FATAL_PHASE2_ERROR,
