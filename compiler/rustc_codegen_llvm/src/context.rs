@@ -688,6 +688,24 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         }
     }
 
+    pub(crate) fn add_ptrauth_elf_got_flag(&self) {
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Max,
+            "ptrauth-elf-got",
+            1,
+        );
+    }
+
+    pub(crate) fn add_ptrauth_sign_personality_flag(&self) {
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Max,
+            "ptrauth-sign-personality",
+            1,
+        );
+    }
+
     // We do our best here to match what Clang does when compiling Objective-C natively.
     // See Clang's `CGObjCCommonMac::EmitImageInfo`:
     // https://github.com/llvm/llvm-project/blob/llvmorg-20.1.8/clang/lib/CodeGen/CGObjCMac.cpp#L5085
