@@ -1,16 +1,16 @@
 use std::collections::VecDeque;
 
 #[derive(Debug, PartialEq)]
-pub enum DiffLine {
+pub(crate) enum DiffLine {
     Context(String),
     Expected(String),
     Resulting(String),
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Mismatch {
-    pub line_number: u32,
-    pub lines: Vec<DiffLine>,
+pub(crate) struct Mismatch {
+    pub(crate) line_number: u32,
+    pub(crate) lines: Vec<DiffLine>,
 }
 
 impl Mismatch {
@@ -20,7 +20,7 @@ impl Mismatch {
 }
 
 // Produces a diff between the expected output and actual output.
-pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Mismatch> {
+pub(crate) fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Mismatch> {
     let mut line_number = 1;
     let mut context_queue: VecDeque<&str> = VecDeque::with_capacity(context_size);
     let mut lines_since_mismatch = context_size + 1;

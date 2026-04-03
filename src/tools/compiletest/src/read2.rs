@@ -7,15 +7,15 @@ mod tests;
 use std::io::{self, Write};
 use std::process::{Child, Output};
 
-pub use self::imp::read2;
+use self::imp::read2;
 
 #[derive(Copy, Clone, Debug)]
-pub enum Truncated {
+pub(crate) enum Truncated {
     Yes,
     No,
 }
 
-pub fn read2_abbreviated(
+pub(crate) fn read2_abbreviated(
     mut child: Child,
     filter_paths_from_len: &[String],
 ) -> io::Result<(Output, Truncated)> {
@@ -138,7 +138,7 @@ mod imp {
     use std::io::{self, Read};
     use std::process::{ChildStderr, ChildStdout};
 
-    pub fn read2(
+    pub(crate) fn read2(
         out_pipe: ChildStdout,
         err_pipe: ChildStderr,
         data: &mut dyn FnMut(bool, &mut Vec<u8>, bool),
@@ -160,7 +160,7 @@ mod imp {
     use std::process::{ChildStderr, ChildStdout};
     use std::{io, mem};
 
-    pub fn read2(
+    pub(crate) fn read2(
         mut out_pipe: ChildStdout,
         mut err_pipe: ChildStderr,
         data: &mut dyn FnMut(bool, &mut Vec<u8>, bool),
@@ -247,7 +247,7 @@ mod imp {
         done: bool,
     }
 
-    pub fn read2(
+    pub(crate) fn read2(
         out_pipe: ChildStdout,
         err_pipe: ChildStderr,
         data: &mut dyn FnMut(bool, &mut Vec<u8>, bool),
