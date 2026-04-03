@@ -78,6 +78,10 @@ impl TargetSelection {
         self.contains("msvc")
     }
 
+    pub fn is_pauthtest(&self) -> bool {
+        self.triple == "aarch64-unknown-linux-pauthtest"
+    }
+
     pub fn is_windows(&self) -> bool {
         self.contains("windows")
     }

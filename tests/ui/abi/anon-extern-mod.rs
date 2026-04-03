@@ -1,6 +1,7 @@
 //@ run-pass
 
-#[link(name = "rust_test_helpers", kind = "static")]
+#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
+#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
 extern "C" {
     fn rust_get_test_int() -> isize;
 }

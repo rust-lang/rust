@@ -21,7 +21,7 @@ pub fn has_f128_math() {}
 fn main() {
     if cfg!(target_arch = "aarch64") &&
         cfg!(target_os = "linux") &&
-        cfg!(not(target_env = "musl")) {
+        cfg!(not(any(target_env = "musl", target_env = "pauthtest"))) {
         // Aarch64+GNU+Linux is one target that has support for all features, so use it to spot
         // check that the compiler does indeed enable these gates.
 
