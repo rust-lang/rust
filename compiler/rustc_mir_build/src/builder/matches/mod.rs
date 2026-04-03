@@ -14,7 +14,7 @@ use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node};
-use rustc_middle::middle::region::{self, TempLifetime};
+use rustc_middle::middle::region::{self, Scope, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
@@ -969,6 +969,9 @@ struct PatternExtraData<'tcx> {
 
     /// [`ExprId`]s of subpattern conditions
     guard_patterns: Vec<ExprId>,
+
+    /// Scope of this sub-branch
+    scope: Option<Scope>,
 }
 
 impl<'tcx> PatternExtraData<'tcx> {
@@ -1014,6 +1017,7 @@ impl<'tcx> FlatPat<'tcx> {
             ascriptions: Vec::new(),
             is_never: pattern.is_never_pattern(),
             guard_patterns: Vec::new(),
+            scope: None,
         };
         MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
 
@@ -1428,6 +1432,8 @@ struct MatchTreeSubBranch<'tcx> {
     guard_patterns: Vec<ExprId>,
     /// Whether the sub-branch corresponds to a never pattern.
     is_never: bool,
+    /// Scope of this sub-branch; used mostly by guard patterns
+    scope: Option<Scope>,
 }
 
 /// A branch in the output of match lowering.
@@ -1479,6 +1485,7 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
                 .collect(),
             guard_patterns: candidate.extra_data.guard_patterns,
             is_never: candidate.extra_data.is_never,
+            scope: candidate.extra_data.scope,
         }
     }
 }
