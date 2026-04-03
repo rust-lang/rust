@@ -1836,9 +1836,13 @@ extern "C" LLVMValueRef LLVMRustConstPtrAuth(LLVMValueRef Ptr, uint32_t Key,
                     : ConstantPointerNull::get(cast<PointerType>(C->getType()));
   assert(AddrDiv && "Failed to get Address Diversity");
   llvm::Type *PtrTy = llvm::PointerType::get(Ctx, PTy->getAddressSpace());
+#if LLVM_VERSION_GE(22, 0)
   auto *DeactivationSym = llvm::Constant::getNullValue(PtrTy);
 
   return wrap(ConstantPtrAuth::get(C, KeyC, DiscC, AddrDiv, DeactivationSym));
+#else
+  return wrap(ConstantPtrAuth::get(C, KeyC, DiscC, AddrDiv));
+#endif
 }
 
 // Statically assert that the fixed metadata kind IDs declared in
