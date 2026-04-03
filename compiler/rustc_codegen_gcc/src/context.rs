@@ -7,7 +7,9 @@ use gccjit::{
 use rustc_abi::{Align, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
-use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, MiscCodegenMethods};
+use rustc_codegen_ssa::traits::{
+    BackendTypes, BaseTypeCodegenMethods, MiscCodegenMethods, PacMetadata,
+};
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::interpret::Allocation;
@@ -403,7 +405,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         get_fn(self, instance)
     }
 
-    fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
+    fn get_fn_addr(&self, instance: Instance<'tcx>, _pac: Option<PacMetadata>) -> RValue<'gcc> {
         let func_name = self.tcx.symbol_name(instance).name;
 
         let func = if let Some(variable) = self.get_declared_value(func_name) {

@@ -25,12 +25,13 @@ use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, Offload};
 use rustc_span::Symbol;
-use rustc_target::spec::SanitizerSet;
+use rustc_target::spec::{Env, SanitizerSet};
 
 use super::ModuleLlvm;
 use crate::attributes;
 use crate::builder::Builder;
 use crate::builder::gpu_offload::OffloadGlobals;
+use crate::common::pauth_fn_attrs;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Value};
 
