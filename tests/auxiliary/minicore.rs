@@ -299,6 +299,16 @@ impl_marker_trait!(
 impl Sync for () {}
 
 impl<T, const N: usize> Sync for [T; N] {}
+// Function pointers are treated as `Sync` to match real `core` behavior.
+//
+// Minicore provides only the minimal set of impls required by tests. Rather
+// than exhaustively covering all possible function pointer signatures,
+// additional impls should be added as needed.
+impl<R> Sync for fn() -> R {}
+impl<R> Sync for extern "C" fn() -> R {}
+impl<R> Sync for unsafe extern "C" fn() -> R {}
+impl<A, R> Sync for extern "C" fn(A) -> R {}
+impl<A, R> Sync for unsafe extern "C" fn(A) -> R {}
 
 #[lang = "drop_glue"]
 fn drop_glue<T>(_: &mut T) {}
@@ -364,6 +374,16 @@ pub mod ptr {
         pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
 
         unsafe { volatile_store(dst, src) };
+    }
+}
+
+pub mod hint {
+    #[inline]
+    pub fn black_box<T>(dummy: T) -> T {
+        #[rustc_intrinsic]
+        fn black_box<T>(dummy: T) -> T;
+
+        unsafe { black_box(dummy) }
     }
 }
 
