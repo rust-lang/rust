@@ -32,7 +32,7 @@ use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::collect_definitions;
-use crate::imports::{ImportData, ImportKind};
+use crate::imports::{ImportData, ImportKind, OnUnknownItemData};
 use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
@@ -545,6 +545,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             root_id,
             vis,
             vis_span: item.vis.span,
+            on_unknown_item_attr: OnUnknownItemData::from_attrs(self.r.tcx, item),
         });
 
         self.r.indeterminate_imports.push(import);
@@ -1024,6 +1025,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             module_path: Vec::new(),
             vis,
             vis_span: item.vis.span,
+            on_unknown_item_attr: OnUnknownItemData::from_attrs(self.r.tcx, item),
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -1119,7 +1121,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             AttributeParser::parse_limited(
                 self.r.tcx.sess,
                 &item.attrs,
-                sym::macro_use,
+                &[sym::macro_use],
                 item.span,
                 item.id,
                 None,
@@ -1156,6 +1158,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 module_path: Vec::new(),
                 vis: Visibility::Restricted(CRATE_DEF_ID),
                 vis_span: item.vis.span,
+                on_unknown_item_attr: OnUnknownItemData::from_attrs(this.r.tcx, item),
             })
         };
 
@@ -1327,6 +1330,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     module_path: Vec::new(),
                     vis,
                     vis_span: item.vis.span,
+                    on_unknown_item_attr: OnUnknownItemData::from_attrs(self.r.tcx, item),
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_decl = self.r.new_import_decl(decl, import);
