@@ -18,7 +18,7 @@ use core::task::{Context, Poll, Waker};
 
 async fn test_async_drop<T>(x: T) {
     let mut x = mem::MaybeUninit::new(x);
-    let dtor = pin!(unsafe { async_drop_in_place(x.as_mut_ptr()) });
+    let dtor = pin!(unsafe { async_drop_in_place(&mut *x.as_mut_ptr()) });
     test_idempotency(dtor).await;
 }
 
@@ -69,7 +69,7 @@ fn main() {
             .await;
 
         let mut ptr19 = mem::MaybeUninit::new(AsyncInt(19));
-        let async_drop_fut = pin!(unsafe { async_drop_in_place(ptr19.as_mut_ptr()) });
+        let async_drop_fut = pin!(unsafe { async_drop_in_place(&mut *ptr19.as_mut_ptr()) });
         test_idempotency(async_drop_fut).await;
 
         let foo = AsyncInt(20);
