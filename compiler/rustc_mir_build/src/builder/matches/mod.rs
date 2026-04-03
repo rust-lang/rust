@@ -1248,6 +1248,28 @@ impl<'tcx> TestableCase<'tcx> {
     fn as_range(&self) -> Option<&PatRange<'tcx>> {
         if let Self::Range(v) = self { Some(v.as_ref()) } else { None }
     }
+
+    /// Returns whether two testable cases would end up in the same test branch.
+    /// Used by `pick_test` to find the best column to test first.
+    fn same_test_branch(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                TestableCase::Variant { variant_index: a, .. },
+                TestableCase::Variant { variant_index: b, .. },
+            ) => a == b,
+            (TestableCase::Constant { value: a, .. }, TestableCase::Constant { value: b, .. }) => {
+                a == b
+            }
+            (TestableCase::Range(a), TestableCase::Range(b)) => a == b,
+            (
+                TestableCase::Slice { len: len_a, op: op_a },
+                TestableCase::Slice { len: len_b, op: op_b },
+            ) => len_a == len_b && op_a == op_b,
+            (TestableCase::Deref { temp: a, .. }, TestableCase::Deref { temp: b, .. }) => a == b,
+            (TestableCase::Never, TestableCase::Never) => true,
+            _ => false,
+        }
+    }
 }
 
 /// Sub-classification of [`TestableCase::Constant`], which helps to avoid
@@ -2158,25 +2180,66 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Pick a test to run. Which test doesn't matter as long as it is guaranteed to fully match at
-    /// least one match pair. We currently simply pick the test corresponding to the first match
-    /// pair of the first candidate in the list.
-    ///
-    /// *Note:* taking the first match pair is somewhat arbitrary, and we might do better here by
-    /// choosing more carefully what to test.
-    ///
-    /// For example, consider the following possible match-pairs:
+    /// least one match pair from the first candidate. For example, consider the following possible
+    /// match-pairs:
     ///
     /// 1. `x @ Some(P)` -- we will do a [`Switch`] to decide what variant `x` has
     /// 2. `x @ 22` -- we will do a [`SwitchInt`] to decide what value `x` has
     /// 3. `x @ 3..5` -- we will do a [`Range`] test to decide what range `x` falls in
-    /// 4. etc.
+    ///
+    /// We pick the match pair from the first candidate that has the same test outcome across the
+    /// largest number of consecutive candidates. This groups candidates with a shared value into a
+    /// single branch, producing smaller match trees and better generated code. For example, given:
+    ///
+    /// ```ignore (illustrative)
+    /// match p {
+    ///     P { x: 1, y: 0 } => ..,
+    ///     P { x: 2, y: 0 } => ..,
+    ///     P { x: 3, y: 0 } => ..,
+    /// }
+    /// ```
+    ///
+    /// All three candidates share `y: 0`, so we test `y` first (consecutive count = 3). This lets
+    /// us check `y == 0` once and then switch on `x`, rather than switching on `x` first and
+    /// redundantly checking `y == 0` in every branch.
     ///
     /// [`Switch`]: TestKind::Switch
     /// [`SwitchInt`]: TestKind::SwitchInt
     /// [`Range`]: TestKind::Range
     fn pick_test(&mut self, candidates: &[&mut Candidate<'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
-        // Extract the match-pair from the highest priority candidate
-        let match_pair = &candidates[0].match_pairs[0];
+        // Find the match pair from the first candidate that has the same testable value across
+        // the most consecutive candidates. This ensures that the resulting test will group the
+        // most candidates into a single branch.
+        let first = &candidates[0];
+
+        let best_index = first
+            .match_pairs
+            .iter()
+            // Or-patterns are sorted to the end and are not tested directly, so stop there.
+            .take_while(|match_pair| !matches!(match_pair.testable_case, TestableCase::Or { .. }))
+            .enumerate()
+            // For each match pair, count how many consecutive candidates share the same test.
+            .map(|(index, match_pair)| {
+                let place = match_pair.place.unwrap();
+                let count = 1 + candidates[1..]
+                    .iter()
+                    .take_while(|candidate| {
+                        candidate.match_pairs.iter().any(|candidate_match_pair| {
+                            candidate_match_pair.place == Some(place)
+                                && candidate_match_pair
+                                    .testable_case
+                                    .same_test_branch(&match_pair.testable_case)
+                        })
+                    })
+                    .count();
+                (count, index)
+            })
+            // Pick the match pair that groups the most candidates into a single branch.
+            .max_by_key(|&(count, index)| (count, std::cmp::Reverse(index)))
+            .map(|(_count, index)| index)
+            .unwrap_or(0);
+
+        let match_pair = &first.match_pairs[best_index];
         let test = self.pick_test_for_match_pair(match_pair);
         // Unwrap is ok after simplification.
         let match_place = match_pair.place.unwrap();
