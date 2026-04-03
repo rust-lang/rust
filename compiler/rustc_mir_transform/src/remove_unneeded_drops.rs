@@ -34,7 +34,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
                 TerminatorKind::Call { ref func, target: Some(target), .. }
                     if tcx.sess.mir_opt_level() > 0
                         && let Some((def_id, generics)) = func.const_fn_def()
-                        && tcx.is_lang_item(def_id, LangItem::DropInPlace) =>
+                        && tcx.is_lang_item(def_id, LangItem::DropGlue) =>
                 {
                     (generics.type_at(0), target)
                 }

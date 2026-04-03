@@ -501,10 +501,8 @@ pub mod mem {
 
 pub mod ptr {
     // region:drop
-    #[lang = "drop_in_place"]
-    pub unsafe fn drop_in_place<T: crate::marker::PointeeSized>(to_drop: *mut T) {
-        unsafe { drop_in_place(to_drop) }
-    }
+    #[lang = "drop_glue"]
+    pub unsafe fn drop_glue<T: crate::marker::PointeeSized>(_to_drop: &mut T) {}
     pub const unsafe fn read<T>(src: *const T) -> T {
         unsafe { *src }
     }

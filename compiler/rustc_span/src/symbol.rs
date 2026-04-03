@@ -831,6 +831,7 @@ symbols! {
         drop,
         drop_in_place,
         drop_types_in_const,
+        drop_glue,
         dropck_eyepatch,
         dropck_parametricity,
         dummy: "<!dummy!>", // use this instead of `sym::empty` for symbols that won't be used
