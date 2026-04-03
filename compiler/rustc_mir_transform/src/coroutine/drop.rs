@@ -602,7 +602,7 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
 
     // Update the body's def to become the drop glue.
     let coroutine_instance = body.source.instance;
-    let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, body.span);
+    let drop_in_place = tcx.require_lang_item(LangItem::DropGlue, body.span);
     let drop_instance = InstanceKind::DropGlue(drop_in_place, Some(coroutine_ty));
 
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
