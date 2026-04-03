@@ -96,7 +96,7 @@ use hir::{
 use ide_db::{
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
     assists::{Assist, AssistId, AssistResolveStrategy, ExprFillDefaultMode},
-    base_db::{ReleaseChannel, RootQueryDb as _},
+    base_db::{ReleaseChannel, all_crates, toolchain_channel},
     generated::lints::{CLIPPY_LINT_GROUPS, DEFAULT_LINT_GROUPS, DEFAULT_LINTS, Lint, LintGroup},
     imports::insert_use::InsertUseConfig,
     label::Label,
@@ -354,14 +354,14 @@ pub fn semantic_diagnostics(
     let module = sema.file_to_module_def(file_id);
 
     let is_nightly = matches!(
-        module.and_then(|m| db.toolchain_channel(m.krate(db).into())),
+        module.and_then(|m| toolchain_channel(db, m.krate(db).into())),
         Some(ReleaseChannel::Nightly) | None
     );
 
     let krate = match module {
         Some(module) => module.krate(db),
         None => {
-            match db.all_crates().last() {
+            match all_crates(db).last() {
                 Some(last) => (*last).into(),
                 // short-circuit, return an empty vec of diagnostics
                 None => return vec![],

@@ -1,10 +1,9 @@
 use dot::{Id, LabelText};
+use ide_db::base_db::all_crates;
 use ide_db::base_db::salsa::plumbing::AsId;
 use ide_db::{
     FxHashMap, RootDatabase,
-    base_db::{
-        BuiltCrateData, BuiltDependency, Crate, ExtraCrateData, RootQueryDb, SourceDatabase,
-    },
+    base_db::{BuiltCrateData, BuiltDependency, Crate, ExtraCrateData, SourceDatabase},
 };
 
 // Feature: View Crate Graph
@@ -18,7 +17,7 @@ use ide_db::{
 // |---------|-------------|
 // | VS Code | **rust-analyzer: View Crate Graph** |
 pub(crate) fn view_crate_graph(db: &RootDatabase, full: bool) -> Result<String, String> {
-    let all_crates = db.all_crates();
+    let all_crates = all_crates(db);
     let crates_to_render = all_crates
         .iter()
         .copied()

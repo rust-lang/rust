@@ -3,8 +3,9 @@
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    Crate, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Nonce, RootQueryDb,
-    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput,
+    Crate, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Nonce, SourceDatabase,
+    SourceRoot, SourceRootId, SourceRootInput, all_crates, relevant_crates,
+    set_all_crates_with_durability,
 };
 use hir_expand::{InFile, files::FilePosition};
 use salsa::Durability;
@@ -49,7 +50,7 @@ impl Default for TestDB {
         };
         this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
         // This needs to be here otherwise `CrateGraphBuilder` panics.
-        this.set_all_crates(Arc::new(Box::new([])));
+        set_all_crates_with_durability(&mut this, std::iter::empty(), Durability::HIGH);
         _ = base_db::LibraryRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&this);
@@ -145,7 +146,7 @@ impl SourceDatabase for TestDB {
 
 impl TestDB {
     pub(crate) fn fetch_test_crate(&self) -> Crate {
-        let all_crates = self.all_crates();
+        let all_crates = all_crates(self);
         all_crates
             .iter()
             .copied()
@@ -157,7 +158,7 @@ impl TestDB {
     }
 
     pub(crate) fn module_for_file(&self, file_id: FileId) -> ModuleId {
-        for &krate in self.relevant_crates(file_id).iter() {
+        for &krate in relevant_crates(self, file_id).iter() {
             let crate_def_map = crate_def_map(self, krate);
             for (local_id, data) in crate_def_map.modules() {
                 if data.origin.file_id().map(|file_id| file_id.file_id(self)) == Some(file_id) {

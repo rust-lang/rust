@@ -17,7 +17,7 @@ mod on_enter;
 
 use either::Either;
 use hir::EditionedFileId;
-use ide_db::{FilePosition, RootDatabase, base_db::RootQueryDb};
+use ide_db::{FilePosition, RootDatabase, base_db::relevant_crates};
 use span::Edition;
 use std::iter;
 
@@ -70,8 +70,7 @@ pub(crate) fn on_char_typed(
     if !TRIGGER_CHARS.contains(&char_typed) {
         return None;
     }
-    let edition = db
-        .relevant_crates(position.file_id)
+    let edition = relevant_crates(db, position.file_id)
         .first()
         .copied()
         .map_or(Edition::CURRENT, |krate| krate.data(db).edition);

@@ -1,6 +1,6 @@
 //! Defines database & queries for macro expansion.
 
-use base_db::{Crate, RootQueryDb};
+use base_db::{Crate, SourceDatabase};
 use mbe::MatchedArmIndex;
 use span::{AstIdMap, Edition, Span, SyntaxContext};
 use syntax::{AstNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T, ast};
@@ -48,7 +48,7 @@ pub enum TokenExpander {
 }
 
 #[query_group::query_group]
-pub trait ExpandDatabase: RootQueryDb {
+pub trait ExpandDatabase: SourceDatabase {
     /// The proc macros. Do not use this! Use `proc_macros_for_crate()` instead.
     #[salsa::input]
     fn proc_macros(&self) -> Arc<ProcMacros>;

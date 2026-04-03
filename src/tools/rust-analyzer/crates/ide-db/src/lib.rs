@@ -60,8 +60,8 @@ use salsa::Durability;
 use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
-    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, Nonce, RootQueryDb,
-    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, query_group,
+    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, Nonce, SourceDatabase,
+    SourceRoot, SourceRootId, SourceRootInput, query_group, set_all_crates_with_durability,
 };
 use hir::{
     FilePositionWrapper, FileRangeWrapper,
@@ -197,7 +197,7 @@ impl RootDatabase {
             nonce: Nonce::new(),
         };
         // This needs to be here otherwise `CrateGraphBuilder` will panic.
-        db.set_all_crates(Arc::new(Box::new([])));
+        set_all_crates_with_durability(&mut db, std::iter::empty(), Durability::HIGH);
         CrateGraphBuilder::default().set_in_db(&mut db);
         db.set_proc_macros_with_durability(Default::default(), Durability::MEDIUM);
         _ = base_db::LibraryRoots::builder(Default::default())
@@ -253,7 +253,7 @@ impl RootDatabase {
 }
 
 #[query_group::query_group]
-pub trait LineIndexDatabase: base_db::RootQueryDb {
+pub trait LineIndexDatabase: base_db::SourceDatabase {
     #[salsa::invoke_interned(line_index)]
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
