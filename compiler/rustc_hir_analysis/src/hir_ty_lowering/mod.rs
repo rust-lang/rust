@@ -511,15 +511,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let anon_const_def_id = match tcx.def_kind(parent_def_id) {
             DefKind::AnonConst => parent_def_id,
             DefKind::InlineConst | DefKind::Closure => {
-                let mut current = tcx.local_parent(parent_def_id);
-                loop {
-                    match tcx.def_kind(current) {
-                        DefKind::AnonConst => break current,
-                        DefKind::InlineConst | DefKind::Closure => {
-                            current = tcx.local_parent(current);
-                        }
-                        _ => return None,
-                    }
+                let root = tcx.typeck_root_def_id(parent_def_id.into());
+                match tcx.def_kind(root) {
+                    DefKind::AnonConst => root.expect_local(),
+                    _ => return None,
                 }
             }
             _ => return None,
@@ -538,7 +533,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
             ty::AnonConstKind::GCE
-            | ty::AnonConstKind::OGCA
+            | ty::AnonConstKind::GCA
             | ty::AnonConstKind::RepeatExprCount => None,
         }
     }
