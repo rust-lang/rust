@@ -2,6 +2,9 @@
 //@ compile-flags: -Copt-level=3
 //@ only-aarch64
 //@ only-linux
+// aarch64-unknown-linux-pauthtest requires armv8.3-a, which includes Large System Extensions,
+// providing hardware implementations of atomic operations.
+//@ ignore-aarch64-unknown-linux-pauthtest
 
 #![crate_type = "rlib"]
 

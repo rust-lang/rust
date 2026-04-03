@@ -5,7 +5,8 @@
 //@ run-pass
 //@ compile-flags: -lrust_test_helpers
 
-#[link(name = "rust_test_helpers", kind = "static")]
+#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
+#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
 extern "C" {
     pub fn rust_dbg_extern_identity_u32(x: u32) -> u32;
 }

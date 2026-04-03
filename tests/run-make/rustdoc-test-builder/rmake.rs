@@ -27,6 +27,7 @@ fn main() {
     // so only exercise the success path when the target can run on the host.
     if target().contains("wasm")
         || target().contains("sgx")
+        || target().contains("pauthtest")
         || std::env::var_os("REMOTE_TEST_CLIENT").is_some()
     {
         return;

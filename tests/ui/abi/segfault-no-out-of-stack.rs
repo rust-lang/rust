@@ -10,7 +10,8 @@ use std::env;
 use std::ffi::c_char;
 use std::process::{Command, ExitStatus};
 
-#[link(name = "rust_test_helpers", kind = "static")]
+#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
+#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
 extern "C" {
     fn rust_get_null_ptr() -> *mut c_char;
 }

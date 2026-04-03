@@ -25,7 +25,8 @@ struct ManyInts {
 #[repr(C)]
 struct Empty;
 
-#[link(name = "rust_test_helpers", kind = "static")]
+#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
+#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
 extern "C" {
     fn rust_dbg_extern_empty_struct(v1: ManyInts, e: Empty, v2: ManyInts);
 }
