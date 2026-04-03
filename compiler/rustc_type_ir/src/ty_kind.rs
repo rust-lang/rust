@@ -489,6 +489,7 @@ impl<I: Interner> AliasTy<I> {
 
 /// The following methods work only with (trait) associated type projections.
 impl<I: Interner> AliasTy<I> {
+    #[track_caller]
     pub fn self_ty(self) -> I::Ty {
         self.args.type_at(0)
     }
