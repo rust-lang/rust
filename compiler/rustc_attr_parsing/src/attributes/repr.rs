@@ -1,6 +1,6 @@
 use rustc_abi::{Align, Size};
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
-use rustc_hir::attrs::{AttrConstResolved, AttrIntValue, IntType, ReprAttr};
+use rustc_hir::attrs::{AttrIntValue, AttrResolutionKind, AttrResolved, IntType, ReprAttr};
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::parse::feature_err;
 
@@ -105,7 +105,10 @@ fn int_type_of_word(s: Symbol) -> Option<IntType> {
     }
 }
 
-fn parse_repr<S: Stage>(cx: &AcceptContext<'_, '_, S>, param: &MetaItemParser) -> Option<ReprAttr> {
+fn parse_repr<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    param: &MetaItemParser,
+) -> Option<ReprAttr> {
     use ReprAttr::*;
 
     // FIXME(jdonszelmann): invert the parsing here to match on the word first and then the
@@ -200,7 +203,7 @@ enum AlignmentParseError {
 }
 
 fn parse_repr_align<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
+    cx: &mut AcceptContext<'_, '_, S>,
     list: &MetaItemListParser,
     param_span: Span,
     align_kind: AlignKind,
@@ -283,7 +286,7 @@ fn parse_alignment<S: Stage>(
 }
 
 fn parse_alignment_or_const_path<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
+    cx: &mut AcceptContext<'_, '_, S>,
     arg: &MetaItemOrLitParser,
     attr_name: &'static str,
 ) -> Result<AttrIntValue, AlignmentParseError> {
@@ -301,10 +304,15 @@ fn parse_alignment_or_const_path<S: Stage>(
         return Err(AlignmentParseError::Message("not an unsuffixed integer".to_string()));
     }
 
-    if let Some(features) = cx.features_option()
-        && !features.const_attr_paths()
-        && !meta.span().allows_unstable(sym::const_attr_paths)
-    {
+    let path_span = meta.path().span();
+    let feature_enabled = cx.features_option().is_some_and(|features| features.const_attr_paths())
+        || path_span.allows_unstable(sym::const_attr_paths);
+
+    if !feature_enabled {
+        if matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
+            return Ok(AttrIntValue::Lit(1));
+        }
+
         feature_err(
             cx.sess(),
             sym::const_attr_paths,
@@ -315,7 +323,9 @@ fn parse_alignment_or_const_path<S: Stage>(
         return Err(AlignmentParseError::AlreadyErrored);
     }
 
-    let Some(resolution) = cx.attr_const_resolution(meta.path().span()) else {
+    cx.record_attr_resolution_request(AttrResolutionKind::Const, meta.path().0.clone());
+
+    let Some(resolution) = cx.attr_resolution(AttrResolutionKind::Const, path_span) else {
         // `parse_limited(sym::repr)` runs before lowering for callers that only care whether
         // `repr(packed(...))` exists at all.
         if matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
@@ -325,22 +335,18 @@ fn parse_alignment_or_const_path<S: Stage>(
     };
 
     match resolution {
-        AttrConstResolved::Resolved(Res::Def(DefKind::Const { .. }, def_id)) => {
-            Ok(AttrIntValue::Const { def_id, span: meta.path().span() })
+        AttrResolved::Resolved(Res::Def(DefKind::Const { .. }, def_id)) => {
+            Ok(AttrIntValue::Const { def_id, span: path_span })
         }
-        AttrConstResolved::Resolved(Res::Def(DefKind::ConstParam, _)) => {
-            cx.emit_err(AttrConstGenericNotSupported { span: meta.path().span(), attr_name });
+        AttrResolved::Resolved(Res::Def(DefKind::ConstParam, _)) => {
+            cx.emit_err(AttrConstGenericNotSupported { span: path_span, attr_name });
             Err(AlignmentParseError::AlreadyErrored)
         }
-        AttrConstResolved::Resolved(res) => {
-            cx.emit_err(AttrConstPathNotConst {
-                span: meta.path().span(),
-                attr_name,
-                thing: res.descr(),
-            });
+        AttrResolved::Resolved(res) => {
+            cx.emit_err(AttrConstPathNotConst { span: path_span, attr_name, thing: res.descr() });
             Err(AlignmentParseError::AlreadyErrored)
         }
-        AttrConstResolved::Error => Err(AlignmentParseError::AlreadyErrored),
+        AttrResolved::Error => Err(AlignmentParseError::AlreadyErrored),
     }
 }
 

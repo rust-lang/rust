@@ -184,16 +184,35 @@ pub enum AttrIntValue {
     Const { def_id: DefId, span: Span },
 }
 
+/// The resolution strategy a parsed builtin attribute argument expects.
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    HashStable_Generic,
+    Encodable,
+    Decodable,
+    PrintAttribute
+)]
+pub enum AttrResolutionKind {
+    Const,
+}
+
+/// A resolved attribute argument path, or an error placeholder if resolution failed.
 #[derive(Debug, Copy, Clone, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
-pub enum AttrConstResolved<Id = ast::NodeId> {
+pub enum AttrResolved<Id = ast::NodeId> {
     Resolved(Res<Id>),
     Error,
 }
 
+/// A resolved attribute argument path produced by late resolution for a builtin attribute.
 #[derive(Debug, Copy, Clone, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
-pub struct AttrConstResolution<Id = ast::NodeId> {
+pub struct AttrResolution<Id = ast::NodeId> {
+    pub kind: AttrResolutionKind,
     pub path_span: Span,
-    pub resolved: AttrConstResolved<Id>,
+    pub resolved: AttrResolved<Id>,
 }
 
 pub enum TransparencyError {

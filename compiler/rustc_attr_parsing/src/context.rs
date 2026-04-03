@@ -9,7 +9,7 @@ use private::Sealed;
 use rustc_ast::{AttrStyle, MetaItemLit, NodeId};
 use rustc_errors::{Diag, Diagnostic, Level};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttrResolutionKind, AttributeKind};
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrPath, HirId};
 use rustc_parse::parser::Recovery;
@@ -416,7 +416,6 @@ pub struct Late;
 /// Gives [`AttributeParser`]s enough information to create errors, for example.
 pub struct AcceptContext<'f, 'sess, S: Stage> {
     pub(crate) shared: SharedContext<'f, 'sess, S>,
-    pub(crate) attr_id: Option<AttrId>,
 
     /// The outer span of the attribute currently being parsed
     ///
@@ -502,13 +501,25 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
 impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     pub(crate) fn adcx(&mut self) -> AttributeDiagnosticContext<'_, 'f, 'sess, S> {
         AttributeDiagnosticContext { ctx: self, custom_suggestions: Vec::new() }
-
-    pub(crate) fn attr_const_resolution(
-        &self,
-        path_span: Span,
-    ) -> Option<rustc_hir::attrs::AttrConstResolved<NodeId>> {
-        self.attr_id.and_then(|attr_id| self.shared.cx.attr_const_resolution(attr_id, path_span))
     }
+
+    pub(crate) fn attr_resolution(
+        &self,
+        kind: AttrResolutionKind,
+        path_span: Span,
+    ) -> Option<rustc_hir::attrs::AttrResolved<NodeId>> {
+        self.shared.cx.attr_resolution(self.attr_id, kind, path_span)
+    }
+
+    pub(crate) fn record_attr_resolution_request(
+        &mut self,
+        kind: AttrResolutionKind,
+        path: rustc_ast::Path,
+    ) {
+        self.shared.cx.record_attr_resolution_request(
+            self.attr_id,
+            crate::interface::AttrResolutionRequest { kind, path },
+        );
     }
 }
 
