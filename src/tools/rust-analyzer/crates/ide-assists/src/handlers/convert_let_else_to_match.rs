@@ -33,9 +33,9 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
     let let_stmt = LetStmt::cast(let_stmt)?;
     let else_block = let_stmt.let_else()?.block_expr()?;
     let else_expr = if else_block.statements().next().is_none() {
-        else_block.tail_expr()?
+        else_block.tail_expr()?.reset_indent()
     } else {
-        else_block.into()
+        else_block.reset_indent().into()
     };
     let init = let_stmt.initializer()?;
     // Ignore let stmt with type annotation
@@ -91,8 +91,8 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
                 },
             );
             let else_arm = make.match_arm(make.wildcard_pat().into(), None, else_expr);
-            let match_ = make.expr_match(init, make.match_arm_list([binding_arm, else_arm]));
-            let match_ = match_.reset_indent();
+            let arms = [binding_arm, else_arm].map(|arm| arm.indent(1.into()));
+            let match_ = make.expr_match(init, make.match_arm_list(arms));
             let match_ = match_.indent(let_stmt.indent_level());
 
             if bindings.is_empty() {
@@ -295,6 +295,63 @@ fn main() {
         _ => continue,
     };
 }",
+        );
+    }
+
+    #[test]
+    fn convert_let_else_to_match_with_some_indent() {
+        check_assist(
+            convert_let_else_to_match,
+            r#"
+mod indent {
+    fn main() {
+        let Ok(x) = f() else$0 {
+            log();
+            unreachable!(
+                "..."
+            );
+        };
+    }
+}"#,
+            r#"
+mod indent {
+    fn main() {
+        let x = match f() {
+            Ok(x) => x,
+            _ => {
+                log();
+                unreachable!(
+                    "..."
+                );
+            }
+        };
+    }
+}"#,
+        );
+
+        check_assist(
+            convert_let_else_to_match,
+            r#"
+mod indent {
+    fn main() {
+        let Ok(x) = f() else$0 {
+            unreachable!(
+                "..."
+            )
+        };
+    }
+}"#,
+            r#"
+mod indent {
+    fn main() {
+        let x = match f() {
+            Ok(x) => x,
+            _ => unreachable!(
+                "..."
+            ),
+        };
+    }
+}"#,
         );
     }
 
