@@ -1,5 +1,4 @@
 use super::{FailMode, ProcRes, TestCx, WillExecute};
-use crate::errors;
 
 impl TestCx<'_> {
     pub(super) fn run_incremental_test(&self) {
@@ -57,10 +56,7 @@ impl TestCx<'_> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("build-pass tests with expected warnings should be moved to ui/");
-        }
+        self.check_compiler_output_for_incr(&proc_res);
     }
 
     fn run_rpass_test(&self) {
@@ -72,10 +68,7 @@ impl TestCx<'_> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("run-pass tests with expected warnings should be moved to ui/");
-        }
+        self.check_compiler_output_for_incr(&proc_res);
 
         if let WillExecute::Disabled = should_run {
             return;
