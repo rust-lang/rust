@@ -8,11 +8,11 @@ use crate::directives::{LineNumber, line_directive};
 use crate::runtest::ProcRes;
 
 /// Representation of information to invoke a debugger and check its output
-pub(super) struct DebuggerCommands {
+pub(crate) struct DebuggerCommands {
     /// Commands for the debuuger
-    pub commands: Vec<String>,
+    pub(crate) commands: Vec<String>,
     /// Lines to insert breakpoints at
-    pub breakpoint_lines: Vec<LineNumber>,
+    pub(crate) breakpoint_lines: Vec<LineNumber>,
     /// Contains the source line number to check and the line itself
     check_lines: Vec<(LineNumber, String)>,
     /// Source file name
@@ -22,7 +22,7 @@ pub(super) struct DebuggerCommands {
 }
 
 impl DebuggerCommands {
-    pub fn parse_from(
+    pub(crate) fn parse_from(
         file: &Utf8Path,
         debugger_prefix: &str,
         test_revision: Option<&str>,
@@ -75,7 +75,7 @@ impl DebuggerCommands {
     /// Given debugger output and lines to check, ensure that every line is
     /// contained in the debugger output. The check lines need to be found in
     /// order, but there can be extra lines between.
-    pub fn check_output(&self, debugger_run_result: &ProcRes) -> Result<(), String> {
+    pub(crate) fn check_output(&self, debugger_run_result: &ProcRes) -> Result<(), String> {
         // (src_lineno, ck_line)  that we did find
         let mut found = vec![];
         // (src_lineno, ck_line) that we couldn't find
