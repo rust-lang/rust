@@ -11,15 +11,15 @@
 //@ edition: 2021
 
 // FIXME(zetanumbers): consider AsyncDestruct::async_drop cleanup tests
-use core::future::{async_drop_in_place, AsyncDrop, Future};
+use core::future::{AsyncDrop, Future, async_drop_in_place};
 use core::hint::black_box;
 use core::mem::{self, ManuallyDrop};
-use core::pin::{pin, Pin};
+use core::pin::{Pin, pin};
 use core::task::{Context, Poll, Waker};
 
 async fn test_async_drop<T>(x: T, _size: usize) {
     let mut x = mem::MaybeUninit::new(x);
-    let dtor = pin!(unsafe { async_drop_in_place(x.as_mut_ptr()) });
+    let dtor = pin!(unsafe { async_drop_in_place(&mut *x.as_mut_ptr()) });
 
     // FIXME(zetanumbers): This check fully depends on the layout of
     // the coroutine state, since async destructor combinators are just
@@ -60,10 +60,7 @@ fn main() {
         let j = 42;
         test_async_drop(&i, 16).await;
         test_async_drop(&j, 16).await;
-        test_async_drop(
-            AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 },
-            136,
-        ).await;
+        test_async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }, 136).await;
         test_async_drop(ManuallyDrop::new(AsyncInt(9)), 16).await;
 
         let foo = AsyncInt(10);
@@ -92,7 +89,7 @@ fn main() {
         .await;
 
         let mut ptr19 = mem::MaybeUninit::new(AsyncInt(19));
-        let async_drop_fut = pin!(unsafe { async_drop_in_place(ptr19.as_mut_ptr()) });
+        let async_drop_fut = pin!(unsafe { async_drop_in_place(&mut *ptr19.as_mut_ptr()) });
         test_idempotency(async_drop_fut).await;
 
         let foo = AsyncInt(20);
@@ -228,19 +225,13 @@ union AsyncUnion {
 
 impl Drop for AsyncUnion {
     fn drop(&mut self) {
-        println!(
-            "AsyncUnion::drop: {}, {}",
-            unsafe { self.signed },
-            unsafe { self.unsigned },
-        );
+        println!("AsyncUnion::drop: {}, {}", unsafe { self.signed }, unsafe { self.unsigned },);
     }
 }
 impl AsyncDrop for AsyncUnion {
     async fn drop(self: Pin<&mut Self>) {
-        println!(
-            "AsyncUnion::Dropper::poll: {}, {}",
-            unsafe { self.signed },
-            unsafe { self.unsigned },
-        );
+        println!("AsyncUnion::Dropper::poll: {}, {}", unsafe { self.signed }, unsafe {
+            self.unsigned
+        },);
     }
 }
