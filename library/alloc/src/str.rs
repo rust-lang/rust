@@ -575,7 +575,9 @@ impl str {
                   without modifying the original"]
     #[unstable(feature = "casefold", issue = "none")]
     pub fn to_casefold(&self) -> String {
-        let (mut s, rest) = convert_while_ascii(self, u8::to_ascii_lowercase);
+        // SAFETY: `to_ascii_lowercase` preserves ASCII bytes, so the converted
+        // prefix remains valid UTF-8.
+        let (mut s, rest) = unsafe { convert_while_ascii(self, u8::to_ascii_lowercase) };
 
         for c in rest.chars() {
             match conversions::to_casefold(c) {
