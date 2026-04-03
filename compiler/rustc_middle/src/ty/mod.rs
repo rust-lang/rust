@@ -37,7 +37,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttrConstResolution, StrippedCfgItem};
+use rustc_hir::attrs::{AttrResolution, StrippedCfgItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::{LangItem, attrs as attr, find_attr};
@@ -211,8 +211,9 @@ pub struct ResolverAstLowering<'tcx> {
     pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
-    /// Resolutions for const item paths used in opted-in late attributes, keyed by attribute ID.
-    pub attr_const_res_map: FxIndexMap<AttrId, Vec<AttrConstResolution<ast::NodeId>>>,
+    /// Resolutions for builtin attribute arguments that need late name resolution, keyed by
+    /// attribute ID.
+    pub attr_res_map: FxIndexMap<AttrId, Vec<AttrResolution<ast::NodeId>>>,
 
     pub next_node_id: ast::NodeId,
 

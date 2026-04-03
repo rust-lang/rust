@@ -654,8 +654,8 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
 
     for def_id in ast_index.indices() {
         match &ast_index[def_id] {
-            AstOwner::Item(Item { kind: ItemKind::Delegation { .. }, .. })
-            | AstOwner::AssocItem(Item { kind: AssocItemKind::Delegation { .. }, .. }, _) => {
+            AstOwner::Item(Item { kind: ItemKind::Delegation(..), .. })
+            | AstOwner::AssocItem(Item { kind: AssocItemKind::Delegation(..), .. }, _) => {
                 delayed_ids.insert(def_id);
             }
             _ => lowerer.lower_node(def_id),

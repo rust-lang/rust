@@ -18,7 +18,7 @@ use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
 use crate::HashIgnoredAttrId;
-use crate::attrs::{AttrIntValue, LintInstance};
+use crate::attrs::AttrIntValue;
 use crate::limit::Limit;
 
 /// This trait is used to print attributes in `rustc_hir_pretty`.
@@ -207,7 +207,7 @@ macro_rules! print_tup {
 
 print_tup!(A B C D E F G H);
 print_skip!(Span, (), ErrorGuaranteed, AttrId, HashIgnoredAttrId);
-print_disp!(u8, u16, u32, u128, usize, bool, NonZero<u32>, Limit, LintInstance);
+print_disp!(u8, u16, u32, u128, usize, bool, NonZero<u32>, Limit);
 print_debug!(
     Symbol,
     Ident,

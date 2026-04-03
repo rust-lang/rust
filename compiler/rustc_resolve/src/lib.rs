@@ -50,7 +50,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_hir::attrs::{AttrConstResolution, StrippedCfgItem};
+use rustc_hir::attrs::{AttrResolution, StrippedCfgItem};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{
     self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, MacroKinds, NonMacroAttrKind, PartialRes,
@@ -1389,7 +1389,7 @@ pub struct Resolver<'ra, 'tcx> {
     effective_visibilities: EffectiveVisibilities,
     doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    attr_const_resolutions: FxIndexMap<AttrId, Vec<AttrConstResolution<ast::NodeId>>>,
+    attr_resolutions: FxIndexMap<AttrId, Vec<AttrResolution<ast::NodeId>>>,
     all_macro_rules: UnordSet<Symbol> = Default::default(),
 
     /// Invocation ids of all glob delegations.
@@ -1744,7 +1744,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             effective_visibilities: Default::default(),
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
-            attr_const_resolutions: Default::default(),
+            attr_resolutions: Default::default(),
             current_crate_outer_attr_insert_span,
             ..
         };
@@ -1867,7 +1867,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             label_res_map: self.label_res_map,
             lifetimes_res_map: self.lifetimes_res_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
-            attr_const_res_map: self.attr_const_resolutions,
+            attr_res_map: self.attr_resolutions,
             next_node_id: self.next_node_id,
             node_id_to_def_id: self
                 .node_id_to_def_id
