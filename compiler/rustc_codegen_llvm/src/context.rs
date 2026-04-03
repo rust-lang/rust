@@ -863,8 +863,24 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         get_fn(self, instance)
     }
 
-    fn get_fn_addr(&self, instance: Instance<'tcx>) -> &'ll Value {
-        get_fn(self, instance)
+    fn get_fn_addr(&self, instance: Instance<'tcx>, pac: Option<PacMetadata>) -> &'ll Value {
+        // When pointer authentication metadata is provided, `get_fn_addr` will
+        // attempt to sign the pointer using LLVM's `ConstPtrAuth` constant
+        // expression.
+        //
+        // FIXME(jchlanda) Currently, all function addresses requested from
+        // within LLVM codegen are signed. This behavior is too broad, resulting
+        // in the logic being applied to function values, not just pointers
+        // (addresses).
+        //
+        // See the discussion in the rust-lang issue:
+        // <https://github.com/rust-lang/rust/issues/152532>, and comment in
+        // builder's `ptrauth_operand_bundle`.
+        let llfn = get_fn(self, instance);
+        match pac {
+            Some(pac) => common::maybe_sign_fn_ptr(self, instance, llfn, pac),
+            None => llfn,
+        }
     }
 
     fn eh_personality(&self) -> &'ll Value {
@@ -906,13 +922,16 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if name.is_none() => self.get_fn_addr(ty::Instance::expect_resolve(
-                tcx,
-                self.typing_env(),
-                def_id,
-                ty::List::empty(),
-                DUMMY_SP,
-            )),
+            Some(def_id) if name.is_none() => self.get_fn_addr(
+                ty::Instance::expect_resolve(
+                    tcx,
+                    self.typing_env(),
+                    def_id,
+                    ty::List::empty(),
+                    DUMMY_SP,
+                ),
+                Some(PacMetadata::default()),
+            ),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");
                 if let Some(llfn) = self.get_declared_value(name) {

@@ -2,7 +2,8 @@ use gccjit::{LValue, RValue, ToRValue, Type};
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{self as abi, HasDataLayout};
 use rustc_codegen_ssa::traits::{
-    BaseTypeCodegenMethods, ConstCodegenMethods, MiscCodegenMethods, StaticCodegenMethods,
+    BaseTypeCodegenMethods, ConstCodegenMethods, MiscCodegenMethods, PacMetadata,
+    StaticCodegenMethods,
 };
 use rustc_middle::mir::Mutability;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
@@ -229,7 +230,13 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
         None
     }
 
-    fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, ty: Type<'gcc>) -> RValue<'gcc> {
+    fn scalar_to_backend_with_pac(
+        &self,
+        cv: Scalar,
+        layout: abi::Scalar,
+        ty: Type<'gcc>,
+        _pac: Option<PacMetadata>,
+    ) -> RValue<'gcc> {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
             Scalar::Int(int) => {
@@ -278,7 +285,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                         }
                         value
                     }
-                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance),
+                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance, None),
                     GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx
