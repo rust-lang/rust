@@ -26,8 +26,16 @@ fn issue_15149() {
         env::join_paths(paths).unwrap()
     };
 
-    let child_output =
-        process::Command::new("mytest").env("PATH", &path).arg("child").output().unwrap();
+    // If `runner` is set up for current target, we'll be executing `./runner ./test`, not
+    // just `./test`. For such a case, use the same arguments for child to avoid executing
+    // `runner` without actual executable.
+    let args = env::args();
+    let child_output = process::Command::new("mytest")
+        .args(args)
+        .env("PATH", &path)
+        .arg("child")
+        .output()
+        .unwrap();
 
     assert!(
         child_output.status.success(),
