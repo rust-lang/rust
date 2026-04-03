@@ -1,0 +1,52 @@
+warning: the feature `min_generic_const_args` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> $DIR/ice-interpret-queries-138710.rs:7:12
+  |
+LL | #![feature(min_generic_const_args)]
+  |            ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+  = note: `#[warn(incomplete_features)]` on by default
+
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/ice-interpret-queries-138710.rs:21:16
+   |
+LL |     *(&mut [0; <<Vec<u32> as B>::n as A>::N])
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `type` before `const` for `A::N`
+   |
+LL |     type const N: usize;
+   |     ++++
+
+error[E0277]: the trait bound `Vec<u32>: B` is not satisfied
+  --> $DIR/ice-interpret-queries-138710.rs:21:18
+   |
+LL |     *(&mut [0; <<Vec<u32> as B>::n as A>::N])
+   |                  ^^^^^^^^ the trait `B` is not implemented for `Vec<u32>`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/ice-interpret-queries-138710.rs:12:1
+   |
+LL | trait B {
+   | ^^^^^^^
+
+error[E0038]: the trait `A` is not dyn compatible
+ --> $DIR/ice-interpret-queries-138710.rs:19:6
+  |
+LL | ) -> Box<dyn A> {
+  |      ^^^^^^^^^^ `A` is not dyn compatible
+  |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+ --> $DIR/ice-interpret-queries-138710.rs:16:11
+  |
+LL | trait A {
+  |       - this trait is not dyn compatible...
+LL |     const N: usize;
+  |           ^ ...because it contains associated const `N` that's not defined as `type const`
+  = help: consider moving `N` to another trait
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.
