@@ -4,7 +4,7 @@ use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
-use rustc_data_structures::stable_hasher::{HashStableContext, ToStableHashKey};
+use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -712,11 +712,11 @@ impl IntoDiagArg for Namespace {
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for Namespace {
+impl ToStableHashKey for Namespace {
     type KeyType = Namespace;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &mut Hcx) -> Namespace {
+    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> Namespace {
         *self
     }
 }

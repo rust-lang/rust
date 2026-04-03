@@ -120,8 +120,8 @@ impl PartialEq<&[Symbol]> for Path {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for Path {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl HashStable for Path {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
             segment.ident.hash_stable(hcx, hasher);

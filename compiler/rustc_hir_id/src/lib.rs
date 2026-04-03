@@ -55,18 +55,18 @@ impl rustc_index::Idx for OwnerId {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for OwnerId {
+impl HashStable for OwnerId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OwnerId {
+impl ToStableHashKey for OwnerId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
         self.to_def_id().to_stable_hash_key(hcx)
     }
 }
@@ -152,7 +152,7 @@ rustc_index::newtype_index! {
     /// integers starting at zero, so a mapping that maps all or most nodes within
     /// an "item-like" to something else can be implemented by a `Vec` instead of a
     /// tree or hash map.
-    #[stable_hash_generic]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     pub struct ItemLocalId {}
@@ -177,21 +177,24 @@ pub const CRATE_HIR_ID: HirId =
 
 pub const CRATE_OWNER_ID: OwnerId = OwnerId { def_id: CRATE_DEF_ID };
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for HirId {
+impl ToStableHashKey for HirId {
     type KeyType = (DefPathHash, ItemLocalId);
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> (DefPathHash, ItemLocalId) {
+    fn to_stable_hash_key<Hcx: HashStableContext>(
+        &self,
+        hcx: &mut Hcx,
+    ) -> (DefPathHash, ItemLocalId) {
         let def_path_hash = self.owner.def_id.to_stable_hash_key(hcx);
         (def_path_hash, self.local_id)
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for ItemLocalId {
+impl ToStableHashKey for ItemLocalId {
     type KeyType = ItemLocalId;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &mut Hcx) -> ItemLocalId {
+    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> ItemLocalId {
         *self
     }
 }

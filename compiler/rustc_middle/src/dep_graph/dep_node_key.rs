@@ -7,7 +7,6 @@ use rustc_hir::definitions::DefPathHash;
 use rustc_hir::{HirId, ItemLocalId, OwnerId};
 
 use crate::dep_graph::{DepNode, KeyFingerprintStyle};
-use crate::ich::StableHashingContext;
 use crate::ty::TyCtxt;
 
 /// Trait for query keys as seen by dependency-node tracking.
@@ -30,7 +29,7 @@ pub trait DepNodeKey<'tcx>: Debug + Sized {
 // Blanket impl of `DepNodeKey`, which is specialized by other impls elsewhere.
 impl<'tcx, T> DepNodeKey<'tcx> for T
 where
-    T: for<'a> HashStable<StableHashingContext<'a>> + Debug,
+    T: HashStable + Debug,
 {
     #[inline(always)]
     default fn key_fingerprint_style() -> KeyFingerprintStyle {

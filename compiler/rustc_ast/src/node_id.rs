@@ -1,5 +1,6 @@
 use std::fmt;
 
+use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
 use rustc_span::LocalExpnId;
 
 rustc_index::newtype_index! {
@@ -15,6 +16,13 @@ rustc_index::newtype_index! {
     pub struct NodeId {
         /// The [`NodeId`] used to represent the root of the crate.
         const CRATE_NODE_ID = 0;
+    }
+}
+
+impl HashStable for NodeId {
+    #[inline]
+    fn hash_stable<Hcx: HashStableContext>(&self, _: &mut Hcx, _: &mut StableHasher) {
+        panic!("Node IDs should not appear in incremental state");
     }
 }
 

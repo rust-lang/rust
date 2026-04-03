@@ -7,7 +7,9 @@ use rustc_abi::{FIRST_VARIANT, FieldIdx, ReprOptions, VariantIdx};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableContext, HashingControls, StableHasher,
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -23,7 +25,6 @@ use tracing::{debug, info, trace};
 use super::{
     AsyncDestructor, Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr,
 };
-use crate::ich::StableHashingContext;
 use crate::mir::interpret::ErrorHandled;
 use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::{self, ConstKind};
@@ -151,8 +152,8 @@ impl Hash for AdtDefData {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+impl HashStable for AdtDefData {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<(usize, HashingControls), Fingerprint>> = Default::default();
         }

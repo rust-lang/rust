@@ -24,8 +24,6 @@ impl Parse for Newtype {
         let mut encodable = false;
         let mut ord = false;
         let mut stable_hash = false;
-        let mut stable_hash_generic = false;
-        let mut stable_hash_no_context = false;
         let mut gate_rustc_only = quote! {};
         let mut gate_rustc_only_cfg = quote! { all() };
 
@@ -46,14 +44,6 @@ impl Parse for Newtype {
                 }
                 "stable_hash" => {
                     stable_hash = true;
-                    false
-                }
-                "stable_hash_generic" => {
-                    stable_hash_generic = true;
-                    false
-                }
-                "stable_hash_no_context" => {
-                    stable_hash_no_context = true;
                     false
                 }
                 "max" => {
@@ -165,17 +155,14 @@ impl Parse for Newtype {
         let hash_stable = if stable_hash {
             quote! {
                 #gate_rustc_only
-                impl<'__ctx> ::rustc_data_structures::stable_hasher::HashStable<::rustc_middle::ich::StableHashingContext<'__ctx>> for #name {
-                    fn hash_stable(&self, hcx: &mut ::rustc_middle::ich::StableHashingContext<'__ctx>, hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
-                        self.as_u32().hash_stable(hcx, hasher)
-                    }
-                }
-            }
-        } else if stable_hash_generic || stable_hash_no_context {
-            quote! {
-                #gate_rustc_only
-                impl<Hcx> ::rustc_data_structures::stable_hasher::HashStable<Hcx> for #name {
-                    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+                impl ::rustc_data_structures::stable_hasher::HashStable for #name {
+                    fn hash_stable<
+                        __Hcx: ::rustc_data_structures::stable_hasher::HashStableContext
+                    >(
+                        &self,
+                        hcx: &mut __Hcx,
+                        hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher
+                    ) {
                         self.as_u32().hash_stable(hcx, hasher)
                     }
                 }

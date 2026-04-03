@@ -1519,8 +1519,8 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl HashStableContex
     ExpnHash::new(LOCAL_CRATE.as_def_id().to_stable_hash_key(&mut hcx).stable_crate_id(), expn_hash)
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for SyntaxContext {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl HashStable for SyntaxContext {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
@@ -1535,8 +1535,8 @@ impl<Hcx: HashStableContext> HashStable<Hcx> for SyntaxContext {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for ExpnId {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl HashStable for ExpnId {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hcx.assert_default_hashing_controls("ExpnId");
         let hash = if *self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.
@@ -1549,8 +1549,8 @@ impl<Hcx: HashStableContext> HashStable<Hcx> for ExpnId {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for LocalExpnId {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl HashStable for LocalExpnId {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.to_expn_id().hash_stable(hcx, hasher);
     }
 }

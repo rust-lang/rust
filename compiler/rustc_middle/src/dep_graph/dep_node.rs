@@ -231,10 +231,10 @@ impl WorkProductId {
         WorkProductId { hash: hasher.finish() }
     }
 }
-impl<Hcx> ToStableHashKey<Hcx> for WorkProductId {
+impl ToStableHashKey for WorkProductId {
     type KeyType = Fingerprint;
     #[inline]
-    fn to_stable_hash_key(&self, _: &mut Hcx) -> Self::KeyType {
+    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> Self::KeyType {
         self.hash
     }
 }

@@ -10,48 +10,51 @@ use crate::hir::{
 use crate::hir_id::ItemLocalId;
 use crate::lints::DelayedLints;
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for BodyId {
+impl ToStableHashKey for BodyId {
     type KeyType = (DefPathHash, ItemLocalId);
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> (DefPathHash, ItemLocalId) {
+    fn to_stable_hash_key<Hcx: HashStableContext>(
+        &self,
+        hcx: &mut Hcx,
+    ) -> (DefPathHash, ItemLocalId) {
         let BodyId { hir_id } = *self;
         hir_id.to_stable_hash_key(hcx)
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for ItemId {
+impl ToStableHashKey for ItemId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
         self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for TraitItemId {
+impl ToStableHashKey for TraitItemId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
         self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for ImplItemId {
+impl ToStableHashKey for ImplItemId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
         self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for ForeignItemId {
+impl ToStableHashKey for ForeignItemId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
         self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
@@ -63,8 +66,8 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for ForeignItemId {
 // want to pick up on a reference changing its target, so we hash the NodeIds
 // in "DefPath Mode".
 
-impl<'tcx, Hcx: HashStableContext> HashStable<Hcx> for OwnerNodes<'tcx> {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl<'tcx> HashStable for OwnerNodes<'tcx> {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
         // `local_id_to_def_id` is also ignored because is dependent on the body, then just hashing
@@ -75,15 +78,15 @@ impl<'tcx, Hcx: HashStableContext> HashStable<Hcx> for OwnerNodes<'tcx> {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for DelayedLints {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl HashStable for DelayedLints {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let DelayedLints { opt_hash, .. } = *self;
         opt_hash.unwrap().hash_stable(hcx, hasher);
     }
 }
 
-impl<'tcx, Hcx: HashStableContext> HashStable<Hcx> for AttributeMap<'tcx> {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl<'tcx> HashStable for AttributeMap<'tcx> {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // We ignore the `map` since it refers to information included in `opt_hash` which is
         // hashed in the collector and used for the crate hash.
         let AttributeMap { opt_hash, define_opaque: _, map: _ } = *self;
@@ -91,8 +94,8 @@ impl<'tcx, Hcx: HashStableContext> HashStable<Hcx> for AttributeMap<'tcx> {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for HashIgnoredAttrId {
-    fn hash_stable(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
+impl HashStable for HashIgnoredAttrId {
+    fn hash_stable<Hcx: HashStableContext>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
         /* we don't hash HashIgnoredAttrId, we ignore them */
     }
 }

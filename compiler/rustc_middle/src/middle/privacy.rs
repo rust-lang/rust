@@ -5,12 +5,11 @@
 use std::hash::Hash;
 
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_macros::HashStable;
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 
-use crate::ich::StableHashingContext;
 use crate::ty::{TyCtxt, Visibility};
 
 /// Represents the levels of effective visibility an item can have.
@@ -273,8 +272,8 @@ impl<Id> Default for EffectiveVisibilities<Id> {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for EffectiveVisibilities {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+impl HashStable for EffectiveVisibilities {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let EffectiveVisibilities { ref map } = *self;
         map.hash_stable(hcx, hasher);
     }
