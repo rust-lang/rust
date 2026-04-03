@@ -141,7 +141,8 @@ fn validate_lint_attr<T: Lint, S: Stage>(
     };
     let lint_store = lint_store.as_ref();
     let Some(list) = args.list() else {
-        cx.expected_list(cx.inner_span, args);
+        let span = cx.inner_span;
+        cx.adcx().expected_list(span, args);
         return None;
     };
     let mut list = list.mixed().peekable();
@@ -154,7 +155,7 @@ fn validate_lint_attr<T: Lint, S: Stage>(
     let targeting_crate = matches!(cx.target, Target::Crate);
     while let Some(item) = list.next() {
         let Some(meta_item) = item.meta_item() else {
-            cx.expected_identifier(item.span());
+            cx.adcx().expected_identifier(item.span());
             errored = true;
             continue;
         };
@@ -163,25 +164,25 @@ fn validate_lint_attr<T: Lint, S: Stage>(
             ArgParser::NameValue(nv_parser) if meta_item.path().word_is(sym::reason) => {
                 //FIXME replace this with duplicate check?
                 if list.peek().is_some() {
-                    cx.expected_nv_as_last_argument(meta_item.span(), sym::reason);
+                    cx.adcx().expected_nv_as_last_argument(meta_item.span(), sym::reason);
                     errored = true;
                     continue;
                 }
 
                 let val_lit = nv_parser.value_as_lit();
                 let LitKind::Str(reason_sym, _) = val_lit.kind else {
-                    cx.expected_string_literal(nv_parser.value_span, Some(val_lit));
+                    cx.adcx().expected_string_literal(nv_parser.value_span, Some(val_lit));
                     errored = true;
                     continue;
                 };
                 reason = Some(reason_sym);
             }
             ArgParser::NameValue(_) => {
-                cx.expected_specific_argument(meta_item.span(), &[sym::reason]);
+                cx.adcx().expected_specific_argument(meta_item.span(), &[sym::reason]);
                 errored = true;
             }
             ArgParser::List(list) => {
-                cx.expected_no_args(list.span);
+                cx.adcx().expected_no_args(list.span);
                 errored = true;
             }
             ArgParser::NoArgs => {
@@ -241,7 +242,8 @@ fn validate_lint_attr<T: Lint, S: Stage>(
         }
     }
     if !skip_unused_check && !errored && lint_instances.is_empty() {
-        cx.warn_empty_attribute(cx.attr_span);
+        let span = cx.attr_span;
+        cx.adcx().warn_empty_attribute(span);
     }
 
     (!errored).then_some(LintAttribute {

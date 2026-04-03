@@ -809,7 +809,7 @@ where
     }
 
     pub(crate) fn expected_nv_as_last_argument(
-        &self,
+        &mut self,
         span: Span,
         name_value_key: Symbol,
     ) -> ErrorGuaranteed {
