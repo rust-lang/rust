@@ -192,11 +192,8 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
                     }
                 };
             }
-            Change::Replace(SyntaxElement::Node(target), Some(SyntaxElement::Node(new_target))) => {
+            Change::Replace(SyntaxElement::Node(target), Some(SyntaxElement::Node(_))) => {
                 *target = tree_mutator.make_syntax_mut(target);
-                if new_target.ancestors().any(|node| node == tree_mutator.immutable) {
-                    *new_target = new_target.clone_for_update();
-                }
             }
             Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
                 *target = tree_mutator.make_element_mut(target);
@@ -207,6 +204,31 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
 
                 *range = start..=end;
             }
+        }
+
+        match &mut changes[index as usize] {
+            Change::Insert(_, SyntaxElement::Node(node))
+            | Change::Replace(_, Some(SyntaxElement::Node(node))) => {
+                if node.parent().is_some() {
+                    *node = node.clone_subtree().clone_for_update();
+                } else if !node.is_mutable() {
+                    *node = node.clone_for_update();
+                }
+            }
+            Change::InsertAll(_, elements)
+            | Change::ReplaceWithMany(_, elements)
+            | Change::ReplaceAll(_, elements) => {
+                for element in elements {
+                    if let SyntaxElement::Node(node) = element {
+                        if node.parent().is_some() {
+                            *node = node.clone_subtree().clone_for_update();
+                        } else if !node.is_mutable() {
+                            *node = node.clone_for_update();
+                        }
+                    }
+                }
+            }
+            _ => {}
         }
 
         match &mut changes[index as usize] {
