@@ -107,7 +107,10 @@ pub(super) fn check<'tcx>(
 fn ty_cannot_be_named(ty: Ty<'_>) -> bool {
     matches!(
         ty.kind(),
-        ty::Alias(ty::AliasTyKind::Opaque | ty::AliasTyKind::Inherent, _)
+        ty::Alias(ty::AliasTy {
+            kind: ty::Opaque { .. } | ty::Inherent { .. },
+            ..
+        })
     )
 }
 
