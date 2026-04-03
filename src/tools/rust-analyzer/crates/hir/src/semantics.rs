@@ -458,7 +458,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn parse(&self, file_id: EditionedFileId) -> ast::SourceFile {
         let hir_file_id = file_id.into();
-        let tree = self.db.parse(file_id).tree();
+        let tree = file_id.parse(self.db).tree();
         self.cache(tree.syntax().clone(), hir_file_id);
         tree
     }
@@ -484,7 +484,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn parse_guess_edition(&self, file_id: FileId) -> ast::SourceFile {
         let file_id = self.attach_first_edition(file_id);
 
-        let tree = self.db.parse(file_id).tree();
+        let tree = file_id.parse(self.db).tree();
         self.cache(tree.syntax().clone(), file_id.into());
         tree
     }
@@ -2461,7 +2461,7 @@ fn macro_call_to_macro_id(
         Either::Left(it) => {
             let node = match it.file_id {
                 HirFileId::FileId(file_id) => {
-                    it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
+                    it.to_ptr(db).to_node(&file_id.parse(db).syntax_node())
                 }
                 HirFileId::MacroFile(macro_file) => {
                     let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
@@ -2473,7 +2473,7 @@ fn macro_call_to_macro_id(
         Either::Right(it) => {
             let node = match it.file_id {
                 HirFileId::FileId(file_id) => {
-                    it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
+                    it.to_ptr(db).to_node(&file_id.parse(db).syntax_node())
                 }
                 HirFileId::MacroFile(macro_file) => {
                     let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);

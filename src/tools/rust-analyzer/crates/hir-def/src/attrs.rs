@@ -354,13 +354,13 @@ fn attrs_source(
             let krate = def_map.krate();
             let (definition, declaration, extra_crate_attrs) = match def_map[id].origin {
                 ModuleOrigin::CrateRoot { definition } => {
-                    let definition_source = db.parse(definition).tree();
+                    let definition_source = definition.parse(db).tree();
                     let definition = InFile::new(definition.into(), definition_source.into());
                     let extra_crate_attrs = parse_extra_crate_attrs(db, krate);
                     (definition, None, extra_crate_attrs)
                 }
                 ModuleOrigin::File { declaration, declaration_tree_id, definition, .. } => {
-                    let definition_source = db.parse(definition).tree();
+                    let definition_source = definition.parse(db).tree();
                     let definition = InFile::new(definition.into(), definition_source.into());
                     let declaration = InFile::new(declaration_tree_id.file_id(), declaration);
                     let declaration = declaration.with_value(declaration.to_node(db));
@@ -1069,7 +1069,7 @@ impl AttrFlags {
     #[salsa::tracked(returns(ref))]
     pub fn doc_html_root_url(db: &dyn DefDatabase, krate: Crate) -> Option<SmolStr> {
         let root_file_id = krate.root_file_id(db);
-        let syntax = db.parse(root_file_id).tree();
+        let syntax = root_file_id.parse(db).tree();
         let extra_crate_attrs =
             parse_extra_crate_attrs(db, krate).into_iter().flat_map(|src| src.attrs());
 

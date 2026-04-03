@@ -36,7 +36,6 @@ pub use query_group;
 use rustc_hash::{FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
-use syntax::{Parse, SyntaxError, ast};
 use triomphe::Arc;
 pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet};
 
@@ -239,16 +238,7 @@ pub struct SourceRootInput {
 /// Database which stores all significant input facts: source code and project
 /// model. Everything else in rust-analyzer is derived from these queries.
 #[query_group::query_group]
-pub trait RootQueryDb: SourceDatabase + salsa::Database {
-    /// Parses the file into the syntax tree.
-    #[salsa::invoke(parse)]
-    #[salsa::lru(128)]
-    fn parse(&self, file_id: EditionedFileId) -> Parse<ast::SourceFile>;
-
-    /// Returns the set of errors obtained from parsing the file including validation errors.
-    #[salsa::transparent]
-    fn parse_errors(&self, file_id: EditionedFileId) -> Option<&[SyntaxError]>;
-
+pub trait RootQueryDb: SourceDatabase {
     #[salsa::transparent]
     fn toolchain_channel(&self, krate: Crate) -> Option<ReleaseChannel>;
 
@@ -355,25 +345,6 @@ impl CrateWorkspaceData {
 
 fn toolchain_channel(db: &dyn RootQueryDb, krate: Crate) -> Option<ReleaseChannel> {
     krate.workspace_data(db).toolchain.as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
-}
-
-fn parse(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Parse<ast::SourceFile> {
-    let _p = tracing::info_span!("parse", ?file_id).entered();
-    let (file_id, edition) = file_id.unpack(db.as_dyn_database());
-    let text = db.file_text(file_id).text(db);
-    ast::SourceFile::parse(text, edition)
-}
-
-fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<&[SyntaxError]> {
-    #[salsa_macros::tracked(returns(ref))]
-    fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<Box<[SyntaxError]>> {
-        let errors = db.parse(file_id).errors();
-        match &*errors {
-            [] => None,
-            [..] => Some(errors.into()),
-        }
-    }
-    parse_errors(db, file_id).as_ref().map(|it| &**it)
 }
 
 fn source_root_crates(db: &dyn RootQueryDb, id: SourceRootId) -> Arc<[Crate]> {
