@@ -552,12 +552,10 @@ fn eh_personality() -> ! {
     loop {}
 }
 
-#[lang = "drop_in_place"]
-#[allow(unconditional_recursion)]
-pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+#[lang = "drop_glue"]
+pub unsafe fn drop_glue<T: ?Sized>(_to_drop: &mut T) {
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
-    drop_in_place(to_drop);
 }
 
 #[lang = "unpin"]
