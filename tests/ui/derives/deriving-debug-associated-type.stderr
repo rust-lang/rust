@@ -1,0 +1,24 @@
+error[E0277]: `B` doesn't implement `Debug`
+  --> $DIR/deriving-debug-associated-type.rs:17:22
+   |
+LL |     println!("{:?}", f);
+   |               ----   ^ `B` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
+   |
+note: required for `Foo<B>` to implement `Debug`
+  --> $DIR/deriving-debug-associated-type.rs:10:8
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+LL | struct Foo<B: Bar>(B::Item);
+   |        ^^^ - type parameter would need to implement `Debug`
+   = help: consider manually implementing `Debug` to avoid undesired bounds
+help: consider further restricting type parameter `B` with trait `Debug`
+   |
+LL | fn foo<B: Bar + std::fmt::Debug>(f: Foo<B>) {
+   |               +++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
