@@ -37,8 +37,9 @@ pub(super) fn hints(
     let hints = callable
         .params()
         .into_iter()
-        .zip(arg_list.args())
+        .zip(arg_list.args_maybe_empty())
         .filter_map(|(p, arg)| {
+            let arg = arg?;
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
             if range.file_id != file_id {
@@ -557,6 +558,19 @@ fn main() {
         0xa_b,
       //^^^^^ b
     );
+}"#,
+        )
+    }
+
+    #[test]
+    fn param_name_hints_show_after_empty_arg() {
+        check_params(
+            r#"pub fn test(a: i32, b: i32, c: i32) {}
+fn main() {
+    test(, 2,);
+         //^ b
+    test(, , 3);
+           //^ c
 }"#,
         )
     }

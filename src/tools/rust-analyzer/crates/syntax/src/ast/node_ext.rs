@@ -77,6 +77,15 @@ fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
     }
 }
 
+fn into_comma(it: NodeOrToken<SyntaxNode, SyntaxToken>) -> Option<SyntaxToken> {
+    let token = match it {
+        NodeOrToken::Token(it) => it,
+        NodeOrToken::Node(node) if node.kind() == SyntaxKind::ERROR => node.first_token()?,
+        NodeOrToken::Node(_) => return None,
+    };
+    (token.kind() == T![,]).then_some(token)
+}
+
 impl ast::Abi {
     pub fn abi_string(&self) -> Option<ast::String> {
         support::token(&self.syntax, SyntaxKind::STRING).and_then(ast::String::cast)
@@ -1033,6 +1042,21 @@ impl ast::GenericParamList {
             ast::GenericParam::TypeParam(it) => Some(ast::TypeOrConstParam::Type(it)),
             ast::GenericParam::LifetimeParam(_) => None,
             ast::GenericParam::ConstParam(it) => Some(ast::TypeOrConstParam::Const(it)),
+        })
+    }
+}
+
+impl ast::ArgList {
+    /// Comma separated args, argument may be empty
+    pub fn args_maybe_empty(&self) -> impl Iterator<Item = Option<ast::Expr>> {
+        // (Expr? ','?)*
+        let mut after_arg = false;
+        self.syntax().children_with_tokens().filter_map(move |it| {
+            if into_comma(it.clone()).is_some() {
+                if std::mem::take(&mut after_arg) { None } else { Some(None) }
+            } else {
+                Some(ast::Expr::cast(it.into_node()?).inspect(|_| after_arg = true))
+            }
         })
     }
 }
