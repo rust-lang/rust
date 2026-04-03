@@ -2438,17 +2438,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         self.ascribe_types(block, sub_branch.ascriptions);
 
-        // Lower an instance of the arm guard (if present) for this candidate,
-        // and then perform bindings for the arm body.
-        if let Some((arm, match_scope)) = arm_match_scope
-            && (arm.guard.is_some() || !sub_branch.guard_patterns.is_empty())
+        if !sub_branch.guard_patterns.is_empty()
+            || arm_match_scope.is_some_and(|(arm, _)| arm.guard.is_some())
         {
             let tcx = self.tcx;
 
             let mut guards = sub_branch.guard_patterns;
-            if let Some(guard) = arm.guard {
-                guards.push(guard);
-            };
+            let (arm_span, arm_scope, match_scope) =
+                if let Some((arm, match_scope)) = arm_match_scope {
+                    if let Some(arm_guard) = arm.guard {
+                        guards.push(arm_guard);
+                    };
+                    (arm.span, arm.scope, match_scope)
+                } else {
+                    let span = sub_branch.span;
+                    // There must be a scope if a guard pattern is present
+                    let scope = sub_branch.scope.unwrap();
+
+                    (span, scope, scope)
+                };
 
             // Bindings for guards require some extra handling to automatically
             // insert implicit references/dereferences.
@@ -2481,7 +2489,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block.0,
                             guard,
                             None, // Use `self.local_scope()` as the temp scope
-                            this.source_info(arm.span),
+                            this.source_info(arm_span),
                             DeclareLetBindings::No, // For guards, `let` bindings are declared separately
                         )
                     })
@@ -2491,7 +2499,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // bindings and temporaries created for and by the guard. As a result, the drop order
             // for the arm will correspond to the binding order of the final sub-branch lowered.
             if matches!(schedule_drops, ScheduleDrops::No) {
-                self.clear_match_arm_and_guard_scopes(arm.scope);
+                self.clear_match_arm_and_guard_scopes(arm_scope);
             }
 
             let source_info = self.source_info(guard_span);
