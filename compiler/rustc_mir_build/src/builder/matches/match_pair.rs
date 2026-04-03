@@ -4,7 +4,7 @@ use rustc_abi::FieldIdx;
 use rustc_middle::mir::{Pinnedness, Place, PlaceElem, ProjectionElem};
 use rustc_middle::span_bug;
 use rustc_middle::thir::{Ascription, DerefPatBorrowMode, FieldPat, Pat, PatKind};
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
 use crate::builder::Builder;
@@ -12,6 +12,33 @@ use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::builder::matches::{
     FlatPat, MatchPairTree, PatConstKind, PatternExtraData, SliceLenOp, TestableCase,
 };
+
+/// Checks whether every pattern in `elements` is a `PatKind::Constant` and,
+/// if so, reconstructs a single aggregate `ty::Value` that represents the whole
+/// array or slice. Returns `None` when any element is not a constant or the
+/// sequence is too short to benefit from an aggregate comparison.
+fn try_reconstruct_aggregate_constant<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    aggregate_ty: Ty<'tcx>,
+    elements: &[Pat<'tcx>],
+) -> Option<ty::Value<'tcx>> {
+    // A single element (or empty array) is not worth an aggregate comparison.
+    if elements.len() <= 1 {
+        return None;
+    }
+    let branches = elements
+        .iter()
+        .map(|pat| {
+            if let PatKind::Constant { value } = pat.kind {
+                Some(ty::Const::new_value(tcx, value.valtree, value.ty))
+            } else {
+                None
+            }
+        })
+        .collect::<Option<Vec<_>>>()?;
+    let valtree = ty::ValTree::from_branches(tcx, branches);
+    Some(ty::Value { ty: aggregate_ty, valtree })
+}
 
 /// For an array or slice pattern's subpatterns (prefix/slice/suffix), returns a list
 /// of those subpatterns, each paired with a suitably-projected [`PlaceBuilder`].
@@ -344,10 +371,29 @@ impl<'tcx> InterPat<'tcx> {
                     _ => None,
                 };
                 if let Some(array_len) = array_len {
-                    for (subplace, subpat) in
-                        prefix_slice_suffix(&place_builder, Some(array_len), prefix, slice, suffix)
+                    // When all elements are constants and there is no `..`
+                    // subpattern, compare the whole array at once via
+                    // `PartialEq::eq` rather than element by element.
+                    if slice.is_none()
+                        && suffix.is_empty()
+                        && let Some(aggregate_value) =
+                            try_reconstruct_aggregate_constant(cx.tcx, pattern.ty, prefix)
                     {
-                        subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
+                        Some(TestableCase::Constant {
+                            value: aggregate_value,
+                            kind: PatConstKind::Aggregate,
+                        })
+                    } else {
+                        for (subplace, subpat) in prefix_slice_suffix(
+                            &place_builder,
+                            Some(array_len),
+                            prefix,
+                            slice,
+                            suffix,
+                        ) {
+                            subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
+                        }
+                        None
                     }
                 } else {
                     // If the array length couldn't be determined, ignore the
@@ -359,33 +405,60 @@ impl<'tcx> InterPat<'tcx> {
                             pattern.ty
                         ),
                     );
+                    None
                 }
-
-                None
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                for (subplace, subpat) in
-                    prefix_slice_suffix(&place_builder, None, prefix, slice, suffix)
+                // When there is no `..`, all elements are constants, and
+                // there are at least two of them, collapse the individual
+                // element subpairs into a single aggregate comparison that
+                // is performed after the length check.
+                if slice.is_none()
+                    && suffix.is_empty()
+                    && let Some(aggregate_value) =
+                        try_reconstruct_aggregate_constant(cx.tcx, pattern.ty, prefix)
                 {
-                    subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
-                }
-
-                if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
-                    // A slice pattern shaped like `[..]` is irrefutable.
-                    // It can match a slice of any length, so no length test is needed.
-                    None
-                } else {
-                    // Any other shape of slice pattern requires a length test.
-                    // Slice patterns with a `..` subpattern require a minimum
-                    // length; those without `..` require an exact length.
+                    subpats.push(InterPat {
+                        place,
+                        testable_case: Some(TestableCase::Constant {
+                            value: aggregate_value,
+                            kind: PatConstKind::Aggregate,
+                        }),
+                        subpats: Vec::new(),
+                        or_subpats: None,
+                        ascriptions: Vec::new(),
+                        binding: None,
+                        pattern_span: pattern.span,
+                        is_never: false,
+                    });
                     Some(TestableCase::Slice {
-                        len: u64::try_from(prefix.len() + suffix.len()).unwrap(),
-                        op: if slice.is_some() {
-                            SliceLenOp::GreaterOrEqual
-                        } else {
-                            SliceLenOp::Equal
-                        },
+                        len: u64::try_from(prefix.len()).unwrap(),
+                        op: SliceLenOp::Equal,
                     })
+                } else {
+                    for (subplace, subpat) in
+                        prefix_slice_suffix(&place_builder, None, prefix, slice, suffix)
+                    {
+                        subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
+                    }
+
+                    if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
+                        // A slice pattern shaped like `[..]` is irrefutable.
+                        // It can match a slice of any length, so no length test is needed.
+                        None
+                    } else {
+                        // Any other shape of slice pattern requires a length test.
+                        // Slice patterns with a `..` subpattern require a minimum
+                        // length; those without `..` require an exact length.
+                        Some(TestableCase::Slice {
+                            len: u64::try_from(prefix.len() + suffix.len()).unwrap(),
+                            op: if slice.is_some() {
+                                SliceLenOp::GreaterOrEqual
+                            } else {
+                                SliceLenOp::Equal
+                            },
+                        })
+                    }
                 }
             }
 
