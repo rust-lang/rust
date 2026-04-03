@@ -184,6 +184,26 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
         return Ok(());
     }
 
+    if !tcx.features().adt_const_params() {
+        match *self_type.kind() {
+            ty::Adt(adt, _) if adt.is_struct() => {
+                let struct_vis = tcx.visibility(adt.did());
+                for variant in adt.variants() {
+                    for field in &variant.fields {
+                        if !field.vis.is_at_least(struct_vis, tcx) {
+                            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
+                            return Err(tcx
+                                .dcx()
+                                .emit_err(errors::ConstParamTyFieldVisMismatch { span }));
+                        }
+                    }
+                }
+            }
+
+            _ => {}
+        }
+    }
+
     let cause = traits::ObligationCause::misc(DUMMY_SP, impl_did);
     match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, cause) {
         Ok(()) => Ok(()),
