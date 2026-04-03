@@ -995,6 +995,7 @@ impl<'test> TestCx<'test> {
                     AllowUnused::No
                 }
             }
+            TestMode::Incremental => AllowUnused::Yes,
             _ => AllowUnused::No,
         };
 
