@@ -40,6 +40,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestableCase::Constant { value, kind: PatConstKind::String } => {
                 TestKind::StringEq { value }
             }
+            TestableCase::Constant { value, kind: PatConstKind::Aggregate } => {
+                TestKind::AggregateEq { value }
+            }
             TestableCase::Constant { value, kind: PatConstKind::Float | PatConstKind::Other } => {
                 TestKind::ScalarEq { value }
             }
@@ -168,13 +171,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Compare two strings using `<str as std::cmp::PartialEq>::eq`.
                 // (Interestingly this means that exhaustiveness analysis relies, for soundness,
                 // on the `PartialEq` impl for `str` to be correct!)
-                self.string_compare(
+                self.non_scalar_compare(
                     block,
                     success_block,
                     fail_block,
                     source_info,
+                    tcx.types.str_,
                     expected_value_operand,
                     Operand::Copy(actual_value_ref_place),
+                );
+            }
+
+            TestKind::AggregateEq { value } => {
+                let tcx = self.tcx;
+                let success_block = target_block(TestBranch::Success);
+                let fail_block = target_block(TestBranch::Failure);
+
+                let aggregate_ty = value.ty;
+                let ref_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, aggregate_ty);
+
+                // The constant has type `[T; N]` (or `[T]`), but calling
+                // `PartialEq::eq` requires `&[T; N]` (or `&[T]`) operands.
+                // Valtree representations are the same with or without the
+                // reference wrapper, so we can reinterpret by replacing the type.
+                let expected_value = ty::Value { ty: ref_ty, valtree: value.valtree };
+                let expected_operand =
+                    self.literal_operand(test.span, Const::from_ty_value(tcx, expected_value));
+
+                // Create a reference to the scrutinee place.
+                let actual_ref_place = self.temp(ref_ty, test.span);
+                self.cfg.push_assign(
+                    block,
+                    self.source_info(test.span),
+                    actual_ref_place,
+                    Rvalue::Ref(tcx.lifetimes.re_erased, BorrowKind::Shared, place),
+                );
+
+                // Compare using `<T as PartialEq>::eq` where `T` is the array or slice type.
+                self.non_scalar_compare(
+                    block,
+                    success_block,
+                    fail_block,
+                    source_info,
+                    aggregate_ty,
+                    expected_operand,
+                    Operand::Copy(actual_ref_place),
                 );
             }
 
@@ -404,19 +445,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
     }
 
-    /// Compare two values of type `&str` using `<str as std::cmp::PartialEq>::eq`.
-    fn string_compare(
+    /// Compare two reference values using `<T as PartialEq>::eq`.
+    ///
+    /// `compared_ty` is the *inner* type (e.g. `str`, `[u8; 64]`);
+    /// `expect` and `val` must already be references to that type.
+    fn non_scalar_compare(
         &mut self,
         block: BasicBlock,
         success_block: BasicBlock,
         fail_block: BasicBlock,
         source_info: SourceInfo,
+        compared_ty: Ty<'tcx>,
         expect: Operand<'tcx>,
         val: Operand<'tcx>,
     ) {
-        let str_ty = self.tcx.types.str_;
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, source_info.span);
-        let method = trait_method(self.tcx, eq_def_id, sym::eq, [str_ty, str_ty]);
+        let method = trait_method(self.tcx, eq_def_id, sym::eq, [compared_ty, compared_ty]);
 
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
