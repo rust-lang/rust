@@ -465,6 +465,15 @@ impl Item {
             .unwrap_or(false)
     }
 
+    /// Returns true if item is an associated function with a `self` parameter.
+    pub(crate) fn has_self_param(&self) -> bool {
+        if let ItemKind::MethodItem(box Function { decl, .. }, _) = &self.inner.kind {
+            decl.receiver_type().is_some()
+        } else {
+            false
+        }
+    }
+
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
         let kind = match &self.kind {
             ItemKind::StrippedItem(k) => k,

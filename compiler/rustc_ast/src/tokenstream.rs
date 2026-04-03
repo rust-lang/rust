@@ -14,7 +14,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 use rustc_serialize::{Decodable, Encodable};
-use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
+use rustc_span::{DUMMY_SP, HashStableContext, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::ast::AttrStyle;
@@ -826,7 +826,7 @@ impl FromIterator<TokenTree> for TokenStream {
 
 impl<Hcx> HashStable<Hcx> for TokenStream
 where
-    Hcx: crate::HashStableContext,
+    Hcx: HashStableContext,
 {
     fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         for sub_tt in self.iter() {

@@ -6,7 +6,7 @@ use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::{self as ty, Interner, Ty, TyVid};
+use crate::{self as ty, Interner, TyVid};
 
 /// The current typing mode of an inference context. We unfortunately have some
 /// slightly different typing rules depending on the current context. See the
@@ -161,9 +161,12 @@ pub trait InferCtxtLike: Sized {
     fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid;
 
-    fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<Self::Interner>;
-    fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> Ty<Self::Interner>;
-    fn opportunistic_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<Self::Interner>;
+    fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
+    fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> <Self::Interner as Interner>::Ty;
+    fn opportunistic_resolve_float_var(
+        &self,
+        vid: ty::FloatVid,
+    ) -> <Self::Interner as Interner>::Ty;
     fn opportunistic_resolve_ct_var(
         &self,
         vid: ty::ConstVid,
@@ -176,7 +179,7 @@ pub trait InferCtxtLike: Sized {
     fn is_changed_arg(&self, arg: <Self::Interner as Interner>::GenericArg) -> bool;
 
     fn next_region_infer(&self) -> <Self::Interner as Interner>::Region;
-    fn next_ty_infer(&self) -> Ty<Self::Interner>;
+    fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
     fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;
     fn fresh_args_for_item(
         &self,
@@ -206,7 +209,7 @@ pub trait InferCtxtLike: Sized {
         target_is_expected: bool,
         target_vid: ty::TyVid,
         instantiation_variance: ty::Variance,
-        source_ty: Ty<Self::Interner>,
+        source_ty: <Self::Interner as Interner>::Ty,
     ) -> RelateResult<Self::Interner, ()>;
     fn instantiate_int_var_raw(&self, vid: ty::IntVid, value: ty::IntVarValue);
     fn instantiate_float_var_raw(&self, vid: ty::FloatVid, value: ty::FloatVarValue);
@@ -220,7 +223,10 @@ pub trait InferCtxtLike: Sized {
 
     fn set_tainted_by_errors(&self, e: <Self::Interner as Interner>::ErrorGuaranteed);
 
-    fn shallow_resolve(&self, ty: Ty<Self::Interner>) -> Ty<Self::Interner>;
+    fn shallow_resolve(
+        &self,
+        ty: <Self::Interner as Interner>::Ty,
+    ) -> <Self::Interner as Interner>::Ty;
     fn shallow_resolve_const(
         &self,
         ty: <Self::Interner as Interner>::Const,
@@ -248,7 +254,7 @@ pub trait InferCtxtLike: Sized {
 
     fn register_ty_outlives(
         &self,
-        ty: Ty<Self::Interner>,
+        ty: <Self::Interner as Interner>::Ty,
         r: <Self::Interner as Interner>::Region,
         span: <Self::Interner as Interner>::Span,
     );
@@ -257,26 +263,26 @@ pub trait InferCtxtLike: Sized {
     fn opaque_types_storage_num_entries(&self) -> Self::OpaqueTypeStorageEntries;
     fn clone_opaque_types_lookup_table(
         &self,
-    ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, Ty<Self::Interner>)>;
+    ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
     fn clone_duplicate_opaque_types(
         &self,
-    ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, Ty<Self::Interner>)>;
+    ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
     fn clone_opaque_types_added_since(
         &self,
         prev_entries: Self::OpaqueTypeStorageEntries,
-    ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, Ty<Self::Interner>)>;
+    ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
     fn opaques_with_sub_unified_hidden_type(&self, ty: TyVid) -> Vec<ty::AliasTy<Self::Interner>>;
 
     fn register_hidden_type_in_storage(
         &self,
         opaque_type_key: ty::OpaqueTypeKey<Self::Interner>,
-        hidden_ty: Ty<Self::Interner>,
+        hidden_ty: <Self::Interner as Interner>::Ty,
         span: <Self::Interner as Interner>::Span,
-    ) -> Option<Ty<Self::Interner>>;
+    ) -> Option<<Self::Interner as Interner>::Ty>;
     fn add_duplicate_opaque_type(
         &self,
         opaque_type_key: ty::OpaqueTypeKey<Self::Interner>,
-        hidden_ty: Ty<Self::Interner>,
+        hidden_ty: <Self::Interner as Interner>::Ty,
         span: <Self::Interner as Interner>::Span,
     );
 

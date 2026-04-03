@@ -1,6 +1,6 @@
-// For historical reasons, auto traits don't have a proper pre-expansion feature gate.
-// We're now at least issuing a *warning* for those that only exist before macro expansion.
-// FIXME(#154045): Turn their post-expansion feature gate into a proper pre-expansion one.
+// For historical reasons, auto traits don't have an erroring pre-expansion feature gate.
+// We're now at least issuing a warning for those that only exist before macro expansion.
+// FIXME(#154045): Turn this pre-expansion warning into an error and remove the post-expansion gate.
 //                 As part of this, move these test cases into `feature-gate-auto-traits.rs`.
 //@ check-pass
 
