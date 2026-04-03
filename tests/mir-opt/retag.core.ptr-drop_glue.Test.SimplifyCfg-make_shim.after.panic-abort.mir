@@ -1,0 +1,21 @@
+// MIR for `std::ptr::drop_glue` after SimplifyCfg-make_shim
+
+fn std::ptr::drop_glue(_1: &mut Test) -> () {
+    let mut _0: ();
+    let mut _2: &mut Test;
+    let mut _3: ();
+
+    bb0: {
+        Retag([fn entry] _1);
+        _2 = &mut (*_1);
+        _3 = <Test as Drop>::drop(move _2) -> [return: bb2, unwind: bb1];
+    }
+
+    bb1 (cleanup): {
+        resume;
+    }
+
+    bb2: {
+        return;
+    }
+}
