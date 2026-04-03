@@ -898,9 +898,6 @@ mod tests {
                                     test_id: Path(
                                         "tests::my_cool_test",
                                     ),
-                                    attr: TestAttr {
-                                        ignore: false,
-                                    },
                                 },
                                 cfg: None,
                                 update_test: UpdateTest {

@@ -3,7 +3,7 @@ use std::{fmt, sync::OnceLock};
 use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
-use hir::{AsAssocItem, HasAttrs, HasCrate, HasSource, Semantics, Symbol, db::HirDatabase, sym};
+use hir::{AsAssocItem, HasAttrs, HasCrate, HasSource, Semantics, Symbol, sym};
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::impl_empty_upmap_from_ra_fixture;
 use ide_db::{
@@ -55,7 +55,7 @@ impl fmt::Display for TestId {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum RunnableKind {
     TestMod { path: String },
-    Test { test_id: TestId, attr: TestAttr },
+    Test { test_id: TestId },
     Bench { test_id: TestId },
     DocTest { test_id: TestId },
     Bin,
@@ -334,8 +334,7 @@ pub(crate) fn runnable_fn(
         };
 
         if def.is_test(sema.db) {
-            let attr = TestAttr::from_fn(sema.db, def);
-            RunnableKind::Test { test_id: test_id(), attr }
+            RunnableKind::Test { test_id: test_id() }
         } else if def.is_bench(sema.db) {
             RunnableKind::Bench { test_id: test_id() }
         } else {
@@ -556,17 +555,6 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
         update_test: UpdateTest::default(),
     };
     Some(res)
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct TestAttr {
-    pub ignore: bool,
-}
-
-impl TestAttr {
-    fn from_fn(db: &dyn HirDatabase, fn_def: hir::Function) -> TestAttr {
-        TestAttr { ignore: fn_def.is_ignore(db) }
-    }
 }
 
 fn has_runnable_doc_test(db: &RootDatabase, attrs: &hir::AttrsWithOwner) -> bool {
