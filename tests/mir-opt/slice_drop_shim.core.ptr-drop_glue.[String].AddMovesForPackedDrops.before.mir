@@ -1,6 +1,6 @@
-// MIR for `std::ptr::drop_in_place` before AddMovesForPackedDrops
+// MIR for `std::ptr::drop_glue` before AddMovesForPackedDrops
 
-fn drop_in_place(_1: *mut [String]) -> () {
+fn std::ptr::drop_glue(_1: &mut [String]) -> () {
     let mut _0: ();
     let mut _2: usize;
     let mut _3: usize;
