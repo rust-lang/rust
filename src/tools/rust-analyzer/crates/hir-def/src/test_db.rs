@@ -288,7 +288,7 @@ impl TestDB {
         let source_map = &Body::with_source_map(self, def_with_body).1;
         let scopes = ExprScopes::body_expr_scopes(self, def_with_body);
 
-        let root_syntax_node = self.parse(file_id).syntax_node();
+        let root_syntax_node = file_id.parse(self).syntax_node();
         let scope_iter =
             algo::ancestors_at_offset(&root_syntax_node, position.offset).filter_map(|node| {
                 let block = ast::BlockExpr::cast(node)?;

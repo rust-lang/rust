@@ -343,7 +343,7 @@ fn ast_id_map(db: &dyn ExpandDatabase, file_id: HirFileId) -> AstIdMap {
 /// file or a macro expansion.
 fn parse_or_expand(db: &dyn ExpandDatabase, file_id: HirFileId) -> SyntaxNode {
     match file_id {
-        HirFileId::FileId(file_id) => db.parse(file_id).syntax_node(),
+        HirFileId::FileId(file_id) => file_id.parse(db).syntax_node(),
         HirFileId::MacroFile(macro_file) => {
             db.parse_macro_expansion(macro_file).value.0.syntax_node()
         }
@@ -389,7 +389,7 @@ pub(crate) fn parse_with_map(
 ) -> (Parse<SyntaxNode>, SpanMap) {
     match file_id {
         HirFileId::FileId(file_id) => {
-            (db.parse(file_id).to_syntax(), SpanMap::RealSpanMap(db.real_span_map(file_id)))
+            (file_id.parse(db).to_syntax(), SpanMap::RealSpanMap(db.real_span_map(file_id)))
         }
         HirFileId::MacroFile(macro_file) => {
             let (parse, map) = db.parse_macro_expansion(macro_file).value;
