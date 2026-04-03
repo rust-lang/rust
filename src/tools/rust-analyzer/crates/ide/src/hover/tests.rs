@@ -11533,6 +11533,7 @@ struct Ba$0r;
 
 //- /docs.md
 Included docs from file.
+Multiple lines of docs.
 "#,
         expect![[r#"
             *Bar*
@@ -11552,6 +11553,7 @@ Included docs from file.
             ---
 
             Included docs from file.
+            Multiple lines of docs.
         "#]],
     );
 }
