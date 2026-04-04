@@ -6,17 +6,15 @@
 //! item.
 
 use std::cell::Cell;
-use std::collections::hash_map::Entry;
 use std::slice;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
 use rustc_attr_parsing::{AttributeParser, Late};
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
-use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
+use rustc_feature::{AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{
     AttributeKind, CrateType, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution,
@@ -137,7 +135,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
         item: Option<ItemLike<'_>>,
     ) {
-        let mut seen = FxHashMap::default();
         let attrs = self.tcx.hir_attrs(hir_id);
         for attr in attrs {
             match attr {
@@ -449,19 +446,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            if let Attribute::Unparsed(unparsed_attr) = attr
-                && let Some(BuiltinAttribute { duplicates, .. }) =
-                    attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name))
-            {
-                check_duplicates(
-                    self.tcx,
-                    unparsed_attr.span,
-                    attr,
-                    hir_id,
-                    *duplicates,
-                    &mut seen,
-                );
-            }
             self.check_unused_attribute(hir_id, attr)
         }
 
@@ -1992,67 +1976,6 @@ fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_attrs, ..*providers };
-}
-
-// FIXME(jdonszelmann): remove, check during parsing
-fn check_duplicates(
-    tcx: TyCtxt<'_>,
-    attr_span: Span,
-    attr: &Attribute,
-    hir_id: HirId,
-    duplicates: AttributeDuplicates,
-    seen: &mut FxHashMap<Symbol, Span>,
-) {
-    use AttributeDuplicates::*;
-    if matches!(duplicates, WarnFollowingWordOnly) && !attr.is_word() {
-        return;
-    }
-    let attr_name = attr.name().unwrap();
-    match duplicates {
-        DuplicatesOk => {}
-        WarnFollowing | FutureWarnFollowing | WarnFollowingWordOnly | FutureWarnPreceding => {
-            match seen.entry(attr_name) {
-                Entry::Occupied(mut entry) => {
-                    let (this, other) = if matches!(duplicates, FutureWarnPreceding) {
-                        let to_remove = entry.insert(attr_span);
-                        (to_remove, attr_span)
-                    } else {
-                        (attr_span, *entry.get())
-                    };
-                    tcx.emit_node_span_lint(
-                        UNUSED_ATTRIBUTES,
-                        hir_id,
-                        this,
-                        errors::UnusedDuplicate {
-                            this,
-                            other,
-                            warning: matches!(
-                                duplicates,
-                                FutureWarnFollowing | FutureWarnPreceding
-                            ),
-                        },
-                    );
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert(attr_span);
-                }
-            }
-        }
-        ErrorFollowing | ErrorPreceding => match seen.entry(attr_name) {
-            Entry::Occupied(mut entry) => {
-                let (this, other) = if matches!(duplicates, ErrorPreceding) {
-                    let to_remove = entry.insert(attr_span);
-                    (to_remove, attr_span)
-                } else {
-                    (attr_span, *entry.get())
-                };
-                tcx.dcx().emit_err(errors::UnusedMultiple { this, other, name: attr_name });
-            }
-            Entry::Vacant(entry) => {
-                entry.insert(attr_span);
-            }
-        },
-    }
 }
 
 fn doc_fake_variadic_is_allowed_self_ty(self_ty: &hir::Ty<'_>) -> bool {
