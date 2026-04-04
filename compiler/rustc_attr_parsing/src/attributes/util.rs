@@ -47,7 +47,7 @@ pub(crate) fn parse_single_integer<S: Stage>(
         return None;
     };
     let Some(single) = list.single() else {
-        cx.adcx().expected_single_argument(list.span);
+        cx.adcx().expected_single_argument(list.span, list.len());
         return None;
     };
     let Some(lit) = single.lit() else {
