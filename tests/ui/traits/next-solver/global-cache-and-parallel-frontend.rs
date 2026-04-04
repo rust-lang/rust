@@ -1,4 +1,5 @@
 //@ compile-flags: -Zthreads=16
+#![allow(todo_macro_calls)]
 
 // original issue: https://github.com/rust-lang/rust/issues/129112
 // Previously, the "next" solver asserted that each successful solution is only obtained once.

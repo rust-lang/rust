@@ -2,7 +2,7 @@
 //@ edition:2018
 //@ check-pass
 #![warn(rust_2021_prelude_collisions)]
-#![allow(unreachable_code)]
+#![allow(unreachable_code, todo_macro_calls)]
 
 macro_rules! foo {
     () => {{

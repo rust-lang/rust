@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![feature(type_alias_impl_trait)]
 
 //! This test used to ICE rust-lang/rust#124891

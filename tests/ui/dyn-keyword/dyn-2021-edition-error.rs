@@ -1,4 +1,5 @@
 //@ edition:2021
+#![allow(todo_macro_calls)]
 
 fn function(x: &SomeTrait, y: Box<SomeTrait>) {
     //~^ ERROR expected a type, found a trait

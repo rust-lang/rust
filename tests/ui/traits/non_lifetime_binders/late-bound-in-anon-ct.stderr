@@ -1,5 +1,5 @@
 error: cannot capture late-bound type parameter in constant
-  --> $DIR/late-bound-in-anon-ct.rs:5:27
+  --> $DIR/late-bound-in-anon-ct.rs:6:27
    |
 LL |     for<T> [i32; { let _: T = todo!(); 0 }]:,
    |         -                 ^

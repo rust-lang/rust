@@ -1933,6 +1933,7 @@ impl InvocationCollectorNode for ast::Pat {
             _ => unreachable!(),
         }
     }
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn as_target(&self) -> Target {
         todo!();
     }

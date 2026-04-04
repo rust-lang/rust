@@ -1,5 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
+#![allow(todo_macro_calls)]
 
 trait Test {
     type Assoc;

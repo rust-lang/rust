@@ -1,5 +1,6 @@
 //@ revisions: e2015 e2024
 //@[e2024] edition:2024
+#![allow(todo_macro_calls)]
 
 use std::{marker, mem, ptr};
 

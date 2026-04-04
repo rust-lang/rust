@@ -488,6 +488,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
         }
     }
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn fold_const(&mut self, c: I::Const) -> I::Const {
         if !c.flags().intersects(NEEDS_CANONICAL) {
             return c;

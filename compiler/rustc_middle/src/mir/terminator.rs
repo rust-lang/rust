@@ -335,6 +335,7 @@ impl<O> AssertKind<O> {
 /// Note that we deliberately show more details here than we do at runtime, such as the actual
 /// numbers that overflowed -- it is much easier to do so here than at runtime.
 impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         use AssertKind::*;
 

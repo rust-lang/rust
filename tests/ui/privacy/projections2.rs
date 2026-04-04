@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 mod m {
     use super::*;
     struct Priv;

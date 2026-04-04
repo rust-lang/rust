@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #[derive(Clone)]
 pub struct Struct<A>(A);
 

@@ -1,5 +1,5 @@
 error: late-bound type parameter not allowed on function pointer types
-  --> $DIR/on-ptr.rs:5:17
+  --> $DIR/on-ptr.rs:6:17
    |
 LL | fn foo() -> for<T> fn(T) {
    |                 ^
