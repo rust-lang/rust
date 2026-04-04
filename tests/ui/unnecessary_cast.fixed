@@ -285,3 +285,11 @@ mod fixable {
         //~^ unnecessary_cast
     }
 }
+
+fn issue16475() -> *const u8 {
+    static NONE: Option<((), &'static u8)> = None;
+    unsafe {
+        *(&NONE as *const _ as *const _ as *const *const u8)
+        //~^ unnecessary_cast
+    }
+}
