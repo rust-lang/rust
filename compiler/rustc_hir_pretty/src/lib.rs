@@ -2651,11 +2651,9 @@ impl<'a> State<'a> {
     fn print_impl_restriction(&mut self, r: &hir::ImplRestriction<'_>) {
         match r.kind {
             hir::RestrictionKind::Unrestricted => {}
-            hir::RestrictionKind::Restricted { path, shorthand } => {
+            hir::RestrictionKind::Restricted(path) => {
                 self.word("impl(");
-                if shorthand {
-                    self.word_nbsp("in");
-                }
+                self.word_nbsp("in");
                 self.print_path(path, false);
                 self.word(")");
             }

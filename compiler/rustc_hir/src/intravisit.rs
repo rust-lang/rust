@@ -628,7 +628,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             bounds,
             trait_item_refs,
         ) => {
-            if let RestrictionKind::Restricted { path, shorthand: _ } = &impl_restriction.kind {
+            if let RestrictionKind::Restricted(path) = &impl_restriction.kind {
                 walk_list!(visitor, visit_path_segment, path.segments);
             }
             try_visit!(visitor.visit_ident(ident));

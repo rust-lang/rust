@@ -899,7 +899,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
             false,
             is_auto == hir::IsAuto::Yes,
             safety,
-            if let hir::RestrictionKind::Restricted { path, shorthand: _ } = impl_restriction.kind {
+            if let hir::RestrictionKind::Restricted(path) = impl_restriction.kind {
                 ty::trait_def::ImplRestrictionKind::Restricted(path.res, impl_restriction.span)
             } else {
                 ty::trait_def::ImplRestrictionKind::Unrestricted

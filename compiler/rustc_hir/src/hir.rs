@@ -4416,7 +4416,7 @@ pub enum RestrictionKind<'hir> {
     /// The restriction does not affect the item.
     Unrestricted,
     /// The restriction only applies outside of this path.
-    Restricted { path: &'hir ModPath<'hir>, shorthand: bool },
+    Restricted(&'hir ModPath<'hir>),
 }
 
 /// The actual safety specified in syntax. We may treat

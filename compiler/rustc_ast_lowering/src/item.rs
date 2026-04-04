@@ -1842,13 +1842,10 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     ) -> &'hir hir::ImplRestriction<'hir> {
         let kind = match &r.kind {
             RestrictionKind::Unrestricted => hir::RestrictionKind::Unrestricted,
-            RestrictionKind::Restricted { path, id, shorthand } => {
+            RestrictionKind::Restricted { path, id, shorthand: _ } => {
                 let res = self.resolver.get_partial_res(*id);
                 if let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) {
-                    hir::RestrictionKind::Restricted {
-                        path: self.lower_mod_path(did, path),
-                        shorthand: *shorthand,
-                    }
+                    hir::RestrictionKind::Restricted(self.lower_mod_path(did, path))
                 } else {
                     self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
                     hir::RestrictionKind::Unrestricted
