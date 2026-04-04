@@ -250,23 +250,6 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         })
     }
 
-    pub(crate) fn lower_mod_path(&mut self, res: DefId, p: &Path) -> &'hir hir::ModPath<'hir> {
-        self.arena.alloc(hir::ModPath {
-            res,
-            segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
-                self.lower_path_segment(
-                    p.span,
-                    segment,
-                    ParamMode::Explicit,
-                    GenericArgsMode::Err,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                    None,
-                )
-            })),
-            span: self.lower_span(p.span),
-        })
-    }
-
     pub(crate) fn lower_path_segment(
         &mut self,
         path_span: Span,

@@ -24,8 +24,8 @@ use tracing::instrument;
 use super::errors::{InvalidAbi, InvalidAbiSuggestion, TupleStructWithDefault, UnionWithDefault};
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
-    AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
-    RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
+    AstOwner, FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
+    ParamMode, RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
 };
 
 /// Wraps either IndexVec (during `hir_crate`), which acts like a primary
@@ -1845,7 +1845,20 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             RestrictionKind::Restricted { path, id, shorthand: _ } => {
                 let res = self.resolver.get_partial_res(*id);
                 if let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) {
-                    hir::RestrictionKind::Restricted(self.lower_mod_path(did, path))
+                    hir::RestrictionKind::Restricted(self.arena.alloc(hir::Path {
+                        res: did,
+                        segments: self.arena.alloc_from_iter(path.segments.iter().map(|segment| {
+                            self.lower_path_segment(
+                                path.span,
+                                segment,
+                                ParamMode::Explicit,
+                                GenericArgsMode::Err,
+                                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                                None,
+                            )
+                        })),
+                        span: self.lower_span(path.span),
+                    }))
                 } else {
                     self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
                     hir::RestrictionKind::Unrestricted

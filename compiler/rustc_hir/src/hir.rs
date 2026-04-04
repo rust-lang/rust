@@ -356,9 +356,6 @@ pub struct Path<'hir, R = Res> {
 /// Up to three resolutions for type, value and macro namespaces.
 pub type UsePath<'hir> = Path<'hir, PerNS<Option<Res>>>;
 
-/// Module paths. Used for restrictions.
-pub type ModPath<'hir> = Path<'hir, DefId>;
-
 impl Path<'_> {
     pub fn is_global(&self) -> bool {
         self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
@@ -4416,7 +4413,7 @@ pub enum RestrictionKind<'hir> {
     /// The restriction does not affect the item.
     Unrestricted,
     /// The restriction only applies outside of this path.
-    Restricted(&'hir ModPath<'hir>),
+    Restricted(&'hir Path<'hir, DefId>),
 }
 
 /// The actual safety specified in syntax. We may treat
