@@ -4094,6 +4094,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         };
 
         let mut spans_suggs: Vec<_> = Vec::new();
+        let source_map = self.r.tcx.sess.source_map();
         let build_sugg = |lt: MissingLifetime| match lt.kind {
             MissingLifetimeKind::Underscore => {
                 debug_assert_eq!(lt.count, 1);
@@ -4104,9 +4105,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 (lt.span.shrink_to_hi(), format!("{existing_name} "))
             }
             MissingLifetimeKind::Comma => {
-                let sugg: String = std::iter::repeat_n([existing_name.as_str(), ", "], lt.count)
-                    .flatten()
+                let sugg: String = std::iter::repeat_n(existing_name.as_str(), lt.count)
+                    .intersperse(", ")
                     .collect();
+                let is_empty_brackets =
+                    source_map.span_look_ahead(lt.span, ">", Some(50)).is_some();
+                let sugg = if is_empty_brackets { sugg } else { format!("{sugg}, ") };
                 (lt.span.shrink_to_hi(), sugg)
             }
             MissingLifetimeKind::Brackets => {
