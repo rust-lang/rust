@@ -737,7 +737,7 @@ impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
         let mut entry = None;
 
         if meta_item_list.len() == 0 {
-            cx.adcx().expected_list(meta_item_list.span, args);
+            cx.adcx().expected_at_least_one_argument(meta_item_list.span);
             return None;
         }
 
