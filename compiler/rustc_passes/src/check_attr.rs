@@ -14,7 +14,7 @@ use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
-use rustc_feature::{AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
+use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{
     AttributeKind, CrateType, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution,
@@ -397,51 +397,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             }
                         }
                         [] => unreachable!(),
-                    }
-                }
-            }
-
-            if hir_id != CRATE_HIR_ID {
-                match attr {
-                    Attribute::Parsed(_) => { /* Already validated. */ }
-                    Attribute::Unparsed(attr) => {
-                        // FIXME(jdonszelmann): remove once all crate-level attrs are parsed and caught by
-                        // the above
-                        if let Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) =
-                            attr.path
-                                .segments
-                                .first()
-                                .and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name))
-                        {
-                            match attr.style {
-                                ast::AttrStyle::Outer => {
-                                    let attr_span = attr.span;
-                                    let bang_position = self
-                                        .tcx
-                                        .sess
-                                        .source_map()
-                                        .span_until_char(attr_span, '[')
-                                        .shrink_to_hi();
-
-                                    self.tcx.emit_node_span_lint(
-                                        UNUSED_ATTRIBUTES,
-                                        hir_id,
-                                        attr.span,
-                                        errors::OuterCrateLevelAttr {
-                                            suggestion: errors::OuterCrateLevelAttrSuggestion {
-                                                bang_position,
-                                            },
-                                        },
-                                    )
-                                }
-                                ast::AttrStyle::Inner => self.tcx.emit_node_span_lint(
-                                    UNUSED_ATTRIBUTES,
-                                    hir_id,
-                                    attr.span,
-                                    errors::InnerCrateLevelAttr,
-                                ),
-                            }
-                        }
                     }
                 }
             }
