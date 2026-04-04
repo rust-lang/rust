@@ -7,7 +7,7 @@ use std::debug_assert_matches;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
-use rustc_abi::{FIRST_VARIANT, FieldIdx, ScalableElt, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, NumScalableVectors, ScalableElt, VariantIdx};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
@@ -1261,17 +1261,27 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    pub fn scalable_vector_element_count_and_type(self, tcx: TyCtxt<'tcx>) -> (u16, Ty<'tcx>) {
+    pub fn scalable_vector_parts(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<(u16, Ty<'tcx>, NumScalableVectors)> {
         let Adt(def, args) = self.kind() else {
-            bug!("`scalable_vector_size_and_type` called on invalid type")
+            return None;
         };
-        let Some(ScalableElt::ElementCount(element_count)) = def.repr().scalable else {
-            bug!("`scalable_vector_size_and_type` called on non-scalable vector type");
+        let (num_vectors, vec_def) = match def.repr().scalable? {
+            ScalableElt::ElementCount(_) => (NumScalableVectors::for_non_tuple(), *def),
+            ScalableElt::Container => (
+                NumScalableVectors::from_field_count(def.non_enum_variant().fields.len())?,
+                def.non_enum_variant().fields[FieldIdx::ZERO].ty(tcx, args).ty_adt_def()?,
+            ),
         };
-        let variant = def.non_enum_variant();
+        let Some(ScalableElt::ElementCount(element_count)) = vec_def.repr().scalable else {
+            return None;
+        };
+        let variant = vec_def.non_enum_variant();
         assert_eq!(variant.fields.len(), 1);
         let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
-        (element_count, field_ty)
+        Some((element_count, field_ty, num_vectors))
     }
 
     pub fn simd_size_and_type(self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
