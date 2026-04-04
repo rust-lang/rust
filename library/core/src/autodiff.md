@@ -150,4 +150,8 @@ fn main() {
 }
 ```
 
+## Current limitations:
 
+- Differentiating a function which accepts a `dyn Trait` is currently not supported.
+- Builds without `lto="fat"` are not yet supported.
+- Builds in debug mode are currently more likely to fail compilation.
