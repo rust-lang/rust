@@ -50,6 +50,9 @@ pub struct Flags {
     /// use verbose output (-vv for very verbose)
     pub verbose: u8, // each extra -v after the first is passed to Cargo
     #[arg(global = true, short, long)]
+    /// use quiet output
+    pub quiet: bool,
+    #[arg(global = true, short, long)]
     /// use incremental compilation
     pub incremental: bool,
     #[arg(global = true, long, value_hint = clap::ValueHint::FilePath, value_name = "FILE")]
