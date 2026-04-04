@@ -26,7 +26,7 @@ impl<S: Stage> CombineAttributeParser<S> for DebuggerViualizerParser {
             return None;
         };
         let Some(single) = l.single() else {
-            cx.adcx().expected_single_argument(l.span);
+            cx.adcx().expected_single_argument(l.span, l.len());
             return None;
         };
         let Some(mi) = single.meta_item() else {

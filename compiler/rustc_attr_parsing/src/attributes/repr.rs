@@ -297,7 +297,7 @@ impl RustcAlignParser {
             }
             ArgParser::List(list) => {
                 let Some(align) = list.single() else {
-                    cx.adcx().expected_single_argument(list.span);
+                    cx.adcx().expected_single_argument(list.span, list.len());
                     return;
                 };
 

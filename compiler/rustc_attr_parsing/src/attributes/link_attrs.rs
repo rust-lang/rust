@@ -393,7 +393,7 @@ impl LinkParser {
             return true;
         };
         let Some(link_cfg) = link_cfg.single() else {
-            cx.adcx().expected_single_argument(item.span());
+            cx.adcx().expected_single_argument(item.span(), link_cfg.len());
             return true;
         };
         if !features.link_cfg() {

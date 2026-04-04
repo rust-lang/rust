@@ -30,7 +30,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
         };
 
         let Some(single) = list.single() else {
-            cx.adcx().expected_single_argument(list.span);
+            cx.adcx().expected_single_argument(list.span, list.len());
             return None;
         };
 
@@ -91,7 +91,7 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
         };
 
         let Some(arg) = args.single() else {
-            cx.adcx().expected_single_argument(args.span);
+            cx.adcx().expected_single_argument(args.span, args.len());
             return None;
         };
 
@@ -394,7 +394,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
                 ArgParser::NoArgs => UsedBy::Default,
                 ArgParser::List(list) => {
                     let Some(l) = list.single() else {
-                        cx.adcx().expected_single_argument(list.span);
+                        cx.adcx().expected_single_argument(list.span, list.len());
                         return;
                     };
 

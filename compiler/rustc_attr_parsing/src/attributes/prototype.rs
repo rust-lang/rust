@@ -82,7 +82,7 @@ fn extract_value<S: Stage>(
     }
 
     let Some(val) = arg.name_value() else {
-        cx.adcx().expected_single_argument(arg.span().unwrap_or(span));
+        cx.adcx().expected_single_argument(arg.span().unwrap_or(span), 2);
         *failed = true;
         return;
     };
