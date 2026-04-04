@@ -28,6 +28,7 @@ fn main() {
         "static/fonts/FiraMono-Regular.woff2",
         "static/fonts/FiraMono-Medium.woff2",
         "static/fonts/FiraSans-LICENSE.txt",
+        "static/fonts/FiraMono-LICENSE.txt",
         "static/fonts/SourceSerif4-Regular.ttf.woff2",
         "static/fonts/SourceSerif4-Semibold.ttf.woff2",
         "static/fonts/SourceSerif4-Bold.ttf.woff2",

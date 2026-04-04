@@ -14,6 +14,16 @@ included, and carry their own copyright notices and license terms:
     Licensed under the SIL Open Font License, Version 1.1.
     See FiraSans-LICENSE.txt.
 
+* Fira Mono (FiraMono-Regular.woff2, FiraMono-Medium.woff2):
+
+    Copyright (c) 2014, Mozilla Foundation https://mozilla.org/
+    with Reserved Font Name Fira Mono.
+
+    Copyright (c) 2014, Telefonica S.A.
+
+    Licensed under the SIL Open Font License, Version 1.1.
+    See FiraMono-LICENSE.txt.
+
 * rustdoc.css, main.js, and playpen.js:
 
     Copyright 2015 The Rust Developers.
