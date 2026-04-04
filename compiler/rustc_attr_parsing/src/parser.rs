@@ -22,6 +22,7 @@ use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::ShouldEmit;
+use crate::context::{AcceptContext, Stage};
 use crate::session_diagnostics::{
     InvalidMetaItem, InvalidMetaItemQuoteIdentSugg, InvalidMetaItemRemoveNegSugg, MetaBadDelim,
     MetaBadDelimSugg, SuffixedLiteralInAttribute,
@@ -181,6 +182,36 @@ impl ArgParser {
             Self::List(l) => Some(l),
             Self::NameValue(_) | Self::NoArgs => None,
         }
+    }
+
+    /// Asserts that this MetaItem is a list that contains a single element. Emits an error and
+    /// returns `None` if it is not the case.
+    ///
+    /// Some examples:
+    ///
+    /// - In `#[allow(warnings)]`, `warnings` is returned
+    /// - In `#[cfg_attr(docsrs, doc = "foo")]`, `None` is returned, "expected a single argument
+    ///   here" is emitted.
+    /// - In `#[cfg()]`, `None` is returned, "expected an argument here" is emitted.
+    pub fn single_element_list<'f, 'sess, S>(
+        &self,
+        span: Span,
+        cx: &mut AcceptContext<'f, 'sess, S>,
+    ) -> Option<&MetaItemOrLitParser>
+    where
+        S: Stage,
+    {
+        let Self::List(l) = self else {
+            cx.adcx().expected_list(span, self);
+            return None;
+        };
+
+        let Some(single) = l.single() else {
+            cx.adcx().expected_single_argument(l.span, l.len());
+            return None;
+        };
+
+        Some(single)
     }
 
     /// Asserts that this MetaItem is a name-value pair.

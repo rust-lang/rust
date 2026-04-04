@@ -388,12 +388,7 @@ impl LinkParser {
             cx.adcx().duplicate_key(item.span(), sym::cfg);
             return true;
         }
-        let Some(link_cfg) = item.args().list() else {
-            cx.adcx().expected_list(item.span(), item.args());
-            return true;
-        };
-        let Some(link_cfg) = link_cfg.single() else {
-            cx.adcx().expected_single_argument(item.span(), link_cfg.len());
+        let Some(link_cfg) = item.args().single_element_list(item.span(), cx) else {
             return true;
         };
         if !features.link_cfg() {

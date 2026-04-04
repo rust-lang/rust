@@ -201,16 +201,7 @@ impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
     const TEMPLATE: AttributeTemplate = template!(List: &["path"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(list) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
-
-        let Some(single) = list.single() else {
-            cx.adcx().expected_single_argument(list.span, list.len());
-            return None;
-        };
+        let single = args.single_element_list(cx.inner_span, cx)?;
 
         let Some(meta) = single.meta_item() else {
             cx.adcx().unexpected_literal(single.span());

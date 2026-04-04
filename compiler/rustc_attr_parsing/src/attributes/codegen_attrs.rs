@@ -23,16 +23,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     const TEMPLATE: AttributeTemplate = template!(List: &["size", "speed", "none"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(list) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
-
-        let Some(single) = list.single() else {
-            cx.adcx().expected_single_argument(list.span, list.len());
-            return None;
-        };
+        let single = args.single_element_list(cx.inner_span, cx)?;
 
         let res = match single.meta_item().and_then(|i| i.path().word().map(|i| i.name)) {
             Some(sym::size) => OptimizeAttr::Size,
@@ -84,22 +75,13 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::off, sym::on]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(args) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_specific_argument_and_list(attr_span, &[sym::on, sym::off]);
-            return None;
-        };
-
-        let Some(arg) = args.single() else {
-            cx.adcx().expected_single_argument(args.span, args.len());
-            return None;
-        };
+        let arg = args.single_element_list(cx.inner_span, cx)?;
 
         let mut fail_incorrect_argument =
             |span| cx.adcx().expected_specific_argument(span, &[sym::on, sym::off]);
 
         let Some(arg) = arg.meta_item() else {
-            fail_incorrect_argument(args.span);
+            fail_incorrect_argument(arg.span());
             return None;
         };
 

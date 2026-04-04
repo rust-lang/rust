@@ -769,7 +769,6 @@ where
         self.emit_parse_error(span, reason)
     }
 
-    /// Signals that there is no argument and that we expected one or more.
     pub(crate) fn expected_at_least_one_argument(&mut self, span: Span) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedAtLeastOneArgument)
     }
