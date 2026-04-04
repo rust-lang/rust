@@ -138,7 +138,7 @@
 //@ lldb-command:continue
 
 //@ lldb-command:v simple_tuple_ident
-//@ lldb-check:[...] { 0 = 34903493 1 = 232323 }
+//@ lldb-check:[...] (34903493, 232323)
 //@ lldb-command:continue
 
 #![allow(unused_variables)]
