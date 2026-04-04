@@ -186,6 +186,7 @@ pub(crate) fn mod_file_path_from_attr(
     attrs: &[Attribute],
     dir_path: &Path,
 ) -> Option<PathBuf> {
+    // FIXME(154781) use a parsed attribute here
     // Extract path string from first `#[path = "path_string"]` attribute.
     let first_path = attrs.iter().find(|at| at.has_name(sym::path))?;
     let Some(path_sym) = first_path.value_str() else {
