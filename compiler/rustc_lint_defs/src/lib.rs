@@ -656,7 +656,6 @@ pub enum DeprecatedSinceKind {
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
 pub enum BuiltinLintDiag {
-    AbsPathWithModule(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span),
     UnusedImports {
         remove_whole_use: bool,
@@ -664,18 +663,6 @@ pub enum BuiltinLintDiag {
         remove_spans: Vec<Span>,
         test_module_span: Option<Span>,
         span_snippets: Vec<String>,
-    },
-    SingleUseLifetime {
-        /// Span of the parameter which declares this lifetime.
-        param_span: Span,
-        /// Span of the code that should be removed when eliding this lifetime.
-        /// This span should include leading or trailing comma.
-        deletion_span: Option<Span>,
-        /// Span of the single use, or None if the lifetime is never used.
-        /// If true, the lifetime will be fully elided.
-        use_span: Span,
-        elidable: bool,
-        ident: Ident,
     },
     NamedArgumentUsedPositionally {
         /// Span where the named argument is used by position and will be replaced with the named
