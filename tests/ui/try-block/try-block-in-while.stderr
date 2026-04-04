@@ -1,11 +1,8 @@
-error[E0277]: `?` couldn't convert the error: `bool: FromOutput<_>` is not satisfied
+error[E0277]: a `try` block must return `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/try-block-in-while.rs:6:17
    |
 LL |     while try { false } {}
    |                 ^^^^^ could not wrap the final value of the block as `bool` doesn't implement `Try`
-   |
-   = help: the nightly-only, unstable trait `FromOutput<_>` is not implemented for `bool`
-   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
 
 error: aborting due to 1 previous error
 

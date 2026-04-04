@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use crate::marker::{Destruct, PhantomData};
 use crate::ops::ControlFlow;
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
@@ -7,14 +8,84 @@ use crate::ops::ControlFlow;
     on(
         all(from_desugaring = "TryBlock"),
         message = "a `try` block must return `Result` or `Option` \
-                    (or another type that implements `{This}`)",
+                    (or another type that implements `Try`)",
         label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
+    ),
+    on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::result::Result<T, E>",
+            R = "core::option::Option<core::convert::Infallible>",
+        ),
+        message = "the `?` operator can only be used on `Result`s, not `Option`s, \
+            in {ItemContext} that returns `Result`",
+        label = "use `.ok_or(...)?` to provide an error compatible with `{Self}`",
+        parent_label = "this function returns a `Result`"
+    ),
+    on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::result::Result<T, E>",
+        ),
+        // There's a special error message in the trait selection code for
+        // `From` in `?`, so this is not shown for result-in-result errors,
+        // and thus it can be phrased more strongly than `ControlFlow`'s.
+        message = "the `?` operator can only be used on `Result`s \
+            in {ItemContext} that returns `Result`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        parent_label = "this function returns a `Result`"
+    ),
+    on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::option::Option<T>",
+            R = "core::result::Result<T, E>",
+        ),
+        message = "the `?` operator can only be used on `Option`s, not `Result`s, \
+            in {ItemContext} that returns `Option`",
+        label = "use `.ok()?` if you want to discard the `{R}` error information",
+        parent_label = "this function returns an `Option`"
+    ),
+    on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::option::Option<T>",
+        ),
+        // `Option`-in-`Option` always works, as there's only one possible
+        // residual, so this can also be phrased strongly.
+        message = "the `?` operator can only be used on `Option`s \
+            in {ItemContext} that returns `Option`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        parent_label = "this function returns an `Option`"
+    ),
+    on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::ops::control_flow::ControlFlow<B, C>",
+            R = "core::ops::control_flow::ControlFlow<B, C>",
+        ),
+        message = "the `?` operator in {ItemContext} that returns `ControlFlow<B, _>` \
+            can only be used on other `ControlFlow<B, _>`s (with the same Break type)",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        parent_label = "this function returns a `ControlFlow`",
+        note = "unlike `Result`, there's no `From`-conversion performed for `ControlFlow`"
+    ),
+    on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::ops::control_flow::ControlFlow<B, C>",
+            // `R` is not a `ControlFlow`, as that case was matched previously
+        ),
+        message = "the `?` operator can only be used on `ControlFlow`s \
+            in {ItemContext} that returns `ControlFlow`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        parent_label = "this function returns a `ControlFlow`",
     ),
     on(
         all(from_desugaring = "QuestionMark"),
         message = "the `?` operator can only be applied to values that implement `Try`",
         label = "the `?` operator cannot be applied to type `{Self}`"
-    )
+    ),
 )]
 /// The core part of a `Try`.
 /// Exists because there are some `Branch` that cannot be [`Try`], for lack of [`FromOutput`] or lack of [`FromResidual`], consider `impl Try for &R`.
@@ -316,9 +387,82 @@ pub const trait FromResidual<R = <Self as Branch>::Residual> {
         label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
     ),
     on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::result::Result<T, E>",
+            R = "core::option::Option<core::convert::Infallible>",
+        ),
+        message = "the `?` operator can only be used on `Result`s, not `Option`s, \
+            in {ItemContext} that returns `Result`",
+        label = "use `.ok_or(...)?` to provide an error compatible with `{Self}`",
+        parent_label = "this function returns a `Result`"
+    ),
+    on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::result::Result<T, E>",
+        ),
+        // There's a special error message in the trait selection code for
+        // `From` in `?`, so this is not shown for result-in-result errors,
+        // and thus it can be phrased more strongly than `ControlFlow`'s.
+        message = "the `?` operator can only be used on `Result`s \
+            in {ItemContext} that returns `Result`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        parent_label = "this function returns a `Result`"
+    ),
+    on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::option::Option<T>",
+            R = "core::result::Result<T, E>",
+        ),
+        message = "the `?` operator can only be used on `Option`s, not `Result`s, \
+            in {ItemContext} that returns `Option`",
+        label = "use `.ok()?` if you want to discard the `{R}` error information",
+        parent_label = "this function returns an `Option`"
+    ),
+    on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::option::Option<T>",
+        ),
+        // `Option`-in-`Option` always works, as there's only one possible
+        // residual, so this can also be phrased strongly.
+        message = "the `?` operator can only be used on `Option`s \
+            in {ItemContext} that returns `Option`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        parent_label = "this function returns an `Option`"
+    ),
+    on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::ops::control_flow::ControlFlow<B, C>",
+            R = "core::ops::control_flow::ControlFlow<B, C>",
+        ),
+        message = "the `?` operator in {ItemContext} that returns `ControlFlow<B, _>` \
+            can only be used on other `ControlFlow<B, _>`s (with the same Break type)",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        parent_label = "this function returns a `ControlFlow`",
+        note = "unlike `Result`, there's no `From`-conversion performed for `ControlFlow`"
+    ),
+    on(
+        all(
+            from_desugaring = "QuestionMark",
+            Self = "core::ops::control_flow::ControlFlow<B, C>",
+            // `R` is not a `ControlFlow`, as that case was matched previously
+        ),
+        message = "the `?` operator can only be used on `ControlFlow`s \
+            in {ItemContext} that returns `ControlFlow`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        parent_label = "this function returns a `ControlFlow`",
+    ),
+    on(
         all(from_desugaring = "QuestionMark"),
-        message = "the `?` operator can only be applied to values that implement `Try`",
-        label = "the `?` operator cannot be applied to type `{Self}`"
+        message = "the `?` operator can only be used in {ItemContext} \
+                    that returns `Result` or `Option` \
+                    (or another type that implements `{This}`)",
+        label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
+        parent_label = "this function should return `Result` or `Option` to accept `?`"
     ),
 )]
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]

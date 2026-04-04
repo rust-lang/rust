@@ -1,9 +1,3 @@
-error[E0404]: expected trait, found trait alias `Try`
-  --> $DIR/ice-126148-failed-to-normalize.rs:11:12
-   |
-LL | impl const Try for TryMe {
-   |            ^^^ not a trait
-
 error[E0046]: not all trait items implemented, missing: `from_residual`
   --> $DIR/ice-126148-failed-to-normalize.rs:8:1
    |
@@ -12,7 +6,14 @@ LL | impl const FromResidual<Error> for TryMe {}
    |
    = help: implement the missing item: `fn from_residual(_: Error) -> Self { todo!() }`
 
+error[E0046]: not all trait items implemented, missing: `branch`
+  --> $DIR/ice-126148-failed-to-normalize.rs:11:1
+   |
+LL | impl const Branch for TryMe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `branch` in implementation
+   |
+   = help: implement the missing item: `fn branch(self) -> ControlFlow<<Self as Branch>::Residual, <Self as Branch>::Output> { todo!() }`
+
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0046, E0404.
-For more information about an error, try `rustc --explain E0046`.
+For more information about this error, try `rustc --explain E0046`.

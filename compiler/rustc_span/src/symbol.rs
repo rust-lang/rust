@@ -224,6 +224,7 @@ symbols! {
         Forward,
         From,
         FromIterator,
+        FromOutput,
         FromResidual,
         GlobalAlloc,
         Hash,

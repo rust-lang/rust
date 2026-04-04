@@ -9,23 +9,27 @@
 
 #![stable(feature = "foo", since = "1.0")]
 
-use std::ops::{ControlFlow, FromResidual, Try};
+use std::ops::{ControlFlow, FromResidual, Branch, FromOutput};
 
 #[stable(feature = "foo", since = "1.0")]
 pub struct T;
 
 #[stable(feature = "foo", since = "1.0")]
 #[rustc_const_unstable(feature = "const_t_try", issue = "none")]
-impl const Try for T {
+impl const Branch for T {
     type Output = T;
     type Residual = T;
 
-    fn from_output(t: T) -> T {
-        t
-    }
-
     fn branch(self) -> ControlFlow<T, T> {
         ControlFlow::Continue(self)
+    }
+}
+
+#[stable(feature = "foo", since = "1.0")]
+#[rustc_const_unstable(feature = "const_t_try", issue = "none")]
+impl const FromOutput for T {
+    fn from_output(t: T) -> T {
+        t
     }
 }
 
