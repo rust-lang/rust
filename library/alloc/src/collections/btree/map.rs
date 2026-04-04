@@ -684,13 +684,11 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     /// # #![feature(allocator_api)]
     /// # #![feature(btreemap_alloc)]
+    ///
     /// use std::collections::BTreeMap;
     /// use std::alloc::Global;
     ///
-    /// let mut map = BTreeMap::new_in(Global);
-    ///
-    /// // entries can now be inserted into the empty map
-    /// map.insert(1, "a");
+    /// let map: BTreeMap<i32, i32> = BTreeMap::new_in(Global);
     /// ```
     #[unstable(feature = "btreemap_alloc", issue = "32838")]
     #[must_use]
