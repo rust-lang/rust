@@ -666,11 +666,13 @@ impl<T> Trait<T> for X {
             )
         );
         let impl_comparison = matches!(cause_code, ObligationCauseCode::CompareImplItem { .. });
+        let is_projection = proj_ty.kind(tcx) == ty::AliasTyKind::Projection;
         if impl_comparison {
             // We do not want to suggest calling functions when the reason of the
             // type error is a comparison of an `impl` with its `trait`.
         } else {
-            let point_at_assoc_fn = if callable_scope
+            let point_at_assoc_fn = if is_projection
+                && callable_scope
                 && self.point_at_methods_that_satisfy_associated_type(
                     diag,
                     tcx.parent(proj_ty.def_id),
@@ -688,14 +690,17 @@ impl<T> Trait<T> for X {
             };
             // Possibly suggest constraining the associated type to conform to the
             // found type.
-            if self.suggest_constraint(diag, &msg, body_owner_def_id, proj_ty, values.found)
-                || point_at_assoc_fn
+            if is_projection
+                && (self.suggest_constraint(diag, &msg, body_owner_def_id, proj_ty, values.found)
+                    || point_at_assoc_fn)
             {
                 return;
             }
         }
 
-        self.suggest_constraining_opaque_associated_type(diag, &msg, proj_ty, values.found);
+        if is_projection {
+            self.suggest_constraining_opaque_associated_type(diag, &msg, proj_ty, values.found);
+        }
 
         if self.point_at_associated_type(diag, body_owner_def_id, values.found) {
             return;
