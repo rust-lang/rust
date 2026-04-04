@@ -770,8 +770,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
                 let [prefix, suffix] = if is_parenthesized { ["<", ">"] } else { ["(", ")"] };
                 let sugg_prefix = if is_first { prefix } else { ", " };
-                let sugg_suffix =
-                    if is_first && !self.gen_args.constraints.is_empty() { ", " } else { suffix };
+                let sugg_suffix = if is_first && !self.gen_args.constraints.is_empty() {
+                    ", "
+                } else if !self.gen_args.constraints.is_empty() {
+                    ""
+                } else {
+                    suffix
+                };
 
                 let sugg = format!("{sugg_prefix}{suggested_args}{sugg_suffix}");
                 debug!("sugg: {:?}", sugg);
