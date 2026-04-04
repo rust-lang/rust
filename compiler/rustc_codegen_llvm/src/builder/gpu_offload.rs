@@ -319,25 +319,25 @@ impl KernelArgsTy {
         geps: [&'ll Value; 3],
         workgroup_dims: &'ll Value,
         thread_dims: &'ll Value,
-    ) -> [(Align, &'ll Value); 13] {
+    ) -> [(Align, &'ll str, &'ll Value); 13] {
         let four = Align::from_bytes(4).expect("4 Byte alignment should work");
         let eight = Align::EIGHT;
 
         [
-            (four, cx.get_const_i32(KernelArgsTy::OFFLOAD_VERSION)),
-            (four, cx.get_const_i32(num_args)),
-            (eight, geps[0]),
-            (eight, geps[1]),
-            (eight, geps[2]),
-            (eight, memtransfer_types),
-            // The next two are debug infos. FIXME(offload): set them
-            (eight, cx.const_null(cx.type_ptr())), // dbg
-            (eight, cx.const_null(cx.type_ptr())), // dbg
-            (eight, cx.get_const_i64(KernelArgsTy::TRIPCOUNT)),
-            (eight, cx.get_const_i64(KernelArgsTy::FLAGS)),
-            (four, workgroup_dims),
-            (four, thread_dims),
-            (four, cx.get_const_i32(0)),
+            (four, "Version", cx.get_const_i32(KernelArgsTy::OFFLOAD_VERSION)),
+            (four, "NumArgs", cx.get_const_i32(num_args)),
+            (eight, "ArgBasePtrs", geps[0]),
+            (eight, "ArgPtrs", geps[1]),
+            (eight, "ArgSizes", geps[2]),
+            (eight, "ArgTypes", memtransfer_types),
+            // The "", next two are debug infos. FIXME(offload): set them
+            (eight, "ArgNames", cx.const_null(cx.type_ptr())), // dbg
+            (eight, "ArgMappers", cx.const_null(cx.type_ptr())), // dbg
+            (eight, "Tripcount", cx.get_const_i64(KernelArgsTy::TRIPCOUNT)),
+            (eight, "Flags", cx.get_const_i64(KernelArgsTy::FLAGS)),
+            (four, "NumTeams", workgroup_dims),
+            (four, "ThreadLimit", thread_dims),
+            (four, "DynCGroupMem", cx.get_const_i32(128)),
         ]
     }
 }
@@ -746,8 +746,13 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     // Step 3)
     // Here we fill the KernelArgsTy, see the documentation above
     for (i, value) in values.iter().enumerate() {
-        let ptr = builder.inbounds_gep(tgt_kernel_decl, a5, &[i32_0, cx.get_const_i32(i as u64)]);
-        builder.store(value.1, ptr, value.0);
+        let ptr = builder.named_inbounds_gep(
+            tgt_kernel_decl,
+            a5,
+            &[i32_0, cx.get_const_i32(i as u64)],
+            value.1,
+        );
+        builder.store(value.2, ptr, value.0);
     }
 
     let args = vec![

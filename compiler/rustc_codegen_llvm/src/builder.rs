@@ -152,6 +152,31 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         val
     }
 
+    pub(crate) fn named_inbounds_gep(
+        &mut self,
+        ty: &'ll Type,
+        ptr: &'ll Value,
+        indices: &[&'ll Value],
+        name: &str,
+    ) -> &'ll Value {
+        let val = unsafe {
+            llvm::LLVMBuildGEPWithNoWrapFlags(
+                self.llbuilder,
+                ty,
+                ptr,
+                indices.as_ptr(),
+                indices.len() as c_uint,
+                UNNAMED,
+                GEPNoWrapFlags::InBounds,
+            )
+        };
+        if name != "" {
+            let name = std::ffi::CString::new(name).unwrap();
+            llvm::set_value_name(val, &name.as_bytes());
+        }
+        val
+    }
+
     pub(crate) fn inbounds_gep(
         &mut self,
         ty: &'ll Type,
