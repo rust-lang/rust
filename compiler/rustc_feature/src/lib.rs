@@ -131,8 +131,7 @@ pub use accepted::ACCEPTED_LANG_FEATURES;
 pub use builtin_attrs::{
     AttrSuggestionStyle, AttributeDuplicates, AttributeGate, AttributeSafety, AttributeTemplate,
     AttributeType, BUILTIN_ATTRIBUTE_MAP, BUILTIN_ATTRIBUTES, BuiltinAttribute, GatedCfg,
-    encode_cross_crate, find_gated_cfg, is_builtin_attr_name, is_stable_diagnostic_attribute,
-    is_valid_for_get_attr,
+    find_gated_cfg, is_builtin_attr_name, is_stable_diagnostic_attribute, is_valid_for_get_attr,
 };
 pub use removed::REMOVED_LANG_FEATURES;
 pub use unstable::{
