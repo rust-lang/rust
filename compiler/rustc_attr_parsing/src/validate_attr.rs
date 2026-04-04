@@ -7,7 +7,7 @@ use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
     self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
 };
-use rustc_errors::{Applicability, FatalError, PResult};
+use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir::AttrPath;
 use rustc_hir::lints::AttributeLintKind;
@@ -149,7 +149,7 @@ pub fn check_builtin_meta_item(
     }
 }
 
-fn emit_malformed_attribute(
+pub fn emit_malformed_attribute(
     psess: &ParseSess,
     style: ast::AttrStyle,
     span: Span,
@@ -209,16 +209,4 @@ fn emit_malformed_attribute(
         }
         err.emit();
     }
-}
-
-pub fn emit_fatal_malformed_builtin_attribute(
-    psess: &ParseSess,
-    attr: &Attribute,
-    name: Symbol,
-) -> ! {
-    let template = BUILTIN_ATTRIBUTE_MAP.get(&name).expect("builtin attr defined").template;
-    emit_malformed_attribute(psess, attr.style, attr.span, name, template);
-    // This is fatal, otherwise it will likely cause a cascade of other errors
-    // (and an error here is expected to be very rare).
-    FatalError.raise()
 }
