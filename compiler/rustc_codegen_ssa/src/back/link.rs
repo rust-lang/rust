@@ -825,10 +825,10 @@ fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8]
             .strip_prefix("Warning: ")
             .unwrap_or(&escaped_stderr)
             .replace(": warning: ", ": ");
-        lint_msg(format!("linker stderr: {escaped_stderr}"));
+        lint_msg(format!("linker stderr: {}", escaped_stderr.trim_end()));
     }
     if !escaped_stdout.is_empty() {
-        lint_msg(format!("linker stdout: {}", escaped_stdout))
+        lint_msg(format!("linker stdout: {}", escaped_stdout.trim_end()))
     }
     if !linker_info.is_empty() {
         lint_info(linker_info);
