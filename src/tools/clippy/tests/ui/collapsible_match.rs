@@ -389,3 +389,58 @@ fn foo<T, U>(t: T) -> U {
 fn take<T>(t: T) {}
 
 fn main() {}
+
+fn issue16705(x: Option<String>) {
+    fn takes_ownership(s: String) -> bool {
+        true
+    }
+    fn borrows_mut(s: &mut str) -> bool {
+        true
+    }
+
+    let _ = match x {
+        Some(val) => {
+            if takes_ownership(val) {
+                return;
+            } else {
+                false
+            }
+        },
+        _ => false,
+    };
+
+    let mut x: Option<&mut str> = Some(&mut String::new());
+    let _ = match x {
+        Some(val) => {
+            if borrows_mut(val) {
+                return;
+            } else {
+                false
+            }
+        },
+        _ => false,
+    };
+
+    let mut x = Some(String::new());
+    let _ = match x {
+        Some(ref mut val) => {
+            if borrows_mut(val) {
+                return;
+            } else {
+                false
+            }
+        },
+        _ => false,
+    };
+
+    let _ = match &mut x {
+        Some(val) => {
+            if borrows_mut(val) {
+                return;
+            } else {
+                false
+            }
+        },
+        _ => false,
+    };
+}

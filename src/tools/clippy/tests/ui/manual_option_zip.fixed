@@ -1,0 +1,118 @@
+#![warn(clippy::manual_option_zip)]
+#![allow(clippy::bind_instead_of_map)]
+
+fn main() {}
+
+fn should_lint() {
+    // basic case
+    let a: Option<i32> = Some(1);
+    let b: Option<i32> = Some(2);
+    let _ = a.zip(b);
+    //~^ manual_option_zip
+
+    // different types
+    let a: Option<String> = Some(String::new());
+    let b: Option<i32> = Some(1);
+    let _ = a.zip(b);
+    //~^ manual_option_zip
+
+    // with None receiver
+    let b: Option<i32> = Some(2);
+    let _ = None::<i32>.zip(b);
+    //~^ manual_option_zip
+
+    // with function call as map receiver
+    let a: Option<i32> = Some(1);
+    let _ = a.zip(get_option());
+    //~^ manual_option_zip
+
+    // tuple order reversed: (inner, outer) instead of (outer, inner)
+    let a: Option<i32> = Some(1);
+    let b: Option<i32> = Some(2);
+    let _ = b.zip(a);
+    //~^ manual_option_zip
+
+    // closure bodies wrapped in blocks
+    let a: Option<i32> = Some(1);
+    let b: Option<i32> = Some(2);
+    #[rustfmt::skip]
+    let _ = a.zip(b);
+    //~^ manual_option_zip
+    #[rustfmt::skip]
+    let _ = a.zip(b);
+    //~^ manual_option_zip
+    #[rustfmt::skip]
+    let _ = a.zip(b);
+    //~^ manual_option_zip
+}
+
+fn should_not_lint() {
+    let a: Option<i32> = Some(1);
+    let b: Option<i32> = Some(2);
+
+    // tuple has more than 2 elements
+    let _ = a.and_then(|a| b.map(|b| (a, b, 1)));
+
+    // three-element tuple but with either `a` or `b` as the elements
+    let _ = a.and_then(|a| b.map(|b| (a, b, a)));
+
+    // inner closure body is not a simple tuple of the params
+    let _ = a.and_then(|a| b.map(|b| (a, b + 1)));
+
+    // map receiver uses the outer closure parameter
+    let _ = a.and_then(|a| a.checked_add(1).map(|b| (a, b)));
+
+    // .map receiver is not an Option type.
+    let _ = a.and_then(|a| NotOption(Some(1)).map(|b| (a, b)));
+
+    // .and_then receiver is not an Option type.
+    let _ = NotOption(Some(1)).and_then(|a| b.map(|b| (a, b)));
+
+    // closure body is not a map call
+    let a: Option<i32> = Some(1);
+    let _ = a.and_then(|a| Some((a, 1)));
+
+    // single-element tuple
+    let _ = a.and_then(|a| b.map(|_b| (a,)));
+
+    // the outer param used in the map receiver (cannot extract)
+    let opts: Vec<Option<i32>> = vec![Some(1), Some(2)];
+    let _ = a.and_then(|a| opts[a as usize].map(|b| (a, b)));
+
+    // extra statements in outer closure body
+    let _ = a.and_then(|a| {
+        let _x = 1;
+        b.map(|b| (a, b))
+    });
+
+    // extra statements in inner closure body
+    let _ = a.and_then(|a| {
+        b.map(|b| {
+            let _x = 1;
+            (a, b)
+        })
+    });
+
+    // n-ary zip where n > 2, which is out of scope for this lint (for now)
+    let c: Option<i32> = Some(3);
+    let _ = a.and_then(|a| b.and_then(|b| c.map(|c| (a, b, c))));
+
+    // not Option type (Result)
+    let a: Result<i32, &str> = Ok(1);
+    let b: Result<i32, &str> = Ok(2);
+    let _ = a.and_then(|a| b.map(|b| (a, b)));
+}
+
+fn get_option() -> Option<i32> {
+    Some(123)
+}
+
+struct NotOption(Option<i32>);
+impl NotOption {
+    fn map<U>(self, f: impl FnOnce(i32) -> U) -> Option<U> {
+        self.0.map(f)
+    }
+    fn and_then<U>(self, f: impl FnOnce(i32) -> Option<U>) -> Option<U> {
+        self.0.and_then(f)
+    }
+}
