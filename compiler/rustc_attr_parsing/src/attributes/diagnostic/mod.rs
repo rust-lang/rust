@@ -3,8 +3,8 @@ use std::ops::Range;
 use rustc_errors::E0232;
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::diagnostic::{
-    AppendConstMessage, Directive, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg,
-    Name, NameValue, OnUnimplementedCondition, Piece, Predicate,
+    Directive, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name, NameValue,
+    OnUnimplementedCondition, Piece, Predicate,
 };
 use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_macros::Diagnostic;
@@ -92,7 +92,6 @@ fn parse_directive_items<'p, S: Stage>(
     let mut notes = ThinVec::new();
     let mut parent_label = None;
     let mut subcommands = ThinVec::new();
-    let mut append_const_msg = None;
 
     for item in items {
         let span = item.span();
@@ -131,7 +130,6 @@ fn parse_directive_items<'p, S: Stage>(
             let Some(ret) = (||{
                 Some($($code)*)
             })() else {
-
                 malformed!()
             };
             ret
@@ -159,8 +157,13 @@ fn parse_directive_items<'p, S: Stage>(
         let item: &MetaItemParser = or_malformed!(item.meta_item()?);
         let name = or_malformed!(item.ident()?).name;
 
-        // Some things like `message = "message"` must have a value.
-        // But with things like `append_const_msg` that is optional.
+        // Currently, as of April 2026, all arguments of all diagnostic attrs
+        // must have a value, like `message = "message"`. Thus in a well-formed
+        // diagnostic attribute this is never `None`.
+        //
+        // But we don't assert its presence yet because we don't want to mention it
+        // if someone does something like `#[diagnostic::on_unimplemented(doesnt_exist)]`.
+        // That happens in the big `match` below.
         let value: Option<Ident> = match item.args().name_value() {
             Some(nv) => Some(or_malformed!(nv.value_as_ident()?)),
             None => None,
@@ -223,14 +226,6 @@ fn parse_directive_items<'p, S: Stage>(
                 let value = or_malformed!(value?);
                 notes.push(parse_format(value))
             }
-
-            (Mode::RustcOnUnimplemented, sym::append_const_msg) => {
-                append_const_msg = if let Some(msg) = value {
-                    Some(AppendConstMessage::Custom(msg.name, item.span()))
-                } else {
-                    Some(AppendConstMessage::Default)
-                }
-            }
             (Mode::RustcOnUnimplemented, sym::parent_label) => {
                 let value = or_malformed!(value?);
                 if parent_label.is_none() {
@@ -290,7 +285,6 @@ fn parse_directive_items<'p, S: Stage>(
         label,
         notes,
         parent_label,
-        append_const_msg,
     })
 }
 

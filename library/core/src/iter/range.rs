@@ -22,7 +22,7 @@ unsafe_impl_trusted_step![NonZero<u8> NonZero<u16> NonZero<u32> NonZero<u64> Non
 /// The *successor* operation moves towards values that compare greater.
 /// The *predecessor* operation moves towards values that compare lesser.
 #[rustc_diagnostic_item = "range_step"]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "`std::ops::Range<{Self}>` is not an iterator",
     label = "`Range<{Self}>` is not an iterator",
     note = "`Range` only implements `Iterator` for select types in the standard library, \
