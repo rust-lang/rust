@@ -9,12 +9,13 @@
 #![feature(const_trait_impl)]
 #![feature(coroutines)]
 #![feature(decl_macro)]
+#![feature(macro_guard_matcher)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
+#![feature(specialization)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
-#![feature(macro_guard_matcher)]
 #![deny(unused_macros)]
 
 // These macros force the use of AST pretty-printing by converting the input to

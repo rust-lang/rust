@@ -42,6 +42,14 @@ pub struct Bar {
     waza: u32,
 }
 
+//@ has foo/struct.Bar.html
+//@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#implementations"]' 'Associated Functions'
+//@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#implementations"]' 'Methods'
+impl Bar {
+    pub fn method(&self) {}
+    pub fn assoc_fn() {}
+}
+
 //@ has foo/enum.En.html
 //@ has - '//div[@class="sidebar-elems"]//h3/a[@href="#variants"]' 'Variants'
 //@ has - '//*[@class="sidebar-elems"]//section//a' 'Foo'

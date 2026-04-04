@@ -407,7 +407,7 @@ pub(crate) struct SelfInConstGenericTy {
 
 #[derive(Diagnostic)]
 #[diag(
-    "{$is_ogca ->
+    "{$is_gca ->
     [true] generic parameters in const blocks are only allowed as the direct value of a `type const`
     *[false] generic parameters may not be used in const operations
 }"
@@ -421,11 +421,11 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[help("add `#![feature(generic_const_exprs)]` to allow generic const expressions")]
     pub(crate) help: bool,
-    pub(crate) is_ogca: bool,
+    pub(crate) is_gca: bool,
     #[help(
         "consider factoring the expression into a `type const` item and use it as the const argument instead"
     )]
-    pub(crate) help_ogca: bool,
+    pub(crate) help_gca: bool,
 }
 
 #[derive(Debug)]
@@ -1194,6 +1194,15 @@ pub(crate) struct GenericArgumentsInMacroPath {
 #[derive(Diagnostic)]
 #[diag("attributes starting with `rustc` are reserved for use by the `rustc` compiler")]
 pub(crate) struct AttributesStartingWithRustcAreReserved {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "attributes containing a segment starting with `rustc` are reserved for use by the `rustc` compiler"
+)]
+pub(crate) struct AttributesContainingRustcAreReserved {
     #[primary_span]
     pub(crate) span: Span,
 }

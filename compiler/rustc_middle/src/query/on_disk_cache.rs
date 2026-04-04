@@ -231,7 +231,7 @@ impl OnDiskCache {
                 type_shorthands: Default::default(),
                 predicate_shorthands: Default::default(),
                 interpret_allocs: Default::default(),
-                source_map: CachingSourceMapView::new(tcx.sess.source_map()),
+                caching_source_map_view: CachingSourceMapView::new(tcx.sess.source_map()),
                 file_to_file_index,
                 hygiene_context: &hygiene_encode_context,
                 symbol_index_table: Default::default(),
@@ -783,7 +783,7 @@ pub struct CacheEncoder<'a, 'tcx> {
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
     interpret_allocs: FxIndexSet<interpret::AllocId>,
-    source_map: CachingSourceMapView<'tcx>,
+    caching_source_map_view: CachingSourceMapView<'tcx>,
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
     hygiene_context: &'a HygieneEncodeContext,
     // Used for both `Symbol`s and `ByteSymbol`s.
@@ -900,7 +900,7 @@ impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
         }
 
         let Some((file_lo, line_lo, col_lo)) =
-            self.source_map.byte_pos_to_line_and_col(span_data.lo)
+            self.caching_source_map_view.byte_pos_to_line_and_col(span_data.lo)
         else {
             return TAG_PARTIAL_SPAN.encode(self);
         };

@@ -209,12 +209,15 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, _: &AttrVec, span: Span, _: NodeId) {
         match fn_kind {
             FnKind::Fn(
-                _ctxt,
+                ctxt,
                 _vis,
                 Fn {
                     sig: FnSig { header, decl, span: _ }, ident, generics, contract, body, ..
                 },
-            ) if let Some(coroutine_kind) = header.coroutine_kind => {
+            ) if let Some(coroutine_kind) = header.coroutine_kind
+                // Foreign ones are denied, so don't create them here.
+                && ctxt != visit::FnCtxt::Foreign =>
+            {
                 self.visit_ident(ident);
                 self.visit_fn_header(header);
                 self.visit_generics(generics);

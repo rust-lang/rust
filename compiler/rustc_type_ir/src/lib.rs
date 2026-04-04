@@ -31,7 +31,6 @@ pub mod outlives;
 pub mod relate;
 pub mod search_graph;
 pub mod solve;
-pub mod sty;
 pub mod walk;
 
 // These modules are not `pub` since they are glob-imported.
@@ -79,7 +78,6 @@ pub use predicate_kind::*;
 pub use region_kind::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_type_ir_macros::GenericTypeVisitable;
-pub use sty::*;
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use upcast::*;
@@ -445,8 +443,8 @@ impl fmt::Display for ClosureKind {
 }
 
 pub struct FieldInfo<I: Interner> {
-    pub base: Ty<I>,
-    pub ty: Ty<I>,
+    pub base: I::Ty,
+    pub ty: I::Ty,
     pub variant: Option<I::Symbol>,
     pub variant_idx: VariantIdx,
     pub name: I::Symbol,

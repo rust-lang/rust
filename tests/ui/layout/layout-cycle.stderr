@@ -6,18 +6,6 @@ note: cycle used when const-evaluating + checking `core::mem::SizedTypePropertie
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0080]: a cycle occurred during layout computation
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-   |
-   = note: evaluation of `<S<S<()>> as std::mem::SizedTypeProperties>::SIZE` failed here
+error: aborting due to 1 previous error
 
-note: the above error was encountered while instantiating `fn std::mem::size_of::<S<S<()>>>`
-  --> $DIR/layout-cycle.rs:26:5
-   |
-LL |     mem::size_of::<S<T>>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0080, E0391.
-For more information about an error, try `rustc --explain E0080`.
+For more information about this error, try `rustc --explain E0391`.
