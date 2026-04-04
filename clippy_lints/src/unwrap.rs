@@ -308,18 +308,15 @@ fn extract_local(cx: &LateContext<'_>, mut expr: &Expr<'_>) -> Option<Local> {
         field_indices.push(field_idx);
         expr = recv;
     }
-    if let Some(local_id) = expr.res_local_id() {
-        if field_indices.is_empty() {
-            Some(Local::Pure { local_id })
-        } else {
-            Some(Local::WithFieldAccess {
-                local_id,
-                field_indices,
-                span,
-            })
-        }
+    let local_id = expr.res_local_id()?;
+    if field_indices.is_empty() {
+        Some(Local::Pure { local_id })
     } else {
-        None
+        Some(Local::WithFieldAccess {
+            local_id,
+            field_indices,
+            span,
+        })
     }
 }
 
