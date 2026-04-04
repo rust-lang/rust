@@ -520,8 +520,8 @@ where
 /// Allows retrieving the canonical type implementing [`Try`] that has this type
 /// as its residual and allows it to hold an `O` as its output.
 ///
-/// If you think of the `Try` trait as splitting a type into its [`Try::Output`]
-/// and [`Try::Residual`] components, this allows putting them back together.
+/// If you think of the `Branch` trait as splitting a type into its [`Try::Output`](Branch::Output)
+/// and [`Try::Residual`](Branch::Residual) components, this allows putting them back together.
 ///
 /// For example,
 /// `Result<T, E>: Try<Output = T, Residual = Result<Infallible, E>>`,
