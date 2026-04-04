@@ -1773,7 +1773,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             // const generics. Of course, `Struct` and `Enum` may contain ty params, too, but the
             // benefits of including them here outweighs the small number of false positives.
             Some(Res::Def(DefKind::Struct | DefKind::Enum, _))
-                if self.r.tcx.features().adt_const_params() =>
+                if self.r.tcx.features().adt_const_params()
+                    || self.r.tcx.features().min_adt_const_params() =>
             {
                 Applicability::MaybeIncorrect
             }
