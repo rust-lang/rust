@@ -125,7 +125,7 @@ jobs:
       # Deliberately skipping `./.github/workflows/setup` as we do our own setup
       - name: Add cache for cargo
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
@@ -231,7 +231,7 @@ jobs:
             exit ${exitcode}
           fi
 
-          # Store merge commit message          
+          # Store merge commit message
           git log -1 --pretty=%B > message.txt
 
           # Format changes
