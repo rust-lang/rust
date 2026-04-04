@@ -2,16 +2,17 @@ use std::iter::once;
 use std::path::{self, Path, PathBuf};
 
 use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans};
+use rustc_attr_parsing::validate_attr::emit_malformed_attribute;
 use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_feature::template;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::{exp, new_parser_from_file, unwrap_or_emit_fatal};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
+use rustc_span::fatal_error::FatalError;
 use rustc_span::{Ident, Span, sym};
 use thin_vec::ThinVec;
-use rustc_attr_parsing::validate_attr::emit_malformed_attribute;
-use rustc_feature::template;
-use rustc_span::fatal_error::FatalError;
+
 use crate::base::ModuleData;
 use crate::errors::{
     ModuleCircular, ModuleFileNotFound, ModuleInBlock, ModuleInBlockName, ModuleMultipleCandidates,
@@ -196,10 +197,16 @@ pub(crate) fn mod_file_path_from_attr(
         // Usually bad forms are checked during semantic analysis via
         // `TyCtxt::check_mod_attrs`), but by the time that runs the macro
         // is expanded, and it doesn't give an error.
-        emit_malformed_attribute(&sess.psess, first_path.style, first_path.span, sym::path, template!(
-            NameValueStr: "file",
-            "https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute"
-        ));
+        emit_malformed_attribute(
+            &sess.psess,
+            first_path.style,
+            first_path.span,
+            sym::path,
+            template!(
+                NameValueStr: "file",
+                "https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute"
+            ),
+        );
         FatalError.raise()
     };
 
