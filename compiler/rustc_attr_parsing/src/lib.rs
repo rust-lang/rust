@@ -106,6 +106,7 @@ mod session_diagnostics;
 mod target_checking;
 pub mod validate_attr;
 
+pub use attributes::AttributeSafety;
 pub use attributes::cfg::{
     CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg, parse_cfg_attr, parse_cfg_entry,
 };
