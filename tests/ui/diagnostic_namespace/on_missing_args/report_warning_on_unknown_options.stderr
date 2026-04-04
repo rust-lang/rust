@@ -1,0 +1,11 @@
+warning: malformed `on_missing_args` attribute
+  --> $DIR/report_warning_on_unknown_options.rs:4:31
+   |
+LL | #[diagnostic::on_missing_args(unsupported = "foo")]
+   |                               ^^^^^^^^^^^^^^^^^^^ invalid option found here
+   |
+   = help: only `message`, `note` and `label` are allowed as options
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: 1 warning emitted
+

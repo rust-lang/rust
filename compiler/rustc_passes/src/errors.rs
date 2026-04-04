@@ -1356,3 +1356,10 @@ pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
 pub(crate) struct OnMoveMalformedFormatLiterals {
     pub name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help("format parameters are not supported by `#[diagnostic::on_missing_args]`")]
+pub(crate) struct OnMissingArgsMalformedFormatLiterals {
+    pub name: Symbol,
+}

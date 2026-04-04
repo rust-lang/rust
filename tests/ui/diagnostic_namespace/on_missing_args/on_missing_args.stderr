@@ -1,0 +1,19 @@
+error: unexpected end of macro invocation
+  --> $DIR/on_missing_args.rs:14:13
+   |
+LL | macro_rules! pair {
+   | ----------------- when calling this macro
+...
+LL |     pair!(u8);
+   |             ^ missing tokens in macro arguments
+   |
+note: while trying to match `,`
+  --> $DIR/on_missing_args.rs:9:12
+   |
+LL |     ($ty:ty, $value:expr) => {};
+   |            ^
+   = note: this macro expects a type and a value, like `pair!(u8, 0)`
+   = note: make sure to pass both arguments
+
+error: aborting due to 1 previous error
+

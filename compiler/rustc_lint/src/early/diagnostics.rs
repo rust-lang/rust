@@ -281,6 +281,9 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::MalformedOnConstAttr { span } => {
                 lints::MalformedOnConstAttrLint { span }.into_diag(dcx, level)
             }
+            &AttributeLintKind::MalformedOnMissingArgsAttr { span } => {
+                lints::MalformedOnMissingArgsAttrLint { span }.into_diag(dcx, level)
+            }
             AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
                 FormatWarning::PositionalArgument { .. } => {
                     lints::DisallowedPositionalArgument.into_diag(dcx, level)
@@ -301,6 +304,9 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             }
             &AttributeLintKind::MissingOptionsForOnConst => {
                 lints::MissingOptionsForOnConstAttr.into_diag(dcx, level)
+            }
+            &AttributeLintKind::MissingOptionsForOnMissingArgs => {
+                lints::MissingOptionsForOnMissingArgsAttr.into_diag(dcx, level)
             }
             &AttributeLintKind::MalformedOnMoveAttr { span } => {
                 lints::MalformedOnMoveAttrLint { span }.into_diag(dcx, level)

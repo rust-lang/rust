@@ -1,0 +1,11 @@
+warning: missing options for `on_missing_args` attribute
+  --> $DIR/report_warning_on_missing_options.rs:4:1
+   |
+LL | #[diagnostic::on_missing_args]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: at least one of the `message`, `note` and `label` options are expected
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: 1 warning emitted
+

@@ -3647,6 +3647,11 @@ pub(crate) struct MissingOptionsForOnUnimplementedAttr;
 pub(crate) struct MissingOptionsForOnConstAttr;
 
 #[derive(Diagnostic)]
+#[diag("missing options for `on_missing_args` attribute")]
+#[help("at least one of the `message`, `note` and `label` options are expected")]
+pub(crate) struct MissingOptionsForOnMissingArgsAttr;
+
+#[derive(Diagnostic)]
 #[diag("missing options for `on_move` attribute")]
 #[help("at least one of the `message`, `note` and `label` options are expected")]
 pub(crate) struct MissingOptionsForOnMoveAttr;
@@ -3663,6 +3668,14 @@ pub(crate) struct MalformedOnUnimplementedAttrLint {
 #[diag("malformed `on_const` attribute")]
 #[help("only `message`, `note` and `label` are allowed as options")]
 pub(crate) struct MalformedOnConstAttrLint {
+    #[label("invalid option found here")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("malformed `on_missing_args` attribute")]
+#[help("only `message`, `note` and `label` are allowed as options")]
+pub(crate) struct MalformedOnMissingArgsAttrLint {
     #[label("invalid option found here")]
     pub span: Span,
 }

@@ -1,0 +1,15 @@
+error: pair! is missing its second argument
+  --> $DIR/error_is_shown_in_downstream_crates.rs:6:20
+   |
+LL |     other::pair!(u8);
+   |                    ^ add the missing value here
+   |
+note: while trying to match `,`
+  --> $DIR/auxiliary/other.rs:10:12
+   |
+LL |     ($ty:ty, $value:expr) => {};
+   |            ^
+   = note: this macro expects a type and a value, like `pair!(u8, 0)`
+
+error: aborting due to 1 previous error
+

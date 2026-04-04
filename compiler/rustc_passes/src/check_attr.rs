@@ -63,6 +63,10 @@ struct DiagnosticOnConstOnlyForTraitImpls {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_missing_args]` can only be applied to macro definitions")]
+struct DiagnosticOnMissingArgsOnlyForMacros;
+
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_const]` can only be applied to non-const trait impls")]
 struct DiagnosticOnConstOnlyForNonConstTraitImpls {
     #[label("this is a const trait impl")]
@@ -217,7 +221,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(AttributeKind::OnUnimplemented{span, directive}) => {self.check_diagnostic_on_unimplemented(*span, hir_id, target,directive.as_deref())},
-                Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
+                Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)},
+                Attribute::Parsed(AttributeKind::OnMissingArgs { span, directive }) => {
+                    self.check_diagnostic_on_missing_args(
+                        *span,
+                        hir_id,
+                        target,
+                        directive.as_deref(),
+                    )
+                }
                 Attribute::Parsed(AttributeKind::OnMove { span, directive }) => {
                     self.check_diagnostic_on_move(*span, hir_id, target, directive.as_deref())
                 },
@@ -663,6 +675,37 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         // We don't check the validity of generic args here...whose generics would that be, anyway?
         // The traits' or the impls'?
+    }
+
+    /// Checks if `#[diagnostic::on_missing_args]` is applied to a macro definition.
+    fn check_diagnostic_on_missing_args(
+        &self,
+        attr_span: Span,
+        hir_id: HirId,
+        target: Target,
+        directive: Option<&Directive>,
+    ) {
+        if !matches!(target, Target::MacroDef) {
+            self.tcx.emit_node_span_lint(
+                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                DiagnosticOnMissingArgsOnlyForMacros,
+            );
+        }
+
+        if matches!(target, Target::MacroDef)
+            && let Some(directive) = directive
+        {
+            directive.visit_params(&mut |argument_name, span| {
+                self.tcx.emit_node_span_lint(
+                    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                    hir_id,
+                    span,
+                    errors::OnMissingArgsMalformedFormatLiterals { name: argument_name },
+                )
+            });
+        }
     }
 
     /// Checks if `#[diagnostic::on_move]` is applied to an ADT definition
