@@ -875,11 +875,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             diag.downgrade_to_delayed_bug();
         }
 
+        let trait_ref_for_select = self.enter_forall_and_leak_universe(trait_ref);
         if let Ok(Some(ImplSource::UserDefined(impl_data))) =
-            SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref.skip_binder()))
+            SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref_for_select))
         {
             let impl_did = impl_data.impl_def_id;
-            let trait_did = trait_ref.def_id();
+            let trait_did = trait_ref_for_select.def_id();
             let impl_span = self.tcx.def_span(impl_did);
             let trait_name = self.tcx.item_name(trait_did);
 
