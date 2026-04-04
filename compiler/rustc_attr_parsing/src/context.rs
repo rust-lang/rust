@@ -30,6 +30,7 @@ use crate::attributes::debugger::*;
 use crate::attributes::deprecation::*;
 use crate::attributes::diagnostic::do_not_recommend::*;
 use crate::attributes::diagnostic::on_const::*;
+use crate::attributes::diagnostic::on_incomplete_macro_args::*;
 use crate::attributes::diagnostic::on_move::*;
 use crate::attributes::diagnostic::on_unimplemented::*;
 use crate::attributes::doc::*;
@@ -154,6 +155,7 @@ attribute_parsers!(
         MacroUseParser,
         NakedParser,
         OnConstParser,
+        OnIncompleteMacroArgsParser,
         OnMoveParser,
         OnUnimplementedParser,
         RustcAlignParser,

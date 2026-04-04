@@ -1322,6 +1322,13 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
+    /// Represents `#[diagnostic::on_incomplete_macro_args]`.
+    OnIncompleteMacroArgs {
+        span: Span,
+        /// None if the directive was malformed in some way.
+        directive: Option<Box<Directive>>,
+    },
+
     /// Represents `#[diagnostic::on_move]`
     OnMove {
         span: Span,
