@@ -1305,17 +1305,16 @@ impl Attribute {
         }
     }
 
-    pub fn has_span_without_desugaring_kind(&self) -> bool {
-        let span = match self {
-            Attribute::Unparsed(attr) => attr.span,
-            Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
+    pub fn is_prefix_attr_for_suggestions(&self) -> bool {
+        match self {
+            Attribute::Unparsed(attr) => attr.span.desugaring_kind().is_none(),
             Attribute::Parsed(AttributeKind::LintAttributes(sub_attrs)) => {
-                return sub_attrs.iter().any(|attr| attr.attr_span.desugaring_kind().is_none());
+                sub_attrs.iter().any(|attr| attr.attr_span.desugaring_kind().is_none())
             }
-            Attribute::Parsed(attr) => panic!("can't get span of parsed attr: {:?}", attr),
-        };
-
-        span.desugaring_kind().is_none()
+            // Other parsed attributes that can appear on expressions originate from source and
+            // should make suggestions treat the expression like a prefixed form.
+            Attribute::Parsed(_) => true,
+        }
     }
 }
 
