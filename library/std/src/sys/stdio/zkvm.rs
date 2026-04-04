@@ -61,7 +61,7 @@ impl io::Write for Stderr {
     }
 }
 
-pub const STDIN_BUF_SIZE: usize = crate::sys::io::DEFAULT_BUF_SIZE;
+pub const STDIN_BUF_SIZE: usize = alloc::io::DEFAULT_BUF_SIZE;
 
 pub fn is_ebadf(_err: &io::Error) -> bool {
     true

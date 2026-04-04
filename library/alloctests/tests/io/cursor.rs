@@ -1,5 +1,5 @@
-use crate::io::prelude::*;
-use crate::io::{Cursor, IoSlice, IoSliceMut, SeekFrom};
+use alloc::io::prelude::*;
+use alloc::io::{Cursor, IoSlice, IoSliceMut, SeekFrom};
 
 #[test]
 fn test_vec_writer() {
@@ -528,40 +528,4 @@ fn const_cursor() {
     const CURSOR: Cursor<&[u8]> = Cursor::new(&[0]);
     const _: &&[u8] = CURSOR.get_ref();
     const _: u64 = CURSOR.position();
-}
-
-#[bench]
-fn bench_write_vec(b: &mut test::Bencher) {
-    let slice = &[1; 128];
-
-    b.iter(|| {
-        let mut buf = b"some random data to overwrite".to_vec();
-        let mut cursor = Cursor::new(&mut buf);
-
-        let _ = cursor.write_all(slice);
-        test::black_box(&cursor);
-    })
-}
-
-#[bench]
-fn bench_write_vec_vectored(b: &mut test::Bencher) {
-    let slices = [
-        IoSlice::new(&[1; 128]),
-        IoSlice::new(&[2; 256]),
-        IoSlice::new(&[3; 512]),
-        IoSlice::new(&[4; 1024]),
-        IoSlice::new(&[5; 2048]),
-        IoSlice::new(&[6; 4096]),
-        IoSlice::new(&[7; 8192]),
-        IoSlice::new(&[8; 8192 * 2]),
-    ];
-
-    b.iter(|| {
-        let mut buf = b"some random data to overwrite".to_vec();
-        let mut cursor = Cursor::new(&mut buf);
-
-        let mut slices = slices;
-        let _ = cursor.write_all_vectored(&mut slices);
-        test::black_box(&cursor);
-    })
 }

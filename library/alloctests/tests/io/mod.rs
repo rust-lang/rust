@@ -1,10 +1,14 @@
-use super::{BorrowedBuf, Cursor, SeekFrom, repeat};
-use crate::cmp::{self, min};
-use crate::io::{
-    self, BufRead, BufReader, DEFAULT_BUF_SIZE, IoSlice, IoSliceMut, Read, Seek, Write,
+use alloc::io::{
+    self, BorrowedBuf, BufRead, BufReader, Cursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write,
 };
-use crate::mem::MaybeUninit;
-use crate::ops::Deref;
+use core::cmp::{self, min};
+use core::ops::Deref;
+
+mod buffered;
+mod copy;
+mod cursor;
+mod error;
+mod util;
 
 #[test]
 fn read_until() {
@@ -273,7 +277,7 @@ fn chain_bufread() {
 #[test]
 fn chain_splitted_char() {
     let chain = b"\xc3".chain(b"\xa9".as_slice());
-    assert_eq!(crate::io::read_to_string(chain).unwrap(), "é");
+    assert_eq!(alloc::io::read_to_string(chain).unwrap(), "é");
 
     let mut chain = b"\xc3".chain(b"\xa9\n".as_slice());
     let mut buf = String::new();
@@ -355,16 +359,6 @@ fn chain_zero_length_read_is_not_eof() {
     chain.read(&mut []).unwrap();
     chain.read_to_string(&mut s).unwrap();
     assert_eq!("AB", s);
-}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // Miri isn't fast...
-fn bench_read_to_end(b: &mut test::Bencher) {
-    b.iter(|| {
-        let mut lr = repeat(1).take(10000000);
-        let mut vec = Vec::with_capacity(1024);
-        super::default_read_to_end(&mut lr, &mut vec, None)
-    });
 }
 
 #[test]
@@ -528,11 +522,11 @@ fn take_seek_big_offsets() -> io::Result<()> {
     let inner = ExampleHugeRangeOfZeroes { position: 1 };
     let mut take = inner.take(u64::MAX - 2);
     assert_eq!(take.seek(io::SeekFrom::Start(u64::MAX - 2))?, u64::MAX - 2);
-    assert_eq!(take.inner.position, u64::MAX - 1);
+    assert_eq!(take.get_ref().position, u64::MAX - 1);
     assert_eq!(take.seek(io::SeekFrom::Start(0))?, 0);
-    assert_eq!(take.inner.position, 1);
+    assert_eq!(take.get_ref().position, 1);
     assert_eq!(take.seek(io::SeekFrom::End(-1))?, u64::MAX - 3);
-    assert_eq!(take.inner.position, u64::MAX - 2);
+    assert_eq!(take.get_ref().position, u64::MAX - 2);
     Ok(())
 }
 
@@ -818,26 +812,6 @@ fn cursor_read_exact_eof() {
     assert_eq!(buf.filled(), b"123456");
 }
 
-#[bench]
-fn bench_take_read(b: &mut test::Bencher) {
-    b.iter(|| {
-        let mut buf = [0; 64];
-
-        [255; 128].take(64).read(&mut buf).unwrap();
-    });
-}
-
-#[bench]
-fn bench_take_read_buf(b: &mut test::Bencher) {
-    b.iter(|| {
-        let buf: &mut [_] = &mut [MaybeUninit::uninit(); 64];
-
-        let mut buf: BorrowedBuf<'_> = buf.into();
-
-        [255; 128].take(64).read_buf(buf.unfilled()).unwrap();
-    });
-}
-
 // Issue #120603
 #[test]
 #[should_panic]
@@ -864,7 +838,7 @@ fn read_buf_full_read() {
         }
     }
 
-    assert_eq!(BufReader::new(FullRead).fill_buf().unwrap().len(), DEFAULT_BUF_SIZE);
+    assert_eq!(BufReader::new(FullRead).fill_buf().unwrap().len(), alloc::io::DEFAULT_BUF_SIZE);
 }
 
 struct DataAndErrorReader(&'static [u8]);

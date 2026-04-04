@@ -2,27 +2,6 @@
 
 mod error;
 
-mod io_slice {
-    cfg_select! {
-        any(target_family = "unix", target_os = "hermit", target_os = "solid_asp3", target_os = "trusty", target_os = "wasi") => {
-            mod iovec;
-            pub use iovec::*;
-        }
-        target_os = "windows" => {
-            mod windows;
-            pub use windows::*;
-        }
-        target_os = "uefi" => {
-            mod uefi;
-            pub use uefi::*;
-        }
-        _ => {
-            mod unsupported;
-            pub use unsupported::*;
-        }
-    }
-}
-
 mod is_terminal {
     cfg_select! {
         any(target_family = "unix", target_os = "wasi") => {
@@ -62,11 +41,6 @@ pub use error::errno_location;
     target_os = "wasi",
 ))]
 pub use error::set_errno;
-pub use error::{RawOsError, decode_error_kind, errno, error_string, is_interrupted};
-pub use io_slice::{IoSlice, IoSliceMut};
+pub use error::{decode_error_kind, errno, error_string, is_interrupted};
 pub use is_terminal::is_terminal;
 pub use kernel_copy::{CopyState, kernel_copy};
-
-// Bare metal platforms usually have very small amounts of RAM
-// (in the order of hundreds of KB)
-pub const DEFAULT_BUF_SIZE: usize = if cfg!(target_os = "espidf") { 512 } else { 8 * 1024 };

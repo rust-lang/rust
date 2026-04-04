@@ -543,6 +543,7 @@ impl Read for StdinLock<'_> {
     }
 }
 
+#[unstable(feature = "io_internals", issue = "none")]
 impl SpecReadByte for StdinLock<'_> {
     #[inline]
     fn spec_read_byte(&mut self) -> Option<io::Result<u8>> {

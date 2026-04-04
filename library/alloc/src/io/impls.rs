@@ -1,10 +1,15 @@
 #[cfg(test)]
 mod tests;
 
+use core::{cmp, fmt, mem, str};
+
 use crate::alloc::Allocator;
+use crate::boxed::Box;
 use crate::collections::VecDeque;
 use crate::io::{self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
-use crate::{cmp, fmt, mem, str};
+use crate::string::String;
+use crate::sync::Arc;
+use crate::vec::Vec;
 
 // =============================================================================
 // Forwarding implementations
@@ -284,6 +289,72 @@ impl<B: BufRead + ?Sized> BufRead for Box<B> {
     #[inline]
     fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
         (**self).read_line(buf)
+    }
+}
+#[stable(feature = "arc_io_traits", since = "CURRENT_RUSTC_VERSION")]
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
+impl<R> Read for Arc<R>
+where
+    R: Read,
+    for<'a> &'a R: Read,
+{
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (&**self).read(buf)
+    }
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        (&**self).read_vectored(bufs)
+    }
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (&**self).read_buf(cursor)
+    }
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (&**self).is_read_vectored()
+    }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        (&**self).read_to_end(buf)
+    }
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        (&**self).read_to_string(buf)
+    }
+}
+#[stable(feature = "arc_io_traits", since = "CURRENT_RUSTC_VERSION")]
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
+impl<W> Write for Arc<W>
+where
+    W: Write,
+    for<'a> &'a W: Write,
+{
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (&**self).write(buf)
+    }
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        (&**self).write_vectored(bufs)
+    }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        (&**self).is_write_vectored()
+    }
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        (&**self).flush()
+    }
+}
+#[stable(feature = "arc_io_traits", since = "CURRENT_RUSTC_VERSION")]
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
+impl<S> Seek for Arc<S>
+where
+    S: Seek,
+    for<'a> &'a S: Seek,
+{
+    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+        (&**self).seek(pos)
+    }
+    fn stream_len(&mut self) -> io::Result<u64> {
+        (&**self).stream_len()
+    }
+    fn stream_position(&mut self) -> io::Result<u64> {
+        (&**self).stream_position()
     }
 }
 

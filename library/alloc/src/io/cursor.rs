@@ -1,10 +1,14 @@
 #[cfg(test)]
 mod tests;
 
+use core::cmp;
+
 use crate::alloc::Allocator;
-use crate::cmp;
+use crate::boxed::Box;
 use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
+use crate::string::String;
+use crate::vec::Vec;
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.

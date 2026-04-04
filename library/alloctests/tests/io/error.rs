@@ -1,6 +1,5 @@
-use super::{Custom, Error, ErrorData, ErrorKind, Repr, SimpleMessage, const_error};
-use crate::sys::io::{decode_error_kind, error_string};
-use crate::{assert_matches, error, fmt};
+use alloc::io::{Error, ErrorKind, const_error};
+use core::{error, fmt};
 
 #[test]
 fn test_size() {
@@ -10,14 +9,13 @@ fn test_size() {
 #[test]
 fn test_debug_error() {
     let code = 6;
-    let msg = error_string(code);
-    let kind = decode_error_kind(code);
-    let err = Error {
-        repr: Repr::new_custom(Box::new(Custom {
-            kind: ErrorKind::InvalidInput,
-            error: Box::new(Error { repr: super::Repr::new_os(code) }),
-        })),
-    };
+    let err = Error::from_raw_os_error(code);
+    let mut msg = err.to_string();
+    msg.truncate(msg.find('(').unwrap() - 1);
+    let kind = err.kind();
+
+    let err = Error::new(ErrorKind::InvalidInput, err);
+
     let expected = format!(
         "Custom {{ \
          kind: InvalidInput, \
@@ -30,6 +28,15 @@ fn test_debug_error() {
         code, kind, msg
     );
     assert_eq!(format!("{err:?}"), expected);
+
+    let err = Error::from(ErrorKind::AddrInUse);
+    assert_eq!(format!("{err:?}"), "Kind(AddrInUse)");
+
+    let err = Error::READ_EXACT_EOF;
+    assert_eq!(
+        format!("{err:?}"),
+        "Error { kind: UnexpectedEof, message: \"failed to fill whole buffer\" }"
+    );
 }
 
 #[test]
@@ -70,10 +77,6 @@ fn test_os_packing() {
     for code in -20..20 {
         let e = Error::from_raw_os_error(code);
         assert_eq!(e.raw_os_error(), Some(code));
-        assert_matches!(
-            e.repr.data(),
-            ErrorData::Os(c) if c == code,
-        );
     }
 }
 
@@ -82,28 +85,18 @@ fn test_errorkind_packing() {
     assert_eq!(Error::from(ErrorKind::NotFound).kind(), ErrorKind::NotFound);
     assert_eq!(Error::from(ErrorKind::PermissionDenied).kind(), ErrorKind::PermissionDenied);
     assert_eq!(Error::from(ErrorKind::Uncategorized).kind(), ErrorKind::Uncategorized);
-    // Check that the innards look like what we want.
-    assert_matches!(
-        Error::from(ErrorKind::OutOfMemory).repr.data(),
-        ErrorData::Simple(ErrorKind::OutOfMemory),
-    );
 }
 
 #[test]
 fn test_simple_message_packing() {
-    use super::ErrorKind::*;
-    use super::SimpleMessage;
+    use std::io::ErrorKind::*;
     macro_rules! check_simple_msg {
         ($err:expr, $kind:ident, $msg:literal) => {{
             let e = &$err;
             // Check that the public api is right.
             assert_eq!(e.kind(), $kind);
             assert!(format!("{e:?}").contains($msg));
-            // and we got what we expected
-            assert_matches!(
-                e.repr.data(),
-                ErrorData::SimpleMessage(SimpleMessage { kind: $kind, message: $msg })
-            );
+            assert!(format!("{e}").contains($msg));
         }};
     }
 
@@ -124,19 +117,6 @@ impl fmt::Display for Bojji {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ah! {:?}", self)
     }
-}
-
-#[test]
-fn test_custom_error_packing() {
-    use super::Custom;
-    let test = Error::new(ErrorKind::Uncategorized, Bojji(true));
-    assert_matches!(
-        test.repr.data(),
-        ErrorData::Custom(Custom {
-            kind: ErrorKind::Uncategorized,
-            error,
-        }) if error.downcast_ref::<Bojji>().as_deref() == Some(&Bojji(true)),
-    );
 }
 
 #[derive(Debug)]
@@ -181,11 +161,9 @@ fn test_std_io_error_downcast() {
     assert_eq!(kind, io_error.kind());
 
     // Case 5: simple message
-    const SIMPLE_MESSAGE: SimpleMessage =
-        SimpleMessage { kind: ErrorKind::Other, message: "simple message error test" };
-    let io_error = Error::from_static_message(&SIMPLE_MESSAGE);
+    let io_error = const_error!(ErrorKind::Other, "simple message error test");
     let io_error = io_error.downcast::<E>().unwrap_err();
 
-    assert_eq!(SIMPLE_MESSAGE.kind, io_error.kind());
-    assert_eq!(SIMPLE_MESSAGE.message, format!("{io_error}"));
+    assert_eq!(io_error.kind(), ErrorKind::Other);
+    assert_eq!(format!("{io_error}"), "simple message error test");
 }
