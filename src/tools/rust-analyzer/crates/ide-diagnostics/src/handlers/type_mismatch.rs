@@ -110,7 +110,8 @@ fn add_missing_ok_or_some(
 ) -> Option<()> {
     let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
-    let expr_range = ctx.sema.original_range_opt(expr.syntax())?.range;
+    let hir::FileRange { file_id, range: expr_range } =
+        ctx.sema.original_range_opt(expr.syntax())?;
     let scope = ctx.sema.scope(expr.syntax())?;
 
     let expected_adt = d.expected.as_adt()?;
@@ -132,6 +133,8 @@ fn add_missing_ok_or_some(
     if !d.expected.could_unify_with(ctx.sema.db, &wrapped_actual_ty) {
         return None;
     }
+
+    let file_id = file_id.file_id(ctx.sema.db);
 
     if d.actual.is_unit() {
         if let Expr::BlockExpr(block) = &expr {
@@ -155,10 +158,7 @@ fn add_missing_ok_or_some(
                     );
                 }
 
-                let source_change = SourceChange::from_text_edit(
-                    expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
-                    builder.finish(),
-                );
+                let source_change = SourceChange::from_text_edit(file_id, builder.finish());
                 let name = format!("Insert {variant_name}(()) as the tail of this block");
                 acc.push(fix("insert_wrapped_unit", &name, source_change, expr_range));
             }
@@ -168,13 +168,22 @@ fn add_missing_ok_or_some(
             if ret_expr.expr().is_none() {
                 let mut builder = TextEdit::builder();
                 builder.insert(expr_range.end(), format!(" {variant_name}(())"));
-                let source_change = SourceChange::from_text_edit(
-                    expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
-                    builder.finish(),
-                );
+                let source_change = SourceChange::from_text_edit(file_id, builder.finish());
                 let name = format!("Insert {variant_name}(()) as the return value");
                 acc.push(fix("insert_wrapped_unit", &name, source_change, expr_range));
             }
+            return Some(());
+        } else if expr.is_block_like()
+            && expr.syntax().parent().and_then(ast::StmtList::cast).is_some()
+        {
+            // Fix for forms like `fn foo() -> Result<(), String> { for _ in 0..8 {} }`
+            let mut builder = TextEdit::builder();
+            let indent = expr.indent_level();
+            builder.insert(expr_range.end(), format!("\n{indent}{variant_name}(())"));
+
+            let source_change = SourceChange::from_text_edit(file_id, builder.finish());
+            let name = format!("Insert {variant_name}(()) as the tail of this block");
+            acc.push(fix("insert_wrapped_unit", &name, source_change, expr_range));
             return Some(());
         }
     }
@@ -182,10 +191,7 @@ fn add_missing_ok_or_some(
     let mut builder = TextEdit::builder();
     builder.insert(expr_range.start(), format!("{variant_name}("));
     builder.insert(expr_range.end(), ")".to_owned());
-    let source_change = SourceChange::from_text_edit(
-        expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
-        builder.finish(),
-    );
+    let source_change = SourceChange::from_text_edit(file_id, builder.finish());
     let name = format!("Wrap in {variant_name}");
     acc.push(fix("wrap_in_constructor", &name, source_change, expr_range));
     Some(())
@@ -729,6 +735,21 @@ fn foo() -> Result<(), ()> {}$0
             "#,
             r#"
 fn foo() -> Result<(), ()> {
+    Ok(())
+}
+            "#,
+        );
+
+        check_fix(
+            r#"
+//- minicore: result
+fn foo() -> Result<(), ()> {
+    for _ in 0..5 {}$0
+}
+            "#,
+            r#"
+fn foo() -> Result<(), ()> {
+    for _ in 0..5 {}
     Ok(())
 }
             "#,
