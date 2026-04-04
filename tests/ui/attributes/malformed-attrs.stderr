@@ -314,7 +314,7 @@ error[E0539]: malformed `coverage` attribute input
   --> $DIR/malformed-attrs.rs:92:1
    |
 LL | #[coverage]
-   | ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   | ^^^^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -353,7 +353,7 @@ error[E0539]: malformed `instruction_set` attribute input
 LL | #[instruction_set]
    | ^^^^^^^^^^^^^^^^^^
    | |
-   | valid arguments are `arm::a32` or `arm::t32`
+   | expected this to be a list
    | help: must be of the form: `#[instruction_set(set)]`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>

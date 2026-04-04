@@ -60,7 +60,7 @@ use crate::attributes::test_attrs::*;
 use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
-use crate::parser::{ArgParser, RefPathParser};
+use crate::parser::{ArgParser, MetaItemOrLitParser, RefPathParser};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
     ParsedDescription,
@@ -502,6 +502,36 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     pub(crate) fn adcx(&mut self) -> AttributeDiagnosticContext<'_, 'f, 'sess, S> {
         AttributeDiagnosticContext { ctx: self, custom_suggestions: Vec::new() }
     }
+
+    /// Asserts that this MetaItem is a list that contains a single element. Emits an error and
+    /// returns `None` if it is not the case.
+    ///
+    /// Some examples:
+    ///
+    /// - In `#[allow(warnings)]`, `warnings` is returned
+    /// - In `#[cfg_attr(docsrs, doc = "foo")]`, `None` is returned, "expected a single argument
+    ///   here" is emitted.
+    /// - In `#[cfg()]`, `None` is returned, "expected an argument here" is emitted.
+    ///
+    /// The provided span is used as a fallback for diagnostic generation in case `arg` does not
+    /// contain any. It should be the span of the node that contains `arg`.
+    pub(crate) fn single_element_list<'arg>(
+        &mut self,
+        arg: &'arg ArgParser,
+        span: Span,
+    ) -> Option<&'arg MetaItemOrLitParser> {
+        let ArgParser::List(l) = arg else {
+            self.adcx().expected_list(span, arg);
+            return None;
+        };
+
+        let Some(single) = l.single() else {
+            self.adcx().expected_single_argument(l.span, l.len());
+            return None;
+        };
+
+        Some(single)
+    }
 }
 
 impl<'f, 'sess, S: Stage> Deref for AcceptContext<'f, 'sess, S> {
@@ -689,6 +719,8 @@ where
         )
     }
 
+    /// The provided span is used as a fallback in case `args` does not contain any. It should be
+    /// the span of the node that contains `args`.
     pub(crate) fn expected_list(&mut self, span: Span, args: &ArgParser) -> ErrorGuaranteed {
         let span = match args {
             ArgParser::NoArgs => span,
@@ -745,7 +777,7 @@ where
         self.emit_parse_error(span, AttributeParseErrorReason::DuplicateKey(key))
     }
 
-    /// An error that should be emitted when a [`MetaItemOrLitParser`](crate::parser::MetaItemOrLitParser)
+    /// An error that should be emitted when a [`MetaItemOrLitParser`]
     /// was expected *not* to be a literal, but instead a meta item.
     pub(crate) fn expected_not_literal(&mut self, span: Span) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNotLiteral)
