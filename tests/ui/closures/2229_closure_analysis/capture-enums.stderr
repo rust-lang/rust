@@ -74,6 +74,11 @@ LL | |         println!("{}", str);
 LL | |     };
    | |_____^
    |
+note: Capturing point[] -> Immutable
+  --> $DIR/capture-enums.rs:52:47
+   |
+LL |         let SingleVariant::Point(_, _, str) = point;
+   |                                               ^^^^^
 note: Capturing point[(2, 0)] -> ByValue
   --> $DIR/capture-enums.rs:52:47
    |
@@ -92,7 +97,7 @@ LL | |         println!("{}", str);
 LL | |     };
    | |_____^
    |
-note: Min Capture point[(2, 0)] -> ByValue
+note: Min Capture point[] -> ByValue
   --> $DIR/capture-enums.rs:52:47
    |
 LL |         let SingleVariant::Point(_, _, str) = point;

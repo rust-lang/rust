@@ -1,0 +1,37 @@
+error[E0499]: cannot borrow `color` as mutable more than once at a time
+  --> $DIR/capture-enum-field.rs:14:21
+   |
+LL |     let mut red = |v| {
+   |                   --- first mutable borrow occurs here
+LL |         let Color::RGB(ref mut r, _, _) = color;
+   |                                           ----- first borrow occurs due to use of `color` in closure
+...
+LL |     let mut green = |v| {
+   |                     ^^^ second mutable borrow occurs here
+LL |
+LL |         let Color::RGB(_, ref mut g, _) = color;
+   |                                           ----- second borrow occurs due to use of `color` in closure
+...
+LL |     red(1);
+   |     --- first borrow later used here
+
+error[E0499]: cannot borrow `color` as mutable more than once at a time
+  --> $DIR/capture-enum-field.rs:19:20
+   |
+LL |     let mut red = |v| {
+   |                   --- first mutable borrow occurs here
+LL |         let Color::RGB(ref mut r, _, _) = color;
+   |                                           ----- first borrow occurs due to use of `color` in closure
+...
+LL |     let mut blue = |v| {
+   |                    ^^^ second mutable borrow occurs here
+LL |
+LL |         let Color::RGB(_, _, ref mut b) = color;
+   |                                           ----- second borrow occurs due to use of `color` in closure
+...
+LL |     red(1);
+   |     --- first borrow later used here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

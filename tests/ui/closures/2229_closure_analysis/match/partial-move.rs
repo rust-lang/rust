@@ -33,7 +33,6 @@ use partial_move_lib::ExtNonExhaustive;
 // differences:
 pub fn test_enum1(x: Enum) -> impl FnOnce() {
     || {
-    //~^ ERROR: closure may outlive the current function, but it borrows `x.0`
         match x {
             Enum::A(a, b) => {
                 drop((a, b));
@@ -43,9 +42,11 @@ pub fn test_enum1(x: Enum) -> impl FnOnce() {
     }
 }
 
+// When matching on an enum, the entire enum gets captured, even if it only has a single variant.
+// This is because the closure will need to read the discriminant (which in this case happens to be
+// zero-sized).
 pub fn test_enum2(x: Enum) -> impl FnOnce() {
     || {
-    //~^ ERROR: closure may outlive the current function, but it borrows `x.0`
         match x {
             Enum::A(a, b) => {
                 drop((a, b));
@@ -54,7 +55,7 @@ pub fn test_enum2(x: Enum) -> impl FnOnce() {
     }
 }
 
-// The behavior for single-variant enums matches what happens for a struct
+// In particular, this means that structs behave differently than single-variant enums:
 pub fn test_struct(x: Struct) -> impl FnOnce() {
     || {
     //~^ ERROR: closure may outlive the current function, but it borrows `x.0`

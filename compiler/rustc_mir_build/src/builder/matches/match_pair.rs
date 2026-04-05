@@ -295,11 +295,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                 let downcast_place = place_builder.downcast(adt_def, variant_index); // `(x as Variant)`
                 cx.field_match_pairs(&mut subpairs, extra_data, downcast_place, subpatterns);
 
-                // We treat non-exhaustive enums the same independent of the crate they are
-                // defined in, to avoid differences in the operational semantics between crates.
-                let refutable =
-                    adt_def.variants().len() > 1 || adt_def.is_variant_list_non_exhaustive();
-                if refutable {
+                if adt_def.is_enum() {
                     Some(TestableCase::Variant { adt_def, variant_index })
                 } else {
                     None

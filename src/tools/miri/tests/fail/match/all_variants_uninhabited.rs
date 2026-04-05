@@ -1,3 +1,5 @@
+// This UB should be detected even with validation disabled.
+//@compile-flags: -Zmiri-disable-validation
 #![allow(deref_nullptr)]
 
 enum Never {}
