@@ -332,6 +332,9 @@ pub struct Lint {
     /// `true` if this lint should not be filtered out under any circustamces
     /// (e.g. the unknown_attributes lint)
     pub eval_always: bool,
+
+    /// `true` if this lint is unaffected by `-D warnings`
+    pub ignore_deny_warnings: bool,
 }
 
 /// Extra information for a future incompatibility lint.
@@ -547,6 +550,7 @@ impl Lint {
             feature_gate: None,
             crate_level_only: false,
             eval_always: false,
+            ignore_deny_warnings: false,
         }
     }
 
