@@ -333,6 +333,7 @@ impl<'a> LintExtractor<'a> {
             lint.name.as_str(),
             "unused_features" // broken lint
             | "soft_unstable" // cannot have a stable example
+            | "misleading_cfg_in_build_script" // only run in cargo build scripts
         ) {
             return Ok(());
         }
