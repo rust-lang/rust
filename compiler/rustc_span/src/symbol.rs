@@ -2194,6 +2194,7 @@ symbols! {
         v1,
         v8plus,
         va_arg,
+        va_arg_safe,
         va_copy,
         va_end,
         va_list,
