@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow data in an index of `Container` as mutable
-  --> $DIR/issue-44405.rs:21:5
+  --> $DIR/cannot-borrow-index-output-mutably.rs:22:5
    |
 LL |     container[&mut val].test();
    |     ^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable

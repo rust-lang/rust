@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/41726
 use std::collections::HashMap;
 fn main() {
     let things: HashMap<String, Vec<String>> = HashMap::new();

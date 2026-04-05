@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/26619
 pub struct History<'a> { pub _s: &'a str }
 
 impl<'a> History<'a> {

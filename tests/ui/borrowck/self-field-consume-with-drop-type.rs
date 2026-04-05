@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/47703
 //@ check-pass
 
 struct MyStruct<'a> {

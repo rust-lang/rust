@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/29053
 //@ run-pass
 fn main() {
     let x: &'static str = "x";

@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/18566
 use std::ops::Deref;
 
 struct MyPtr<'a>(&'a mut usize);
