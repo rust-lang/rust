@@ -421,7 +421,11 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             }
             _ => {
                 let is_const_block = matches!(expr.kind, ExprKind::ConstBlock(_));
-                let pattern_from_macro = expr.is_approximately_pattern();
+                let pattern_from_macro = expr.is_approximately_pattern()
+                    || matches!(
+                        expr.peel_parens().kind,
+                        ExprKind::Binary(Spanned { node: BinOpKind::BitOr, .. }, ..)
+                    );
                 let guar = self.dcx().emit_err(ArbitraryExpressionInPattern {
                     span,
                     pattern_from_macro_note: pattern_from_macro,
