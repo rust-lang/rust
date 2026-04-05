@@ -278,6 +278,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
                 InlineAsmArch::SpirV => {}
                 InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {}
+                InlineAsmArch::Xtensa => {}
                 InlineAsmArch::Bpf => {}
                 InlineAsmArch::Msp430 => {
                     constraints.push("~{sr}".to_string());
@@ -684,6 +685,11 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                 | X86InlineAsmRegClass::kreg0
                 | X86InlineAsmRegClass::tmm_reg,
             ) => unreachable!("clobber-only"),
+            Xtensa(XtensaInlineAsmRegClass::freg) => "f",
+            Xtensa(XtensaInlineAsmRegClass::reg) => "r",
+            Xtensa(XtensaInlineAsmRegClass::sreg | XtensaInlineAsmRegClass::breg) => {
+                unreachable!("clobber-only")
+            }
             Wasm(WasmInlineAsmRegClass::local) => "r",
             Bpf(BpfInlineAsmRegClass::reg) => "r",
             Bpf(BpfInlineAsmRegClass::wreg) => "w",
@@ -789,6 +795,7 @@ fn modifier_to_llvm(
             | X86InlineAsmRegClass::kreg0
             | X86InlineAsmRegClass::tmm_reg,
         ) => unreachable!("clobber-only"),
+        Xtensa(_) => None,
         Wasm(WasmInlineAsmRegClass::local) => None,
         Bpf(_) => None,
         Avr(AvrInlineAsmRegClass::reg_pair)
@@ -865,6 +872,11 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
             | X86InlineAsmRegClass::kreg0
             | X86InlineAsmRegClass::tmm_reg,
         ) => unreachable!("clobber-only"),
+        Xtensa(XtensaInlineAsmRegClass::reg) => cx.type_i32(),
+        Xtensa(XtensaInlineAsmRegClass::freg) => cx.type_f32(),
+        Xtensa(XtensaInlineAsmRegClass::sreg | XtensaInlineAsmRegClass::breg) => {
+            unreachable!("clobber-only")
+        }
         Wasm(WasmInlineAsmRegClass::local) => cx.type_i32(),
         Bpf(BpfInlineAsmRegClass::reg) => cx.type_i64(),
         Bpf(BpfInlineAsmRegClass::wreg) => cx.type_i32(),
