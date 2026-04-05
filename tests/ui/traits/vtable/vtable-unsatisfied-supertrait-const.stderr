@@ -1,0 +1,35 @@
+error[E0277]: the trait bound `T: Droppable` is not satisfied
+  --> $DIR/vtable-unsatisfied-supertrait-const.rs:10:23
+   |
+LL | impl<T: Send> Bar for T {}
+   |                       ^ the trait `Droppable` is not implemented for `T`
+   |
+note: required by a bound in `Bar`
+  --> $DIR/vtable-unsatisfied-supertrait-const.rs:8:26
+   |
+LL | trait Bar: Send + Sync + Droppable {}
+   |                          ^^^^^^^^^ required by this bound in `Bar`
+help: consider further restricting type parameter `T` with trait `Droppable`
+   |
+LL | impl<T: Send + Droppable> Bar for T {}
+   |              +++++++++++
+
+error[E0277]: `T` cannot be shared between threads safely
+  --> $DIR/vtable-unsatisfied-supertrait-const.rs:10:23
+   |
+LL | impl<T: Send> Bar for T {}
+   |                       ^ `T` cannot be shared between threads safely
+   |
+note: required by a bound in `Bar`
+  --> $DIR/vtable-unsatisfied-supertrait-const.rs:8:19
+   |
+LL | trait Bar: Send + Sync + Droppable {}
+   |                   ^^^^ required by this bound in `Bar`
+help: consider further restricting type parameter `T` with trait `Sync`
+   |
+LL | impl<T: Send + std::marker::Sync> Bar for T {}
+   |              +++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
