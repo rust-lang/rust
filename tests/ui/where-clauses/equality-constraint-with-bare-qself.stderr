@@ -1,0 +1,25 @@
+error: equality constraints are not yet supported in `where` clauses
+  --> $DIR/equality-constraint-with-bare-qself.rs:9:5
+   |
+LL |     <T>::Item = i32, {}
+   |     ^^^^^^^^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+help: if `Iterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+   |
+LL -     T: Iterator,
+LL -     <T>::Item = i32, {}
+LL +     T: Iterator<Item = i32>, {}
+   |
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/equality-constraint-with-bare-qself.rs:5:11
+   |
+LL | struct Ty<T>
+   |           ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0392`.
