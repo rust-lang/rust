@@ -201,7 +201,7 @@ where
         span: I::Span,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
-        EvalCtxt::enter_root(self, self.cx().recursion_limit(), span, |ecx| {
+        EvalCtxt::enter_root(self, self.cx().recursion_limit() * 2, span, |ecx| {
             ecx.evaluate_goal(GoalSource::Misc, goal, stalled_on)
         })
     }
@@ -1485,7 +1485,7 @@ pub fn evaluate_root_goal_for_proof_tree_raw_provider<
     let mut inspect = inspect::ProofTreeBuilder::new();
     let canonical_result = SearchGraph::<D>::evaluate_root_goal_for_proof_tree(
         cx,
-        cx.recursion_limit(),
+        cx.recursion_limit() * 2,
         canonical_goal,
         &mut inspect,
     );
