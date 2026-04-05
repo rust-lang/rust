@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::CoroutineLayout;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -213,7 +213,8 @@ impl<'tcx> LateLintPass<'tcx> for AwaitHolding {
 impl AwaitHolding {
     fn check_interior_types(&self, cx: &LateContext<'_>, coroutine: &CoroutineLayout<'_>) {
         for (ty_index, ty_cause) in coroutine.field_tys.iter_enumerated() {
-            if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
+            let coroutine_field_ty = maybe_unwrap_unsafe_pinned(ty_cause.ty);
+            if let rustc_middle::ty::Adt(adt, _) = coroutine_field_ty.kind() {
                 let await_points = || {
                     coroutine
                         .variant_source_info
@@ -226,6 +227,7 @@ impl AwaitHolding {
                         })
                         .collect::<Vec<_>>()
                 };
+
                 if is_mutex_guard(cx, adt.did()) {
                     span_lint_and_then(
                         cx,
@@ -262,6 +264,18 @@ impl AwaitHolding {
                 }
             }
         }
+    }
+
+}
+
+
+// self-referential coroutine fields are wrapped in `UnsafePinned`.
+fn maybe_unwrap_unsafe_pinned<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
+    match ty.kind() {
+        rustc_middle::ty::Adt(adt, args) if adt.is_unsafe_pinned() => {
+            args.type_at(0)
+        }
+        _ => ty
     }
 }
 
