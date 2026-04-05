@@ -47,8 +47,9 @@ macro_rules! assert_approx_eq {
     }};
 
     ($a:expr, $b: expr) => {
-        // accept up to 8ULP (4ULP for host floats and 4ULP for miri artificial error).
-        assert_approx_eq!($a, $b, 8);
+        // Accept up to 12ULP (4ULP for miri artificial error and the rest for host floats).
+        // We saw failures on an i686-linux host with a limit of 8!
+        assert_approx_eq!($a, $b, 12);
     };
 }
 
