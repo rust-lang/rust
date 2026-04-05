@@ -102,6 +102,10 @@ const fn max_iov() -> usize {
 }
 
 impl FileDesc {
+    pub fn close(self) -> io::Result<()> {
+        self.0.close()
+    }
+
     #[inline]
     pub fn try_clone(&self) -> io::Result<Self> {
         self.duplicate()
