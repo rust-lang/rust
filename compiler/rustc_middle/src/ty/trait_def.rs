@@ -12,6 +12,7 @@ use tracing::debug;
 use crate::query::LocalCrate;
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
+use crate::ty::print::{with_crate_prefix, with_no_trimmed_paths};
 use crate::ty::{Ident, Ty, TyCtxt};
 
 /// A trait's definition with type information.
@@ -137,9 +138,9 @@ impl ImplRestrictionKind {
             ImplRestrictionKind::Unrestricted => String::new(),
             ImplRestrictionKind::Restricted(restricted_to, _) => {
                 if restricted_to.krate == krate {
-                    tcx.def_path_str(restricted_to)
+                    with_crate_prefix!(with_no_trimmed_paths!(tcx.def_path_str(restricted_to)))
                 } else {
-                    tcx.crate_name(restricted_to.krate).to_ident_string()
+                    with_no_trimmed_paths!(tcx.def_path_str(restricted_to))
                 }
             }
         }
