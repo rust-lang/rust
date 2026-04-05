@@ -804,6 +804,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 /// ```
 #[inline(always)]
 #[stable(feature = "drop_in_place", since = "1.8.0")]
+#[lang = "drop_in_place"] // for mir-opts
 #[rustc_diagnostic_item = "ptr_drop_in_place"]
 #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
 pub const unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T)
