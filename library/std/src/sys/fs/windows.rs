@@ -1155,17 +1155,230 @@ fn to_u64(ft: &c::FILETIME) -> u64 {
     (ft.dwLowDateTime as u64) | ((ft.dwHighDateTime as u64) << 32)
 }
 
+#[allow(dead_code)]
 impl FilePermissions {
     pub fn readonly(&self) -> bool {
         self.attrs & c::FILE_ATTRIBUTE_READONLY != 0
     }
 
     pub fn set_readonly(&mut self, readonly: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
         if readonly {
-            self.attrs |= c::FILE_ATTRIBUTE_READONLY;
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_READONLY;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_READONLY;
         }
+    }
+
+    fn hidden(&self) -> bool {
+        self.attrs & c::FILE_ATTRIBUTE_HIDDEN != 0
+    }
+
+    fn set_hidden(&mut self, hidden: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
+        if hidden {
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_HIDDEN;
+        } else {
+            self.attrs &= !c::FILE_ATTRIBUTE_HIDDEN;
+        }
+    }
+
+    fn system(&self) -> bool {
+        self.attrs & c::FILE_ATTRIBUTE_SYSTEM != 0
+    }
+
+    fn set_system(&mut self, system: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
+        if system {
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_SYSTEM;
+        } else {
+            self.attrs &= !c::FILE_ATTRIBUTE_SYSTEM;
+        }
+    }
+
+    fn archive(&self) -> bool {
+        self.attrs & c::FILE_ATTRIBUTE_ARCHIVE != 0
+    }
+
+    fn set_archive(&mut self, archive: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
+        if archive {
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_ARCHIVE;
+        } else {
+            self.attrs &= !c::FILE_ATTRIBUTE_ARCHIVE;
+        }
+    }
+
+    // This file attribute is only valid when used alone
+    // There should be no other file attribute set.
+    fn normal(&self) -> bool {
+        self.attrs == c::FILE_ATTRIBUTE_NORMAL
+    }
+
+    // According to Microsoft docs here:
+    // https://learn.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants
+    // This file attribute is valid only when used alone.
+    // The SetFileAttributes seems to recognize this as a
+    // reset/zero out flag.
+    fn set_normal(&mut self, normal: bool) {
+        if normal {
+            self.attrs = c::FILE_ATTRIBUTE_NORMAL;
+        }
+    }
+
+    fn temporary(&self) -> bool {
+        self.attrs & c::FILE_ATTRIBUTE_TEMPORARY != 0
+    }
+
+    fn set_temporary(&mut self, temporary: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
+        if temporary {
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_TEMPORARY;
+        } else {
+            self.attrs &= !c::FILE_ATTRIBUTE_TEMPORARY;
+        }
+    }
+
+    fn offline(&self) -> bool {
+        self.attrs & c::FILE_ATTRIBUTE_OFFLINE != 0
+    }
+
+    fn set_offline(&mut self, offline: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
+        if offline {
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_OFFLINE;
+        } else {
+            self.attrs &= !c::FILE_ATTRIBUTE_OFFLINE;
+        }
+    }
+
+    fn not_content_indexed(&self) -> bool {
+        self.attrs & c::FILE_ATTRIBUTE_OFFLINE != 0
+    }
+
+    fn set_not_content_indexed(&mut self, not_content_indexed: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
+        if not_content_indexed {
+            self.attrs =
+                self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
+        } else {
+            self.attrs &= !c::FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
+        }
+    }
+
+    // This flag is not supported until Windows 8 and Windows Server 2012
+    // (not supported on Windows Server 2008 R2, Windows 7, Windows Server 2008,
+    // Windows Vista, Windows Server 2003 and Windows XP)
+    fn integrity_stream(&self) -> bool {
+        self.attrs & c::FILE_ATTRIBUTE_INTEGRITY_STREAM != 0
+    }
+
+    // This flag is not supported until Windows 8 and Windows Server 2012
+    // (not supported on Windows Server 2008 R2, Windows 7, Windows Server 2008,
+    // Windows Vista, Windows Server 2003 and Windows XP)
+    fn set_integrity_stream(&mut self, integrity_stream: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
+        if integrity_stream {
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_INTEGRITY_STREAM;
+        } else {
+            self.attrs &= !c::FILE_ATTRIBUTE_INTEGRITY_STREAM;
+        }
+    }
+
+    // This flag is not supported until Windows 8 and Windows Server 2012
+    // (not supported on Windows Server 2008 R2, Windows 7, Windows Server 2008,
+    // Windows Vista, Windows Server 2003 and Windows XP)
+    fn no_scrub_data(&self) -> bool {
+        self.attrs & c::FILE_ATTRIBUTE_NO_SCRUB_DATA != 0
+    }
+
+    // This flag is not supported until Windows 8 and Windows Server 2012
+    // (not supported on Windows Server 2008 R2, Windows 7, Windows Server 2008,
+    // Windows Vista, Windows Server 2003 and Windows XP)
+    fn set_no_scrub_data(&mut self, no_scrub_data: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
+        if no_scrub_data {
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_NO_SCRUB_DATA;
+        } else {
+            self.attrs &= !c::FILE_ATTRIBUTE_NO_SCRUB_DATA;
+        }
+    }
+
+    // This flag was introduced in Windows 10, version 1703
+    fn pinned(&self) -> bool {
+        self.attrs & c::FILE_ATTRIBUTE_PINNED != 0
+    }
+
+    // This flag was introduced in Windows 10, version 1703
+    fn set_pinned(&mut self, pinned: bool) {
+        if pinned {
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_PINNED;
+        } else {
+            self.attrs &= !c::FILE_ATTRIBUTE_PINNED;
+        }
+    }
+
+    // This flag was introduced in Windows 10, version 1703
+    fn unpinned(&self) -> bool {
+        self.attrs & c::FILE_ATTRIBUTE_UNPINNED != 0
+    }
+
+    // This flag was introduced in Windows 10, version 1703
+    fn set_unpinned(&mut self, unpinned: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
+        if unpinned {
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_UNPINNED;
+        } else {
+            self.attrs &= !c::FILE_ATTRIBUTE_UNPINNED;
+        }
+    }
+
+    // We don't have a FILE_ATTRIBUTE_STRICTLY_SEQUENTIAL (aka "SMR Blob")
+    // flag yet in `std/src/sys/pal/windows/c/windows_sys.rs`
+    // This is a flag that is settable by `attrib` command on Windows
+    // Note that this attribute was introduced in Windows 10, version unsure
+    // Also see
+    // - http://justsolve.archiveteam.org/wiki/DOS/Windows_file_attributes
+    // - https://superuser.com/questions/44812/windows-explorers-file-attribute-column-values
+    // fn strictly_sequential(&self) -> bool {
+    //     self.attrs & c::FILE_ATTRIBUTE_STRICTLY_SEQUENTIAL != 0
+    // }
+
+    // fn set_strictly_sequential(&mut self, pinned: bool) {
+    //     // According to SetFileAttributes, any other values
+    //     // passed to this should override FILE_ATTRIBUTE_NORMAL
+    //     if pinned {
+    //         self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_STRICTLY_SEQUENTIAL;
+    //     } else {
+    //         self.attrs &= !c::FILE_ATTRIBUTE_STRICTLY_SEQUENTIAL;
+    //     }
+    // }
+
+    // No set_recall_on_data_access because that's settable only by the
+    // OS (e.g. OneDrive filter driver)
+    // No encrypted, compressed, device, etc. setter attributes because
+    // reasons mentioned here: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileattributesa
+    // However, should we have methods that sees if these attributes
+    // are set?
+
+    pub fn file_attributes(&self) -> u32 {
+        self.attrs as u32
+    }
+}
+
+impl FromInner<u32> for FilePermissions {
+    fn from_inner(attrs: u32) -> FilePermissions {
+        FilePermissions { attrs }
     }
 }
 

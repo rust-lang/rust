@@ -4,11 +4,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::fs::{self, Metadata, OpenOptions};
+use crate::fs::{self, Metadata, OpenOptions, Permissions};
 use crate::io::BorrowedCursor;
 use crate::path::Path;
 use crate::sealed::Sealed;
-use crate::sys::{AsInner, AsInnerMut, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
 use crate::{io, sys};
 
@@ -365,6 +365,58 @@ impl OpenOptionsExt2 for OpenOptions {
     fn freeze_last_write_time(&mut self, freeze: bool) -> &mut Self {
         self.as_inner_mut().freeze_last_write_time(freeze);
         self
+    }
+}
+
+/// Windows-specific extensions to [`fs::Permissions`]. This extension trait
+/// allows a view into what Windows file attributes are enabled in
+/// [`Permissions`] and manually set file attributes on [`Permissions`].
+/// See Microsoft's [`File Attribute Constants`] page to know what file
+/// attribute metadata are defined and stored on Windows files.
+///
+/// [`Permissions`]: fs::Permissions
+/// [`File Attribute Constants`]:
+///     https://learn.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants
+///
+/// # Example
+///
+/// ```no_run
+/// use std::fs::Permissions;
+/// use std::os::windows::fs::PermissionsExt;
+///
+/// const FILE_ATTRIBUTE_SYSTEM: u32 = 0x4;
+/// const FILE_ATTRIBUTE_ARCHIVE: u32 = 0x20;
+/// let my_file_attr = FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_ARCHIVE;
+/// let mut permissions = Permissions::set_file_attributes(my_file_attr);
+/// assert_eq!(permissions.mode(), my_file_attr);
+/// ```
+#[unstable(feature = "windows_permissions_ext", issue = "152956")]
+pub trait PermissionsExt: Sealed {
+    /// Returns the file attribute bits.
+    #[unstable(feature = "windows_permissions_ext", issue = "152956")]
+    fn file_attributes(&self) -> u32;
+
+    // QUESTION: Should this be renamed as from_file_attributes()?
+    // and modify the signature of set_file_attributes() to take a
+    // &mut self like how unix uses `set_mode()`?
+    // (Note to self: if we do the above, I need to make changes to
+    // the doc comments).
+    /// Sets the file attribute bits.
+    #[unstable(feature = "windows_permissions_ext", issue = "152956")]
+    fn set_file_attributes(mask: u32) -> Self;
+}
+
+#[unstable(feature = "windows_permissions_ext", issue = "152956")]
+impl Sealed for fs::Permissions {}
+
+#[unstable(feature = "windows_permissions_ext", issue = "152956")]
+impl PermissionsExt for fs::Permissions {
+    fn file_attributes(&self) -> u32 {
+        self.as_inner().file_attributes()
+    }
+
+    fn set_file_attributes(mask: u32) -> Self {
+        Permissions::from_inner(FromInner::from_inner(mask))
     }
 }
 
