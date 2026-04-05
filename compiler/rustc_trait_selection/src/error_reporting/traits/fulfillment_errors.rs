@@ -873,12 +873,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             diag.downgrade_to_delayed_bug();
         }
 
-        if let Ok(Some(ImplSource::UserDefined(impl_data))) =
-            SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref.skip_binder()))
-        {
-            let impl_did = impl_data.impl_def_id;
-            let trait_did = trait_ref.def_id();
+        if let Some(impl_did) = self.enter_forall(trait_ref, |trait_ref_for_select| {
+            match SelectionContext::new(self)
+                .select(&obligation.with(self.tcx, trait_ref_for_select))
+            {
+                Ok(Some(ImplSource::UserDefined(impl_data))) => Some(impl_data.impl_def_id),
+                _ => None,
+            }
+        }) {
             let impl_span = self.tcx.def_span(impl_did);
+            let trait_did = trait_ref.def_id();
             let trait_name = self.tcx.item_name(trait_did);
 
             if self.tcx.is_const_trait(trait_did) && !self.tcx.is_const_trait_impl(impl_did) {
