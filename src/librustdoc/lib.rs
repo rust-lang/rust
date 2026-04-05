@@ -11,6 +11,7 @@
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(rustc_private)]
+#![feature(strip_circumfix)]
 #![feature(test)]
 #![feature(trim_prefix_suffix)]
 #![recursion_limit = "256"]

@@ -117,8 +117,9 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
     let mut replacer = |broken_link: BrokenLink<'_>| {
         if let Some(link) =
             link_names.iter().find(|link| *link.original_text == *broken_link.reference)
+            && let Some(href) = link.href.as_deref()
         {
-            Some((link.href.as_str().into(), link.new_text.to_string().into()))
+            Some((href.into(), link.new_text.to_string().into()))
         } else if matches!(&broken_link.link_type, LinkType::Reference | LinkType::ReferenceUnknown)
         {
             // If the link is shaped [like][this], suppress any broken HTML in the [this] part.

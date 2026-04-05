@@ -592,7 +592,9 @@ impl Item {
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {
                 debug!(?id);
-                if let Ok(HrefInfo { mut url, .. }) = href(*id, cx) {
+                if let Some(id) = id
+                    && let Ok(HrefInfo { mut url, .. }) = href(*id, cx)
+                {
                     debug!(?url);
                     match fragment {
                         Some(UrlFragment::Item(def_id)) => {
@@ -609,7 +611,14 @@ impl Item {
                         original_text: s.clone(),
                         new_text: link_text.clone(),
                         tooltip: link_tooltip(*id, fragment, cx).to_string(),
-                        href: url,
+                        href: Some(url),
+                    })
+                } else if id.is_none() {
+                    Some(RenderedLink {
+                        original_text: s.clone(),
+                        new_text: link_text.clone(),
+                        tooltip: format!("function argument {link_text}"),
+                        href: None,
                     })
                 } else {
                     None
@@ -632,7 +641,7 @@ impl Item {
             .map(|ItemLink { link: s, link_text, .. }| RenderedLink {
                 original_text: s.clone(),
                 new_text: link_text.clone(),
-                href: String::new(),
+                href: Some(String::new()),
                 tooltip: String::new(),
             })
             .collect()
@@ -1010,7 +1019,10 @@ pub(crate) struct ItemLink {
     /// The `DefId` of the Item whose **HTML Page** contains the item being
     /// linked to. This will be different to `item_id` on item's that don't
     /// have their own page, such as struct fields and enum variants.
-    pub(crate) page_id: DefId,
+    ///
+    /// If `None`, no link will be generated, but link syntax will be
+    /// removed. For example, `[arg@n]` will become just `n`.
+    pub(crate) page_id: Option<DefId>,
     /// The url fragment to append to the link
     pub(crate) fragment: Option<UrlFragment>,
 }
@@ -1023,7 +1035,9 @@ pub struct RenderedLink {
     /// The text to display in the HTML
     pub(crate) new_text: Box<str>,
     /// The URL to put in the `href`
-    pub(crate) href: String,
+    ///
+    /// If this is `None`, no link will be generated at all.
+    pub(crate) href: Option<String>,
     /// The tooltip.
     pub(crate) tooltip: String,
 }

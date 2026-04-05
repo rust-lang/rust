@@ -1178,6 +1178,52 @@ impl LinkCollector<'_, '_> {
             pp_link.as_ref().map_err(|err| err.report(self.cx, diag_info.clone())).ok()?;
         let disambiguator = *disambiguator;
 
+        // if the disambiguator is `arg@argument`, then the item must be a function that has the `argument`.
+        if disambiguator == Some(Disambiguator::Argument) {
+            if !self.cx.tcx.features().intra_doc_arg() {
+                self.report_intra_doc_arg_feature_gate(dox, &diag_info.link_range, item);
+            }
+
+            match &item.inner.kind {
+                clean::types::ItemKind::MethodItem(f, _)
+                | clean::types::ItemKind::ForeignFunctionItem(f, _)
+                | clean::types::ItemKind::FunctionItem(f)
+                | clean::types::ItemKind::RequiredMethodItem(f, _) => {
+                    let contains_arg = f.decl.inputs.iter().any(|input| {
+                        input.name.is_some_and(|it| {
+                            let a: &str = &*link_text;
+                            it.as_str() == a
+                        })
+                    });
+
+                    if contains_arg {
+                        return Some(ItemLink {
+                            link: diag_info.ori_link.into(),
+                            link_text: link_text.clone(),
+                            page_id: None,
+                            fragment: None,
+                        });
+                    } else {
+                        unknown_arg_error(
+                            self.cx,
+                            diag_info.clone(),
+                            diag_info.link_range.clone(),
+                            link_text,
+                        );
+                        return None;
+                    }
+                }
+                _ => {
+                    invalid_arg_disambiguator(
+                        self.cx,
+                        diag_info.clone(),
+                        diag_info.link_range.clone(),
+                    );
+                    return None;
+                }
+            }
+        }
+
         let mut resolved = self.resolve_with_disambiguator_cached(
             ResolutionInfo {
                 item_id,
@@ -1370,7 +1416,7 @@ impl LinkCollector<'_, '_> {
                 res.def_id(self.cx.tcx).map(|page_id| ItemLink {
                     link: Box::<str>::from(diag_info.ori_link),
                     link_text: link_text.clone(),
-                    page_id,
+                    page_id: Some(page_id),
                     fragment,
                 })
             }
@@ -1392,7 +1438,7 @@ impl LinkCollector<'_, '_> {
                 Some(ItemLink {
                     link: Box::<str>::from(diag_info.ori_link),
                     link_text: link_text.clone(),
-                    page_id,
+                    page_id: Some(page_id),
                     fragment,
                 })
             }
@@ -1426,6 +1472,8 @@ impl LinkCollector<'_, '_> {
                 | (_, Some(Disambiguator::Namespace(_)))
                 // If no disambiguator given, allow anything
                 | (_, None)
+                // arg@argument disambiguator
+                | (_, Some(Disambiguator::Argument))
                 // All of these are valid, so do nothing
                 => {}
                 (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
@@ -1496,6 +1544,30 @@ impl LinkCollector<'_, '_> {
             "linking to associated items of raw pointers is experimental",
         )
         .with_note("rustdoc does not allow disambiguating between `*const` and `*mut`, and pointers are unstable until it does")
+        .emit();
+    }
+
+    fn report_intra_doc_arg_feature_gate(
+        &self,
+        dox: &str,
+        ori_link: &MarkdownLinkRange,
+        item: &Item,
+    ) {
+        let span = match source_span_for_markdown_range(
+            self.cx.tcx,
+            dox,
+            ori_link.inner_range(),
+            &item.attrs.doc_strings,
+        ) {
+            Some((sp, _)) => sp,
+            None => item.attr_span(self.cx.tcx),
+        };
+        rustc_session::parse::feature_err(
+            self.cx.tcx.sess,
+            sym::intra_doc_arg,
+            span,
+            "`arg@` disambiguators are experimental",
+        )
         .emit();
     }
 
@@ -1712,6 +1784,10 @@ enum Disambiguator {
     Kind(DefKind),
     /// `type@`
     Namespace(Namespace),
+    /// References a function argument
+    ///
+    /// `arg@` or `argument@`
+    Argument,
 }
 
 impl Disambiguator {
@@ -1754,6 +1830,7 @@ impl Disambiguator {
                 "type" => NS(Namespace::TypeNS),
                 "value" => NS(Namespace::ValueNS),
                 "macro" => NS(Namespace::MacroNS),
+                "arg" | "argument" => Disambiguator::Argument,
                 "prim" | "primitive" => Primitive,
                 "tyalias" | "typealias" => Kind(DefKind::TyAlias),
                 _ => return Err((format!("unknown disambiguator `{prefix}`"), 0..idx)),
@@ -1792,6 +1869,7 @@ impl Disambiguator {
             Self::Namespace(n) => n,
             // for purposes of link resolution, fields are in the value namespace.
             Self::Kind(DefKind::Field) => ValueNS,
+            Self::Argument => ValueNS,
             Self::Kind(k) => {
                 k.ns().expect("only DefKinds with a valid namespace can be disambiguators")
             }
@@ -1803,7 +1881,7 @@ impl Disambiguator {
         match self {
             Self::Namespace(_) => panic!("article() doesn't make sense for namespaces"),
             Self::Kind(k) => k.article(),
-            Self::Primitive => "a",
+            Self::Argument | Self::Primitive => "a",
         }
     }
 
@@ -1814,6 +1892,7 @@ impl Disambiguator {
             // printing "module" vs "crate" so using the wrong ID is not a huge problem
             Self::Kind(k) => k.descr(CRATE_DEF_ID.to_def_id()),
             Self::Primitive => "builtin type",
+            Self::Argument => "argument",
         }
     }
 }
@@ -2284,6 +2363,39 @@ fn disambiguator_error(
         );
         diag.note(msg);
     });
+}
+
+/// Unknown function parameter error when using `arg@name` disambiguator
+fn unknown_arg_error(
+    cx: &DocContext<'_>,
+    mut diag_info: DiagnosticInfo<'_>,
+    range: MarkdownLinkRange,
+    arg: impl Display,
+) {
+    diag_info.link_range = range;
+    report_diagnostic(
+        cx.tcx,
+        BROKEN_INTRA_DOC_LINKS,
+        format!("argument `{arg}` does not exist"),
+        &diag_info,
+        |_diag, _sp, _link_range| {},
+    );
+}
+
+/// `arg@` disambiguator used on a non-function
+fn invalid_arg_disambiguator(
+    cx: &DocContext<'_>,
+    mut diag_info: DiagnosticInfo<'_>,
+    range: MarkdownLinkRange,
+) {
+    diag_info.link_range = range;
+    report_diagnostic(
+        cx.tcx,
+        BROKEN_INTRA_DOC_LINKS,
+        "`arg@` disambiguator can only be used in the documentation of functions",
+        &diag_info,
+        |_diag, _sp, _link_range| {},
+    );
 }
 
 fn report_malformed_generics(
