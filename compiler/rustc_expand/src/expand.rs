@@ -815,6 +815,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         {
                             rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
                         }
+                        Annotatable::Item(item_inner) if item_inner.tokens.is_none() => {
+                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                        }
+                        Annotatable::ForeignItem(item_inner) if item_inner.tokens.is_none() => {
+                            rustc_parse::fake_token_stream_for_foreign_item(
+                                &self.cx.sess.psess,
+                                item_inner,
+                            )
+                        }
                         _ => item.to_tokens(),
                     };
                     let attr_item = attr.get_normal_item();
