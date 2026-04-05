@@ -4451,6 +4451,7 @@ dependencies = [
  "thin-vec",
  "tracing",
  "unicode-normalization",
+ "unicode-properties",
  "unicode-width 0.2.2",
 ]
 
