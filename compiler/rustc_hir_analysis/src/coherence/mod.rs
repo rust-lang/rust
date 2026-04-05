@@ -105,9 +105,7 @@ fn enforce_trait_manually_implementable(
         return Err(tcx.dcx().emit_err(errors::ImplOfRestrictedTrait {
             impl_span: impl_header_span,
             restriction_span: trait_def.impl_restriction.expect_span(),
-            restriction_path: trait_def
-                .impl_restriction
-                .restriction_path(tcx, rustc_hir::def_id::LOCAL_CRATE),
+            restriction_path: trait_def.impl_restriction.restriction_path(tcx),
         }));
     }
     Ok(())

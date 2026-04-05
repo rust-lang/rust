@@ -133,11 +133,11 @@ impl ImplRestrictionKind {
     }
 
     /// Obtain the path of the restriction. If unrestricted, an empty string is returned.
-    pub fn restriction_path(self, tcx: TyCtxt<'_>, krate: rustc_span::def_id::CrateNum) -> String {
+    pub fn restriction_path(self, tcx: TyCtxt<'_>) -> String {
         match self {
             ImplRestrictionKind::Unrestricted => String::new(),
             ImplRestrictionKind::Restricted(restricted_to, _) => {
-                if restricted_to.krate == krate {
+                if restricted_to.krate == rustc_hir::def_id::LOCAL_CRATE {
                     with_crate_prefix!(with_no_trimmed_paths!(tcx.def_path_str(restricted_to)))
                 } else {
                     with_no_trimmed_paths!(tcx.def_path_str(restricted_to))
