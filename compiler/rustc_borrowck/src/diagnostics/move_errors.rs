@@ -800,7 +800,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 let mut is_raw_ptr = false;
                 let mut is_ref = false;
                 let mut is_destructuring_assignment = false;
+                let mut is_nested_deref = false;
                 if let Some(inner) = inner {
+                    is_nested_deref =
+                        matches!(inner.kind, hir::ExprKind::Unary(hir::UnOp::Deref, _));
                     let typck_result = self.infcx.tcx.typeck(self.mir_def_id());
                     if let Some(inner_type) = typck_result.node_type_opt(inner.hir_id) {
                         if matches!(inner_type.kind(), ty::RawPtr(..)) {
@@ -829,7 +832,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         String::new(),
                         Applicability::MaybeIncorrect,
                     );
-                } else if !is_raw_ptr && !is_destructuring_assignment {
+                } else if !is_raw_ptr && !is_destructuring_assignment && !is_nested_deref {
                     err.span_suggestion_verbose(
                         span.shrink_to_lo(),
                         "consider borrowing here",
