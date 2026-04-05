@@ -87,7 +87,7 @@ macro_rules! arena_types {
             [] effective_visibilities: rustc_middle::middle::privacy::EffectiveVisibilities,
             [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] dyn_compatibility_violations: rustc_middle::traits::DynCompatibilityViolation,
-            [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<'tcx>,
+            [] codegen_unit: rustc_middle::mono::CodegenUnit<'tcx>,
             [decode] attribute: rustc_hir::Attribute,
             [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::Symbol>,
             [] autodiff_item: rustc_hir::attrs::AutoDiffItem,

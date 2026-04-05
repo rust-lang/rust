@@ -24,8 +24,8 @@ use rustc_span::{
 
 use crate::dep_graph::{DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use crate::mir::mono::MonoItem;
 use crate::mir::{self, interpret};
+use crate::mono::MonoItem;
 use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use crate::ty::{self, Ty, TyCtxt};
 
