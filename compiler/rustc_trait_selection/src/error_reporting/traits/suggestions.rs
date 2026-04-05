@@ -3791,8 +3791,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut parent_trait_pred =
                     self.resolve_vars_if_possible(data.derived.parent_trait_pred);
                 let parent_def_id = parent_trait_pred.def_id();
-                if tcx.is_diagnostic_item(sym::FromResidual, parent_def_id)
-                    && !tcx.features().enabled(sym::try_trait_v2)
+                if (self.tcx.is_diagnostic_item(sym::FromResidual, parent_def_id)
+                    || self.tcx.is_diagnostic_item(sym::FromOutput, parent_def_id))
+                    && !self.tcx.features().enabled(sym::try_trait_v2)
                 {
                     // If `#![feature(try_trait_v2)]` is not enabled, then there's no point on
                     // talking about `FromResidual<Result<A, B>>`, as the end user has nothing they
