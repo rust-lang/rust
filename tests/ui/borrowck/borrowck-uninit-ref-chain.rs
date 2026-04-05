@@ -16,18 +16,22 @@ fn main() {
 
     let mut a: S<i32, i32>;
     a.x = 0; //~ ERROR [E0381]
+    //~^ ERROR E0658
     let _b = &a.x;
 
     let mut a: S<&&i32, &&i32>;
     a.x = &&0; //~ ERROR [E0381]
+    //~^ ERROR E0658
     let _b = &**a.x;
 
 
     let mut a: S<i32, i32>;
     a.x = 0; //~ ERROR [E0381]
+    //~^ ERROR E0658
     let _b = &a.y;
 
     let mut a: S<&&i32, &&i32>;
     a.x = &&0; //~ ERROR [E0381]
+    //~^ ERROR E0658
     let _b = &**a.y;
 }

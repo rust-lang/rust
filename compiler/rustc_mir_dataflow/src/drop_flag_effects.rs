@@ -62,6 +62,7 @@ pub fn on_lookup_result_bits<'tcx, F>(
     }
 }
 
+/// Invoke `each_child` on each of the **descendants** of the `move_path_index`.
 pub fn on_all_children_bits<'tcx, F>(
     move_data: &MoveData<'tcx>,
     move_path_index: MovePathIndex,
