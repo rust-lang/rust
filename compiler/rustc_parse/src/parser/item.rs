@@ -418,7 +418,7 @@ impl<'a> Parser<'a> {
         let tree = self.parse_use_tree()?;
         if let Err(mut e) = self.expect_semi() {
             match tree.kind {
-                UseTreeKind::Glob => {
+                UseTreeKind::Glob(_) => {
                     e.note("the wildcard token must be last on the path");
                 }
                 UseTreeKind::Nested { .. } => {
@@ -1313,13 +1313,13 @@ impl<'a> Parser<'a> {
                 }
             };
 
-        Ok(UseTree { prefix, kind, span: lo.to(self.prev_token.span) })
+        Ok(UseTree { prefix, kind })
     }
 
     /// Parses `*` or `{...}`.
     fn parse_use_tree_glob_or_nested(&mut self) -> PResult<'a, UseTreeKind> {
         Ok(if self.eat(exp!(Star)) {
-            UseTreeKind::Glob
+            UseTreeKind::Glob(self.prev_token.span)
         } else {
             let lo = self.token.span;
             UseTreeKind::Nested {
