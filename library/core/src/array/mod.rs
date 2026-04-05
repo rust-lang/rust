@@ -11,7 +11,7 @@ use crate::convert::Infallible;
 use crate::error::Error;
 use crate::hash::{self, Hash};
 use crate::intrinsics::transmute_unchecked;
-use crate::iter::{UncheckedIterator, repeat_n};
+use crate::iter::{TrustedLen, UncheckedIterator, repeat_n};
 use crate::marker::Destruct;
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{
@@ -1009,16 +1009,48 @@ impl<T: [const] Destruct> const Drop for Guard<'_, T> {
 pub(crate) fn iter_next_chunk<T, const N: usize>(
     iter: &mut impl Iterator<Item = T>,
 ) -> Result<[T; N], IntoIter<T, N>> {
-    let mut array = [const { MaybeUninit::uninit() }; N];
-    let r = iter_next_chunk_erased(&mut array, iter);
-    match r {
-        Ok(()) => {
-            // SAFETY: All elements of `array` were populated.
-            Ok(unsafe { MaybeUninit::array_assume_init(array) })
+    iter.spec_next_chunk()
+}
+
+pub(crate) trait SpecNextChunk<T, const N: usize>: Iterator<Item = T> {
+    fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>>;
+}
+impl<I: Iterator<Item = T>, T, const N: usize> SpecNextChunk<T, N> for I {
+    #[inline]
+    default fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>> {
+        let mut array = [const { MaybeUninit::uninit() }; N];
+        let r = iter_next_chunk_erased(&mut array, self);
+        match r {
+            Ok(()) => {
+                // SAFETY: All elements of `array` were populated.
+                Ok(unsafe { MaybeUninit::array_assume_init(array) })
+            }
+            Err(initialized) => {
+                // SAFETY: Only the first `initialized` elements were populated
+                Err(unsafe { IntoIter::new_unchecked(array, 0..initialized) })
+            }
         }
-        Err(initialized) => {
-            // SAFETY: Only the first `initialized` elements were populated
-            Err(unsafe { IntoIter::new_unchecked(array, 0..initialized) })
+    }
+}
+
+impl<I: Iterator<Item = T> + TrustedLen, T, const N: usize> SpecNextChunk<T, N> for I {
+    fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>> {
+        let len = self.size_hint().0;
+        if len < N {
+            let mut array = [const { MaybeUninit::uninit() }; N];
+            let mut guard = Guard { array_mut: &mut array, initialized: 0 };
+            while guard.initialized < len {
+                // SAFETY: `TrustedLen`, an unsafe trait, requires that i can get N items out of it.
+                let item = unsafe { self.next().unwrap_unchecked() };
+                // SAFETY: guard.initialized < len < N
+                unsafe { guard.push_unchecked(item) };
+            }
+            mem::forget(guard);
+            // SAFETY: Only the first `len` elements were populated
+            Err(unsafe { IntoIter::new_unchecked(array, 0..len) })
+        } else {
+            // SAFETY: must be at least N elements; safe to unwrap N elements.
+            Ok(from_fn(|_| unsafe { self.next().unwrap_unchecked() }))
         }
     }
 }
