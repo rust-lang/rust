@@ -101,8 +101,8 @@ fn if_expr_to_guarded_return(
         return None;
     }
 
-    let parent_container = parent_block.syntax().parent()?;
-    let else_block = ElseBlock::new(&ctx.sema, else_block, &parent_container)?;
+    let container = container_of(&parent_block)?;
+    let else_block = ElseBlock::new(&ctx.sema, else_block, &container)?;
 
     if parent_block.tail_expr() != Some(if_expr.clone().into())
         && !(else_block.is_never_block
@@ -201,8 +201,8 @@ fn let_stmt_to_guarded_return(
     let target = let_stmt.syntax().text_range();
 
     let parent_block = let_stmt.syntax().parent()?.ancestors().find_map(ast::BlockExpr::cast)?;
-    let parent_container = parent_block.syntax().parent()?;
-    let else_block = ElseBlock::new(&ctx.sema, None, &parent_container)?;
+    let container = container_of(&parent_block)?;
+    let else_block = ElseBlock::new(&ctx.sema, None, &container)?;
 
     acc.add(
         AssistId::refactor_rewrite("convert_to_guarded_return"),
@@ -228,6 +228,13 @@ fn let_stmt_to_guarded_return(
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
+}
+
+fn container_of(block: &ast::BlockExpr) -> Option<SyntaxNode> {
+    if block.label().is_some() {
+        return Some(block.syntax().clone());
+    }
+    block.syntax().parent()
 }
 
 struct ElseBlock<'db> {
@@ -297,6 +304,7 @@ impl<'db> ElseBlock<'db> {
 
 enum EarlyKind<'db> {
     Continue,
+    Break(ast::Lifetime, hir::Type<'db>),
     Return(hir::Type<'db>),
 }
 
@@ -309,6 +317,7 @@ impl<'db> EarlyKind<'db> {
             match parent_container {
                 ast::Fn(it) => Some(Self::Return(sema.to_def(&it)?.ret_type(sema.db))),
                 ast::ClosureExpr(it) => Some(Self::Return(sema.type_of_expr(&it.body()?)?.original)),
+                ast::BlockExpr(it) => Some(Self::Break(it.label()?.lifetime()?, sema.type_of_expr(&it.into())?.original)),
                 ast::WhileExpr(_) => Some(Self::Continue),
                 ast::LoopExpr(_) => Some(Self::Continue),
                 ast::ForExpr(_) => Some(Self::Continue),
@@ -325,6 +334,7 @@ impl<'db> EarlyKind<'db> {
     ) -> ast::Expr {
         match self {
             EarlyKind::Continue => make.expr_continue(None).into(),
+            EarlyKind::Break(label, _) => make.expr_break(Some(label.clone()), ret).into(),
             EarlyKind::Return(ty) => {
                 let expr = match TryEnum::from_ty(sema, ty) {
                     Some(TryEnum::Option) => {
@@ -340,6 +350,7 @@ impl<'db> EarlyKind<'db> {
     fn is_unit(&self) -> bool {
         match self {
             EarlyKind::Continue => true,
+            EarlyKind::Break(_, ty) => ty.is_unit(),
             EarlyKind::Return(ty) => ty.is_unit(),
         }
     }
@@ -1059,6 +1070,32 @@ fn main() {
 fn main() {
     for n in ns {
         let Some(n) = n else { continue };
+        foo(n);
+        bar();
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_let_inside_labeled_block() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    'l: {
+        if$0 let Some(n) = n {
+            foo(n);
+            bar();
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    'l: {
+        let Some(n) = n else { break 'l };
         foo(n);
         bar();
     }
