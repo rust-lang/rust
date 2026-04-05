@@ -41,10 +41,27 @@ where
     }
 
     pub(in crate::solve) fn enter(self, f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T) -> T {
+        self.enter_inner(f, true)
+    }
+
+    pub(in crate::solve) fn enter_without_propagated_nested_goals(
+        self,
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T,
+    ) -> T {
+        self.enter_inner(f, false)
+    }
+
+    fn enter_inner(
+        self,
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T,
+        propagated_nested_goals: bool,
+    ) -> T {
         let ProbeCtxt { ecx: outer, probe_kind, _result } = self;
 
         let delegate = outer.delegate;
         let max_input_universe = outer.max_input_universe;
+        let nested_goals =
+            if propagated_nested_goals { outer.nested_goals.clone() } else { Default::default() };
         let mut nested = EvalCtxt {
             delegate,
             var_kinds: outer.var_kinds,
@@ -54,7 +71,7 @@ where
             initial_opaque_types_storage_num_entries: outer
                 .initial_opaque_types_storage_num_entries,
             search_graph: outer.search_graph,
-            nested_goals: outer.nested_goals.clone(),
+            nested_goals,
             origin_span: outer.origin_span,
             tainted: outer.tainted,
             inspect: outer.inspect.take_and_enter_probe(),

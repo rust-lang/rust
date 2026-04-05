@@ -87,10 +87,26 @@ where
             let ty::Dynamic(bounds, _) = goal.predicate.self_ty().kind() else {
                 panic!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
+
+            let trait_ref = assumption.kind().map_bound(|clause| match clause {
+                ty::ClauseKind::Trait(pred) => pred.trait_ref,
+                ty::ClauseKind::Projection(proj) => proj.projection_term.trait_ref(cx),
+
+                ty::ClauseKind::RegionOutlives(..)
+                | ty::ClauseKind::TypeOutlives(..)
+                | ty::ClauseKind::ConstArgHasType(..)
+                | ty::ClauseKind::WellFormed(..)
+                | ty::ClauseKind::ConstEvaluatable(..)
+                | ty::ClauseKind::HostEffect(..)
+                | ty::ClauseKind::UnstableFeature(..) => {
+                    unreachable!("expected trait or projection predicate as an assumption")
+                }
+            });
+
             match structural_traits::predicates_for_object_candidate(
                 ecx,
                 goal.param_env,
-                goal.predicate.trait_ref(cx),
+                trait_ref,
                 bounds,
             ) {
                 Ok(requirements) => {
