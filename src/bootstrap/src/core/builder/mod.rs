@@ -555,10 +555,7 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    /// single, non-aliased path
-    ///
-    /// Must be an on-disk path; use `alias` for names that do not correspond to on-disk paths.
-    pub fn path(mut self, path: &str) -> Self {
+    fn assert_valid_path(&self, path: &str) {
         let submodules_paths = self.builder.submodule_paths();
 
         // assert only if `p` isn't submodule
@@ -568,9 +565,27 @@ impl<'a> ShouldRun<'a> {
                 "`should_run.path` should correspond to a real on-disk path - use `alias` if there is no relevant path: {path}"
             );
         }
+    }
+
+    /// single, non-aliased path
+    ///
+    /// Must be an on-disk path; use [`path_aliases`][Self::path_aliases] for names that do not correspond to on-disk paths.
+    pub fn path(mut self, path: &str) -> Self {
+        self.assert_valid_path(path);
 
         let task = TaskPath { path: path.into(), kind: Some(self.kind) };
         self.paths.insert(PathSet::Set(BTreeSet::from_iter([task])));
+        self
+    }
+
+    /// Multiple on-disk paths that should be treated as aliases of one another.
+    pub fn path_aliases(mut self, paths: &[&str]) -> Self {
+        let mut set = BTreeSet::new();
+        for path in paths {
+            self.assert_valid_path(path);
+            set.insert(TaskPath { path: (*path).into(), kind: Some(self.kind) });
+        }
+        self.paths.insert(PathSet::Set(set));
         self
     }
 
