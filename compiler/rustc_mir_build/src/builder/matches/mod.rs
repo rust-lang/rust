@@ -959,7 +959,7 @@ struct PatternExtraData<'tcx> {
     span: Span,
 
     /// Bindings that must be established.
-    bindings: Vec<SubpatternBindings<'tcx>>,
+    bindings: Vec<PossiblyOr<Binding<'tcx>>>,
 
     /// Types that must be asserted.
     ascriptions: Vec<Ascription<'tcx>>,
@@ -968,7 +968,7 @@ struct PatternExtraData<'tcx> {
     is_never: bool,
 
     /// [`ExprId`]s of subpattern conditions
-    guard_patterns: Vec<ExprId>,
+    guard_patterns: Vec<PossiblyOr<ExprId>>,
 
     /// Scope of this sub-branch
     scope: Option<Scope>,
@@ -981,9 +981,9 @@ impl<'tcx> PatternExtraData<'tcx> {
 }
 
 #[derive(Debug, Clone)]
-enum SubpatternBindings<'tcx> {
+enum PossiblyOr<T> {
     /// A single binding.
-    One(Binding<'tcx>),
+    Value(T),
     /// Holds the place for an or-pattern's bindings. This ensures their drops are scheduled in the
     /// order the primary bindings appear. See rust-lang/rust#142163 for more information.
     FromOrPattern,
@@ -1478,14 +1478,20 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
             span: candidate.extra_data.span,
             success_block: candidate.pre_binding_block.unwrap(),
             otherwise_block: candidate.otherwise_block.unwrap(),
-            bindings: sub_branch_bindings(parent_data, &candidate.extra_data.bindings),
+            bindings: sub_branch_items(
+                parent_data.iter().map(|parent| parent.bindings.as_slice()),
+                &candidate.extra_data.bindings,
+            ),
             ascriptions: parent_data
                 .iter()
                 .flat_map(|d| &d.ascriptions)
                 .cloned()
                 .chain(candidate.extra_data.ascriptions)
                 .collect(),
-            guard_patterns: candidate.extra_data.guard_patterns,
+            guard_patterns: sub_branch_items(
+                parent_data.iter().map(|parent| parent.guard_patterns.as_slice()),
+                &candidate.extra_data.guard_patterns,
+            ),
             is_never: candidate.extra_data.is_never,
             scope: candidate.extra_data.scope,
         }
@@ -1513,61 +1519,62 @@ impl<'tcx> MatchTreeBranch<'tcx> {
     }
 }
 
-/// Collects the bindings for a [`MatchTreeSubBranch`], preserving the order they appear in the
+/// Collects the items for a [`MatchTreeSubBranch`], preserving the order they appear in the
 /// pattern, as though the or-alternatives chosen in this sub-branch were inlined.
-fn sub_branch_bindings<'tcx>(
-    parents: &[PatternExtraData<'tcx>],
-    leaf_bindings: &[SubpatternBindings<'tcx>],
-) -> Vec<Binding<'tcx>> {
-    // In the common case, all bindings will be in leaves. Allocate to fit the leaf's bindings.
-    let mut all_bindings = Vec::with_capacity(leaf_bindings.len());
-    let mut remainder = parents
-        .iter()
-        .map(|parent| parent.bindings.as_slice())
-        .chain([leaf_bindings])
-        // Skip over unsimplified or-patterns without bindings.
-        .filter(|bindings| !bindings.is_empty());
-    if let Some(candidate_bindings) = remainder.next() {
-        push_sub_branch_bindings(&mut all_bindings, candidate_bindings, &mut remainder);
+///
+/// *Note: this was introduced in [#143764](https://github.com/rust-lang/rust/pull/143764) to be used only for bindings,
+/// but generalized later to also be utilized for guard patterns*
+fn sub_branch_items<'a, T: Copy>(
+    remainder: impl Iterator<Item = &'a [PossiblyOr<T>]>,
+    leaf_items: &'a [PossiblyOr<T>],
+) -> Vec<T> {
+    // In the common case, all items will be in leaves. Allocate to fit the leaf's items.
+    let mut all_items = Vec::with_capacity(leaf_items.len());
+    let mut remainder = remainder
+        .chain([leaf_items])
+        // Skip over unsimplified or-patterns without items.
+        .filter(|item| !item.is_empty());
+    if let Some(candidate_item) = remainder.next() {
+        push_sub_branch_items(&mut all_items, candidate_item, &mut remainder);
     }
-    // Make sure we've included all bindings. For ill-formed patterns like `(x, _ | y)`, we may not
-    // have collected all bindings yet, since we only check the first alternative when determining
-    // whether to inline subcandidates' bindings.
+    // Make sure we've included all items. For ill-formed patterns like `(x, _ | y)`, we may not
+    // have collected all items yet, since we only check the first alternative when determining
+    // whether to inline subcandidates' items.
     // FIXME(@dianne): prevent ill-formed patterns from getting here
-    while let Some(candidate_bindings) = remainder.next() {
+    while let Some(candidate_items) = remainder.next() {
         ty::tls::with(|tcx| {
-            tcx.dcx().delayed_bug("mismatched or-pattern bindings but no error emitted")
+            tcx.dcx().delayed_bug("mismatched or-pattern items but no error emitted")
         });
         // To recover, we collect the rest in an arbitrary order.
-        push_sub_branch_bindings(&mut all_bindings, candidate_bindings, &mut remainder);
+        push_sub_branch_items(&mut all_items, candidate_items, &mut remainder);
     }
-    all_bindings
+    all_items
 }
 
-/// Helper for [`sub_branch_bindings`]. Collects bindings from `candidate_bindings` into
-/// `flattened`. Bindings in or-patterns are collected recursively from `remainder`.
-fn push_sub_branch_bindings<'c, 'tcx: 'c>(
-    flattened: &mut Vec<Binding<'tcx>>,
-    candidate_bindings: &'c [SubpatternBindings<'tcx>],
-    remainder: &mut impl Iterator<Item = &'c [SubpatternBindings<'tcx>]>,
+/// Helper for [`sub_branch_items`]. Collects items from `candidate_items` into
+/// `flattened`. Items in or-patterns are collected recursively from `remainder`.
+fn push_sub_branch_items<'c, T: Copy>(
+    flattened: &mut Vec<T>,
+    candidate_items: &'c [PossiblyOr<T>],
+    remainder: &mut impl Iterator<Item = &'c [PossiblyOr<T>]>,
 ) {
-    for subpat_bindings in candidate_bindings {
-        match subpat_bindings {
-            SubpatternBindings::One(binding) => flattened.push(*binding),
-            SubpatternBindings::FromOrPattern => {
-                // Inline bindings from an or-pattern. By construction, this always
+    for subpat_items in candidate_items {
+        match subpat_items {
+            PossiblyOr::Value(item) => flattened.push(*item),
+            PossiblyOr::FromOrPattern => {
+                // Inline items from an or-pattern. By construction, this always
                 // corresponds to a subcandidate and its closest descendants (i.e. those
                 // from nested or-patterns, but not adjacent or-patterns). To handle
                 // adjacent or-patterns, e.g. `(x | x, y | y)`, we update the `remainder` to
                 // point to the first descendant candidate from outside this or-pattern.
-                if let Some(subcandidate_bindings) = remainder.next() {
-                    push_sub_branch_bindings(flattened, subcandidate_bindings, remainder);
+                if let Some(subcandidate_items) = remainder.next() {
+                    push_sub_branch_items(flattened, subcandidate_items, remainder);
                 } else {
                     // For ill-formed patterns like `x | _`, we may not have any subcandidates left
                     // to inline bindings from.
                     // FIXME(@dianne): prevent ill-formed patterns from getting here
                     ty::tls::with(|tcx| {
-                        tcx.dcx().delayed_bug("mismatched or-pattern bindings but no error emitted")
+                        tcx.dcx().delayed_bug("mismatched or-pattern items but no error emitted")
                     });
                 };
             }
