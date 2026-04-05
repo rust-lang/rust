@@ -14,7 +14,7 @@ use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node};
-use rustc_middle::middle::region::{self, TempLifetime};
+use rustc_middle::middle::region::{self, Scope, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
@@ -959,13 +959,19 @@ struct PatternExtraData<'tcx> {
     span: Span,
 
     /// Bindings that must be established.
-    bindings: Vec<SubpatternBindings<'tcx>>,
+    bindings: Vec<PossiblyOr<Binding<'tcx>>>,
 
     /// Types that must be asserted.
     ascriptions: Vec<Ascription<'tcx>>,
 
     /// Whether this corresponds to a never pattern.
     is_never: bool,
+
+    /// [`ExprId`]s of subpattern conditions
+    guard_patterns: Vec<PossiblyOr<ExprId>>,
+
+    /// Scope of this sub-branch
+    scope: Option<Scope>,
 }
 
 impl<'tcx> PatternExtraData<'tcx> {
@@ -975,11 +981,11 @@ impl<'tcx> PatternExtraData<'tcx> {
 }
 
 #[derive(Debug, Clone)]
-enum SubpatternBindings<'tcx> {
-    /// A single binding.
-    One(Binding<'tcx>),
-    /// Holds the place for an or-pattern's bindings. This ensures their drops are scheduled in the
-    /// order the primary bindings appear. See rust-lang/rust#142163 for more information.
+enum PossiblyOr<T> {
+    /// A single item.
+    Value(T),
+    /// Holds the place for an or-pattern's item. This ensures their drops are scheduled in the
+    /// order the items appear. See rust-lang/rust#142163 for more information.
     FromOrPattern,
 }
 
@@ -1010,6 +1016,8 @@ impl<'tcx> FlatPat<'tcx> {
             bindings: Vec::new(),
             ascriptions: Vec::new(),
             is_never: pattern.is_never_pattern(),
+            guard_patterns: Vec::new(),
+            scope: None,
         };
         MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
 
@@ -1110,10 +1118,10 @@ impl<'tcx> Candidate<'tcx> {
     ) -> Self {
         // Use `FlatPat` to build simplified match pairs, then immediately
         // incorporate them into a new candidate.
-        Self::from_flat_pat(
-            FlatPat::new(place, pattern, cx),
-            matches!(has_guard, HasMatchGuard::Yes),
-        )
+        let flat_pat = FlatPat::new(place, pattern, cx);
+        let has_guard = matches!(has_guard, HasMatchGuard::Yes)
+            || !flat_pat.extra_data.guard_patterns.is_empty();
+        Self::from_flat_pat(flat_pat, has_guard)
     }
 
     /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
@@ -1422,8 +1430,12 @@ struct MatchTreeSubBranch<'tcx> {
     bindings: Vec<Binding<'tcx>>,
     /// The ascriptions to set up in this sub-branch.
     ascriptions: Vec<Ascription<'tcx>>,
+    /// The guard patterns present in this sub-branch
+    guard_patterns: Vec<ExprId>,
     /// Whether the sub-branch corresponds to a never pattern.
     is_never: bool,
+    /// Scope of this sub-branch; used mostly by guard patterns
+    scope: Option<Scope>,
 }
 
 /// A branch in the output of match lowering.
@@ -1466,14 +1478,22 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
             span: candidate.extra_data.span,
             success_block: candidate.pre_binding_block.unwrap(),
             otherwise_block: candidate.otherwise_block.unwrap(),
-            bindings: sub_branch_bindings(parent_data, &candidate.extra_data.bindings),
+            bindings: sub_branch_items(
+                parent_data.iter().map(|parent| parent.bindings.as_slice()),
+                &candidate.extra_data.bindings,
+            ),
             ascriptions: parent_data
                 .iter()
                 .flat_map(|d| &d.ascriptions)
                 .cloned()
                 .chain(candidate.extra_data.ascriptions)
                 .collect(),
+            guard_patterns: sub_branch_items(
+                parent_data.iter().map(|parent| parent.guard_patterns.as_slice()),
+                &candidate.extra_data.guard_patterns,
+            ),
             is_never: candidate.extra_data.is_never,
+            scope: candidate.extra_data.scope,
         }
     }
 }
@@ -1499,61 +1519,62 @@ impl<'tcx> MatchTreeBranch<'tcx> {
     }
 }
 
-/// Collects the bindings for a [`MatchTreeSubBranch`], preserving the order they appear in the
+/// Collects the items for a [`MatchTreeSubBranch`], preserving the order they appear in the
 /// pattern, as though the or-alternatives chosen in this sub-branch were inlined.
-fn sub_branch_bindings<'tcx>(
-    parents: &[PatternExtraData<'tcx>],
-    leaf_bindings: &[SubpatternBindings<'tcx>],
-) -> Vec<Binding<'tcx>> {
-    // In the common case, all bindings will be in leaves. Allocate to fit the leaf's bindings.
-    let mut all_bindings = Vec::with_capacity(leaf_bindings.len());
-    let mut remainder = parents
-        .iter()
-        .map(|parent| parent.bindings.as_slice())
-        .chain([leaf_bindings])
-        // Skip over unsimplified or-patterns without bindings.
-        .filter(|bindings| !bindings.is_empty());
-    if let Some(candidate_bindings) = remainder.next() {
-        push_sub_branch_bindings(&mut all_bindings, candidate_bindings, &mut remainder);
+///
+/// *Note: this was introduced in [#143764](https://github.com/rust-lang/rust/pull/143764) to be used only for bindings,
+/// but generalized later to also be utilized for guard patterns*
+fn sub_branch_items<'a, T: Copy>(
+    remainder: impl Iterator<Item = &'a [PossiblyOr<T>]>,
+    leaf_items: &'a [PossiblyOr<T>],
+) -> Vec<T> {
+    // In the common case, all items will be in leaves. Allocate to fit the leaf's items.
+    let mut all_items = Vec::with_capacity(leaf_items.len());
+    let mut remainder = remainder
+        .chain([leaf_items])
+        // Skip over unsimplified or-patterns without items.
+        .filter(|item| !item.is_empty());
+    if let Some(candidate_item) = remainder.next() {
+        push_sub_branch_items(&mut all_items, candidate_item, &mut remainder);
     }
-    // Make sure we've included all bindings. For ill-formed patterns like `(x, _ | y)`, we may not
-    // have collected all bindings yet, since we only check the first alternative when determining
-    // whether to inline subcandidates' bindings.
+    // Make sure we've included all items. For ill-formed patterns like `(x, _ | y)`, we may not
+    // have collected all items yet, since we only check the first alternative when determining
+    // whether to inline subcandidates' items.
     // FIXME(@dianne): prevent ill-formed patterns from getting here
-    while let Some(candidate_bindings) = remainder.next() {
+    while let Some(candidate_items) = remainder.next() {
         ty::tls::with(|tcx| {
-            tcx.dcx().delayed_bug("mismatched or-pattern bindings but no error emitted")
+            tcx.dcx().delayed_bug("mismatched or-pattern items but no error emitted")
         });
         // To recover, we collect the rest in an arbitrary order.
-        push_sub_branch_bindings(&mut all_bindings, candidate_bindings, &mut remainder);
+        push_sub_branch_items(&mut all_items, candidate_items, &mut remainder);
     }
-    all_bindings
+    all_items
 }
 
-/// Helper for [`sub_branch_bindings`]. Collects bindings from `candidate_bindings` into
-/// `flattened`. Bindings in or-patterns are collected recursively from `remainder`.
-fn push_sub_branch_bindings<'c, 'tcx: 'c>(
-    flattened: &mut Vec<Binding<'tcx>>,
-    candidate_bindings: &'c [SubpatternBindings<'tcx>],
-    remainder: &mut impl Iterator<Item = &'c [SubpatternBindings<'tcx>]>,
+/// Helper for [`sub_branch_items`]. Collects items from `candidate_items` into
+/// `flattened`. Items in or-patterns are collected recursively from `remainder`.
+fn push_sub_branch_items<'c, T: Copy>(
+    flattened: &mut Vec<T>,
+    candidate_items: &'c [PossiblyOr<T>],
+    remainder: &mut impl Iterator<Item = &'c [PossiblyOr<T>]>,
 ) {
-    for subpat_bindings in candidate_bindings {
-        match subpat_bindings {
-            SubpatternBindings::One(binding) => flattened.push(*binding),
-            SubpatternBindings::FromOrPattern => {
-                // Inline bindings from an or-pattern. By construction, this always
+    for subpat_items in candidate_items {
+        match subpat_items {
+            PossiblyOr::Value(item) => flattened.push(*item),
+            PossiblyOr::FromOrPattern => {
+                // Inline items from an or-pattern. By construction, this always
                 // corresponds to a subcandidate and its closest descendants (i.e. those
                 // from nested or-patterns, but not adjacent or-patterns). To handle
                 // adjacent or-patterns, e.g. `(x | x, y | y)`, we update the `remainder` to
                 // point to the first descendant candidate from outside this or-pattern.
-                if let Some(subcandidate_bindings) = remainder.next() {
-                    push_sub_branch_bindings(flattened, subcandidate_bindings, remainder);
+                if let Some(subcandidate_items) = remainder.next() {
+                    push_sub_branch_items(flattened, subcandidate_items, remainder);
                 } else {
                     // For ill-formed patterns like `x | _`, we may not have any subcandidates left
                     // to inline bindings from.
                     // FIXME(@dianne): prevent ill-formed patterns from getting here
                     ty::tls::with(|tcx| {
-                        tcx.dcx().delayed_bug("mismatched or-pattern bindings but no error emitted")
+                        tcx.dcx().delayed_bug("mismatched or-pattern items but no error emitted")
                     });
                 };
             }
@@ -2406,7 +2427,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// moving the binding once the guard has evaluated to true (see below).
     fn bind_and_guard_matched_candidate(
         &mut self,
-        sub_branch: MatchTreeSubBranch<'tcx>,
+        mut sub_branch: MatchTreeSubBranch<'tcx>,
         fake_borrows: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
@@ -2424,14 +2445,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return self.cfg.start_new_block();
         }
 
-        self.ascribe_types(block, sub_branch.ascriptions);
+        self.ascribe_types(block, mem::take(&mut sub_branch.ascriptions));
 
-        // Lower an instance of the arm guard (if present) for this candidate,
-        // and then perform bindings for the arm body.
-        if let Some((arm, match_scope)) = arm_match_scope
-            && let Some(guard) = arm.guard
+        if !sub_branch.guard_patterns.is_empty()
+            || arm_match_scope.is_some_and(|(arm, _)| arm.guard.is_some())
         {
             let tcx = self.tcx;
+
+            let (arm_span, arm_scope, match_scope) =
+                self.extract_span_scope(&mut sub_branch, arm_match_scope);
+            let guards = sub_branch.guard_patterns;
 
             // Bindings for guards require some extra handling to automatically
             // insert implicit references/dereferences.
@@ -2454,29 +2477,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
-            let mut guard_span = rustc_span::DUMMY_SP;
-
             let (post_guard_block, otherwise_post_guard_block) =
-                self.in_if_then_scope(match_scope, guard_span, |this| {
-                    guard_span = this.thir[guard].span;
-                    this.then_else_break(
-                        block,
-                        guard,
-                        None, // Use `self.local_scope()` as the temp scope
-                        this.source_info(arm.span),
-                        DeclareLetBindings::No, // For guards, `let` bindings are declared separately
-                    )
+                self.in_if_then_scope(match_scope, arm_span, |this| {
+                    guards.into_iter().fold(BlockAnd(block, ()), |block, guard| {
+                        this.then_else_break(
+                            block.0,
+                            guard,
+                            None, // Use `self.local_scope()` as the temp scope
+                            this.source_info(arm_span),
+                            DeclareLetBindings::No, // For guards, `let` bindings are declared separately
+                        )
+                    })
                 });
 
             // If this isn't the final sub-branch being lowered, we need to unschedule drops of
             // bindings and temporaries created for and by the guard. As a result, the drop order
             // for the arm will correspond to the binding order of the final sub-branch lowered.
             if matches!(schedule_drops, ScheduleDrops::No) {
-                self.clear_match_arm_and_guard_scopes(arm.scope);
+                self.clear_match_arm_and_guard_scopes(arm_scope);
             }
 
-            let source_info = self.source_info(guard_span);
-            let guard_end = self.source_info(tcx.sess.source_map().end_point(guard_span));
+            let source_info = self.source_info(arm_span);
+            let guard_end = self.source_info(tcx.sess.source_map().end_point(arm_span));
             let guard_frame = self.guard_context.pop().unwrap();
             debug!("Exiting guard building context with locals: {:?}", guard_frame);
 
@@ -2543,6 +2565,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
             block
         }
+    }
+
+    fn extract_span_scope(
+        &mut self,
+        sub_branch: &mut MatchTreeSubBranch<'tcx>,
+        arm_match_scope: Option<(&Arm<'tcx>, Scope)>,
+    ) -> (Span, Scope, Scope) {
+        let (arm_span, arm_scope, match_scope) = if let Some((arm, match_scope)) = arm_match_scope {
+            let mut span = arm.span;
+            if let Some(arm_guard) = arm.guard {
+                span = span.to(self.thir[arm_guard].span);
+                sub_branch.guard_patterns.push(arm_guard);
+            };
+            (span, arm.scope, match_scope)
+        } else {
+            let span = sub_branch.span;
+            // There must be a scope if a guard pattern is present
+            let scope = sub_branch.scope.unwrap();
+
+            (span, scope, scope)
+        };
+        (arm_span, arm_scope, match_scope)
     }
 
     /// Append `AscribeUserType` statements onto the end of `block`

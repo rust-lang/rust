@@ -146,7 +146,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                     // or-patterns that will be simplified by `merge_trivial_subcandidates`. In
                     // other words, we can assume this expands into subcandidates.
                     // FIXME(@dianne): this needs updating/removing if we always merge or-patterns
-                    extra_data.bindings.push(super::SubpatternBindings::FromOrPattern);
+                    extra_data.bindings.push(super::PossiblyOr::FromOrPattern);
                 }
                 Some(TestableCase::Or { pats })
             }
@@ -216,7 +216,7 @@ impl<'tcx> MatchPairTree<'tcx> {
 
                 // Then push this binding, after any bindings in the subpattern.
                 if let Some(source) = place {
-                    extra_data.bindings.push(super::SubpatternBindings::One(super::Binding {
+                    extra_data.bindings.push(super::PossiblyOr::Value(super::Binding {
                         span: pattern.span,
                         source,
                         var_id: var,
@@ -360,9 +360,16 @@ impl<'tcx> MatchPairTree<'tcx> {
                 Some(TestableCase::Deref { temp, mutability })
             }
 
-            PatKind::Guard { .. } => {
-                // FIXME(guard_patterns)
-                None
+            PatKind::Guard { ref subpattern, condition } => {
+                if extra_data.scope.is_none()
+                    && let Some(ref extra) = pattern.extra
+                {
+                    extra_data.scope = extra.scope
+                }
+
+                MatchPairTree::for_pattern(place_builder, subpattern, cx, match_pairs, extra_data);
+                extra_data.guard_patterns.push(super::PossiblyOr::Value(condition));
+                return;
             }
 
             PatKind::Never => Some(TestableCase::Never),
