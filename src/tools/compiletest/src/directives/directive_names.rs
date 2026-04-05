@@ -289,6 +289,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "should-ice",
     "stderr-per-bitwidth",
     "test-mir-pass",
+    "timeout",
     "unique-doc-out-dir",
     "unset-exec-env",
     "unset-rustc-env",

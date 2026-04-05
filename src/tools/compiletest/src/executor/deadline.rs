@@ -4,8 +4,6 @@ use std::time::{Duration, Instant};
 
 use crate::executor::{CollectedTest, TestId};
 
-const TEST_WARN_TIMEOUT_S: u64 = 60;
-
 struct DeadlineEntry<'a> {
     id: TestId,
     test: &'a CollectedTest,
@@ -27,11 +25,8 @@ impl<'a> DeadlineQueue<'a> {
         Instant::now()
     }
 
-    pub(crate) fn push(&mut self, id: TestId, test: &'a CollectedTest) {
-        let deadline = self.now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
-        if let Some(back) = self.queue.back() {
-            assert!(back.deadline <= deadline);
-        }
+    pub(crate) fn push(&mut self, id: TestId, test: &'a CollectedTest, timeout_seconds: u64) {
+        let deadline = self.now() + Duration::from_secs(timeout_seconds);
         self.queue.push_back(DeadlineEntry { id, test, deadline });
     }
 
@@ -67,7 +62,7 @@ impl<'a> DeadlineQueue<'a> {
     }
 
     fn next_deadline(&self) -> Option<Instant> {
-        Some(self.queue.front()?.deadline)
+        self.queue.iter().map(|entry| entry.deadline).min()
     }
 
     fn for_each_entry_past_deadline(
@@ -77,26 +72,16 @@ impl<'a> DeadlineQueue<'a> {
     ) {
         let now = self.now();
 
-        // Clear out entries that are past their deadline, but only invoke the
-        // callback for tests that are still considered running.
-        while let Some(entry) = pop_front_if(&mut self.queue, |entry| entry.deadline <= now) {
-            if is_running(entry.id) {
+        // Invoke callbacks for entries past their deadline that are still running.
+        for entry in self.queue.iter() {
+            if entry.deadline <= now && is_running(entry.id) {
                 on_deadline_passed(entry.id, entry.test);
             }
         }
 
-        // Also clear out any leading entries that are no longer running, even
-        // if their deadline hasn't been reached.
-        while let Some(_) = pop_front_if(&mut self.queue, |entry| !is_running(entry.id)) {}
+        // Remove entries that are past their deadline or no longer running.
+        self.queue.retain(|entry| entry.deadline > now && is_running(entry.id));
 
-        if let Some(front) = self.queue.front() {
-            assert!(now < front.deadline);
-        }
+        debug_assert!(self.queue.iter().all(|entry| now < entry.deadline));
     }
-}
-
-/// FIXME(vec_deque_pop_if): Use `VecDeque::pop_front_if` when it is stable in bootstrap.
-fn pop_front_if<T>(queue: &mut VecDeque<T>, predicate: impl FnOnce(&T) -> bool) -> Option<T> {
-    let first = queue.front()?;
-    if predicate(first) { queue.pop_front() } else { None }
 }

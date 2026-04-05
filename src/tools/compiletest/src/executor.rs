@@ -21,6 +21,8 @@ use crate::panic_hook;
 mod deadline;
 mod json;
 
+const DEFAULT_TEST_WARN_TIMEOUT_S: u64 = 60;
+
 pub(crate) fn run_tests(config: &Config, tests: Vec<CollectedTest>) -> bool {
     let tests_len = tests.len();
     let filtered = filter_tests(config, tests);
@@ -52,7 +54,8 @@ pub(crate) fn run_tests(config: &Config, tests: Vec<CollectedTest>) -> bool {
             && let Some((id, test)) = fresh_tests.next()
         {
             listener.test_started(test);
-            deadline_queue.push(id, test);
+            let timeout = test.desc.timeout_seconds.unwrap_or(DEFAULT_TEST_WARN_TIMEOUT_S);
+            deadline_queue.push(id, test, timeout);
             let join_handle = spawn_test_thread(id, test, completion_tx.clone());
             running_tests.insert(id, RunningTest { test, join_handle });
         }
@@ -339,6 +342,7 @@ pub(crate) struct CollectedTestDesc {
     pub(crate) ignore: bool,
     pub(crate) ignore_message: Option<Cow<'static, str>>,
     pub(crate) should_fail: ShouldFail,
+    pub(crate) timeout_seconds: Option<u64>,
 }
 
 /// Tests with `//@ should-fail` are tests of compiletest itself, and should

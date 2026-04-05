@@ -36,7 +36,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_middle::thir::{self, ExprId, LocalVarId, Param, ParamId, PatKind, Thir};
+use rustc_middle::thir::{self, ExprId, ExprKind, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -177,6 +177,11 @@ struct Builder<'a, 'tcx> {
     fn_span: Span,
     arg_count: usize,
     coroutine: Option<Box<CoroutineInfo<'tcx>>>,
+
+    /// Whether this coroutine's body contains any yield points (`.await`).
+    /// When false, no locals can be live across a yield, so `StorageDead`
+    /// can be omitted from the unwind path — see `DropData::storage_dead_on_unwind`.
+    coroutine_has_yields: bool,
 
     /// The current set of scopes, updated as we traverse;
     /// see the `scope` module for more details.
@@ -777,6 +782,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
             arg_count,
+            coroutine_has_yields: coroutine.is_some()
+                && thir.exprs.iter().any(|expr| matches!(expr.kind, ExprKind::Yield { .. })),
             coroutine,
             scopes: scope::Scopes::new(),
             block_context: BlockContext::new(),

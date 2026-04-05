@@ -260,6 +260,7 @@ mod directives {
     pub(crate) const ADD_MINICORE: &str = "add-minicore";
     pub(crate) const MINICORE_COMPILE_FLAGS: &str = "minicore-compile-flags";
     pub(crate) const DISABLE_GDB_PRETTY_PRINTERS: &str = "disable-gdb-pretty-printers";
+    pub(crate) const TIMEOUT: &str = "timeout";
     pub(crate) const COMPARE_OUTPUT_BY_LINES: &str = "compare-output-by-lines";
 }
 
@@ -957,6 +958,7 @@ pub(crate) fn make_test_description(
     let mut ignore = false;
     let mut ignore_message = None;
     let mut should_fail = false;
+    let mut timeout_seconds = None;
 
     // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
     iter_directives(config, file_directives, &mut |ln @ &DirectiveLine { line_number, .. }| {
@@ -1004,6 +1006,13 @@ pub(crate) fn make_test_description(
         }
 
         should_fail |= config.parse_name_directive(ln, "should-fail");
+
+        if let Some(seconds) = config
+            .parse_name_value_directive(ln, directives::TIMEOUT)
+            .and_then(|value| value.trim().parse::<u64>().ok())
+        {
+            timeout_seconds = Some(seconds);
+        }
     });
 
     // The `should-fail` annotation doesn't apply to pretty tests,
@@ -1021,6 +1030,7 @@ pub(crate) fn make_test_description(
         ignore,
         ignore_message,
         should_fail,
+        timeout_seconds,
     }
 }
 
