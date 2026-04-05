@@ -192,13 +192,6 @@ pub(crate) struct IncorrectReprFormatPackedOneOrZeroArg {
     pub span: Span,
 }
 #[derive(Diagnostic)]
-#[diag("incorrect `repr(packed)` attribute format: `packed` expects a literal integer as argument", code = E0552)]
-pub(crate) struct IncorrectReprFormatPackedExpectInteger {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("invalid representation hint: `{$name}` does not take a parenthesized argument list", code = E0552)]
 pub(crate) struct InvalidReprHintNoParen {
     #[primary_span]
@@ -246,10 +239,20 @@ pub(crate) struct IncorrectReprFormatAlignOneArg {
 }
 
 #[derive(Diagnostic)]
-#[diag("incorrect `repr(align)` attribute format: `align` expects a literal integer as argument", code = E0693)]
-pub(crate) struct IncorrectReprFormatExpectInteger {
+#[diag("paths in `{$attr_name}` must refer to `const` items, not {$thing}")]
+pub(crate) struct AttrConstPathNotConst {
     #[primary_span]
     pub span: Span,
+    pub attr_name: &'static str,
+    pub thing: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("generic const parameters are not supported in `{$attr_name}`")]
+pub(crate) struct AttrConstGenericNotSupported {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: &'static str,
 }
 
 #[derive(Diagnostic)]

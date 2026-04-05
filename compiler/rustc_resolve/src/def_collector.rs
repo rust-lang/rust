@@ -147,6 +147,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     &self.resolver.tcx.sess,
                     self.resolver.tcx.features(),
                     self.resolver.tcx().registered_tools(()),
+                    Default::default(),
                     Early { emit_errors: ShouldEmit::Nothing },
                 );
                 let attrs = parser.parse_attribute_list(

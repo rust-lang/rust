@@ -18,7 +18,7 @@ use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
 use crate::HashIgnoredAttrId;
-use crate::attrs::LintInstance;
+use crate::attrs::{AttrIntValue, LintInstance};
 use crate::limit::Limit;
 
 /// This trait is used to print attributes in `rustc_hir_pretty`.
@@ -117,6 +117,19 @@ impl PrintAttribute for Path {
 
     fn print_attribute(&self, p: &mut Printer) {
         p.word(join_path_idents(self.segments.iter().map(|seg| seg.ident)));
+    }
+}
+
+impl PrintAttribute for AttrIntValue {
+    fn should_render(&self) -> bool {
+        true
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        match self {
+            AttrIntValue::Lit(value) => p.word(format!("Lit({value})")),
+            AttrIntValue::Const { .. } => p.word("Const"),
+        }
     }
 }
 

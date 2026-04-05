@@ -8,14 +8,15 @@
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
-use std::debug_assert_matches;
 use std::mem::{replace, swap, take};
 use std::ops::{ControlFlow, Range};
+use std::{debug_assert_matches, slice};
 
 use rustc_ast::visit::{
     AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
 };
 use rustc_ast::*;
+use rustc_attr_parsing::{AttrResolutionRequest, AttributeParser};
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -24,6 +25,7 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, ErrorGuaranteed, IntoDiagArg, MultiSpan, StashKey,
     Suggestions, pluralize,
 };
+use rustc_hir::attrs::AttrResolved;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
@@ -806,9 +808,8 @@ struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
 impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
-    fn visit_attribute(&mut self, _: &'ast Attribute) {
-        // We do not want to resolve expressions that appear in attributes,
-        // as they do not correspond to actual code.
+    fn visit_attribute(&mut self, attr: &'ast Attribute) {
+        self.resolve_attr_paths(attr);
     }
     fn visit_item(&mut self, item: &'ast Item) {
         let prev = replace(&mut self.diag_metadata.current_item, Some(item));
@@ -1463,6 +1464,57 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         if let Some(v) = &default {
             self.resolve_anon_const(v, AnonConstKind::FieldDefaultValue);
         }
+    }
+}
+
+impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
+    fn resolve_attr_paths(&mut self, attr: &'ast Attribute) {
+        let Some(name) = attr.name() else {
+            return;
+        };
+        if !matches!(name, sym::repr | sym::rustc_align | sym::rustc_align_static) {
+            return;
+        }
+
+        let mut requests = AttributeParser::parse_limited_attr_resolution_requests(
+            self.r.tcx.sess,
+            slice::from_ref(attr),
+            name,
+            attr.span,
+            DUMMY_NODE_ID,
+            Some(self.r.tcx.features()),
+        );
+        for request in requests.shift_remove(&attr.id).into_iter().flatten() {
+            self.resolve_attr_path(attr.id, request);
+        }
+    }
+
+    fn resolve_attr_path(&mut self, attr_id: AttrId, request: AttrResolutionRequest) {
+        let path_segments = request
+            .path
+            .segments
+            .iter()
+            .map(|segment| Segment::from_ident(segment.ident))
+            .collect::<Vec<_>>();
+        let partial_res = self.smart_resolve_path_fragment(
+            &None,
+            &path_segments,
+            PathSource::Expr(None),
+            Finalize::new(DUMMY_NODE_ID, request.path.span),
+            RecordPartialRes::No,
+            None,
+        );
+        let resolved = match partial_res.full_res() {
+            Some(Res::Err) | None => AttrResolved::Error,
+            Some(res) => AttrResolved::Resolved(res),
+        };
+        self.r.attr_resolutions.entry(attr_id).or_default().push(
+            rustc_hir::attrs::AttrResolution {
+                kind: request.kind,
+                path_span: request.path.span,
+                resolved,
+            },
+        );
     }
 }
 
@@ -2773,6 +2825,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
 
         debug!("(resolving item) resolving {:?} ({:?})", item.kind.ident(), item.kind);
+        walk_list!(self, visit_attribute, &item.attrs);
 
         let def_kind = self.r.local_def_kind(item.id);
         match &item.kind {
