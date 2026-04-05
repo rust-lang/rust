@@ -1,4 +1,4 @@
-#![unstable(feature = "core_io_error_kind", issue = "154046")]
+#![unstable(feature = "io_error_kind_in_core", issue = "154046")]
 
 use crate::fmt;
 
@@ -302,7 +302,7 @@ impl ErrorKind {
     // couldn't verify.
     #[inline]
     #[unstable(
-        feature = "core_io_error_kind_internals",
+        feature = "io_error_kind_in_core_internals",
         reason = "exposed only for libstd",
         issue = "none"
     )]

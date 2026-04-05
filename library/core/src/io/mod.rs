@@ -5,5 +5,5 @@ mod error;
 
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
 pub use self::borrowed_buf::{BorrowedBuf, BorrowedCursor};
-#[unstable(feature = "core_io_error_kind", issue = "154046")]
+#[unstable(feature = "io_error_kind_in_core", issue = "154046")]
 pub use self::error::ErrorKind;
