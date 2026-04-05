@@ -51,13 +51,3 @@ fi
 
 "${CARGO}" -vv ${OP} --target="${TARGET}" --release
 "${CARGO}" -vv ${OP} --target="${TARGET}" --release --features "${FEATURES}"
-
-if [ "${CHANNEL}" = "nightly" ] && [ "${NO_STD}" != 1 ]; then
-    # Run benchmark on native targets, build them on non-native ones:
-    NO_RUN=""
-    if [ "${CROSS}" = "1" ]; then
-        NO_RUN="--no-run"
-    fi
-
-    "${CARGO}" -vv bench "${NO_RUN}" --features "${FEATURES}"
-fi
