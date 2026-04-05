@@ -35,6 +35,7 @@
 #![feature(const_unsigned_bigint_helpers)]
 #![feature(core_intrinsics)]
 #![feature(core_intrinsics_fallbacks)]
+#![feature(core_io)]
 #![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
