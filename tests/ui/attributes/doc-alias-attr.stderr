@@ -1,0 +1,58 @@
+error[E0599]: no associated function or constant named `bar` found for struct `S` in the current scope
+  --> $DIR/doc-alias-attr.rs:19:8
+   |
+LL | struct S;
+   | -------- associated function or constant `bar` not found for this struct
+...
+LL |     S::bar();
+   |        ^^^ associated function or constant not found in `S`
+   |
+help: there is an associated function `foo` with a similar name
+   |
+LL -     S::bar();
+LL +     S::foo();
+   |
+
+error[E0599]: no method named `baz` found for struct `S` in the current scope
+  --> $DIR/doc-alias-attr.rs:24:7
+   |
+LL | struct S;
+   | -------- method `baz` not found for this struct
+...
+LL |     s.baz(10);
+   |       ^^^
+   |
+help: there is a method `qux` with a similar name
+   |
+LL -     s.baz(10);
+LL +     s.qux(10);
+   |
+
+error[E0425]: cannot find function `sum` in this scope
+  --> $DIR/doc-alias-attr.rs:28:5
+   |
+LL |     sum();
+   |     ^^^
+   |
+help: `net` has a name defined in the doc alias attribute as `sum`
+   |
+LL -     sum();
+LL +     net();
+   |
+
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/doc-alias-attr.rs:31:5
+   |
+LL |     bar();
+   |     ^^^
+   |
+help: `foo` has a name defined in the doc alias attribute as `bar`
+   |
+LL -     bar();
+LL +     foo();
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.
