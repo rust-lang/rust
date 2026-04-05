@@ -1,0 +1,56 @@
+error[E0425]: cannot find type `y` in this scope
+  --> $DIR/next-solver-opaque-inherent-no-ice.rs:5:15
+   |
+LL | impl<const X: y> Foo {
+   |               ^ not found in this scope
+
+error[E0658]: `impl Trait` in associated types is unstable
+  --> $DIR/next-solver-opaque-inherent-no-ice.rs:8:22
+   |
+LL |     type ImplTrait = impl Clone;
+   |                      ^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(impl_trait_in_assoc_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0601]: `main` function not found in crate `next_solver_opaque_inherent_no_ice`
+  --> $DIR/next-solver-opaque-inherent-no-ice.rs:15:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/next-solver-opaque-inherent-no-ice.rs`
+
+error[E0207]: the const parameter `X` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/next-solver-opaque-inherent-no-ice.rs:5:6
+   |
+LL | impl<const X: y> Foo {
+   |      ^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error: unconstrained opaque type
+  --> $DIR/next-solver-opaque-inherent-no-ice.rs:8:22
+   |
+LL |     type ImplTrait = impl Clone;
+   |                      ^^^^^^^^^^
+   |
+   = note: `ImplTrait` must be used in combination with a concrete type within the same impl
+
+error[E0308]: mismatched types
+  --> $DIR/next-solver-opaque-inherent-no-ice.rs:12:9
+   |
+LL |     fn f() -> Self::ImplTrait {
+   |               --------------- expected `Foo::ImplTrait` because of return type
+LL |         ()
+   |         ^^ types differ
+   |
+   = note: expected associated type `Foo::ImplTrait`
+                    found unit type `()`
+   = help: consider constraining the associated type `Foo::ImplTrait` to `()` or calling a method that returns `Foo::ImplTrait`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0207, E0308, E0425, E0601, E0658.
+For more information about an error, try `rustc --explain E0207`.
