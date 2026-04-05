@@ -25,10 +25,10 @@ use back::write::{create_informational_target_machine, create_target_machine};
 use context::SimpleCx;
 use llvm_util::target_config;
 use rustc_ast::expand::allocator::AllocatorMethod;
-use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
+use rustc_codegen_ssa::back::lto::ThinModule;
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryConfig,
-    TargetMachineFactoryFn,
+    TargetMachineFactoryFn, ThinLtoInput,
 };
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
@@ -163,8 +163,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         dcx: DiagCtxtHandle<'_>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
-        modules: Vec<(String, Self::ModuleBuffer)>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
+        modules: Vec<ThinLtoInput<Self>>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
         back::lto::run_thin(
             cgcx,
@@ -173,7 +172,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
             exported_symbols_for_lto,
             each_linked_rlib_for_lto,
             modules,
-            cached_modules,
         )
     }
     fn optimize(
