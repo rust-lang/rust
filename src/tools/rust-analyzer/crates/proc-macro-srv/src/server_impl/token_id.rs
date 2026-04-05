@@ -10,7 +10,7 @@ use rustc_proc_macro::bridge::server;
 
 use crate::{
     ProcMacroClientHandle,
-    bridge::{Diagnostic, ExpnGlobals, Literal, TokenTree},
+    bridge::{Diagnostic, ExpnGlobals, Literal},
     server_impl::literal_from_str,
 };
 
@@ -36,8 +36,10 @@ pub struct SpanIdServer<'a> {
     pub callback: Option<ProcMacroClientHandle<'a>>,
 }
 
+type TokenStream = crate::token_stream::TokenStream<Span>;
+type BridgeTokenStream = crate::bridge::TokenStream<Span>;
+
 impl server::Server for SpanIdServer<'_> {
-    type TokenStream = crate::token_stream::TokenStream<Span>;
     type Span = Span;
     type Symbol = Symbol;
 
@@ -74,62 +76,17 @@ impl server::Server for SpanIdServer<'_> {
 
     fn emit_diagnostic(&mut self, _: Diagnostic<Self::Span>) {}
 
-    fn ts_drop(&mut self, stream: Self::TokenStream) {
-        drop(stream);
-    }
-
-    fn ts_clone(&mut self, stream: &Self::TokenStream) -> Self::TokenStream {
-        stream.clone()
-    }
-
-    fn ts_is_empty(&mut self, stream: &Self::TokenStream) -> bool {
-        stream.is_empty()
-    }
-    fn ts_from_str(&mut self, src: &str) -> Result<Self::TokenStream, String> {
-        Self::TokenStream::from_str(src, self.call_site)
+    fn ts_from_str(&mut self, src: &str) -> Result<BridgeTokenStream, String> {
+        TokenStream::from_str(src, self.call_site)
             .map_err(|e| format!("failed to parse str to token stream: {e}"))
+            .map(TokenStream::into_bridge)
     }
-    fn ts_to_string(&mut self, stream: &Self::TokenStream) -> String {
-        stream.to_string()
-    }
-    fn ts_from_token_tree(&mut self, tree: TokenTree<Self::Span>) -> Self::TokenStream {
-        Self::TokenStream::new(vec![tree])
+    fn ts_to_string(&mut self, stream: BridgeTokenStream) -> String {
+        TokenStream::from_bridge(stream).to_string()
     }
 
-    fn ts_expand_expr(&mut self, self_: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
-        Ok(self_.clone())
-    }
-
-    fn ts_concat_trees(
-        &mut self,
-        base: Option<Self::TokenStream>,
-        trees: Vec<TokenTree<Self::Span>>,
-    ) -> Self::TokenStream {
-        match base {
-            Some(mut base) => {
-                for tt in trees {
-                    base.push_tree(tt);
-                }
-                base
-            }
-            None => Self::TokenStream::new(trees),
-        }
-    }
-
-    fn ts_concat_streams(
-        &mut self,
-        base: Option<Self::TokenStream>,
-        streams: Vec<Self::TokenStream>,
-    ) -> Self::TokenStream {
-        let mut stream = base.unwrap_or_default();
-        for s in streams {
-            stream.push_stream(s);
-        }
-        stream
-    }
-
-    fn ts_into_trees(&mut self, stream: Self::TokenStream) -> Vec<TokenTree<Self::Span>> {
-        (*stream.0).clone()
+    fn ts_expand_expr(&mut self, self_: BridgeTokenStream) -> Result<BridgeTokenStream, ()> {
+        Ok(self_)
     }
 
     fn span_debug(&mut self, span: Self::Span) -> String {

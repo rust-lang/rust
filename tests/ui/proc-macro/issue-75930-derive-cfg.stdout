@@ -1,52 +1,4 @@
 PRINT-ATTR INPUT (DISPLAY): #[print_helper(a)] #[allow(dead_code)] #[derive(Print)] #[print_helper(b)]
-struct Foo<#[cfg(false)] A, B>
-{
-    #[cfg(false)] first: String, #[cfg_attr(FALSE, deny(warnings))] second:
-    bool, third:
-    [u8;
-    {
-        #[cfg(false)] struct Bar; #[cfg(not(FALSE))] struct Inner;
-        #[cfg(false)] let a = 25; match true
-        {
-            #[cfg(false)] true => {}, #[cfg_attr(not(FALSE), allow(warnings))]
-            false => {}, _ => {}
-        }; #[print_helper(should_be_removed)] fn removed_fn()
-        { #![cfg(false)] } #[print_helper(c)] #[cfg(not(FALSE))] fn kept_fn()
-        { #![cfg(not(FALSE))] let my_val = true; } enum TupleEnum
-        {
-            Foo(#[cfg(false)] u8, #[cfg(false)] bool, #[cfg(not(FALSE))] i32,
-            #[cfg(false)] String, u8)
-        } struct
-        TupleStruct(#[cfg(false)] String, #[cfg(not(FALSE))] i32,
-        #[cfg(false)] bool, u8); fn plain_removed_fn()
-        { #![cfg_attr(not(FALSE), cfg(false))] } 0
-    }], #[print_helper(d)] fourth: B
-}
-PRINT-ATTR RE-COLLECTED (DISPLAY): #[print_helper(a)] #[allow(dead_code)] #[derive(Print)] #[print_helper(b)]
-struct Foo <#[cfg(false)] A, B >
-{
-    #[cfg(false)] first: String, #[cfg_attr(FALSE, deny(warnings))] second:
-    bool, third:
-    [u8;
-    {
-        #[cfg(false)] struct Bar; #[cfg(not(FALSE))] struct Inner;
-        #[cfg(false)] let a = 25; match true
-        {
-            #[cfg(false)] true => {}, #[cfg_attr(not(FALSE), allow(warnings))]
-            false => {}, _ => {}
-        }; #[print_helper(should_be_removed)] fn removed_fn()
-        { #![cfg(false)] } #[print_helper(c)] #[cfg(not(FALSE))] fn kept_fn()
-        { #![cfg(not(FALSE))] let my_val = true; } enum TupleEnum
-        {
-            Foo(#[cfg(false)] u8, #[cfg(false)] bool, #[cfg(not(FALSE))] i32,
-            #[cfg(false)] String, u8)
-        } struct
-        TupleStruct(#[cfg(false)] String, #[cfg(not(FALSE))] i32,
-        #[cfg(false)] bool, u8); fn plain_removed_fn()
-        { #![cfg_attr(not(FALSE), cfg(false))] } 0
-    }], #[print_helper(d)] fourth: B
-}
-PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[print_helper(a)] #[allow(dead_code)] #[derive(Print)] #[print_helper(b)]
 struct Foo <#[cfg(false)] A, B >
 {
     #[cfg(false)] first : String, #[cfg_attr(FALSE, deny(warnings))] second :
@@ -1321,19 +1273,6 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-DERIVE INPUT (DISPLAY): #[print_helper(a)] #[allow(dead_code)] #[print_helper(b)] struct Foo <B >
-{
-    second: bool, third:
-    [u8;
-    {
-        #[cfg(not(FALSE))] struct Inner; match true
-        { #[allow(warnings)] false => {}, _ => {} }; #[print_helper(c)]
-        #[cfg(not(FALSE))] fn kept_fn()
-        { #![cfg(not(FALSE))] let my_val = true; } enum TupleEnum
-        { Foo(#[cfg(not(FALSE))] i32, u8) } struct
-        TupleStruct(#[cfg(not(FALSE))] i32, u8); 0
-    }], #[print_helper(d)] fourth: B
-}
-PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): #[print_helper(a)] #[allow(dead_code)] #[print_helper(b)] struct Foo <B >
 {
     second : bool, third :
     [u8;
