@@ -21,21 +21,39 @@ where
         // empty, but the loop in extend_desugared() is not going to see the
         // vector being full in the few subsequent loop iterations.
         // So we get better branch prediction.
-        let mut vector = match iterator.next() {
-            None => return Vec::new(),
-            Some(element) => {
-                let (lower, _) = iterator.size_hint();
-                let initial_capacity =
-                    cmp::max(RawVec::<T>::MIN_NON_ZERO_CAP, lower.saturating_add(1));
-                let mut vector = Vec::with_capacity(initial_capacity);
-                unsafe {
-                    // SAFETY: We requested capacity at least 1
-                    ptr::write(vector.as_mut_ptr(), element);
-                    vector.set_len(1);
-                }
-                vector
-            }
+        let (low, high) = iterator.size_hint();
+        let Some(first) = iterator.next() else {
+            return Vec::new();
         };
+        // `push`'s growth strategy is (currently) to double the capacity if
+        // there's no space available, so it can have up to 50% "wasted" space.
+        // Thus if the upper-bound on the size_hint also wouldn't waste more
+        // than that, just allocate it from the start. (After all, it's silly
+        // to allocate 254 for a hint of `(254, Some(255)`.)
+        let initial_capacity = {
+            // This is written like this to not overflow on any well-behaved iterator,
+            // even things like `repeat_n(val, isize::MAX as usize + 10)`
+            // where `low * 2` would need checking.
+            // A bad (but safe) iterator might have `low > high`, but if so it'll
+            // produce a huge `extra` that'll probably fail the following check.
+            let hint = if let Some(high) = high
+                && let extra = high - low
+                && extra < low
+            {
+                high
+            } else {
+                low
+            };
+            cmp::max(RawVec::<T>::MIN_NON_ZERO_CAP, hint)
+        };
+        let mut vector = Vec::with_capacity(initial_capacity);
+        // SAFETY: We requested capacity at least MIN_NON_ZERO_CAP, which
+        // is never zero, so there's space for at least one element.
+        unsafe {
+            ptr::write(vector.as_mut_ptr(), first);
+            vector.set_len(1);
+        }
+
         // must delegate to spec_extend() since extend() itself delegates
         // to spec_from for empty Vecs
         <Vec<T> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
