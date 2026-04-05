@@ -5,7 +5,7 @@ use std::ops::BitAnd;
 
 const C: fn() = || is_set();
 fn is_set() {
-    0xffu8.bit::<0>();
+    Bits::bit::<0>(0xffu8);
 }
 
 trait Bits {
