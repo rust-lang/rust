@@ -2,9 +2,9 @@
 mod tests;
 
 use crate::alloc::Allocator;
-use crate::cmp;
 use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
+use crate::{cmp, fmt};
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
@@ -647,6 +647,15 @@ where
         Ok(())
     }
 
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        if let Some(s) = args.as_statically_known_str() {
+            self.write_all(s.as_bytes())
+        } else {
+            self.inner.reserve(args.estimated_capacity());
+            io::default_write_fmt(self, args)
+        }
+    }
+
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
@@ -679,6 +688,15 @@ where
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
         vec_write_all_vectored(&mut self.pos, &mut self.inner, bufs)?;
         Ok(())
+    }
+
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        if let Some(s) = args.as_statically_known_str() {
+            self.write_all(s.as_bytes())
+        } else {
+            self.inner.reserve(args.estimated_capacity());
+            io::default_write_fmt(self, args)
+        }
     }
 
     #[inline]
