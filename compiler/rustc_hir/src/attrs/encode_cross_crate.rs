@@ -168,6 +168,7 @@ impl AttributeKind {
             RustcObjcClass { .. } => No,
             RustcObjcSelector { .. } => No,
             RustcOffloadKernel => Yes,
+            RustcPanicsWhenZero => Yes,
             RustcParenSugar(..) => No,
             RustcPassByValue(..) => Yes,
             RustcPassIndirectlyInNonRusticAbis(..) => No,
