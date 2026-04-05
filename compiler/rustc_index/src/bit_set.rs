@@ -321,7 +321,7 @@ impl<T: Idx> DenseBitSet<T> {
         // quickly and accurately detect whether the update changed anything.
         // But that's only worth doing if there's an actual use-case.
 
-        bitwise(&mut self.words, &other.words, |a, b| a | !b);
+        update_words(&mut self.words, &other.words, |a, b| a | !b);
         // The bitwise update `a | !b` can result in the last word containing
         // out-of-domain bits, so we need to clear them.
         self.clear_excess_bits();
@@ -332,17 +332,17 @@ impl<T: Idx> DenseBitSet<T> {
 impl<T: Idx> BitRelations<DenseBitSet<T>> for DenseBitSet<T> {
     fn union(&mut self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut self.words, &other.words, |a, b| a | b)
+        update_words(&mut self.words, &other.words, |a, b| a | b)
     }
 
     fn subtract(&mut self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut self.words, &other.words, |a, b| a & !b)
+        update_words(&mut self.words, &other.words, |a, b| a & !b)
     }
 
     fn intersect(&mut self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut self.words, &other.words, |a, b| a & b)
+        update_words(&mut self.words, &other.words, |a, b| a & b)
     }
 }
 
@@ -797,7 +797,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     // Do a more precise "will anything change?" test. Also a
                     // performance win.
                     let op = |a, b| a | b;
-                    if !bitwise_changes(
+                    if !would_modify_words(
                         &self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
@@ -807,7 +807,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
 
                     // If we reach here, `self_chunk_words` is definitely changing.
                     let self_chunk_words = Rc::make_mut(self_chunk_words);
-                    let has_changed = bitwise(
+                    let has_changed = update_words(
                         &mut self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
@@ -875,7 +875,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     // See `ChunkedBitSet::union` for details on what is happening here.
                     let num_words = num_words(chunk_domain_size as usize);
                     let op = |a: Word, b: Word| a & !b;
-                    if !bitwise_changes(
+                    if !would_modify_words(
                         &self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
@@ -884,7 +884,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     }
 
                     let self_chunk_words = Rc::make_mut(self_chunk_words);
-                    let has_changed = bitwise(
+                    let has_changed = update_words(
                         &mut self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
@@ -933,7 +933,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     // See `ChunkedBitSet::union` for details on what is happening here.
                     let num_words = num_words(chunk_domain_size as usize);
                     let op = |a, b| a & b;
-                    if !bitwise_changes(
+                    if !would_modify_words(
                         &self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
@@ -942,7 +942,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     }
 
                     let self_chunk_words = Rc::make_mut(self_chunk_words);
-                    let has_changed = bitwise(
+                    let has_changed = update_words(
                         &mut self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
@@ -1068,10 +1068,10 @@ impl<T: Idx> fmt::Debug for ChunkedBitSet<T> {
     }
 }
 
-/// Sets `out_vec[i] = op(out_vec[i], in_vec[i])` for each index `i` in both
+/// Sets `lhs[i] = op(lhs[i], rhs[i])` for each index `i` in both
 /// slices. The slices must have the same length.
 ///
-/// Returns true if at least one bit in `out_vec` was changed.
+/// Returns true if at least one bit in `lhs` was changed.
 ///
 /// ## Warning
 /// Some bitwise operations (e.g. union-not, xor) can set output bits that were
@@ -1081,16 +1081,16 @@ impl<T: Idx> fmt::Debug for ChunkedBitSet<T> {
 /// "changed" return value unreliable, because the change might have only
 /// affected excess bits.
 #[inline]
-fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> bool
+fn update_words<Op>(lhs: &mut [Word], rhs: &[Word], op: Op) -> bool
 where
     Op: Fn(Word, Word) -> Word,
 {
-    assert_eq!(out_vec.len(), in_vec.len());
+    assert_eq!(lhs.len(), rhs.len());
     let mut changed = 0;
-    for (out_elem, in_elem) in iter::zip(out_vec, in_vec) {
-        let old_val = *out_elem;
-        let new_val = op(old_val, *in_elem);
-        *out_elem = new_val;
+    for (lhs_slot, &rhs_val) in iter::zip(lhs, rhs) {
+        let old_val = *lhs_slot;
+        let new_val = op(old_val, rhs_val);
+        *lhs_slot = new_val;
         // This is essentially equivalent to a != with changed being a bool, but
         // in practice this code gets auto-vectorized by the compiler for most
         // operators. Using != here causes us to generate quite poor code as the
@@ -1100,21 +1100,40 @@ where
     changed != 0
 }
 
-/// Does this bitwise operation change `out_vec`?
+/// Returns true if a call to [`update_words`] would modify `lhs`, i.e.
+/// `lhs[i] != op(lhs[i], rhs[i])` for some `i`.
 #[inline]
-fn bitwise_changes<Op>(out_vec: &[Word], in_vec: &[Word], op: Op) -> bool
+fn would_modify_words<Op>(lhs: &[Word], rhs: &[Word], op: Op) -> bool
 where
     Op: Fn(Word, Word) -> Word,
 {
-    assert_eq!(out_vec.len(), in_vec.len());
-    for (out_elem, in_elem) in iter::zip(out_vec, in_vec) {
-        let old_val = *out_elem;
-        let new_val = op(old_val, *in_elem);
-        if old_val != new_val {
+    assert_eq!(lhs.len(), rhs.len());
+
+    // To make codegen more vectorizer-friendly, we traverse each slice in larger
+    // "subchunks", and only consider an early return at subchunk boundaries.
+    // These subchunks are smaller than full `ChunkedBitSet` chunks, so that
+    // we still have some chance of stopping early.
+    const SUBCHUNK_LEN: usize = 64 / size_of::<Word>();
+    let (lhs_chunks, lhs_tail) = lhs.as_chunks::<SUBCHUNK_LEN>();
+    let (rhs_chunks, rhs_tail) = rhs.as_chunks::<SUBCHUNK_LEN>();
+
+    let would_modify_subchunk = |lhs_chunk: &[Word], rhs_chunk: &[Word]| {
+        let mut changed = 0;
+        for (&old_val, &rhs_val) in iter::zip(lhs_chunk, rhs_chunk) {
+            let new_val = op(old_val, rhs_val);
+            // Set `changed` to a non-zero value if any bits changed.
+            // This gives better SIMD codegen than using an actual boolean.
+            changed |= old_val ^ new_val;
+        }
+        changed != 0
+    };
+
+    for (lhs_chunk, rhs_chunk) in iter::zip(lhs_chunks, rhs_chunks) {
+        if would_modify_subchunk(lhs_chunk, rhs_chunk) {
             return true;
         }
     }
-    false
+    would_modify_subchunk(lhs_tail, rhs_tail)
 }
 
 /// A bitset with a mixed representation, using `DenseBitSet` for small and
@@ -1515,7 +1534,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         assert!(write.index() < self.num_rows);
         assert_eq!(with.domain_size(), self.num_columns);
         let (write_start, write_end) = self.range(write);
-        bitwise(&mut self.words[write_start..write_end], &with.words, |a, b| a | b)
+        update_words(&mut self.words[write_start..write_end], &with.words, |a, b| a | b)
     }
 
     /// Sets every cell in `row` to true.
