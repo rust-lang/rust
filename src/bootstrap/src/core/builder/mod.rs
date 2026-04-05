@@ -16,6 +16,7 @@ use tracing::instrument;
 pub use self::cargo::{Cargo, cargo_profile_var};
 pub use crate::Compiler;
 use crate::core::build_steps::compile::{Std, StdLink};
+use crate::core::build_steps::test::failed_tests::IsForRerunningTests;
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
@@ -62,7 +63,10 @@ pub struct Builder<'a> {
     /// The paths passed on the command line. Used by steps to figure out what
     /// to do. For example: with `./x check foo bar` we get `paths=["foo",
     /// "bar"]`.
-    pub paths: Vec<PathBuf>,
+    paths: Vec<PathBuf>,
+
+    /// A list of tests that failed during a previous run, recorded with `--record`,
+    previously_failed_test_paths: Vec<PathBuf>,
 
     /// Cached list of submodules from self.build.src.
     submodule_paths_cache: OnceLock<Vec<String>>,
@@ -243,6 +247,10 @@ pub struct RunConfig<'a> {
     pub builder: &'a Builder<'a>,
     pub target: TargetSelection,
     pub paths: Vec<PathSet>,
+    /// Set to true when invoking a step in "rerun" mode, `--rerun` was passed.
+    /// This makes it so rerunning happens in a separate step, distinct from the normal test step.
+    /// With this, all tests that are reran, run before other tests, and we fail-fast if any of the reran tests fail.
+    pub is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl RunConfig<'_> {
@@ -454,7 +462,12 @@ impl StepDescription {
         }
     }
 
-    fn maybe_run(&self, builder: &Builder<'_>, mut pathsets: Vec<PathSet>) {
+    fn maybe_run(
+        &self,
+        builder: &Builder<'_>,
+        mut pathsets: Vec<PathSet>,
+        is_for_rerunning_tests: IsForRerunningTests,
+    ) {
         pathsets.retain(|set| !self.is_excluded(builder, set));
 
         if pathsets.is_empty() {
@@ -472,7 +485,12 @@ impl StepDescription {
         }
 
         for target in targets {
-            let run = RunConfig { builder, paths: pathsets.clone(), target: *target };
+            let run = RunConfig {
+                builder,
+                paths: pathsets.clone(),
+                target: *target,
+                is_for_rerunning_tests,
+            };
             (self.make_run)(run);
         }
     }
@@ -1022,13 +1040,21 @@ impl<'a> Builder<'a> {
         }
     }
 
+    /// Returns all paths
+    pub fn paths(&self, is_for_rerunning_tests: IsForRerunningTests) -> &[PathBuf] {
+        match is_for_rerunning_tests {
+            IsForRerunningTests::DontCare | IsForRerunningTests::No => &self.paths,
+            IsForRerunningTests::Yes => &self.previously_failed_test_paths,
+        }
+    }
+
     pub fn get_help(build: &Build, kind: Kind) -> Option<String> {
         let step_descriptions = Builder::get_step_descriptions(kind);
         if step_descriptions.is_empty() {
             return None;
         }
 
-        let builder = Self::new_internal(build, kind, vec![]);
+        let builder = Self::new_internal(build, kind, vec![], vec![]);
         let builder = &builder;
         // The "build" kind here is just a placeholder, it will be replaced with something else in
         // the following statement.
@@ -1056,7 +1082,12 @@ impl<'a> Builder<'a> {
         Some(help)
     }
 
-    fn new_internal(build: &Build, kind: Kind, paths: Vec<PathBuf>) -> Builder<'_> {
+    fn new_internal(
+        build: &Build,
+        kind: Kind,
+        paths: Vec<PathBuf>,
+        previously_failed_test_paths: Vec<PathBuf>,
+    ) -> Builder<'_> {
         Builder {
             build,
             top_stage: build.config.stage,
@@ -1065,6 +1096,7 @@ impl<'a> Builder<'a> {
             stack: RefCell::new(Vec::new()),
             time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
             paths,
+            previously_failed_test_paths,
             submodule_paths_cache: Default::default(),
             log_cli_step_for_tests: None,
         }
@@ -1072,6 +1104,7 @@ impl<'a> Builder<'a> {
 
     pub fn new(build: &Build) -> Builder<'_> {
         let paths = &build.config.paths;
+
         let (kind, paths) = match build.config.cmd {
             Subcommand::Build { .. } => (Kind::Build, &paths[..]),
             Subcommand::Check { .. } => (Kind::Check, &paths[..]),
@@ -1094,16 +1127,24 @@ impl<'a> Builder<'a> {
             Subcommand::Perf { .. } => (Kind::Perf, &paths[..]),
         };
 
-        Self::new_internal(build, kind, paths.to_owned())
+        // No need to special case these, since they weren't passed on the command line
+        // (and are only set int Subcommand::Test)
+        let previously_failed_test_paths = &build.config.previously_failed_test_paths;
+
+        Self::new_internal(build, kind, paths.to_owned(), previously_failed_test_paths.to_owned())
     }
 
     pub fn execute_cli(&self) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
+        self.run_step_descriptions(
+            &Builder::get_step_descriptions(self.kind),
+            &self.paths,
+            &self.previously_failed_test_paths,
+        );
     }
 
     /// Run all default documentation steps to build documentation.
     pub fn run_default_doc_steps(&self) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
+        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[], &[]);
     }
 
     pub fn doc_rust_lang_org_channel(&self) -> String {
@@ -1118,8 +1159,13 @@ impl<'a> Builder<'a> {
         format!("https://doc.rust-lang.org/{channel}")
     }
 
-    fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
-        cli_paths::match_paths_to_steps_and_run(self, v, paths);
+    fn run_step_descriptions(
+        &self,
+        v: &[StepDescription],
+        paths: &[PathBuf],
+        previously_failed_test_paths: &[PathBuf],
+    ) {
+        cli_paths::match_paths_to_steps_and_run(self, v, paths, previously_failed_test_paths);
     }
 
     /// Returns if `std` should be statically linked into `rustc_driver`.

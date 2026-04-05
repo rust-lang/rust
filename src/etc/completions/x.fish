@@ -454,6 +454,8 @@ complete -c x -n "__fish_x_using_subcommand test" -l rustfix-coverage -d 'enable
 complete -c x -n "__fish_x_using_subcommand test" -l no-capture -d 'don\'t capture stdout/stderr of tests'
 complete -c x -n "__fish_x_using_subcommand test" -l bypass-ignore-backends -d 'Ignore `//@ ignore-backends` directives'
 complete -c x -n "__fish_x_using_subcommand test" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
+complete -c x -n "__fish_x_using_subcommand test" -l record -d 'Record all the failed tests in a file in the build directory'
+complete -c x -n "__fish_x_using_subcommand test" -l rerun -d 'Rerun tests that previously failed, and stored with `--record`'
 complete -c x -n "__fish_x_using_subcommand test" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x -n "__fish_x_using_subcommand test" -s i -l incremental -d 'use incremental compilation'
 complete -c x -n "__fish_x_using_subcommand test" -l include-default-paths -d 'include default paths in addition to the provided ones'

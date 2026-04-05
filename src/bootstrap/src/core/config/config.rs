@@ -30,6 +30,7 @@ use tracing::{instrument, span};
 
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
+use crate::core::build_steps::test::failed_tests::collect_previously_failed_tests;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::core::config::target_selection::TargetSelectionList;
@@ -124,6 +125,7 @@ pub struct Config {
     pub stage0_metadata: build_helper::stage0_parser::Stage0,
     pub android_ndk: Option<PathBuf>,
     pub optimized_compiler_builtins: CompilerBuiltins,
+    pub record_failed_tests_path: PathBuf,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -306,6 +308,8 @@ pub struct Config {
     /// The paths to work with. For example: with `./x check foo bar` we get
     /// `paths=["foo", "bar"]`.
     pub paths: Vec<PathBuf>,
+    /// A list of tests that failed during a previous run, recorded with `--record`,
+    pub previously_failed_test_paths: Vec<PathBuf>,
 
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
     pub compiletest_diff_tool: Option<String>,
@@ -504,6 +508,7 @@ impl Config {
             dist_stage: build_dist_stage,
             bench_stage: build_bench_stage,
             patch_binaries_for_nix: build_patch_binaries_for_nix,
+            record_failed_tests_path: build_record_failed_tests_path,
             // This field is only used by bootstrap.py
             metrics: _,
             android_ndk: build_android_ndk,
@@ -1296,6 +1301,14 @@ impl Config {
         );
         let verbose_tests = rust_verbose_tests.unwrap_or(exec_ctx.is_verbose());
 
+        let record_failed_tests_path =
+            out.join(build_record_failed_tests_path.unwrap_or_else(|| "failed-tests".to_string()));
+        let previously_failed_test_paths = if flags_cmd.rerun() {
+            collect_previously_failed_tests(&record_failed_tests_path)
+        } else {
+            Vec::new()
+        };
+
         Config {
             // tidy-alphabetical-start
             android_ndk: build_android_ndk,
@@ -1428,10 +1441,12 @@ impl Config {
             path_modification_cache,
             paths: flags_paths,
             prefix: install_prefix.map(PathBuf::from),
+            previously_failed_test_paths,
             print_step_rusage: build_print_step_rusage.unwrap_or(false),
             print_step_timings: build_print_step_timings.unwrap_or(false),
             profiler: build_profiler.unwrap_or(false),
             python: build_python.map(PathBuf::from),
+            record_failed_tests_path,
             reproducible_artifacts: flags_reproducible_artifact,
             reuse: build_reuse.map(PathBuf::from),
             rust_analyzer_info,

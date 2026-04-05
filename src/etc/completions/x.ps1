@@ -522,6 +522,8 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             [CompletionResult]::new('--no-capture', '--no-capture', [CompletionResultType]::ParameterName, 'don''t capture stdout/stderr of tests')
             [CompletionResult]::new('--bypass-ignore-backends', '--bypass-ignore-backends', [CompletionResultType]::ParameterName, 'Ignore `//@ ignore-backends` directives')
             [CompletionResult]::new('--no-doc', '--no-doc', [CompletionResultType]::ParameterName, 'Deprecated. Use `--all-targets` or `--tests` instead')
+            [CompletionResult]::new('--record', '--record', [CompletionResultType]::ParameterName, 'Record all the failed tests in a file in the build directory')
+            [CompletionResult]::new('--rerun', '--rerun', [CompletionResultType]::ParameterName, 'Rerun tests that previously failed, and stored with `--record`')
             [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('-i', '-i', [CompletionResultType]::ParameterName, 'use incremental compilation')
