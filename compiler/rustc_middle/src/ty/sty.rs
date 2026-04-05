@@ -35,6 +35,7 @@ use crate::ty::{
 pub type TyKind<'tcx> = ir::TyKind<TyCtxt<'tcx>>;
 pub type TypeAndMut<'tcx> = ir::TypeAndMut<TyCtxt<'tcx>>;
 pub type AliasTy<'tcx> = ir::AliasTy<TyCtxt<'tcx>>;
+pub type AliasTyKind<'tcx> = ir::AliasTyKind<TyCtxt<'tcx>>;
 pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
 pub type EarlyBinder<'tcx, T> = ir::EarlyBinder<TyCtxt<'tcx>, T>;
@@ -468,18 +469,14 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn new_alias(
-        tcx: TyCtxt<'tcx>,
-        kind: ty::AliasTyKind,
-        alias_ty: ty::AliasTy<'tcx>,
-    ) -> Ty<'tcx> {
+    pub fn new_alias(tcx: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
         debug_assert_matches!(
-            (kind, tcx.def_kind(alias_ty.def_id)),
-            (ty::Opaque, DefKind::OpaqueTy)
-                | (ty::Projection | ty::Inherent, DefKind::AssocTy)
-                | (ty::Free, DefKind::TyAlias)
+            (alias_ty.kind, tcx.def_kind(alias_ty.kind.def_id())),
+            (ty::Opaque { .. }, DefKind::OpaqueTy)
+                | (ty::Projection { .. } | ty::Inherent { .. }, DefKind::AssocTy)
+                | (ty::Free { .. }, DefKind::TyAlias)
         );
-        Ty::new(tcx, Alias(kind, alias_ty))
+        Ty::new(tcx, Alias(alias_ty))
     }
 
     #[inline]
@@ -519,7 +516,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     #[instrument(level = "debug", skip(tcx))]
     pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        Ty::new_alias(tcx, ty::Opaque, AliasTy::new_from_args(tcx, def_id, args))
+        Ty::new_alias(tcx, AliasTy::new_from_args(tcx, ty::Opaque { def_id }, args))
     }
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
@@ -775,7 +772,10 @@ impl<'tcx> Ty<'tcx> {
         item_def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        Ty::new_alias(tcx, ty::Projection, AliasTy::new_from_args(tcx, item_def_id, args))
+        Ty::new_alias(
+            tcx,
+            AliasTy::new_from_args(tcx, ty::Projection { def_id: item_def_id }, args),
+        )
     }
 
     #[inline]
@@ -784,7 +784,7 @@ impl<'tcx> Ty<'tcx> {
         item_def_id: DefId,
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
-        Ty::new_alias(tcx, ty::Projection, AliasTy::new(tcx, item_def_id, args))
+        Ty::new_alias(tcx, AliasTy::new(tcx, ty::Projection { def_id: item_def_id }, args))
     }
 
     #[inline]
@@ -960,12 +960,8 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_canonical_bound(tcx, var)
     }
 
-    fn new_alias(
-        interner: TyCtxt<'tcx>,
-        kind: ty::AliasTyKind,
-        alias_ty: ty::AliasTy<'tcx>,
-    ) -> Self {
-        Ty::new_alias(interner, kind, alias_ty)
+    fn new_alias(interner: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Self {
+        Ty::new_alias(interner, alias_ty)
     }
 
     fn new_error(interner: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
@@ -1599,7 +1595,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_impl_trait(self) -> bool {
-        matches!(self.kind(), Alias(ty::Opaque, ..))
+        matches!(self.kind(), Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }))
     }
 
     #[inline]
@@ -2155,7 +2151,7 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(TyKind<'_>, 24);
-    static_assert_size!(ty::WithCachedTypeInfo<TyKind<'_>>, 48);
+    static_assert_size!(TyKind<'_>, 32);
+    static_assert_size!(ty::WithCachedTypeInfo<TyKind<'_>>, 56);
     // tidy-alphabetical-end
 }

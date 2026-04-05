@@ -215,16 +215,19 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
         a: ty::AliasTy<I>,
         b: ty::AliasTy<I>,
     ) -> RelateResult<I, ty::AliasTy<I>> {
-        if a.def_id != b.def_id {
-            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.def_id, b.def_id)))
+        if a.kind.def_id() != b.kind.def_id() {
+            Err(TypeError::ProjectionMismatched(ExpectedFound::new(
+                a.kind.def_id(),
+                b.kind.def_id(),
+            )))
         } else {
             let cx = relation.cx();
-            let args = if let Some(variances) = cx.opt_alias_variances(a.kind(cx), a.def_id) {
+            let args = if let Some(variances) = cx.opt_alias_variances(a.kind, a.kind.def_id()) {
                 relate_args_with_variances(relation, variances, a.args, b.args)?
             } else {
                 relate_args_invariantly(relation, a.args, b.args)?
             };
-            Ok(ty::AliasTy::new_from_args(relation.cx(), a.def_id, args))
+            Ok(ty::AliasTy::new_from_args(relation.cx(), a.kind, args))
         }
     }
 }
@@ -499,10 +502,11 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
         }
 
         // Alias tend to mostly already be handled downstream due to normalization.
-        (ty::Alias(a_kind, a_data), ty::Alias(b_kind, b_data)) => {
-            let alias_ty = relation.relate(a_data, b_data)?;
-            assert_eq!(a_kind, b_kind);
-            Ok(Ty::new_alias(cx, a_kind, alias_ty))
+        (ty::Alias(a), ty::Alias(b)) => {
+            let alias_ty = relation.relate(a, b)?;
+            assert_eq!(a.kind, b.kind);
+            assert_eq!(a.kind, alias_ty.kind);
+            Ok(Ty::new_alias(cx, alias_ty))
         }
 
         (ty::Pat(a_ty, a_pat), ty::Pat(b_ty, b_pat)) => {

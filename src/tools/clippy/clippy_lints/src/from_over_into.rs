@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && span_is_local(item.span)
             && let middle_trait_ref = cx.tcx.impl_trait_ref(item.owner_id).instantiate_identity()
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
-            && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(ty::Opaque, _))
+            && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(ty::AliasTy { kind: ty::Opaque{..} , .. }))
             && self.msrv.meets(cx, msrvs::RE_REBALANCING_COHERENCE)
         {
             span_lint_and_then(

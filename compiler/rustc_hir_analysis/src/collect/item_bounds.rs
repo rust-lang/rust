@@ -143,9 +143,12 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
     };
 
     let gat_vars = loop {
-        if let ty::Alias(ty::Projection, alias_ty) = *clause_ty.kind() {
+        if let ty::Alias(
+            alias_ty @ ty::AliasTy { kind: ty::Projection { def_id: alias_ty_def_id }, .. },
+        ) = *clause_ty.kind()
+        {
             if alias_ty.trait_ref(tcx) == item_trait_ref
-                && alias_ty.def_id == assoc_item_def_id.to_def_id()
+                && alias_ty_def_id == assoc_item_def_id.to_def_id()
             {
                 // We have found the GAT in question...
                 // Return the vars, since we may need to remap them.
@@ -546,12 +549,17 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTyToOpaque<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(ty::Projection, projection_ty) = ty.kind()
+        if let &ty::Alias(
+            projection_ty @ ty::AliasTy {
+                kind: ty::Projection { def_id: projection_ty_def_id },
+                ..
+            },
+        ) = ty.kind()
             && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
-                self.tcx.opt_rpitit_info(projection_ty.def_id)
+                self.tcx.opt_rpitit_info(projection_ty_def_id)
             && fn_def_id == self.fn_def_id
         {
-            self.tcx.type_of(projection_ty.def_id).instantiate(self.tcx, projection_ty.args)
+            self.tcx.type_of(projection_ty_def_id).instantiate(self.tcx, projection_ty.args)
         } else {
             ty.super_fold_with(self)
         }

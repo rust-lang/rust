@@ -635,7 +635,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                 }
             }
 
-            ty::Alias(_, data) => match self.structurally_relate_aliases {
+            ty::Alias(data) => match self.structurally_relate_aliases {
                 StructurallyRelateAliases::No => {
                     self.generalize_alias_term(data.into()).map(|v| v.expect_type())
                 }

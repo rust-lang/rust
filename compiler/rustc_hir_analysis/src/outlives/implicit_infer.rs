@@ -157,21 +157,21 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 );
             }
 
-            ty::Alias(ty::Free, alias) => {
+            ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
                 // This corresponds to a type like `Type<'a, T>`.
                 // We check inferred and explicit predicates.
                 debug!("Free");
                 check_inferred_predicates(
                     tcx,
-                    alias.def_id,
-                    alias.args,
+                    def_id,
+                    args,
                     global_inferred_outlives,
                     required_predicates,
                 );
                 check_explicit_predicates(
                     tcx,
-                    alias.def_id,
-                    alias.args,
+                    def_id,
+                    args,
                     required_predicates,
                     explicit_map,
                     None,
@@ -203,15 +203,15 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 }
             }
 
-            ty::Alias(ty::Projection, alias) => {
+            ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
                 // This corresponds to a type like `<() as Trait<'a, T>>::Type`.
                 // We only use the explicit predicates of the trait but
                 // not the ones of the associated type itself.
                 debug!("Projection");
                 check_explicit_predicates(
                     tcx,
-                    tcx.parent(alias.def_id),
-                    alias.args,
+                    tcx.parent(def_id),
+                    args,
                     required_predicates,
                     explicit_map,
                     None,
@@ -219,7 +219,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
             }
 
             // FIXME(inherent_associated_types): Use the explicit predicates from the parent impl.
-            ty::Alias(ty::Inherent, _) => {}
+            ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {}
 
             _ => {}
         }

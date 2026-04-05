@@ -280,7 +280,7 @@ fn ty_has_applicable_get_function<'tcx>(
         && let generic_ty = option_generic_param.expect_ty().peel_refs()
         // FIXME: ideally this would handle type params and projections properly, for now just assume it's the same type
         && (cx.typeck_results().expr_ty(index_expr).peel_refs() == generic_ty.peel_refs()
-            || matches!(generic_ty.peel_refs().kind(), ty::Param(_) | ty::Alias(_, _)))
+            || matches!(generic_ty.peel_refs().kind(), ty::Param(_) | ty::Alias(_)))
     {
         true
     } else {
