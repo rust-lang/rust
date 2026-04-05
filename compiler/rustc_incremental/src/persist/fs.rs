@@ -215,9 +215,7 @@ pub(crate) fn prepare_session_directory(
     crate_name: Symbol,
     stable_crate_id: StableCrateId,
 ) {
-    if sess.opts.incremental.is_none() {
-        return;
-    }
+    assert!(sess.opts.incremental.is_some());
 
     let _timer = sess.timer("incr_comp_prepare_session_directory");
 
