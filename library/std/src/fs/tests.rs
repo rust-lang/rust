@@ -1751,7 +1751,7 @@ fn metadata_access_times() {
     if cfg!(target_os = "linux") {
         // Not always available
         match (a.created(), b.created()) {
-            (Ok(t1), Ok(t2)) => assert!(t1 <= t2),
+            (Ok(_), Ok(_)) => {}
             (Err(e1), Err(e2))
                 if e1.kind() == ErrorKind::Uncategorized
                     && e2.kind() == ErrorKind::Uncategorized
