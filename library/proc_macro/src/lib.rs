@@ -45,6 +45,7 @@ mod escape;
 mod to_tokens;
 
 use core::ops::BitOr;
+use std::borrow::Cow;
 use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
@@ -1183,6 +1184,62 @@ macro_rules! unsuffixed_int_literals {
     )*)
 }
 
+macro_rules! integer_values {
+    ($($nb:ident => $fn_name:ident,)+) => {
+        $(
+            #[doc = concat!(
+                "Returns the unescaped `",
+                stringify!($nb),
+                "` value if the literal is a `",
+                stringify!($nb),
+                "` or if it's an \"unmarked\" integer which doesn't overflow.")]
+            #[unstable(feature = "proc_macro_value", issue = "136652")]
+            pub fn $fn_name(&self) -> Result<$nb, ConversionErrorKind> {
+                if self.0.kind != bridge::LitKind::Integer {
+                    return Err(ConversionErrorKind::InvalidLiteralKind);
+                }
+                self.with_symbol_and_suffix(|symbol, suffix| {
+                    match suffix {
+                        stringify!($nb) | "" => {
+                            let (number, base) = parse_number(symbol);
+                            $nb::from_str_radix(&number, base as u32).map_err(|_| ConversionErrorKind::InvalidLiteralKind)
+                        }
+                        _ => Err(ConversionErrorKind::InvalidLiteralKind),
+                    }
+                })
+            }
+        )+
+    }
+}
+
+macro_rules! float_values {
+    ($($nb:ident => $fn_name:ident,)+) => {
+        $(
+            #[doc = concat!(
+                "Returns the unescaped `",
+                stringify!($nb),
+                "` value if the literal is a `",
+                stringify!($nb),
+                "` or if it's an \"unmarked\" float which doesn't overflow.")]
+            #[unstable(feature = "proc_macro_value", issue = "136652")]
+            pub fn $fn_name(&self) -> Result<$nb, ConversionErrorKind> {
+                if self.0.kind != bridge::LitKind::Float {
+                    return Err(ConversionErrorKind::InvalidLiteralKind);
+                }
+                self.with_symbol_and_suffix(|symbol, suffix| {
+                    match suffix {
+                        stringify!($nb) | "" => {
+                            let number = only_digits(symbol);
+                            $nb::from_str(&number).map_err(|_| ConversionErrorKind::InvalidLiteralKind)
+                        }
+                        _ => Err(ConversionErrorKind::InvalidLiteralKind),
+                    }
+                })
+            }
+        )+
+    }
+}
+
 impl Literal {
     fn new(kind: bridge::LitKind, value: &str, suffix: Option<&str>) -> Self {
         Literal(bridge::Literal {
@@ -1578,6 +1635,98 @@ impl Literal {
             _ => Err(ConversionErrorKind::InvalidLiteralKind),
         })
     }
+
+    integer_values! {
+        u8 => u8_value,
+        u16 => u16_value,
+        u32 => u32_value,
+        u64 => u64_value,
+        u128 => u128_value,
+        i8 => i8_value,
+        i16 => i16_value,
+        i32 => i32_value,
+        i64 => i64_value,
+        i128 => i128_value,
+    }
+
+    float_values! {
+        // FIXME: To be uncommented when `f16` is stable.
+        // f16 => f16_value,
+        f32 => f32_value,
+        f64 => f64_value,
+        // FIXME: `f128` doesn't implement `FromStr` for the moment so we cannot obtain it from
+        // a `&str`. To be uncommented when it's added.
+        // f128 => f128_value,
+    }
+}
+
+#[repr(u32)]
+#[derive(PartialEq, Eq)]
+enum Base {
+    Decimal = 10,
+    Binary = 2,
+    Octal = 8,
+    Hexadecimal = 16,
+}
+
+fn parse_number(value: &str) -> (String, Base) {
+    let mut iter = value.as_bytes().iter().copied();
+    let Some(first_digit) = iter.next() else {
+        return ("0".into(), Base::Decimal);
+    };
+    let Some(second_digit) = iter.next() else {
+        let mut output = String::with_capacity(1);
+        output.push(first_digit as char);
+        return (output, Base::Decimal);
+    };
+
+    let mut base = Base::Decimal;
+    if first_digit == b'0' {
+        // Attempt to parse encoding base.
+        match second_digit {
+            b'b' => {
+                base = Base::Binary;
+            }
+            b'o' => {
+                base = Base::Octal;
+            }
+            b'x' => {
+                base = Base::Hexadecimal;
+            }
+            _ => {}
+        }
+    }
+
+    let mut output = if base == Base::Decimal {
+        let mut output = String::with_capacity(value.len());
+        output.push(first_digit as char);
+        output.push(second_digit as char);
+        output
+    } else {
+        String::with_capacity(value.len() - 2)
+    };
+
+    for c in iter {
+        if c != b'_' {
+            output.push(c as char);
+        }
+    }
+
+    (output, base)
+}
+
+fn only_digits(value_s: &str) -> Cow<'_, str> {
+    let value = value_s.as_bytes();
+    if value.iter().copied().all(|c| c != b'_' && c != b'f') {
+        return Cow::Borrowed(value_s);
+    }
+    let mut output = String::with_capacity(value.len());
+    for c in value.iter().copied() {
+        if c != b'_' {
+            output.push(c as char);
+        }
+    }
+    Cow::Owned(output)
 }
 
 /// Parse a single literal from its stringified representation.
