@@ -1449,6 +1449,7 @@ impl Default for Options {
             logical_env: FxIndexMap::default(),
             verbose: false,
             target_modifiers: BTreeMap::default(),
+            mitigation_coverage_map: Default::default(),
         }
     }
 }
@@ -2456,9 +2457,9 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_dcx.early_fatal(e));
 
-    let mut target_modifiers = BTreeMap::<OptionsTargetModifiers, String>::new();
+    let mut collected_options = Default::default();
 
-    let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut target_modifiers);
+    let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
     if !unstable_opts.unstable_options && json_timings {
@@ -2474,7 +2475,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let output_types = parse_output_types(early_dcx, &unstable_opts, matches);
 
-    let mut cg = CodegenOptions::build(early_dcx, matches, &mut target_modifiers);
+    let mut cg = CodegenOptions::build(early_dcx, matches, &mut collected_options);
     let (disable_local_thinlto, codegen_units) = should_override_cgus_and_disable_thinlto(
         early_dcx,
         &output_types,
@@ -2625,7 +2626,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     // -Zretpoline-external-thunk also requires -Zretpoline
     if unstable_opts.retpoline_external_thunk {
         unstable_opts.retpoline = true;
-        target_modifiers.insert(
+        collected_options.target_modifiers.insert(
             OptionsTargetModifiers::UnstableOptions(UnstableOptionsTargetModifiers::retpoline),
             "true".to_string(),
         );
@@ -2785,7 +2786,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         color,
         logical_env,
         verbose,
-        target_modifiers,
+        target_modifiers: collected_options.target_modifiers,
+        mitigation_coverage_map: collected_options.mitigations,
     }
 }
 
