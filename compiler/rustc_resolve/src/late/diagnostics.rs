@@ -26,7 +26,7 @@ use rustc_middle::ty;
 use rustc_session::{Session, lint};
 use rustc_span::edit_distance::{edit_distance, find_best_match_for_name};
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -980,12 +980,15 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     AssocSuggestion::Field(field_span) => {
                         if self_is_available {
                             let source_map = self.r.tcx.sess.source_map();
-                            // check if the field is used in a format string, such as `"{x}"`
-                            let field_is_format_named_arg = source_map
+                            let field_is_format_named_arg = matches!(
+                                span.desugaring_kind(),
+                                Some(DesugaringKind::FormatLiteral { .. })
+                            ) && source_map
                                 .span_to_source(span, |s, start, _| {
-                                    Ok(s.get(start - 1..start) == Some("{"))
-                                });
-                            if let Ok(true) = field_is_format_named_arg {
+                                    Ok(s.get(start.saturating_sub(1)..start) == Some("{"))
+                                })
+                                .unwrap_or(false);
+                            if field_is_format_named_arg {
                                 err.help(
                                     format!("you might have meant to use the available field in a format string: `\"{{}}\", self.{}`", segment.ident.name),
                                 );
