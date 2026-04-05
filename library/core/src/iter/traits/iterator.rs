@@ -81,6 +81,14 @@ pub const trait Iterator {
     /// If there are not enough elements to fill the array then `Err` is returned
     /// containing an iterator over the remaining elements.
     ///
+    /// # Panics
+    ///
+    /// May panic if the underlying iterator's [`try_for_each`] calls the closure
+    /// again after it returned [`ControlFlow::Break`].
+    ///
+    /// [`try_for_each`]: Iterator::try_for_each
+    /// [`ControlFlow::Break`]: core::ops::ControlFlow::Break
+    ///
     /// # Examples
     ///
     /// Basic usage:
