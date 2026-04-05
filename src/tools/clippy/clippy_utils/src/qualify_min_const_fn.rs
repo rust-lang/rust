@@ -131,7 +131,7 @@ fn check_rvalue<'tcx>(
         },
         Rvalue::CopyForDeref(place) => check_place(cx, *place, span, body, msrv),
         Rvalue::Repeat(operand, _)
-        | Rvalue::Use(operand)
+        | Rvalue::Use(operand, _)
         | Rvalue::WrapUnsafeBinder(operand, _)
         | Rvalue::Cast(
             CastKind::PointerWithExposedProvenance
@@ -241,7 +241,6 @@ fn check_statement<'tcx>(
         // These are all NOPs
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
-        | StatementKind::Retag { .. }
         | StatementKind::AscribeUserType(..)
         | StatementKind::PlaceMention(..)
         | StatementKind::Coverage(..)

@@ -1,5 +1,5 @@
 use rustc_abi::Size;
-use rustc_middle::mir::{Mutability, RetagKind};
+use rustc_middle::mir::Mutability;
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty};
 
@@ -130,13 +130,17 @@ impl<'tcx> NewPermission {
     fn new(
         pointee: Ty<'tcx>,
         ref_mutability: Option<Mutability>,
-        retag_kind: RetagKind,
+        mode: RetagMode,
         cx: &crate::MiriInterpCx<'tcx>,
     ) -> Option<Self> {
+        if mode == RetagMode::None {
+            return None;
+        }
+
         let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.typing_env())
             && pointee.is_unsafe_unpin(*cx.tcx, cx.typing_env());
         let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.typing_env());
-        let is_protected = retag_kind == RetagKind::FnEntry;
+        let is_protected = mode == RetagMode::FnEntry;
 
         if matches!(ref_mutability, Some(Mutability::Mut) | None if !ty_is_unpin) {
             // Mutable reference / Box to pinning type: retagging is a NOP.
@@ -407,18 +411,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // one must also be `Some`.)
         interp_ok(place.clone().map_provenance(|_| new_prov.unwrap()))
     }
-
-    /// Retags an individual pointer, returning the retagged version.
-    fn tb_retag_reference(
-        &mut self,
-        val: &ImmTy<'tcx>,
-        new_perm: NewPermission,
-    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
-        let this = self.eval_context_mut();
-        let place = this.ref_to_mplace(val)?;
-        let new_place = this.tb_retag_place(&place, new_perm)?;
-        interp_ok(ImmTy::from_immediate(new_place.to_ref(this), val.layout))
-    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -427,112 +419,36 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// raw pointers are never reborrowed.
     fn tb_retag_ptr_value(
         &mut self,
-        kind: RetagKind,
         val: &ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
+        ty: Ty<'tcx>,
+        mode: RetagMode,
+    ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
         let this = self.eval_context_mut();
-        let new_perm = match val.layout.ty.kind() {
+        let new_perm = match ty.kind() {
+            _ if ty.is_box_global(*this.tcx) => {
+                // The `None` marks this as a Box.
+                NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, this)
+            }
             &ty::Ref(_, pointee, mutability) =>
-                NewPermission::new(pointee, Some(mutability), kind, this),
-            _ => None,
+                NewPermission::new(pointee, Some(mutability), mode, this),
+
+            &ty::RawPtr(..) => {
+                assert!(mode == RetagMode::Raw);
+                // We don't give new tags to raw pointers.
+                None
+            }
+            _ if ty.is_box() => {
+                // No retagging for boxes with local allocators.
+                None
+            }
+            _ => panic!("tb_retag_ptr_value: invalid type {ty}"),
         };
         if let Some(new_perm) = new_perm {
-            this.tb_retag_reference(val, new_perm)
+            let place = this.ref_to_mplace(val)?;
+            let new_place = this.tb_retag_place(&place, new_perm)?;
+            interp_ok(Some(ImmTy::from_immediate(new_place.to_ref(this), val.layout)))
         } else {
-            interp_ok(val.clone())
-        }
-    }
-
-    /// Retag all pointers that are stored in this place.
-    fn tb_retag_place_contents(
-        &mut self,
-        kind: RetagKind,
-        place: &PlaceTy<'tcx>,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let mut visitor = RetagVisitor { ecx: this, kind };
-        return visitor.visit_value(place);
-
-        // The actual visitor.
-        struct RetagVisitor<'ecx, 'tcx> {
-            ecx: &'ecx mut MiriInterpCx<'tcx>,
-            kind: RetagKind,
-        }
-        impl<'ecx, 'tcx> RetagVisitor<'ecx, 'tcx> {
-            #[inline(always)] // yes this helps in our benchmarks
-            fn retag_ptr_inplace(
-                &mut self,
-                place: &PlaceTy<'tcx>,
-                new_perm: Option<NewPermission>,
-            ) -> InterpResult<'tcx> {
-                if let Some(new_perm) = new_perm {
-                    let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
-                    let val = self.ecx.tb_retag_reference(&val, new_perm)?;
-                    self.ecx.write_immediate(*val, place)?;
-                }
-                interp_ok(())
-            }
-        }
-        impl<'ecx, 'tcx> ValueVisitor<'tcx, MiriMachine<'tcx>> for RetagVisitor<'ecx, 'tcx> {
-            type V = PlaceTy<'tcx>;
-
-            #[inline(always)]
-            fn ecx(&self) -> &MiriInterpCx<'tcx> {
-                self.ecx
-            }
-
-            /// Regardless of how `Unique` is handled, Boxes are always reborrowed.
-            /// When `Unique` is also reborrowed, then it behaves exactly like `Box`
-            /// except for the fact that `Box` has a non-zero-sized reborrow.
-            fn visit_box(&mut self, box_ty: Ty<'tcx>, place: &PlaceTy<'tcx>) -> InterpResult<'tcx> {
-                // Only boxes for the global allocator get any special treatment.
-                if box_ty.is_box_global(*self.ecx.tcx) {
-                    let pointee = place.layout.ty.builtin_deref(true).unwrap();
-                    let new_perm =
-                        NewPermission::new(pointee, /* not a ref */ None, self.kind, self.ecx);
-                    self.retag_ptr_inplace(place, new_perm)?;
-                }
-                interp_ok(())
-            }
-
-            fn visit_value(&mut self, place: &PlaceTy<'tcx>) -> InterpResult<'tcx> {
-                // If this place is smaller than a pointer, we know that it can't contain any
-                // pointers we need to retag, so we can stop recursion early.
-                // This optimization is crucial for ZSTs, because they can contain way more fields
-                // than we can ever visit.
-                if place.layout.is_sized() && place.layout.size < self.ecx.pointer_size() {
-                    return interp_ok(());
-                }
-
-                // Check the type of this value to see what to do with it (retag, or recurse).
-                match place.layout.ty.kind() {
-                    &ty::Ref(_, pointee, mutability) => {
-                        let new_perm =
-                            NewPermission::new(pointee, Some(mutability), self.kind, self.ecx);
-                        self.retag_ptr_inplace(place, new_perm)?;
-                    }
-                    ty::RawPtr(_, _) => {
-                        // We definitely do *not* want to recurse into raw pointers -- wide raw
-                        // pointers have fields, and for dyn Trait pointees those can have reference
-                        // type!
-                        // We also do not want to reborrow them.
-                    }
-                    ty::Adt(adt, _) if adt.is_box() => {
-                        // Recurse for boxes, they require some tricky handling and will end up in `visit_box` above.
-                        // (Yes this means we technically also recursively retag the allocator itself
-                        // even if field retagging is not enabled. *shrug*)
-                        self.walk_value(place)?;
-                    }
-                    ty::Adt(adt, _) if adt.is_maybe_dangling() => {
-                        // Skip traversing for everything inside of `MaybeDangling`
-                    }
-                    _ => {
-                        // Not a reference/pointer/box. Recurse.
-                        self.walk_value(place)?;
-                    }
-                }
-                interp_ok(())
-            }
+            interp_ok(None)
         }
     }
 

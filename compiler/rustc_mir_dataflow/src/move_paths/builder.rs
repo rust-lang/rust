@@ -410,8 +410,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     "SetDiscriminant/Deinit should not exist during borrowck"
                 );
             }
-            StatementKind::Retag { .. }
-            | StatementKind::AscribeUserType(..)
+            StatementKind::AscribeUserType(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
@@ -424,7 +423,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn gather_rvalue(&mut self, rvalue: &Rvalue<'tcx>) {
         match *rvalue {
             Rvalue::ThreadLocalRef(_) => {} // not-a-move
-            Rvalue::Use(ref operand)
+            Rvalue::Use(ref operand, _)
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::Cast(_, ref operand, _)
             | Rvalue::UnaryOp(_, ref operand)

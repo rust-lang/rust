@@ -696,7 +696,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
-            | StatementKind::Retag { .. }
             | StatementKind::Coverage(..)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
@@ -1651,7 +1650,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 .unwrap();
             }
 
-            Rvalue::Use(_)
+            Rvalue::Use(_, _)
             | Rvalue::UnaryOp(_, _)
             | Rvalue::CopyForDeref(_)
             | Rvalue::BinaryOp(..)
@@ -2212,8 +2211,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// rvalue and will be unified with the inferred type.
     fn rvalue_user_ty(&self, rvalue: &Rvalue<'tcx>) -> Option<UserTypeAnnotationIndex> {
         match rvalue {
-            Rvalue::Use(_)
-            | Rvalue::ThreadLocalRef(_)
+            Rvalue::Use(..)
+            | Rvalue::ThreadLocalRef(..)
             | Rvalue::Repeat(..)
             | Rvalue::Ref(..)
             | Rvalue::RawPtr(..)

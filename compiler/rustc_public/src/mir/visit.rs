@@ -169,8 +169,7 @@ macro_rules! make_mir_visitor {
                     StatementKind::FakeRead(_, place) | StatementKind::PlaceMention(place) => {
                         self.visit_place(place, PlaceContext::NON_MUTATING, location);
                     }
-                    StatementKind::SetDiscriminant { place, .. }
-                    | StatementKind::Retag(_, place) => {
+                    StatementKind::SetDiscriminant { place, .. } => {
                         self.visit_place(place, PlaceContext::MUTATING, location);
                     }
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
@@ -278,7 +277,7 @@ macro_rules! make_mir_visitor {
                         self.visit_ty_const(constant, location);
                     }
                     Rvalue::ThreadLocalRef(_) => {}
-                    Rvalue::UnaryOp(_, op) | Rvalue::Use(op) => {
+                    Rvalue::UnaryOp(_, op) | Rvalue::Use(op, _) => {
                         self.visit_operand(op, location);
                     }
                 }

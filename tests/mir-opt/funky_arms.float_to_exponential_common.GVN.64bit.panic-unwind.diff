@@ -82,7 +82,7 @@
 +         nop;
           _8 = copy ((_6 as Some).0: usize);
           StorageLive(_9);
-          _9 = copy _1;
+          _9 = no_retag copy _1;
           StorageLive(_10);
           _10 = copy _2;
           StorageLive(_11);
@@ -115,7 +115,7 @@
   
       bb6: {
           StorageLive(_16);
-          _16 = copy _1;
+          _16 = no_retag copy _1;
           StorageLive(_17);
           _17 = copy _2;
           StorageLive(_18);

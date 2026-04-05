@@ -395,7 +395,6 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 Some((Place::from(local), None))
             }
-            StatementKind::Retag(..)
             | StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(..))
             // copy_nonoverlapping takes pointers and mutated the pointed-to value.
             | StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(..))
@@ -504,7 +503,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
     ) {
         let Some(lhs) = self.place(*lhs_place, None) else { return };
         match rvalue {
-            Rvalue::Use(operand) => self.process_operand(lhs, operand, state),
+            Rvalue::Use(operand, _) => self.process_operand(lhs, operand, state),
             // Transfer the conditions on the copy rhs.
             Rvalue::Discriminant(rhs) => {
                 let Some(rhs) = self.place(*rhs, Some(TrackElem::Discriminant)) else { return };

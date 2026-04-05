@@ -237,17 +237,20 @@ impl<'tcx> TransformVisitor<'tcx> {
                 let ty::Adt(_poll_adt, args) = *self.old_yield_ty.kind() else { bug!() };
                 let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
                 let yield_ty = args.type_at(0);
-                Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
-                    span: source_info.span,
-                    const_: Const::Unevaluated(
-                        UnevaluatedConst::new(
-                            self.tcx.require_lang_item(LangItem::AsyncGenFinished, body.span),
-                            self.tcx.mk_args(&[yield_ty.into()]),
+                Rvalue::Use(
+                    Operand::Constant(Box::new(ConstOperand {
+                        span: source_info.span,
+                        const_: Const::Unevaluated(
+                            UnevaluatedConst::new(
+                                self.tcx.require_lang_item(LangItem::AsyncGenFinished, body.span),
+                                self.tcx.mk_args(&[yield_ty.into()]),
+                            ),
+                            self.old_yield_ty,
                         ),
-                        self.old_yield_ty,
-                    ),
-                    user_ty: None,
-                })))
+                        user_ty: None,
+                    })),
+                    WithRetag::Yes,
+                )
             }
         };
 
@@ -306,22 +309,25 @@ impl<'tcx> TransformVisitor<'tcx> {
                     let ty::Adt(_poll_adt, args) = *self.old_yield_ty.kind() else { bug!() };
                     let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
                     let yield_ty = args.type_at(0);
-                    Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
-                        span: source_info.span,
-                        const_: Const::Unevaluated(
-                            UnevaluatedConst::new(
-                                self.tcx.require_lang_item(
-                                    LangItem::AsyncGenFinished,
-                                    source_info.span,
+                    Rvalue::Use(
+                        Operand::Constant(Box::new(ConstOperand {
+                            span: source_info.span,
+                            const_: Const::Unevaluated(
+                                UnevaluatedConst::new(
+                                    self.tcx.require_lang_item(
+                                        LangItem::AsyncGenFinished,
+                                        source_info.span,
+                                    ),
+                                    self.tcx.mk_args(&[yield_ty.into()]),
                                 ),
-                                self.tcx.mk_args(&[yield_ty.into()]),
+                                self.old_yield_ty,
                             ),
-                            self.old_yield_ty,
-                        ),
-                        user_ty: None,
-                    })))
+                            user_ty: None,
+                        })),
+                        WithRetag::Yes,
+                    )
                 } else {
-                    Rvalue::Use(val)
+                    Rvalue::Use(val, WithRetag::Yes)
                 }
             }
             CoroutineKind::Coroutine(_) => {
@@ -545,19 +551,13 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let pin_field = tcx.mk_place_field(SELF_ARG.into(), FieldIdx::ZERO, ref_coroutine_ty);
 
     let statements = &mut body.basic_blocks.as_mut_preserves_cfg()[START_BLOCK].statements;
-    // Miri requires retags to be the very first thing in the body.
-    // We insert this assignment just after.
-    let insert_point = statements
-        .iter()
-        .position(|stmt| !matches!(stmt.kind, StatementKind::Retag(..)))
-        .unwrap_or(statements.len());
     statements.insert(
-        insert_point,
+        0,
         Statement::new(
             source_info,
             StatementKind::Assign(Box::new((
                 unpinned_local.into(),
-                Rvalue::Use(Operand::Copy(pin_field)),
+                Rvalue::Use(Operand::Copy(pin_field), WithRetag::Yes),
             ))),
         ),
     );
@@ -626,7 +626,7 @@ fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local
     let [arg] = *Box::try_from(args).unwrap();
     let local = arg.node.place().unwrap().local;
 
-    let arg = Rvalue::Use(arg.node);
+    let arg = Rvalue::Use(arg.node, WithRetag::Yes);
     let assign =
         Statement::new(terminator.source_info, StatementKind::Assign(Box::new((destination, arg))));
     bb_data.statements.push(assign);
@@ -1369,7 +1369,7 @@ fn create_cases<'tcx>(
                         source_info,
                         StatementKind::Assign(Box::new((
                             point.resume_arg,
-                            Rvalue::Use(Operand::Move(CTX_ARG.into())),
+                            Rvalue::Use(Operand::Move(CTX_ARG.into()), WithRetag::Yes),
                         ))),
                     ));
                 }
@@ -1599,7 +1599,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             args_iter.filter_map(|local| {
                 let (ty, variant_index, idx) = transform.remap[local]?;
                 let lhs = transform.make_field(variant_index, idx, ty);
-                let rhs = Rvalue::Use(Operand::Move(local.into()));
+                let rhs = Rvalue::Use(Operand::Move(local.into()), WithRetag::Yes);
                 let assign = StatementKind::Assign(Box::new((lhs, rhs)));
                 Some(Statement::new(source_info, assign))
             }),
@@ -1755,7 +1755,6 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
             | StatementKind::SetDiscriminant { .. }
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::Retag(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)

@@ -346,11 +346,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
                 block = this.stmt_expr(block, expr_id, None).into_block();
-                block.and(Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
-                    span: expr_span,
-                    user_ty: None,
-                    const_: Const::zero_sized(this.tcx.types.unit),
-                }))))
+                block.and(Rvalue::Use(
+                    Operand::Constant(Box::new(ConstOperand {
+                        span: expr_span,
+                        user_ty: None,
+                        const_: Const::zero_sized(this.tcx.types.unit),
+                    })),
+                    WithRetag::Yes,
+                ))
             }
 
             ExprKind::Literal { .. }
@@ -361,7 +364,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ConstBlock { .. }
             | ExprKind::StaticRef { .. } => {
                 let constant = this.as_constant(expr);
-                block.and(Rvalue::Use(Operand::Constant(Box::new(constant))))
+                block.and(Rvalue::Use(Operand::Constant(Box::new(constant)), WithRetag::Yes))
             }
 
             ExprKind::WrapUnsafeBinder { source } => {
@@ -421,7 +424,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         NeedsTemporary::No,
                     )
                 );
-                block.and(Rvalue::Use(operand))
+                block.and(Rvalue::Use(operand, WithRetag::Yes))
             }
 
             ExprKind::ByUse { expr, span: _ } => {
@@ -429,7 +432,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block =
                         this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
                 );
-                block.and(Rvalue::Use(operand))
+                block.and(Rvalue::Use(operand, WithRetag::Yes))
             }
         }
     }
@@ -468,7 +471,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let err = AssertKind::Overflow(op, lhs, rhs);
                 block = self.assert(block, Operand::Move(of), false, err, span);
 
-                Rvalue::Use(Operand::Move(val))
+                Rvalue::Use(Operand::Move(val), WithRetag::Yes)
             }
             BinOp::Shl | BinOp::Shr if self.check_overflow && ty.is_integral() => {
                 // For an unsigned RHS, the shift is in-range for `rhs < bits`.

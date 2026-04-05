@@ -16,10 +16,10 @@ fn b(_1: &mut Box<T>) -> &mut T {
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
-        _4 = copy _1;
+        _4 = no_retag copy _1;
         StorageLive(_5);
         StorageLive(_6);
-        _6 = copy (((*_4).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>);
+        _6 = no_retag copy (((*_4).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>);
         _5 = copy _6 as *const T (Transmute);
         _3 = &mut (*_5);
         StorageDead(_6);

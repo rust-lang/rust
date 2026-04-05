@@ -40,6 +40,21 @@ pub enum ReturnAction {
     NoCleanup,
 }
 
+/// The currently active retagging mode.
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub enum RetagMode {
+    /// A regular retag.
+    Default,
+    /// Retag preparing for a two-phase borrow.
+    TwoPhase,
+    /// The initial retag of arguments when entering a function.
+    FnEntry,
+    /// Retagging for reference-to-raw-pointer cast.
+    Raw,
+    /// No retagging.
+    None,
+}
+
 /// Whether this kind of memory is allowed to leak
 pub trait MayLeak: Copy {
     fn may_leak(self) -> bool;
@@ -481,25 +496,28 @@ pub trait Machine<'tcx>: Sized {
     }
 
     /// Executes a retagging operation for a single pointer.
-    /// Returns the possibly adjusted pointer.
+    /// Returns the possibly adjusted pointer. Return `None` if the pointer
+    /// was left unchanged.
+    ///
+    /// `ty` is the full type of the pointer. This is not the same as `val.layout.ty` for boxes
+    /// where `val` is just the inner raw pointer, but `ty` is the entire `Box` type.
     #[inline]
     fn retag_ptr_value(
         _ecx: &mut InterpCx<'tcx, Self>,
-        _kind: mir::RetagKind,
-        val: &ImmTy<'tcx, Self::Provenance>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Self::Provenance>> {
-        interp_ok(val.clone())
+        _val: &ImmTy<'tcx, Self::Provenance>,
+        _ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Option<ImmTy<'tcx, Self::Provenance>>> {
+        interp_ok(None)
     }
 
-    /// Executes a retagging operation on a compound value.
-    /// Replaces all pointers stored in the given place.
-    #[inline]
-    fn retag_place_contents(
-        _ecx: &mut InterpCx<'tcx, Self>,
-        _kind: mir::RetagKind,
-        _place: &PlaceTy<'tcx, Self::Provenance>,
-    ) -> InterpResult<'tcx> {
-        interp_ok(())
+    /// Invoke `f` in a state where calls to `retag_ptr_value` will use the given retag mode.
+    #[inline(always)]
+    fn with_retag_mode<T>(
+        ecx: &mut InterpCx<'tcx, Self>,
+        _mode: RetagMode,
+        f: impl FnOnce(&mut InterpCx<'tcx, Self>) -> InterpResult<'tcx, T>,
+    ) -> InterpResult<'tcx, T> {
+        f(ecx)
     }
 
     /// Called on places used for in-place function argument and return value handling.

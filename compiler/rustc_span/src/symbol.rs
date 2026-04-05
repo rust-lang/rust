@@ -1281,7 +1281,6 @@ symbols! {
         mir_move,
         mir_offset,
         mir_ptr_metadata,
-        mir_retag,
         mir_return,
         mir_return_to,
         mir_set_discriminant,

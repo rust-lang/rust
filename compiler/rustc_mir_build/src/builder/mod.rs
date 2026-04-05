@@ -885,7 +885,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for stmt in &bb.statements {
                 match &stmt.kind {
                     // Ignore the implicit `()` return place assignment for unit functions/blocks
-                    StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(const_))))
+                    StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(const_), _)))
                         if const_.ty().is_unit() =>
                     {
                         continue;
