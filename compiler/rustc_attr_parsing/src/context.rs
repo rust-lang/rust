@@ -830,11 +830,18 @@ where
     }
 
     pub(crate) fn warn_ill_formed_attribute_input(&mut self, lint: &'static Lint) {
+        self.warn_ill_formed_attribute_input_with_help(lint, None)
+    }
+    pub(crate) fn warn_ill_formed_attribute_input_with_help(
+        &mut self,
+        lint: &'static Lint,
+        help: Option<String>,
+    ) {
         let suggestions = self.suggestions();
         let span = self.attr_span;
         self.emit_lint(
             lint,
-            AttributeLintKind::IllFormedAttributeInput { suggestions, docs: None },
+            AttributeLintKind::IllFormedAttributeInput { suggestions, docs: None, help },
             span,
         );
     }

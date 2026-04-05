@@ -3009,6 +3009,16 @@ pub(crate) struct IllFormedAttributeInput {
     #[note("for more information, visit <{$docs}>")]
     pub has_docs: bool,
     pub docs: &'static str,
+    #[subdiagnostic]
+    pub help: Option<IllFormedAttributeInputHelp>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(
+    "if you meant to silence a warning, consider using #![allow({$lint})] or #![expect({$lint})]"
+)]
+pub(crate) struct IllFormedAttributeInputHelp {
+    pub lint: String,
 }
 
 #[derive(Diagnostic)]
