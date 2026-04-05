@@ -2822,6 +2822,9 @@ impl str {
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporaries.
     ///
+    /// For Unicode-aware case-insensitive matching, consider
+    /// [`str::eq_ignore_case`].
+    ///
     /// # Examples
     ///
     /// ```
@@ -2835,6 +2838,38 @@ impl str {
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &str) -> bool {
         self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
+    }
+
+    /// Checks that two strings are a caseless match, according to
+    /// [Definition 144] in Chapter 3 of the Unicode Standard.
+    ///
+    /// [Definition 144]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G53513
+    ///
+    /// Same as `a.to_casefold() == b.to_casefold()`,
+    /// but without allocating. See that method's documentation,
+    /// and [`char::to_casefold()`],
+    /// for more information about case folding.
+    ///
+    /// No normalization (e.g. NFC) is performed,
+    /// so visually and semantically identical strings
+    /// might still compare unequal. In addition,
+    /// this method is independent of language/locale,
+    /// so the special behavior of  I/ı/İ/i
+    /// in Turkish and Azeri is not handled.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// assert!("Ferris".eq_ignore_case("FERRIS"));
+    /// assert!("Ferrös".eq_ignore_case("FERRÖS"));
+    /// assert!("ẞ".eq_ignore_case("ss"));
+    /// ```
+    #[unstable(feature = "casefold", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn eq_ignore_case(&self, other: &str) -> bool {
+        self.chars().flat_map(char::to_casefold).eq(other.chars().flat_map(char::to_casefold))
     }
 
     /// Converts this string to its ASCII upper case equivalent in-place.

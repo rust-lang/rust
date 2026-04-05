@@ -1406,6 +1406,85 @@ impl char {
         ToUppercase(CaseMappingIter::new(conversions::to_upper(self)))
     }
 
+    /// Returns an iterator that yields the case folding of this `char` as one or more
+    /// `char`s.
+    ///
+    /// Case folding is meant to be used when performing case-insensitive string comparisons,
+    /// but case-folded strings should not generally be exposed directly to users. For most,
+    /// but not all, characters, the casefold mapping is identical to the lowercase one.
+    ///
+    /// This iterator yields the `char`(s) in the common or full case folding for this `char`,
+    /// as given by the [Unicode Character Database][ucd] [`CaseFolding.txt`].
+    ///
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`CaseFolding.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/CaseFolding.txt
+    ///
+    /// This operation performs an unconditional mapping without tailoring. That is, the conversion
+    /// is independent of context and language.
+    ///
+    /// It also does not perform any normalization (e.g. NFC).
+    ///
+    /// In the [Unicode Standard], Chapter 4 (Character Properties) discusses case folding in
+    /// general and Chapter 3 (Conformance) discusses the default algorithm for case folding.
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    ///
+    /// # Examples
+    ///
+    /// The German sharp S `'ß'` (U+DF) is a single Unicode code point
+    /// that casefolds to `"ss"`. Its uppercase variant '`ẞ`' (U+1E9E)
+    /// has the same case-folding.
+    ///
+    /// As an iterator:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// assert!('ß'.to_casefold().eq(['s', 's']));
+    /// assert!('ẞ'.to_casefold().eq(['s', 's']));
+    /// ```
+    ///
+    /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// assert_eq!('ß'.to_casefold().to_string(), "ss");
+    /// assert_eq!('ẞ'.to_casefold().to_string(), "ss");
+    /// ```
+    ///
+    /// # Note on locale
+    ///
+    /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
+    ///
+    /// * 'Dotless': I / ı, sometimes written ï
+    /// * 'Dotted': İ / i
+    ///
+    /// Note that the uppercase undotted 'I' is the same as the Latin. Therefore:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let casefold_i = 'I'.to_casefold().to_string();
+    /// ```
+    ///
+    /// The value of `casefold_i` here relies on the language of the text: if we're
+    /// in `en-US`, it should be `"i"`, but if we're in `tr-TR` or `az-AZ`, it should
+    /// be `"ı"`. `to_casefold()` does not take this into account, and so:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let casefold_i = 'I'.to_casefold().to_string();
+    ///
+    /// assert_eq!(casefold_i, "i");
+    /// ```
+    ///
+    /// holds across languages.
+    #[must_use = "this returns the case-folded character as a new iterator, \
+                  without modifying the original"]
+    #[unstable(feature = "casefold", issue = "none")]
+    #[inline]
+    pub fn to_casefold(self) -> ToCasefold {
+        ToCasefold(CaseMappingIter::new(conversions::to_casefold(self)))
+    }
+
     /// Checks if the value is within the ASCII range.
     ///
     /// # Examples
