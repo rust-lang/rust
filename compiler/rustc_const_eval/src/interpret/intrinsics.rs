@@ -526,16 +526,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
-            sym::minimum_number_nsz_f16 => {
+            sym::minimum_number_f16 => {
                 self.float_minmax_intrinsic::<Half>(args, MinMax::MinimumNumberNsz, dest)?
             }
-            sym::minimum_number_nsz_f32 => {
+            sym::minimum_number_f32 => {
                 self.float_minmax_intrinsic::<Single>(args, MinMax::MinimumNumberNsz, dest)?
             }
-            sym::minimum_number_nsz_f64 => {
+            sym::minimum_number_f64 => {
                 self.float_minmax_intrinsic::<Double>(args, MinMax::MinimumNumberNsz, dest)?
             }
-            sym::minimum_number_nsz_f128 => {
+            sym::minimum_number_f128 => {
                 self.float_minmax_intrinsic::<Quad>(args, MinMax::MinimumNumberNsz, dest)?
             }
 
@@ -548,16 +548,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             sym::minimumf128 => self.float_minmax_intrinsic::<Quad>(args, MinMax::Minimum, dest)?,
 
-            sym::maximum_number_nsz_f16 => {
+            sym::maximum_number_f16 => {
                 self.float_minmax_intrinsic::<Half>(args, MinMax::MaximumNumberNsz, dest)?
             }
-            sym::maximum_number_nsz_f32 => {
+            sym::maximum_number_f32 => {
                 self.float_minmax_intrinsic::<Single>(args, MinMax::MaximumNumberNsz, dest)?
             }
-            sym::maximum_number_nsz_f64 => {
+            sym::maximum_number_f64 => {
                 self.float_minmax_intrinsic::<Double>(args, MinMax::MaximumNumberNsz, dest)?
             }
-            sym::maximum_number_nsz_f128 => {
+            sym::maximum_number_f128 => {
                 self.float_minmax_intrinsic::<Quad>(args, MinMax::MaximumNumberNsz, dest)?
             }
 
