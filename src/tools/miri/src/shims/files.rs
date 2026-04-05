@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::fs::{File, Metadata};
-use std::io::{ErrorKind, IsTerminal, Seek, SeekFrom, Write};
+use std::io::{ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::marker::CoercePointee;
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
@@ -245,7 +245,8 @@ impl FileDescription for io::Stdin {
             helpers::isolation_abort_error("`read` from stdin")?;
         }
 
-        let result = ecx.read_from_host(&*self, len, ptr)?;
+        let mut stdin = &*self;
+        let result = ecx.read_from_host(|buf| stdin.read(buf), len, ptr)?;
         finish.call(ecx, result)
     }
 
@@ -356,7 +357,8 @@ impl FileDescription for FileHandle {
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
 
-        let result = ecx.read_from_host(&self.file, len, ptr)?;
+        let mut file = &self.file;
+        let result = ecx.read_from_host(|buf| file.read(buf), len, ptr)?;
         finish.call(ecx, result)
     }
 
@@ -576,14 +578,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// and return whether that worked.
     fn read_from_host(
         &mut self,
-        mut file: impl io::Read,
+        mut read_cb: impl FnMut(&mut [u8]) -> io::Result<usize>,
         len: usize,
         ptr: Pointer,
     ) -> InterpResult<'tcx, Result<usize, IoError>> {
         let this = self.eval_context_mut();
 
         let mut bytes = vec![0; len];
-        let result = file.read(&mut bytes);
+        let result = read_cb(&mut bytes);
         match result {
             Ok(read_size) => {
                 // If reading to `bytes` did not fail, we write those bytes to the buffer.
@@ -596,7 +598,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    /// Write data to a host `Write` type, withthe bytes taken from machine memory.
+    /// Write data to a host `Write` type, with the bytes taken from machine memory.
     fn write_to_host(
         &mut self,
         mut file: impl io::Write,
