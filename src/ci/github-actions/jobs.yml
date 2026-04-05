@@ -162,6 +162,19 @@ optional:
       IMAGE: pr-check-1
     <<: *job-linux-4c
 
+  - name: test-aarch64-apple-darwin-link-llvm-shared
+    env:
+      SCRIPT: >-
+        ./x.py build --stage 1 compiler/rustc
+        --host=aarch64-apple-darwin
+        --target=aarch64-apple-darwin
+      RUST_CONFIGURE_ARGS: >-
+        --set llvm.link-shared=true
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    <<: *job-macos
+
 # Main CI jobs that have to be green to merge a commit into the default branch.
 #
 # These jobs automatically inherit envs.auto, to avoid repeating it in each job
@@ -518,6 +531,7 @@ auto:
         --enable-sanitizers
         --enable-profiler
         --set rust.jemalloc
+        --set llvm.link-shared=true
         --set rust.lto=thin
         --set rust.codegen-units=1
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
