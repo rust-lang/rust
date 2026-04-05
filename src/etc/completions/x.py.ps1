@@ -520,6 +520,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--only-modified', '--only-modified', [CompletionResultType]::ParameterName, 'only run tests that result has been changed')
             [CompletionResult]::new('--rustfix-coverage', '--rustfix-coverage', [CompletionResultType]::ParameterName, 'enable this to generate a Rustfix coverage file, which is saved in `/<build_base>/rustfix_missing_coverage.txt`')
             [CompletionResult]::new('--no-capture', '--no-capture', [CompletionResultType]::ParameterName, 'don''t capture stdout/stderr of tests')
+            [CompletionResult]::new('--quiet', '--quiet', [CompletionResultType]::ParameterName, 'suppress verbose subprocess output for successful run-make tests (useful with --no-capture for panic=abort test suites like cg_clif)')
             [CompletionResult]::new('--bypass-ignore-backends', '--bypass-ignore-backends', [CompletionResultType]::ParameterName, 'Ignore `//@ ignore-backends` directives')
             [CompletionResult]::new('--no-doc', '--no-doc', [CompletionResultType]::ParameterName, 'Deprecated. Use `--all-targets` or `--tests` instead')
             [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')

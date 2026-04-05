@@ -109,6 +109,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         adb_test_dir: Default::default(),
         adb_device_status: Default::default(),
         verbose: Default::default(),
+        quiet: Default::default(),
         remote_test_client: Default::default(),
         compare_mode: Default::default(),
         rustfix_coverage: Default::default(),
