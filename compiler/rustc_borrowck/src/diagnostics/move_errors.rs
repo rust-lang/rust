@@ -678,7 +678,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diag<'_>, span: Span) {
         match error {
             GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
-                self.add_borrow_suggestions(err, span);
+                self.add_borrow_suggestions(err, span, !binds_to.is_empty());
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
@@ -787,28 +787,59 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
-    fn add_borrow_suggestions(&self, err: &mut Diag<'_>, span: Span) {
+    fn add_borrow_suggestions(
+        &self,
+        err: &mut Diag<'_>,
+        span: Span,
+        is_destructuring_pattern_move: bool,
+    ) {
         match self.infcx.tcx.sess.source_map().span_to_snippet(span) {
             Ok(snippet) if snippet.starts_with('*') => {
                 let sp = span.with_lo(span.lo() + BytePos(1));
                 let inner = self.find_expr(sp);
                 let mut is_raw_ptr = false;
+                let mut is_ref = false;
+                let mut is_destructuring_assignment = false;
                 if let Some(inner) = inner {
                     let typck_result = self.infcx.tcx.typeck(self.mir_def_id());
                     if let Some(inner_type) = typck_result.node_type_opt(inner.hir_id) {
                         if matches!(inner_type.kind(), ty::RawPtr(..)) {
                             is_raw_ptr = true;
+                        } else if matches!(inner_type.kind(), ty::Ref(..)) {
+                            is_ref = true;
                         }
                     }
+                    is_destructuring_assignment =
+                        self.infcx.tcx.hir_parent_iter(inner.hir_id).any(|(_, node)| {
+                            matches!(
+                                node,
+                                hir::Node::LetStmt(&hir::LetStmt {
+                                    source: hir::LocalSource::AssignDesugar,
+                                    ..
+                                })
+                            )
+                        });
                 }
                 // If the `inner` is a raw pointer, do not suggest removing the "*", see #126863
                 // FIXME: need to check whether the assigned object can be a raw pointer, see `tests/ui/borrowck/issue-20801.rs`.
-                if !is_raw_ptr {
+                if !is_raw_ptr && (!is_destructuring_pattern_move || is_ref) {
                     err.span_suggestion_verbose(
                         span.with_hi(span.lo() + BytePos(1)),
                         "consider removing the dereference here",
                         String::new(),
                         Applicability::MaybeIncorrect,
+                    );
+                } else if !is_raw_ptr && !is_destructuring_assignment {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_lo(),
+                        "consider borrowing here",
+                        '&',
+                        Applicability::MaybeIncorrect,
+                    );
+                } else if !is_raw_ptr {
+                    err.span_help(
+                        span,
+                        "destructuring assignment cannot borrow from this expression; consider using a `let` binding instead",
                     );
                 }
             }
