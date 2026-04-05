@@ -756,10 +756,12 @@ impl Options {
         }
 
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
-        if let Some(ref index_page) = index_page
-            && !index_page.is_file()
-        {
-            dcx.fatal("option `--index-page` argument must be a file");
+        if let Some(ref index_page) = index_page {
+            if index_page.is_file() {
+                loaded_paths.push(index_page.clone());
+            } else {
+                dcx.fatal("option `--index-page` argument must be a file");
+            }
         }
 
         let target = parse_target_triple(early_dcx, matches);
