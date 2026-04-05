@@ -30,6 +30,7 @@ unsafe extern "C" {
     #[cfg_attr(any(target_os = "freebsd", target_vendor = "apple"), link_name = "__error")]
     #[cfg_attr(target_os = "haiku", link_name = "_errnop")]
     #[cfg_attr(target_os = "aix", link_name = "_Errno")]
+    #[cfg_attr(target_os = "qurt", link_name = "_Geterrno")]
     // SAFETY: this will always return the same pointer on a given thread.
     #[unsafe(ffi_const)]
     pub safe fn errno_location() -> *mut c_int;

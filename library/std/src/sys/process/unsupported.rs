@@ -5,7 +5,10 @@ use crate::num::NonZero;
 use crate::path::Path;
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
+#[cfg(not(target_os = "qurt"))]
 use crate::sys::unsupported;
+#[cfg(target_os = "qurt")]
+use crate::sys::unsupported::unsupported;
 use crate::{fmt, io};
 
 ////////////////////////////////////////////////////////////////////////////////
