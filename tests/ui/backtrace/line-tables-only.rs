@@ -46,8 +46,8 @@ fn main() {
     // line tables?
     #[cfg(not(all(target_pointer_width = "32", target_env = "msvc")))]
     {
-        assert_contains(&backtrace, "foo", "line-tables-only-helper.rs", 5);
+        assert_contains(&backtrace, "foo", "line-tables-only-helper.rs", 6);
     }
-    assert_contains(&backtrace, "bar", "line-tables-only-helper.rs", 10);
-    assert_contains(&backtrace, "baz", "line-tables-only-helper.rs", 5);
+    assert_contains(&backtrace, "bar", "line-tables-only-helper.rs", 11);
+    assert_contains(&backtrace, "baz", "line-tables-only-helper.rs", 6);
 }

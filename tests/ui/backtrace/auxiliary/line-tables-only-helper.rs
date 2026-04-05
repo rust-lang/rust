@@ -1,4 +1,5 @@
 //@ compile-flags: -Cstrip=none -Cdebuginfo=line-tables-only
+#![warn(no_mangle_generic_items)]
 
 #[no_mangle]
 pub fn baz<F>(mut cb: F, data: u32) where F: FnMut(u32) {

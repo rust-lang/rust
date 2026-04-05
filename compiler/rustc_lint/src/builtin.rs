@@ -949,7 +949,7 @@ declare_lint! {
     /// [`no_mangle`]: https://doc.rust-lang.org/reference/abi.html#the-no_mangle-attribute
     /// [`export_name`]: https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute
     NO_MANGLE_GENERIC_ITEMS,
-    Warn,
+    Deny,
     "generic items must be mangled"
 }
 
