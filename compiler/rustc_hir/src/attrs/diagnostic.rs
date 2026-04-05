@@ -52,30 +52,40 @@ impl Directive {
         }
     }
 
-    pub fn evaluate_directive(
+    pub fn eval(
         &self,
-        trait_name: impl Debug,
-        condition_options: &ConditionOptions,
+        condition_options: Option<&ConditionOptions>,
         args: &FormatArgs,
     ) -> OnUnimplementedNote {
+        let this = &args.this;
+        info!("eval({self:?}, this={this}, options={condition_options:?}, args ={args:?})");
+
+        let Some(condition_options) = condition_options else {
+            debug_assert!(
+                !self.is_rustc_attr,
+                "Directive::eval called for `rustc_on_unimplemented` without `condition_options`"
+            );
+            return OnUnimplementedNote {
+                label: self.label.as_ref().map(|l| l.1.format(args)),
+                message: self.message.as_ref().map(|m| m.1.format(args)),
+                notes: self.notes.iter().map(|n| n.format(args)).collect(),
+                parent_label: None,
+            };
+        };
         let mut message = None;
         let mut label = None;
         let mut notes = Vec::new();
         let mut parent_label = None;
-        info!(
-            "evaluate_directive({:?}, trait_ref={:?}, options={:?}, args ={:?})",
-            self, trait_name, condition_options, args
-        );
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             debug!(?command);
             if let Some(ref condition) = command.condition
                 && !condition.matches_predicate(condition_options)
             {
-                debug!("evaluate_directive: skipping {:?} due to condition", command);
+                debug!("eval: skipping {command:?} due to condition");
                 continue;
             }
-            debug!("evaluate_directive: {:?} succeeded", command);
+            debug!("eval: {command:?} succeeded");
             if let Some(ref message_) = command.message {
                 message = Some(message_.clone());
             }
@@ -116,8 +126,13 @@ pub struct FormatString {
     pub span: Span,
     pub pieces: ThinVec<Piece>,
 }
+
 impl FormatString {
-    pub fn format(&self, args: &FormatArgs) -> String {
+    /// Formats the format string.
+    ///
+    /// This is a private method, use `Directive::eval` instead. A diagnostic attribute being used
+    /// should issue a `tracing` event, which `Directive::eval` does.
+    fn format(&self, args: &FormatArgs) -> String {
         let mut ret = String::new();
         for piece in &self.pieces {
             match piece {
@@ -147,7 +162,7 @@ impl FormatString {
                 // It's only `rustc_onunimplemented` from here
                 Piece::Arg(FormatArg::This) => ret.push_str(&args.this),
                 Piece::Arg(FormatArg::Trait) => {
-                    let _ = fmt::write(&mut ret, format_args!("{}", &args.trait_sugared));
+                    let _ = fmt::write(&mut ret, format_args!("{}", &args.this_sugared));
                 }
                 Piece::Arg(FormatArg::ItemContext) => ret.push_str(args.item_context),
             }
@@ -193,7 +208,7 @@ impl FormatString {
 /// ```rust,ignore (just an example)
 /// FormatArgs {
 ///     this: "FromResidual",
-///     trait_sugared: "FromResidual<Option<Infallible>>",
+///     this_sugared: "FromResidual<Option<Infallible>>",
 ///     item_context: "an async function",
 ///     generic_args: [("Self", "u32"), ("R", "Option<Infallible>")],
 /// }
@@ -201,7 +216,7 @@ impl FormatString {
 #[derive(Debug)]
 pub struct FormatArgs {
     pub this: String,
-    pub trait_sugared: String,
+    pub this_sugared: String,
     pub item_context: &'static str,
     pub generic_args: Vec<(Symbol, String)>,
 }

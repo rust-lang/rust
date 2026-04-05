@@ -6,11 +6,10 @@ use std::ops::ControlFlow;
 use either::Either;
 use hir::{ClosureKind, Path};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::attrs::diagnostic::FormatArgs;
+use rustc_hir::attrs::diagnostic::{FormatArgs, OnUnimplementedNote};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
 use rustc_hir::{
@@ -146,7 +145,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 self.body.local_decls[moved_place.local].ty.kind()
                 && let Some(Some(directive)) = find_attr!(self.infcx.tcx, item_def.did(), OnMove { directive, .. }  => directive)
             {
-                let item_name = self.infcx.tcx.item_name(item_def.did()).to_string();
+                let this = self.infcx.tcx.item_name(item_def.did()).to_string();
                 let mut generic_args: Vec<_> = self
                     .infcx
                     .tcx
@@ -155,21 +154,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     .iter()
                     .filter_map(|param| Some((param.name, args[param.index as usize].to_string())))
                     .collect();
-                generic_args.push((kw::SelfUpper, item_name));
+                generic_args.push((kw::SelfUpper, this.clone()));
 
                 let args = FormatArgs {
-                    this: String::new(),
-                    trait_sugared: String::new(),
+                    this,
+                    // Unused
+                    this_sugared: String::new(),
+                    // Unused
                     item_context: "",
                     generic_args,
                 };
-                (
-                    directive.message.as_ref().map(|e| e.1.format(&args)),
-                    directive.label.as_ref().map(|e| e.1.format(&args)),
-                    directive.notes.iter().map(|e| e.format(&args)).collect(),
-                )
+                let OnUnimplementedNote { message, label, notes, parent_label: _ } =
+                    directive.eval(None, &args);
+
+                (message, label, notes)
             } else {
-                (None, None, ThinVec::new())
+                (None, None, Vec::new())
             };
 
             let mut err = self.cannot_act_on_moved_value(

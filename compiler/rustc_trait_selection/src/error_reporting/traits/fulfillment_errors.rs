@@ -907,9 +907,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
 
                     if let Some(command) = find_attr!(self.tcx, impl_did, OnConst {directive, ..} => directive.as_deref()).flatten(){
-                        let note = command.evaluate_directive(
-                             predicate.skip_binder().trait_ref,
-                            &condition_options,
+                        let note = command.eval(
+                            Some(&condition_options),
                             &format_args,
                         );
                         let OnUnimplementedNote {
