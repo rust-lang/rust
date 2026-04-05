@@ -482,6 +482,9 @@ impl UdpSocket {
     ///
     /// Note that this might not have any effect on IPv6 sockets.
     ///
+    /// Since the underlying socket option value is byte-sized,
+    /// any value above 255 will result in an error.
+    ///
     /// # Examples
     ///
     /// ```no_run
