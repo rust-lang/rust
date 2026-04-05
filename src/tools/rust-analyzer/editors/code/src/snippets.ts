@@ -53,7 +53,7 @@ export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vs
 }
 
 function hasSnippet(snip: string): boolean {
-    const m = snip.match(/\$\d+|\{\d+:[^}]*\}/);
+    const m = snip.match(/\$\d+|\$\{\d+:[^}]*\}/);
     return m != null;
 }
 
