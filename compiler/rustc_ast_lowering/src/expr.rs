@@ -29,7 +29,7 @@ use super::{
 use crate::errors::{InvalidLegacyConstGenericArg, UseConstGenericArg, YieldInClosure};
 use crate::{AllowReturnTypeNotation, FnDeclKind, ImplTraitPosition, TryBlockScope};
 
-struct WillCreateDefIdsVisitor {}
+pub(super) struct WillCreateDefIdsVisitor;
 
 impl<'v> rustc_ast::visit::Visitor<'v> for WillCreateDefIdsVisitor {
     type Result = ControlFlow<Span>;
@@ -479,18 +479,18 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     DefPathData::LateAnonConst,
                     f.span,
                 );
-                let mut visitor = WillCreateDefIdsVisitor {};
-                let const_value = if let ControlFlow::Break(span) = visitor.visit_expr(&arg) {
-                    Box::new(Expr {
-                        id: self.next_node_id(),
-                        kind: ExprKind::Err(invalid_expr_error(self.tcx, span)),
-                        span: f.span,
-                        attrs: [].into(),
-                        tokens: None,
-                    })
-                } else {
-                    arg
-                };
+                let const_value =
+                    if let ControlFlow::Break(span) = WillCreateDefIdsVisitor.visit_expr(&arg) {
+                        Box::new(Expr {
+                            id: self.next_node_id(),
+                            kind: ExprKind::Err(invalid_expr_error(self.tcx, span)),
+                            span: f.span,
+                            attrs: [].into(),
+                            tokens: None,
+                        })
+                    } else {
+                        arg
+                    };
 
                 let anon_const = AnonConst {
                     id: node_id,
