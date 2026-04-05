@@ -114,6 +114,7 @@
               {
                 "directories": [],
                 "files": [
+                  "FiraMono-LICENSE.txt",
                   "FiraMono-Medium.woff2",
                   "FiraMono-Regular.woff2",
                   "FiraSans-Italic.woff2",
