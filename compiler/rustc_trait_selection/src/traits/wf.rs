@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
+use rustc_lint_defs;
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
@@ -183,8 +184,7 @@ pub fn clause_obligations<'tcx>(
             wf.add_wf_preds_for_term(ty.into());
         }
         ty::ClauseKind::Projection(t) => {
-            wf.add_wf_preds_for_alias_term(t.projection_term);
-            wf.add_wf_preds_for_term(t.term);
+            wf.add_wf_preds_for_projection_pred(t);
         }
         ty::ClauseKind::ConstArgHasType(ct, ty) => {
             wf.add_wf_preds_for_term(ct.into());
@@ -455,6 +455,60 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         }
     }
 
+    fn add_wf_preds_for_projection_pred(&mut self, projection_pred: ty::ProjectionPredicate<'tcx>) {
+        let tcx = self.tcx();
+        let cause = self.cause(ObligationCauseCode::WellFormed(None));
+        debug!("add_wf_preds_for_projection_pred {:?}", projection_pred);
+
+        // FIXME: share this function with `elaborate_projection_predicates`.
+        fn is_total_generic(t: Ty<'_>) -> bool {
+            match t.kind() {
+                ty::Param(_) => true,
+                ty::Alias(ty::Projection, alias) => alias.args.types().all(is_total_generic),
+                _ => false,
+            }
+        }
+        // Check lint cap level to avoid triggering this flag on deps.
+        if tcx.sess.opts.lint_cap != Some(rustc_lint_defs::Level::Allow)
+            && tcx.sess.opts.unstable_opts.strict_projection_item_bounds
+        {
+            // Add item bounds to the predicate term.
+            // If the term is generic, we can skip these item bounds as they're implied by
+            // `elaborate_projection_predicates`.
+            if let Some(normalizes_to_ty) = projection_pred.term.as_type()
+                && !is_total_generic(normalizes_to_ty)
+            {
+                let bounds = tcx.item_bounds(projection_pred.def_id());
+                debug!("add_wf_preds_for_projection_pred item_bounds={:?}", bounds);
+                let bound_obligations: Vec<_> = bounds
+                    .instantiate(tcx, projection_pred.projection_term.args)
+                    .iter()
+                    .filter_map(|bound| {
+                        if !bound.has_escaping_bound_vars() {
+                            Some(traits::Obligation::with_depth(
+                                tcx,
+                                cause.clone(),
+                                self.recursion_depth,
+                                self.param_env,
+                                bound,
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                debug!(
+                    "add_wf_preds_for_projection_pred bound_obligations={:?}",
+                    bound_obligations
+                );
+                self.out.extend(bound_obligations);
+            }
+        }
+
+        self.add_wf_preds_for_alias_term(projection_pred.projection_term);
+        self.add_wf_preds_for_term(projection_pred.term);
+    }
+
     /// Pushes the obligations required for an alias (except inherent) to be WF
     /// into `self.out`.
     fn add_wf_preds_for_alias_term(&mut self, data: ty::AliasTerm<'tcx>) {
@@ -480,6 +534,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         //     `i32: Copy`
         // ]
         let obligations = self.nominal_obligations(data.def_id, data.args);
+        debug!("add_wf_preds_for_alias_term nominal_obligations={:?}", obligations);
         self.out.extend(obligations);
 
         self.add_wf_preds_for_projection_args(data.args);
