@@ -394,7 +394,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     }
                     ty::Error(guar) => {
                         // Fixes ICE #124031
-                        return Err(tcx.arena.alloc(LayoutError::ReferencesError(*guar)));
+                        return Err(tcx.arena.alloc(LayoutError::ReferencesError(guar.0)));
                     }
                     _ => bug!(
                         "SizeSkeleton::compute({ty}): layout errored ({err:?}), yet \

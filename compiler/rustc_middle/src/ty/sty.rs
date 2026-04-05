@@ -524,7 +524,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
     pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Ty<'tcx> {
-        Ty::new(tcx, Error(guar))
+        Ty::new(tcx, Error(ty::Spacer::new(guar)))
     }
 
     /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` to ensure it gets used.
@@ -542,7 +542,7 @@ impl<'tcx> Ty<'tcx> {
         msg: impl Into<Cow<'static, str>>,
     ) -> Ty<'tcx> {
         let reported = tcx.dcx().span_delayed_bug(span, msg);
-        Ty::new(tcx, Error(reported))
+        Ty::new(tcx, Error(ty::Spacer::new(reported)))
     }
 
     #[inline]
@@ -2155,7 +2155,7 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(TyKind<'_>, 24);
-    static_assert_size!(ty::WithCachedTypeInfo<TyKind<'_>>, 48);
+    static_assert_size!(TyKind<'_>, 32);
+    static_assert_size!(ty::WithCachedTypeInfo<TyKind<'_>>, 56);
     // tidy-alphabetical-end
 }
