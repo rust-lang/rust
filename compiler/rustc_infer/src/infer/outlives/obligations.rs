@@ -60,13 +60,10 @@
 //! imply that `'b: 'a`.
 
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, Ty, TyCtxt,
-    TypeFoldable as _, TypeVisitableExt,
+    self, GenericArgKind, GenericArgsRef, Region, Ty, TyCtxt, TypeFoldable as _, TypeVisitableExt,
 };
 use smallvec::smallvec;
 use tracing::{debug, instrument};
@@ -194,70 +191,42 @@ impl<'tcx> InferCtxt<'tcx> {
     /// flow of the inferencer. The key point is that it is
     /// invoked after all type-inference variables have been bound --
     /// right before lexical region resolution.
-    #[instrument(level = "debug", skip(self, outlives_env, deeply_normalize_ty))]
-    pub fn process_registered_region_obligations(
-        &self,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-        mut deeply_normalize_ty: impl FnMut(
-            PolyTypeOutlivesPredicate<'tcx>,
-            SubregionOrigin<'tcx>,
-        )
-            -> Result<PolyTypeOutlivesPredicate<'tcx>, NoSolution>,
-    ) -> Result<(), (PolyTypeOutlivesPredicate<'tcx>, SubregionOrigin<'tcx>)> {
+    #[instrument(level = "debug", skip(self, outlives_env))]
+    pub fn process_registered_region_obligations(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
-        // Must loop since the process of normalizing may itself register region obligations.
-        for iteration in 0.. {
-            let my_region_obligations = self.take_registered_region_obligations();
-            if my_region_obligations.is_empty() {
-                break;
+        for TypeOutlivesConstraint { sup_type, sub_region, origin } in
+            self.take_registered_region_obligations()
+        {
+            let ty::OutlivesPredicate(sup_type, sub_region) =
+                self.resolve_vars_if_possible(ty::OutlivesPredicate(sup_type, sub_region));
+
+            // `TypeOutlives` is structural, so we should try to opportunistically resolve all
+            // region vids before processing regions, so we have a better chance to match clauses
+            // in our param-env.
+            let (sup_type, sub_region) =
+                (sup_type, sub_region).fold_with(&mut OpportunisticRegionResolver::new(self));
+
+            if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
+                && outlives_env
+                    .higher_ranked_assumptions()
+                    .contains(&ty::OutlivesPredicate(sup_type.into(), sub_region))
+            {
+                continue;
             }
 
-            if !self.tcx.recursion_limit().value_within_limit(iteration) {
-                // This may actually be reachable. If so, we should convert
-                // this to a proper error/consider whether we should detect
-                // this somewhere else.
-                bug!(
-                    "unexpected overflowed when processing region obligations: {my_region_obligations:#?}"
-                );
-            }
+            debug!(?sup_type, ?sub_region, ?origin);
 
-            for TypeOutlivesConstraint { sup_type, sub_region, origin } in my_region_obligations {
-                let outlives = ty::Binder::dummy(ty::OutlivesPredicate(sup_type, sub_region));
-                let ty::OutlivesPredicate(sup_type, sub_region) =
-                    deeply_normalize_ty(outlives, origin.clone())
-                        .map_err(|NoSolution| (outlives, origin.clone()))?
-                        .no_bound_vars()
-                        .expect("started with no bound vars, should end with no bound vars");
-                // `TypeOutlives` is structural, so we should try to opportunistically resolve all
-                // region vids before processing regions, so we have a better chance to match clauses
-                // in our param-env.
-                let (sup_type, sub_region) =
-                    (sup_type, sub_region).fold_with(&mut OpportunisticRegionResolver::new(self));
-
-                if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
-                    && outlives_env
-                        .higher_ranked_assumptions()
-                        .contains(&ty::OutlivesPredicate(sup_type.into(), sub_region))
-                {
-                    continue;
-                }
-
-                debug!(?sup_type, ?sub_region, ?origin);
-
-                let outlives = &mut TypeOutlives::new(
-                    self,
-                    self.tcx,
-                    outlives_env.region_bound_pairs(),
-                    None,
-                    outlives_env.known_type_outlives(),
-                );
-                let category = origin.to_constraint_category();
-                outlives.type_must_outlive(origin, sup_type, sub_region, category);
-            }
+            let outlives = &mut TypeOutlives::new(
+                self,
+                self.tcx,
+                outlives_env.region_bound_pairs(),
+                None,
+                outlives_env.known_type_outlives(),
+            );
+            let category = origin.to_constraint_category();
+            outlives.type_must_outlive(origin, sup_type, sub_region, category);
         }
-
-        Ok(())
     }
 }
 
