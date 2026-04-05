@@ -433,11 +433,10 @@ pub fn search_dependencies(
     let import_maps: Vec<_> =
         krate.data(db).dependencies.iter().map(|dep| ImportMap::of(db, dep.crate_id)).collect();
 
-    let mut op = fst::map::OpBuilder::new();
-
     match query.search_mode {
         SearchMode::Exact => {
             let automaton = fst::automaton::Str::new(&query.lowercased);
+            let mut op = fst::map::OpBuilder::new();
 
             for map in &import_maps {
                 op = op.add(map.fst.search(&automaton));
@@ -446,6 +445,7 @@ pub fn search_dependencies(
         }
         SearchMode::Fuzzy => {
             let automaton = fst::automaton::Subsequence::new(&query.lowercased);
+            let mut op = fst::map::OpBuilder::new();
 
             for map in &import_maps {
                 op = op.add(map.fst.search(&automaton));
@@ -454,6 +454,7 @@ pub fn search_dependencies(
         }
         SearchMode::Prefix => {
             let automaton = fst::automaton::Str::new(&query.lowercased).starts_with();
+            let mut op = fst::map::OpBuilder::new();
 
             for map in &import_maps {
                 op = op.add(map.fst.search(&automaton));
