@@ -192,7 +192,22 @@ impl<'a> Parser<'a> {
 
             // At this point, we have failed to parse an item.
             if !matches!(vis.kind, VisibilityKind::Inherited) {
-                this.dcx().emit_err(errors::VisibilityNotFollowedByItem { span: vis.span, vis });
+                let mut err = this
+                    .dcx()
+                    .create_err(errors::VisibilityNotFollowedByItem { span: vis.span, vis });
+                if let Some((ident, _)) = this.token.ident()
+                    && !ident.is_used_keyword()
+                    && let Some((similar_kw, is_incorrect_case)) = ident
+                        .name
+                        .find_similar(&rustc_span::symbol::used_keywords(|| ident.span.edition()))
+                {
+                    err.subdiagnostic(errors::MisspelledKw {
+                        similar_kw: similar_kw.to_string(),
+                        span: ident.span,
+                        is_incorrect_case,
+                    });
+                }
+                err.emit();
             }
 
             if let Defaultness::Default(span) = def {
