@@ -1,5 +1,6 @@
 use rustc_index::IndexSlice;
-use rustc_middle::mir::{Body, Local};
+use rustc_middle::mir::visit::{PlaceContext, VisitPlacesWith, Visitor};
+use rustc_middle::mir::{Body, Local, Place};
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::{Span, Symbol};
 use tracing::debug;
@@ -7,6 +8,8 @@ use tracing::debug;
 use crate::region_infer::RegionInferenceContext;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
+    /// Find the the name and span of the variable corresponding to the given region.
+    /// The returned var will also be ensured to actually be used in `body`.
     pub(crate) fn get_var_name_and_span_for_region(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -22,13 +25,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.get_upvar_index_for_region(tcx, fr)
             .map(|index| {
                 // FIXME(project-rfc-2229#8): Use place span for diagnostics
+                // We know our upvars are used thanks to `fn compute_min_captures()` in `upvar.rs`.
                 let (name, span) = self.get_upvar_name_and_span_for_region(tcx, upvars, index);
                 (Some(name), span)
             })
             .or_else(|| {
                 debug!("get_var_name_and_span_for_region: attempting argument");
-                self.get_argument_index_for_region(tcx, fr).map(|index| {
-                    self.get_argument_name_and_span_for_region(body, local_names, index)
+                self.get_argument_index_for_region(tcx, fr).and_then(|index| {
+                    let local = self.user_arg_index_to_local(body, index);
+                    if body_uses_local(body, local) {
+                        Some(self.get_argument_name_and_span_for_region(body, local_names, index))
+                    } else {
+                        debug!("get_var_name_and_span_for_region: skipping unused local {local:?}");
+                        None
+                    }
                 })
             })
     }
@@ -105,6 +115,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         Some(argument_index)
     }
 
+    /// Given the index of an argument as seen from the user (i.e. excluding
+    /// implicit inputs), returns the corresponding MIR local.
+    fn user_arg_index_to_local(&self, body: &Body<'tcx>, user_arg_index: usize) -> Local {
+        let implicit_inputs = self.universal_regions().defining_ty.implicit_inputs();
+        body.args_iter().nth(implicit_inputs + user_arg_index).unwrap()
+    }
+
     /// Given the index of an argument, finds its name (if any) and the span from where it was
     /// declared.
     pub(crate) fn get_argument_name_and_span_for_region(
@@ -113,8 +130,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         local_names: &IndexSlice<Local, Option<Symbol>>,
         argument_index: usize,
     ) -> (Option<Symbol>, Span) {
-        let implicit_inputs = self.universal_regions().defining_ty.implicit_inputs();
-        let argument_local = Local::from_usize(implicit_inputs + argument_index + 1);
+        let argument_local = self.user_arg_index_to_local(body, argument_index);
         debug!("get_argument_name_and_span_for_region: argument_local={argument_local:?}");
 
         let argument_name = local_names[argument_local];
@@ -125,4 +141,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         (argument_name, argument_span)
     }
+}
+
+fn body_uses_local<'tcx>(body: &Body<'tcx>, target: Local) -> bool {
+    let mut used = false;
+    VisitPlacesWith(|place: Place<'_>, context: PlaceContext| {
+        if !matches!(context, PlaceContext::NonUse(_)) && place.local == target {
+            used = true;
+        }
+    })
+    .visit_body(body);
+    used
 }
