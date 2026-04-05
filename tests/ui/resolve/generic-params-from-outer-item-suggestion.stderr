@@ -1,0 +1,46 @@
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/generic-params-from-outer-item-suggestion.rs:11:46
+   |
+LL | const fn size_plus_one<T:Sized>() -> usize {
+   |                        - type parameter from outer item
+LL |
+LL |     const size: usize = core::mem::size_of::<T>();
+   |           ----                               ^ use of generic parameter from outer item
+   |           |
+   |           generic parameter used in this inner constant item
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+   = note: a `const` is a separate item from the item that contains it
+help: try using a local `let` binding instead
+   |
+LL -     const size: usize = core::mem::size_of::<T>();
+LL +     let size: usize = core::mem::size_of::<T>();
+   |
+
+error[E0401]: can't use `Self` from outer item
+  --> $DIR/generic-params-from-outer-item-suggestion.rs:28:24
+   |
+LL | impl A {
+   | ---- `Self` type implicitly declared here, by this `impl`
+...
+LL |         const K: u32 = Self::VALUE;
+   |               -        ^^^^ use of `Self` from outer item
+   |               |
+   |               `Self` used in this inner constant item
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+   = note: a `const` is a separate item from the item that contains it
+help: refer to the type directly here instead
+   |
+LL -         const K: u32 = Self::VALUE;
+LL +         const K: u32 = A::VALUE;
+   |
+help: try using a local `let` binding instead
+   |
+LL -         const K: u32 = Self::VALUE;
+LL +         let K: u32 = Self::VALUE;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0401`.
