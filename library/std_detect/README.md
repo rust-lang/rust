@@ -25,7 +25,7 @@ regard to better serve the needs of `#[no_std]` targets.
 
 * All `x86`/`x86_64` targets are supported on all platforms by querying the
   `cpuid` instruction directly for the features supported by the hardware and
-  the operating system. `std_detect` assumes that the binary is an user-space
+  the operating system. `std_detect` assumes that the binary is a user-space
   application.
 
 * Linux/Android:
