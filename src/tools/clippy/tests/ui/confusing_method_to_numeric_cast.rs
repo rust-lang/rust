@@ -1,6 +1,6 @@
 #![feature(float_minimum_maximum)]
 #![warn(clippy::confusing_method_to_numeric_cast)]
-#![allow(function_casts_as_integer)]
+#![allow(function_casts_as_integer, deprecated)]
 
 fn main() {
     let _ = u16::max as usize; //~ confusing_method_to_numeric_cast
