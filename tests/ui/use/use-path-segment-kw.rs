@@ -17,7 +17,7 @@ macro_rules! macro_dollar_crate {
         use ::{$crate}; //~ ERROR `$crate` in paths can only be used in start position
         use ::{$crate as _nested_dollar_crate2}; //~ ERROR `$crate` in paths can only be used in start position
 
-        type A3 = foobar::$crate; //~ ERROR `$crate` in paths can only be used in start position
+        type A3 = foobar::$crate; //[e2018]~ ERROR `$crate` in paths can only be used in start position
         use foobar::$crate; //~ ERROR `$crate` in paths can only be used in start position
         use foobar::$crate as _dollar_crate3; //~ ERROR `$crate` in paths can only be used in start position
         use foobar::{$crate}; //~ ERROR `$crate` in paths can only be used in start position
@@ -103,7 +103,7 @@ pub mod foo {
         use ::{crate}; //~ ERROR `crate` in paths can only be used in start position
         use ::{crate as _nested_crate2}; //~ ERROR `crate` in paths can only be used in start position
 
-        type B3 = foobar::crate; //~ ERROR `crate` in paths can only be used in start position
+        type B3 = foobar::crate; //[e2018]~ ERROR `crate` in paths can only be used in start position
         use foobar::crate; //~ ERROR `crate` in paths can only be used in start position
         use foobar::crate as _crate3; //~ ERROR `crate` in paths can only be used in start position
         use foobar::{crate}; //~ ERROR `crate` in paths can only be used in start position
@@ -141,7 +141,7 @@ pub mod foo {
         use ::{super}; //~ ERROR `super` in paths can only be used in start position, after `self`, or after another `super`
         use ::{super as _nested_super2}; //~ ERROR `super` in paths can only be used in start position, after `self`, or after another `super`
 
-        type C3 = foobar::super; //~ ERROR `super` in paths can only be used in start position
+        type C3 = foobar::super; //[e2018]~ ERROR `super` in paths can only be used in start position
         use foobar::super; //~ ERROR `super` in paths can only be used in start position, after `self`, or after another `super`
         use foobar::super as _super3; //~ ERROR `super` in paths can only be used in start position, after `self`, or after another `super`
         use foobar::{super}; //~ ERROR `super` in paths can only be used in start position, after `self`, or after another `super`
@@ -183,7 +183,7 @@ pub mod foo {
         //[e2015]~^ ERROR imports need to be explicitly named
         pub use ::{self as _nested_self2}; //[e2018]~ ERROR extern prelude cannot be imported
 
-        type D3 = foobar::self; //~ ERROR `self` in paths can only be used in start position
+        type D3 = foobar::self; //[e2018]~ ERROR `self` in paths can only be used in start position
         pub use foobar::qux::self; //~ ERROR `self` imports are only allowed within a { } list
         //[e2015]~^ ERROR unresolved import `foobar`
         pub use foobar::self as _self3; //~ ERROR `self` imports are only allowed within a { } list
