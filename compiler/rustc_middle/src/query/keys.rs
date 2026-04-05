@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::hir_id::OwnerId;
@@ -257,8 +258,8 @@ impl<'tcx> QueryKey for GenericArg<'tcx> {
 }
 
 impl<'tcx> QueryKey for Ty<'tcx> {
-    fn default_span(&self, _: TyCtxt<'_>) -> Span {
-        DUMMY_SP
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        def_id_of_type(*self).map(|def_id| tcx.def_span(def_id)).unwrap_or(DUMMY_SP)
     }
 }
 
@@ -360,4 +361,59 @@ impl<'tcx> QueryKey for (ty::Instance<'tcx>, CollectionMode) {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.0.default_span(tcx)
     }
+}
+
+/// Gets a `DefId` associated with a type
+///
+/// Visited set is needed to avoid full iteration over
+/// deeply nested tuples that have no DefId.
+fn def_id_of_type_cached<'a>(ty: Ty<'a>, visited: &mut SsoHashSet<Ty<'a>>) -> Option<DefId> {
+    match *ty.kind() {
+        ty::Adt(adt_def, _) => Some(adt_def.did()),
+
+        ty::Dynamic(data, ..) => data.principal_def_id(),
+
+        ty::Pat(subty, _) | ty::Array(subty, _) | ty::Slice(subty) => {
+            def_id_of_type_cached(subty, visited)
+        }
+
+        ty::RawPtr(ty, _) => def_id_of_type_cached(ty, visited),
+
+        ty::Ref(_, ty, _) => def_id_of_type_cached(ty, visited),
+
+        ty::Tuple(tys) => tys.iter().find_map(|ty| {
+            if visited.insert(ty) {
+                return def_id_of_type_cached(ty, visited);
+            }
+            return None;
+        }),
+
+        ty::FnDef(def_id, _)
+        | ty::Closure(def_id, _)
+        | ty::CoroutineClosure(def_id, _)
+        | ty::Coroutine(def_id, _)
+        | ty::CoroutineWitness(def_id, _)
+        | ty::Foreign(def_id) => Some(def_id),
+
+        ty::Alias(_, ty) => Some(ty.def_id),
+
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Str
+        | ty::FnPtr(..)
+        | ty::UnsafeBinder(_)
+        | ty::Placeholder(..)
+        | ty::Param(_)
+        | ty::Infer(_)
+        | ty::Bound(..)
+        | ty::Error(_)
+        | ty::Never
+        | ty::Float(_) => None,
+    }
+}
+
+fn def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
+    def_id_of_type_cached(ty, &mut SsoHashSet::new())
 }
