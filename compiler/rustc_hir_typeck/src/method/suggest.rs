@@ -16,7 +16,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, MultiSpan, StashKey, StringPart, listify, pluralize, struct_span_code_err,
 };
-use rustc_hir::attrs::diagnostic::OnUnimplementedNote;
+use rustc_hir::attrs::diagnostic::CustomDiagnostic;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -2067,7 +2067,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // Avoid crashing.
                             return (None, None, Vec::new());
                         }
-                        let OnUnimplementedNote { message, label, notes, .. } = self
+                        let CustomDiagnostic { message, label, notes, .. } = self
                             .err_ctxt()
                             .on_unimplemented_note(trait_ref, &obligation, err.long_ty_path());
                         (message, label, notes)

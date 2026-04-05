@@ -56,7 +56,7 @@ impl Directive {
         &self,
         condition_options: Option<&ConditionOptions>,
         args: &FormatArgs,
-    ) -> OnUnimplementedNote {
+    ) -> CustomDiagnostic {
         let this = &args.this;
         info!("eval({self:?}, this={this}, options={condition_options:?}, args ={args:?})");
 
@@ -65,7 +65,7 @@ impl Directive {
                 !self.is_rustc_attr,
                 "Directive::eval called for `rustc_on_unimplemented` without `condition_options`"
             );
-            return OnUnimplementedNote {
+            return CustomDiagnostic {
                 label: self.label.as_ref().map(|l| l.1.format(args)),
                 message: self.message.as_ref().map(|m| m.1.format(args)),
                 notes: self.notes.iter().map(|n| n.format(args)).collect(),
@@ -101,7 +101,7 @@ impl Directive {
             }
         }
 
-        OnUnimplementedNote {
+        CustomDiagnostic {
             label: label.map(|l| l.1.format(args)),
             message: message.map(|m| m.1.format(args)),
             notes: notes.into_iter().map(|n| n.format(args)).collect(),
@@ -110,8 +110,9 @@ impl Directive {
     }
 }
 
+/// A custom diagnostic, created from a diagnostic attribute.
 #[derive(Default, Debug)]
-pub struct OnUnimplementedNote {
+pub struct CustomDiagnostic {
     pub message: Option<String>,
     pub label: Option<String>,
     pub notes: Vec<String>,

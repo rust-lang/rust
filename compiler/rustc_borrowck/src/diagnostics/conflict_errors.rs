@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::attrs::diagnostic::{FormatArgs, OnUnimplementedNote};
+use rustc_hir::attrs::diagnostic::{CustomDiagnostic, FormatArgs};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
 use rustc_hir::{
@@ -164,7 +164,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     item_context: "",
                     generic_args,
                 };
-                let OnUnimplementedNote { message, label, notes, parent_label: _ } =
+                let CustomDiagnostic { message, label, notes, parent_label: _ } =
                     directive.eval(None, &args);
 
                 (message, label, notes)
