@@ -326,9 +326,9 @@ impl FileDesc {
         );
 
         match preadv.get() {
-            Some(preadv) => {
+            Some(read) => {
                 let ret = cvt(unsafe {
-                    preadv(
+                    read(
                         self.as_raw_fd(),
                         bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
                         cmp::min(bufs.len(), max_iov()) as libc::c_int,
@@ -533,9 +533,9 @@ impl FileDesc {
         );
 
         match pwritev.get() {
-            Some(pwritev) => {
+            Some(read) => {
                 let ret = cvt(unsafe {
-                    pwritev(
+                    read(
                         self.as_raw_fd(),
                         bufs.as_ptr() as *const libc::iovec,
                         cmp::min(bufs.len(), max_iov()) as libc::c_int,
