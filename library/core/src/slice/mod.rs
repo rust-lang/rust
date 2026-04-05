@@ -4349,6 +4349,7 @@ impl<T> [T] {
     ///
     /// assert_eq!(&bytes, b"Hello, Wello!");
     /// ```
+    #[inline]
     #[stable(feature = "copy_within", since = "1.37.0")]
     #[track_caller]
     pub fn copy_within<R: RangeBounds<usize>>(&mut self, src: R, dest: usize)
