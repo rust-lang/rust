@@ -261,6 +261,13 @@ impl UnixDatagram {
     /// object references. Both handles can be used to accept incoming
     /// connections and options set on one side will affect the other.
     ///
+    /// This method uses `F_DUPFD_CLOEXEC` to duplicate the file descriptor
+    /// atomically with the close-on-exec flag set. This means the duplicated socket
+    /// will be automatically closed when calling `exec()`, and thus will not be
+    /// available in child processes created via [`Command`].
+    ///
+    /// [`Command`]: crate::process::Command
+    ///
     /// # Examples
     ///
     /// ```no_run
