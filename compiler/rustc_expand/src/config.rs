@@ -12,8 +12,8 @@ use rustc_ast::{
 };
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
-    self as attr, AttributeParser, CFG_TEMPLATE, EvalConfigResult, ShouldEmit, eval_config_entry,
-    parse_cfg,
+    self as attr, AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
+    eval_config_entry, parse_cfg,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::msg;
@@ -404,6 +404,7 @@ impl<'a> StripUnconfigured<'a> {
             parse_cfg,
             &CFG_TEMPLATE,
             AllowExprMetavar::Yes,
+            AttributeSafety::Normal,
         ) else {
             // Cfg attribute was not parsable, give up
             return EvalConfigResult::True;
