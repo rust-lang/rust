@@ -909,20 +909,16 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 // already resolved.
                 self.visit_path(path, id);
                 if let Some(qself) = maybe_qself {
-                    // Read more about containers in fn `visit_path_segment_args`.
-                    let container = match path.res {
-                        Res::Def(DefKind::AssocTy, def_id) => Some((
-                            self.tcx.parent(def_id),
-                            &path.segments[..path.segments.len() - 1],
-                        )),
-                        _ => None,
-                    };
+                    let container =
+                        self.eligible_container(path, RevSegIdx(1).reverse(path.segments));
+
                     let object_lifetime_defaults =
                         container.map_or(Vec::new(), |(def_id, segs)| {
                             let generics = self.tcx.generics_of(def_id);
                             self.compute_object_lifetime_defaults(generics, segs)
                         });
-                    if let Some(&lt) = object_lifetime_defaults.get(0) {
+
+                    if let Some(&lt) = object_lifetime_defaults.first() {
                         let scope = Scope::ObjectLifetimeDefault { lifetime: lt, s: self.scope };
                         self.with(scope, |this| this.visit_ty_unambig(qself));
                     } else {
@@ -952,7 +948,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     fn visit_path(&mut self, path: &hir::Path<'tcx>, hir_id: HirId) {
         for (index, segment) in path.segments.iter().enumerate() {
             if let Some(args) = segment.args {
-                self.visit_path_segment_args(args, index, path);
+                self.visit_path_segment_args(args, SegIdx(index), path);
             }
         }
         if let Res::Def(DefKind::TyParam | DefKind::ConstParam, param_def_id) = path.res {
@@ -1723,7 +1719,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     fn visit_path_segment_args(
         &mut self,
         generic_args: &'tcx hir::GenericArgs<'tcx>,
-        index: usize,
+        seg_idx: SegIdx,
         path: &hir::Path<'tcx>,
     ) {
         if let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() {
@@ -1739,35 +1735,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        // Figure out if this is an eligible container that induces lifetime defaults for
-        // trait object types contained in any of the type arguments passed to it
-        // (any inner containers will of course end up shadowing that default).
-        //
-        // FIXME(mgca, #151649): Assoc (and free?) consts should also qualify.
-        // FIXME(return_type_notation, #151662): Assoc fns should also qualify.
-        let depth = path.segments.len() - index - 1;
-        let container = match path.res {
-            Res::Def(DefKind::AssocTy | DefKind::Variant, def_id) if depth == 1 => {
-                Some((self.tcx.parent(def_id), &path.segments[..=index]))
-            }
-            Res::Def(DefKind::Variant, def_id) if depth == 0 => {
-                Some((self.tcx.parent(def_id), path.segments))
-            }
-            Res::Def(
-                DefKind::Struct
-                | DefKind::Union
-                | DefKind::Enum
-                | DefKind::TyAlias
-                | DefKind::Trait
-                | DefKind::TraitAlias
-                | DefKind::AssocTy,
-                def_id,
-            ) if depth == 0 => Some((def_id, path.segments)),
-            // Note: We don't need to care about definition kinds that may have generics if they
-            // can only ever appear in positions where we can perform type inference (i.e., bodies).
-            _ => None,
-        };
-
+        let container = self.eligible_container(path, seg_idx);
         debug!(?container);
 
         let (has_self, object_lifetime_defaults) = container
@@ -1922,6 +1890,90 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         }
     }
 
+    /// Return the eligible container for the path segment given by the index if applicable.
+    ///
+    /// Such a container induces lifetime defaults for trait object types contained
+    /// in any of the type arguments passed to it (any inner containers will of course
+    /// end up shadowing that default).
+    fn eligible_container<'b>(
+        &self,
+        path: &'b hir::Path<'tcx>,
+        seg_idx: SegIdx,
+    ) -> Option<(DefId, &'b [hir::PathSegment<'tcx>])> {
+        let RevSegIdx(rev_seg_idx) = seg_idx.reverse(path.segments);
+        let SegIdx(seg_idx) = seg_idx;
+
+        // NOTE: We don't need to care about definition kinds that may have generics if they
+        // can only ever appear in positions where we can perform type inference (i.e., bodies).
+
+        // FIXME(mgca, #151649): Type-level free/assoc consts, const&fn ctors should also qualify.
+        // FIXME(return_type_notation, #151662): Assoc fns should also qualify.
+
+        let (kind, def_id) = match path.res {
+            Res::Def(kind, def_id) => (kind, def_id),
+            Res::PrimTy(..)
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
+            | Res::SelfCtor(_)
+            | Res::Local(_)
+            | Res::ToolMod
+            | Res::OpenMod(_)
+            | Res::NonMacroAttr(_)
+            | Res::Err => return None, // see NOTE above!
+        };
+
+        match kind {
+            DefKind::AssocTy => match rev_seg_idx {
+                0 => Some((def_id, path.segments)),
+                // We're looking at the trait ref of an assoc type projection.
+                // E.g., the `TraitRef<…>` in `<… as path::to::TraitRef<…>>::AssocTy<…>`.
+                1 => Some((self.tcx.parent(def_id), &path.segments[..=seg_idx])),
+                _ => None,
+            },
+            DefKind::Variant => match rev_seg_idx {
+                // We're looking at the `Variant::<…>` in `path::to::Variant::<…> { … }`.
+                // Even if it's the variant segment that has the generic args and not the
+                // enum segment, it's the enum that has the corresponding generic params.
+                0 => Some((self.tcx.parent(def_id), path.segments)),
+                // We're looking at the `Enum::<…>` in `path::to::Enum::<…>::Variant { … }`.
+                1 => Some((self.tcx.parent(def_id), &path.segments[..=seg_idx])),
+                _ => None,
+            },
+            DefKind::Enum
+            | DefKind::Struct
+            | DefKind::Trait
+            | DefKind::TraitAlias
+            | DefKind::TyAlias
+            | DefKind::Union => match rev_seg_idx {
+                0 => Some((def_id, path.segments)),
+                _ => None,
+            },
+            DefKind::AnonConst
+            | DefKind::AssocConst { .. }
+            | DefKind::AssocFn
+            | DefKind::Closure
+            | DefKind::Const { .. }
+            | DefKind::ConstParam
+            | DefKind::Ctor(..)
+            | DefKind::ExternCrate
+            | DefKind::Field
+            | DefKind::Fn
+            | DefKind::ForeignMod
+            | DefKind::ForeignTy
+            | DefKind::GlobalAsm
+            | DefKind::Impl { .. }
+            | DefKind::InlineConst
+            | DefKind::LifetimeParam
+            | DefKind::Macro(_)
+            | DefKind::Mod
+            | DefKind::OpaqueTy
+            | DefKind::Static { .. }
+            | DefKind::SyntheticCoroutineBody
+            | DefKind::TyParam
+            | DefKind::Use => None, // see NOTE above!
+        }
+    }
+
     /// Compute a list of trait object lifetime defaults, one for each type parameter,
     /// per the rules initially given in RFCs [599] and [1156]. Example:
     ///
@@ -1973,31 +2025,38 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
             ObjectLifetimeDefault::Static => Some(ResolvedArg::StaticLifetime),
             ObjectLifetimeDefault::Param(param_def_id) => {
-                fn param_to_depth_and_index(
+                struct ArgIdx(usize);
+
+                fn resolve_param(
+                    param_def_id: DefId,
                     generics: &ty::Generics,
                     tcx: TyCtxt<'_>,
-                    def_id: DefId,
-                ) -> (usize, usize) {
-                    if let Some(&index) = generics.param_def_id_to_index.get(&def_id) {
+                ) -> (RevSegIdx, ArgIdx) {
+                    if let Some(&index) = generics.param_def_id_to_index.get(&param_def_id) {
                         let has_self = generics.has_own_self();
-                        (0, index as usize - generics.parent_count - has_self as usize)
+                        let index = index as usize - generics.parent_count - has_self as usize;
+                        (RevSegIdx(0), ArgIdx(index))
                     } else if let Some(parent) = generics.parent {
-                        let parent = tcx.generics_of(parent);
-                        let (depth, index) = param_to_depth_and_index(parent, tcx, def_id);
-                        (depth + 1, index)
+                        let parent_generics = tcx.generics_of(parent);
+                        let (RevSegIdx(rev_seg_idx), arg_idx) =
+                            resolve_param(param_def_id, parent_generics, tcx);
+                        (RevSegIdx(rev_seg_idx + 1), arg_idx)
                     } else {
                         unreachable!()
                     }
                 }
 
-                let (depth, index) = param_to_depth_and_index(generics, self.tcx, param_def_id);
-                segments[segments.len() - depth - 1]
-                    .args
-                    .and_then(|args| args.args.get(index))
-                    .and_then(|arg| match arg {
+                let (rev_seg_idx, ArgIdx(arg_idx)) =
+                    resolve_param(param_def_id, generics, self.tcx);
+
+                let SegIdx(seg_idx) = rev_seg_idx.reverse(segments);
+
+                segments[seg_idx].args.and_then(|args| args.args.get(arg_idx)).and_then(|arg| {
+                    match arg {
                         GenericArg::Lifetime(lt) => self.rbv.defs.get(&lt.hir_id.local_id).copied(),
                         _ => None,
-                    })
+                    }
+                })
             }
             ObjectLifetimeDefault::Ambiguous => None,
         };
@@ -2671,5 +2730,29 @@ fn deny_non_region_late_bound(
 
         first = false;
         *arg = ResolvedArg::Error(guar);
+    }
+}
+
+/// A path segment index.
+#[derive(Clone, Copy, Debug)]
+struct SegIdx(usize);
+
+impl SegIdx {
+    fn reverse(self, segments: &[hir::PathSegment<'_>]) -> RevSegIdx {
+        let SegIdx(seg_idx) = self;
+        RevSegIdx(segments.len() - seg_idx - 1)
+    }
+}
+
+/// A reversed path segment index.
+///
+/// E.g., for qualified path `<() as path::to::TraitRef<…>>::AssocTy<…>` the mapping from reversed
+/// index to path segment would look like 3 ↦ `path`, 2 ↦ `to`, 1 ↦ `TraitRef<…>`, 0 ↦ `AssocTy<…>`.
+struct RevSegIdx(usize);
+
+impl RevSegIdx {
+    fn reverse(self, segments: &[hir::PathSegment<'_>]) -> SegIdx {
+        let RevSegIdx(rev_seg_idx) = self;
+        SegIdx(segments.len() - rev_seg_idx - 1)
     }
 }

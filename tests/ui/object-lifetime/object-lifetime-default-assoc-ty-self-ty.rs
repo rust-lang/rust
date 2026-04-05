@@ -16,4 +16,9 @@ fn f<'r>(x: <dyn Inner + 'r as Outer<'r>>::Ty) { /*check*/ g(x) }
 // We deduce `dyn Inner + 'r` from bound `'a` on self ty param of trait `Outer`.
 fn g<'r>(x: <dyn Inner as Outer<'r>>::Ty) {}
 
+fn h<'r>(x: <dyn Inner + 'r as Outer<'r>>::Ty) { /*check*/ i(x) }
+// Just like the case directly above, we elaborate `dyn Inner` to `dyn Inner + 'r`.
+// What's different is the extra segment (`self`) that once threw off RBV in a dev version.
+fn i<'r>(x: <dyn Inner as self::Outer<'r>>::Ty) {}
+
 fn main() {}
