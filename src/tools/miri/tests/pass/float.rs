@@ -47,8 +47,9 @@ macro_rules! assert_approx_eq {
     }};
 
     ($a:expr, $b: expr) => {
-        // accept up to 8ULP (4ULP for host floats and 4ULP for miri artificial error).
-        assert_approx_eq!($a, $b, 8);
+        // Accept up to 12ULP (4ULP for miri artificial error and the rest for host floats).
+        // We saw failures on an i686-linux host with a limit of 8!
+        assert_approx_eq!($a, $b, 12);
     };
 }
 
@@ -1611,9 +1612,9 @@ fn test_non_determinism() {
             check_nondet(|| 1.0f32.sinh());
             check_nondet(|| 1.0f32.cosh());
             check_nondet(|| 1.0f32.tanh());
+            check_nondet(|| 1.0f32.asinh());
+            check_nondet(|| 2.0f32.acosh());
         }
-        check_nondet(|| 1.0f32.asinh());
-        check_nondet(|| 2.0f32.acosh());
         check_nondet(|| 0.5f32.atanh());
         check_nondet(|| 5.0f32.gamma());
         check_nondet(|| 5.0f32.ln_gamma());

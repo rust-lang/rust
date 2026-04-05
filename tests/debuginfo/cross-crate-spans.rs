@@ -35,7 +35,7 @@ extern crate cross_crate_spans;
 //@ lldb-command:run
 
 //@ lldb-command:v result
-//@ lldb-check:[...] { 0 = 17 1 = 17 }
+//@ lldb-check:[...] (17, 17)
 //@ lldb-command:v a_variable
 //@ lldb-check:[...] 123456789
 //@ lldb-command:v another_variable
@@ -43,7 +43,7 @@ extern crate cross_crate_spans;
 //@ lldb-command:continue
 
 //@ lldb-command:v result
-//@ lldb-check:[...] { 0 = 1212 1 = 1212 }
+//@ lldb-check:[...] (1212, 1212)
 //@ lldb-command:v a_variable
 //@ lldb-check:[...] 123456789
 //@ lldb-command:v another_variable

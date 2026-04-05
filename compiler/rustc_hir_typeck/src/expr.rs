@@ -16,11 +16,10 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, listify, pluralize,
     struct_span_code_err,
 };
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
+use rustc_hir::{self as hir, Attribute, ExprKind, HirId, QPath, find_attr, is_range_literal};
 use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::errors::NoFieldOnType;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
@@ -56,26 +55,21 @@ use crate::{
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
+        // For the purpose of rendering suggestions, disregard attributes
+        // that originate from desugaring of any kind. For example, `x?`
+        // desugars to `#[allow(unreachable_code)] match ...`. Failing to
+        // ignore the prefix attribute in the desugaring would cause this
+        // suggestion:
+        //
+        //     let y: u32 = x?.try_into().unwrap();
+        //                    ++++++++++++++++++++
+        //
+        // to be rendered as:
+        //
+        //     let y: u32 = (x?).try_into().unwrap();
+        //                  +  +++++++++++++++++++++
         let has_attr = |id: HirId| -> bool {
-            for attr in self.tcx.hir_attrs(id) {
-                // For the purpose of rendering suggestions, disregard attributes
-                // that originate from desugaring of any kind. For example, `x?`
-                // desugars to `#[allow(unreachable_code)] match ...`. Failing to
-                // ignore the prefix attribute in the desugaring would cause this
-                // suggestion:
-                //
-                //     let y: u32 = x?.try_into().unwrap();
-                //                    ++++++++++++++++++++
-                //
-                // to be rendered as:
-                //
-                //     let y: u32 = (x?).try_into().unwrap();
-                //                  +  +++++++++++++++++++++
-                if attr.span().desugaring_kind().is_none() {
-                    return true;
-                }
-            }
-            false
+            self.tcx.hir_attrs(id).iter().any(Attribute::has_span_without_desugaring_kind)
         };
 
         // Special case: range expressions are desugared to struct literals in HIR,

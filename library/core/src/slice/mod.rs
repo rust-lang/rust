@@ -5297,6 +5297,7 @@ impl<T> [T] {
     /// Basic usage:
     /// ```
     /// #![feature(substr_range)]
+    /// use core::range::Range;
     ///
     /// let nums = &[0, 5, 10, 0, 0, 5];
     ///
@@ -5304,14 +5305,14 @@ impl<T> [T] {
     ///     .split(|t| *t == 0)
     ///     .map(|n| nums.subslice_range(n).unwrap());
     ///
-    /// assert_eq!(iter.next(), Some(0..0));
-    /// assert_eq!(iter.next(), Some(1..3));
-    /// assert_eq!(iter.next(), Some(4..4));
-    /// assert_eq!(iter.next(), Some(5..6));
+    /// assert_eq!(iter.next(), Some(Range { start: 0, end: 0 }));
+    /// assert_eq!(iter.next(), Some(Range { start: 1, end: 3 }));
+    /// assert_eq!(iter.next(), Some(Range { start: 4, end: 4 }));
+    /// assert_eq!(iter.next(), Some(Range { start: 5, end: 6 }));
     /// ```
     #[must_use]
     #[unstable(feature = "substr_range", issue = "126769")]
-    pub fn subslice_range(&self, subslice: &[T]) -> Option<Range<usize>> {
+    pub fn subslice_range(&self, subslice: &[T]) -> Option<core::range::Range<usize>> {
         if T::IS_ZST {
             panic!("elements are zero-sized");
         }
@@ -5328,7 +5329,11 @@ impl<T> [T] {
         let start = byte_start / size_of::<T>();
         let end = start.wrapping_add(subslice.len());
 
-        if start <= self.len() && end <= self.len() { Some(start..end) } else { None }
+        if start <= self.len() && end <= self.len() {
+            Some(core::range::Range { start, end })
+        } else {
+            None
+        }
     }
 
     /// Returns the same slice `&[T]`.

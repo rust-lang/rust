@@ -121,20 +121,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // discriminants are int-like.
                 let discr_val = self.int_to_int_or_float(&tag_val, discr_layout).unwrap();
                 let discr_bits = discr_val.to_scalar().to_bits(discr_layout.size)?;
-                // Convert discriminant to variant index. Since we validated the tag against the
-                // layout range above, this cannot fail.
+                // Convert discriminant to variant index. The tag may pass the layout range
+                // check above but still not match any actual variant discriminant (e.g.,
+                // non-contiguous discriminants with a wrapping valid_range).
                 let index = match *ty.kind() {
                     ty::Adt(adt, _) => {
-                        adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits).unwrap()
+                        adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
                     ty::Coroutine(def_id, args) => {
                         let args = args.as_coroutine();
-                        args.discriminants(def_id, *self.tcx)
-                            .find(|(_, var)| var.val == discr_bits)
-                            .unwrap()
+                        args.discriminants(def_id, *self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
                     _ => span_bug!(self.cur_span(), "tagged layout for non-adt non-coroutine"),
-                };
+                }
+                .ok_or_else(|| err_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size))))?;
                 // Return the cast value, and the index.
                 index.0
             }

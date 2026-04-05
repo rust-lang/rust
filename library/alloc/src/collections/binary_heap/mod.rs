@@ -549,8 +549,8 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     ///
     /// use std::alloc::System;
     /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::new_in(System);
-    /// heap.push(4);
+    ///
+    /// let heap : BinaryHeap<i32, System> = BinaryHeap::new_in(System);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
@@ -573,8 +573,8 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     ///
     /// use std::alloc::System;
     /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::with_capacity_in(10, System);
-    /// heap.push(4);
+    ///
+    /// let heap: BinaryHeap<i32, System> = BinaryHeap::with_capacity_in(10, System);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]

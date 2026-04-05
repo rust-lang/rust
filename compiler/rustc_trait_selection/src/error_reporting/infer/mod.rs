@@ -1528,6 +1528,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             label_or_note(span, terr.to_string(self.tcx));
         }
 
+        if let Some(param_env) = param_env {
+            self.note_field_shadowed_by_private_candidate_in_cause(diag, cause, param_env);
+        }
+
         if self.check_and_note_conflicting_crates(diag, terr) {
             return;
         }
