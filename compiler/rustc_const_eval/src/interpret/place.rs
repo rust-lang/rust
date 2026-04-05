@@ -439,14 +439,24 @@ where
     }
 
     /// Turn a mplace into a (thin or wide) mutable raw pointer, pointing to the same space.
+    ///
     /// `align` information is lost!
     /// This is the inverse of `imm_ptr_to_mplace`.
+    ///
+    /// If `ptr_ty` is provided the resulting pointer will be of that type (instead of `*mut _`).
+    /// `ptr_ty` must be a type with builtin deref which derefs to the type of `mplace` (`mplace.layout.ty`)
     pub fn mplace_to_imm_ptr(
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
+        ptr_ty: Option<Ty<'tcx>>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         let imm = mplace.mplace.to_ref(self);
-        let layout = self.layout_of(Ty::new_mut_ptr(self.tcx.tcx, mplace.layout.ty))?;
+
+        let ptr_ty = ptr_ty
+            .inspect(|t| assert_eq!(t.builtin_deref(true), Some(mplace.layout.ty)))
+            .unwrap_or(Ty::new_mut_ptr(self.tcx.tcx, mplace.layout.ty));
+
+        let layout = self.layout_of(ptr_ty)?;
         interp_ok(ImmTy::from_immediate(imm, layout))
     }
 
