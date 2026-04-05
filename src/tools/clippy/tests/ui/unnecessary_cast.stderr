@@ -277,5 +277,11 @@ error: casting to the same type is unnecessary (`i64` -> `i64`)
 LL |         let _ = 5i32 as i64 as i64;
    |                 ^^^^^^^^^^^^^^^^^^ help: try: `5i32 as i64`
 
-error: aborting due to 46 previous errors
+error: casting raw pointers to the same type and constness is unnecessary (`*const *const u8` -> `*const *const u8`)
+  --> tests/ui/unnecessary_cast.rs:292:10
+   |
+LL |         *(&NONE as *const _ as *const _ as *const *const u8 as *const *const u8)
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(&NONE as *const _ as *const _ as *const *const u8)`
+
+error: aborting due to 47 previous errors
 

@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::{HasSession, IntoSpan as _, SpanRangeExt, snippet, snippet_block_with_applicability};
-use clippy_utils::{can_use_if_let_chains, span_contains_non_whitespace, sym, tokenize_with_text};
+use clippy_utils::{can_use_if_let_chains, span_contains_cfg, span_contains_non_whitespace, sym, tokenize_with_text};
 use rustc_ast::BinOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::attrs::{AttributeKind, LintAttributeKind};
@@ -170,6 +170,11 @@ impl CollapsibleIf {
             && self.eligible_condition(cx, check_inner)
             && expr.span.eq_ctxt(inner.span)
             && self.check_significant_tokens_and_expect_attrs(cx, then, inner, sym::collapsible_if)
+            && let then_closing_bracket = {
+                let end = then.span.shrink_to_hi();
+                end.with_lo(end.lo() - BytePos(1))
+            }
+            && !span_contains_cfg(cx, inner.span.between(then_closing_bracket))
         {
             span_lint_hir_and_then(
                 cx,
@@ -179,12 +184,7 @@ impl CollapsibleIf {
                 "this `if` statement can be collapsed",
                 |diag| {
                     let then_open_bracket = then.span.split_at(1).0.with_leading_whitespace(cx).into_span();
-                    let then_closing_bracket = {
-                        let end = then.span.shrink_to_hi();
-                        end.with_lo(end.lo() - BytePos(1))
-                            .with_leading_whitespace(cx)
-                            .into_span()
-                    };
+                    let then_closing_bracket = then_closing_bracket.with_leading_whitespace(cx).into_span();
                     let (paren_start, inner_if_span, paren_end) = peel_parens(cx, inner.span);
                     let inner_if = inner_if_span.split_at(2).0;
                     let mut sugg = vec![
@@ -238,12 +238,10 @@ impl CollapsibleIf {
                 !span_contains_non_whitespace(cx, span, self.lint_commented_code)
             },
 
-            [
-                Attribute::Parsed(AttributeKind::LintAttributes(sub_attrs)),
-            ] => {
+            [Attribute::Parsed(AttributeKind::LintAttributes(sub_attrs))] => {
                 sub_attrs
                     .into_iter()
-                    .filter(|attr|attr.kind == LintAttributeKind::Expect)
+                    .filter(|attr| attr.kind == LintAttributeKind::Expect)
                     .flat_map(|attr| attr.lint_instances.iter().map(|group| (attr.attr_span, group)))
                     .filter(|(_, lint_id)| {
                         lint_id.tool_is_named(sym::clippy)

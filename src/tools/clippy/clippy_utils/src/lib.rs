@@ -311,6 +311,21 @@ pub fn as_some_expr<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Optio
     }
 }
 
+/// Check if the given `Expr` is an empty block (i.e. `{}`) or not.
+pub fn is_empty_block(expr: &Expr<'_>) -> bool {
+    matches!(
+        expr.kind,
+        ExprKind::Block(
+            Block {
+                stmts: [],
+                expr: None,
+                ..
+            },
+            _,
+        )
+    )
+}
+
 /// Checks if `expr` is an empty block or an empty tuple.
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
     matches!(
