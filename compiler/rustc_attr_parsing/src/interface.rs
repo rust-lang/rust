@@ -340,6 +340,9 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         comment: *symbol,
                     }));
                 }
+                // Regular comments have no semantic meaning
+                // for attribute parsing; skip them.
+                ast::AttrKind::Comment(..) => continue,
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);

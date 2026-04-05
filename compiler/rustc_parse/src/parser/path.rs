@@ -418,9 +418,11 @@ impl<'a> Parser<'a> {
                             if matches!(param.ty.kind, TyKind::CVarArgs) {
                                 dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
                             }
-                            if !param.attrs.is_empty() {
+                            let non_comment_attrs: Vec<_> =
+                                param.attrs.iter().filter(|a| !a.is_comment()).collect();
+                            if !non_comment_attrs.is_empty() {
                                 dcx.emit_err(PathFoundAttributeInParams {
-                                    span: param.attrs[0].span,
+                                    span: non_comment_attrs[0].span,
                                 });
                             }
                             param.ty

@@ -1,5 +1,5 @@
 use rustc_ast as ast;
-use rustc_ast::token::{self, MetaVarKind};
+use rustc_ast::token::{self, CommentKind, MetaVarKind};
 use rustc_ast::tokenstream::ParserRange;
 use rustc_ast::{AttrItemKind, Attribute, attr};
 use rustc_errors::codes::*;
@@ -47,6 +47,32 @@ impl<'a> Parser<'a> {
         let mut outer_attrs = ast::AttrVec::new();
         let mut just_parsed_doc_comment = false;
         let start_pos = self.num_bump_calls;
+
+        if !self.token.span.is_dummy() && !self.prev_token.span.is_dummy() {
+            let prev_hi: BytePos = self.prev_token.span.hi();
+            let curr_lo: BytePos = self.token.span.lo();
+            if prev_hi <= curr_lo {
+                let curr_span = self.token.span;
+                let all_comments = self.psess.all_comments.lock();
+                for &(pos, comment_kind, data) in all_comments.iter() {
+                    if pos >= prev_hi && pos < curr_lo {
+                        let comment_len = match comment_kind {
+                            CommentKind::Line => 2 + data.as_str().len(),
+                            CommentKind::Block => 4 + data.as_str().len(),
+                        };
+                        let end = BytePos(pos.0 + comment_len as u32);
+                        let span = curr_span.with_lo(pos).with_hi(end);
+                        outer_attrs.push(attr::mk_comment(
+                            &self.psess.attr_id_generator,
+                            comment_kind,
+                            data,
+                            span,
+                        ));
+                    }
+                }
+            }
+        }
+
         loop {
             let attr = if self.check(exp!(Pound)) {
                 let prev_outer_attr_sp = outer_attrs.last().map(|attr: &Attribute| attr.span);

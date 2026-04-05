@@ -187,9 +187,19 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             // additional validation.
             let kind = match token.kind {
                 rustc_lexer::TokenKind::LineComment { doc_style } => {
-                    // Skip non-doc comments
+                    // Skip non-doc comments,
+                    // but record them to later attach to AST nodes.
                     let Some(doc_style) = doc_style else {
                         self.lint_unicode_text_flow(start);
+                        // Exclude the opening `//` (2 bytes).
+                        let content_start = start + BytePos(2);
+                        let content = self.str_from(content_start);
+                        let span = self.mk_sp(start, self.pos);
+                        self.psess.all_comments.lock().push((
+                            span.lo(),
+                            CommentKind::Line,
+                            Symbol::intern(content),
+                        ));
                         preceded_by_whitespace = true;
                         continue;
                     };
@@ -205,9 +215,20 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         self.report_unterminated_block_comment(start, doc_style);
                     }
 
-                    // Skip non-doc comments
+                    // Skip non-doc comments,
+                    // but record them to later attach to AST nodes.
                     let Some(doc_style) = doc_style else {
                         self.lint_unicode_text_flow(start);
+                        // Exclude the opening `/*` and closing `*/` (2 bytes each).
+                        let content_start = start + BytePos(2);
+                        let content_end = self.pos - BytePos(if terminated { 2 } else { 0 });
+                        let content = self.str_from_to(content_start, content_end);
+                        let span = self.mk_sp(start, self.pos);
+                        self.psess.all_comments.lock().push((
+                            span.lo(),
+                            CommentKind::Block,
+                            Symbol::intern(content),
+                        ));
                         preceded_by_whitespace = true;
                         continue;
                     };

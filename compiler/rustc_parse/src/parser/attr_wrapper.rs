@@ -79,6 +79,12 @@ impl AttrWrapper {
     pub(super) fn is_empty(&self) -> bool {
         self.attrs.is_empty()
     }
+
+    /// Returns `true` if every attribute in this wrapper is a regular comment.
+    pub(super) fn is_all_comments(&self) -> bool {
+        // FIXME: does short-circuting improve performance here?
+        !self.attrs.is_empty() && self.attrs.iter().all(|a| a.is_comment())
+    }
 }
 
 /// Returns `true` if `attrs` contains a `cfg` or `cfg_attr` attribute
@@ -399,7 +405,9 @@ impl<'a> Parser<'a> {
 ///   `test`, `global_allocator`.
 fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
     attrs.iter().any(|attr| match attr.name() {
-        None => !attr.is_doc_comment(),
+        // Regular comments (`AttrKind::Comment`) are never real attributes.
+        // So, they should not trigger token collection; same treatment as doc comments.
+        None => !attr.is_doc_comment() && !attr.is_comment(),
         Some(name) => name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(name),
     })
 }

@@ -825,12 +825,11 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
 
         if is_doc_comment || is_doc_attribute {
             let sub = match attr.kind {
-                AttrKind::DocComment(CommentKind::Line, _) | AttrKind::Normal(..) => {
-                    BuiltinUnusedDocCommentSub::PlainHelp
-                }
-                AttrKind::DocComment(CommentKind::Block, _) => {
-                    BuiltinUnusedDocCommentSub::BlockHelp
-                }
+                AttrKind::DocComment(CommentKind::Line, _)
+                | AttrKind::Normal(..)
+                | AttrKind::Comment(CommentKind::Line, _) => BuiltinUnusedDocCommentSub::PlainHelp,
+                AttrKind::DocComment(CommentKind::Block, _)
+                | AttrKind::Comment(CommentKind::Block, _) => BuiltinUnusedDocCommentSub::BlockHelp,
             };
             cx.emit_span_lint(
                 UNUSED_DOC_COMMENTS,

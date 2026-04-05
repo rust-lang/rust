@@ -274,12 +274,15 @@ impl<'a> Parser<'a> {
                     return Ok((None, Trailing::No, UsePreAttrPos::No));
                 } else {
                     // Check for trailing attributes and stop parsing.
-                    if !attrs.is_empty() {
+                    let non_comment: Vec<_> = attrs.iter().filter(|a| !a.is_comment()).collect();
+                    if !non_comment.is_empty() {
                         if !params.is_empty() {
-                            this.dcx().emit_err(errors::AttrAfterGeneric { span: attrs[0].span });
-                        } else {
                             this.dcx()
-                                .emit_err(errors::AttrWithoutGenerics { span: attrs[0].span });
+                                .emit_err(errors::AttrAfterGeneric { span: non_comment[0].span });
+                        } else {
+                            this.dcx().emit_err(errors::AttrWithoutGenerics {
+                                span: non_comment[0].span,
+                            });
                         }
                     }
                     return Ok((None, Trailing::No, UsePreAttrPos::No));
@@ -451,7 +454,10 @@ impl<'a> Parser<'a> {
             let pred_lo = self.token.span;
             let predicate = self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
                 for attr in &attrs {
-                    self.psess.gated_spans.gate(sym::where_clause_attrs, attr.span);
+                    // FIXME: investigate how to avoid this if.
+                    if !attr.is_comment() {
+                        self.psess.gated_spans.gate(sym::where_clause_attrs, attr.span);
+                    }
                 }
                 let kind = if this.check_lifetime() && this.look_ahead(1, |t| !t.is_like_plus()) {
                     let lifetime = this.expect_lifetime();
