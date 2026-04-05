@@ -296,6 +296,75 @@ impl ErrorKind {
             // tidy-alphabetical-end
         }
     }
+
+    // This compiles to the same code as the check+transmute, but doesn't require
+    // unsafe, or to hard-code max ErrorKind or its size in a way the compiler
+    // couldn't verify.
+    #[inline]
+    #[unstable(
+        feature = "core_io_error_kind_internals",
+        reason = "exposed only for libstd",
+        issue = "none"
+    )]
+    #[doc(hidden)]
+    pub const fn _from_prim(ek: u32) -> Option<Self> {
+        macro_rules! from_prim {
+            ($prim:expr => $Enum:ident { $($Variant:ident),* $(,)? }) => {{
+                // Force a compile error if the list gets out of date.
+                const _: fn(e: $Enum) = |e: $Enum| match e {
+                    $($Enum::$Variant => (),)*
+                };
+                match $prim {
+                    $(v if v == ($Enum::$Variant as _) => Some($Enum::$Variant),)*
+                    _ => None,
+                }
+            }}
+        }
+        from_prim!(ek => ErrorKind {
+            NotFound,
+            PermissionDenied,
+            ConnectionRefused,
+            ConnectionReset,
+            HostUnreachable,
+            NetworkUnreachable,
+            ConnectionAborted,
+            NotConnected,
+            AddrInUse,
+            AddrNotAvailable,
+            NetworkDown,
+            BrokenPipe,
+            AlreadyExists,
+            WouldBlock,
+            NotADirectory,
+            IsADirectory,
+            DirectoryNotEmpty,
+            ReadOnlyFilesystem,
+            FilesystemLoop,
+            StaleNetworkFileHandle,
+            InvalidInput,
+            InvalidData,
+            TimedOut,
+            WriteZero,
+            StorageFull,
+            NotSeekable,
+            QuotaExceeded,
+            FileTooLarge,
+            ResourceBusy,
+            ExecutableFileBusy,
+            Deadlock,
+            CrossesDevices,
+            TooManyLinks,
+            InvalidFilename,
+            ArgumentListTooLong,
+            Interrupted,
+            Other,
+            UnexpectedEof,
+            Unsupported,
+            OutOfMemory,
+            InProgress,
+            Uncategorized,
+        })
+    }
 }
 
 #[stable(feature = "io_errorkind_display", since = "1.60.0")]

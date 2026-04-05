@@ -322,6 +322,7 @@
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]
 #![feature(core_io_error_kind)]
+#![feature(core_io_error_kind_internals)]
 #![feature(cstr_display)]
 #![feature(drop_guard)]
 #![feature(duration_constants)]
