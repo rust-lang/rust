@@ -1229,7 +1229,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         // This is not part of `codegen_fn_attrs` as it can differ between crates
         // and therefore cannot be computed in core.
         if !tcx.sess.opts.unstable_opts.panic_in_drop.unwinds()
-            && tcx.is_lang_item(did, LangItem::DropInPlace)
+            && tcx.is_lang_item(did, LangItem::DropGlue)
         {
             return false;
         }

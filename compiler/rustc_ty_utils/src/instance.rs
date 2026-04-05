@@ -34,7 +34,7 @@ fn resolve_instance_raw<'tcx>(
         let def = if tcx.intrinsic(def_id).is_some() {
             debug!(" => intrinsic");
             ty::InstanceKind::Intrinsic(def_id)
-        } else if tcx.is_lang_item(def_id, LangItem::DropInPlace) {
+        } else if tcx.is_lang_item(def_id, LangItem::DropGlue) {
             let ty = args.type_at(0);
 
             if ty.needs_drop(tcx, typing_env) {

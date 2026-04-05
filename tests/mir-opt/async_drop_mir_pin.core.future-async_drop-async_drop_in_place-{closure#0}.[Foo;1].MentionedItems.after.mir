@@ -4,7 +4,7 @@ fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<[F
 yields ()
  {
     let mut _0: ();
-    let mut _3: *mut [Foo; 1];
+    let mut _3: &mut [Foo; 1];
     let mut _4: *mut [Foo; 1];
     let mut _5: *mut [Foo];
     let mut _6: usize;
@@ -27,7 +27,7 @@ yields ()
     let mut _23: *mut Foo;
 
     bb0: {
-        _3 = move (_1.0: *mut [Foo; 1]);
+        _3 = move (_1.0: &mut [Foo; 1]);
         goto -> bb17;
     }
 

@@ -596,17 +596,13 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
 
     make_coroutine_state_argument_indirect(tcx, &mut body);
 
-    // Change the coroutine argument from &mut to *mut
-    body.local_decls[SELF_ARG] =
-        LocalDecl::with_source_info(Ty::new_mut_ptr(tcx, coroutine_ty), source_info);
-
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
     simplify::remove_dead_blocks(&mut body);
 
     // Update the body's def to become the drop glue.
     let coroutine_instance = body.source.instance;
-    let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, body.span);
+    let drop_in_place = tcx.require_lang_item(LangItem::DropGlue, body.span);
     let drop_instance = InstanceKind::DropGlue(drop_in_place, Some(coroutine_ty));
 
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
