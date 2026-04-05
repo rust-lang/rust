@@ -815,7 +815,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                             // just to be able to handle disambiguators.
                             let disambiguated_field =
                                 self.tcx.def_key(field_def.did).disambiguated_data;
-                            let field_name = disambiguated_field.data.get_opt_name();
+                            let field_name = disambiguated_field.data.unwrap().get_opt_name();
                             self.push_disambiguator(disambiguated_field.disambiguator as u64);
                             self.push_ident(field_name.unwrap().as_str());
 
@@ -877,7 +877,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<(), PrintError> {
-        let ns = match disambiguated_data.data {
+        let ns = match disambiguated_data.data.unwrap() {
             // Extern block segments can be skipped, names from extern blocks
             // are effectively living in their parent modules.
             DefPathData::ForeignMod => return print_prefix(self),
@@ -903,11 +903,11 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             | DefPathData::DesugaredAnonymousLifetime
             | DefPathData::OpaqueLifetime(_)
             | DefPathData::AnonAssocTy(..) => {
-                bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)
+                bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data.unwrap())
             }
         };
 
-        let name = disambiguated_data.data.get_opt_name();
+        let name = disambiguated_data.data.unwrap().get_opt_name();
 
         self.path_append_ns(
             print_prefix,

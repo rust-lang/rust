@@ -17,7 +17,7 @@ use hir::def::DefKind;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir as hir;
-use rustc_hir::definitions::{DefPathData, DisambiguatorState};
+use rustc_hir::definitions::{DefPathData, DefPathData2, DisambiguatorState};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::interpret::{
     AllocBytes, ConstAllocation, CtfeProvenance, InterpResult, Provenance,
@@ -154,7 +154,7 @@ fn intern_as_new_static<'tcx>(
         static_id,
         None,
         DefKind::Static { safety: hir::Safety::Safe, mutability: alloc.0.mutability, nested: true },
-        Some(DefPathData::NestedStatic),
+        Some(DefPathData2::Default(DefPathData::NestedStatic)),
         disambiguator,
     );
     tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());

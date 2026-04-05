@@ -1557,7 +1557,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let Some(primitive) = found.primitive_symbol()
                 {
                     let path = self.tcx.def_path(expected.did()).data;
-                    let name = path.last().unwrap().data.get_opt_name();
+                    let name = path.last().unwrap().data.unwrap().get_opt_name();
                     if name == Some(primitive) {
                         return Some(Similar::PrimitiveFound { expected: *expected, found });
                     }
@@ -1565,7 +1565,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let ty::Adt(found, _) = found.kind()
                 {
                     let path = self.tcx.def_path(found.did()).data;
-                    let name = path.last().unwrap().data.get_opt_name();
+                    let name = path.last().unwrap().data.unwrap().get_opt_name();
                     if name == Some(primitive) {
                         return Some(Similar::PrimitiveExpected { expected, found: *found });
                     }

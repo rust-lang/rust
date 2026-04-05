@@ -14,7 +14,7 @@ use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, EncodeCrossCrate};
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
-use rustc_hir::definitions::DefPathData;
+use rustc_hir::definitions::{DefPathData, DefPathData2};
 use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
 use rustc_middle::dep_graph::WorkProductId;
@@ -2027,7 +2027,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 };
 
                 let mut def_key = self.tcx.hir_def_key(id);
-                def_key.disambiguated_data.data = DefPathData::MacroNs(name);
+                def_key.disambiguated_data.data = DefPathData2::Default(DefPathData::MacroNs(name));
 
                 let def_id = id.to_def_id();
                 self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind.into()));

@@ -773,13 +773,15 @@ impl<'tcx> LateContext<'tcx> {
                 print_prefix(self)?;
 
                 // Skip `::{{extern}}` blocks and `::{{constructor}}` on tuple/unit structs.
-                if let DefPathData::ForeignMod | DefPathData::Ctor = disambiguated_data.data {
+                if let DefPathData::ForeignMod | DefPathData::Ctor =
+                    disambiguated_data.data.unwrap()
+                {
                     return Ok(());
                 }
 
-                self.path.push(match disambiguated_data.data.get_opt_name() {
+                self.path.push(match disambiguated_data.data.unwrap().get_opt_name() {
                     Some(sym) => sym,
-                    None => Symbol::intern(&disambiguated_data.data.to_string()),
+                    None => Symbol::intern(&disambiguated_data.data.unwrap().to_string()),
                 });
                 Ok(())
             }

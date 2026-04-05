@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModDefId};
-use rustc_hir::definitions::{DefKey, DefPathDataName};
+use rustc_hir::definitions::{DefKey, DefPathData2, DefPathDataName};
 use rustc_hir::limit::Limit;
 use rustc_macros::{Lift, extension};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
@@ -381,7 +381,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let get_local_name = |this: &Self, name, def_id, key: DefKey| {
             if let Some(visible_parent) = visible_parent_map.get(&def_id)
                 && let actual_parent = this.tcx().opt_parent(def_id)
-                && let DefPathData::TypeNs(_) = key.disambiguated_data.data
+                && let DefPathData::TypeNs(_) = key.disambiguated_data.data.unwrap()
                 && Some(*visible_parent) != actual_parent
             {
                 this.tcx()
@@ -544,7 +544,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         debug!("try_print_visible_def_path: cur_def_key={:?}", cur_def_key);
 
         // For a constructor, we want the name of its parent rather than <unnamed>.
-        if let DefPathData::Ctor = cur_def_key.disambiguated_data.data {
+        if let DefPathData::Ctor = cur_def_key.disambiguated_data.data.unwrap() {
             let parent = DefId {
                 krate: def_id.krate,
                 index: cur_def_key
@@ -569,7 +569,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             visible_parent, actual_parent,
         );
 
-        let mut data = cur_def_key.disambiguated_data.data;
+        let mut data = cur_def_key.disambiguated_data.data.unwrap();
         debug!(
             "try_print_visible_def_path: data={:?} visible_parent={:?} actual_parent={:?}",
             data, visible_parent, actual_parent,
@@ -649,7 +649,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         callers.pop();
         self.print_path_with_simple(
             |_| Ok(()),
-            &DisambiguatedDefPathData { data, disambiguator: 0 },
+            &DisambiguatedDefPathData { data: DefPathData2::Default(data), disambiguator: 0 },
         )?;
         Ok(true)
     }
@@ -2160,7 +2160,7 @@ impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
 }
 
 fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
-    match tcx.def_key(def_id).disambiguated_data.data {
+    match tcx.def_key(def_id).disambiguated_data.data.unwrap() {
         DefPathData::TypeNs(..) | DefPathData::CrateRoot | DefPathData::OpaqueTy => {
             Namespace::TypeNS
         }
@@ -2255,7 +2255,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         }
 
         let key = self.tcx.def_key(def_id);
-        if let DefPathData::Impl = key.disambiguated_data.data {
+        if let DefPathData::Impl = key.disambiguated_data.data.unwrap() {
             // Always use types for non-local impls, where types are always
             // available, and filename/line-number is mostly uninteresting.
             let use_types = !def_id.is_local() || {
@@ -2406,11 +2406,11 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         print_prefix(self)?;
 
         // Skip `::{{extern}}` blocks and `::{{constructor}}` on tuple/unit structs.
-        if let DefPathData::ForeignMod | DefPathData::Ctor = disambiguated_data.data {
+        if let DefPathData::ForeignMod | DefPathData::Ctor = disambiguated_data.data.unwrap() {
             return Ok(());
         }
 
-        let name = disambiguated_data.data.name();
+        let name = disambiguated_data.data.unwrap().name();
         if !self.empty_path {
             write!(self, "::")?;
         }

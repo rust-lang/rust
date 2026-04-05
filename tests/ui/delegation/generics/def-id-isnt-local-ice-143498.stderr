@@ -1,0 +1,45 @@
+error[E0425]: cannot find type `X` in this scope
+  --> $DIR/def-id-isnt-local-ice-143498.rs:20:6
+   |
+LL | impl X {
+   |      ^ not found in this scope
+
+error[E0575]: expected method or associated constant, found associated type `Iterator::Item`
+  --> $DIR/def-id-isnt-local-ice-143498.rs:22:10
+   |
+LL |     reuse< std::fmt::Debug as Iterator >::*;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a method or associated constant
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/def-id-isnt-local-ice-143498.rs:22:12
+   |
+LL |     reuse< std::fmt::Debug as Iterator >::*;
+   |            ^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     reuse< dyn std::fmt::Debug as Iterator >::*;
+   |            +++
+
+error[E0107]: method takes at most 1 generic argument but 2 generic arguments were supplied
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+   = note: expected at most 1 generic argument
+   |
+   = note: help: remove the unnecessary generic argument
+   |
+   = note: `impl Trait` cannot be explicitly specified as a generic argument
+
+error[E0107]: method takes at most 1 generic argument but 2 generic arguments were supplied
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+   = note: expected at most 1 generic argument
+   |
+   = note: help: remove the unnecessary generic argument
+   |
+   = note: `impl Trait` cannot be explicitly specified as a generic argument
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0107, E0425, E0575, E0782.
+For more information about an error, try `rustc --explain E0107`.

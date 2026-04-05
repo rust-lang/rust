@@ -50,7 +50,7 @@ use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
-use rustc_hir::definitions::{DefPathData, DisambiguatorState};
+use rustc_hir::definitions::{DefPathData, DefPathData2, DisambiguatorState};
 use rustc_hir::lints::{AttributeLint, DelayedLint};
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
@@ -716,7 +716,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         node_id: ast::NodeId,
         name: Option<Symbol>,
         def_kind: DefKind,
-        def_path_data: DefPathData,
+        def_path_data: impl Into<DefPathData2>,
         span: Span,
     ) -> LocalDefId {
         let parent = self.current_hir_id_owner.def_id;

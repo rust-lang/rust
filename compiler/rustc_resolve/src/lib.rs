@@ -57,7 +57,7 @@ use rustc_hir::def::{
     PerNS,
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
-use rustc_hir::definitions::DisambiguatorState;
+use rustc_hir::definitions::{DefPathData2, DisambiguatorState};
 use rustc_hir::{PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
@@ -1560,7 +1560,13 @@ impl<'tcx> Resolver<'_, 'tcx> {
         );
 
         // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
-        let feed = self.tcx.create_def(parent, name, def_kind, None, &mut self.disambiguator);
+        let feed = self.tcx.create_def(
+            parent,
+            name,
+            def_kind,
+            None::<DefPathData2>,
+            &mut self.disambiguator,
+        );
         let def_id = feed.def_id();
 
         // Create the definition.

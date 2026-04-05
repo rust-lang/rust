@@ -1508,7 +1508,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(self.crate_name(cnum))
         } else {
             let def_key = self.def_key(def_id);
-            match def_key.disambiguated_data.data {
+            match def_key.disambiguated_data.data.unwrap() {
                 // The name of a constructor is that of its parent.
                 rustc_hir::definitions::DefPathData::Ctor => self
                     .opt_item_name(DefId { krate: def_id.krate, index: def_key.parent.unwrap() }),
