@@ -3896,6 +3896,11 @@ pub struct StaticItem {
     pub mutability: Mutability,
     pub expr: Option<Box<Expr>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
+
+    /// This static is an implementation of an externally implementable item (EII).
+    /// This means, there was an EII declared somewhere and this static is the
+    /// implementation that should be used for the declaration.
+    pub eii_impls: ThinVec<EiiImpl>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
