@@ -1,5 +1,5 @@
-use rustc_errors::{Applicability, Diag, MultiSpan, listify};
-use rustc_hir::def::Res;
+use rustc_errors::{Applicability, Diag, MultiSpan, listify, pluralize};
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
@@ -29,7 +29,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if expr_ty == expected {
             return;
         }
-        self.annotate_alternative_method_deref(err, expr, error);
+        self.annotate_alternative_method_deref_for_unop(err, expr, error);
         self.explain_self_literal(err, expr, expected, expr_ty);
 
         // Use `||` to give these suggestions a precedence
@@ -723,8 +723,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         hir::Path {
                             res:
                                 hir::def::Res::Def(
-                                    hir::def::DefKind::Static { .. }
-                                    | hir::def::DefKind::Const { .. },
+                                    DefKind::Static { .. } | DefKind::Const { .. },
                                     def_id,
                                 ),
                             ..
@@ -899,7 +898,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    fn annotate_alternative_method_deref(
+    fn annotate_alternative_method_deref_for_unop(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
@@ -919,7 +918,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::ExprKind::Unary(hir::UnOp::Deref, deref) = lhs.kind else {
             return;
         };
-        let hir::ExprKind::MethodCall(path, base, args, _) = deref.kind else {
+        self.annotate_alternative_method_deref(err, deref, Some(expected))
+    }
+
+    #[tracing::instrument(skip(self, err), level = "debug")]
+    pub(crate) fn annotate_alternative_method_deref(
+        &self,
+        err: &mut Diag<'_>,
+        expr: &hir::Expr<'_>,
+        expected: Option<Ty<'tcx>>,
+    ) {
+        let hir::ExprKind::MethodCall(path, base, args, _) = expr.kind else {
             return;
         };
         let Some(self_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(base) else {
@@ -929,7 +938,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Ok(pick) = self.lookup_probe_for_diagnostic(
             path.ident,
             self_ty,
-            deref,
+            expr,
             probe::ProbeScope::TraitsInScope,
             None,
         ) else {
@@ -939,10 +948,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Ok(in_scope_methods) = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
-            Some(expected),
+            expected,
             probe::IsSuggestion(true),
             self_ty,
-            deref.hir_id,
+            expr.hir_id,
             probe::ProbeScope::TraitsInScope,
         ) else {
             return;
@@ -954,10 +963,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Ok(all_methods) = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
-            Some(expected),
+            expected,
             probe::IsSuggestion(true),
             self_ty,
-            deref.hir_id,
+            expr.hir_id,
             probe::ProbeScope::AllTraits,
         ) else {
             return;
@@ -965,34 +974,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let suggestions: Vec<_> = all_methods
             .into_iter()
-            .filter(|c| c.item.def_id != pick.item.def_id)
-            .map(|c| {
+            .filter_map(|c| {
+                if c.item.def_id == pick.item.def_id {
+                    return None;
+                }
                 let m = c.item;
                 let generic_args = ty::GenericArgs::for_item(self.tcx, m.def_id, |param, _| {
-                    self.var_for_def(deref.span, param)
+                    self.var_for_def(expr.span, param)
                 });
-                let mutability =
-                    match self.tcx.fn_sig(m.def_id).skip_binder().input(0).skip_binder().kind() {
-                        ty::Ref(_, _, hir::Mutability::Mut) => "&mut ",
-                        ty::Ref(_, _, _) => "&",
-                        _ => "",
-                    };
-                vec![
-                    (
-                        deref.span.until(base.span),
-                        format!(
-                            "{}({}",
-                            with_no_trimmed_paths!(
-                                self.tcx.def_path_str_with_args(m.def_id, generic_args,)
-                            ),
-                            mutability,
-                        ),
-                    ),
+                let fn_sig = self.tcx.fn_sig(m.def_id);
+                if fn_sig.skip_binder().inputs().skip_binder().len() != args.len() + 1 {
+                    return None;
+                }
+                let rcvr_ty = fn_sig.skip_binder().input(0).skip_binder();
+                let (mutability, ty) = match rcvr_ty.kind() {
+                    ty::Ref(_, ty, hir::Mutability::Mut) => ("&mut ", ty),
+                    ty::Ref(_, ty, _) => ("&", ty),
+                    _ => ("", &rcvr_ty),
+                };
+                let path = match self.tcx.assoc_parent(m.def_id) {
+                    Some((_, DefKind::Impl { of_trait: true })) => {
+                        // We have `impl Trait for T {}`, suggest `<T as Trait>::method`.
+                        self.tcx.def_path_str_with_args(m.def_id, generic_args).to_string()
+                    }
+                    Some((_, DefKind::Impl { of_trait: false })) => {
+                        if let ty::Adt(def, _) = ty.kind() {
+                            // We have `impl T {}`, suggest `T::method`.
+                            format!("{}::{}", self.tcx.def_path_str(def.did()), path.ident)
+                        } else {
+                            // This should be unreachable, as `impl &'a T {}` is invalid.
+                            format!("{ty}::{}", path.ident)
+                        }
+                    }
+                    // Fallback for arbitrary self types.
+                    _ => with_no_trimmed_paths!(
+                        self.tcx.def_path_str_with_args(m.def_id, generic_args)
+                    )
+                    .to_string(),
+                };
+                Some(vec![
+                    (expr.span.until(base.span), format!("{path}({}", mutability)),
                     match &args {
-                        [] => (base.span.shrink_to_hi().with_hi(deref.span.hi()), ")".to_string()),
+                        [] => (base.span.shrink_to_hi().with_hi(expr.span.hi()), ")".to_string()),
                         [first, ..] => (base.span.between(first.span), ", ".to_string()),
                     },
-                ]
+                ])
             })
             .collect();
         if suggestions.is_empty() {
@@ -1046,9 +1072,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
         );
         if suggestions.len() > other_methods_in_scope.len() {
+            let n = suggestions.len() - other_methods_in_scope.len();
             err.note(format!(
-                "additionally, there are {} other available methods that aren't in scope",
-                suggestions.len() - other_methods_in_scope.len()
+                "additionally, there {are} {n} other available method{s} that {are}n't in scope",
+                are = pluralize!("is", n),
+                s = pluralize!(n),
             ));
         }
         err.multipart_suggestions(
@@ -1263,7 +1291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let hir::def::Res::Def(kind, def_id) = path.res else {
                     return;
                 };
-                let callable_kind = if matches!(kind, hir::def::DefKind::Ctor(_, _)) {
+                let callable_kind = if matches!(kind, DefKind::Ctor(_, _)) {
                     CallableKind::Constructor
                 } else {
                     CallableKind::Function
