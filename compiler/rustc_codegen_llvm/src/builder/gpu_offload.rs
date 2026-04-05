@@ -319,6 +319,7 @@ impl KernelArgsTy {
         geps: [&'ll Value; 3],
         workgroup_dims: &'ll Value,
         thread_dims: &'ll Value,
+        dyn_cache: &'ll Value,
     ) -> [(Align, &'ll str, &'ll Value); 13] {
         let four = Align::from_bytes(4).expect("4 Byte alignment should work");
         let eight = Align::EIGHT;
@@ -337,7 +338,7 @@ impl KernelArgsTy {
             (eight, "Flags", cx.get_const_i64(KernelArgsTy::FLAGS)),
             (four, "NumTeams", workgroup_dims),
             (four, "ThreadLimit", thread_dims),
-            (four, "DynCGroupMem", cx.get_const_i32(128)),
+            (four, "DynCGroupMem", dyn_cache),
         ]
     }
 }
@@ -576,6 +577,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     metadata: &[OffloadMetadata],
     offload_globals: &OffloadGlobals<'ll>,
     offload_dims: &OffloadKernelDims<'ll>,
+    dyn_cache: &'ll Value,
 ) {
     let cx = builder.cx;
     let OffloadKernelGlobals {
@@ -740,8 +742,15 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         num_args,
         s_ident_t,
     );
-    let values =
-        KernelArgsTy::new(&cx, num_args, memtransfer_kernel, geps, workgroup_dims, thread_dims);
+    let values = KernelArgsTy::new(
+        &cx,
+        num_args,
+        memtransfer_kernel,
+        geps,
+        workgroup_dims,
+        thread_dims,
+        dyn_cache,
+    );
 
     // Step 3)
     // Here we fill the KernelArgsTy, see the documentation above

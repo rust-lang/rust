@@ -359,6 +359,7 @@ pub(crate) fn check_intrinsic_type(
                 param(0),
                 Ty::new_array_with_const_len(tcx, tcx.types.u32, Const::from_target_usize(tcx, 3)),
                 Ty::new_array_with_const_len(tcx, tcx.types.u32, Const::from_target_usize(tcx, 3)),
+                tcx.types.u32,
                 param(1),
             ],
             param(2),

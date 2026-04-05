@@ -3530,6 +3530,7 @@ pub const fn offload<F, T: crate::marker::Tuple, R>(
     f: F,
     workgroup_dim: [u32; 3],
     thread_dim: [u32; 3],
+    dyn_cache: u32,
     args: T,
 ) -> R;
 
