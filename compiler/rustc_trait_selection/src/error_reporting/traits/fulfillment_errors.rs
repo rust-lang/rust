@@ -459,7 +459,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 (cand.self_ty().kind(), main_trait_predicate.self_ty().skip_binder().kind())
                             {
                                 // Wrap method receivers and `&`-references in parens
-                                let suggestion = if self.tcx.sess.source_map().span_look_ahead(span, ".", Some(50)).is_some() {
+                                let suggestion = if self.tcx.sess.source_map().span_followed_by(span, ".").is_some() {
                                     vec![
                                         (span.shrink_to_lo(), format!("(")),
                                         (span.shrink_to_hi(), format!(" as {})", cand.self_ty())),

@@ -964,21 +964,13 @@ impl SourceMap {
         Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt, None)
     }
 
-    /// Check whether span is followed by some specified expected string in limit scope
-    pub fn span_look_ahead(&self, span: Span, expect: &str, limit: Option<usize>) -> Option<Span> {
-        let mut sp = span;
-        for _ in 0..limit.unwrap_or(100_usize) {
-            sp = self.next_point(sp);
-            if let Ok(ref snippet) = self.span_to_snippet(sp) {
-                if snippet == expect {
-                    return Some(sp);
-                }
-                if snippet.chars().any(|c| !c.is_whitespace()) {
-                    break;
-                }
-            }
-        }
-        None
+    /// Check whether span is followed by some specified target string, ignoring whitespace.
+    /// *Only suitable for diagnostics.*
+    pub fn span_followed_by(&self, span: Span, target: &str) -> Option<Span> {
+        let span = self.span_extend_while_whitespace(span);
+        self.span_to_next_source(span).ok()?.strip_prefix(target).map(|_| {
+            Span::new(span.hi(), span.hi() + BytePos(target.len() as u32), span.ctxt(), None)
+        })
     }
 
     /// Finds the width of the character, either before or after the end of provided span,
