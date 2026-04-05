@@ -1,6 +1,7 @@
 use rustc_abi::{Align, ExternAbi};
 use rustc_hir::attrs::{
-    AttributeKind, EiiImplResolution, InlineAttr, Linkage, RtsanSetting, UsedBy,
+    AttributeKind, EiiImplResolution, ExportVisibilityAttrValue, InlineAttr, Linkage, RtsanSetting,
+    UsedBy,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -71,6 +72,13 @@ fn process_builtin_attrs(
         match attr {
             AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
             AttributeKind::ExportName { name, .. } => codegen_fn_attrs.symbol_name = Some(*name),
+            AttributeKind::ExportVisibility { visibility, .. } => {
+                codegen_fn_attrs.export_visibility = Some(match visibility {
+                    ExportVisibilityAttrValue::TargetDefault => {
+                        tcx.sess.default_visibility().into()
+                    }
+                });
+            }
             AttributeKind::Inline(inline, span) => {
                 codegen_fn_attrs.inline = *inline;
                 interesting_spans.inline = Some(*span);
@@ -545,6 +553,16 @@ fn handle_lang_items(
                 ))
         }
         err.emit();
+    }
+
+    if codegen_fn_attrs.export_visibility.is_some() {
+        let span = find_attr!(attrs, ExportVisibility{span, ..} => *span).unwrap_or_default();
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
+            tcx.dcx().emit_err(errors::ExportVisibilityWithRustcStdInternalSymbol { span });
+        }
+        if !codegen_fn_attrs.contains_extern_indicator() {
+            tcx.dcx().emit_err(errors::ExportVisibilityWithoutNoMangleNorExportName { span });
+        }
     }
 }
 

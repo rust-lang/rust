@@ -244,6 +244,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::EiiDeclaration { .. }
                     | AttributeKind::ExportName { .. }
                     | AttributeKind::ExportStable
+                    | AttributeKind::ExportVisibility { .. }
                     | AttributeKind::Feature(..)
                     | AttributeKind::FfiConst(..)
                     | AttributeKind::Fundamental

@@ -1276,3 +1276,20 @@ pub(crate) struct LtoProcMacro;
 #[diag("cannot prefer dynamic linking when performing LTO")]
 #[note("only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO")]
 pub(crate) struct DynamicLinkingWithLTO;
+
+#[derive(Diagnostic)]
+#[diag("`#[export_visibility = ...]` cannot be used on internal language items")]
+pub(crate) struct ExportVisibilityWithRustcStdInternalSymbol {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "`#[export_visibility = ...]` will be ignored \
+     without `export_name`, `no_mangle`, or similar attribute"
+)]
+pub(crate) struct ExportVisibilityWithoutNoMangleNorExportName {
+    #[primary_span]
+    pub span: Span,
+}
