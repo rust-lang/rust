@@ -569,7 +569,7 @@ impl<'a> ShouldRun<'a> {
 
     /// single, non-aliased path
     ///
-    /// Must be an on-disk path; use `alias` for names that do not correspond to on-disk paths.
+    /// Must be an on-disk path; use [`path_aliases`][Self::path_aliases] for names that do not correspond to on-disk paths.
     pub fn path(mut self, path: &str) -> Self {
         self.assert_valid_path(path);
 
