@@ -119,6 +119,11 @@ pub struct InherentAssocCandidate {
     pub scope: DefId,
 }
 
+pub struct ResolvedStructPath<'tcx> {
+    pub res: Result<Res, ErrorGuaranteed>,
+    pub ty: Ty<'tcx>,
+}
+
 /// A context which can lower type-system entities from the [HIR][hir] to
 /// the [`rustc_middle::ty`] representation.
 ///
@@ -2614,38 +2619,36 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::Const::new_error(tcx, e)
         };
 
-        let (ty, variant_did) = match qpath {
+        let ResolvedStructPath { res: opt_res, ty } =
+            self.lower_path_for_struct_expr(qpath, span, hir_id);
+
+        let variant_did = match qpath {
             hir::QPath::Resolved(maybe_qself, path) => {
                 debug!(?maybe_qself, ?path);
-                let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
-                let ty =
-                    self.lower_resolved_ty_path(opt_self_ty, path, hir_id, PermitVariants::Yes);
                 let variant_did = match path.res {
                     Res::Def(DefKind::Variant | DefKind::Struct, did) => did,
                     _ => return non_adt_or_variant_res(),
                 };
 
-                (ty, variant_did)
+                variant_did
             }
             hir::QPath::TypeRelative(hir_self_ty, segment) => {
                 debug!(?hir_self_ty, ?segment);
-                let self_ty = self.lower_ty(hir_self_ty);
-                let opt_res = self.lower_type_relative_ty_path(
-                    self_ty,
-                    hir_self_ty,
-                    segment,
-                    hir_id,
-                    span,
-                    PermitVariants::Yes,
-                );
 
-                let (ty, _, res_def_id) = match opt_res {
-                    Ok(r @ (_, DefKind::Variant | DefKind::Struct, _)) => r,
+                let res_def_id = match opt_res {
+                    Ok(r)
+                        if matches!(
+                            tcx.def_kind(r.def_id()),
+                            DefKind::Variant | DefKind::Struct
+                        ) =>
+                    {
+                        r.def_id()
+                    }
                     Ok(_) => return non_adt_or_variant_res(),
                     Err(e) => return ty::Const::new_error(tcx, e),
                 };
 
-                (ty, res_def_id)
+                res_def_id
             }
         };
 
@@ -2704,6 +2707,41 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let valtree = ty::ValTree::from_branches(tcx, opt_discr_const.into_iter().chain(fields));
         ty::Const::new_value(tcx, valtree, ty)
+    }
+
+    pub fn lower_path_for_struct_expr(
+        &self,
+        qpath: hir::QPath<'tcx>,
+        path_span: Span,
+        hir_id: HirId,
+    ) -> ResolvedStructPath<'tcx> {
+        match qpath {
+            hir::QPath::Resolved(ref maybe_qself, path) => {
+                let self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
+                let ty = self.lower_resolved_ty_path(self_ty, path, hir_id, PermitVariants::Yes);
+                ResolvedStructPath { res: Ok(path.res), ty }
+            }
+            hir::QPath::TypeRelative(hir_self_ty, segment) => {
+                let self_ty = self.lower_ty(hir_self_ty);
+
+                let result = self.lower_type_relative_ty_path(
+                    self_ty,
+                    hir_self_ty,
+                    segment,
+                    hir_id,
+                    path_span,
+                    PermitVariants::Yes,
+                );
+                let ty = result
+                    .map(|(ty, _, _)| ty)
+                    .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));
+
+                ResolvedStructPath {
+                    res: result.map(|(_, kind, def_id)| Res::Def(kind, def_id)),
+                    ty,
+                }
+            }
+        }
     }
 
     /// Lower a [resolved][hir::QPath::Resolved] path to a (type-level) constant.
