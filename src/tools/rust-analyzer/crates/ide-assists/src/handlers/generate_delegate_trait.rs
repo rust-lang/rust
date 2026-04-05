@@ -563,7 +563,8 @@ fn finalize_delegate(
         return Some(delegate.clone());
     }
 
-    let mut editor = SyntaxEditor::new(delegate.syntax().clone_subtree());
+    let (mut editor, delegate) = SyntaxEditor::new(delegate.syntax().clone());
+    let delegate = ast::Impl::cast(delegate).unwrap();
 
     // 1. Replace assoc_item_list if we have new items
     if let Some(items) = assoc_items
@@ -577,7 +578,7 @@ fn finalize_delegate(
 
     // 2. Remove useless where clauses
     if remove_where_clauses {
-        remove_useless_where_clauses(&mut editor, delegate);
+        remove_useless_where_clauses(&mut editor, &delegate);
     }
 
     ast::Impl::cast(editor.finish().new_root().clone())
@@ -703,7 +704,7 @@ fn resolve_name_conflicts(
                         }
                     }
                     p @ ast::GenericParam::LifetimeParam(_) => {
-                        new_params.push(p.clone_for_update());
+                        new_params.push(p);
                     }
                     ast::GenericParam::TypeParam(t) => {
                         let type_bounds = t.type_bound_list();

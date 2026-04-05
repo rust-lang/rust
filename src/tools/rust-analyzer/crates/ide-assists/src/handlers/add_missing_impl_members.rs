@@ -175,7 +175,7 @@ fn add_missing_impl_members_inner(
             )
             && let Some(func_body) = func.body()
         {
-            let mut func_editor = SyntaxEditor::new(first_new_item.syntax().clone_subtree());
+            let (mut func_editor, _) = SyntaxEditor::new(first_new_item.syntax().clone());
             func_editor.replace(func_body.syntax(), body.syntax());
             ast::AssocItem::cast(func_editor.finish().new_root().clone())
         } else {

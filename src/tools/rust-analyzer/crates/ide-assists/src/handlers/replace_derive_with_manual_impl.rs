@@ -227,7 +227,7 @@ fn impl_def_from_trait(
             && let Some(body) = gen_trait_fn_body(&make, func, trait_path, adt, None)
             && let Some(func_body) = func.body()
         {
-            let mut editor = SyntaxEditor::new(first.syntax().clone());
+            let (mut editor, _) = SyntaxEditor::new(first.syntax().clone());
             editor.replace(func_body.syntax(), body.syntax());
             ast::AssocItem::cast(editor.finish().new_root().clone())
         } else {

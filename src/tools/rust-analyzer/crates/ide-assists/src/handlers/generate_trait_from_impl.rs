@@ -98,8 +98,9 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
         impl_ast.syntax().text_range(),
         |builder| {
             let trait_items: ast::AssocItemList = {
-                let trait_items = impl_assoc_items.clone_subtree();
-                let mut trait_items_editor = SyntaxEditor::new(trait_items.syntax().clone());
+                let (mut trait_items_editor, trait_items) =
+                    SyntaxEditor::new(impl_assoc_items.syntax().clone());
+                let trait_items = ast::AssocItemList::cast(trait_items).unwrap();
 
                 trait_items.assoc_items().for_each(|item| {
                     strip_body(&mut trait_items_editor, &item);

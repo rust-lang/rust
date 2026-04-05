@@ -312,8 +312,7 @@ fn create_replacement(
     const_and_type_map: &ConstAndTypeMap,
     concrete_type: &ast::Type,
 ) -> SyntaxNode {
-    let updated_concrete_type = concrete_type.syntax().clone_subtree();
-    let mut editor = SyntaxEditor::new(updated_concrete_type.clone());
+    let (mut editor, updated_concrete_type) = SyntaxEditor::new(concrete_type.syntax().clone());
 
     let mut replacements: Vec<(SyntaxNode, SyntaxNode)> = Vec::new();
     let mut removals: Vec<NodeOrToken<SyntaxNode, _>> = Vec::new();

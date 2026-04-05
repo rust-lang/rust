@@ -402,8 +402,8 @@ fn let_and_guard(cond: &ast::Expr) -> (Option<ast::LetExpr>, Option<ast::Expr>) 
     } else if let ast::Expr::BinExpr(bin_expr) = cond
         && let Some(ast::Expr::LetExpr(let_expr)) = and_bin_expr_left(bin_expr).lhs()
     {
-        let new_expr = bin_expr.clone_subtree();
-        let mut edit = SyntaxEditor::new(new_expr.syntax().clone());
+        let (mut edit, new_expr) = SyntaxEditor::new(bin_expr.syntax().clone());
+        let new_expr = ast::BinExpr::cast(new_expr).unwrap();
 
         let left_bin = and_bin_expr_left(&new_expr);
         if let Some(rhs) = left_bin.rhs() {

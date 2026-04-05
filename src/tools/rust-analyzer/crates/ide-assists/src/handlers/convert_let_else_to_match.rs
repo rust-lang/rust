@@ -190,7 +190,7 @@ fn remove_mut_and_collect_idents(
             let inner = p.pat()?;
             if let ast::Pat::IdentPat(ident) = inner {
                 acc.push(ident);
-                p.clone_for_update().into()
+                p.clone().into()
             } else {
                 make.ref_pat(remove_mut_and_collect_idents(make, &inner, acc)?).into()
             }

@@ -115,7 +115,7 @@ fn wrap_let(assign: &ast::LetStmt, replacement: ast::BlockExpr) -> ast::BlockExp
             .skip(1)
             .collect();
 
-        let mut edit = SyntaxEditor::new(replacement.syntax().clone());
+        let (mut edit, _) = SyntaxEditor::new(replacement.syntax().clone());
         edit.insert_all(Position::before(tail_expr.syntax()), before);
         edit.insert_all(Position::after(tail_expr.syntax()), after);
         ast::BlockExpr::cast(edit.finish().new_root().clone())
