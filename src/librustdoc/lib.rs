@@ -938,11 +938,13 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                         },
                     )
                 }),
-                config::OutputFormat::Json => sess.time("render_json", || {
+                config::OutputFormat::IrJson => sess.time("render_json", || {
                     run_renderer(krate, render_opts, cache, tcx, json::JsonRenderer::init)
                 }),
-                // Already handled above with doctest runners.
-                config::OutputFormat::Doctest => unreachable!(),
+                // Already handled above with doctest runners or coverage early return
+                config::OutputFormat::Doctest | config::OutputFormat::CoverageJson => {
+                    unreachable!()
+                }
             }
         })
     })
