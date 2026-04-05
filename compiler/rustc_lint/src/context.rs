@@ -820,7 +820,7 @@ impl<'tcx> LateContext<'tcx> {
     /// be used for pretty-printing HIR by rustc_hir_pretty.
     pub fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
         let has_attr = |id: hir::HirId| -> bool {
-            self.tcx.hir_attrs(id).iter().any(hir::Attribute::has_span_without_desugaring_kind)
+            self.tcx.hir_attrs(id).iter().any(hir::Attribute::is_prefix_attr_for_suggestions)
         };
         expr.precedence(&has_attr)
     }
