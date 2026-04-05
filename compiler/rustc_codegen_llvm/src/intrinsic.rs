@@ -1462,11 +1462,15 @@ fn codegen_offload<'ll, 'tcx>(
     };
 
     let offload_dims = OffloadKernelDims::from_operands(bx, &args[1], &args[2]);
+    let dyn_cache = match args[3].val {
+        OperandValue::Immediate(val) => val,
+        _ => panic!("unparsable"),
+    };
+    //let dyn_cache = args[3]; //bx.const_i32(512);
+    dbg!(&dyn_cache);
     let args = get_args_from_tuple(bx, args[4], fn_target);
-    //match tuple_op.val {
-    //    OperandValue::Immediate(val) => vec![val],
     //let dyn_cache = args[3];
-    let dyn_cache = bx.const_i32(512);
+    //llvm::Dump(&dyn_cache);
     let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target, LOCAL_CRATE);
 
     let sig = tcx.fn_sig(fn_target.def_id()).skip_binder();
