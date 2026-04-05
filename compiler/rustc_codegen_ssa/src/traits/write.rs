@@ -6,9 +6,9 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_session::{Session, config};
 
-use crate::back::lto::{SerializedModule, ThinModule};
+use crate::back::lto::ThinModule;
 use crate::back::write::{
-    CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn,
+    CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn, ThinLtoInput,
 };
 use crate::{CompiledModule, ModuleCodegen};
 
@@ -47,8 +47,7 @@ pub trait WriteBackendMethods: Clone + 'static {
         dcx: DiagCtxtHandle<'_>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
-        modules: Vec<(String, Self::ModuleBuffer)>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
+        modules: Vec<ThinLtoInput<Self>>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>);
     fn optimize(
         cgcx: &CodegenContext,
