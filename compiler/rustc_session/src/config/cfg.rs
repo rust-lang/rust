@@ -65,6 +65,13 @@ impl<T: Eq + Hash> ExpectedValues<T> {
             ExpectedValues::Any => false,
         }
     }
+
+    pub fn contains(&self, value: &Option<T>) -> bool {
+        match self {
+            ExpectedValues::Some(expecteds) => expecteds.contains(value),
+            ExpectedValues::Any => false,
+        }
+    }
 }
 
 impl<T: Eq + Hash> Extend<T> for ExpectedValues<T> {
