@@ -1,0 +1,24 @@
+error[E0284]: type annotations needed: cannot normalize `f::{constant#0}`
+  --> $DIR/type-const-inherent-value-type-mismatch.rs:18:11
+   |
+LL | fn f() -> [u8; const { Struct::N }] {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `f::{constant#0}`
+
+error: the constant `"this isn't a usize"` is not of type `usize`
+  --> $DIR/type-const-inherent-value-type-mismatch.rs:14:5
+   |
+LL |     type const N: usize = "this isn't a usize";
+   |     ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `&'static str`
+
+error[E0308]: mismatched types
+  --> $DIR/type-const-inherent-value-type-mismatch.rs:18:11
+   |
+LL | fn f() -> [u8; const { Struct::N }] {}
+   |    -      ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `[u8; const { Struct::N }]`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0284, E0308.
+For more information about an error, try `rustc --explain E0284`.
