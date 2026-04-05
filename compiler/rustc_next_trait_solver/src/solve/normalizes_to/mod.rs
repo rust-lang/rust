@@ -2,6 +2,7 @@ mod anon_const;
 mod free_alias;
 mod inherent;
 mod opaque_types;
+mod projection;
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
@@ -13,7 +14,6 @@ use tracing::instrument;
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
 use crate::solve::assembly::{self, Candidate};
-use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
     NoSolution, QueryResult,
@@ -33,55 +33,7 @@ where
         let cx = self.cx();
         match goal.predicate.alias.kind(cx) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
-                let trait_ref = goal.predicate.alias.trait_ref(cx);
-                let (_, proven_via) =
-                    self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
-                        let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
-                        ecx.compute_trait_goal(trait_goal)
-                    })?;
-                self.assemble_and_merge_candidates(
-                    proven_via,
-                    goal,
-                    |ecx| {
-                        // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
-                        //
-                        // If this type is a GAT with currently unconstrained arguments, we do not
-                        // want to normalize it via a candidate which only applies for a specific
-                        // instantiation. We could otherwise keep the GAT as rigid and succeed this way.
-                        // See tests/ui/generic-associated-types/no-incomplete-gat-arg-inference.rs.
-                        //
-                        // This only avoids normalization if a GAT argument is fully unconstrained.
-                        // This is quite arbitrary but fixing it causes some ambiguity, see #125196.
-                        for arg in goal.predicate.alias.own_args(cx).iter() {
-                            let Some(term) = arg.as_term() else {
-                                continue;
-                            };
-                            match ecx.structurally_normalize_term(goal.param_env, term) {
-                                Ok(term) => {
-                                    if term.is_infer() {
-                                        return Some(
-                                            ecx.evaluate_added_goals_and_make_canonical_response(
-                                                Certainty::AMBIGUOUS,
-                                            ),
-                                        );
-                                    }
-                                }
-                                Err(NoSolution) => return Some(Err(NoSolution)),
-                            }
-                        }
-
-                        None
-                    },
-                    |ecx| {
-                        ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
-                            this.structurally_instantiate_normalizes_to_term(
-                                goal,
-                                goal.predicate.alias,
-                            );
-                            this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                        })
-                    },
-                )
+                self.normalize_projection_term(goal)
             }
             ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => {
                 self.normalize_inherent_associated_term(goal)
