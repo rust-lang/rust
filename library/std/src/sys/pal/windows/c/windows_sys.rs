@@ -3189,6 +3189,7 @@ pub const SOCK_STREAM: WINSOCK_SOCKET_TYPE = 1i32;
 pub const SOL_SOCKET: i32 = 65535i32;
 pub const SO_BROADCAST: i32 = 32i32;
 pub const SO_ERROR: i32 = 4103i32;
+pub const SO_KEEPALIVE: i32 = 8i32;
 pub const SO_LINGER: i32 = 128i32;
 pub const SO_RCVTIMEO: i32 = 4102i32;
 pub const SO_SNDTIMEO: i32 = 4101i32;
