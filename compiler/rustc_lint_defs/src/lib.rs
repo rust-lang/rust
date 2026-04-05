@@ -690,6 +690,7 @@ pub enum AttributeLintKind {
     IllFormedAttributeInput {
         suggestions: Vec<String>,
         docs: Option<&'static str>,
+        help: Option<String>,
     },
     EmptyAttribute {
         first_span: Span,
