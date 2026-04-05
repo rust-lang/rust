@@ -2483,13 +2483,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
-            // If we are in this branch, there are definitely some guards here
-            let guard_span = self.thir[*guards.first().unwrap()]
-                .span
-                .to(self.thir[*guards.last().unwrap()].span);
-
             let (post_guard_block, otherwise_post_guard_block) =
-                self.in_if_then_scope(match_scope, guard_span, |this| {
+                self.in_if_then_scope(match_scope, arm_span, |this| {
                     guards.into_iter().fold(BlockAnd(block, ()), |block, guard| {
                         this.then_else_break(
                             block.0,
@@ -2508,8 +2503,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.clear_match_arm_and_guard_scopes(arm_scope);
             }
 
-            let source_info = self.source_info(guard_span);
-            let guard_end = self.source_info(tcx.sess.source_map().end_point(guard_span));
+            let source_info = self.source_info(arm_span);
+            let guard_end = self.source_info(tcx.sess.source_map().end_point(arm_span));
             let guard_frame = self.guard_context.pop().unwrap();
             debug!("Exiting guard building context with locals: {:?}", guard_frame);
 
