@@ -1,12 +1,13 @@
-use std::mem;
 use std::ops::ControlFlow;
 use std::sync::Arc;
+use std::{iter, mem};
 
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{HirId, Target, find_attr};
@@ -829,6 +830,36 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         }
     }
 
+    pub(super) fn forward_inline(&mut self, _span: Span, outer_hir_id: HirId, inner_hir_id: HirId) {
+        let Some(attrs) = self.attrs.get(&outer_hir_id.local_id) else {
+            return;
+        };
+
+        let Some((inline_attr, span)) = find_attr!(*attrs, Inline(attr, span) => (attr, span))
+        else {
+            return;
+        };
+
+        let filtered_iter = attrs
+            .iter()
+            .cloned()
+            .filter(|attr| !matches!(attr, hir::Attribute::Parsed(AttributeKind::Inline(_, _))));
+
+        let filtered_attrs = self.arena.alloc_from_iter(filtered_iter);
+
+        if filtered_attrs.is_empty() {
+            self.attrs.remove(&outer_hir_id.local_id);
+        } else {
+            self.attrs.insert(outer_hir_id.local_id, filtered_attrs);
+        }
+
+        let attr = self.arena.alloc_from_iter(iter::once(hir::Attribute::Parsed(
+            AttributeKind::Inline(*inline_attr, *span),
+        )));
+
+        self.attrs.insert(inner_hir_id.local_id, attr);
+    }
+
     /// Desugar `<expr>.await` into:
     /// ```ignore (pseudo-rust)
     /// match ::std::future::IntoFuture::into_future(<expr>) {
@@ -1199,6 +1230,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 );
 
                 this.maybe_forward_track_caller(body.span, closure_hir_id, expr.hir_id);
+                this.forward_inline(body.span, closure_hir_id, expr.hir_id);
 
                 (parameters, expr)
             });
