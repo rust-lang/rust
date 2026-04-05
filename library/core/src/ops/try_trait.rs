@@ -157,7 +157,7 @@ pub const trait Try: [const] FromResidual {
     /// type: that type will have a "hole" in the correct place, and will maintain the
     /// "foo-ness" of the residual so other types need to opt-in to interconversion.
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-    type Residual;
+    type Residual: Residual<Self::Output>;
 
     /// Constructs the type from its `Output` type.
     ///
