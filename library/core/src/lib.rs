@@ -294,7 +294,7 @@ pub mod bstr;
 pub mod cell;
 pub mod char;
 pub mod ffi;
-#[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
+#[unstable(feature = "core_io", issue = "154046")]
 pub mod io;
 pub mod iter;
 pub mod net;

@@ -140,6 +140,7 @@ pub trait FileExt {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(core_io)]
     /// #![feature(core_io_borrowed_buf)]
     /// #![feature(read_buf_at)]
     ///
@@ -176,6 +177,7 @@ pub trait FileExt {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(core_io)]
     /// #![feature(core_io_borrowed_buf)]
     /// #![feature(read_buf_at)]
     ///
