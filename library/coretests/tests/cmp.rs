@@ -48,6 +48,37 @@ fn test_ord_min_max_by() {
     assert_eq!(cmp::max_by(2, -1, f), 2);
 }
 
+// Regression test for #136307 / #139357: ensure compare() receives (v1, v2), not (v2, v1).
+#[test]
+fn min_by_compare_argument_order() {
+    let mut order = vec![];
+    let _ = cmp::min_by(1i32, 2, |a, b| {
+        order.push((*a, *b));
+        a.cmp(b)
+    });
+    assert_eq!(order, [(1, 2)]);
+}
+
+#[test]
+fn max_by_compare_argument_order() {
+    let mut order = vec![];
+    let _ = cmp::max_by(1i32, 2, |a, b| {
+        order.push((*a, *b));
+        a.cmp(b)
+    });
+    assert_eq!(order, [(1, 2)]);
+}
+
+#[test]
+fn minmax_by_compare_argument_order() {
+    let mut order = vec![];
+    let _ = cmp::minmax_by(1i32, 2, |a, b| {
+        order.push((*a, *b));
+        a.cmp(b)
+    });
+    assert_eq!(order, [(1, 2)]);
+}
+
 #[test]
 fn test_ord_min_max_by_key() {
     let f = |x: &i32| x.abs();
