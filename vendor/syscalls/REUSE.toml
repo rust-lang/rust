@@ -1,0 +1,7 @@
+version = 1
+
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "The syscalls Project Developers"
+SPDX-License-Identifier = "BSD-2-Clause"

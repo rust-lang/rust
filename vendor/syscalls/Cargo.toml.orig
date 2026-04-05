@@ -1,0 +1,67 @@
+[package]
+name = "syscalls"
+version = "0.6.18"
+authors = ["Jason White <rust@jasonwhite.io>", "Baojun Wang <wangbj@gmail.com>"]
+edition = "2021"
+license = "BSD-2-Clause"
+description = """
+A list of Linux system calls.
+"""
+keywords = ["syscall", "linux"]
+readme = "README.md"
+repository = "https://github.com/jasonwhite/syscalls"
+homepage = "https://github.com/jasonwhite/syscalls"
+documentation = "https://docs.rs/syscalls"
+
+[features]
+default = ["std", "serde"]
+
+# Enables all extra features.
+full = ["std", "serde", "all"]
+
+# Enables usage of libstd.
+std = []
+
+# Includes the syscall tables for all architectures.
+all = [
+    "aarch64", "arm", "mips", "mips64", "powerpc", "powerpc64", "riscv32",
+    "riscv64", "s390x", "sparc", "sparc64", "x86", "x86_64"
+]
+
+# Enable syscall tables for individual architectures.
+aarch64 = []
+arm = []
+mips = []
+mips64 = []
+powerpc = []
+powerpc64 = []
+riscv32 = []
+riscv64 = []
+s390x = []
+sparc = []
+sparc64 = []
+x86 = []
+x86_64 = []
+
+# Deprecated: Use `serde` instead.
+with-serde = ["serde", "serde_repr"]
+
+# Enables Serialize/Deserialize impls.
+serde = ["dep:serde", "serde_repr"]
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
+serde_repr = { version = "0.1", optional = true }
+
+[dev-dependencies]
+libc = "0.2"
+serde_json = "1"
+
+[workspace]
+members = [
+    "syscalls-gen",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "doc_cfg"]
