@@ -18,7 +18,9 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
 use rustc_middle::ty::{TyCtxt, VisitorResult, try_visit};
 use rustc_middle::{bug, ty};
-use rustc_next_trait_solver::canonical::instantiate_canonical_state;
+use rustc_next_trait_solver::canonical::{
+    instantiate_canonical_state, try_instantiate_canonical_state,
+};
 use rustc_next_trait_solver::resolve::eager_resolve_vars;
 use rustc_next_trait_solver::solve::{MaybeCause, SolverDelegateEvalExt as _, inspect};
 use rustc_span::Span;
@@ -173,6 +175,50 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             .into_iter()
             .map(|(source, goal)| self.instantiate_proof_tree_for_nested_goal(source, goal, span))
             .collect()
+    }
+
+    /// Like [`Self::instantiate_nested_goals`], but returns `None` if replaying the
+    /// canonical state no longer matches the caller's inference state.
+    pub fn try_instantiate_nested_goals(&self, span: Span) -> Option<Vec<InspectGoal<'a, 'tcx>>> {
+        let infcx = self.goal.infcx;
+        let param_env = self.goal.goal.param_env;
+        let mut orig_values = self.goal.orig_values.clone();
+
+        let mut instantiated_goals = vec![];
+        for step in &self.steps {
+            match **step {
+                inspect::ProbeStep::AddGoal(source, goal) => instantiated_goals.push((
+                    source,
+                    try_instantiate_canonical_state(infcx, span, param_env, &mut orig_values, goal)
+                        .ok()?,
+                )),
+                inspect::ProbeStep::RecordImplArgs { .. } => {}
+                inspect::ProbeStep::MakeCanonicalResponse { .. }
+                | inspect::ProbeStep::NestedProbe(_) => unreachable!(),
+            }
+        }
+
+        let () = try_instantiate_canonical_state(
+            infcx,
+            span,
+            param_env,
+            &mut orig_values,
+            self.final_state,
+        )
+        .ok()?;
+
+        if let Some(term_hack) = &self.goal.normalizes_to_term_hack {
+            let _ = term_hack.constrain_and(infcx, span, param_env, |_| {});
+        }
+
+        Some(
+            instantiated_goals
+                .into_iter()
+                .map(|(source, goal)| {
+                    self.instantiate_proof_tree_for_nested_goal(source, goal, span)
+                })
+                .collect(),
+        )
     }
 
     /// Instantiate the args of an impl if this candidate came from a
