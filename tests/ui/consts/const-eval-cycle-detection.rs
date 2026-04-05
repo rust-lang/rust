@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/17252
+
 const FOO: usize = FOO; //~ ERROR E0391
 //@ ignore-parallel-frontend query cycle
 fn main() {

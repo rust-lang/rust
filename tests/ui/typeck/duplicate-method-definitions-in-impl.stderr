@@ -1,5 +1,5 @@
 error[E0592]: duplicate definitions with name `bar`
-  --> $DIR/issue-4265.rs:11:5
+  --> $DIR/duplicate-method-definitions-in-impl.rs:13:5
    |
 LL |     fn bar() {
    |     -------- other definition for `bar`
@@ -8,7 +8,7 @@ LL |     fn bar() {
    |     ^^^^^^^^ duplicate definitions for `bar`
 
 error[E0599]: no method named `bar` found for struct `Foo` in the current scope
-  --> $DIR/issue-4265.rs:7:24
+  --> $DIR/duplicate-method-definitions-in-impl.rs:9:24
    |
 LL | struct Foo {
    | ---------- method `bar` not found for this struct
@@ -18,7 +18,7 @@ LL |         Foo { baz: 0 }.bar();
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `Foo`
-  --> $DIR/issue-4265.rs:6:5
+  --> $DIR/duplicate-method-definitions-in-impl.rs:8:5
    |
 LL |     fn bar() {
    |     ^^^^^^^^
