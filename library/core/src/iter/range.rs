@@ -513,7 +513,8 @@ macro_rules! step_nonzero_impls {
         $(
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-            impl Step for NonZero<$narrower> {
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for NonZero<$narrower> {
                 step_nonzero_identical_methods!($narrower);
 
                 #[inline]
@@ -538,7 +539,8 @@ macro_rules! step_nonzero_impls {
         $(
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-            impl Step for NonZero<$wider> {
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for NonZero<$wider> {
                 step_nonzero_identical_methods!($wider);
 
                 #[inline]
