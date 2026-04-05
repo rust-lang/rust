@@ -1,3 +1,6 @@
+// Regression test for https://github.com/rust-lang/rust/issues/16562
+// Tests that E0207 is emitted when a type parameter is unconstrained in an impl block.
+
 trait MatrixShape {}
 
 struct Col<D, C> {
