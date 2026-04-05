@@ -196,6 +196,7 @@ symbols! {
         Continue,
         ControlFlow,
         Copy,
+        Cow,
         Debug,
         Default,
         Deref,
