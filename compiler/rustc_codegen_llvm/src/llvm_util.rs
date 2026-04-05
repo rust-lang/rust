@@ -391,6 +391,8 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     cfg.has_reliable_f128 = match (target_arch, target_os) {
         // Unsupported https://github.com/llvm/llvm-project/issues/121122
         (Arch::AmdGpu, _) => false,
+        // Pauthtest musl does not support 128-bit floating point math.
+        (Arch::AArch64, _) if *target_env == Env::Pauthtest => false,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         (Arch::Arm64EC, _) => false,
         // Selection bug <https://github.com/llvm/llvm-project/issues/95471>. This issue is closed

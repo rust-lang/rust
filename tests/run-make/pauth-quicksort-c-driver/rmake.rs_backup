@@ -1,0 +1,76 @@
+// Test compilation flow using custom pauth-enabled toolchain and signing extern "C" function
+// pointers used from within rust. Note that in order for the test to work the location of the
+// toolchain's sysroot has to be provided via env variable (`PAUTHTEST_SYSROOT`). The test assumes
+// that `clang` is available on the path.
+// In this test rust is the driver - providing the data and the comparison function; while c -
+// provides the implementation of quicksort algorithm and is the user of  the data and comparator.
+
+//@ only-aarch64-unknown-linux-pauthtest
+
+use run_make_support::{cc, rfs, run, run_fail, rustc};
+
+fn main() {
+    let pauthtest_sysroot = std::env::var("PAUTHTEST_SYSROOT").unwrap_or_default();
+
+    unsafe {
+        //std::env::set_var("CC", "/opt/llvm-pauth/bin/aarch64-linux-pauthtest-clang");
+        std::env::set_var("CC", "clang");
+    }
+    let dynamic_linker =
+        format!("-Wl,--dynamic-linker={}/usr/lib/libc.so", pauthtest_sysroot);
+    let rpath = format!("-Wl,--rpath={}/usr/lib", pauthtest_sysroot);
+    let rust_lib_name = "rust_quicksort";
+    // rustc()
+    //     .target("aarch64-unknown-linux-pauthtest")
+    //     .crate_type("cdylib")
+    //     .input("quicksort.rs")
+    //     .crate_name(rust_lib_name)
+    //     .args(&[&dynamic_linker, &rpath, "-C", "link-arg=-fuse-ld=lld"])
+    //     .run();
+    rustc()
+        .target("aarch64-unknown-linux-pauthtest")
+        .crate_type("cdylib")
+        .input("quicksort.rs")
+        .crate_name(rust_lib_name)
+        .args(&[
+            "-C", "link-arg=-fuse-ld=lld",
+            "-C", &format!("link-arg=--sysroot={}", pauthtest_sysroot),
+            "-C", &format!("link-arg=-Wl,--dynamic-linker={}/usr/lib/libc.so", pauthtest_sysroot),
+            "-C", &format!("link-arg=-Wl,--rpath={}/usr/lib", pauthtest_sysroot),
+        ])
+        .run();
+
+    let exe_name = "main";
+    cc().out_exe(exe_name)
+        .input("main.c")
+        .args(&[
+            "-v",
+            "-march=armv8.3-a",
+            "-target", "aarch64-unknown-linux-pauthtest",
+            &format!("--sysroot={}", pauthtest_sysroot), // <<< important
+            "-fuse-ld=lld",
+            "-L.",
+            &format!("-l{}", rust_lib_name),
+            &dynamic_linker,
+            &rpath,
+        ])
+        .run();
+    // cc().out_exe(exe_name)
+    //     .input("main.c")
+    //     .args(&[
+    //         "-march=armv8.3-a",
+    //         "-target",
+    //         "aarch64-unknown-linux-pauthtest",
+    //         "-fuse-ld=lld",
+    //         "-L.",
+    //         &format!("-l{}", rust_lib_name),
+    //         &dynamic_linker,
+    //         &rpath,
+    //     ])
+    //     .run();
+
+    run(exe_name);
+
+    rfs::remove_file(format!("{}{rust_lib_name}.{}", "lib", "so"));
+    run_fail(exe_name);
+}

@@ -16,7 +16,8 @@ union LARGE_INTEGER {
   QuadPart: u64,
 }
 
-#[link(name = "rust_test_helpers", kind = "static")]
+#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
+#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
 extern "C" {
     fn increment_all_parts(_: LARGE_INTEGER) -> LARGE_INTEGER;
 }
