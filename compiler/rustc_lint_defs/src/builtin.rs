@@ -4745,7 +4745,7 @@ declare_lint! {
     ///
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub AMBIGUOUS_IMPORT_VISIBILITIES,
-    Warn,
+    Deny,
     "detects certain glob imports that require reporting an ambiguity error",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #149145),
