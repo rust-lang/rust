@@ -8,7 +8,7 @@ note: found an item that was configured out
   --> $DIR/macro-outer-attributes.rs:10:14
    |
 LL |       #[cfg(false)],
-   |             ----- the item is gated here
+   |             ----- the item is disabled
 LL |       pub fn bar() { });
    |              ^^^
 help: consider importing this function

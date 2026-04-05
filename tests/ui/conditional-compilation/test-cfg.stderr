@@ -1,18 +1,48 @@
 error[E0425]: cannot find function `foo` in this scope
-  --> $DIR/test-cfg.rs:8:5
+  --> $DIR/test-cfg.rs:17:5
    |
 LL |     foo();
    |     ^^^ not found in this scope
    |
 note: found an item that was configured out
-  --> $DIR/test-cfg.rs:5:4
+  --> $DIR/test-cfg.rs:6:4
    |
 LL | #[cfg(all(foo, bar))] // foo AND bar
-   |                --- the item is gated here
+   |                --- the item is gated behind `bar`
 LL |
 LL | fn foo() {}
    |    ^^^
 
-error: aborting due to 1 previous error
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/test-cfg.rs:19:5
+   |
+LL |     bar();
+   |     ^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/test-cfg.rs:10:4
+   |
+LL | #[cfg(feature = "meow")]
+   |       ---------------- the item is gated behind the `meow` feature
+LL |
+LL | fn bar() {}
+   |    ^^^
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/test-cfg.rs:21:5
+   |
+LL |     baz();
+   |     ^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/test-cfg.rs:14:4
+   |
+LL | #[cfg(false)]
+   |       ----- the item is disabled
+LL |
+LL | fn baz() {}
+   |    ^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0425`.
