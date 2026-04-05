@@ -1019,34 +1019,13 @@ pub unsafe fn unaligned_volatile_load<T>(src: *const T) -> T;
 #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_store"]
 pub unsafe fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 
-/// Returns the square root of an `f16`
+/// Returns the square root of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::sqrt`](../../std/primitive.f16.html#method.sqrt)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `sqrt` method. For example, [`f32::sqrt`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn sqrtf16(x: f16) -> f16;
-/// Returns the square root of an `f32`
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::sqrt`](../../std/primitive.f32.html#method.sqrt)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sqrtf32(x: f32) -> f32;
-/// Returns the square root of an `f64`
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::sqrt`](../../std/primitive.f64.html#method.sqrt)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sqrtf64(x: f64) -> f64;
-/// Returns the square root of an `f128`
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::sqrt`](../../std/primitive.f128.html#method.sqrt)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sqrtf128(x: f128) -> f128;
+pub fn sqrt<T: bounds::FloatPrimitive>(x: T) -> T;
 
 /// Raises an `f16` to an integer power.
 ///
@@ -1077,63 +1056,21 @@ pub fn powif64(a: f64, x: i32) -> f64;
 #[rustc_nounwind]
 pub fn powif128(a: f128, x: i32) -> f128;
 
-/// Returns the sine of an `f16`.
+/// Returns the sine of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::sin`](../../std/primitive.f16.html#method.sin)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `sin` method. For example, [`f32::sin`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn sinf16(x: f16) -> f16;
-/// Returns the sine of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::sin`](../../std/primitive.f32.html#method.sin)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sinf32(x: f32) -> f32;
-/// Returns the sine of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::sin`](../../std/primitive.f64.html#method.sin)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sinf64(x: f64) -> f64;
-/// Returns the sine of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::sin`](../../std/primitive.f128.html#method.sin)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sinf128(x: f128) -> f128;
+pub fn sin<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the cosine of an `f16`.
+/// Returns the cosine of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::cos`](../../std/primitive.f16.html#method.cos)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `cos` method. For example, [`f32::cos`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn cosf16(x: f16) -> f16;
-/// Returns the cosine of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::cos`](../../std/primitive.f32.html#method.cos)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn cosf32(x: f32) -> f32;
-/// Returns the cosine of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::cos`](../../std/primitive.f64.html#method.cos)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn cosf64(x: f64) -> f64;
-/// Returns the cosine of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::cos`](../../std/primitive.f128.html#method.cos)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn cosf128(x: f128) -> f128;
+pub fn cos<T: bounds::FloatPrimitive>(x: T) -> T;
 
 /// Raises an `f16` to an `f16` power.
 ///
@@ -1164,150 +1101,45 @@ pub fn powf64(a: f64, x: f64) -> f64;
 #[rustc_nounwind]
 pub fn powf128(a: f128, x: f128) -> f128;
 
-/// Returns the exponential of an `f16`.
+/// Returns the exponential of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::exp`](../../std/primitive.f16.html#method.exp)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `exp` method. For example, [`f32::exp`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn expf16(x: f16) -> f16;
-/// Returns the exponential of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::exp`](../../std/primitive.f32.html#method.exp)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn expf32(x: f32) -> f32;
-/// Returns the exponential of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::exp`](../../std/primitive.f64.html#method.exp)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn expf64(x: f64) -> f64;
-/// Returns the exponential of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::exp`](../../std/primitive.f128.html#method.exp)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn expf128(x: f128) -> f128;
+pub fn exp<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns 2 raised to the power of an `f16`.
+/// Returns 2 raised to the power of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::exp2`](../../std/primitive.f16.html#method.exp2)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `exp2` method. For example, [`f32::exp2`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn exp2f16(x: f16) -> f16;
-/// Returns 2 raised to the power of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::exp2`](../../std/primitive.f32.html#method.exp2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn exp2f32(x: f32) -> f32;
-/// Returns 2 raised to the power of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::exp2`](../../std/primitive.f64.html#method.exp2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn exp2f64(x: f64) -> f64;
-/// Returns 2 raised to the power of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::exp2`](../../std/primitive.f128.html#method.exp2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn exp2f128(x: f128) -> f128;
+pub fn exp2<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the natural logarithm of an `f16`.
+/// Returns the natural logarithm of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::ln`](../../std/primitive.f16.html#method.ln)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `ln` method. For example, [`f32::ln`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn logf16(x: f16) -> f16;
-/// Returns the natural logarithm of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::ln`](../../std/primitive.f32.html#method.ln)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn logf32(x: f32) -> f32;
-/// Returns the natural logarithm of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::ln`](../../std/primitive.f64.html#method.ln)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn logf64(x: f64) -> f64;
-/// Returns the natural logarithm of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::ln`](../../std/primitive.f128.html#method.ln)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn logf128(x: f128) -> f128;
+pub fn log<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the base 10 logarithm of an `f16`.
+/// Returns the base 10 logarithm of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::log10`](../../std/primitive.f16.html#method.log10)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `log10` method. For example, [`f32::log10`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log10f16(x: f16) -> f16;
-/// Returns the base 10 logarithm of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::log10`](../../std/primitive.f32.html#method.log10)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log10f32(x: f32) -> f32;
-/// Returns the base 10 logarithm of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::log10`](../../std/primitive.f64.html#method.log10)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log10f64(x: f64) -> f64;
-/// Returns the base 10 logarithm of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::log10`](../../std/primitive.f128.html#method.log10)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log10f128(x: f128) -> f128;
+pub fn log10<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the base 2 logarithm of an `f16`.
+/// Returns the base 2 logarithm of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::log2`](../../std/primitive.f16.html#method.log2)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `log2` method. For example, [`f32::log2`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log2f16(x: f16) -> f16;
-/// Returns the base 2 logarithm of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::log2`](../../std/primitive.f32.html#method.log2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log2f32(x: f32) -> f32;
-/// Returns the base 2 logarithm of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::log2`](../../std/primitive.f64.html#method.log2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log2f64(x: f64) -> f64;
-/// Returns the base 2 logarithm of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::log2`](../../std/primitive.f128.html#method.log2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log2f128(x: f128) -> f128;
+pub fn log2<T: bounds::FloatPrimitive>(x: T) -> T;
 
 /// Returns `a * b + c` for `f16` values.
 ///
@@ -1395,177 +1227,52 @@ pub const fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
 #[rustc_nounwind]
 pub const fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
 
-/// Returns the largest integer less than or equal to an `f16`.
+/// Returns the largest integer less than or equal to a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::floor`](../../std/primitive.f16.html#method.floor)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `floor` method. For example, [`f32::floor`].
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn floorf16(x: f16) -> f16;
-/// Returns the largest integer less than or equal to an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::floor`](../../std/primitive.f32.html#method.floor)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn floorf32(x: f32) -> f32;
-/// Returns the largest integer less than or equal to an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::floor`](../../std/primitive.f64.html#method.floor)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn floorf64(x: f64) -> f64;
-/// Returns the largest integer less than or equal to an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::floor`](../../std/primitive.f128.html#method.floor)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn floorf128(x: f128) -> f128;
+pub const fn floor<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the smallest integer greater than or equal to an `f16`.
+/// Returns the smallest integer greater than or equal to a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::ceil`](../../std/primitive.f16.html#method.ceil)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `ceil` method. For example, [`f32::ceil`].
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn ceilf16(x: f16) -> f16;
-/// Returns the smallest integer greater than or equal to an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::ceil`](../../std/primitive.f32.html#method.ceil)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn ceilf32(x: f32) -> f32;
-/// Returns the smallest integer greater than or equal to an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::ceil`](../../std/primitive.f64.html#method.ceil)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn ceilf64(x: f64) -> f64;
-/// Returns the smallest integer greater than or equal to an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::ceil`](../../std/primitive.f128.html#method.ceil)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn ceilf128(x: f128) -> f128;
+pub const fn ceil<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the integer part of an `f16`.
+/// Returns the integer part of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::trunc`](../../std/primitive.f16.html#method.trunc)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `trunc` method. For example, [`f32::trunc`].
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn truncf16(x: f16) -> f16;
-/// Returns the integer part of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::trunc`](../../std/primitive.f32.html#method.trunc)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn truncf32(x: f32) -> f32;
-/// Returns the integer part of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::trunc`](../../std/primitive.f64.html#method.trunc)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn truncf64(x: f64) -> f64;
-/// Returns the integer part of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::trunc`](../../std/primitive.f128.html#method.trunc)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn truncf128(x: f128) -> f128;
+pub const fn trunc<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the nearest integer to an `f16`. Rounds half-way cases to the number with an even
-/// least significant digit.
+/// Returns the nearest integer to a floating point value. Rounds half-way cases
+/// to the number with an even least significant digit.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `round_ties_even` method. For example, [`f32::round_ties_even`].
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn round_ties_even_f16(x: f16) -> f16;
+pub const fn round_ties_even<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the nearest integer to an `f32`. Rounds half-way cases to the number with an even
-/// least significant digit.
+/// Returns the nearest integer to a floating point value.
+/// Rounds half-way cases away from zero.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `round` method. For example, [`f32::round`].
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn round_ties_even_f32(x: f32) -> f32;
-
-/// Returns the nearest integer to an `f64`. Rounds half-way cases to the number with an even
-/// least significant digit.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn round_ties_even_f64(x: f64) -> f64;
-
-/// Returns the nearest integer to an `f128`. Rounds half-way cases to the number with an even
-/// least significant digit.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn round_ties_even_f128(x: f128) -> f128;
-
-/// Returns the nearest integer to an `f16`. Rounds half-way cases away from zero.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::round`](../../std/primitive.f16.html#method.round)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn roundf16(x: f16) -> f16;
-/// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::round`](../../std/primitive.f32.html#method.round)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn roundf32(x: f32) -> f32;
-/// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::round`](../../std/primitive.f64.html#method.round)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn roundf64(x: f64) -> f64;
-/// Returns the nearest integer to an `f128`. Rounds half-way cases away from zero.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::round`](../../std/primitive.f128.html#method.round)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn roundf128(x: f128) -> f128;
+pub const fn round<T: bounds::FloatPrimitive>(x: T) -> T;
 
 /// Float addition that allows optimizations based on algebraic rules.
 /// Requires that inputs and output of the operation are finite, causing UB otherwise.

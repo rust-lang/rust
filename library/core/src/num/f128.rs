@@ -1569,7 +1569,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(self) -> f128 {
-        intrinsics::floorf128(self)
+        intrinsics::floor(self)
     }
 
     /// Returns the smallest integer greater than or equal to `self`.
@@ -1597,7 +1597,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn ceil(self) -> f128 {
-        intrinsics::ceilf128(self)
+        intrinsics::ceil(self)
     }
 
     /// Returns the nearest integer to `self`. If a value is half-way between two
@@ -1631,7 +1631,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(self) -> f128 {
-        intrinsics::roundf128(self)
+        intrinsics::round(self)
     }
 
     /// Returns the nearest integer to a number. Rounds half-way cases to the number
@@ -1663,7 +1663,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round_ties_even(self) -> f128 {
-        intrinsics::round_ties_even_f128(self)
+        intrinsics::round_ties_even(self)
     }
 
     /// Returns the integer part of `self`.
@@ -1694,7 +1694,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn trunc(self) -> f128 {
-        intrinsics::truncf128(self)
+        intrinsics::trunc(self)
     }
 
     /// Returns the fractional part of `self`.
@@ -1927,6 +1927,6 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(self) -> f128 {
-        intrinsics::sqrtf128(self)
+        intrinsics::sqrt(self)
     }
 }
