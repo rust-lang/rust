@@ -483,6 +483,10 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
         if self.sess().opts.optimize != config::OptLevel::No {
             spflags |= DISPFlags::SPFlagOptimized;
+            // Emit DW_TAG_call_site entries for optimized builds, matching
+            // Clang's behavior. At -O0 no tail-call optimization occurs, so
+            // the debugger can reconstruct the call stack without them.
+            flags |= DIFlags::FlagAllCallsDescribed;
         }
         if let Some((id, _)) = tcx.entry_fn(()) {
             if id == def_id {
@@ -494,6 +498,9 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // LLVM LTO can't unify type definitions when a child DIE is a full subprogram definition.
         // When we use this `decl` below, the subprogram definition gets created at the CU level
         // with a DW_AT_specification pointing back to the type's declaration.
+        // FlagAllCallsDescribed cannot appear on the method declaration DIE
+        // because it has no body, which LLVM's verifier rejects.
+        let decl_flags = flags & !DIFlags::FlagAllCallsDescribed;
         let decl = is_method.then(|| unsafe {
             llvm::LLVMRustDIBuilderCreateMethod(
                 DIB(self),
@@ -505,7 +512,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 file_metadata,
                 loc.line,
                 function_type_metadata,
-                flags,
+                decl_flags,
                 spflags & !DISPFlags::SPFlagDefinition,
                 template_parameters,
             )
