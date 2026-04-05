@@ -3,10 +3,6 @@
 All of these options are passed to `rustc` via the `-C` flag, short for "codegen." You can see
 a version of this list for your exact compiler by running `rustc -C help`.
 
-## ar
-
-This option is deprecated and does nothing.
-
 ## code-model
 
 This option lets you choose which code model to use. \
@@ -193,12 +189,6 @@ crate, improving re-compile times. This takes a path to a directory where
 incremental files will be stored.
 
 Using incremental compilation inhibits certain optimizations (for example by increasing the amount of codegen units) and is therefore not recommended for release builds.
-
-## inline-threshold
-
-This option is deprecated and does nothing.
-
-Consider using `-Cllvm-args=--inline-threshold=...`.
 
 ## instrument-coverage
 
@@ -443,10 +433,6 @@ of the following values:
 
 The default behaviour, if the flag is not specified, depends on the target.
 
-## no-stack-check
-
-This option is deprecated and does nothing.
-
 ## no-vectorize-loops
 
 This flag disables [loop
@@ -654,16 +640,6 @@ deleted once compilation finishes. It takes one of the following values:
 
 * `y`, `yes`, `on`, `true` or no value: save temporary files.
 * `n`, `no`, `off` or `false`: delete temporary files (the default).
-
-## soft-float
-
-This option controls whether `rustc` generates code that emulates floating
-point instructions in software. It takes one of the following values:
-
-* `y`, `yes`, `on`, `true` or no value: use soft floats.
-* `n`, `no`, `off` or `false`: use hardware floats (the default).
-
-This flag only works on `*eabihf` targets and **is unsound and deprecated**.
 
 ## split-debuginfo
 
