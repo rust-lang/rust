@@ -1300,9 +1300,6 @@ pub enum AttributeKind {
     /// Represents `#[no_implicit_prelude]`
     NoImplicitPrelude(Span),
 
-    /// Represents `#[no_link]`
-    NoLink,
-
     /// Represents `#[no_main]`
     NoMain,
 

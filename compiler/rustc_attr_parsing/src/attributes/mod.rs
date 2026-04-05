@@ -53,7 +53,6 @@ pub(crate) mod macro_attrs;
 pub(crate) mod must_not_suspend;
 pub(crate) mod must_use;
 pub(crate) mod no_implicit_prelude;
-pub(crate) mod no_link;
 pub(crate) mod non_exhaustive;
 pub(crate) mod path;
 pub(crate) mod pin_v2;
