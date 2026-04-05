@@ -344,7 +344,7 @@ impl ParseSess {
             lint,
             Some(span.into()),
             node_id,
-            DecorateDiagCompat::Dynamic(Box::new(callback)),
+            DecorateDiagCompat::Dynamic(Box::new(|dcx, level, _| callback(dcx, level))),
         )
     }
 

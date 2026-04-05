@@ -18,7 +18,7 @@
 //@ lldb-command:v *a
 //@ lldb-check:[...] 1
 //@ lldb-command:v *b
-//@ lldb-check:[...] { 0 = 2 1 = 3.5 }
+//@ lldb-check:[...] (2, 3.5)
 
 #![allow(unused_variables)]
 

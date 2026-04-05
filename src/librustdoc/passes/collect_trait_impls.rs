@@ -155,8 +155,9 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
 
     // scan through included items ahead of time to splice in Deref targets to the "valid" sets
     for it in new_items_external.iter().chain(new_items_local.iter()) {
-        if let ImplItem(box Impl { ref for_, ref trait_, ref items, .. }) = it.kind
+        if let ImplItem(box Impl { ref for_, ref trait_, ref items, polarity, .. }) = it.kind
             && trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait()
+            && polarity != ty::ImplPolarity::Negative
             && cleaner.keep_impl(for_, true)
         {
             let target = items

@@ -19,32 +19,34 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser 
         let mut array = false;
         let mut boxed_slice = false;
         let Some(args) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return None;
         };
         if args.is_empty() {
-            cx.expected_at_least_one_argument(args.span);
+            cx.adcx().expected_at_least_one_argument(args.span);
             return None;
         }
         for arg in args.mixed() {
             let Some(arg) = arg.meta_item() else {
-                cx.unexpected_literal(arg.span());
+                cx.adcx().unexpected_literal(arg.span());
                 continue;
             };
             if let Err(span) = arg.args().no_args() {
-                cx.expected_no_args(span);
+                cx.adcx().expected_no_args(span);
             }
             let path = arg.path();
             let (key, skip): (Symbol, &mut bool) = match path.word_sym() {
                 Some(key @ sym::array) => (key, &mut array),
                 Some(key @ sym::boxed_slice) => (key, &mut boxed_slice),
                 _ => {
-                    cx.expected_specific_argument(path.span(), &[sym::array, sym::boxed_slice]);
+                    cx.adcx()
+                        .expected_specific_argument(path.span(), &[sym::array, sym::boxed_slice]);
                     continue;
                 }
             };
             if mem::replace(skip, true) {
-                cx.duplicate_key(arg.span(), key);
+                cx.adcx().duplicate_key(arg.span(), key);
             }
         }
         Some(AttributeKind::RustcSkipDuringMethodDispatch {

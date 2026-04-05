@@ -790,7 +790,7 @@ impl<T> VecDeque<T> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
+    /// let deque: VecDeque<i32> = VecDeque::with_capacity(10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -830,9 +830,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::VecDeque;
+    /// # #![feature(allocator_api)]
     ///
-    /// let deque: VecDeque<u32> = VecDeque::new();
+    /// use std::collections::VecDeque;
+    /// use std::alloc::Global;
+    ///
+    /// let deque: VecDeque<i32> = VecDeque::new_in(Global);
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
@@ -845,9 +848,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::VecDeque;
+    /// # #![feature(allocator_api)]
     ///
-    /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
+    /// use std::collections::VecDeque;
+    /// use std::alloc::Global;
+    ///
+    /// let deque: VecDeque<i32> = VecDeque::with_capacity_in(10, Global);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {

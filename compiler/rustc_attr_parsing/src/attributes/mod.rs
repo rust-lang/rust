@@ -46,6 +46,7 @@ pub(crate) mod dummy;
 pub(crate) mod inline;
 pub(crate) mod instruction_set;
 pub(crate) mod link_attrs;
+pub(crate) mod lint;
 pub(crate) mod lint_helpers;
 pub(crate) mod loop_match;
 pub(crate) mod macro_attrs;
@@ -247,7 +248,7 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for Without
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
+            cx.adcx().expected_no_args(span);
         }
         Some(T::CREATE(cx.attr_span))
     }

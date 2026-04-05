@@ -1651,13 +1651,17 @@ fn extract_if_unconsumed() {
 
 #[test]
 fn extract_if_debug() {
-    let mut vec = vec![1, 2];
-    let mut drain = vec.extract_if(.., |&mut x| x % 2 != 0);
-    assert!(format!("{drain:?}").contains("Some(1)"));
-    drain.next();
-    assert!(format!("{drain:?}").contains("Some(2)"));
-    drain.next();
-    assert!(format!("{drain:?}").contains("None"));
+    let mut vec = vec![1, 2, 3, 4, 5, 6, 7, 8];
+    let mut drain = vec.extract_if(1..5, |&mut x| x % 2 != 0);
+    assert_eq!(
+        format!("{drain:?}"),
+        "ExtractIf { retained: [1], remainder: [2, 3, 4, 5], skipped_tail: [6, 7, 8], .. }"
+    );
+    drain.next().unwrap();
+    assert_eq!(
+        format!("{drain:?}"),
+        "ExtractIf { retained: [1, 2], remainder: [4, 5], skipped_tail: [6, 7, 8], .. }"
+    );
 }
 
 #[test]

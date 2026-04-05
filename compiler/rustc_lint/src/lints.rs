@@ -1238,11 +1238,11 @@ pub(crate) struct OverruledAttributeLint<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint name `{$name}` is deprecated and may not have an effect in the future")]
-pub(crate) struct DeprecatedLintName<'a> {
-    pub name: String,
+pub(crate) struct DeprecatedLintName {
+    pub name: Symbol,
     #[suggestion("change it to", code = "{replace}", applicability = "machine-applicable")]
     pub suggestion: Span,
-    pub replace: &'a str,
+    pub replace: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -1257,32 +1257,32 @@ pub(crate) struct DeprecatedLintNameFromCommandLine<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been renamed to `{$replace}`")]
-pub(crate) struct RenamedLint<'a> {
-    pub name: &'a str,
-    pub replace: &'a str,
+pub(crate) struct RenamedLint {
+    pub name: Symbol,
+    pub replace: Symbol,
     #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion<'a>,
+    pub suggestion: RenamedLintSuggestion,
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum RenamedLintSuggestion<'a> {
+pub(crate) enum RenamedLintSuggestion {
     #[suggestion("use the new name", code = "{replace}", applicability = "machine-applicable")]
     WithSpan {
         #[primary_span]
         suggestion: Span,
-        replace: &'a str,
+        replace: Symbol,
     },
     #[help("use the new name `{$replace}`")]
-    WithoutSpan { replace: &'a str },
+    WithoutSpan { replace: Symbol },
 }
 
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been renamed to `{$replace}`")]
 pub(crate) struct RenamedLintFromCommandLine<'a> {
     pub name: &'a str,
-    pub replace: &'a str,
+    pub replace: Symbol,
     #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion<'a>,
+    pub suggestion: RenamedLintSuggestion,
     #[subdiagnostic]
     pub requested_level: RequestedLevel<'a>,
 }
@@ -1290,7 +1290,7 @@ pub(crate) struct RenamedLintFromCommandLine<'a> {
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been removed: {$reason}")]
 pub(crate) struct RemovedLint<'a> {
-    pub name: &'a str,
+    pub name: Symbol,
     pub reason: &'a str,
 }
 
@@ -1306,7 +1306,7 @@ pub(crate) struct RemovedLintFromCommandLine<'a> {
 #[derive(Diagnostic)]
 #[diag("unknown lint: `{$name}`")]
 pub(crate) struct UnknownLint {
-    pub name: String,
+    pub name: Symbol,
     #[subdiagnostic]
     pub suggestion: Option<UnknownLintSuggestion>,
 }
@@ -1348,8 +1348,8 @@ pub(crate) struct UnknownLintFromCommandLine<'a> {
 
 #[derive(Diagnostic)]
 #[diag("{$level}({$name}) is ignored unless specified at crate level")]
-pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
-    pub level: &'a str,
+pub(crate) struct IgnoredUnlessCrateSpecified {
+    pub level: Symbol,
     pub name: Symbol,
 }
 
@@ -3012,25 +3012,6 @@ pub(crate) struct IllFormedAttributeInput {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition"
-)]
-pub(crate) struct AbsPathWithModule {
-    #[subdiagnostic]
-    pub sugg: AbsPathWithModuleSugg,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion("use `crate`", code = "{replacement}")]
-pub(crate) struct AbsPathWithModuleSugg {
-    #[primary_span]
-    pub span: Span,
-    #[applicability]
-    pub applicability: Applicability,
-    pub replacement: String,
-}
-
-#[derive(Diagnostic)]
 #[diag("hidden lifetime parameters in types are deprecated")]
 pub(crate) struct ElidedLifetimesInPaths {
     #[subdiagnostic]
@@ -3079,30 +3060,6 @@ pub(crate) enum UnusedImportsSugg {
         remove_spans: Vec<Span>,
         num_to_remove: usize,
     },
-}
-
-#[derive(Diagnostic)]
-#[diag("lifetime parameter `{$ident}` only used once")]
-pub(crate) struct SingleUseLifetime {
-    #[label("this lifetime...")]
-    pub param_span: Span,
-    #[label("...is used only here")]
-    pub use_span: Span,
-    #[subdiagnostic]
-    pub suggestion: Option<SingleUseLifetimeSugg>,
-
-    pub ident: Ident,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion("elide the single-use lifetime", applicability = "machine-applicable")]
-pub(crate) struct SingleUseLifetimeSugg {
-    #[suggestion_part(code = "")]
-    pub deletion_span: Option<Span>,
-    #[suggestion_part(code = "{replace_lt}")]
-    pub use_span: Span,
-
-    pub replace_lt: String,
 }
 
 #[derive(Diagnostic)]

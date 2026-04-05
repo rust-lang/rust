@@ -477,9 +477,9 @@ fn sidebar_assoc_items<'a>(
         ];
 
         if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
-            if let Some(impl_) =
-                v.iter().find(|i| i.trait_did() == cx.tcx().lang_items().deref_trait())
-            {
+            if let Some(impl_) = v.iter().find(|i| {
+                i.trait_did() == cx.tcx().lang_items().deref_trait() && !i.is_negative_trait_impl()
+            }) {
                 let mut derefs = DefIdSet::default();
                 derefs.insert(did);
                 sidebar_deref_methods(
@@ -598,6 +598,7 @@ fn sidebar_deref_methods<'a>(
                     .as_ref()
                     .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
                     .unwrap_or(false)
+                    && !i.is_negative_trait_impl()
             })
         {
             sidebar_deref_methods(

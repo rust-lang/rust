@@ -1054,7 +1054,7 @@ marker_impls! {
 #[unstable(feature = "const_destruct", issue = "133214")]
 #[rustc_const_unstable(feature = "const_destruct", issue = "133214")]
 #[lang = "destruct"]
-#[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+#[diagnostic::on_unimplemented(message = "can't drop `{Self}`")]
 #[rustc_deny_explicit_impl]
 #[rustc_dyn_incompatible_trait]
 pub const trait Destruct: PointeeSized {}
@@ -1088,7 +1088,7 @@ pub trait ConstParamTy_: StructuralPartialEq + Eq {}
 /// Derive macro generating an impl of the trait `ConstParamTy`.
 #[rustc_builtin_macro]
 #[allow_internal_unstable(const_param_ty_trait)]
-#[unstable(feature = "adt_const_params", issue = "95174")]
+#[unstable(feature = "min_adt_const_params", issue = "154042", implied_by = "adt_const_params")]
 pub macro ConstParamTy($item:item) {
     /* compiler built-in */
 }

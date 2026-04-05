@@ -3,7 +3,6 @@
 use std::mem;
 
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::find_attr;
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
@@ -113,9 +112,7 @@ impl DocFolder for Stripper<'_, '_> {
             clean::ImplItem(..) => true,
             // If the macro has the `#[macro_export]` attribute, it means it's accessible at the
             // crate level so it should be handled differently.
-            clean::MacroItem(..) => {
-                find_attr!(&i.attrs.other_attrs, MacroExport { .. })
-            }
+            clean::MacroItem(..) => i.is_exported_macro(),
             _ => false,
         };
         let mut is_hidden = has_doc_hidden;

@@ -58,6 +58,14 @@ pub(crate) struct eval_always;
 /// Generate a `feed` method to set the query's value from another query.
 pub(crate) struct feedable;
 
+/// # `handle_cycle_error` query modifier
+///
+/// The default behaviour for a query cycle is to emit a cycle error and halt
+/// compilation. Queries with this modifier will instead use a custom handler,
+/// which must be provided at `rustc_query_impl::handle_cycle_error::$name`,
+/// where `$name` is the query name.
+pub(crate) struct handle_cycle_error;
+
 /// # `no_force` query modifier
 ///
 /// Dep nodes of queries with this modifier will never be "forced" when trying

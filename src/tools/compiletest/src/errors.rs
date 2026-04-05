@@ -9,7 +9,7 @@ use regex::Regex;
 use tracing::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ErrorKind {
+pub(crate) enum ErrorKind {
     Help,
     Error,
     Note,
@@ -21,7 +21,7 @@ pub enum ErrorKind {
 }
 
 impl ErrorKind {
-    pub fn from_compiler_str(s: &str) -> ErrorKind {
+    pub(crate) fn from_compiler_str(s: &str) -> ErrorKind {
         match s {
             "help" => ErrorKind::Help,
             "error" | "error: internal compiler error" => ErrorKind::Error,
@@ -45,7 +45,7 @@ impl ErrorKind {
         })
     }
 
-    pub fn expect_from_user_str(s: &str) -> ErrorKind {
+    pub(crate) fn expect_from_user_str(s: &str) -> ErrorKind {
         ErrorKind::from_user_str(s).unwrap_or_else(|| {
             panic!(
                 "unexpected diagnostic kind `{s}`, expected \
@@ -70,16 +70,16 @@ impl fmt::Display for ErrorKind {
 }
 
 #[derive(Debug)]
-pub struct Error {
-    pub line_num: Option<usize>,
-    pub column_num: Option<usize>,
+pub(crate) struct Error {
+    pub(crate) line_num: Option<usize>,
+    pub(crate) column_num: Option<usize>,
     /// What kind of message we expect (e.g., warning, error, suggestion).
-    pub kind: ErrorKind,
-    pub msg: String,
+    pub(crate) kind: ErrorKind,
+    pub(crate) msg: String,
     /// For some `Error`s, like secondary lines of multi-line diagnostics, line annotations
     /// are not mandatory, even if they would otherwise be mandatory for primary errors.
     /// Only makes sense for "actual" errors, not for "expected" errors.
-    pub require_annotation: bool,
+    pub(crate) require_annotation: bool,
 }
 
 /// Looks for either "//~| KIND MESSAGE" or "//~^^... KIND MESSAGE"
@@ -92,7 +92,7 @@ pub struct Error {
 ///
 /// If revision is not None, then we look
 /// for `//[X]~` instead, where `X` is the current revision.
-pub fn load_errors(testfile: &Utf8Path, revision: Option<&str>) -> Vec<Error> {
+pub(crate) fn load_errors(testfile: &Utf8Path, revision: Option<&str>) -> Vec<Error> {
     let rdr = BufReader::new(File::open(testfile.as_std_path()).unwrap());
 
     // `last_nonfollow_error` tracks the most recently seen

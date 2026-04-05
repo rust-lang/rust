@@ -1,14 +1,11 @@
-warning: unused attribute `expect`
+warning: `#[expect]` attribute cannot be used on macro calls
   --> $DIR/expect_lint_from_macro.rs:26:5
    |
 LL |     #[expect(unused_variables)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the built-in attribute `expect` will be ignored, since it's applied to the macro invocation `trigger_unused_variables_macro`
-  --> $DIR/expect_lint_from_macro.rs:27:5
-   |
-LL |     trigger_unused_variables_macro!();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[expect]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, and use statements
    = note: requested on the command line with `-W unused-attributes`
 
 warning: unused variable: `x`
