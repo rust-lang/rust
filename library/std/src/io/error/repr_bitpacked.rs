@@ -253,7 +253,7 @@ where
         }
         TAG_SIMPLE => {
             let kind_bits = (bits >> 32) as u32;
-            let kind = kind_from_prim(kind_bits).unwrap_or_else(|| {
+            let kind = ErrorKind::_from_prim(kind_bits).unwrap_or_else(|| {
                 debug_assert!(false, "Invalid io::error::Repr bits: `Repr({:#018x})`", bits);
                 // This means the `ptr` passed in was not valid, which violates
                 // the unsafe contract of `decode_repr`.
@@ -281,69 +281,6 @@ where
             unreachable!();
         }
     }
-}
-
-// This compiles to the same code as the check+transmute, but doesn't require
-// unsafe, or to hard-code max ErrorKind or its size in a way the compiler
-// couldn't verify.
-#[inline]
-fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
-    macro_rules! from_prim {
-        ($prim:expr => $Enum:ident { $($Variant:ident),* $(,)? }) => {{
-            // Force a compile error if the list gets out of date.
-            const _: fn(e: $Enum) = |e: $Enum| match e {
-                $($Enum::$Variant => ()),*
-            };
-            match $prim {
-                $(v if v == ($Enum::$Variant as _) => Some($Enum::$Variant),)*
-                _ => None,
-            }
-        }}
-    }
-    from_prim!(ek => ErrorKind {
-        NotFound,
-        PermissionDenied,
-        ConnectionRefused,
-        ConnectionReset,
-        HostUnreachable,
-        NetworkUnreachable,
-        ConnectionAborted,
-        NotConnected,
-        AddrInUse,
-        AddrNotAvailable,
-        NetworkDown,
-        BrokenPipe,
-        AlreadyExists,
-        WouldBlock,
-        NotADirectory,
-        IsADirectory,
-        DirectoryNotEmpty,
-        ReadOnlyFilesystem,
-        FilesystemLoop,
-        StaleNetworkFileHandle,
-        InvalidInput,
-        InvalidData,
-        TimedOut,
-        WriteZero,
-        StorageFull,
-        NotSeekable,
-        QuotaExceeded,
-        FileTooLarge,
-        ResourceBusy,
-        ExecutableFileBusy,
-        Deadlock,
-        CrossesDevices,
-        TooManyLinks,
-        InvalidFilename,
-        ArgumentListTooLong,
-        Interrupted,
-        Other,
-        UnexpectedEof,
-        Unsupported,
-        OutOfMemory,
-        InProgress,
-        Uncategorized,
-    })
 }
 
 // Some static checking to alert us if a change breaks any of the assumptions
