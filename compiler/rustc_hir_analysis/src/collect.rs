@@ -893,11 +893,25 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir_expect_item(def_id);
 
-    let (constness, is_alias, is_auto, safety) = match item.kind {
-        hir::ItemKind::Trait(constness, is_auto, safety, ..) => {
-            (constness, false, is_auto == hir::IsAuto::Yes, safety)
-        }
-        hir::ItemKind::TraitAlias(constness, ..) => (constness, true, false, hir::Safety::Safe),
+    let (constness, is_alias, is_auto, safety, impl_restriction) = match item.kind {
+        hir::ItemKind::Trait(constness, is_auto, safety, impl_restriction, ..) => (
+            constness,
+            false,
+            is_auto == hir::IsAuto::Yes,
+            safety,
+            if let hir::RestrictionKind::Restricted(path) = impl_restriction.kind {
+                ty::trait_def::ImplRestrictionKind::Restricted(path.res, impl_restriction.span)
+            } else {
+                ty::trait_def::ImplRestrictionKind::Unrestricted
+            },
+        ),
+        hir::ItemKind::TraitAlias(constness, ..) => (
+            constness,
+            true,
+            false,
+            hir::Safety::Safe,
+            ty::trait_def::ImplRestrictionKind::Unrestricted,
+        ),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -946,6 +960,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         def_id: def_id.to_def_id(),
         safety,
         constness,
+        impl_restriction,
         paren_sugar,
         has_auto_impl: is_auto,
         is_marker,
