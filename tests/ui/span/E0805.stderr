@@ -4,7 +4,7 @@ error[E0805]: malformed `cfg` macro input
 LL |     if cfg!(not()) { }
    |        ^^^^^^^^--^
    |        |       |
-   |        |       expected a single argument here
+   |        |       expected an argument here
    |        help: must be of the form: `cfg!(predicate)`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>

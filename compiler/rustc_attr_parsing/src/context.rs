@@ -751,8 +751,22 @@ where
         self.emit_parse_error(span, AttributeParseErrorReason::UnexpectedLiteral)
     }
 
-    pub(crate) fn expected_single_argument(&mut self, span: Span) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedSingleArgument)
+    /// Signals that we expected exactly one argument and that we got either zero or two or more.
+    /// The `provided_arguments` argument allows distinguishing between "expected an argument here"
+    /// (when zero arguments are provided) and "expect a single argument here" (when two or more
+    /// arguments are provided).
+    pub(crate) fn expected_single_argument(
+        &mut self,
+        span: Span,
+        provided_arguments: usize,
+    ) -> ErrorGuaranteed {
+        let reason = if provided_arguments == 0 {
+            AttributeParseErrorReason::ExpectedArgument
+        } else {
+            AttributeParseErrorReason::ExpectedSingleArgument
+        };
+
+        self.emit_parse_error(span, reason)
     }
 
     pub(crate) fn expected_at_least_one_argument(&mut self, span: Span) -> ErrorGuaranteed {
