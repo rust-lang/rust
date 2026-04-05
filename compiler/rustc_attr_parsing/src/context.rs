@@ -59,7 +59,7 @@ use crate::attributes::stability::*;
 use crate::attributes::test_attrs::*;
 use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
-use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
+use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
 use crate::parser::{ArgParser, RefPathParser};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
@@ -76,6 +76,7 @@ pub(super) struct GroupTypeInnerAccept<S: Stage> {
     pub(super) template: AttributeTemplate,
     pub(super) accept_fn: AcceptFn<S>,
     pub(super) allowed_targets: AllowedTargets,
+    pub(super) safety: AttributeSafety,
     pub(super) finalizer: FinalizeFn<S>,
 }
 
@@ -126,6 +127,7 @@ macro_rules! attribute_parsers {
                                             accept_fn(s, cx, args)
                                         })
                                     }),
+                                    safety: <$names as crate::attributes::AttributeParser<$stage>>::SAFETY,
                                     allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
                                     finalizer: Box::new(|cx| {
                                         let state = STATE_OBJECT.take();
@@ -830,11 +832,18 @@ where
     }
 
     pub(crate) fn warn_ill_formed_attribute_input(&mut self, lint: &'static Lint) {
+        self.warn_ill_formed_attribute_input_with_help(lint, None)
+    }
+    pub(crate) fn warn_ill_formed_attribute_input_with_help(
+        &mut self,
+        lint: &'static Lint,
+        help: Option<String>,
+    ) {
         let suggestions = self.suggestions();
         let span = self.attr_span;
         self.emit_lint(
             lint,
-            AttributeLintKind::IllFormedAttributeInput { suggestions, docs: None },
+            AttributeLintKind::IllFormedAttributeInput { suggestions, docs: None, help },
             span,
         );
     }

@@ -27,8 +27,15 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
                     };
                     Some(str_value)
                 }
-                ArgParser::List(_) => {
-                    cx.adcx().warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
+                ArgParser::List(list) => {
+                    let help = list.single().and_then(|item| item.meta_item()).and_then(|item| {
+                        item.args().no_args().ok()?;
+                        Some(item.path().to_string())
+                    });
+                    cx.adcx().warn_ill_formed_attribute_input_with_help(
+                        ILL_FORMED_ATTRIBUTE_INPUT,
+                        help,
+                    );
                     return None;
                 }
             },
