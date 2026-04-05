@@ -504,13 +504,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             }
         }
-
-        self.typeck_results.user_provided_types_mut().extend(
-            fcx_typeck_results.user_provided_types().items().map(|(local_id, c_ty)| {
-                let hir_id = HirId { owner: common_hir_owner, local_id };
-                (hir_id, *c_ty)
-            }),
-        );
+        // Fix for #73501: Use stable order to prevent DefId drift in MIR
+        for (local_id, c_ty) in fcx_typeck_results.user_provided_types().items_in_stable_order() {
+            let hir_id = HirId { owner: common_hir_owner, local_id };
+            self.typeck_results.user_provided_types_mut().insert(hir_id, *c_ty);
+        }
     }
 
     fn visit_user_provided_sigs(&mut self) {
