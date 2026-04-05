@@ -51,31 +51,27 @@ declare_lint_pass!(NonCamelCaseTypes => [NON_CAMEL_CASE_TYPES]);
 /// be upper cased or lower cased. For the purposes of the lint suggestion, we care about being able
 /// to change the char's case.
 fn char_has_case(c: char) -> bool {
-    let mut l = c.to_lowercase();
-    let mut u = c.to_uppercase();
-    while let Some(l) = l.next() {
-        match u.next() {
-            Some(u) if l != u => return true,
-            _ => {}
-        }
-    }
-    u.next().is_some()
+    !c.to_lowercase().eq(c.to_uppercase())
+}
+
+// contains a capitalisable character followed by, or preceded by, an underscore
+fn has_underscore_case(s: &str) -> bool {
+    let mut last = '\0';
+    s.chars().any(|c| match (std::mem::replace(&mut last, c), c) {
+        ('_', cs) | (cs, '_') => char_has_case(cs),
+        _ => false,
+    })
 }
 
 fn is_camel_case(name: &str) -> bool {
     let name = name.trim_matches('_');
-    if name.is_empty() {
+    let Some(first) = name.chars().next() else {
         return true;
-    }
+    };
 
-    // start with a non-lowercase letter rather than non-uppercase
+    // start with a non-lowercase letter rather than uppercase
     // ones (some scripts don't have a concept of upper/lowercase)
-    !name.chars().next().unwrap().is_lowercase()
-        && !name.contains("__")
-        && !name.chars().collect::<Vec<_>>().array_windows().any(|&[fst, snd]| {
-            // contains a capitalisable character followed by, or preceded by, an underscore
-            char_has_case(fst) && snd == '_' || char_has_case(snd) && fst == '_'
-        })
+    !(first.is_lowercase() || name.contains("__") || has_underscore_case(name))
 }
 
 fn to_camel_case(s: &str) -> String {
