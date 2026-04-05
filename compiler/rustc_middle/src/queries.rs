@@ -64,9 +64,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
-use rustc_hir::def_id::{
-    CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
-};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModDefId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
 use rustc_index::IndexVec;
@@ -87,6 +85,7 @@ use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
+use crate::middle::dead_code::DeadCodeLivenessSummary;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::deduced_param_attrs::DeducedParamAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
@@ -1199,13 +1198,8 @@ rustc_queries! {
         desc { "checking liveness of variables in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
-    /// Return the live symbols in the crate for dead code check.
-    ///
-    /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone).
-    query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx Result<(
-        LocalDefIdSet,
-        LocalDefIdMap<FxIndexSet<DefId>>,
-    ), ErrorGuaranteed> {
+    /// Return dead-code liveness summary for the crate.
+    query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx Result<DeadCodeLivenessSummary, ErrorGuaranteed> {
         arena_cache
         desc { "finding live symbols in crate" }
     }
