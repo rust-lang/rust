@@ -6,12 +6,12 @@ fn test() -> Option<Vec<u32>> {
     let mut _2: std::boxed::Box<std::mem::MaybeUninit<[u32; 1]>>;
     let mut _3: std::boxed::Box<std::mem::MaybeUninit<[u32; 1]>>;
     let mut _4: u32;
-    let mut _5: std::ops::ControlFlow<std::option::Option<std::convert::Infallible>, u32>;
+    let mut _5: std::ops::ControlFlow<std::option::Option<!>, u32>;
     let mut _6: std::option::Option<u32>;
     let mut _7: isize;
-    let _8: std::option::Option<std::convert::Infallible>;
+    let _8: std::option::Option<!>;
     let mut _9: !;
-    let mut _10: std::option::Option<std::convert::Infallible>;
+    let mut _10: std::option::Option<!>;
     let _11: u32;
     scope 1 {
         debug residual => _8;
@@ -63,10 +63,10 @@ fn test() -> Option<Vec<u32>> {
 
     bb5: {
         StorageLive(_8);
-        _8 = copy ((_5 as Break).0: std::option::Option<std::convert::Infallible>);
+        _8 = copy ((_5 as Break).0: std::option::Option<!>);
         StorageLive(_10);
         _10 = copy _8;
-        _0 = <Option<Vec<u32>> as FromResidual<Option<Infallible>>>::from_residual(move _10) -> [return: bb6, unwind: bb13];
+        _0 = <Option<Vec<u32>> as FromResidual<Option<!>>>::from_residual(move _10) -> [return: bb6, unwind: bb13];
     }
 
     bb6: {
