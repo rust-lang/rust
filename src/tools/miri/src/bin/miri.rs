@@ -310,7 +310,7 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
             // FIXME handle this somehow in rustc itself to avoid this hack.
             local_providers.queries.exported_non_generic_symbols = |tcx, LocalCrate| {
                 let reachable_set = tcx
-                    .with_stable_hashing_context(|hcx| tcx.reachable_set(()).to_sorted(&hcx, true));
+                    .with_stable_hashing_context(|mut hcx| tcx.reachable_set(()).to_sorted(&mut hcx, true));
                 tcx.arena.alloc_from_iter(
                     // This is based on:
                     // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L62-L63

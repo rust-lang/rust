@@ -716,7 +716,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for Namespace {
     type KeyType = Namespace;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &Hcx) -> Namespace {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> Namespace {
         *self
     }
 }

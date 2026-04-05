@@ -254,7 +254,7 @@ impl WorkProductId {
 impl<Hcx> ToStableHashKey<Hcx> for WorkProductId {
     type KeyType = Fingerprint;
     #[inline]
-    fn to_stable_hash_key(&self, _: &Hcx) -> Self::KeyType {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> Self::KeyType {
         self.hash
     }
 }

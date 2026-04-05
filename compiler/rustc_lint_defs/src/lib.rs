@@ -158,7 +158,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for LintExpectationId {
     type KeyType = (DefPathHash, ItemLocalId, u16, u16);
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> Self::KeyType {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> Self::KeyType {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index, .. } => {
                 let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
@@ -632,7 +632,7 @@ impl<Hcx> ToStableHashKey<Hcx> for LintId {
     type KeyType = &'static str;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &Hcx) -> &'static str {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> &'static str {
         self.lint_name_raw()
     }
 }

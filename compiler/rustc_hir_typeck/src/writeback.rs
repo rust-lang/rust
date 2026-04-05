@@ -375,12 +375,12 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn eval_closure_size(&mut self) {
-        self.tcx().with_stable_hashing_context(|ref hcx| {
+        self.tcx().with_stable_hashing_context(|mut hcx| {
             let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
             self.typeck_results.closure_size_eval = fcx_typeck_results
                 .closure_size_eval
-                .to_sorted(hcx, false)
+                .to_sorted(&mut hcx, false)
                 .into_iter()
                 .map(|(&closure_def_id, data)| {
                     let closure_hir_id = self.tcx().local_def_id_to_hir_id(closure_def_id);
@@ -392,12 +392,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_min_capture_map(&mut self) {
-        self.tcx().with_stable_hashing_context(|ref hcx| {
+        self.tcx().with_stable_hashing_context(|mut hcx| {
             let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
             self.typeck_results.closure_min_captures = fcx_typeck_results
                 .closure_min_captures
-                .to_sorted(hcx, false)
+                .to_sorted(&mut hcx, false)
                 .into_iter()
                 .map(|(&closure_def_id, root_min_captures)| {
                     let root_var_map_wb = root_min_captures
@@ -423,12 +423,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_fake_reads_map(&mut self) {
-        self.tcx().with_stable_hashing_context(move |ref hcx| {
+        self.tcx().with_stable_hashing_context(move |mut hcx| {
             let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
             self.typeck_results.closure_fake_reads = fcx_typeck_results
                 .closure_fake_reads
-                .to_sorted(hcx, true)
+                .to_sorted(&mut hcx, true)
                 .into_iter()
                 .map(|(&closure_def_id, fake_reads)| {
                     let resolved_fake_reads = fake_reads
