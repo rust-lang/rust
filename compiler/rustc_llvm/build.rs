@@ -402,6 +402,16 @@ fn main() {
             continue;
         }
 
+        // On apple-darwin, llvm-config reports the versioned shared library name such as LLVM-22-..., but
+        // the distributed toolchain ships libLLVM.dylib. Normalize the link name here.
+        let name =
+            if target.contains("apple-darwin") && llvm_kind == "dylib" && name.starts_with("LLVM-")
+            {
+                "LLVM"
+            } else {
+                name
+            };
+
         let kind = if name.starts_with("LLVM") {
             llvm_kind
         } else if is_static {
