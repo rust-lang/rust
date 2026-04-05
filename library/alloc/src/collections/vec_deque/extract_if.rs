@@ -83,8 +83,8 @@ where
             //
             //  Note: we can't use `vec.get_mut(i).unwrap()` here since the precondition for that
             //  function is that i < vec.len, but we've set vec's length to zero.
-            let idx = self.vec.to_physical_idx(i);
-            let cur = unsafe { &mut *self.vec.ptr().add(idx) };
+            let idx = self.vec.to_wrapped_index(i);
+            let cur = unsafe { &mut *self.vec.ptr().add(idx.as_index()) };
             let drained = (self.pred)(cur);
             // Update the index *after* the predicate is called. If the index
             // is updated prior and the predicate panics, the element at this
@@ -95,7 +95,7 @@ where
                 // SAFETY: We never touch this element again after returning it.
                 return Some(unsafe { ptr::read(cur) });
             } else if self.del > 0 {
-                let hole_slot = self.vec.to_physical_idx(i - self.del);
+                let hole_slot = self.vec.to_wrapped_index(i - self.del);
                 // SAFETY: `self.del` > 0, so the hole slot must not overlap with current element.
                 // We use copy for move, and never touch this element again.
                 unsafe { self.vec.wrap_copy(idx, hole_slot, 1) };
@@ -113,8 +113,8 @@ where
 impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A> {
     fn drop(&mut self) {
         if self.del > 0 {
-            let src = self.vec.to_physical_idx(self.idx);
-            let dst = self.vec.to_physical_idx(self.idx - self.del);
+            let src = self.vec.to_wrapped_index(self.idx);
+            let dst = self.vec.to_wrapped_index(self.idx - self.del);
             let len = self.old_len - self.idx;
             // SAFETY: Trailing unchecked items must be valid since we never touch them.
             unsafe { self.vec.wrap_copy(src, dst, len) };
@@ -131,7 +131,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let peek = if self.idx < self.end {
-            let idx = self.vec.to_physical_idx(self.idx);
+            let idx = self.vec.to_wrapped_index(self.idx);
             // This has to use pointer arithmetic as `self.vec[self.idx]` or
             // `self.vec.get_unchecked(self.idx)` wouldn't work since we
             // temporarily set the length of `self.vec` to zero.
@@ -141,7 +141,7 @@ where
             // smaller than `self.old_len`, `idx` is valid for indexing the
             // buffer. Also, per the invariant of `self.idx`, this element
             // has not been inspected/moved out yet.
-            Some(unsafe { &*self.vec.ptr().add(idx) })
+            Some(unsafe { &*self.vec.ptr().add(idx.as_index()) })
         } else {
             None
         };
