@@ -1,8 +1,8 @@
 warning: irrefutable `if let` pattern
-  --> $DIR/match-cfg-fake-edges.rs:17:8
+  --> $DIR/match-cfg-fake-edges.rs:17:12
    |
 LL |     if let _ = true {
-   |        ^^^^^^^^^^^^
+   |            ^
    |
    = note: this pattern will always match, so the `if let` is useless
    = help: consider replacing the `if let` with a `let`

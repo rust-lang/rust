@@ -1,8 +1,8 @@
 error: irrefutable `if let` guard pattern
-  --> $DIR/warns.rs:4:20
+  --> $DIR/warns.rs:4:24
    |
 LL |         Some(x) if let () = x => {}
-   |                    ^^^^^^^^^^
+   |                        ^^
    |
    = note: this pattern will always match, so the guard is useless
    = help: consider removing the guard and adding a `let` inside the match arm
@@ -13,10 +13,10 @@ LL | #[deny(irrefutable_let_patterns)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: irrefutable `if let` guard pattern
-  --> $DIR/warns.rs:13:14
+  --> $DIR/warns.rs:13:18
    |
 LL |         o if let x = 0 => {}
-   |              ^^^^^^^^^
+   |                  ^
    |
    = note: this pattern will always match, so the guard is useless
    = help: consider removing the guard and adding a `let` inside the match arm

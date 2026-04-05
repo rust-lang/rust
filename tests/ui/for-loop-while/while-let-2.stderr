@@ -30,10 +30,10 @@ LL | |     });
    = note: this warning originates in the macro `foo` which comes from the expansion of the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: irrefutable `while let` pattern
-  --> $DIR/while-let-2.rs:27:11
+  --> $DIR/while-let-2.rs:27:15
    |
 LL |     while let _a = 1 {
-   |           ^^^^^^^^^^
+   |               ^^
    |
    = note: this pattern will always match, so the loop will never exit
    = help: consider instead using a `loop { ... }` with a `let` inside it
