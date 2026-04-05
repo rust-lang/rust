@@ -1487,7 +1487,7 @@ impl f64 {
     /// assert!((-3.0f64).clamp(-2.0, 1.0) == -2.0);
     /// assert!((0.0f64).clamp(-2.0, 1.0) == 0.0);
     /// assert!((2.0f64).clamp(-2.0, 1.0) == 1.0);
-    /// assert!((f64::NAN).clamp(-2.0, 1.0).is_nan());
+    /// assert!(f64::NAN.clamp(-2.0, 1.0).is_nan());
     ///
     /// // These always returns zero, but the sign (which is ignored by `==`) is non-deterministic.
     /// assert!((0.0f64).clamp(-0.0, -0.0) == 0.0);
