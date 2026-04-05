@@ -1533,3 +1533,16 @@ pub const unsafe fn conjure_zst<T>() -> T {
         MaybeUninit::uninit().assume_init()
     }
 }
+
+/// Zero-sized type with an alignment from its const generic parameter.
+///
+/// ## Layout:
+/// If `N` is a valid alignment then the following are guaranteed:
+/// * `size_of::<Align<N>>() == 0`
+/// * `align_of::<Align<N>>() == N`
+///
+/// Otherwise, `Align<N>` does not have a valid layout and compilation will fail.
+#[unstable(feature = "align_type", issue = "none")]
+#[lang = "align_type"]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Align<const N: usize>;
