@@ -1074,18 +1074,20 @@ impl char {
         self > '\u{02FF}' && unicode::Grapheme_Extend(self)
     }
 
-    /// Returns `true` if this `char` has the `Case_Ignorable` property.
+    /// Returns `true` if this `char` has the `Case_Ignorable` property. This narrow-use property
+    /// is used to implement context-dependent casing for the Greek letter sigma (uppercase Σ),
+    /// which has two lowercase forms.
     ///
-    /// `Case_Ignorable` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
-    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    /// `Case_Ignorable` is [described][D136] in Chapter 3 (Conformance) of the Unicode Core Specification,
+    /// and specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`];
+    /// see those resources for more information.
     ///
-    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [D136]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G63116
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     #[must_use]
     #[inline]
-    #[doc(hidden)]
-    #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+    #[unstable(feature = "case_ignorable", issue = "154848")]
     pub fn is_case_ignorable(self) -> bool {
         if self.is_ascii() {
             matches!(self, '\'' | '.' | ':' | '^' | '`')
