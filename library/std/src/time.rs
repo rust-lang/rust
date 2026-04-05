@@ -497,6 +497,11 @@ impl SystemTime {
     /// This is a POSIX `time_t` (as a `u64`),
     /// and is the same time representation as used in many Internet protocols.
     ///
+    /// Also note that the `UNIX_EPOCH` may not be equal to the minimum representable
+    /// value of [`SystemTime`]; [`SystemTime::MIN`] is platform-dependent.
+    /// Thus, the developer ought to anticipate that comparison with `UNIX_EPOCH` may
+    /// result in "failure", even within legitimate, real-world use-cases.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -604,16 +609,17 @@ impl SystemTime {
 
     /// Returns the amount of time elapsed from an earlier point in time.
     ///
-    /// This function may fail because measurements taken earlier are not
-    /// guaranteed to always be before later measurements (due to anomalies such
-    /// as the system clock being adjusted either forwards or backwards).
+    /// This function may produce a [`SystemTimeError`] because measurements taken earlier are not
+    /// guaranteed to always be before later measurements (due to anomalies such as the system clock
+    /// being adjusted either forwards or backwards).
     /// [`Instant`] can be used to measure elapsed time without this risk of failure.
     ///
-    /// If successful, <code>[Ok]\([Duration])</code> is returned where the duration represents
-    /// the amount of time elapsed from the specified measurement to this one.
+    /// If `self` lies further ahead, or at the same point in time compared to `earlier`,
+    /// an [`Ok::<Duration>`](Ok) is returned where the duration represents the amount
+    /// of time elapsed from the specified measurement to this one.
     ///
-    /// Returns an [`Err`] if `earlier` is later than `self`, and the error
-    /// contains how far from `self` the time is.
+    /// Returns an [`Err`] if `earlier` is later than `self`, where the error contains how far
+    /// from `self` the time is, publicly exposed through [`SystemTimeError::duration`].
     ///
     /// # Examples
     ///
@@ -631,19 +637,19 @@ impl SystemTime {
         self.0.sub_time(&earlier.0).map_err(SystemTimeError)
     }
 
-    /// Returns the difference from this system time to the
-    /// current clock time.
+    /// Returns the difference from this system time to the current clock time.
     ///
-    /// This function may fail as the underlying system clock is susceptible to
-    /// drift and updates (e.g., the system clock could go backwards), so this
-    /// function might not always succeed. If successful, <code>[Ok]\([Duration])</code> is
-    /// returned where the duration represents the amount of time elapsed from
+    /// This function may return a [`SystemTimeError`] as the underlying system clock
+    /// is susceptible to drift and updates (e.g., the system clock could go backwards),
+    /// so this function might not always succeed. If successful, an [`Ok::<Duration>`](Ok)
+    /// is returned where the duration represents the amount of time elapsed from
     /// this time measurement to the current time.
     ///
     /// To measure elapsed time reliably, use [`Instant`] instead.
     ///
-    /// Returns an [`Err`] if `self` is later than the current system time, and
-    /// the error contains how far from the current system time `self` is.
+    /// Returns an [`Err`] if `self` is later than the current system time, where the
+    /// error contains how far from the current system time `self` is, publicly exposed
+    /// through [`SystemTimeError::duration`].
     ///
     /// # Examples
     ///
@@ -777,8 +783,8 @@ impl fmt::Debug for SystemTime {
     }
 }
 
-/// An anchor in time which can be used to create new `SystemTime` instances or
-/// learn about where in time a `SystemTime` lies.
+/// An anchor in time which can be used to create new [`SystemTime`] instances or
+/// learn about where in time a [`SystemTime`] lies.
 //
 // NOTE! this documentation is duplicated, here and in SystemTime::UNIX_EPOCH.
 // The two copies are not quite identical, because of the difference in naming.
@@ -793,6 +799,11 @@ impl fmt::Debug for SystemTime {
 /// the number of non-leap seconds since the start of 1970 UTC.
 /// This is a POSIX `time_t` (as a `u64`),
 /// and is the same time representation as used in many Internet protocols.
+///
+/// Also note that the `UNIX_EPOCH` may not be equal to the minimum representable
+/// value of [`SystemTime`]; [`SystemTime::MIN`] is platform-dependent.
+/// Thus, the developer ought to anticipate that comparison with `UNIX_EPOCH` may
+/// result in "failure", even within legitimate, real-world use-cases.
 ///
 /// # Examples
 ///
