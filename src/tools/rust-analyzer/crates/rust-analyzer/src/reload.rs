@@ -582,7 +582,8 @@ impl GlobalState {
                                 [
                                     (base.clone(), "**/*.rs"),
                                     (base.clone(), "**/Cargo.{lock,toml}"),
-                                    (base, "**/rust-analyzer.toml"),
+                                    (base.clone(), "**/rust-analyzer.toml"),
+                                    (base, "**/*.md"),
                                 ]
                             })
                         })
