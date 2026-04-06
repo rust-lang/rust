@@ -301,9 +301,10 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
-    /// use std::collections::HashMap;
+    /// #![feature(allocator_api)]
+    ///
     /// use std::alloc::Global;
+    /// use std::collections::HashMap;
     ///
     /// let map: HashMap<i32, i32> = HashMap::new_in(Global);
     /// ```
@@ -324,9 +325,10 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
-    /// use std::collections::HashMap;
+    /// #![feature(allocator_api)]
+    ///
     /// use std::alloc::Global;
+    /// use std::collections::HashMap;
     ///
     /// let map: HashMap<i32, i32> = HashMap::with_capacity_in(10, Global);
     /// ```
@@ -421,6 +423,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// ```
     /// #![feature(allocator_api)]
+    ///
     /// use std::alloc::Global;
     /// use std::collections::HashMap;
     /// use std::hash::RandomState;
@@ -454,6 +457,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// ```
     /// #![feature(allocator_api)]
+    ///
     /// use std::alloc::Global;
     /// use std::collections::HashMap;
     /// use std::hash::RandomState;

@@ -859,6 +859,37 @@ impl<T, A: Allocator> Rc<T, A> {
     ///
     /// [`new_cyclic`]: Rc::new_cyclic
     /// [`upgrade`]: Weak::upgrade
+    ///
+    /// ```
+    /// # #![allow(dead_code)]
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::Global;
+    /// use std::rc::{Rc, Weak};
+    ///
+    /// struct Gadget {
+    ///     me: Weak<Gadget>,
+    /// }
+    ///
+    /// impl Gadget {
+    ///     /// Constructs a reference counted Gadget.
+    ///     fn new() -> Rc<Self> {
+    ///         // `me` is a `Weak<Gadget>` pointing at the new allocation of the
+    ///         // `Rc` we're constructing.
+    ///         Rc::new_cyclic_in(|me| {
+    ///                 // Create the actual struct here.
+    ///                 Gadget { me: me.clone() }
+    ///             },
+    ///             Global,
+    ///         )
+    ///     }
+    ///
+    ///     /// Returns a reference counted pointer to Self.
+    ///     fn me(&self) -> Rc<Self> {
+    ///         self.me.upgrade().unwrap()
+    ///     }
+    /// }
+    /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_cyclic_in<F>(data_fn: F, alloc: A) -> Rc<T, A>
@@ -1014,6 +1045,17 @@ impl<T, A: Allocator> Rc<T, A> {
 
     /// Constructs a new `Pin<Rc<T>>` in the provided allocator. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    /// use std::rc::Rc;
+    ///
+    /// let x = Rc::pin_in(1, System);
+    /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
@@ -3233,9 +3275,12 @@ impl<T, A: Allocator> Weak<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::Global;
     /// use std::rc::Weak;
     ///
-    /// let empty: Weak<i64> = Weak::new();
+    /// let empty: Weak<i64> = Weak::new_in(Global);
     /// assert!(empty.upgrade().is_none());
     /// ```
     #[inline]
@@ -3450,6 +3495,9 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
     /// use std::rc::{Rc, Weak};
     ///
     /// let strong = Rc::new("hello".to_owned());
@@ -3459,13 +3507,13 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     ///
     /// assert_eq!(2, Rc::weak_count(&strong));
     ///
-    /// assert_eq!("hello", &*unsafe { Weak::from_raw(raw_1) }.upgrade().unwrap());
+    /// assert_eq!("hello", &*unsafe { Weak::from_raw_in(raw_1, System) }.upgrade().unwrap());
     /// assert_eq!(1, Rc::weak_count(&strong));
     ///
     /// drop(strong);
     ///
     /// // Decrement the last weak count.
-    /// assert!(unsafe { Weak::from_raw(raw_2) }.upgrade().is_none());
+    /// assert!(unsafe { Weak::from_raw_in(raw_2, System) }.upgrade().is_none());
     /// ```
     ///
     /// [`into_raw`]: Weak::into_raw
@@ -4310,6 +4358,17 @@ impl<T, A: Allocator> UniqueRc<T, A> {
     /// these weak references will fail before the `UniqueRc` has been converted into an [`Rc`].
     /// After converting the `UniqueRc` into an [`Rc`], any weak references created beforehand will
     /// point to the new [`Rc`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    ///
+    /// use std::alloc::System;
+    /// use std::rc::UniqueRc;
+    ///
+    /// let x = UniqueRc::new_in(1, System);
+    /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "unique_rc_arc", issue = "112566")]
     pub fn new_in(value: T, alloc: A) -> Self {

@@ -179,7 +179,8 @@ impl<T, A: Allocator> HashSet<T, RandomState, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
+    /// #![feature(allocator_api)]
+    ///
     /// use std::alloc::Global;
     /// use std::collections::HashSet;
     ///
@@ -201,9 +202,10 @@ impl<T, A: Allocator> HashSet<T, RandomState, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
-    /// use std::collections::HashSet;
+    /// #![feature(allocator_api)]
+    ///
     /// use std::alloc::Global;
+    /// use std::collections::HashSet;
     ///
     /// let set: HashSet<i32> = HashSet::with_capacity_in(10, Global);
     /// ```
@@ -297,7 +299,8 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
+    /// #![feature(allocator_api)]
+    ///
     /// use std::alloc::Global;
     /// use std::collections::HashSet;
     /// use std::hash::RandomState;
@@ -330,7 +333,8 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
+    /// #![feature(allocator_api)]
+    ///
     /// use std::alloc::Global;
     /// use std::collections::HashSet;
     /// use std::hash::RandomState;

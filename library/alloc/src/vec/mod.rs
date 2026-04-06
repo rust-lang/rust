@@ -1081,6 +1081,17 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// Returns an error if the capacity exceeds `isize::MAX` _bytes_,
     /// or if the allocator reports allocation failure.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let x: Vec<i32, _> = Vec::try_with_capacity_in(10, System)?;
+    /// # Ok::<(), std::collections::TryReserveError>(())
+    /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "try_with_capacity", issue = "91913")]

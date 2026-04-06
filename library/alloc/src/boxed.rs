@@ -700,6 +700,7 @@ impl<T, A: Allocator> Box<T, A> {
     ///
     /// ```
     /// #![feature(allocator_api)]
+    ///
     /// use std::alloc::System;
     ///
     /// let x = Box::pin_in(1, System);
