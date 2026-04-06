@@ -1,0 +1,68 @@
+warning: unreachable call
+  --> $DIR/builtin_derives_on_adts_with_never.rs:8:10
+   |
+LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+   |          ^^^^^ unreachable call
+LL |
+LL | pub struct S(!);
+   |              - any code following this expression is unreachable
+   |
+note: the lint level is defined here
+  --> $DIR/builtin_derives_on_adts_with_never.rs:6:9
+   |
+LL | #![warn(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+warning: unreachable expression
+  --> $DIR/builtin_derives_on_adts_with_never.rs:10:14
+   |
+LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+   |                 --------- in this derive macro expansion
+LL |
+LL | pub struct S(!);
+   |              ^
+   |              |
+   |              unreachable expression
+   |              any code following this expression is unreachable
+
+warning: unreachable expression
+  --> $DIR/builtin_derives_on_adts_with_never.rs:13:10
+   |
+LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+   |          ^^^^^ unreachable expression
+...
+LL |     f: !,
+   |     ---- any code following this expression is unreachable
+
+warning: unreachable expression
+  --> $DIR/builtin_derives_on_adts_with_never.rs:16:5
+   |
+LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+   |                 --------- in this derive macro expansion
+...
+LL |     f: !,
+   |     ^^^^
+   |     |
+   |     unreachable expression
+   |     any code following this expression is unreachable
+
+warning: unreachable call
+  --> $DIR/builtin_derives_on_adts_with_never.rs:20:10
+   |
+LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+   |          ^^^^^ unreachable call
+...
+LL |     E2(!),
+   |        - any code following this expression is unreachable
+
+warning: unreachable expression
+  --> $DIR/builtin_derives_on_adts_with_never.rs:20:10
+   |
+LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+   |          ^^^^^ unreachable expression
+...
+LL |     E3 { f: ! },
+   |          ---- any code following this expression is unreachable
+
+warning: 6 warnings emitted
+
