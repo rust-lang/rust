@@ -9,7 +9,6 @@
 // GenMC headers:
 #include "genmc/Support/Error.hpp"
 #include "genmc/Support/Verbosity.hpp"
-#include "genmc/Verification/InterpreterCallbacks.hpp"
 
 // C++ headers:
 #include <cstdint>
@@ -113,8 +112,12 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
     // value written by the skipped thread.
     conf->replayCompletedThreads = true;
 
-    // Don't emit labels for non-atomics in the graph for more efficient exploration
-    conf->emitNALabels = false;
+    // Initialization checking is done by Miri; GenMC's checks are incorrect for Rust.
+    conf->disableInitializationChecks = true;
+
+    // Don't check static-address validity as it's incompatible with Miri's
+    // dynamic discovery of static variables.
+    conf->disableStaticValidityChecks = true;
 
     // FIXME(genmc): implement symmetry reduction.
     ERROR_ON(
@@ -163,45 +166,5 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
 
     // Create the actual driver and Miri-GenMC communication shim.
     auto driver = std::make_unique<MiriGenmcShim>(std::move(conf), mode);
-
-    // FIXME(genmc,HACK): Until a proper solution is implemented in GenMC, these callbacks will
-    // allow Miri to return information about global allocations and override uninitialized memory
-    // checks for non-atomic loads (Miri handles those without GenMC, so the error would be wrong).
-    auto interpreter_callbacks = InterpreterCallbacks {
-        // Miri already ensures that memory accesses are valid, so this check doesn't matter.
-        // We check that the address is static, but skip checking if it is part of an actual
-        // allocation.
-        .isStaticallyAllocated = [](SAddr addr) { return addr.isStatic(); },
-        // FIXME(genmc,error reporting): Once a proper a proper API for passing such information is
-        // implemented in GenMC, Miri should use it to improve the produced error messages.
-        .getStaticName = [](SAddr addr) { return "[UNKNOWN STATIC]"; },
-        // This function is called to get the initial value stored at the given address.
-        //
-        // From a Miri perspective, this API doesn't work very well: most memory starts out
-        // "uninitialized";
-        // only statics have an initial value. And their initial value is just a sequence of bytes,
-        // but GenMC expect this to be already split into separate atomic variables. So we return a
-        // dummy value.
-        // This value should never be visible to the interpreted program.
-        // GenMC does not understand uninitialized memory the same way Miri does, which may cause
-        // this function to be called. The returned value can be visible to Miri or the user:
-        // - Printing the execution graph may contain this value in place of uninitialized values.
-        //   FIXME(genmc): NOTE: printing the execution graph is not yet implemented.
-        // - Non-atomic loads may return this value, but Miri ignores values of non-atomic loads.
-        // - Atomic loads will *not* see this value once mixed atomic-non-atomic support is added.
-        //   Currently, atomic loads can see this value, unless initialized by an *atomic* store.
-        //   FIXME(genmc): update this comment once mixed atomic-non-atomic support is added.
-        //
-        // FIXME(genmc): implement proper support for uninitialized memory in GenMC.
-        // Ideally, the initial value getter would return an `optional<SVal>`, since the memory
-        // location may be uninitialized.
-        .initValGetter = [](const AAccess& a) { return SVal(0xDEAD); },
-        // Miri serves non-atomic loads from its own memory and these GenMC checks are wrong in that
-        // case. This should no longer be required with proper mixed-size access support.
-        .skipUninitLoadChecks = [](const MemAccessLabel* access_label
-                                ) { return access_label->getOrdering() == MemOrdering::NotAtomic; },
-    };
-    driver->setInterpCallbacks(std::move(interpreter_callbacks));
-
     return driver;
 }
