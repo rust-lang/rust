@@ -36,42 +36,6 @@ pub struct DecorateBuiltinLint<'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            BuiltinLintDiag::NamedArgumentUsedPositionally {
-                position_sp_to_replace,
-                position_sp_for_msg,
-                named_arg_sp,
-                named_arg_name,
-                is_formatting_arg,
-            } => {
-                let (suggestion, name) =
-                    if let Some(positional_arg_to_replace) = position_sp_to_replace {
-                        let mut name = named_arg_name.clone();
-                        if is_formatting_arg {
-                            name.push('$')
-                        };
-                        let span_to_replace = if let Ok(positional_arg_content) =
-                            self.sess.source_map().span_to_snippet(positional_arg_to_replace)
-                            && positional_arg_content.starts_with(':')
-                        {
-                            positional_arg_to_replace.shrink_to_lo()
-                        } else {
-                            positional_arg_to_replace
-                        };
-                        (Some(span_to_replace), name)
-                    } else {
-                        (None, String::new())
-                    };
-
-                lints::NamedArgumentUsedPositionally {
-                    named_arg_sp,
-                    position_label_sp: position_sp_for_msg,
-                    suggestion,
-                    name,
-                    named_arg_name,
-                }
-                .into_diag(dcx, level)
-            }
-
             BuiltinLintDiag::AttributeLint(kind) => {
                 DecorateAttrLint { sess: self.sess, tcx: self.tcx, diagnostic: &kind }
                     .into_diag(dcx, level)
