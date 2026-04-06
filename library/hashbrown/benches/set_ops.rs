@@ -4,9 +4,7 @@
 //!
 //! Each assigning test is done in the configuration that is faster. Cheating, I know.
 //! The exception to this is Sub, because there the result differs. So I made two benchmarks for Sub.
-#![expect(missing_docs)] // criterion_group! generates a public bench entrypoint
-
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::Criterion;
 use hashbrown::HashSet;
 
 /// The number of items to generate for the larger of the sets.
@@ -24,7 +22,7 @@ fn create_set(start: usize, end: usize) -> HashSet<String> {
     (start..end).map(|nr| format!("key{nr}")).collect()
 }
 
-fn register_benches(c: &mut Criterion) {
+pub(crate) fn register_benches(c: &mut Criterion) {
     let large_set = create_set(0, LARGE_SET_SIZE);
     let small_set = create_set(
         LARGE_SET_SIZE - OVERLAP,
@@ -91,6 +89,3 @@ fn register_benches(c: &mut Criterion) {
         });
     });
 }
-
-criterion_group!(benches, register_benches);
-criterion_main!(benches);

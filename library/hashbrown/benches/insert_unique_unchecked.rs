@@ -1,11 +1,9 @@
 //! Compare `insert` and `insert_unique_unchecked` operations performance.
-#![expect(missing_docs)] // criterion_group! generates a public bench entrypoint
-
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::Criterion;
 use hashbrown::HashMap;
 use std::hint::black_box;
 
-fn register_benches(c: &mut Criterion) {
+pub(crate) fn register_benches(c: &mut Criterion) {
     let keys: Vec<String> = (0..1000).map(|i| format!("xxxx{i}yyyy")).collect();
 
     c.bench_function("insert", |b| {
@@ -32,6 +30,3 @@ fn register_benches(c: &mut Criterion) {
         });
     });
 }
-
-criterion_group!(benches, register_benches);
-criterion_main!(benches);

@@ -1,6 +1,4 @@
-#![expect(missing_docs)] // https://github.com/rust-lang/rust/issues/137561
-
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::Criterion;
 use hashbrown::HashMap;
 use std::hint::black_box;
 
@@ -19,7 +17,7 @@ macro_rules! bench_with_capacity {
     };
 }
 
-fn register_benches(c: &mut Criterion) {
+pub(crate) fn register_benches(c: &mut Criterion) {
     bench_with_capacity!(c, with_capacity_000000, 0);
     bench_with_capacity!(c, with_capacity_000001, 1);
     bench_with_capacity!(c, with_capacity_000003, 3);
@@ -36,6 +34,3 @@ fn register_benches(c: &mut Criterion) {
     bench_with_capacity!(c, with_capacity_016384, 16384);
     bench_with_capacity!(c, with_capacity_065536, 65536);
 }
-
-criterion_group!(benches, register_benches);
-criterion_main!(benches);

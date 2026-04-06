@@ -13,6 +13,7 @@ edition = "2024"
 
 # Make sure to sync this MSRV in the README badge and CI workflows
 rust-version = "1.85.0"
+autobenches = false
 
 [lints.rust]
 missing_docs = "warn"
@@ -119,18 +120,6 @@ inline-more = []
 
 [[bench]]
 name = "bench"
-harness = false
-
-[[bench]]
-name = "set_ops"
-harness = false
-
-[[bench]]
-name = "insert_unique_unchecked"
-harness = false
-
-[[bench]]
-name = "with_capacity"
 harness = false
 
 [package.metadata.docs.rs]
