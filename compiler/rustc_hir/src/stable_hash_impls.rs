@@ -13,7 +13,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for BodyId {
     type KeyType = (DefPathHash, ItemLocalId);
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> (DefPathHash, ItemLocalId) {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> (DefPathHash, ItemLocalId) {
         let BodyId { hir_id } = *self;
         hir_id.to_stable_hash_key(hcx)
     }
@@ -23,7 +23,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for ItemId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
         self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
@@ -32,7 +32,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for TraitItemId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
         self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
@@ -41,7 +41,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for ImplItemId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
         self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
@@ -50,7 +50,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for ForeignItemId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
         self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
