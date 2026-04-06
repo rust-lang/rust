@@ -1,12 +1,11 @@
-//! Handles the `Enter` key press. At the momently, this only continues
-//! comments, but should handle indent some time in the future as well.
+//! Handles the `Enter` key press, including comment continuation and
+//! indentation in brace-delimited constructs.
 
 use ide_db::{FilePosition, RootDatabase};
 use syntax::{
     AstNode, SmolStr, SourceFile,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset,
-    algo::find_node_at_offset,
+    SyntaxToken, TextRange, TextSize, TokenAtOffset,
     ast::{self, AstToken, edit::IndentLevel},
 };
 
@@ -19,7 +18,8 @@ use ide_db::text_edit::TextEdit;
 // - <kbd>Enter</kbd> inside triple-slash comments automatically inserts `///`
 // - <kbd>Enter</kbd> in the middle or after a trailing space in `//` inserts `//`
 // - <kbd>Enter</kbd> inside `//!` doc comments automatically inserts `//!`
-// - <kbd>Enter</kbd> after `{` indents contents and closing `}` of single-line block
+// - <kbd>Enter</kbd> after `{` reformats single-line brace-delimited contents by
+//   moving the text between `{` and the matching `}` onto an indented line
 //
 // This action needs to be assigned to shortcut explicitly.
 //
@@ -59,22 +59,11 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Text
         return on_enter_in_comment(&comment, &file, position.offset);
     }
 
-    if token.kind() == L_CURLY {
-        // Typing enter after the `{` of a block expression, where the `}` is on the same line
-        if let Some(edit) = find_node_at_offset(file.syntax(), position.offset - TextSize::of('{'))
-            .and_then(|block| on_enter_in_block(block, position))
-        {
-            cov_mark::hit!(indent_block_contents);
-            return Some(edit);
-        }
-
-        // Typing enter after the `{` of a use tree list.
-        if let Some(edit) = find_node_at_offset(file.syntax(), position.offset - TextSize::of('{'))
-            .and_then(|list| on_enter_in_use_tree_list(list, position))
-        {
-            cov_mark::hit!(indent_block_contents);
-            return Some(edit);
-        }
+    if token.kind() == L_CURLY
+        && let Some(edit) = on_enter_in_braces(token, position)
+    {
+        cov_mark::hit!(indent_block_contents);
+        return Some(edit);
     }
 
     None
@@ -119,44 +108,54 @@ fn on_enter_in_comment(
     Some(edit)
 }
 
-fn on_enter_in_block(block: ast::BlockExpr, position: FilePosition) -> Option<TextEdit> {
-    let contents = block_contents(&block)?;
-
-    if block.syntax().text().contains_char('\n') {
+fn on_enter_in_braces(l_curly: SyntaxToken, position: FilePosition) -> Option<TextEdit> {
+    if l_curly.text_range().end() != position.offset {
         return None;
     }
 
-    let indent = IndentLevel::from_node(block.syntax());
-    let mut edit = TextEdit::insert(position.offset, format!("\n{}$0", indent + 1));
-    edit.union(TextEdit::insert(contents.text_range().end(), format!("\n{indent}"))).ok()?;
-    Some(edit)
+    let (r_curly, content) = brace_contents_on_same_line(&l_curly)?;
+    let indent = IndentLevel::from_token(&l_curly);
+    Some(TextEdit::replace(
+        TextRange::new(position.offset, r_curly.text_range().start()),
+        format!("\n{}$0{}\n{indent}", indent + 1, content),
+    ))
 }
 
-fn on_enter_in_use_tree_list(list: ast::UseTreeList, position: FilePosition) -> Option<TextEdit> {
-    if list.syntax().text().contains_char('\n') {
-        return None;
-    }
+fn brace_contents_on_same_line(l_curly: &SyntaxToken) -> Option<(SyntaxToken, String)> {
+    let mut depth = 0_u32;
+    let mut tokens = Vec::new();
+    let mut token = l_curly.next_token()?;
 
-    let indent = IndentLevel::from_node(list.syntax());
-    let mut edit = TextEdit::insert(position.offset, format!("\n{}$0", indent + 1));
-    edit.union(TextEdit::insert(list.r_curly_token()?.text_range().start(), format!("\n{indent}")))
-        .ok()?;
-    Some(edit)
-}
-
-fn block_contents(block: &ast::BlockExpr) -> Option<SyntaxNode> {
-    let mut node = block.tail_expr().map(|e| e.syntax().clone());
-
-    for stmt in block.statements() {
-        if node.is_some() {
-            // More than 1 node in the block
+    loop {
+        if token.kind() == WHITESPACE && token.text().contains('\n') {
             return None;
         }
 
-        node = Some(stmt.syntax().clone());
-    }
+        match token.kind() {
+            L_CURLY => {
+                depth += 1;
+                tokens.push(token.clone());
+            }
+            R_CURLY if depth == 0 => {
+                let first = tokens.iter().position(|it| it.kind() != WHITESPACE);
+                let last = tokens.iter().rposition(|it| it.kind() != WHITESPACE);
+                let content = match first.zip(last) {
+                    Some((first, last)) => {
+                        tokens[first..=last].iter().map(|it| it.text()).collect()
+                    }
+                    None => String::new(),
+                };
+                return Some((token, content));
+            }
+            R_CURLY => {
+                depth -= 1;
+                tokens.push(token.clone());
+            }
+            _ => tokens.push(token.clone()),
+        }
 
-    node
+        token = token.next_token()?;
+    }
 }
 
 fn followed_by_comment(comment: &ast::Comment) -> bool {
@@ -382,8 +381,56 @@ fn main() {
     }
 
     #[test]
-    fn indents_fn_body_block() {
+    fn indents_empty_brace_pairs() {
         cov_mark::check!(indent_block_contents);
+        do_check(
+            r#"
+fn f() {$0}
+        "#,
+            r#"
+fn f() {
+    $0
+}
+        "#,
+        );
+        do_check(
+            r#"
+fn f() {
+    let x = {$0};
+}
+        "#,
+            r#"
+fn f() {
+    let x = {
+        $0
+    };
+}
+        "#,
+        );
+        do_check(
+            r#"
+use crate::{$0};
+        "#,
+            r#"
+use crate::{
+    $0
+};
+        "#,
+        );
+        do_check(
+            r#"
+mod m {$0}
+            "#,
+            r#"
+mod m {
+    $0
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn indents_fn_body_block() {
         do_check(
             r#"
 fn f() {$0()}
@@ -477,29 +524,39 @@ fn f() {
     }
 
     #[test]
-    fn does_not_indent_empty_block() {
-        do_check_noop(
+    fn indents_block_with_multiple_statements() {
+        do_check(
             r#"
-fn f() {$0}
+fn f() {$0 a = b; ()}
+        "#,
+            r#"
+fn f() {
+    $0a = b; ()
+}
         "#,
         );
-        do_check_noop(
+        do_check(
             r#"
-fn f() {{$0}}
+fn f() {$0 a = b; a = b; }
+        "#,
+            r#"
+fn f() {
+    $0a = b; a = b;
+}
         "#,
         );
     }
 
     #[test]
-    fn does_not_indent_block_with_too_much_content() {
-        do_check_noop(
+    fn trims_spaces_around_brace_contents() {
+        do_check(
             r#"
-fn f() {$0 a = b; ()}
+fn f() {$0   ()   }
         "#,
-        );
-        do_check_noop(
             r#"
-fn f() {$0 a = b; a = b; }
+fn f() {
+    $0()
+}
         "#,
         );
     }
@@ -565,6 +622,20 @@ use {
         $0Object, path::to::OtherThing
     }
 };
+            "#,
+        );
+    }
+
+    #[test]
+    fn indents_item_lists() {
+        do_check(
+            r#"
+mod m {$0}
+            "#,
+            r#"
+mod m {
+    $0
+}
             "#,
         );
     }
