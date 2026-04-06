@@ -4,6 +4,7 @@ error: function `unused_pub_fn` is never used
 LL | pub fn unused_pub_fn() {}
    |        ^^^^^^^^^^^^^
    |
+   = note: in libraries, `pub` items can be used by dependent crates; in binaries, they cannot, so this `pub` item is unused
 note: the lint level is defined here
   --> $DIR/interaction-allow-dead-code.rs:2:9
    |

@@ -26,7 +26,8 @@ use rustc_session::lint::{self, Lint, LintExpectationId};
 use rustc_span::{Symbol, kw};
 
 use crate::errors::{
-    ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,
+    ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UnusedPubItemsInBinaryNote,
+    UselessAssignment,
 };
 
 /// Any local definition that may call something in its body block should be explored. For example,
@@ -983,6 +984,13 @@ impl<'tcx> DeadVisitor<'tcx> {
         (level.level, level.lint_id)
     }
 
+    fn unused_pub_items_in_binary_note(&self) -> Option<UnusedPubItemsInBinaryNote> {
+        self.target_lint
+            .name
+            .eq(UNUSED_PUB_ITEMS_IN_BINARY.name)
+            .then_some(UnusedPubItemsInBinaryNote)
+    }
+
     // # Panics
     // All `dead_codes` must have the same lint level, otherwise we will intentionally ICE.
     // This is because we emit a multi-spanned lint using the lint level of the `dead_codes`'s
@@ -1094,6 +1102,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     descr,
                     participle,
                     name_list,
+                    unused_pub_items_in_binary_note: self.unused_pub_items_in_binary_note(),
                     change_fields_suggestion: fields_suggestion,
                     parent_info,
                     ignored_derived_impls,
@@ -1130,6 +1139,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     descr,
                     participle,
                     name_list,
+                    unused_pub_items_in_binary_note: self.unused_pub_items_in_binary_note(),
                     parent_info,
                     ignored_derived_impls,
                     enum_variants_with_same_name,
