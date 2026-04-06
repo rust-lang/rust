@@ -530,15 +530,8 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
 
         ty::Closure(def, args) => {
             // For now we limit ourselves to closures without binders. The next solver can handle them.
-            let sig =
-                args.as_closure().sig().no_bound_vars().ok_or(EvaluationFailure::NoSolution)?;
-            (
-                def,
-                tcx.mk_args_from_iter(
-                    [ty::GenericArg::from(*sig.inputs().get(0).unwrap()), sig.output().into()]
-                        .into_iter(),
-                ),
-            )
+            args.as_closure().sig().no_bound_vars().ok_or(EvaluationFailure::NoSolution)?;
+            (def, args)
         }
 
         // Everything else needs explicit impls or cannot have an impl
