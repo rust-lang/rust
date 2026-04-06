@@ -137,7 +137,7 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::UnusedDuplicate { this, other, warning } => {
                 lints::UnusedDuplicate { this, other, warning }.into_diag(dcx, level)
             }
-            AttributeLintKind::IllFormedAttributeInput { suggestions, docs } => {
+            AttributeLintKind::IllFormedAttributeInput { suggestions, docs, help } => {
                 lints::IllFormedAttributeInput {
                     num_suggestions: suggestions.len(),
                     suggestions: DiagArgValue::StrListSepByAnd(
@@ -145,6 +145,7 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     ),
                     has_docs: docs.is_some(),
                     docs: docs.unwrap_or(""),
+                    help: help.clone().map(|h| lints::IllFormedAttributeInputHelp { lint: h }),
                 }
                 .into_diag(dcx, level)
             }
