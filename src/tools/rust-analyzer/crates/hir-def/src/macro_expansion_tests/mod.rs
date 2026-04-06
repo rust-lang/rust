@@ -45,6 +45,7 @@ use tt::{TextRange, TextSize};
 use crate::{
     AdtId, Lookup, ModuleDefId,
     db::DefDatabase,
+    expr_store::Body,
     nameres::{DefMap, ModuleSource, crate_def_map},
     src::HasSource,
     test_db::TestDB,
@@ -276,7 +277,7 @@ fn resolve_macro_call_id(
                 _ => continue,
             };
 
-            let (body, sm) = db.body_with_source_map(body);
+            let (body, sm) = Body::with_source_map(db, body);
             if let Some(it) = body
                 .blocks(db)
                 .find_map(|block| resolve_macro_call_id(db, block.1, ast_id, ast_ptr))

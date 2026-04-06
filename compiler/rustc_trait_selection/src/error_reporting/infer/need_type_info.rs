@@ -255,7 +255,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
 fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinter<'a, 'tcx> {
     let mut p = FmtPrinter::new(infcx.tcx, ns);
     let ty_getter = move |ty_vid| {
-        if infcx.probe_ty_var(ty_vid).is_ok() {
+        if infcx.try_resolve_ty_var(ty_vid).is_ok() {
             warn!("resolved ty var in error message");
         }
 
@@ -507,18 +507,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, term, ty);
-        if let Some(body) = self.tcx.hir_maybe_body_owned_by(
-            self.tcx.typeck_root_def_id(body_def_id.to_def_id()).expect_local(),
-        ) {
+        if let Some(body) =
+            self.tcx.hir_maybe_body_owned_by(self.tcx.typeck_root_def_id_local(body_def_id))
+        {
             let expr = body.value;
             local_visitor.visit_expr(expr);
         }
 
         let Some(InferSource { span, kind }) = local_visitor.infer_source else {
             let silence = if let DefKind::AssocFn = self.tcx.def_kind(body_def_id)
-                && let parent = self.tcx.parent(body_def_id.into())
-                && self.tcx.is_automatically_derived(parent)
-                && let Some(parent) = parent.as_local()
+                && let parent = self.tcx.local_parent(body_def_id)
+                && self.tcx.is_automatically_derived(parent.to_def_id())
                 && let hir::Node::Item(item) = self.tcx.hir_node_by_def_id(parent)
                 && let hir::ItemKind::Impl(imp) = item.kind
                 && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = imp.self_ty.kind

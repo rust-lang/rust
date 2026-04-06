@@ -13,7 +13,8 @@ impl<S: Stage> AttributeParser<S> for ConfusablesParser {
         template!(List: &[r#""name1", "name2", ..."#]),
         |this, cx, args| {
             let Some(list) = args.list() else {
-                cx.expected_list(cx.attr_span, args);
+                let attr_span = cx.attr_span;
+                cx.adcx().expected_list(attr_span, args);
                 return;
             };
 
@@ -25,7 +26,7 @@ impl<S: Stage> AttributeParser<S> for ConfusablesParser {
                 let span = param.span();
 
                 let Some(lit) = param.lit().and_then(|i| i.value_str()) else {
-                    cx.expected_string_literal(span, param.lit());
+                    cx.adcx().expected_string_literal(span, param.lit());
                     continue;
                 };
 

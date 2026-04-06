@@ -7,5 +7,5 @@ impl Fail<i32> {
 
 fn main() {
     Fail::<()>::C
-    //~^ ERROR no associated item named `C` found for struct `Fail<()>` in the current scope
+    //~^ ERROR no associated function or constant named `C` found for struct `Fail<()>` in the current scope
 }

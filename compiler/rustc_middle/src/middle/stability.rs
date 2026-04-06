@@ -4,7 +4,7 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintBuffer, msg};
+use rustc_errors::{Applicability, Diag, Diagnostic, EmissionGuarantee, LintBuffer, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -12,7 +12,7 @@ use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stabil
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE};
-use rustc_session::lint::{BuiltinLintDiag, DeprecatedSinceKind, Level, Lint};
+use rustc_session::lint::{DeprecatedSinceKind, Level, Lint};
 use rustc_session::parse::feature_err_issue;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
@@ -187,23 +187,33 @@ fn deprecated_since_kind(is_in_effect: bool, since: DeprecatedSince) -> Deprecat
 pub fn early_report_macro_deprecation(
     lint_buffer: &mut LintBuffer,
     depr: &Deprecation,
-    span: Span,
+    suggestion_span: Span,
     node_id: NodeId,
     path: String,
 ) {
-    if span.in_derive_expansion() {
+    if suggestion_span.in_derive_expansion() {
         return;
     }
 
     let is_in_effect = depr.is_in_effect();
-    let diag = BuiltinLintDiag::DeprecatedMacro {
-        suggestion: depr.suggestion,
-        suggestion_span: span,
-        note: depr.note.map(|ident| ident.name),
-        path,
-        since_kind: deprecated_since_kind(is_in_effect, depr.since),
-    };
-    lint_buffer.buffer_lint(deprecation_lint(is_in_effect), node_id, span, diag);
+    let suggestion = depr.suggestion;
+    let note = depr.note.map(|ident| ident.name);
+    let since_kind = deprecated_since_kind(is_in_effect, depr.since);
+    lint_buffer.dyn_buffer_lint(
+        deprecation_lint(is_in_effect),
+        node_id,
+        suggestion_span,
+        move |dcx, level| {
+            let sub = suggestion.map(|suggestion| DeprecationSuggestion {
+                span: suggestion_span,
+                kind: "macro".to_owned(),
+                suggestion,
+            });
+
+            Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
+                .into_diag(dcx, level)
+        },
+    );
 }
 
 fn late_report_deprecation(

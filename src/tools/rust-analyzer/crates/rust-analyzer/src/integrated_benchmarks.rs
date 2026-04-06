@@ -53,6 +53,7 @@ fn integrated_highlighting_benchmark() {
         load_out_dirs_from_check: true,
         with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: false,
+        num_worker_threads: 1,
         proc_macro_processes: 1,
     };
 
@@ -122,6 +123,7 @@ fn integrated_completion_benchmark() {
         load_out_dirs_from_check: true,
         with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: true,
+        num_worker_threads: 1,
         proc_macro_processes: 1,
     };
 
@@ -324,6 +326,7 @@ fn integrated_diagnostics_benchmark() {
         load_out_dirs_from_check: true,
         with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: true,
+        num_worker_threads: 1,
         proc_macro_processes: 1,
     };
 

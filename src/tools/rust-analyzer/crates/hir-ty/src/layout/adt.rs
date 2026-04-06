@@ -5,7 +5,7 @@ use std::{cmp, ops::Bound};
 use hir_def::{
     AdtId, VariantId,
     attrs::AttrFlags,
-    signatures::{StructFlags, VariantFields},
+    signatures::{StructFlags, StructSignature, VariantFields},
 };
 use rustc_abi::{Integer, ReprOptions, TargetDataLayout};
 use rustc_index::IndexVec;
@@ -41,7 +41,7 @@ pub fn layout_of_adt_query(
     };
     let (variants, repr, is_special_no_niche) = match def {
         AdtId::StructId(s) => {
-            let sig = db.struct_signature(s);
+            let sig = StructSignature::of(db, s);
             let mut r = SmallVec::<[_; 1]>::new();
             r.push(handle_variant(s.into(), s.fields(db))?);
             (

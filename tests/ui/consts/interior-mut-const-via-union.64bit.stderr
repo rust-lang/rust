@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value at .<deref>.y.<enum-variant(B)>.0: encountered `UnsafeCell` in read-only memory
+error[E0080]: constructing invalid value of type &S: at .<deref>.y.<enum-variant(B)>.0, encountered `UnsafeCell` in read-only memory
   --> $DIR/interior-mut-const-via-union.rs:34:1
    |
 LL | fn main() {

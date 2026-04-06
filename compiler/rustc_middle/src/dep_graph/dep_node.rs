@@ -121,19 +121,7 @@ impl DepNode {
     where
         Key: DepNodeKey<'tcx>,
     {
-        let dep_node = DepNode { kind, key_fingerprint: key.to_fingerprint(tcx).into() };
-
-        #[cfg(debug_assertions)]
-        {
-            if !tcx.key_fingerprint_style(kind).is_maybe_recoverable()
-                && (tcx.sess.opts.unstable_opts.incremental_info
-                    || tcx.sess.opts.unstable_opts.query_dep_graph)
-            {
-                tcx.dep_graph.register_dep_node_debug_str(dep_node, || key.to_debug_str(tcx));
-            }
-        }
-
-        dep_node
+        DepNode { kind, key_fingerprint: key.to_fingerprint(tcx).into() }
     }
 
     /// Construct a DepNode from the given DepKind and DefPathHash. This
@@ -151,24 +139,16 @@ impl DepNode {
 
 impl fmt::Debug for DepNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}(", self.kind)?;
-
         tls::with_opt(|opt_tcx| {
-            if let Some(tcx) = opt_tcx {
-                if let Some(def_id) = self.extract_def_id(tcx) {
-                    write!(f, "{}", tcx.def_path_debug_str(def_id))?;
-                } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*self) {
-                    write!(f, "{s}")?;
-                } else {
-                    write!(f, "{}", self.key_fingerprint)?;
-                }
+            if let Some(tcx) = opt_tcx
+                && let Some(def_id) = self.extract_def_id(tcx)
+            {
+                write!(f, "{:?}({})", self.kind, tcx.def_path_debug_str(def_id))?;
             } else {
-                write!(f, "{}", self.key_fingerprint)?;
+                write!(f, "{:?}({})", self.kind, self.key_fingerprint)?;
             }
             Ok(())
-        })?;
-
-        write!(f, ")")
+        })
     }
 }
 
@@ -251,10 +231,10 @@ impl WorkProductId {
         WorkProductId { hash: hasher.finish() }
     }
 }
-impl<HCX> ToStableHashKey<HCX> for WorkProductId {
+impl<Hcx> ToStableHashKey<Hcx> for WorkProductId {
     type KeyType = Fingerprint;
     #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> Self::KeyType {
         self.hash
     }
 }
@@ -412,9 +392,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(DepKind, 2);
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     static_assert_size!(DepNode, 18);
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-    static_assert_size!(DepNode, 24);
     // tidy-alphabetical-end
 }

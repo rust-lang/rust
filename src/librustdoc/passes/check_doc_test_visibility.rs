@@ -56,7 +56,8 @@ impl crate::doctest::DocTestVisitor for Tests {
 }
 
 pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if !cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
+    if !(cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
+        || item.is_exported_macro())
         || matches!(
             item.kind,
             clean::StructFieldItem(_)
@@ -80,6 +81,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::ImplAssocConstItem(..)
                 | clean::RequiredAssocTypeItem(..)
                 | clean::ImplItem(_)
+                | clean::PlaceholderImplItem
         )
     {
         return false;

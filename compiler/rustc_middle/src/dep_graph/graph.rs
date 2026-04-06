@@ -18,7 +18,7 @@ use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use rustc_span::Symbol;
-use tracing::{debug, instrument};
+use tracing::instrument;
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
 
@@ -115,8 +115,6 @@ pub struct DepGraphData {
     /// this map. We can later look for and extract that data.
     previous_work_products: WorkProductMap,
 
-    dep_node_debug: Lock<FxHashMap<DepNode, String>>,
-
     /// Used by incremental compilation tests to assert that
     /// a particular query result was decoded from disk
     /// (not just marked green)
@@ -164,15 +162,15 @@ impl DepGraph {
         );
         assert_eq!(red_node_index, DepNodeIndex::FOREVER_RED_NODE);
         if prev_graph_node_count > 0 {
-            colors.insert_red(SerializedDepNodeIndex::from_u32(
-                DepNodeIndex::FOREVER_RED_NODE.as_u32(),
-            ));
+            let prev_index =
+                const { SerializedDepNodeIndex::from_u32(DepNodeIndex::FOREVER_RED_NODE.as_u32()) };
+            let result = colors.try_set_color(prev_index, DesiredColor::Red);
+            assert_matches!(result, TrySetColorResult::Success);
         }
 
         DepGraph {
             data: Some(Arc::new(DepGraphData {
                 previous_work_products: prev_work_products,
-                dep_node_debug: Default::default(),
                 current,
                 previous: prev_graph,
                 colors,
@@ -708,7 +706,7 @@ impl DepGraphData {
             // side effect.
             std::iter::once(DepNodeIndex::FOREVER_RED_NODE).collect(),
         );
-        tcx.store_side_effect(dep_node_index, side_effect);
+        tcx.query_system.side_effects.borrow_mut().insert(dep_node_index, side_effect);
         dep_node_index
     }
 
@@ -717,7 +715,13 @@ impl DepGraphData {
     #[inline]
     fn force_side_effect<'tcx>(&self, tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) {
         with_deps(TaskDepsRef::Ignore, || {
-            let side_effect = tcx.load_side_effect(prev_index).unwrap();
+            let side_effect = tcx
+                .query_system
+                .on_disk_cache
+                .as_ref()
+                .unwrap()
+                .load_side_effect(tcx, prev_index)
+                .unwrap();
 
             // Use `send_and_color` as `promote_node_and_deps_to_current` expects all
             // green dependencies. `send_and_color` will also prevent multiple nodes
@@ -744,7 +748,7 @@ impl DepGraphData {
             }
 
             // This will just overwrite the same value for concurrent calls.
-            tcx.store_side_effect(dep_node_index, side_effect);
+            tcx.query_system.side_effects.borrow_mut().insert(dep_node_index, side_effect);
         })
     }
 
@@ -843,31 +847,6 @@ impl DepGraph {
             .any(|node| node.kind == dep_kind)
     }
 
-    #[cfg(debug_assertions)]
-    #[inline(always)]
-    pub(crate) fn register_dep_node_debug_str<F>(&self, dep_node: DepNode, debug_str_gen: F)
-    where
-        F: FnOnce() -> String,
-    {
-        // Early queries (e.g., `-Z query-dep-graph` on empty crates) can reach here
-        // before the graph is initialized. Return early to prevent an ICE.
-        let data = match &self.data {
-            Some(d) => d,
-            None => return,
-        };
-        let dep_node_debug = &data.dep_node_debug;
-
-        if dep_node_debug.borrow().contains_key(&dep_node) {
-            return;
-        }
-        let debug_str = self.with_ignore(debug_str_gen);
-        dep_node_debug.borrow_mut().insert(dep_node, debug_str);
-    }
-
-    pub(crate) fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
-        self.data.as_ref()?.dep_node_debug.borrow().get(&dep_node).cloned()
-    }
-
     fn node_color(&self, dep_node: &DepNode) -> DepNodeColor {
         if let Some(ref data) = self.data {
             return data.node_color(dep_node);
@@ -917,94 +896,6 @@ impl DepGraphData {
         }
     }
 
-    #[instrument(skip(self, tcx, parent_dep_node_index, frame), level = "debug")]
-    fn try_mark_parent_green<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        parent_dep_node_index: SerializedDepNodeIndex,
-        frame: &MarkFrame<'_>,
-    ) -> Option<()> {
-        let get_dep_dep_node = || self.previous.index_to_node(parent_dep_node_index);
-
-        match self.colors.get(parent_dep_node_index) {
-            DepNodeColor::Green(_) => {
-                // This dependency has been marked as green before, we are
-                // still fine and can continue with checking the other
-                // dependencies.
-                //
-                // This path is extremely hot. We don't want to get the
-                // `dep_dep_node` unless it's necessary. Hence the
-                // `get_dep_dep_node` closure.
-                debug!("dependency {:?} was immediately green", get_dep_dep_node());
-                return Some(());
-            }
-            DepNodeColor::Red => {
-                // We found a dependency the value of which has changed
-                // compared to the previous compilation session. We cannot
-                // mark the DepNode as green and also don't need to bother
-                // with checking any of the other dependencies.
-                debug!("dependency {:?} was immediately red", get_dep_dep_node());
-                return None;
-            }
-            DepNodeColor::Unknown => {}
-        }
-
-        let dep_dep_node = get_dep_dep_node();
-
-        // We don't know the state of this dependency. If it isn't
-        // an eval_always node, let's try to mark it green recursively.
-        if !tcx.is_eval_always(dep_dep_node.kind) {
-            debug!(
-                "state of dependency {:?} ({}) is unknown, trying to mark it green",
-                dep_dep_node, dep_dep_node.key_fingerprint,
-            );
-
-            let node_index = self.try_mark_previous_green(tcx, parent_dep_node_index, Some(frame));
-
-            if node_index.is_some() {
-                debug!("managed to MARK dependency {dep_dep_node:?} as green");
-                return Some(());
-            }
-        }
-
-        // We failed to mark it green, so we try to force the query.
-        debug!("trying to force dependency {dep_dep_node:?}");
-        if !tcx.try_force_from_dep_node(*dep_dep_node, parent_dep_node_index, frame) {
-            // The DepNode could not be forced.
-            debug!("dependency {dep_dep_node:?} could not be forced");
-            return None;
-        }
-
-        match self.colors.get(parent_dep_node_index) {
-            DepNodeColor::Green(_) => {
-                debug!("managed to FORCE dependency {dep_dep_node:?} to green");
-                return Some(());
-            }
-            DepNodeColor::Red => {
-                debug!("dependency {dep_dep_node:?} was red after forcing");
-                return None;
-            }
-            DepNodeColor::Unknown => {}
-        }
-
-        if let None = tcx.dcx().has_errors_or_delayed_bugs() {
-            panic!("try_mark_previous_green() - Forcing the DepNode should have set its color")
-        }
-
-        // If the query we just forced has resulted in
-        // some kind of compilation error, we cannot rely on
-        // the dep-node color having been properly updated.
-        // This means that the query system has reached an
-        // invalid state. We let the compiler continue (by
-        // returning `None`) so it can emit error messages
-        // and wind down, but rely on the fact that this
-        // invalid state will not be persisted to the
-        // incremental compilation cache because of
-        // compilation errors being present.
-        debug!("dependency {dep_dep_node:?} resulted in compilation error");
-        return None;
-    }
-
     /// Try to mark a dep-node which existed in the previous compilation session as green.
     #[instrument(skip(self, tcx, prev_dep_node_index, frame), level = "debug")]
     fn try_mark_previous_green<'tcx>(
@@ -1018,17 +909,58 @@ impl DepGraphData {
         // We never try to mark eval_always nodes as green
         debug_assert!(!tcx.is_eval_always(self.previous.index_to_node(prev_dep_node_index).kind));
 
-        let prev_deps = self.previous.edge_targets_from(prev_dep_node_index);
+        for parent_dep_node_index in self.previous.edge_targets_from(prev_dep_node_index) {
+            match self.colors.get(parent_dep_node_index) {
+                // This dependency has been marked as green before, we are still ok and can
+                // continue checking the remaining dependencies.
+                DepNodeColor::Green(_) => continue,
 
-        for dep_dep_node_index in prev_deps {
-            self.try_mark_parent_green(tcx, dep_dep_node_index, &frame)?;
+                // This dependency's result is different to the previous compilation session. We
+                // cannot mark this dep_node as green, so stop checking.
+                DepNodeColor::Red => return None,
+
+                // We still need to determine this dependency's colour.
+                DepNodeColor::Unknown => {}
+            }
+
+            let parent_dep_node = self.previous.index_to_node(parent_dep_node_index);
+
+            // If this dependency isn't eval_always, try to mark it green recursively.
+            if !tcx.is_eval_always(parent_dep_node.kind)
+                && self.try_mark_previous_green(tcx, parent_dep_node_index, Some(&frame)).is_some()
+            {
+                continue;
+            }
+
+            // We failed to mark it green, so we try to force the query.
+            if !tcx.try_force_from_dep_node(*parent_dep_node, parent_dep_node_index, &frame) {
+                return None;
+            }
+
+            match self.colors.get(parent_dep_node_index) {
+                DepNodeColor::Green(_) => continue,
+                DepNodeColor::Red => return None,
+                DepNodeColor::Unknown => {}
+            }
+
+            if tcx.dcx().has_errors_or_delayed_bugs().is_none() {
+                panic!("try_mark_previous_green() - forcing failed to set a color");
+            }
+
+            // If the query we just forced has resulted in some kind of compilation error, we
+            // cannot rely on the dep-node color having been properly updated. This means that the
+            // query system has reached an invalid state. We let the compiler continue (by
+            // returning `None`) so it can emit error messages and wind down, but rely on the fact
+            // that this invalid state will not be persisted to the incremental compilation cache
+            // because of compilation errors being present.
+            return None;
         }
 
         // If we got here without hitting a `return` that means that all
         // dependencies of this DepNode could be marked as green. Therefore we
         // can also mark this DepNode as green.
 
-        // There may be multiple threads trying to mark the same dep node green concurrently
+        // There may be multiple threads trying to mark the same dep node green concurrently.
 
         // We allocating an entry for the node in the current dependency graph and
         // adding all the appropriate edges imported from the previous graph.
@@ -1037,12 +969,8 @@ impl DepGraphData {
         let dep_node_index = self.promote_node_and_deps_to_current(prev_dep_node_index)?;
 
         // ... and finally storing a "Green" entry in the color map.
-        // Multiple threads can all write the same color here
+        // Multiple threads can all write the same color here.
 
-        debug!(
-            "successfully marked {:?} as green",
-            self.previous.index_to_node(prev_dep_node_index)
-        );
         Some(dep_node_index)
     }
 }
@@ -1415,28 +1343,29 @@ impl DepNodeColorMap {
         if value <= DepNodeIndex::MAX_AS_U32 { Some(DepNodeIndex::from_u32(value)) } else { None }
     }
 
-    /// This tries to atomically mark a node green and assign `index` as the new
-    /// index if `green` is true, otherwise it will try to atomicaly mark it red.
+    /// Atomically sets the color of a previous-session dep node to either green
+    /// or red, if it has not already been colored.
     ///
-    /// This returns `Ok` if `index` gets assigned or the node is marked red, otherwise it returns
-    /// the already allocated index in `Err` if it is green already. If it was already
-    /// red, `Err(None)` is returned.
+    /// If the node already has a color, the new color is ignored, and the
+    /// return value indicates the existing color.
     #[inline(always)]
-    pub(super) fn try_mark(
+    pub(super) fn try_set_color(
         &self,
         prev_index: SerializedDepNodeIndex,
-        index: DepNodeIndex,
-        green: bool,
-    ) -> Result<(), Option<DepNodeIndex>> {
-        let value = &self.values[prev_index];
-        match value.compare_exchange(
+        color: DesiredColor,
+    ) -> TrySetColorResult {
+        match self.values[prev_index].compare_exchange(
             COMPRESSED_UNKNOWN,
-            if green { index.as_u32() } else { COMPRESSED_RED },
+            match color {
+                DesiredColor::Red => COMPRESSED_RED,
+                DesiredColor::Green { index } => index.as_u32(),
+            },
             Ordering::Relaxed,
             Ordering::Relaxed,
         ) {
-            Ok(_) => Ok(()),
-            Err(v) => Err(if v == COMPRESSED_RED { None } else { Some(DepNodeIndex::from_u32(v)) }),
+            Ok(_) => TrySetColorResult::Success,
+            Err(COMPRESSED_RED) => TrySetColorResult::AlreadyRed,
+            Err(index) => TrySetColorResult::AlreadyGreen { index: DepNodeIndex::from_u32(index) },
         }
     }
 
@@ -1454,13 +1383,28 @@ impl DepNodeColorMap {
             DepNodeColor::Unknown
         }
     }
+}
 
-    #[inline]
-    pub(super) fn insert_red(&self, index: SerializedDepNodeIndex) {
-        let value = self.values[index].swap(COMPRESSED_RED, Ordering::Release);
-        // Sanity check for duplicate nodes
-        assert_eq!(value, COMPRESSED_UNKNOWN, "tried to color an already colored node as red");
-    }
+/// The color that [`DepNodeColorMap::try_set_color`] should try to apply to a node.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum DesiredColor {
+    /// Try to mark the node red.
+    Red,
+    /// Try to mark the node green, associating it with a current-session node index.
+    Green { index: DepNodeIndex },
+}
+
+/// Return value of [`DepNodeColorMap::try_set_color`], indicating success or failure,
+/// and (on failure) what the existing color is.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum TrySetColorResult {
+    /// The [`DesiredColor`] was freshly applied to the node.
+    Success,
+    /// Coloring failed because the node was already marked red.
+    AlreadyRed,
+    /// Coloring failed because the node was already marked green,
+    /// and corresponds to node `index` in the current-session dep graph.
+    AlreadyGreen { index: DepNodeIndex },
 }
 
 #[inline(never)]
@@ -1531,24 +1475,5 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     fn is_eval_always(self, kind: DepKind) -> bool {
         self.dep_kind_vtable(kind).is_eval_always
-    }
-
-    // Interactions with on_disk_cache
-    fn load_side_effect(
-        self,
-        prev_dep_node_index: SerializedDepNodeIndex,
-    ) -> Option<QuerySideEffect> {
-        self.query_system
-            .on_disk_cache
-            .as_ref()
-            .and_then(|c| c.load_side_effect(self, prev_dep_node_index))
-    }
-
-    #[inline(never)]
-    #[cold]
-    fn store_side_effect(self, dep_node_index: DepNodeIndex, side_effect: QuerySideEffect) {
-        if let Some(c) = self.query_system.on_disk_cache.as_ref() {
-            c.store_side_effect(dep_node_index, side_effect)
-        }
     }
 }

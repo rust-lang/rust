@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::spec::crt_objects::pre_mingw_self_contained;
 use crate::spec::{
-    Abi, BinaryFormat, Cc, DebuginfoKind, Env, LinkSelfContainedDefault, LinkerFlavor, Lld, Os,
+    BinaryFormat, Cc, CfgAbi, DebuginfoKind, Env, LinkSelfContainedDefault, LinkerFlavor, Lld, Os,
     SplitDebuginfo, TargetOptions, add_link_args, cvs,
 };
 
@@ -26,7 +26,7 @@ pub(crate) fn opts() -> TargetOptions {
         os: Os::Windows,
         env: Env::Gnu,
         vendor: "pc".into(),
-        abi: Abi::Llvm,
+        cfg_abi: CfgAbi::Llvm,
         linker: Some("clang".into()),
         dynamic_linking: true,
         dll_tls_export: false,
@@ -53,6 +53,7 @@ pub(crate) fn opts() -> TargetOptions {
         // FIXME(davidtwco): Support Split DWARF on Windows GNU - may require LLVM changes to
         // output DWO, despite using DWARF, doesn't use ELF..
         supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
+        mcount: "_mcount".into(),
         ..Default::default()
     }
 }

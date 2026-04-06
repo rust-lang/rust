@@ -5,7 +5,7 @@
 //! based on the parent of the existing expression.
 use syntax::{
     AstNode, T,
-    ast::{self, FieldExpr, MethodCallExpr, make, syntax_factory::SyntaxFactory},
+    ast::{self, FieldExpr, MethodCallExpr, syntax_factory::SyntaxFactory},
 };
 
 use crate::AssistContext;
@@ -119,13 +119,13 @@ pub(crate) struct RefData {
 
 impl RefData {
     /// Derefs `expr` and wraps it in parens if necessary
-    pub(crate) fn wrap_expr(&self, mut expr: ast::Expr) -> ast::Expr {
+    pub(crate) fn wrap_expr(&self, mut expr: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
         if self.needs_deref {
-            expr = make::expr_prefix(T![*], expr).into();
+            expr = make.expr_prefix(T![*], expr).into();
         }
 
         if self.needs_parentheses {
-            expr = make::expr_paren(expr).into();
+            expr = make.expr_paren(expr).into();
         }
 
         expr

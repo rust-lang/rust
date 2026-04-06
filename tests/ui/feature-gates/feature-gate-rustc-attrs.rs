@@ -12,7 +12,7 @@ mod unknown { pub macro rustc() {} }
 fn f() {}
 
 #[unknown::rustc]
-//~^ ERROR attributes starting with `rustc` are reserved for use by the `rustc` compiler
+//~^ ERROR attributes containing a segment starting with `rustc` are reserved for use by the `rustc` compiler
 //~| ERROR expected attribute, found macro `unknown::rustc`
 //~| NOTE not an attribute
 fn g() {}

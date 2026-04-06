@@ -2,5 +2,5 @@ struct T;
 
 fn main() {
     T::new();
-    //~^ ERROR no function or associated item named `new` found
+    //~^ ERROR no associated function or constant named `new` found
 }

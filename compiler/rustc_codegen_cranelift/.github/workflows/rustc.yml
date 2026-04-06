@@ -11,13 +11,13 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: CPU features
       run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-rustc-test-cargo-build-target-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
@@ -31,13 +31,13 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: CPU features
       run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-rustc-test-cargo-build-target-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}

@@ -451,6 +451,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.SetFilePointerEx(file, distance_to_move, new_file_pointer, move_method)?;
                 this.write_scalar(res, dest)?;
             }
+            "MoveFileExW" => {
+                let [existing_name, new_name, flags] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(*const _, *const _, u32) -> winapi::BOOL),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let res = this.MoveFileExW(existing_name, new_name, flags)?;
+                this.write_scalar(res, dest)?;
+            }
 
             // Allocation
             "HeapAlloc" => {

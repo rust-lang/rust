@@ -6,8 +6,8 @@
 
 use crate::error::Error;
 use crate::intrinsics::{unchecked_add, unchecked_mul, unchecked_sub};
-use crate::mem::SizedTypeProperties;
-use crate::ptr::{Alignment, NonNull};
+use crate::mem::{Alignment, SizedTypeProperties};
+use crate::ptr::NonNull;
 use crate::{assert_unsafe_precondition, fmt, mem};
 
 /// Layout of a block of memory.
@@ -268,7 +268,7 @@ impl Layout {
     #[must_use]
     #[inline]
     pub const fn dangling_ptr(&self) -> NonNull<u8> {
-        NonNull::without_provenance(self.align.as_nonzero())
+        NonNull::without_provenance(self.align.as_nonzero_usize())
     }
 
     /// Creates a layout describing the record that can hold a value

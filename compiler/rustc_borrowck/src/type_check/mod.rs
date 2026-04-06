@@ -447,6 +447,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         for proj in &user_ty.projs {
+            // Necessary for non-trivial patterns whose user-type annotation is an opaque type,
+            // e.g. `let (_a,): Tait = whatever`, see #105897
             if !self.infcx.next_trait_solver()
                 && let ty::Alias(ty::Opaque, ..) = curr_projected_ty.ty.kind()
             {

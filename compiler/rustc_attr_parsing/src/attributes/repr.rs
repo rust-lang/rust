@@ -33,12 +33,14 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
         let mut reprs = Vec::new();
 
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return reprs;
         };
 
         if list.is_empty() {
-            cx.warn_empty_attribute(cx.attr_span);
+            let attr_span = cx.attr_span;
+            cx.adcx().warn_empty_attribute(attr_span);
             return reprs;
         }
 
@@ -290,11 +292,12 @@ impl RustcAlignParser {
     fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
         match args {
             ArgParser::NoArgs | ArgParser::NameValue(_) => {
-                cx.expected_list(cx.attr_span, args);
+                let attr_span = cx.attr_span;
+                cx.adcx().expected_list(attr_span, args);
             }
             ArgParser::List(list) => {
                 let Some(align) = list.single() else {
-                    cx.expected_single_argument(list.span);
+                    cx.adcx().expected_single_argument(list.span);
                     return;
                 };
 

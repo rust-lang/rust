@@ -7,7 +7,7 @@
 #[cfg(target_vendor = "apple")]
 #[allow(non_camel_case_types)]
 // FIXME(#139616): document caller contract.
-pub unsafe fn raise_fd_limit() {
+pub(crate) unsafe fn raise_fd_limit() {
     use std::ptr::null_mut;
     use std::{cmp, io};
 
@@ -54,4 +54,4 @@ pub unsafe fn raise_fd_limit() {
 }
 
 #[cfg(not(target_vendor = "apple"))]
-pub unsafe fn raise_fd_limit() {}
+pub(crate) unsafe fn raise_fd_limit() {}

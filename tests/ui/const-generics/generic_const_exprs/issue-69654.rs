@@ -15,5 +15,5 @@ where
 
 fn main() {
     Foo::foo();
-    //~^ ERROR the function or associated item
+    //~^ ERROR the associated function or constant
 }

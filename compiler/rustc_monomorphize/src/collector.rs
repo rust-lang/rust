@@ -1615,7 +1615,7 @@ impl<'v> RootCollector<'_, 'v> {
                 if (self.strategy == MonoItemCollectionStrategy::Eager || is_pub_fn_coroutine)
                     && !self
                         .tcx
-                        .generics_of(self.tcx.typeck_root_def_id(def_id.to_def_id()))
+                        .generics_of(self.tcx.typeck_root_def_id_local(def_id))
                         .requires_monomorphization(self.tcx)
                 {
                     let instance = match *self.tcx.type_of(def_id).instantiate_identity().kind() {
@@ -1824,8 +1824,8 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 
     // The set of MonoItems was created in an inherently indeterministic order because
     // of parallelism. We sort it here to ensure that the output is deterministic.
-    let mono_items = tcx.with_stable_hashing_context(move |ref hcx| {
-        state.visited.into_inner().into_sorted(hcx, true)
+    let mono_items = tcx.with_stable_hashing_context(move |mut hcx| {
+        state.visited.into_inner().into_sorted(&mut hcx, true)
     });
 
     (mono_items, state.usage_map.into_inner())

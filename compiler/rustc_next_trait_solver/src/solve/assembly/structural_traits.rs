@@ -797,12 +797,16 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
         | ty::Error(_) => Ok(vec![]),
 
-        // Coroutines and closures could implement `[const] Drop`,
+        // Closures are [const] Destruct when all of their upvars (captures) are [const] Destruct.
+        ty::Closure(_, args) => {
+            let closure_args = args.as_closure();
+            Ok(vec![ty::TraitRef::new(cx, destruct_def_id, [closure_args.tupled_upvars_ty()])])
+        }
+        // Coroutines could implement `[const] Drop`,
         // but they don't really need to right now.
-        ty::Closure(_, _)
-        | ty::CoroutineClosure(_, _)
-        | ty::Coroutine(_, _)
-        | ty::CoroutineWitness(_, _) => Err(NoSolution),
+        ty::CoroutineClosure(_, _) | ty::Coroutine(_, _) | ty::CoroutineWitness(_, _) => {
+            Err(NoSolution)
+        }
 
         // FIXME(unsafe_binders): Unsafe binders could implement `[const] Drop`
         // if their inner type implements it.
@@ -987,12 +991,7 @@ where
         let replacement = self.ecx.instantiate_binder_with_infer(*replacement);
         self.nested.extend(
             self.ecx
-                .relate_and_get_goals(
-                    self.param_env,
-                    alias_term,
-                    ty::Invariant,
-                    replacement.projection_term,
-                )
+                .eq_and_get_goals(self.param_env, alias_term, replacement.projection_term)
                 .expect("expected to be able to unify goal projection with dyn's projection"),
         );
 

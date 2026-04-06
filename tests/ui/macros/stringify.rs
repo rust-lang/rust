@@ -9,8 +9,10 @@
 #![feature(const_trait_impl)]
 #![feature(coroutines)]
 #![feature(decl_macro)]
+#![feature(macro_guard_matcher)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
+#![feature(specialization)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
@@ -27,6 +29,7 @@ macro_rules! path { ($path:path) => { stringify!($path) }; }
 macro_rules! stmt { ($stmt:stmt) => { stringify!($stmt) }; }
 macro_rules! ty { ($ty:ty) => { stringify!($ty) }; }
 macro_rules! vis { ($vis:vis) => { stringify!($vis) }; }
+macro_rules! guard { ($guard:guard) => { stringify!($guard) }; }
 
 macro_rules! c1 {
     ($frag:ident, [$($tt:tt)*], $s:literal) => {
@@ -790,6 +793,21 @@ fn test_vis() {
     assert_eq!(stringify!(), "");
 
     // Attributes are not allowed on visibilities.
+}
+
+#[test]
+fn test_guard() {
+    c1!(guard, [ if true ], "if true");
+    c1!(guard, [ if let Some(x) = Some(1) ], "if let Some(x) = Some(1)");
+    c1!(guard, [ if let Some(x) = Some(1) && x == 1 ], "if let Some(x) = Some(1) && x == 1");
+    c1!(guard,
+        [ if let Some(x) = Some(Some(1)) && let Some(1) = x ],
+        "if let Some(x) = Some(Some(1)) && let Some(1) = x"
+    );
+    c1!(guard,
+        [ if let Some(x) = Some(Some(1)) && let Some(y) = x && y == 1 ],
+        "if let Some(x) = Some(Some(1)) && let Some(y) = x && y == 1"
+    );
 }
 
 macro_rules! p {

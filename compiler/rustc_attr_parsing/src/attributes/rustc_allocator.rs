@@ -28,10 +28,10 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAllocatorZeroedVariantParser {
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "function");
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(name) = args.name_value().and_then(NameValueParser::value_as_str) else {
-            cx.expected_name_value(cx.attr_span, None);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
             return None;
         };
 

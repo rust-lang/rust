@@ -1,8 +1,8 @@
-error[E0599]: no function or associated item named `forced_capture` found for struct `Backtrace` in the current scope
+error[E0599]: no associated function or constant named `forced_capture` found for struct `Backtrace` in the current scope
   --> $DIR/issue-109291.rs:2:65
    |
 LL |     println!("Custom backtrace: {}", std::backtrace::Backtrace::forced_capture());
-   |                                                                 ^^^^^^^^^^^^^^ function or associated item not found in `Backtrace`
+   |                                                                 ^^^^^^^^^^^^^^ associated function or constant not found in `Backtrace`
    |
 note: if you're trying to build a new `Backtrace` consider using one of the following associated functions:
       Backtrace::capture

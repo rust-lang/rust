@@ -318,7 +318,12 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught! Used by miri
     Ub(String),
     /// Validation error.
-    ValidationError { path: Option<String>, msg: String, ptr_bytes_warning: bool },
+    ValidationError {
+        orig_ty: Ty<'tcx>,
+        path: Option<String>,
+        msg: String,
+        ptr_bytes_warning: bool,
+    },
 
     /// Unreachable code was executed.
     Unreachable,
@@ -457,11 +462,11 @@ impl<'tcx> fmt::Display for UndefinedBehaviorInfo<'tcx> {
         match self {
             Ub(msg) => write!(f, "{msg}"),
 
-            ValidationError { path: None, msg, .. } => {
-                write!(f, "constructing invalid value: {msg}")
+            ValidationError { orig_ty, path: None, msg, .. } => {
+                write!(f, "constructing invalid value of type {orig_ty}: {msg}")
             }
-            ValidationError { path: Some(path), msg, .. } => {
-                write!(f, "constructing invalid value at {path}: {msg}")
+            ValidationError { orig_ty, path: Some(path), msg, .. } => {
+                write!(f, "constructing invalid value of type {orig_ty}: at {path}, {msg}")
             }
 
             Unreachable => write!(f, "entering unreachable code"),

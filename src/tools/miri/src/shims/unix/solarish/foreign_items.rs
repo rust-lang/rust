@@ -133,6 +133,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.bind(socket, address, address_len)?;
                 this.write_scalar(result, dest)?;
             }
+            "__xnet_connect" => {
+                let [socket, address, address_len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *const _, libc::socklen_t) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                this.connect(socket, address, address_len, dest)?;
+            }
 
             // Miscellaneous
             "___errno" => {

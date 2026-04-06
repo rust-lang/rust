@@ -133,8 +133,11 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                             self.lower_range_end(end, e2.is_some()),
                         );
                     }
-                    PatKind::Guard(inner, cond) => {
-                        break hir::PatKind::Guard(self.lower_pat(inner), self.lower_expr(cond));
+                    PatKind::Guard(inner, guard) => {
+                        break hir::PatKind::Guard(
+                            self.lower_pat(inner),
+                            self.lower_expr(&guard.cond),
+                        );
                     }
                     PatKind::Slice(pats) => break self.lower_pat_slice(pats),
                     PatKind::Rest => {

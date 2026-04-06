@@ -9,7 +9,7 @@ use std::sync::Arc;
 use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind, Safety};
+use rustc_ast::{self as ast, AttrVec, HasAttrs, Item, NodeId, PatKind, Safety};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync;
 use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
@@ -149,14 +149,14 @@ impl Annotatable {
     pub fn expect_trait_item(self) -> Box<ast::AssocItem> {
         match self {
             Annotatable::AssocItem(i, AssocCtxt::Trait) => i,
-            _ => panic!("expected Item"),
+            _ => panic!("expected trait item"),
         }
     }
 
     pub fn expect_impl_item(self) -> Box<ast::AssocItem> {
         match self {
             Annotatable::AssocItem(i, AssocCtxt::Impl { .. }) => i,
-            _ => panic!("expected Item"),
+            _ => panic!("expected impl item"),
         }
     }
 
@@ -277,7 +277,8 @@ impl<'cx> MacroExpanderResult<'cx> {
         // Emit the SEMICOLON_IN_EXPRESSIONS_FROM_MACROS deprecation lint.
         let is_local = true;
 
-        let parser = ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, is_local, macro_ident);
+        let parser =
+            ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, is_local, macro_ident, &[], &[]);
         ExpandResult::Ready(Box::new(parser))
     }
 }
@@ -377,8 +378,8 @@ where
 
 /// Represents a thing that maps token trees to Macro Results
 pub trait TTMacroExpander: Any {
-    fn expand<'cx>(
-        &self,
+    fn expand<'cx, 'a: 'cx>(
+        &'a self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
@@ -394,8 +395,8 @@ impl<F: 'static> TTMacroExpander for F
 where
     F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>,
 {
-    fn expand<'cx>(
-        &self,
+    fn expand<'cx, 'a: 'cx>(
+        &'a self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
@@ -1187,7 +1188,6 @@ pub trait LintStoreExpand {
         features: &Features,
         registered_tools: &RegisteredTools,
         node_id: NodeId,
-        attrs: &[Attribute],
         items: &[Box<Item>],
         name: Symbol,
     );

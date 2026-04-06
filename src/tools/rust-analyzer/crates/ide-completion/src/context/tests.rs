@@ -288,6 +288,50 @@ fn foo() -> Foo {
 }
 
 #[test]
+fn expected_type_tuple_struct_pat() {
+    check_expected_type_and_name(
+        r#"
+//- minicore: option
+struct Foo(Option<i32>);
+fn foo(x: Foo) -> Foo {
+   match x { Foo($0) => () }
+}
+"#,
+        expect![[r#"ty: Option<i32>, name: ?"#]],
+    );
+
+    check_expected_type_and_name(
+        r#"
+struct Foo(i32, u32, f32);
+fn foo(x: Foo) -> Foo {
+   match x { Foo($0) => () }
+}
+"#,
+        expect![[r#"ty: i32, name: ?"#]],
+    );
+
+    check_expected_type_and_name(
+        r#"
+struct Foo(i32, u32, f32);
+fn foo(x: Foo) -> Foo {
+   match x { Foo(num,$0) => () }
+}
+"#,
+        expect![[r#"ty: u32, name: ?"#]],
+    );
+
+    check_expected_type_and_name(
+        r#"
+struct Foo(i32, u32, f32);
+fn foo(x: Foo) -> Foo {
+   match x { Foo(num,$0,float) => () }
+}
+"#,
+        expect![[r#"ty: u32, name: ?"#]],
+    );
+}
+
+#[test]
 fn expected_type_if_let_without_leading_char() {
     cov_mark::check!(expected_type_if_let_without_leading_char);
     check_expected_type_and_name(

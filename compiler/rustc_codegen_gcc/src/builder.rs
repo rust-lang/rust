@@ -24,7 +24,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
-    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError,
+    LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{self, AtomicOrdering, Instance, Ty, TyCtxt};
 use rustc_span::Span;
@@ -943,8 +944,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             .get_address(self.location)
     }
 
-    fn scalable_alloca(&mut self, _elt: u64, _align: Align, _element_ty: Ty<'_>) -> RValue<'gcc> {
-        todo!()
+    fn alloca_with_ty(&mut self, ty: TyAndLayout<'tcx>) -> RValue<'gcc> {
+        self.alloca(ty.layout.size, ty.layout.align.abi)
     }
 
     fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
@@ -1656,10 +1657,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn get_funclet_cleanuppad(&self, _funclet: &Funclet) -> RValue<'gcc> {
-        unimplemented!();
-    }
-
     // Atomic Operations
     fn atomic_cmpxchg(
         &mut self,
@@ -2278,6 +2275,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         })
     }
 
+    /// Emits a SIMD min/max operation for floats. The semantics for each lane are: if one
+    /// side is NaN (QNaN or SNaN), the other side is returned.
     fn vector_extremum(
         &mut self,
         a: RValue<'gcc>,
@@ -2286,8 +2285,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     ) -> RValue<'gcc> {
         let vector_type = a.get_type();
 
-        // mask out the NaNs in b and replace them with the corresponding lane in a, so when a and
-        // b get compared & spliced together, we get the numeric values instead of NaNs.
+        // Mask out the NaNs (both QNaN and SNaN) in b and replace them with the corresponding lane
+        // in a, so when a and b get compared & spliced together, we get the numeric values instead
+        // of NaNs.
         let b_nan_mask = self.context.new_comparison(self.location, ComparisonOp::NotEquals, b, b);
         let mask_type = b_nan_mask.get_type();
         let b_nan_mask_inverted =
@@ -2309,7 +2309,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.context.new_bitcast(self.location, res, vector_type)
     }
 
-    pub fn vector_fmin(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn vector_minimum_number_nsz(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.vector_extremum(a, b, ExtremumOperation::Min)
     }
 
@@ -2341,7 +2341,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    pub fn vector_fmax(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn vector_maximum_number_nsz(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.vector_extremum(a, b, ExtremumOperation::Max)
     }
 

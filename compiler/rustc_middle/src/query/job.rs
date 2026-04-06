@@ -6,7 +6,7 @@ use std::sync::Arc;
 use parking_lot::{Condvar, Mutex};
 use rustc_span::Span;
 
-use crate::query::CycleError;
+use crate::query::Cycle;
 use crate::ty::TyCtxt;
 
 /// A value uniquely identifying an active query job.
@@ -59,7 +59,7 @@ pub struct QueryWaiter<'tcx> {
     pub parent: Option<QueryJobId>,
     pub condvar: Condvar,
     pub span: Span,
-    pub cycle: Mutex<Option<CycleError<'tcx>>>,
+    pub cycle: Mutex<Option<Cycle<'tcx>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -79,7 +79,7 @@ impl<'tcx> QueryLatch<'tcx> {
         tcx: TyCtxt<'tcx>,
         query: Option<QueryJobId>,
         span: Span,
-    ) -> Result<(), CycleError<'tcx>> {
+    ) -> Result<(), Cycle<'tcx>> {
         let mut waiters_guard = self.waiters.lock();
         let Some(waiters) = &mut *waiters_guard else {
             return Ok(()); // already complete

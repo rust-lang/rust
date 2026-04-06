@@ -391,16 +391,16 @@ fn test_read_until() {
     let mut v = Vec::new();
     reader.read_until(0, &mut v).unwrap();
     assert_eq!(v, [0]);
-    v.truncate(0);
+    v.clear();
     reader.read_until(2, &mut v).unwrap();
     assert_eq!(v, [1, 2]);
-    v.truncate(0);
+    v.clear();
     reader.read_until(1, &mut v).unwrap();
     assert_eq!(v, [1]);
-    v.truncate(0);
+    v.clear();
     reader.read_until(8, &mut v).unwrap();
     assert_eq!(v, [0]);
-    v.truncate(0);
+    v.clear();
     reader.read_until(9, &mut v).unwrap();
     assert_eq!(v, []);
 }
@@ -429,13 +429,13 @@ fn test_read_line() {
     let mut s = String::new();
     reader.read_line(&mut s).unwrap();
     assert_eq!(s, "a\n");
-    s.truncate(0);
+    s.clear();
     reader.read_line(&mut s).unwrap();
     assert_eq!(s, "b\n");
-    s.truncate(0);
+    s.clear();
     reader.read_line(&mut s).unwrap();
     assert_eq!(s, "c");
-    s.truncate(0);
+    s.clear();
     reader.read_line(&mut s).unwrap();
     assert_eq!(s, "");
 }
@@ -1067,13 +1067,13 @@ fn bufreader_full_initialize() {
     }
     let mut reader = BufReader::new(OneByteReader);
     // Nothing is initialized yet.
-    assert_eq!(reader.initialized(), 0);
+    assert!(!reader.initialized());
 
     let buf = reader.fill_buf().unwrap();
     // We read one byte...
     assert_eq!(buf.len(), 1);
     // But we initialized the whole buffer!
-    assert_eq!(reader.initialized(), reader.capacity());
+    assert!(reader.initialized());
 }
 
 /// This is a regression test for https://github.com/rust-lang/rust/issues/127584.

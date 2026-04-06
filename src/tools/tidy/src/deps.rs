@@ -504,6 +504,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "zerotrie",
     "zerovec",
     "zerovec-derive",
+    "zlib-rs",
     // tidy-alphabetical-end
 ];
 
@@ -582,7 +583,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-srcgen",
     "crc32fast",
     "equivalent",
-    "fallible-iterator",
+    "fnv",
     "foldhash",
     "gimli",
     "hashbrown",
@@ -608,8 +609,8 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "syn",
     "target-lexicon",
     "unicode-ident",
+    "wasmtime-internal-core",
     "wasmtime-internal-jit-icache-coherence",
-    "wasmtime-internal-math",
     "windows-link",
     "windows-sys",
     "windows-targets",

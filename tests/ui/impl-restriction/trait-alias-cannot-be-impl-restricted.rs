@@ -1,5 +1,6 @@
 //@ compile-flags: --crate-type=lib
 //@ revisions: with_gate without_gate
+#![warn(incomplete_features)]
 #![cfg_attr(with_gate, feature(impl_restriction))]
 //[with_gate]~^ WARN the feature `impl_restriction` is incomplete and may not be safe to use and/or cause compiler crashes
 #![feature(auto_traits, const_trait_impl, trait_alias)]

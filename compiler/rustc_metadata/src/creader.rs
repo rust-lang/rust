@@ -23,15 +23,14 @@ use rustc_middle::bug;
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
-use rustc_session::Session;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
     TargetModifier,
 };
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
-use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
+use rustc_session::{Session, lint};
 use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
@@ -78,6 +77,9 @@ pub struct CStore {
     unused_externs: Vec<Symbol>,
 
     used_extern_options: FxHashSet<Symbol>,
+    /// Whether there was a failure in resolving crate,
+    /// it's used to suppress some diagnostics that would otherwise too noisey.
+    has_crate_resolve_with_fail: bool,
 }
 
 impl std::fmt::Debug for CStore {
@@ -329,6 +331,10 @@ impl CStore {
         self.has_alloc_error_handler
     }
 
+    pub fn had_extern_crate_load_failure(&self) -> bool {
+        self.has_crate_resolve_with_fail
+    }
+
     pub fn report_unused_deps(&self, tcx: TyCtxt<'_>) {
         let json_unused_externs = tcx.sess.opts.json_unused_externs;
 
@@ -515,6 +521,7 @@ impl CStore {
             resolved_externs: UnordMap::default(),
             unused_externs: Vec::new(),
             used_extern_options: Default::default(),
+            has_crate_resolve_with_fail: false,
         }
     }
 
@@ -724,6 +731,13 @@ impl CStore {
             }
             Err(err) => {
                 debug!("failed to resolve crate {} {:?}", name, dep_kind);
+                // crate maybe injrected with `standard_library_imports::inject`, their span is dummy.
+                // we ignore compiler-injected prelude/sysroot loads here so they don't suppress
+                // unrelated diagnostics, such as `unsupported targets for std library` etc,
+                // these maybe helpful for users to resolve crate loading failure.
+                if !tcx.sess.dcx().has_errors().is_some() && !span.is_dummy() {
+                    self.has_crate_resolve_with_fail = true;
+                }
                 let missing_core = self
                     .maybe_resolve_crate(
                         tcx,
@@ -1211,7 +1225,7 @@ impl CStore {
                 lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                 span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::UnusedCrateDependency {
+                errors::UnusedCrateDependency {
                     extern_crate: name_interned,
                     local_crate: tcx.crate_name(LOCAL_CRATE),
                 },

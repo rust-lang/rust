@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{SpanRangeExt, indent_of, reindent_multiline};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::expr_type_is_certain;
-use clippy_utils::{is_expr_default, is_from_proc_macro};
+use clippy_utils::{is_empty_block, is_expr_default, is_from_proc_macro};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, MatchSource, Node, StmtKind};
 use rustc_lint::LateContext;
@@ -203,20 +203,6 @@ fn get_expr_snippet_with_type_certainty<'tcx>(
 
 fn is_block_with_no_expr(expr: &Expr<'_>) -> bool {
     matches!(expr.kind, ExprKind::Block(Block { expr: None, .. }, _))
-}
-
-fn is_empty_block(expr: &Expr<'_>) -> bool {
-    matches!(
-        expr.kind,
-        ExprKind::Block(
-            Block {
-                stmts: [],
-                expr: None,
-                ..
-            },
-            _,
-        )
-    )
 }
 
 fn fmt_stmts_and_call(

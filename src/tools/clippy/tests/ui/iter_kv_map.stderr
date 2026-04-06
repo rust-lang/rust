@@ -323,5 +323,23 @@ error: iterating on a map's values
 LL |     hash_map.into_iter().filter_map(|(_, v)| (v > 0).then_some(1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `hash_map.into_values().filter_map(|v| (v > 0).then_some(1))`
 
-error: aborting due to 48 previous errors
+error: iterating on a map's values
+  --> tests/ui/iter_kv_map.rs:241:5
+   |
+LL |     map.iter().flat_map(|(_, v)| v.iter().map(|i| *i + 1));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values().flat_map(|v| v.iter().map(|i| *i + 1))`
+
+error: iterating on a map's values
+  --> tests/ui/iter_kv_map.rs:243:5
+   |
+LL |     map.iter().flat_map(|(_, v)| v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values().flatten()`
+
+error: iterating on a map's values
+  --> tests/ui/iter_kv_map.rs:247:5
+   |
+LL |     map.into_iter().flat_map(|(_, v)| v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.into_values().flatten()`
+
+error: aborting due to 51 previous errors
 

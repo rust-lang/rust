@@ -782,7 +782,7 @@ fn func_assoc_item(
                 };
 
                 // Build argument list with self expression prepended
-                let other_args = convert_param_list_to_arg_list(l);
+                let other_args = convert_param_list_to_arg_list(l, &make);
                 let all_args: Vec<ast::Expr> =
                     std::iter::once(tail_expr_self).chain(other_args.args()).collect();
                 let args = make.arg_list(all_args);
@@ -790,13 +790,13 @@ fn func_assoc_item(
                 make.expr_call(make.expr_path(qualified_path), args).into()
             }
             None => make
-                .expr_call(make.expr_path(qualified_path), convert_param_list_to_arg_list(l))
+                .expr_call(make.expr_path(qualified_path), convert_param_list_to_arg_list(l, &make))
                 .into(),
         },
         None => make
             .expr_call(
                 make.expr_path(qualified_path),
-                convert_param_list_to_arg_list(make.param_list(None, Vec::new())),
+                convert_param_list_to_arg_list(make.param_list(None, Vec::new()), &make),
             )
             .into(),
     };

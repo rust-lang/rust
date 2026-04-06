@@ -3,7 +3,7 @@ use syntax::{
     SyntaxKind::WHITESPACE,
     TextRange,
     ast::{
-        AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat, edit::AstNodeEdit, make,
+        AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat, edit::AstNodeEdit,
         prec::ExprPrecedence, syntax_factory::SyntaxFactory,
     },
     syntax_editor::Element,
@@ -53,14 +53,15 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
     let space_after_arrow = match_arm.fat_arrow_token()?.next_sibling_or_token();
 
     let arm_expr = match_arm.expr()?;
+    let make = SyntaxFactory::without_mappings();
     let if_branch = chain([&match_arm], &rest_arms)
         .rfold(None, |else_branch, arm| {
             if let Some(guard) = arm.guard() {
-                let then_branch = crate::utils::wrap_block(&arm.expr()?);
+                let then_branch = crate::utils::wrap_block(&arm.expr()?, &make);
                 let guard_condition = guard.condition()?.reset_indent();
-                Some(make::expr_if(guard_condition, then_branch, else_branch).into())
+                Some(make.expr_if(guard_condition, then_branch, else_branch).into())
             } else {
-                arm.expr().map(|it| crate::utils::wrap_block(&it).into())
+                arm.expr().map(|it| crate::utils::wrap_block(&it, &make).into())
             }
         })?
         .indent(arm_expr.indent_level());
@@ -84,7 +85,7 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
             if let Some(element) = space_after_arrow
                 && element.kind() == WHITESPACE
             {
-                edit.replace(element, make::tokens::single_space());
+                edit.replace(element, make.whitespace(" "));
             }
 
             edit.delete(guard.syntax());

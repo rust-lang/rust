@@ -258,7 +258,7 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
     }
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::Range<usize> {
     type Output = str;
@@ -555,7 +555,7 @@ unsafe impl const SliceIndex<str> for ops::RangeFrom<usize> {
     }
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::RangeFrom<usize> {
     type Output = str;

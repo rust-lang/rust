@@ -113,7 +113,7 @@ fn node_to_def<'db>(
             ast::Struct(it)      => sema.to_def(&it).map(|def| (def.docs_with_rangemap(sema.db), Definition::Adt(hir::Adt::Struct(def)))),
             ast::Union(it)       => sema.to_def(&it).map(|def| (def.docs_with_rangemap(sema.db), Definition::Adt(hir::Adt::Union(def)))),
             ast::Enum(it)        => sema.to_def(&it).map(|def| (def.docs_with_rangemap(sema.db), Definition::Adt(hir::Adt::Enum(def)))),
-            ast::Variant(it)     => sema.to_def(&it).map(|def| (def.docs_with_rangemap(sema.db), Definition::Variant(def))),
+            ast::Variant(it)     => sema.to_def(&it).map(|def| (def.docs_with_rangemap(sema.db), Definition::EnumVariant(def))),
             ast::Trait(it)       => sema.to_def(&it).map(|def| (def.docs_with_rangemap(sema.db), Definition::Trait(def))),
             ast::Static(it)      => sema.to_def(&it).map(|def| (def.docs_with_rangemap(sema.db), Definition::Static(def))),
             ast::Const(it)       => sema.to_def(&it).map(|def| (def.docs_with_rangemap(sema.db), Definition::Const(def))),

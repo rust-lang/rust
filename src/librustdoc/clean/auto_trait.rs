@@ -203,7 +203,7 @@ fn clean_param_env<'tcx>(
 
     let mut generics = clean::Generics { params, where_predicates };
     simplify::sized_bounds(cx, &mut generics);
-    generics.where_predicates = simplify::where_clauses(cx, generics.where_predicates);
+    generics.where_predicates = simplify::where_clauses(cx.tcx, generics.where_predicates);
     generics
 }
 

@@ -5,7 +5,8 @@
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 pub use core::alloc::*;
-use core::ptr::{self, Alignment, NonNull};
+use core::mem::Alignment;
+use core::ptr::{self, NonNull};
 use core::{cmp, hint};
 
 unsafe extern "Rust" {

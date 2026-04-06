@@ -65,6 +65,13 @@ impl<T: Eq + Hash> ExpectedValues<T> {
             ExpectedValues::Any => false,
         }
     }
+
+    pub fn contains(&self, value: &Option<T>) -> bool {
+        match self {
+            ExpectedValues::Some(expecteds) => expecteds.contains(value),
+            ExpectedValues::Any => false,
+        }
+    }
 }
 
 impl<T: Eq + Hash> Extend<T> for ExpectedValues<T> {
@@ -229,6 +236,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         if s == SanitizerSet::KERNELADDRESS {
             s = SanitizerSet::ADDRESS;
         }
+        // KHWASAN is still HWASAN under the hood, so it uses the same attribute.
+        if s == SanitizerSet::KERNELHWADDRESS {
+            s = SanitizerSet::HWADDRESS;
+        }
         ins_str!(sym::sanitize, &s.to_string());
     }
 
@@ -239,7 +250,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_none!(sym::sanitizer_cfi_normalize_integers);
     }
 
-    ins_sym!(sym::target_abi, sess.target.abi.desc_symbol());
+    ins_sym!(sym::target_abi, sess.target.cfg_abi.desc_symbol());
     ins_sym!(sym::target_arch, sess.target.arch.desc_symbol());
     ins_str!(sym::target_endian, sess.target.endian.as_str());
     ins_sym!(sym::target_env, sess.target.env.desc_symbol());
@@ -447,7 +458,7 @@ impl CheckCfg {
                 };
 
                 for target in Target::builtins().chain(iter::once(current_target.clone())) {
-                    values_target_abi.insert(target.options.abi.desc_symbol());
+                    values_target_abi.insert(target.options.cfg_abi.desc_symbol());
                     values_target_arch.insert(target.arch.desc_symbol());
                     values_target_endian.insert(Symbol::intern(target.options.endian.as_str()));
                     values_target_env.insert(target.options.env.desc_symbol());

@@ -247,11 +247,11 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                 }),
                 _ => None,
             }
-        } else if matching_root_macro_call(cx, expr.span, sym::matches_macro).is_some()
+        } else if let ExprKind::Match(scrutinee, [arm, _], _) = expr.kind
             // we know for a fact that the wildcard pattern is the second arm
-            && let ExprKind::Match(scrutinee, [arm, _], _) = expr.kind
             && scrutinee.res_local_id() == Some(filter_param_id)
             && let PatKind::TupleStruct(QPath::Resolved(_, path), ..) = arm.pat.kind
+            && matching_root_macro_call(cx, expr.span, sym::matches_macro).is_some()
             && let Some(variant_def_id) = path.res.opt_def_id()
         {
             Some(OffendingFilterExpr::Matches { variant_def_id })

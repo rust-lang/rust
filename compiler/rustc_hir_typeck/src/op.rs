@@ -249,6 +249,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rhs_ty_var,
             Some(lhs_expr),
             |err, ty| {
+                self.err_ctxt().note_field_shadowed_by_private_candidate(
+                    err,
+                    rhs_expr.hir_id,
+                    self.param_env,
+                );
                 if let Op::BinOp(binop) = op
                     && binop.node == hir::BinOpKind::Eq
                 {
@@ -331,6 +336,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 lhs_expr.span,
                                 format!("cannot use `{}` on type `{}`", s, lhs_ty_str),
                             );
+                            let err_ctxt = self.err_ctxt();
+                            err_ctxt.note_field_shadowed_by_private_candidate(
+                                &mut err,
+                                lhs_expr.hir_id,
+                                self.param_env,
+                            );
+                            err_ctxt.note_field_shadowed_by_private_candidate(
+                                &mut err,
+                                rhs_expr.hir_id,
+                                self.param_env,
+                            );
                             self.note_unmet_impls_on_type(&mut err, &errors, false);
                             (err, None)
                         }
@@ -391,6 +407,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.span_label(lhs_expr.span, lhs_ty_str.clone());
                             err.span_label(rhs_expr.span, rhs_ty_str);
                         }
+                        let err_ctxt = self.err_ctxt();
+                        err_ctxt.note_field_shadowed_by_private_candidate(
+                            &mut err,
+                            lhs_expr.hir_id,
+                            self.param_env,
+                        );
+                        err_ctxt.note_field_shadowed_by_private_candidate(
+                            &mut err,
+                            rhs_expr.hir_id,
+                            self.param_env,
+                        );
                         let suggest_derive = self.can_eq(self.param_env, lhs_ty, rhs_ty);
                         self.note_unmet_impls_on_type(&mut err, &errors, suggest_derive);
                         (err, output_def_id)

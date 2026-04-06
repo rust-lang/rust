@@ -10,8 +10,8 @@ use itertools::Itertools;
 use span::Edition;
 
 use crate::{
-    Adt, AsAssocItem, AssocItemContainer, Const, ConstParam, Field, Function, Local, ModuleDef,
-    SemanticsScope, Static, Struct, StructKind, Trait, Type, Variant,
+    Adt, AsAssocItem, AssocItemContainer, Const, ConstParam, EnumVariant, Field, Function, Local,
+    ModuleDef, SemanticsScope, Static, Struct, StructKind, Trait, Type,
 };
 
 /// Helper function to get path to `ModuleDef`
@@ -80,7 +80,7 @@ pub enum Expr<'db> {
         params: Vec<Expr<'db>>,
     },
     /// Enum variant construction
-    Variant { variant: Variant, generics: Vec<Type<'db>>, params: Vec<Expr<'db>> },
+    Variant { variant: EnumVariant, generics: Vec<Type<'db>>, params: Vec<Expr<'db>> },
     /// Struct construction
     Struct { strukt: Struct, generics: Vec<Type<'db>>, params: Vec<Expr<'db>> },
     /// Tuple construction
@@ -222,7 +222,7 @@ impl<'db> Expr<'db> {
                     StructKind::Unit => String::new(),
                 };
 
-                let prefix = mod_item_path_str(sema_scope, &ModuleDef::Variant(*variant))?;
+                let prefix = mod_item_path_str(sema_scope, &ModuleDef::EnumVariant(*variant))?;
                 Ok(format!("{prefix}{inner}"))
             }
             Expr::Struct { strukt, params, .. } => {

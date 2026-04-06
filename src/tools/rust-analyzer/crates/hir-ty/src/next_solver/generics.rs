@@ -55,7 +55,7 @@ pub(crate) fn generics(interner: DbInterner<'_>, def: SolverDefId) -> Generics {
     let (parent, own_params) = match (def.try_into(), def) {
         (Ok(def), _) => (
             parent_generic_def(db, def),
-            own_params_for_generic_params(def, &db.generic_params(def)),
+            own_params_for_generic_params(def, GenericParams::of(db, def)),
         ),
         (_, SolverDefId::InternedOpaqueTyId(id)) => {
             match db.lookup_intern_impl_trait_id(id) {

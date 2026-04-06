@@ -1,6 +1,5 @@
 #![feature(transmutability)]
 #![feature(generic_const_exprs)]
-//~^ WARN the feature `generic_const_exprs` is incomplete
 
 use std::mem::{Assume, TransmuteFrom};
 

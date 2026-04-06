@@ -3,16 +3,14 @@
 //! similar to queries, but queries come with a lot of machinery for caching and incremental
 //! compilation, whereas hooks are just plain function pointers without any of the query magic.
 
-use std::marker::PhantomData;
-
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
-use rustc_span::{ExpnHash, ExpnId, Span};
+use rustc_span::{ExpnHash, ExpnId};
 
-use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex};
+use crate::mir;
+use crate::query::on_disk_cache::CacheEncoder;
 use crate::ty::{Ty, TyCtxt};
-use crate::{mir, ty};
 
 macro_rules! declare_hooks {
     ($($(#[$attr:meta])*hook $name:ident($($arg:ident: $K:ty),*) -> $V:ty;)*) => {
@@ -113,33 +111,8 @@ declare_hooks! {
     /// Creates the MIR for a given `DefId`, including unreachable code.
     hook build_mir_inner_impl(def: LocalDefId) -> mir::Body<'tcx>;
 
-    hook encode_query_values(
-        encoder: &mut CacheEncoder<'_, 'tcx>,
-        query_result_index: &mut EncodedDepNodeIndex
-    ) -> ();
-
-    /// Tries to normalize an alias, ignoring any errors.
-    ///
-    /// Generalization with the new trait solver calls into this,
-    /// when generalizing outside of the trait solver in `hir_typeck`.
-    hook try_eagerly_normalize_alias(
-        type_erased_infcx: TypeErasedInfcx<'_, 'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        span: Span,
-        alias: ty::AliasTy<'tcx>
-    ) -> Ty<'tcx>;
-}
-
-/// The `try_eagerly_normalize_alias` hook passes an `Infcx` from where it's called (in `rustc_infer`)
-/// to where it's provided (in `rustc_trait_selection`).
-/// Both of those crates have that type available, but `rustc_middle` does not.
-/// Instead we pass this type-erased `Infcx` and transmute on both sides.
-///
-/// Has to be `repr(transparent)` so we can transmute a `&'a Infcx<'tcx>` to this struct.
-#[repr(transparent)]
-pub struct TypeErasedInfcx<'a, 'tcx> {
-    _infcx: *const (),
-    phantom: PhantomData<&'a mut &'tcx ()>,
+    /// Serializes all eligible query return values into the on-disk cache.
+    hook encode_query_values(encoder: &mut CacheEncoder<'_, 'tcx>) -> ();
 }
 
 #[cold]

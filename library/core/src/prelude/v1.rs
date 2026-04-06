@@ -120,8 +120,12 @@ pub use crate::trace_macros;
 // (no public module for them to be re-exported from).
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 pub use crate::macros::builtin::{
-    alloc_error_handler, bench, derive, global_allocator, test, test_case,
+    alloc_error_handler, bench, global_allocator, test, test_case,
 };
+
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[doc(no_inline)]
+pub use crate::macros::builtin::derive;
 
 #[unstable(feature = "derive_const", issue = "118304")]
 pub use crate::macros::builtin::derive_const;

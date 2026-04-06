@@ -1,5 +1,5 @@
 struct Struct;
-//~^ NOTE function or associated item `fob` not found for this struct
+//~^ NOTE associated function or constant `fob` not found for this struct
 
 impl Struct {
     fn foo() { }
@@ -21,8 +21,8 @@ trait Trait {
 
 fn main() {
     Struct::fob();
-    //~^ ERROR no function or associated item named `fob` found for struct `Struct` in the current scope
-    //~| NOTE function or associated item not found in `Struct`
+    //~^ ERROR no associated function or constant named `fob` found for struct `Struct` in the current scope
+    //~| NOTE associated function or constant not found in `Struct`
 
     Struc::foo();
     //~^ ERROR cannot find type `Struc`

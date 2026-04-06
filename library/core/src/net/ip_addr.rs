@@ -68,7 +68,8 @@ pub enum IpAddr {
 /// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
 /// ```
 #[rustc_diagnostic_item = "Ipv4Addr"]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy)]
+#[derive_const(Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
     octets: [u8; 4],
@@ -161,7 +162,8 @@ impl Hash for Ipv4Addr {
 /// assert_eq!(localhost.is_loopback(), true);
 /// ```
 #[rustc_diagnostic_item = "Ipv6Addr"]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy)]
+#[derive_const(Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
     octets: [u8; 16],
@@ -177,15 +179,17 @@ impl Hash for Ipv6Addr {
     }
 }
 
-/// Scope of an [IPv6 multicast address] as defined in [IETF RFC 7346 section 2].
+/// Scope of an [IPv6 multicast address] as defined in [IETF RFC 7346 section 2],
+/// which updates [IETF RFC 4291 section 2.7].
 ///
 /// # Stability Guarantees
 ///
-/// Not all possible values for a multicast scope have been assigned.
-/// Future RFCs may introduce new scopes, which will be added as variants to this enum;
-/// because of this the enum is marked as `#[non_exhaustive]`.
+/// Scopes 0 and F are currently reserved by IETF, and may be assigned in the future.
+/// For this reason, the enum variants for those two scopes are not currently nameable.
+/// You can still check for them in your code using `as` casts.
 ///
 /// # Examples
+///
 /// ```
 /// #![feature(ip)]
 ///
@@ -204,32 +208,76 @@ impl Hash for Ipv6Addr {
 ///     Some(SiteLocal) => println!("Site-Local scope"),
 ///     Some(OrganizationLocal) => println!("Organization-Local scope"),
 ///     Some(Global) => println!("Global scope"),
-///     Some(_) => println!("Unknown scope"),
+///     Some(s) => {
+///         let snum = s as u8;
+///         if matches!(0x0 | 0xF, snum) {
+///             println!("Reserved scope {snum:X}")
+///         } else {
+///             println!("Unassigned scope {snum:X}")
+///         }
+///     }
 ///     None => println!("Not a multicast address!")
 /// }
-///
 /// ```
 ///
 /// [IPv6 multicast address]: Ipv6Addr
 /// [IETF RFC 7346 section 2]: https://tools.ietf.org/html/rfc7346#section-2
-#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
+/// [IETF RFC 4291 section 2.7]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.7
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[unstable(feature = "ip", issue = "27709")]
-#[non_exhaustive]
 pub enum Ipv6MulticastScope {
+    /// Reserved by IETF.
+    #[doc(hidden)]
+    #[unstable(
+        feature = "ip_multicast_reserved",
+        reason = "not yet assigned by IETF",
+        issue = "none"
+    )]
+    Reserved0 = 0x0,
     /// Interface-Local scope.
-    InterfaceLocal,
+    InterfaceLocal = 0x1,
     /// Link-Local scope.
-    LinkLocal,
+    LinkLocal = 0x2,
     /// Realm-Local scope.
-    RealmLocal,
+    RealmLocal = 0x3,
     /// Admin-Local scope.
-    AdminLocal,
+    AdminLocal = 0x4,
     /// Site-Local scope.
-    SiteLocal,
+    SiteLocal = 0x5,
+
+    /// Scope 6. Unassigned, available for administrators
+    /// to define additional multicast regions.
+    Unassigned6 = 0x6,
+    /// Scope 7. Unassigned, available for administrators
+    /// to define additional multicast regions.
+    Unassigned7 = 0x7,
     /// Organization-Local scope.
-    OrganizationLocal,
+    OrganizationLocal = 0x8,
+    /// Scope 9. Unassigned, available for administrators
+    /// to define additional multicast regions.
+    Unassigned9 = 0x9,
+    /// Scope A. Unassigned, available for administrators
+    /// to define additional multicast regions.
+    UnassignedA = 0xA,
+    /// Scope B. Unassigned, available for administrators
+    /// to define additional multicast regions.
+    UnassignedB = 0xB,
+    /// Scope C. Unassigned, available for administrators
+    /// to define additional multicast regions.
+    UnassignedC = 0xC,
+    /// Scope D. Unassigned, available for administrators
+    /// to define additional multicast regions.
+    UnassignedD = 0xD,
     /// Global scope.
-    Global,
+    Global = 0xE,
+    /// Reserved by IETF.
+    #[doc(hidden)]
+    #[unstable(
+        feature = "ip_multicast_reserved",
+        reason = "not yet assigned by IETF",
+        issue = "none"
+    )]
+    ReservedF = 0xF,
 }
 
 impl IpAddr {
@@ -1183,7 +1231,8 @@ impl PartialEq<IpAddr> for Ipv4Addr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl PartialOrd for Ipv4Addr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const PartialOrd for Ipv4Addr {
     #[inline]
     fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -1213,7 +1262,8 @@ impl PartialOrd<IpAddr> for Ipv4Addr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Ord for Ipv4Addr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const Ord for Ipv4Addr {
     #[inline]
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
         self.octets.cmp(&other.octets)
@@ -1848,14 +1898,23 @@ impl Ipv6Addr {
     pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
         if self.is_multicast() {
             match self.segments()[0] & 0x000f {
-                1 => Some(Ipv6MulticastScope::InterfaceLocal),
-                2 => Some(Ipv6MulticastScope::LinkLocal),
-                3 => Some(Ipv6MulticastScope::RealmLocal),
-                4 => Some(Ipv6MulticastScope::AdminLocal),
-                5 => Some(Ipv6MulticastScope::SiteLocal),
-                8 => Some(Ipv6MulticastScope::OrganizationLocal),
-                14 => Some(Ipv6MulticastScope::Global),
-                _ => None,
+                0x0 => Some(Ipv6MulticastScope::Reserved0),
+                0x1 => Some(Ipv6MulticastScope::InterfaceLocal),
+                0x2 => Some(Ipv6MulticastScope::LinkLocal),
+                0x3 => Some(Ipv6MulticastScope::RealmLocal),
+                0x4 => Some(Ipv6MulticastScope::AdminLocal),
+                0x5 => Some(Ipv6MulticastScope::SiteLocal),
+                0x6 => Some(Ipv6MulticastScope::Unassigned6),
+                0x7 => Some(Ipv6MulticastScope::Unassigned7),
+                0x8 => Some(Ipv6MulticastScope::OrganizationLocal),
+                0x9 => Some(Ipv6MulticastScope::Unassigned9),
+                0xA => Some(Ipv6MulticastScope::UnassignedA),
+                0xB => Some(Ipv6MulticastScope::UnassignedB),
+                0xC => Some(Ipv6MulticastScope::UnassignedC),
+                0xD => Some(Ipv6MulticastScope::UnassignedD),
+                0xE => Some(Ipv6MulticastScope::Global),
+                0xF => Some(Ipv6MulticastScope::ReservedF),
+                _ => unreachable!(),
             }
         } else {
             None
@@ -2177,7 +2236,8 @@ impl PartialEq<Ipv6Addr> for IpAddr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl PartialOrd for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const PartialOrd for Ipv6Addr {
     #[inline]
     fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -2207,7 +2267,8 @@ impl PartialOrd<IpAddr> for Ipv6Addr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Ord for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const Ord for Ipv6Addr {
     #[inline]
     fn cmp(&self, other: &Ipv6Addr) -> Ordering {
         self.segments().cmp(&other.segments())

@@ -328,9 +328,9 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
 impl ToStableHashKey<StableHashingContext<'_>> for MonoItem<'_> {
     type KeyType = Fingerprint;
 
-    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'_>) -> Self::KeyType {
+    fn to_stable_hash_key(&self, hcx: &mut StableHashingContext<'_>) -> Self::KeyType {
         let mut hasher = StableHasher::new();
-        self.hash_stable(&mut hcx.clone(), &mut hasher);
+        self.hash_stable(hcx, &mut hasher);
         hasher.finish()
     }
 }
@@ -584,7 +584,7 @@ impl<'tcx> CodegenUnit<'tcx> {
 impl ToStableHashKey<StableHashingContext<'_>> for CodegenUnit<'_> {
     type KeyType = String;
 
-    fn to_stable_hash_key(&self, _: &StableHashingContext<'_>) -> Self::KeyType {
+    fn to_stable_hash_key(&self, _: &mut StableHashingContext<'_>) -> Self::KeyType {
         // Codegen unit names are conceptually required to be stable across
         // compilation session so that object file names match up.
         self.name.to_string()

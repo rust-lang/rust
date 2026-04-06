@@ -4,31 +4,31 @@ error[E0539]: malformed `sanitize` attribute input
 LL | #[sanitize(brontosaurus = "off")]
    | ^^^^^^^^^^^------------^^^^^^^^^^
    |            |
-   |            valid arguments are "address", "kernel_address", "cfi", "kcfi", "memory", "memtag", "shadow_call_stack", "thread", "hwaddress" or "realtime"
+   |            valid arguments are "address", "kernel_address", "cfi", "kcfi", "memory", "memtag", "shadow_call_stack", "thread", "hwaddress", "kernel_hwaddress" or "realtime"
 
 error: multiple `sanitize` attributes
-  --> $DIR/invalid-sanitize.rs:7:1
+  --> $DIR/invalid-sanitize.rs:8:1
    |
 LL | #[sanitize(address = "off")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/invalid-sanitize.rs:8:1
+  --> $DIR/invalid-sanitize.rs:7:1
    |
 LL | #[sanitize(address = "off")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: multiple `sanitize` attributes
-  --> $DIR/invalid-sanitize.rs:11:1
-   |
-LL | #[sanitize(address = "on")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
   --> $DIR/invalid-sanitize.rs:12:1
    |
 LL | #[sanitize(address = "off")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/invalid-sanitize.rs:11:1
+   |
+LL | #[sanitize(address = "on")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `sanitize` attribute input
   --> $DIR/invalid-sanitize.rs:15:1

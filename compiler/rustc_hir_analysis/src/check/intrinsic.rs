@@ -111,10 +111,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::expf32
         | sym::expf64
         | sym::expf128
-        | sym::fabsf16
-        | sym::fabsf32
-        | sym::fabsf64
-        | sym::fabsf128
+        | sym::fabs
         | sym::fadd_algebraic
         | sym::fdiv_algebraic
         | sym::field_offset
@@ -463,10 +460,7 @@ pub(crate) fn check_intrinsic_type(
             (0, 0, vec![tcx.types.f128, tcx.types.f128, tcx.types.f128], tcx.types.f128)
         }
 
-        sym::fabsf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::fabsf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::fabsf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::fabsf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
+        sym::fabs => (1, 0, vec![param(0)], param(0)),
 
         sym::minimum_number_nsz_f16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
         sym::minimum_number_nsz_f32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
@@ -726,8 +720,8 @@ pub(crate) fn check_intrinsic_type(
         | sym::simd_and
         | sym::simd_or
         | sym::simd_xor
-        | sym::simd_fmin
-        | sym::simd_fmax
+        | sym::simd_minimum_number_nsz
+        | sym::simd_maximum_number_nsz
         | sym::simd_saturating_add
         | sym::simd_saturating_sub
         | sym::simd_carryless_mul => (1, 0, vec![param(0), param(0)], param(0)),
@@ -788,6 +782,13 @@ pub(crate) fn check_intrinsic_type(
         | sym::simd_reduce_max => (2, 0, vec![param(0)], param(1)),
         sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
         sym::simd_shuffle_const_generic => (2, 1, vec![param(0), param(0)], param(1)),
+
+        sym::sve_cast => (2, 0, vec![param(0)], param(1)),
+        sym::sve_tuple_create2 => (2, 0, vec![param(0), param(0)], param(1)),
+        sym::sve_tuple_create3 => (2, 0, vec![param(0), param(0), param(0)], param(1)),
+        sym::sve_tuple_create4 => (2, 0, vec![param(0), param(0), param(0), param(0)], param(1)),
+        sym::sve_tuple_get => (2, 1, vec![param(0)], param(1)),
+        sym::sve_tuple_set => (2, 1, vec![param(0), param(1)], param(0)),
 
         sym::atomic_cxchg | sym::atomic_cxchgweak => (
             1,

@@ -189,11 +189,6 @@ impl ToSocketAddrs for (Ipv6Addr, u16) {
     }
 }
 
-fn lookup_host(host: &str, port: u16) -> io::Result<vec::IntoIter<SocketAddr>> {
-    let addrs = crate::sys::net::lookup_host(host, port)?;
-    Ok(Vec::from_iter(addrs).into_iter())
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToSocketAddrs for (&str, u16) {
     type Iter = vec::IntoIter<SocketAddr>;
@@ -207,7 +202,7 @@ impl ToSocketAddrs for (&str, u16) {
         }
 
         // Otherwise, make the system look it up.
-        lookup_host(host, port)
+        crate::sys::net::lookup_host(host, port).map(|addrs| Vec::from_iter(addrs).into_iter())
     }
 }
 
@@ -229,16 +224,8 @@ impl ToSocketAddrs for str {
             return Ok(vec![addr].into_iter());
         }
 
-        // Otherwise, split the string by ':' and convert the second part to u16...
-        let Some((host, port_str)) = self.rsplit_once(':') else {
-            return Err(io::const_error!(io::ErrorKind::InvalidInput, "invalid socket address"));
-        };
-        let Ok(port) = port_str.parse::<u16>() else {
-            return Err(io::const_error!(io::ErrorKind::InvalidInput, "invalid port value"));
-        };
-
-        // ... and make the system look up the host.
-        lookup_host(host, port)
+        // Otherwise, make the system look it up.
+        crate::sys::net::lookup_host_string(self).map(|addrs| Vec::from_iter(addrs).into_iter())
     }
 }
 

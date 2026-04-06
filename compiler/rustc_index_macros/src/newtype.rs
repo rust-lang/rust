@@ -174,8 +174,8 @@ impl Parse for Newtype {
         } else if stable_hash_generic || stable_hash_no_context {
             quote! {
                 #gate_rustc_only
-                impl<CTX> ::rustc_data_structures::stable_hasher::HashStable<CTX> for #name {
-                    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+                impl<Hcx> ::rustc_data_structures::stable_hasher::HashStable<Hcx> for #name {
+                    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
                         self.as_u32().hash_stable(hcx, hasher)
                     }
                 }

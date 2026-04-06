@@ -93,6 +93,38 @@ LL |     #[rustfmt::skip] ():,
    = help: only `#[cfg]` and `#[cfg_attr]` are supported
 
 error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:42:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:45:9
+   |
+LL |         #[rustfmt::skip] ():;
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:53:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:56:9
+   |
+LL |         #[rustfmt::skip] ():;
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
   --> $DIR/cfg_attribute.rs:65:5
    |
 LL |     #[derive(Clone)] ():,
@@ -105,6 +137,38 @@ error: most attributes are not supported in `where` clauses
    |
 LL |     #[rustfmt::skip] ():,
    |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:75:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:78:9
+   |
+LL |         #[rustfmt::skip] ():;
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:86:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:89:9
+   |
+LL |         #[rustfmt::skip] ():,
+   |         ^^^^^^^^^^^^^^^^
    |
    = help: only `#[cfg]` and `#[cfg_attr]` are supported
 
@@ -189,86 +253,6 @@ LL |     #[rustfmt::skip] ():,
    = help: only `#[cfg]` and `#[cfg_attr]` are supported
 
 error: most attributes are not supported in `where` clauses
-  --> $DIR/cfg_attribute.rs:177:5
-   |
-LL |     #[derive(Clone)] ():,
-   |     ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/cfg_attribute.rs:180:5
-   |
-LL |     #[rustfmt::skip] ():,
-   |     ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/cfg_attribute.rs:42:9
-   |
-LL |         #[derive(Clone)] ():,
-   |         ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/cfg_attribute.rs:45:9
-   |
-LL |         #[rustfmt::skip] ():;
-   |         ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/cfg_attribute.rs:53:9
-   |
-LL |         #[derive(Clone)] ():,
-   |         ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/cfg_attribute.rs:56:9
-   |
-LL |         #[rustfmt::skip] ():;
-   |         ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/cfg_attribute.rs:75:9
-   |
-LL |         #[derive(Clone)] ():,
-   |         ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/cfg_attribute.rs:78:9
-   |
-LL |         #[rustfmt::skip] ():;
-   |         ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/cfg_attribute.rs:86:9
-   |
-LL |         #[derive(Clone)] ():,
-   |         ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/cfg_attribute.rs:89:9
-   |
-LL |         #[rustfmt::skip] ():,
-   |         ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
   --> $DIR/cfg_attribute.rs:164:9
    |
 LL |         #[derive(Clone)] ():,
@@ -281,6 +265,22 @@ error: most attributes are not supported in `where` clauses
    |
 LL |         #[rustfmt::skip] ():,
    |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:177:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:180:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
    |
    = help: only `#[cfg]` and `#[cfg_attr]` are supported
 

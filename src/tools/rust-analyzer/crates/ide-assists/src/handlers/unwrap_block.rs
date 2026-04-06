@@ -45,6 +45,7 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 ast::LoopExpr(it) => it.syntax().clone(),
                 ast::WhileExpr(it) => it.syntax().clone(),
                 ast::MatchArm(it) => it.parent_match().syntax().clone(),
+                ast::LetElse(it) => it.syntax().parent()?,
                 ast::LetStmt(it) => {
                     replacement = wrap_let(&it, replacement);
                     prefer_container = Some(it.syntax().clone());
@@ -551,6 +552,40 @@ fn main() {
     } else {
         println!("bar");
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn simple_let_else() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    let Some(2) = None else {$0
+        return;
+    };
+}
+"#,
+            r#"
+fn main() {
+    return;
+}
+"#,
+        );
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    let Some(2) = None else {$0
+        return
+    };
+}
+"#,
+            r#"
+fn main() {
+    return
 }
 "#,
         );
