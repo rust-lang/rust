@@ -173,7 +173,7 @@ fn target_data_for_def(
         // FIXME
         hir::ModuleDef::Macro(_) => return None,
         // Enum variants can't be private, we can't modify builtin types
-        hir::ModuleDef::Variant(_) | hir::ModuleDef::BuiltinType(_) => return None,
+        hir::ModuleDef::EnumVariant(_) | hir::ModuleDef::BuiltinType(_) => return None,
     };
 
     Some((offset, target, target_file, target_name))

@@ -12,8 +12,7 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::Span;
-use rustc_span::source_map::Spanned;
+use rustc_span::{Span, Spanned};
 use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode};
 use tracing::{debug, info};
 
@@ -1019,10 +1018,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if let Some(hir_id) =
                             terminator.source_info.scope.lint_root(&self.mir.source_scopes)
                         {
-                            let msg = "tail calling a function marked with `#[track_caller]` has no special effect";
-                            bx.tcx().node_lint(TAIL_CALL_TRACK_CALLER, hir_id, |d| {
-                                _ = d.primary_message(msg).span(fn_span)
-                            });
+                            bx.tcx().emit_node_lint(TAIL_CALL_TRACK_CALLER, hir_id, rustc_errors::DiagDecorator(|d| {
+                                _ = d.primary_message("tail calling a function marked with `#[track_caller]` has no special effect").span(fn_span)
+                            }));
                         }
 
                         let instance = ty::Instance::resolve_for_fn_ptr(

@@ -545,8 +545,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .all(|obligation| self.predicate_may_hold(obligation))
             }) && steps > 0
             {
+                if span.in_external_macro(self.tcx.sess.source_map()) {
+                    return false;
+                }
                 let derefs = "*".repeat(steps);
                 let msg = "consider dereferencing here";
+
                 let call_node = self.tcx.hir_node(*call_hir_id);
                 let is_receiver = matches!(
                     call_node,
@@ -593,7 +597,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
         {
             // Suggest dereferencing the LHS, RHS, or both terms of a binop if possible
-
             let trait_pred = predicate.unwrap_or(trait_pred);
             let lhs_ty = self.tcx.instantiate_bound_regions_with_erased(trait_pred.self_ty());
             let lhs_autoderef = (self.autoderef_steps)(lhs_ty);
@@ -644,6 +647,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
             {
                 let make_sugg = |mut expr: &Expr<'_>, mut steps| {
+                    if expr.span.in_external_macro(self.tcx.sess.source_map()) {
+                        return None;
+                    }
                     let mut prefix_span = expr.span.shrink_to_lo();
                     let mut msg = "consider dereferencing here";
                     if let hir::ExprKind::AddrOf(_, _, inner) = expr.kind {
@@ -661,10 +667,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     // Empty suggestions with empty spans ICE with debug assertions
                     if steps == 0 {
-                        return (
+                        return Some((
                             msg.trim_end_matches(" and dereferencing instead"),
                             vec![(prefix_span, String::new())],
-                        );
+                        ));
                     }
                     let derefs = "*".repeat(steps);
                     let needs_parens = steps > 0 && expr_needs_parens(expr);
@@ -686,7 +692,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if !prefix_span.is_empty() {
                         suggestion.push((prefix_span, String::new()));
                     }
-                    (msg, suggestion)
+                    Some((msg, suggestion))
                 };
 
                 if let Some(lsteps) = lsteps
@@ -694,8 +700,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && lsteps > 0
                     && rsteps > 0
                 {
-                    let mut suggestion = make_sugg(lhs, lsteps).1;
-                    suggestion.append(&mut make_sugg(rhs, rsteps).1);
+                    let Some((_, mut suggestion)) = make_sugg(lhs, lsteps) else {
+                        return false;
+                    };
+                    let Some((_, mut rhs_suggestion)) = make_sugg(rhs, rsteps) else {
+                        return false;
+                    };
+                    suggestion.append(&mut rhs_suggestion);
                     err.multipart_suggestion(
                         "consider dereferencing both sides of the expression",
                         suggestion,
@@ -705,13 +716,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 } else if let Some(lsteps) = lsteps
                     && lsteps > 0
                 {
-                    let (msg, suggestion) = make_sugg(lhs, lsteps);
+                    let Some((msg, suggestion)) = make_sugg(lhs, lsteps) else {
+                        return false;
+                    };
                     err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
                     return true;
                 } else if let Some(rsteps) = rsteps
                     && rsteps > 0
                 {
-                    let (msg, suggestion) = make_sugg(rhs, rsteps);
+                    let Some((msg, suggestion)) = make_sugg(rhs, rsteps) else {
+                        return false;
+                    };
                     err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
                     return true;
                 }
@@ -1966,10 +1981,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let mut span = obligation.cause.span;
         if let DefKind::Closure = self.tcx.def_kind(obligation.cause.body_id)
-            && let parent = self.tcx.parent(obligation.cause.body_id.into())
+            && let parent = self.tcx.local_parent(obligation.cause.body_id)
             && let DefKind::Fn | DefKind::AssocFn = self.tcx.def_kind(parent)
             && self.tcx.asyncness(parent).is_async()
-            && let Some(parent) = parent.as_local()
             && let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. })
             | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(fn_sig, _), .. })
             | Node::TraitItem(hir::TraitItem {
@@ -2916,12 +2930,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
             | ObligationCauseCode::LetElse
             | ObligationCauseCode::UnOp { .. }
-            | ObligationCauseCode::BinOp { .. }
             | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
             | ObligationCauseCode::AlwaysApplicableImpl
             | ObligationCauseCode::ConstParam(_)
             | ObligationCauseCode::ReferenceOutlivesReferent(..)
             | ObligationCauseCode::ObjectTypeBound(..) => {}
+            ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, .. } => {
+                if let hir::Node::Expr(lhs) = tcx.hir_node(lhs_hir_id)
+                    && let hir::Node::Expr(rhs) = tcx.hir_node(rhs_hir_id)
+                    && tcx.sess.source_map().lookup_char_pos(lhs.span.lo()).line
+                        != tcx.sess.source_map().lookup_char_pos(rhs.span.hi()).line
+                {
+                    err.span_label(lhs.span, "");
+                    err.span_label(rhs.span, "");
+                }
+            }
             ObligationCauseCode::RustCall => {
                 if let Some(pred) = predicate.as_trait_clause()
                     && tcx.is_lang_item(pred.def_id(), LangItem::Sized)
@@ -4037,12 +4060,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => return false,
         };
         let is_derivable_trait = match diagnostic_name {
-            sym::Default => !adt.is_enum(),
+            sym::Copy | sym::Clone => true,
+            _ if adt.is_union() => false,
             sym::PartialEq | sym::PartialOrd => {
                 let rhs_ty = trait_pred.skip_binder().trait_ref.args.type_at(1);
                 trait_pred.skip_binder().self_ty() == rhs_ty
             }
-            sym::Eq | sym::Ord | sym::Clone | sym::Copy | sym::Hash | sym::Debug => true,
+            sym::Eq | sym::Ord | sym::Hash | sym::Debug | sym::Default => true,
             _ => false,
         };
         is_derivable_trait &&
@@ -4815,6 +4839,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         candidate_impls: &[ImplCandidate<'tcx>],
         span: Span,
     ) {
+        if span.in_external_macro(self.tcx.sess.source_map()) {
+            return;
+        }
         // We can only suggest the slice coercion for function and binary operation arguments,
         // since the suggestion would make no sense in turbofish or call
         let (ObligationCauseCode::BinOp { .. } | ObligationCauseCode::FunctionArg { .. }) =
@@ -4913,6 +4940,79 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 vec![(arg_span.shrink_to_lo(), "(".into()), (arg_span.shrink_to_hi(), ",)".into())],
                 Applicability::MaybeIncorrect,
             );
+        }
+    }
+
+    pub(super) fn suggest_shadowed_inherent_method(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        trait_predicate: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        let ObligationCauseCode::FunctionArg { call_hir_id, .. } = obligation.cause.code() else {
+            return;
+        };
+        let Node::Expr(call) = self.tcx.hir_node(*call_hir_id) else { return };
+        let hir::ExprKind::MethodCall(segment, rcvr, args, ..) = call.kind else { return };
+        let Some(typeck) = &self.typeck_results else { return };
+        let Some(rcvr_ty) = typeck.expr_ty_adjusted_opt(rcvr) else { return };
+        let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
+        let autoderef = (self.autoderef_steps)(rcvr_ty);
+        for (ty, def_id) in autoderef.iter().filter_map(|(ty, obligations)| {
+            if let ty::Adt(def, _) = ty.kind()
+                && *ty != rcvr_ty.peel_refs()
+                && obligations.iter().all(|obligation| self.predicate_may_hold(obligation))
+            {
+                Some((ty, def.did()))
+            } else {
+                None
+            }
+        }) {
+            for impl_def_id in self.tcx.inherent_impls(def_id) {
+                if *impl_def_id == trait_predicate.def_id() {
+                    continue;
+                }
+                for m in self
+                    .tcx
+                    .provided_trait_methods(*impl_def_id)
+                    .filter(|m| m.name() == segment.ident.name)
+                {
+                    let fn_sig = self.tcx.fn_sig(m.def_id);
+                    if fn_sig.skip_binder().inputs().skip_binder().len() != args.len() + 1 {
+                        continue;
+                    }
+                    let rcvr_ty = fn_sig.skip_binder().input(0).skip_binder();
+                    let (mutability, _ty) = match rcvr_ty.kind() {
+                        ty::Ref(_, ty, hir::Mutability::Mut) => ("&mut ", ty),
+                        ty::Ref(_, ty, _) => ("&", ty),
+                        _ => ("", &rcvr_ty),
+                    };
+                    let path = self.tcx.def_path_str(def_id);
+                    err.note(format!(
+                        "there's an inherent method on `{ty}` of the same name, which can be \
+                         auto-dereferenced from `{rcvr_ty}`"
+                    ));
+                    err.multipart_suggestion(
+                        format!(
+                            "to access the inherent method on `{ty}`, use the fully-qualified path",
+                        ),
+                        vec![
+                            (
+                                call.span.until(rcvr.span),
+                                format!("{path}::{}({}", m.name(), mutability),
+                            ),
+                            match &args {
+                                [] => (
+                                    rcvr.span.shrink_to_hi().with_hi(call.span.hi()),
+                                    ")".to_string(),
+                                ),
+                                [first, ..] => (rcvr.span.between(first.span), ", ".to_string()),
+                            },
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
         }
     }
 

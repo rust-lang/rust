@@ -1,4 +1,5 @@
 unsafe extern "C" fn ctor() -> i32 {
+    //~^ERROR: calling a function with return type i32 passing return place of type ()
     0
 }
 
@@ -30,7 +31,6 @@ macro_rules! ctor {
         )]
         #[used]
         static $ident: unsafe extern "C" fn() -> i32 = $ctor;
-        //~^ERROR: calling a function with return type i32 passing return place of type ()
     };
 }
 

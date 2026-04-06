@@ -97,16 +97,17 @@ fn copy_specializes_to_vec() {
 
 #[test]
 fn copy_specializes_from_vecdeque() {
-    let mut source = VecDeque::with_capacity(100 * 1024);
-    for _ in 0..20 * 1024 {
+    let num: usize = if cfg!(miri) { 512 } else { 20 * 1024 };
+    let mut source = VecDeque::with_capacity(4 * num);
+    for _ in 0..num {
         source.push_front(0);
     }
-    for _ in 0..20 * 1024 {
+    for _ in 0..num {
         source.push_back(0);
     }
     let mut sink = WriteObserver { observed_buffer: 0 };
-    assert_eq!(40 * 1024u64, io::copy(&mut source, &mut sink).unwrap());
-    assert_eq!(20 * 1024, sink.observed_buffer);
+    assert_eq!(2 * num as u64, io::copy(&mut source, &mut sink).unwrap());
+    assert_eq!(num, sink.observed_buffer);
 }
 
 #[test]

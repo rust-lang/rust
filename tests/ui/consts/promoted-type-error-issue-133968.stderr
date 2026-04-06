@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/promoted-type-error-issue-133968.rs:4:29
    |
 LL | static STR: &'static [u8] = "a b";
-   |                             ^^^^^ expected `&[u8]`, found `&str`
+   |             -------------   ^^^^^ expected `&[u8]`, found `&str`
+   |             |
+   |             expected because of the type of the static
    |
    = note: expected reference `&'static [u8]`
               found reference `&'static str`

@@ -1,6 +1,5 @@
 //! Test that implicit deref patterns respect the recursion limit
 #![feature(deref_patterns)]
-#![allow(incomplete_features)]
 #![recursion_limit = "8"]
 
 use std::ops::Deref;

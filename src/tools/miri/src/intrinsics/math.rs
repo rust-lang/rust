@@ -1,8 +1,9 @@
+use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, Semantics, SingleS};
 use rustc_apfloat::{self, Float, FloatConvert, Round};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, FloatTy};
 
-use self::helpers::{ToHost, ToSoft};
+use self::math::{HostFloatOperation, HostUnaryFloatOp, IeeeExt, host_unary_float_op};
 use super::check_intrinsic_arg_count;
 use crate::*;
 
@@ -12,12 +13,82 @@ fn sqrt<'tcx, F: Float + FloatConvert<F> + Into<Scalar>>(
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let [f] = check_intrinsic_arg_count(args)?;
-    let f = this.read_scalar(f)?;
-    let f: F = f.to_float()?;
-    // Sqrt is specified to be fully precise.
-    let res = math::sqrt(f);
+    math::sqrt_op::<F>(this, f, dest)
+}
+
+/// Determine which float operation on which type this is.
+fn is_host_unary_float_op(intrinsic_name: &str) -> Option<(FloatTy, HostUnaryFloatOp)> {
+    let (op, ty) = intrinsic_name.rsplit_once('f')?;
+
+    let float_ty = match ty {
+        "16" => FloatTy::F16,
+        "32" => FloatTy::F32,
+        "64" => FloatTy::F64,
+        "128" => FloatTy::F128,
+        _ => return None,
+    };
+
+    let host_float_op = match op {
+        "sin" => HostUnaryFloatOp::Sin,
+        "cos" => HostUnaryFloatOp::Cos,
+        "exp" => HostUnaryFloatOp::Exp,
+        "exp2" => HostUnaryFloatOp::Exp2,
+        "log" => HostUnaryFloatOp::Log,
+        "log10" => HostUnaryFloatOp::Log10,
+        "log2" => HostUnaryFloatOp::Log2,
+        _ => return None,
+    };
+
+    Some((float_ty, host_float_op))
+}
+
+fn pow_intrinsic<'tcx, S: Semantics>(
+    this: &mut MiriInterpCx<'tcx>,
+    args: &[OpTy<'tcx>],
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()>
+where
+    IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
+{
+    let [f1, f2] = check_intrinsic_arg_count(args)?;
+    let f1: IeeeFloat<S> = this.read_scalar(f1)?.to_float()?;
+    let f2: IeeeFloat<S> = this.read_scalar(f2)?.to_float()?;
+
+    let res = math::fixed_float_value(this, "pow", &[f1, f2]).unwrap_or_else(|| {
+        // Using host floats (but it's fine, this operation does not have guaranteed precision).
+        let res = f1.host_powf(f2);
+
+        // Apply a relative error of 4ULP to introduce some non-determinism
+        // simulating imprecise implementations and optimizations.
+        math::apply_random_float_error_ulp(this, res, 4)
+    });
+    let res = this.adjust_nan(res, &[f1, f2]);
+    this.write_scalar(res, dest)?;
+    interp_ok(())
+}
+fn powi_intrinsic<'tcx, S: Semantics>(
+    this: &mut MiriInterpCx<'tcx>,
+    args: &[OpTy<'tcx>],
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()>
+where
+    IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
+{
+    let [f, i] = check_intrinsic_arg_count(args)?;
+    let f: IeeeFloat<S> = this.read_scalar(f)?.to_float()?;
+    let i = this.read_scalar(i)?.to_i32()?;
+
+    let res = math::fixed_powi_value(this, f, i).unwrap_or_else(|| {
+        // Using host floats (but it's fine, this operation does not have guaranteed precision).
+        let res = f.host_powi(i);
+
+        // Apply a relative error of 4ULP to introduce some non-determinism
+        // simulating imprecise implementations and optimizations.
+        math::apply_random_float_error_ulp(this, res, 4)
+    });
     let res = this.adjust_nan(res, &[f]);
-    this.write_scalar(res, dest)
+    this.write_scalar(res, dest)?;
+    interp_ok(())
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -108,161 +179,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Operations that need host floats.
-            #[rustfmt::skip]
-            | "sinf32"
-            | "cosf32"
-            | "expf32"
-            | "exp2f32"
-            | "logf32"
-            | "log10f32"
-            | "log2f32"
-            => {
+            _ if let Some((float_ty, op)) = is_host_unary_float_op(intrinsic_name) => {
                 let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f32()?;
-
-                let res = math::fixed_float_value(this, intrinsic_name, &[f]).unwrap_or_else(|| {
-                    // Using host floats (but it's fine, these operations do not have
-                    // guaranteed precision).
-                    let host = f.to_host();
-                    let res = match intrinsic_name {
-                        "sinf32" => host.sin(),
-                        "cosf32" => host.cos(),
-                        "expf32" => host.exp(),
-                        "exp2f32" => host.exp2(),
-                        "logf32" => host.ln(),
-                        "log10f32" => host.log10(),
-                        "log2f32" => host.log2(),
-                        _ => bug!(),
-                    };
-                    let res = res.to_soft();
-
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    let res = math::apply_random_float_error_ulp(
-                        this,
-                        res,
-                        4,
-                    );
-
-                    // Clamp the result to the guaranteed range of this function according to the C standard,
-                    // if any.
-                    math::clamp_float_value(intrinsic_name, res)
-                });
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
+                match float_ty {
+                    FloatTy::F16 => host_unary_float_op::<HalfS>(this, f, op, dest)?,
+                    FloatTy::F32 => host_unary_float_op::<SingleS>(this, f, op, dest)?,
+                    FloatTy::F64 => host_unary_float_op::<DoubleS>(this, f, op, dest)?,
+                    FloatTy::F128 => todo!("f128"), // FIXME(f128)
+                };
             }
 
-            #[rustfmt::skip]
-            | "sinf64"
-            | "cosf64"
-            | "expf64"
-            | "exp2f64"
-            | "logf64"
-            | "log10f64"
-            | "log2f64"
-            => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
+            "powf16" => pow_intrinsic::<HalfS>(this, args, dest)?,
+            "powf32" => pow_intrinsic::<SingleS>(this, args, dest)?,
+            "powf64" => pow_intrinsic::<DoubleS>(this, args, dest)?,
+            "powf128" => todo!("f128"), // FIXME(f128)
 
-                let res = math::fixed_float_value(this, intrinsic_name, &[f]).unwrap_or_else(|| {
-                    // Using host floats (but it's fine, these operations do not have
-                    // guaranteed precision).
-                    let host = f.to_host();
-                    let res = match intrinsic_name {
-                        "sinf64" => host.sin(),
-                        "cosf64" => host.cos(),
-                        "expf64" => host.exp(),
-                        "exp2f64" => host.exp2(),
-                        "logf64" => host.ln(),
-                        "log10f64" => host.log10(),
-                        "log2f64" => host.log2(),
-                        _ => bug!(),
-                    };
-                    let res = res.to_soft();
-
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    let res = math::apply_random_float_error_ulp(
-                        this,
-                        res,
-                        4,
-                    );
-
-                    // Clamp the result to the guaranteed range of this function according to the C standard,
-                    // if any.
-                    math::clamp_float_value(intrinsic_name, res)
-                });
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "powf32" => {
-                let [f1, f2] = check_intrinsic_arg_count(args)?;
-                let f1 = this.read_scalar(f1)?.to_f32()?;
-                let f2 = this.read_scalar(f2)?.to_f32()?;
-
-                let res =
-                    math::fixed_float_value(this, intrinsic_name, &[f1, f2]).unwrap_or_else(|| {
-                        // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                        let res = f1.to_host().powf(f2.to_host()).to_soft();
-
-                        // Apply a relative error of 4ULP to introduce some non-determinism
-                        // simulating imprecise implementations and optimizations.
-                        math::apply_random_float_error_ulp(this, res, 4)
-                    });
-                let res = this.adjust_nan(res, &[f1, f2]);
-                this.write_scalar(res, dest)?;
-            }
-            "powf64" => {
-                let [f1, f2] = check_intrinsic_arg_count(args)?;
-                let f1 = this.read_scalar(f1)?.to_f64()?;
-                let f2 = this.read_scalar(f2)?.to_f64()?;
-
-                let res =
-                    math::fixed_float_value(this, intrinsic_name, &[f1, f2]).unwrap_or_else(|| {
-                        // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                        let res = f1.to_host().powf(f2.to_host()).to_soft();
-
-                        // Apply a relative error of 4ULP to introduce some non-determinism
-                        // simulating imprecise implementations and optimizations.
-                        math::apply_random_float_error_ulp(this, res, 4)
-                    });
-                let res = this.adjust_nan(res, &[f1, f2]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "powif32" => {
-                let [f, i] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f32()?;
-                let i = this.read_scalar(i)?.to_i32()?;
-
-                let res = math::fixed_powi_value(this, f, i).unwrap_or_else(|| {
-                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                    let res = f.to_host().powi(i).to_soft();
-
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    math::apply_random_float_error_ulp(this, res, 4)
-                });
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-            "powif64" => {
-                let [f, i] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
-                let i = this.read_scalar(i)?.to_i32()?;
-
-                let res = math::fixed_powi_value(this, f, i).unwrap_or_else(|| {
-                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                    let res = f.to_host().powi(i).to_soft();
-
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    math::apply_random_float_error_ulp(this, res, 4)
-                });
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
+            "powif16" => powi_intrinsic::<HalfS>(this, args, dest)?,
+            "powif32" => powi_intrinsic::<SingleS>(this, args, dest)?,
+            "powif64" => powi_intrinsic::<DoubleS>(this, args, dest)?,
+            "powif128" => todo!("f128"), // FIXME(f128)
 
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

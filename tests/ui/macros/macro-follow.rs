@@ -2,9 +2,10 @@
 //
 // Check the macro follow sets (see corresponding rpass test).
 
+#![feature(macro_guard_matcher)]
 #![allow(unused_macros)]
 
-// FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), Ident(in)}
+// FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), MetaVarDecl(Guard), Ident(in)}
 macro_rules! follow_pat {
     ($p:pat ()) => {};       //~ERROR  `$p:pat` is followed by `(`
     ($p:pat []) => {};       //~ERROR  `$p:pat` is followed by `[`
@@ -47,6 +48,7 @@ macro_rules! follow_expr {
     ($e:expr $t:tt) => {};    //~ERROR `$e:expr` is followed by `$t:tt`
     ($e:expr $i:item) => {};  //~ERROR `$e:expr` is followed by `$i:item`
     ($e:expr $m:meta) => {};  //~ERROR `$e:expr` is followed by `$m:meta`
+    ($e:expr $g:guard) => {}; //~ERROR `$e:expr` is followed by `$g:guard`
 }
 // FOLLOW(ty) = {OpenDelim(Brace), Comma, FatArrow, Colon, Eq, Gt, Semi, Or,
 //               Ident(as), Ident(where), OpenDelim(Bracket), Nonterminal(Block)}
@@ -66,6 +68,7 @@ macro_rules! follow_ty {
     ($t:ty $r:tt) => {};    //~ERROR `$t:ty` is followed by `$r:tt`
     ($t:ty $i:item) => {};  //~ERROR `$t:ty` is followed by `$i:item`
     ($t:ty $m:meta) => {};  //~ERROR `$t:ty` is followed by `$m:meta`
+    ($t:ty $g:guard) => {}; //~ERROR `$t:ty` is followed by `$g:guard`
 }
 // FOLLOW(stmt) = FOLLOW(expr)
 macro_rules! follow_stmt {
@@ -90,6 +93,7 @@ macro_rules! follow_stmt {
     ($s:stmt $t:tt) => {};    //~ERROR `$s:stmt` is followed by `$t:tt`
     ($s:stmt $i:item) => {};  //~ERROR `$s:stmt` is followed by `$i:item`
     ($s:stmt $m:meta) => {};  //~ERROR `$s:stmt` is followed by `$m:meta`
+    ($s:stmt $g:guard) => {}; //~ERROR `$s:stmt` is followed by `$g:guard`
 }
 // FOLLOW(path) = FOLLOW(ty)
 macro_rules! follow_path {
@@ -108,6 +112,7 @@ macro_rules! follow_path {
     ($p:path $t:tt) => {};    //~ERROR `$p:path` is followed by `$t:tt`
     ($p:path $i:item) => {};  //~ERROR `$p:path` is followed by `$i:item`
     ($p:path $m:meta) => {};  //~ERROR `$p:path` is followed by `$m:meta`
+    ($p:path $g:guard) => {}; //~ERROR `$p:path` is followed by `$g:guard`
 }
 // FOLLOW(block) = any token
 // FOLLOW(ident) = any token

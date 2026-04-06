@@ -4,8 +4,10 @@ use std::ops::ControlFlow;
 
 use hir_def::{
     AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId, hir::generics::LocalTypeOrConstParamId,
-    nameres::crate_def_map, signatures::TraitFlags,
+    TypeOrConstParamId, TypeParamId,
+    hir::generics::{GenericParams, LocalTypeOrConstParamId},
+    nameres::crate_def_map,
+    signatures::{FunctionSignature, TraitFlags, TraitSignature},
 };
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
@@ -298,7 +300,7 @@ where
             if def_map.is_unstable_feature_enabled(&intern::sym::generic_associated_type_extended) {
                 ControlFlow::Continue(())
             } else {
-                let generic_params = db.generic_params(item.into());
+                let generic_params = GenericParams::of(db, item.into());
                 if !generic_params.is_empty() {
                     cb(DynCompatibilityViolation::GAT(it))
                 } else {
@@ -318,7 +320,7 @@ fn virtual_call_violations_for_method<F>(
 where
     F: FnMut(MethodViolationCode) -> ControlFlow<()>,
 {
-    let func_data = db.function_signature(func);
+    let func_data = FunctionSignature::of(db, func);
     if !func_data.has_self_param() {
         cb(MethodViolationCode::StaticMethod)?;
     }
@@ -349,7 +351,7 @@ where
         cb(mvc)?;
     }
 
-    let generic_params = db.generic_params(func.into());
+    let generic_params = GenericParams::of(db, func.into());
     if generic_params.len_type_or_consts() > 0 {
         cb(MethodViolationCode::Generic)?;
     }
@@ -371,7 +373,7 @@ where
             trait_ref: pred_trait_ref,
             polarity: PredicatePolarity::Positive,
         }) = pred
-            && let trait_data = db.trait_signature(pred_trait_ref.def_id.0)
+            && let trait_data = TraitSignature::of(db, pred_trait_ref.def_id.0)
             && trait_data.flags.contains(TraitFlags::AUTO)
             && let rustc_type_ir::TyKind::Param(ParamTy { index: 0, .. }) =
                 pred_trait_ref.self_ty().kind()

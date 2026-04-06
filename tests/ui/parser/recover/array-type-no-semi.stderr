@@ -17,7 +17,12 @@ LL |     let a: [i32, ];
    |          -     ^ expected `;` or `]`
    |          |
    |          while parsing the type for `a`
-   |          help: use `=` if you meant to assign
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let a: [i32, ];
+LL +     let a = [i32, ];
+   |
 
 error: expected `;` or `]`, found `,`
   --> $DIR/array-type-no-semi.rs:12:16

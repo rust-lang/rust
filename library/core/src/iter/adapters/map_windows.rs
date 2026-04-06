@@ -14,10 +14,7 @@ pub struct MapWindows<I: Iterator, F, const N: usize> {
 }
 
 struct MapWindowsInner<I: Iterator, const N: usize> {
-    // We fuse the inner iterator because there shouldn't be "holes" in
-    // the sliding window. Once the iterator returns a `None`, we make
-    // our `MapWindows` iterator return `None` forever.
-    iter: Option<I>,
+    iter: I,
     // Since iterators are assumed lazy, i.e. it only yields an item when
     // `Iterator::next()` is called, and `MapWindows` is not an exception.
     //
@@ -26,7 +23,7 @@ struct MapWindowsInner<I: Iterator, const N: usize> {
     // we collect the first `N` items yielded from the inner iterator and
     // put it into the buffer.
     //
-    // When the inner iterator has returned a `None` (i.e. fused), we take
+    // When the inner iterator has returned a `None`, we take
     // away this `buffer` and leave it `None` to reclaim its resources.
     //
     // FIXME: should we shrink the size of `buffer` using niche optimization?
@@ -64,19 +61,16 @@ impl<I: Iterator, F, const N: usize> MapWindows<I, F, N> {
 impl<I: Iterator, const N: usize> MapWindowsInner<I, N> {
     #[inline]
     fn new(iter: I) -> Self {
-        Self { iter: Some(iter), buffer: None }
+        Self { iter, buffer: None }
     }
 
     fn next_window(&mut self) -> Option<&[I::Item; N]> {
-        let iter = self.iter.as_mut()?;
         match self.buffer {
             // It is the first time to advance. We collect
             // the first `N` items from `self.iter` to initialize `self.buffer`.
-            None => self.buffer = Buffer::try_from_iter(iter),
-            Some(ref mut buffer) => match iter.next() {
+            None => self.buffer = Buffer::try_from_iter(&mut self.iter),
+            Some(ref mut buffer) => match self.iter.next() {
                 None => {
-                    // Fuse the inner iterator since it yields a `None`.
-                    self.iter.take();
                     self.buffer.take();
                 }
                 // Advance the iterator. We first call `next` before changing our buffer
@@ -89,8 +83,7 @@ impl<I: Iterator, const N: usize> MapWindowsInner<I, N> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let Some(ref iter) = self.iter else { return (0, Some(0)) };
-        let (lo, hi) = iter.size_hint();
+        let (lo, hi) = self.iter.size_hint();
         if self.buffer.is_some() {
             // If the first `N` items are already yielded by the inner iterator,
             // the size hint is then equal to the that of the inner iterator's.
@@ -253,12 +246,10 @@ where
     }
 }
 
-// Note that even if the inner iterator not fused, the `MapWindows` is still fused,
-// because we don't allow "holes" in the mapping window.
 #[unstable(feature = "iter_map_windows", issue = "87155")]
 impl<I, F, R, const N: usize> FusedIterator for MapWindows<I, F, N>
 where
-    I: Iterator,
+    I: FusedIterator,
     F: FnMut(&[I::Item; N]) -> R,
 {
 }

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `impl FnMut(usize) -> u32 + Copy: [const] FnMut(usize)` is not satisfied
-  --> $DIR/const-closure-issue-125866-error.rs:8:22
+  --> $DIR/const-closure-issue-125866-error.rs:7:22
    |
 LL |         array[i] = f(i);
    |                    - ^

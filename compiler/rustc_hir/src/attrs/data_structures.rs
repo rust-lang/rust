@@ -277,15 +277,15 @@ impl Default for MacroUseArgs {
 }
 
 #[derive(Debug, Clone, Encodable, Decodable, HashStable_Generic)]
-pub struct StrippedCfgItem<ModId = DefId> {
-    pub parent_module: ModId,
+pub struct StrippedCfgItem<ScopeId = DefId> {
+    pub parent_scope: ScopeId,
     pub ident: Ident,
     pub cfg: (CfgEntry, Span),
 }
 
-impl<ModId> StrippedCfgItem<ModId> {
-    pub fn map_mod_id<New>(self, f: impl FnOnce(ModId) -> New) -> StrippedCfgItem<New> {
-        StrippedCfgItem { parent_module: f(self.parent_module), ident: self.ident, cfg: self.cfg }
+impl<ScopeId> StrippedCfgItem<ScopeId> {
+    pub fn map_scope_id<New>(self, f: impl FnOnce(ScopeId) -> New) -> StrippedCfgItem<New> {
+        StrippedCfgItem { parent_scope: f(self.parent_scope), ident: self.ident, cfg: self.cfg }
     }
 }
 
@@ -1180,13 +1180,18 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
+    /// Represents `#[diagnostic::on_move]`
+    OnMove {
+        span: Span,
+        directive: Option<Box<Directive>>,
+    },
+
     /// Represents `#[rustc_on_unimplemented]` and `#[diagnostic::on_unimplemented]`.
     OnUnimplemented {
         span: Span,
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
     },
-
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 

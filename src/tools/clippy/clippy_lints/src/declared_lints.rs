@@ -312,6 +312,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::manual_main_separator_str::MANUAL_MAIN_SEPARATOR_STR_INFO,
     crate::manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE_INFO,
     crate::manual_option_as_slice::MANUAL_OPTION_AS_SLICE_INFO,
+    crate::manual_pop_if::MANUAL_POP_IF_INFO,
     crate::manual_range_patterns::MANUAL_RANGE_PATTERNS_INFO,
     crate::manual_rem_euclid::MANUAL_REM_EUCLID_INFO,
     crate::manual_retain::MANUAL_RETAIN_INFO,

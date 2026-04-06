@@ -5,10 +5,11 @@ mod tests;
 
 use base_db::Crate;
 use hir_def::{
-    ConstId, EnumVariantId, GeneralConstId, HasModule, StaticId,
+    ConstId, EnumVariantId, ExpressionStoreOwnerId, GeneralConstId, GenericDefId, HasModule,
+    StaticId,
     attrs::AttrFlags,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
-    expr_store::Body,
+    expr_store::{Body, ExpressionStore},
     hir::{Expr, ExprId, Literal},
 };
 use hir_expand::Lookup;
@@ -28,7 +29,7 @@ use crate::{
     traits::StoredParamEnvAndCrate,
 };
 
-use super::mir::{interpret_mir, lower_to_mir, pad16};
+use super::mir::{interpret_mir, lower_body_to_mir, pad16};
 
 pub fn unknown_const<'db>(_ty: Ty<'db>) -> Const<'db> {
     Const::new(DbInterner::conjure(), rustc_type_ir::ConstKind::Error(ErrorGuaranteed))
@@ -235,6 +236,7 @@ pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: Const<'db>) -> Option<u
                 let ec = db.const_eval_static(id).ok()?;
                 try_const_usize(db, ec)
             }
+            GeneralConstId::AnonConstId(_) => None,
         },
         ConstKind::Value(val) => Some(u128::from_le_bytes(pad16(&val.value.inner().memory, false))),
         ConstKind::Error(_) => None,
@@ -258,6 +260,7 @@ pub fn try_const_isize<'db>(db: &'db dyn HirDatabase, c: &Const<'db>) -> Option<
                 let ec = db.const_eval_static(id).ok()?;
                 try_const_isize(db, &ec)
             }
+            GeneralConstId::AnonConstId(_) => None,
         },
         ConstKind::Value(val) => Some(i128::from_le_bytes(pad16(&val.value.inner().memory, true))),
         ConstKind::Error(_) => None,
@@ -271,9 +274,9 @@ pub(crate) fn const_eval_discriminant_variant(
 ) -> Result<i128, ConstEvalError> {
     let interner = DbInterner::new_no_crate(db);
     let def = variant_id.into();
-    let body = db.body(def);
+    let body = Body::of(db, def);
     let loc = variant_id.lookup(db);
-    if matches!(body[body.body_expr], Expr::Missing) {
+    if matches!(body[body.root_expr()], Expr::Missing) {
         let prev_idx = loc.index.checked_sub(1);
         let value = match prev_idx {
             Some(prev_idx) => {
@@ -292,7 +295,7 @@ pub(crate) fn const_eval_discriminant_variant(
     let mir_body = db.monomorphized_mir_body(
         def,
         GenericArgs::empty(interner).store(),
-        ParamEnvAndCrate { param_env: db.trait_environment_for_body(def), krate: def.krate(db) }
+        ParamEnvAndCrate { param_env: db.trait_environment(def.into()), krate: def.krate(db) }
             .store(),
     )?;
     let c = interpret_mir(db, mir_body, false, None)?.0?;
@@ -309,23 +312,23 @@ pub(crate) fn const_eval_discriminant_variant(
 // and make this function private. See the fixme comment on `InferenceContext::resolve_all`.
 pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'_, 'db>) -> Const<'db> {
     let infer = ctx.fixme_resolve_all_clone();
-    fn has_closure(body: &Body, expr: ExprId) -> bool {
-        if matches!(body[expr], Expr::Closure { .. }) {
+    fn has_closure(store: &ExpressionStore, expr: ExprId) -> bool {
+        if matches!(store[expr], Expr::Closure { .. }) {
             return true;
         }
         let mut r = false;
-        body.walk_child_exprs(expr, |idx| r |= has_closure(body, idx));
+        store.walk_child_exprs(expr, |idx| r |= has_closure(store, idx));
         r
     }
-    if has_closure(ctx.body, expr) {
+    if has_closure(ctx.store, expr) {
         // Type checking clousres need an isolated body (See the above FIXME). Bail out early to prevent panic.
         return Const::error(ctx.interner());
     }
-    if let Expr::Path(p) = &ctx.body[expr] {
+    if let Expr::Path(p) = &ctx.store[expr] {
         let mut ctx = TyLoweringContext::new(
             ctx.db,
             &ctx.resolver,
-            ctx.body,
+            ctx.store,
             ctx.generic_def,
             LifetimeElisionKind::Infer,
         );
@@ -333,7 +336,9 @@ pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'_, 'd
             return c;
         }
     }
-    if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr)
+    if let Some(body_owner) = ctx.owner.as_def_with_body()
+        && let Ok(mir_body) =
+            lower_body_to_mir(ctx.db, body_owner, Body::of(ctx.db, body_owner), &infer, expr)
         && let Ok((Ok(result), _)) = interpret_mir(ctx.db, Arc::new(mir_body), true, None)
     {
         return result;
@@ -370,8 +375,12 @@ pub(crate) fn const_eval<'db>(
         let body = db.monomorphized_mir_body(
             def.into(),
             subst,
-            ParamEnvAndCrate { param_env: db.trait_environment(def.into()), krate: def.krate(db) }
-                .store(),
+            ParamEnvAndCrate {
+                param_env: db
+                    .trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(def))),
+                krate: def.krate(db),
+            }
+            .store(),
         )?;
         let c = interpret_mir(db, body, false, trait_env.as_ref().map(|env| env.as_ref()))?.0?;
         Ok(c.store())
@@ -407,7 +416,8 @@ pub(crate) fn const_eval_static<'db>(
             def.into(),
             GenericArgs::empty(interner).store(),
             ParamEnvAndCrate {
-                param_env: db.trait_environment_for_body(def.into()),
+                param_env: db
+                    .trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(def))),
                 krate: def.krate(db),
             }
             .store(),

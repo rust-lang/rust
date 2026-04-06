@@ -58,7 +58,8 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
     }
 }
 
-/// Utility to help performing substitution of `*pattern` by `target`.
+/// Utility to help performing substitution: for all key-value pairs in `copy_classes`,
+/// all occurrences of the key get replaced by the value.
 struct Replacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     unified: DenseBitSet<Local>,

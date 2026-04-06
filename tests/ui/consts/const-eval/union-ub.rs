@@ -1,6 +1,6 @@
 //@ stderr-per-bitwidth
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend different alloc ids
 #[repr(C)]
 union DummyUnion {
     unit: (),

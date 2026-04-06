@@ -120,7 +120,8 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     if enabled.contains(SanitizerSet::THREAD) {
         attrs.push(llvm::AttributeKind::SanitizeThread.create_attr(cx.llcx));
     }
-    if enabled.contains(SanitizerSet::HWADDRESS) {
+    if enabled.contains(SanitizerSet::HWADDRESS) || enabled.contains(SanitizerSet::KERNELHWADDRESS)
+    {
         attrs.push(llvm::AttributeKind::SanitizeHWAddress.create_attr(cx.llcx));
     }
     if enabled.contains(SanitizerSet::SHADOWCALLSTACK) {
@@ -506,15 +507,11 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.push(llvm::CreateAllocKindAttr(cx.llcx, AllocKindFlags::Free));
         // applies to argument place instead of function place
         let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
-        let attrs: &[_] = if llvm_util::get_version() >= (21, 0, 0) {
-            // "Does not capture provenance" means "if the function call stashes the pointer somewhere,
-            // accessing that pointer after the function returns is UB". That is definitely the case here since
-            // freeing will destroy the provenance.
-            let captures_addr = AttributeKind::CapturesAddress.create_attr(cx.llcx);
-            &[allocated_pointer, captures_addr]
-        } else {
-            &[allocated_pointer]
-        };
+        // "Does not capture provenance" means "if the function call stashes the pointer somewhere,
+        // accessing that pointer after the function returns is UB". That is definitely the case here since
+        // freeing will destroy the provenance.
+        let captures_addr = AttributeKind::CapturesAddress.create_attr(cx.llcx);
+        let attrs = &[allocated_pointer, captures_addr];
         attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), attrs);
     }
     if let Some(align) = codegen_fn_attrs.alignment {

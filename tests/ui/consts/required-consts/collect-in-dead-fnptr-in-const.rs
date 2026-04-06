@@ -3,7 +3,7 @@
 //@[noopt] compile-flags: -Copt-level=0
 //@[opt] compile-flags: -O
 //! This fails without optimizations, so it should also fail with optimizations.
-
+//@ ignore-parallel-frontend post-monomorphization errors
 struct Late<T>(T);
 impl<T> Late<T> {
     const FAIL: () = panic!(); //~ERROR evaluation panicked: explicit panic

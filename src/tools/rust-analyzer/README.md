@@ -20,6 +20,8 @@ analyzing Rust code. See
 [Architecture](https://rust-analyzer.github.io/book/contributing/architecture.html)
 in the manual.
 
+[![codecov](https://codecov.io/github/rust-lang/rust-analyzer/graph/badge.svg)](https://app.codecov.io/github/rust-lang/rust-analyzer/tree/master)
+
 ## Quick Start
 
 https://rust-analyzer.github.io/book/installation.html

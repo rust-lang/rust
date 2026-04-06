@@ -34,7 +34,7 @@ RUN sh /scripts/sccache.sh
 # RfL needs access to cland, lld and llvm tools
 ENV PATH="${PATH}:/usr/lib/llvm-15/bin"
 
-ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu
+ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu"
 
 COPY /scripts/rfl-build.sh /tmp/rfl-build.sh
-ENV SCRIPT bash /tmp/rfl-build.sh
+ENV SCRIPT="bash /tmp/rfl-build.sh"

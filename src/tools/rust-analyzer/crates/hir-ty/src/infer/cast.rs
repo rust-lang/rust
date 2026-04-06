@@ -1,6 +1,10 @@
 //! Type cast logic. Basically coercion + additional casts.
 
-use hir_def::{AdtId, hir::ExprId, signatures::TraitFlags};
+use hir_def::{
+    AdtId,
+    hir::ExprId,
+    signatures::{TraitFlags, TraitSignature},
+};
 use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
@@ -383,8 +387,7 @@ impl<'db> CastCheck<'db> {
                             .chain(
                                 elaborate::supertrait_def_ids(ctx.interner(), src_principal)
                                     .filter(|trait_| {
-                                        ctx.db
-                                            .trait_signature(trait_.0)
+                                        TraitSignature::of(ctx.db, trait_.0)
                                             .flags
                                             .contains(TraitFlags::AUTO)
                                     }),

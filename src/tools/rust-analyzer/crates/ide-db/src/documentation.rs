@@ -58,8 +58,22 @@ macro_rules! impl_has_docs {
 }
 
 impl_has_docs![
-    Variant, Field, Static, Const, Trait, TypeAlias, Macro, Function, Adt, Module, Impl, Crate,
-    AssocItem, Struct, Union, Enum,
+    EnumVariant,
+    Field,
+    Static,
+    Const,
+    Trait,
+    TypeAlias,
+    Macro,
+    Function,
+    Adt,
+    Module,
+    Impl,
+    Crate,
+    AssocItem,
+    Struct,
+    Union,
+    Enum,
 ];
 
 impl HasDocs for hir::ExternCrateDecl {

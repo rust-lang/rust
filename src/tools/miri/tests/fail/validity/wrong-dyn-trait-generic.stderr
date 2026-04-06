@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: wrong trait in wide pointer vtable: expected `Trait<u32>`, but encountered `Trait<i32>`
+error: Undefined Behavior: constructing invalid value of type *const dyn Trait<u32>: wrong trait in wide pointer vtable: expected `Trait<u32>`, but encountered `Trait<i32>`
   --> tests/fail/validity/wrong-dyn-trait-generic.rs:LL:CC
    |
 LL |     let _y: *const dyn Trait<u32> = unsafe { mem::transmute(x) };

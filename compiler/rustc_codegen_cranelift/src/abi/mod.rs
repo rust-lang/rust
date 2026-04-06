@@ -20,7 +20,7 @@ use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::Arch;
 use smallvec::{SmallVec, smallvec};

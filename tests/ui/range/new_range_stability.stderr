@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature `new_range_api`
-  --> $DIR/new_range_stability.rs:28:5
+  --> $DIR/new_range_stability.rs:48:5
    |
 LL | use std::range::legacy;
    |     ^^^^^^^^^^^^^^^^^^
@@ -9,17 +9,7 @@ LL | use std::range::legacy;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `new_range_api`
-  --> $DIR/new_range_stability.rs:32:5
-   |
-LL | use std::range::RangeFrom;
-   |     ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #125687 <https://github.com/rust-lang/rust/issues/125687> for more information
-   = help: add `#![feature(new_range_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable library feature `new_range_api`
-  --> $DIR/new_range_stability.rs:33:5
+  --> $DIR/new_range_stability.rs:52:5
    |
 LL | use std::range::Range;
    |     ^^^^^^^^^^^^^^^^^
@@ -29,23 +19,33 @@ LL | use std::range::Range;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `new_range_api`
-  --> $DIR/new_range_stability.rs:34:5
-   |
-LL | use std::range::RangeFromIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #125687 <https://github.com/rust-lang/rust/issues/125687> for more information
-   = help: add `#![feature(new_range_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable library feature `new_range_api`
-  --> $DIR/new_range_stability.rs:35:5
+  --> $DIR/new_range_stability.rs:53:5
    |
 LL | use std::range::RangeIter;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #125687 <https://github.com/rust-lang/rust/issues/125687> for more information
    = help: add `#![feature(new_range_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `new_range_remainder`
+  --> $DIR/new_range_stability.rs:22:7
+   |
+LL |     i.remainder();
+   |       ^^^^^^^^^
+   |
+   = note: see issue #154458 <https://github.com/rust-lang/rust/issues/154458> for more information
+   = help: add `#![feature(new_range_remainder)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `new_range_remainder`
+  --> $DIR/new_range_stability.rs:43:7
+   |
+LL |     i.remainder();
+   |       ^^^^^^^^^
+   |
+   = note: see issue #154458 <https://github.com/rust-lang/rust/issues/154458> for more information
+   = help: add `#![feature(new_range_remainder)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 5 previous errors

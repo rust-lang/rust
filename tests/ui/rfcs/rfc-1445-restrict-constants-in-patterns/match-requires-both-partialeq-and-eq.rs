@@ -16,8 +16,8 @@ const FOO: Foo = Foo { x: 0 };
 fn main() {
     let y = Foo { x: 1 };
     match y {
-        FOO => { }
+        FOO => {}
         //~^ ERROR constant of non-structural type `Foo` in a pattern
-        _ => { }
+        _ => {}
     }
 }

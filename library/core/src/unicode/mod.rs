@@ -4,12 +4,12 @@
 
 // for use in alloc, not re-exported in std.
 #[rustfmt::skip]
-pub use unicode_data::case_ignorable::lookup as Case_Ignorable;
-pub use unicode_data::cased::lookup as Cased;
 pub use unicode_data::conversions;
 
 #[rustfmt::skip]
 pub(crate) use unicode_data::alphabetic::lookup as Alphabetic;
+pub(crate) use unicode_data::case_ignorable::lookup as Case_Ignorable;
+pub(crate) use unicode_data::cased::lookup as Cased;
 pub(crate) use unicode_data::grapheme_extend::lookup as Grapheme_Extend;
 pub(crate) use unicode_data::lowercase::lookup as Lowercase;
 pub(crate) use unicode_data::n::lookup as N;
@@ -19,7 +19,7 @@ pub(crate) use unicode_data::white_space::lookup as White_Space;
 pub(crate) mod printable;
 
 #[allow(unreachable_pub)]
-mod unicode_data;
+pub mod unicode_data;
 
 /// The version of [Unicode](https://www.unicode.org/) that the Unicode parts of
 /// `char` and `str` methods are based on.

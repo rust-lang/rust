@@ -8,7 +8,8 @@ use std::process::ExitStatus;
 
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level, msg,
+    Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, IntoDiagArg,
+    Level, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::layout::LayoutError;
@@ -109,13 +110,6 @@ pub(crate) struct NoNatvisDirectory {
 #[diag("cached cgu {$cgu_name} should have an object file, but doesn't")]
 pub(crate) struct NoSavedObjectFile<'a> {
     pub cgu_name: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[track_caller]` requires Rust ABI", code = E0737)]
-pub(crate) struct RequiresRustAbi {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -739,14 +733,6 @@ pub enum InvalidMonomorphization<'tcx> {
         in_ty: Ty<'tcx>,
     },
 
-    #[diag("invalid monomorphization of `{$name}` intrinsic: `{$in_ty}` is not a floating-point type", code = E0511)]
-    FloatingPointType {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        in_ty: Ty<'tcx>,
-    },
-
     #[diag("invalid monomorphization of `{$name}` intrinsic: unrecognized intrinsic `{$name}`", code = E0511)]
     UnrecognizedIntrinsic {
         #[primary_span]
@@ -1248,8 +1234,30 @@ pub(crate) struct FeatureNotValid<'a> {
     #[primary_span]
     #[label("`{$feature}` is not valid for this target")]
     pub span: Span,
-    #[help("consider removing the leading `+` in the feature name")]
-    pub plus_hint: bool,
+    #[subdiagnostic]
+    pub hint: FeatureNotValidHint<'a>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum FeatureNotValidHint<'a> {
+    #[suggestion(
+        "consider removing the leading `+` in the feature name",
+        code = "enable = \"{stripped}\"",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    RemovePlusFromFeatureName {
+        #[primary_span]
+        span: Span,
+        stripped: &'a str,
+    },
+    #[help(
+        "valid names are: {$possibilities}{$and_more ->
+            [0] {\"\"}
+            *[other] {\" \"}and {$and_more} more
+        }"
+    )]
+    ValidFeatureNames { possibilities: DiagSymbolList<&'a str>, and_more: usize },
 }
 
 #[derive(Diagnostic)]

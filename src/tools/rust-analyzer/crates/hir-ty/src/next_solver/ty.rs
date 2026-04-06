@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 
 use hir_def::{
     AdtId, HasModule, TypeParamId,
-    hir::generics::{TypeOrConstParamData, TypeParamProvenance},
+    hir::generics::{GenericParams, TypeOrConstParamData, TypeParamProvenance},
 };
 use hir_def::{TraitId, type_ref::Rawness};
 use intern::{Interned, InternedRef, impl_internable};
@@ -690,7 +690,7 @@ impl<'db> Ty<'db> {
             ),
             TyKind::Param(param) => {
                 // FIXME: We shouldn't use `param.id` here.
-                let generic_params = db.generic_params(param.id.parent());
+                let generic_params = GenericParams::of(db, param.id.parent());
                 let param_data = &generic_params[param.id.local_id()];
                 match param_data {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
@@ -714,7 +714,7 @@ impl<'db> Ty<'db> {
             }
             TyKind::Coroutine(coroutine_id, _args) => {
                 let InternedCoroutine(owner, _) = coroutine_id.0.loc(db);
-                let krate = owner.module(db).krate(db);
+                let krate = owner.krate(db);
                 if let Some(future_trait) = hir_def::lang_item::lang_items(db, krate).Future {
                     // This is only used by type walking.
                     // Parameters will be walked outside, and projection predicate is not used.

@@ -122,7 +122,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::StaticItem(..) => ItemType::Static,
             clean::ConstantItem(..) => ItemType::Constant,
             clean::TraitItem(..) => ItemType::Trait,
-            clean::ImplItem(..) => ItemType::Impl,
+            clean::ImplItem(..) | clean::PlaceholderImplItem => ItemType::Impl,
             clean::RequiredMethodItem(..) => ItemType::TyMethod,
             clean::MethodItem(..) => ItemType::Method,
             clean::StructFieldItem(..) => ItemType::StructField,

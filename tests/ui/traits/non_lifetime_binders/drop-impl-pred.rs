@@ -4,7 +4,6 @@
 // Issue 110557
 
 #![feature(non_lifetime_binders)]
-//~^ WARN the feature `non_lifetime_binders` is incomplete
 
 pub trait Foo {}
 

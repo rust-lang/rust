@@ -14,8 +14,8 @@ use crate::{
 };
 
 impl<'db> InferenceContext<'_, 'db> {
-    pub(crate) fn infer_mut_body(&mut self) {
-        self.infer_mut_expr(self.body.body_expr, Mutability::Not);
+    pub(crate) fn infer_mut_body(&mut self, body_expr: ExprId) {
+        self.infer_mut_expr(body_expr, Mutability::Not);
     }
 
     fn infer_mut_expr(&mut self, tgt_expr: ExprId, mut mutability: Mutability) {
@@ -52,7 +52,7 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     fn infer_mut_expr_without_adjust(&mut self, tgt_expr: ExprId, mutability: Mutability) {
-        match &self.body[tgt_expr] {
+        match &self.store[tgt_expr] {
             Expr::Missing => (),
             Expr::InlineAsm(e) => {
                 e.operands.iter().for_each(|(_, op)| match op {
@@ -173,7 +173,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_mut_expr(*rhs, Mutability::Not);
             }
             &Expr::Assignment { target, value } => {
-                self.body.walk_pats(target, &mut |pat| match self.body[pat] {
+                self.store.walk_pats(target, &mut |pat| match self.store[pat] {
                     Pat::Expr(expr) => self.infer_mut_expr(expr, Mutability::Mut),
                     Pat::ConstBlock(block) => self.infer_mut_expr(block, Mutability::Not),
                     _ => {}
@@ -220,8 +220,8 @@ impl<'db> InferenceContext<'_, 'db> {
     /// `let (ref x0, ref x1) = *it;` we should use `Deref`.
     fn pat_bound_mutability(&self, pat: PatId) -> Mutability {
         let mut r = Mutability::Not;
-        self.body.walk_bindings_in_pat(pat, |b| {
-            if self.body[b].mode == BindingAnnotation::RefMut {
+        self.store.walk_bindings_in_pat(pat, |b| {
+            if self.store[b].mode == BindingAnnotation::RefMut {
                 r = Mutability::Mut;
             }
         });

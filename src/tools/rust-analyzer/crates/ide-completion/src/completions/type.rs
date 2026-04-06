@@ -23,7 +23,9 @@ pub(crate) fn complete_type_path(
             ScopeDef::GenericParam(LifetimeParam(_)) => location.complete_lifetimes(),
             ScopeDef::Label(_) => false,
             // no values in type places
-            ScopeDef::ModuleDef(Function(_) | Variant(_) | Static(_)) | ScopeDef::Local(_) => false,
+            ScopeDef::ModuleDef(Function(_) | EnumVariant(_) | Static(_)) | ScopeDef::Local(_) => {
+                false
+            }
             // unless its a constant in a generic arg list position
             ScopeDef::ModuleDef(Const(_)) | ScopeDef::GenericParam(ConstParam(_)) => {
                 location.complete_consts()

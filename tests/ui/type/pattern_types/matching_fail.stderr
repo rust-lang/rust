@@ -33,10 +33,14 @@ LL |     THREE => {}
    |     |
    |     expected integer, found `(u32) is 1..`
    |     `THREE` is interpreted as a constant, not a new binding
-   |     help: introduce a new binding instead: `other_three`
    |
    = note:      expected type `{integer}`
            found pattern type `(u32) is 1..`
+help: introduce a new binding instead
+   |
+LL -     THREE => {}
+LL +     other_three => {}
+   |
 
 error: aborting due to 3 previous errors
 

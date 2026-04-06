@@ -580,7 +580,7 @@ impl Ctx<'_> {
                     }
                 }
 
-                if let hir::ModuleDef::Variant(v) = def
+                if let hir::ModuleDef::EnumVariant(v) = def
                     && v.kind(self.source_scope.db) != hir::StructKind::Unit
                 {
                     return None;

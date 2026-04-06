@@ -203,6 +203,10 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
                 // don't count items in stripped modules
                 return;
             }
+            clean::PlaceholderImplItem => {
+                // The "real" impl items are handled below.
+                return;
+            }
             // docs on `use` and `extern crate` statements are not displayed, so they're not
             // worth counting
             clean::ImportItem(..) | clean::ExternCrateItem { .. } => {}

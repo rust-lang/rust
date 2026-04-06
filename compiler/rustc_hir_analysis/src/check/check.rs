@@ -24,7 +24,6 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
-use rustc_span::source_map::Spanned;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits;
@@ -216,7 +215,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         // SIMD types with invalid layout (e.g., zero-length) should emit an error
         Err(e @ LayoutError::InvalidSimd { .. }) => {
             let ty_span = tcx.ty_span(def_id);
-            tcx.dcx().emit_err(Spanned { span: ty_span, node: e.into_diagnostic() });
+            tcx.dcx().span_err(ty_span, e.to_string());
             return;
         }
         // Generic statics are rejected, but we still reach this case.
@@ -953,10 +952,10 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             check_type_alias_type_params_are_used(tcx, def_id);
+            let ty = tcx.type_of(def_id).instantiate_identity();
+            let span = tcx.def_span(def_id);
             if tcx.type_alias_is_lazy(def_id) {
                 res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
-                    let ty = tcx.type_of(def_id).instantiate_identity();
-                    let span = tcx.def_span(def_id);
                     let item_ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
                     wfcx.register_wf_obligation(
                         span,
@@ -967,6 +966,30 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     Ok(())
                 }));
                 check_variances_for_type_defn(tcx, def_id);
+            } else {
+                res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+                    // HACK: We sometimes incidentally check that const arguments have the correct
+                    // type as a side effect of the anon const desugaring. To make this "consistent"
+                    // for users we explicitly check `ConstArgHasType` clauses so that const args
+                    // that don't go through an anon const still have their types checked.
+                    //
+                    // We use the unnormalized type as this mirrors the behaviour that we previously
+                    // would have had when all const arguments were anon consts.
+                    //
+                    // Changing this to normalized obligations is a breaking change:
+                    // `type Bar = [(); panic!()];` would become an error
+                    if let Some(unnormalized_obligations) = wfcx.unnormalized_obligations(span, ty)
+                    {
+                        let filtered_obligations =
+                            unnormalized_obligations.into_iter().filter(|o| {
+                                matches!(o.predicate.kind().skip_binder(),
+                                    ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _))
+                                    if matches!(ct.kind(), ty::ConstKind::Param(..)))
+                            });
+                        wfcx.ocx.register_obligations(filtered_obligations)
+                    }
+                    Ok(())
+                }));
             }
 
             // Only `Node::Item` and `Node::ForeignItem` still have HIR based
@@ -1489,8 +1512,17 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
             return;
         }
         ScalableElt::Container if fields.is_empty() => {
-            let mut err =
-                tcx.dcx().struct_span_err(span, "scalable vectors must have a single field");
+            let mut err = tcx
+                .dcx()
+                .struct_span_err(span, "scalable vector tuples must have at least one field");
+            err.help("tuples of scalable vectors can only contain multiple of the same scalable vector type");
+            err.emit();
+            return;
+        }
+        ScalableElt::Container if fields.len() > 8 => {
+            let mut err = tcx
+                .dcx()
+                .struct_span_err(span, "scalable vector tuples can have at most eight fields");
             err.help("tuples of scalable vectors can only contain multiple of the same scalable vector type");
             err.emit();
             return;

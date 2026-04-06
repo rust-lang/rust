@@ -826,7 +826,8 @@
 # in the sysroot. It is required for running nvptx tests.
 #rust.llvm-bitcode-linker = false
 
-# Whether to deny warnings in crates
+# Whether to deny warnings in crates. Set to `false` to avoid
+# error: warnings are denied by `build.warnings` configuration
 #rust.deny-warnings = true
 
 # Print backtrace on internal compiler errors during bootstrap
@@ -1013,9 +1014,10 @@
 # its historical default, but when compiling the compiler itself, we skip it by
 # default since we know it's safe to do so in that case.
 #
-# On Windows platforms, packed debuginfo is the only supported option,
-# producing a `.pdb` file.
-#split-debuginfo = if linux { off } else if windows { packed } else if apple { unpacked }
+# On Windows MSVC platforms, packed debuginfo is the only supported option,
+# producing a `.pdb` file. On Windows GNU rustc doesn't support splitting debuginfo,
+# and enabling it causes issues.
+#split-debuginfo = if linux || windows-gnu { off } else if windows-msvc { packed } else if apple { unpacked }
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link
 # against. Note that if this is specified we don't compile LLVM at all for this

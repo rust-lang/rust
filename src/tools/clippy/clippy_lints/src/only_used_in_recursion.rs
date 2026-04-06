@@ -332,7 +332,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 if let ImplItemImplKind::Trait { trait_item_def_id, .. } = impl_kind
                     && let Ok(trait_item_id) = trait_item_def_id
                 {
-                    let impl_id = cx.tcx.parent(owner_id.into());
+                    let impl_id = cx.tcx.local_parent(owner_id.def_id);
                     let trait_ref = cx.tcx.impl_trait_ref(impl_id).instantiate_identity();
                     (
                         trait_item_id,

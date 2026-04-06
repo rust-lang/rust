@@ -4,7 +4,7 @@
 //@ normalize-stderr: "0x0+" -> "0x0"
 //@ normalize-stderr: "0x[0-9](\.\.|\])" -> "0x%$1"
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend different alloc ids
 #![feature(never_type)]
 #![allow(invalid_value, unnecessary_transmutes)]
 
@@ -83,7 +83,7 @@ const GOOD_INHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(2u8) 
 const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute(1u8) };
 //~^ ERROR uninhabited enum variant
 const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };
-//~^ ERROR uninhabited enum variant
+//~^ ERROR expected a valid enum tag
 
 // # other
 

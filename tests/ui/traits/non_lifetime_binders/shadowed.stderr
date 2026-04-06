@@ -1,5 +1,5 @@
 error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
-  --> $DIR/shadowed.rs:4:28
+  --> $DIR/shadowed.rs:3:28
    |
 LL | fn function<T>() where for<T> (): Sized {}
    |             -              ^ already used
@@ -7,7 +7,7 @@ LL | fn function<T>() where for<T> (): Sized {}
    |             first use of `T`
 
 error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
-  --> $DIR/shadowed.rs:7:31
+  --> $DIR/shadowed.rs:6:31
    |
 LL | struct Struct<T>(T) where for<T> (): Sized;
    |               -               ^ already used
@@ -15,7 +15,7 @@ LL | struct Struct<T>(T) where for<T> (): Sized;
    |               first use of `T`
 
 error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
-  --> $DIR/shadowed.rs:11:27
+  --> $DIR/shadowed.rs:10:27
    |
 LL | impl<T> Struct<T> {
    |      - first use of `T`
@@ -23,22 +23,13 @@ LL |     fn method() where for<T> (): Sized {}
    |                           ^ already used
 
 error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
-  --> $DIR/shadowed.rs:15:28
+  --> $DIR/shadowed.rs:14:28
    |
 LL | fn repeated() where for<T, T> (): Sized {}
    |                         -  ^ already used
    |                         |
    |                         first use of `T`
 
-warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/shadowed.rs:1:12
-   |
-LL | #![feature(non_lifetime_binders)]
-   |            ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0403`.

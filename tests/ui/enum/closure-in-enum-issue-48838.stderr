@@ -6,6 +6,7 @@ LL |     Square = |x| x,
    |
    = note: expected type `isize`
            found closure `{closure@$DIR/closure-in-enum-issue-48838.rs:2:14: 2:17}`
+   = note: enum variant discriminant can only be of a primitive type compatible with the enum's `repr`
 
 error: aborting due to 1 previous error
 

@@ -773,7 +773,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         DuplicatesOk, EncodeCrossCrate::No, effective_target_features, experimental!(force_target_feature)
     ),
     gated!(
-        sanitize, Normal, template!(List: &[r#"address = "on|off""#, r#"kernel_address = "on|off""#, r#"cfi = "on|off""#, r#"hwaddress = "on|off""#, r#"kcfi = "on|off""#, r#"memory = "on|off""#, r#"memtag = "on|off""#, r#"shadow_call_stack = "on|off""#, r#"thread = "on|off""#]), ErrorPreceding,
+        sanitize, Normal, template!(List: &[r#"address = "on|off""#, r#"kernel_address = "on|off""#, r#"cfi = "on|off""#, r#"hwaddress = "on|off""#, r#"kernel_hwaddress = "on|off""#, r#"kcfi = "on|off""#, r#"memory = "on|off""#, r#"memtag = "on|off""#, r#"shadow_call_stack = "on|off""#, r#"thread = "on|off""#]), ErrorPreceding,
         EncodeCrossCrate::No, sanitize, experimental!(sanitize),
     ),
     gated!(
@@ -1587,6 +1587,7 @@ pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool 
     match sym {
         sym::on_unimplemented | sym::do_not_recommend => true,
         sym::on_const => features.diagnostic_on_const(),
+        sym::on_move => features.diagnostic_on_move(),
         _ => false,
     }
 }

@@ -6,6 +6,7 @@ USAGE:
     ./y.sh test [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen] [--skip-test TESTNAME]
     ./y.sh abi-cafe [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
     ./y.sh bench [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.sh check-todo
 
 OPTIONS:
     --sysroot none|clif|llvm

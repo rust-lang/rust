@@ -7,7 +7,7 @@ LL | struct Foo {
 LL | const FOO: Foo = Foo { x: 0 };
    | -------------- constant defined here
 ...
-LL |         FOO => { }
+LL |         FOO => {}
    |         ^^^ constant of non-structural type
    |
 note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
@@ -15,6 +15,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL | impl PartialEq for Foo {
    | ^^^^^^^^^^^^^^^^^^^^^^
+help: add a condition to the match arm checking for equality
+   |
+LL -         FOO => {}
+LL +         binding if binding == FOO => {}
+   |
 
 error: aborting due to 1 previous error
 

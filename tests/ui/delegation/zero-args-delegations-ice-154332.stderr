@@ -1,0 +1,43 @@
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/zero-args-delegations-ice-154332.rs:7:11
+   |
+LL |       reuse a as b {
+   |  ___________^______-
+LL | |         let closure = || {
+LL | |             fn foo<'a, 'b, T: Clone, const N: usize, U: Clone>(_t: &'a T, _u: &'b U) {}
+...  |
+LL | |         closure();
+LL | |     }
+   | |_____- unexpected argument of type `()`
+   |
+note: function defined here
+  --> $DIR/zero-args-delegations-ice-154332.rs:5:8
+   |
+LL |     fn a() {}
+   |        ^
+help: remove the extra argument
+   |
+LL -     reuse a as b {
+LL +     reuse {
+   |
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/zero-args-delegations-ice-154332.rs:26:21
+   |
+LL |     reuse to_reuse::zero_args { self }
+   |                     ^^^^^^^^^   ---- unexpected argument
+   |
+note: function defined here
+  --> $DIR/zero-args-delegations-ice-154332.rs:21:16
+   |
+LL |         pub fn zero_args() -> i32 {
+   |                ^^^^^^^^^
+help: remove the extra argument
+   |
+LL -     reuse to_reuse::zero_args { self }
+LL +     reuse to_reuse::zero_argself }
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

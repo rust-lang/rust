@@ -16,7 +16,7 @@ use itertools::Itertools;
 use stdx::never;
 use syntax::{
     SmolStr,
-    SyntaxKind::{EXPR_STMT, STMT_LIST},
+    SyntaxKind::{CLOSURE_EXPR, EXPR_STMT, MATCH_ARM, STMT_LIST},
     T, TextRange, TextSize, ToSmolStr,
     ast::{self, AstNode, AstToken},
     format_smolstr, match_ast,
@@ -66,6 +66,12 @@ pub(crate) fn complete_postfix(
         Some(it) => it,
         None => return,
     };
+    let semi =
+        if expr_ctx.in_block_expr && ctx.token.next_token().is_none_or(|it| it.kind() != T![;]) {
+            ";"
+        } else {
+            ""
+        };
 
     let cfg = ctx.config.find_path_config(ctx.is_nightly);
 
@@ -151,12 +157,12 @@ pub(crate) fn complete_postfix(
                     .add_to(acc, ctx.db);
             }
             _ if matches!(parent.kind(), STMT_LIST | EXPR_STMT) => {
-                postfix_snippet("let", "let", &format!("let $0 = {receiver_text};"))
+                postfix_snippet("let", "let", &format!("let $0 = {receiver_text}{semi}"))
                     .add_to(acc, ctx.db);
-                postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
+                postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text}{semi}"))
                     .add_to(acc, ctx.db);
             }
-            _ if ast::MatchArm::can_cast(parent.kind()) => {
+            _ if matches!(parent.kind(), MATCH_ARM | CLOSURE_EXPR) => {
                 postfix_snippet(
                     "let",
                     "let",
@@ -307,26 +313,12 @@ pub(crate) fn complete_postfix(
         add_format_like_completions(acc, ctx, &dot_receiver_including_refs, cap, &literal_text);
     }
 
-    postfix_snippet(
-        "return",
-        "return expr",
-        &format!(
-            "return {receiver_text}{semi}",
-            semi = if expr_ctx.in_block_expr { ";" } else { "" }
-        ),
-    )
-    .add_to(acc, ctx.db);
+    postfix_snippet("return", "return expr", &format!("return {receiver_text}{semi}"))
+        .add_to(acc, ctx.db);
 
     if let Some(BreakableKind::Block | BreakableKind::Loop) = expr_ctx.in_breakable {
-        postfix_snippet(
-            "break",
-            "break expr",
-            &format!(
-                "break {receiver_text}{semi}",
-                semi = if expr_ctx.in_block_expr { ";" } else { "" }
-            ),
-        )
-        .add_to(acc, ctx.db);
+        postfix_snippet("break", "break expr", &format!("break {receiver_text}{semi}"))
+            .add_to(acc, ctx.db);
     }
 }
 
@@ -371,12 +363,20 @@ fn get_receiver_text(
         range.range = TextRange::at(range.range.start(), range.range.len() - TextSize::of('.'))
     }
     let file_text = sema.db.file_text(range.file_id.file_id(sema.db));
-    let mut text = file_text.text(sema.db)[range.range].to_owned();
+    let text = file_text.text(sema.db);
+    let indent_spaces = indent_of_tail_line(&text[TextRange::up_to(range.range.start())]);
+    let mut text = stdx::dedent_by(indent_spaces, &text[range.range]);
 
     // The receiver texts should be interpreted as-is, as they are expected to be
     // normal Rust expressions.
     escape_snippet_bits(&mut text);
-    text
+    return text;
+
+    fn indent_of_tail_line(text: &str) -> usize {
+        let tail_line = text.rsplit_once('\n').map_or(text, |(_, s)| s);
+        let trimmed = tail_line.trim_start_matches(' ');
+        tail_line.len() - trimmed.len()
+    }
 }
 
 /// Escapes `\` and `$` so that they don't get interpreted as snippet-specific constructs.
@@ -402,6 +402,10 @@ fn receiver_accessor(receiver: &ast::Expr) -> ast::Expr {
         .unwrap_or_else(|| receiver.clone())
 }
 
+/// Given an `initial_element`, tries to expand it to include deref(s), and then references.
+/// Returns the expanded expressions, and the added prefix as a string
+///
+/// For example, if called with the `42` in `&&mut *42`, would return `(&&mut *42, "&&mut *")`.
 fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
     let mut resulting_element = initial_element.clone();
     let mut prefix = String::new();
@@ -410,11 +414,8 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
 
     while let Some(parent_deref_element) =
         resulting_element.syntax().parent().and_then(ast::PrefixExpr::cast)
+        && parent_deref_element.op_kind() == Some(ast::UnaryOp::Deref)
     {
-        if parent_deref_element.op_kind() != Some(ast::UnaryOp::Deref) {
-            break;
-        }
-
         found_ref_or_deref = true;
         resulting_element = ast::Expr::from(parent_deref_element);
 
@@ -663,6 +664,22 @@ fn main() {
 
     #[test]
     fn let_middle_block() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    baz.l$0
+    res
+}
+"#,
+            r#"
+fn main() {
+    let $0 = baz;
+    res
+}
+"#,
+        );
+
         check(
             r#"
 fn main() {
@@ -719,6 +736,20 @@ fn main() {
 
     #[test]
     fn let_tail_block() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    baz.l$0
+}
+"#,
+            r#"
+fn main() {
+    let $0 = baz;
+}
+"#,
+        );
+
         check(
             r#"
 fn main() {
@@ -769,6 +800,23 @@ fn main() {
                 sn unsafe    unsafe {}
                 sn while while expr {}
             "#]],
+        );
+    }
+
+    #[test]
+    fn let_before_semicolon() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    baz.l$0;
+}
+"#,
+            r#"
+fn main() {
+    let $0 = baz;
+}
+"#,
         );
     }
 
@@ -966,6 +1014,28 @@ fn main() {
     }
 
     #[test]
+    fn closure_let_block() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    let bar = 2;
+    let f = || bar.$0;
+}
+"#,
+            r#"
+fn main() {
+    let bar = 2;
+    let f = || {
+    let $1 = bar;
+    $0
+};
+}
+"#,
+        );
+    }
+
+    #[test]
     fn option_letelse() {
         check_edit(
             "lete",
@@ -1040,6 +1110,7 @@ fn main() {
     #[test]
     fn postfix_completion_for_references() {
         check_edit("dbg", r#"fn main() { &&42.$0 }"#, r#"fn main() { dbg!(&&42) }"#);
+        check_edit("dbg", r#"fn main() { &&*"hello".$0 }"#, r#"fn main() { dbg!(&&*"hello") }"#);
         check_edit("refm", r#"fn main() { &&42.$0 }"#, r#"fn main() { &&&mut 42 }"#);
         check_edit(
             "ifl",
@@ -1198,9 +1269,9 @@ use core::ops::ControlFlow;
 
 fn main() {
     ControlFlow::Break(match true {
-        true => "\${1:placeholder}",
-        false => "\\\$",
-    })
+    true => "\${1:placeholder}",
+    false => "\\\$",
+})
 }
 "#,
         );
@@ -1438,6 +1509,33 @@ fn foo() {
     assert!(Box::new(if a == false { true } else { false }));
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn snippet_dedent() {
+        check_edit(
+            "let",
+            r#"
+//- minicore: option
+fn foo(x: Option<i32>, y: Option<i32>) {
+    let _f = || {
+        x
+            .and(y)
+            .map(|it| it+2)
+            .$0
+    };
+}
+"#,
+            r#"
+fn foo(x: Option<i32>, y: Option<i32>) {
+    let _f = || {
+        let $0 = x
+    .and(y)
+    .map(|it| it+2);
+    };
+}
+"#,
         );
     }
 }

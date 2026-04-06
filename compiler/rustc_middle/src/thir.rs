@@ -44,7 +44,7 @@ macro_rules! thir_with_elements {
     ) => {
         $(
             newtype_index! {
-                #[derive(HashStable)]
+                #[stable_hash]
                 #[debug_format = $format]
                 pub struct $id {}
             }
@@ -864,6 +864,13 @@ pub enum PatKind<'tcx> {
     /// Invariant: `pats.len() >= 2`.
     Or {
         pats: Box<[Pat<'tcx>]>,
+    },
+
+    /// A guard pattern, e.g. `x if guard(x)`
+    Guard {
+        subpattern: Box<Pat<'tcx>>,
+        #[type_visitable(ignore)]
+        condition: ExprId,
     },
 
     /// A never pattern `!`.

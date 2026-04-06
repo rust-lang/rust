@@ -194,6 +194,11 @@ Hi relnotes-interest-group, this issue/PR could use some help in reviewing /
 adjusting release notes. Could you take a look if available? Thanks <3
 """
 
+[ping.gpu-target]
+message = """\
+Hi GPU experts, this issue/PR could use some guidance on how this should be
+resolved/implemented. Could you take a look if available? Thanks <3
+"""
 
 # ------------------------------------------------------------------------------
 # Autolabels
@@ -1012,6 +1017,13 @@ cc = ["@lcnr"]
 message = "HIR ty lowering was modified"
 cc = ["@fmease"]
 
+[mentions."compiler/rustc_parse"]
+message = """
+The parser was modified, potentially altering the grammar of (stable) Rust
+which would be a breaking change.
+"""
+cc = ["@fmease"]
+
 [mentions."library/core/src/mem/type_info.rs"]
 message = """
 The reflection data structures are tied exactly to the implementation
@@ -1059,6 +1071,10 @@ making this change to \
 [rust-lang/stdarch](https://github.com/rust-lang/stdarch) \
 instead.
 """
+cc = ["@Amanieu", "@folkertdev", "@sayantn"]
+
+[mentions."library/std_detect"]
+message = "Some changes occurred in `std_detect`"
 cc = ["@Amanieu", "@folkertdev", "@sayantn"]
 
 [mentions."library/core/src/intrinsics/simd.rs"]
@@ -1170,7 +1186,7 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@vakaras"]
 
 [mentions."compiler/rustc_error_messages"]
 message = "`rustc_error_messages` was changed"
-cc = ["@davidtwco", "@TaKO8Ki"]
+cc = ["@TaKO8Ki"]
 
 [mentions."compiler/rustc_errors/src/annotate_snippet_emitter_writer.rs"]
 message = "`rustc_errors::annotate_snippet_emitter_writer` was changed"
@@ -1182,11 +1198,11 @@ cc = ["@Muscraft"]
 
 [mentions."compiler/rustc_errors/src/formatting.rs"]
 message = "`rustc_errors::formatting` was changed"
-cc = ["@davidtwco", "@TaKO8Ki", "@JonathanBrouwer"]
+cc = ["@TaKO8Ki", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
-cc = ["@davidtwco", "@TaKO8Ki", "@JonathanBrouwer"]
+cc = ["@TaKO8Ki", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_public"]
 message = "This PR changes rustc_public"
@@ -1400,6 +1416,15 @@ cc = ["@m-ou-se"]
 [mentions."compiler/rustc_ast_lowering/src/format.rs"]
 cc = ["@m-ou-se"]
 
+[mentions."src/ci/github-actions/jobs.yml"]
+message = """
+> [!WARNING]
+>
+> If you are changing how CI LLVM is built or linked, make sure to bump
+> `src/bootstrap/download-ci-llvm-stamp`.
+"""
+cc = ["@jieyouxu"]
+
 # Content-based mentions
 
 [mentions."#[miri::intrinsic_fallback_is_spec]"]
@@ -1580,6 +1605,7 @@ dep-bumps = [
 "/library/std" =                                         ["libs", "@ChrisDenton"]
 "/library/std/src/sys/pal/windows" =                     ["@ChrisDenton"]
 "/library/stdarch" =                                     ["libs"]
+"/library/std_detect" =                                  ["libs"]
 "/library/test" =                                        ["libs"]
 "/src/bootstrap" =                                       ["bootstrap"]
 "/src/ci" =                                              ["infra-ci"]

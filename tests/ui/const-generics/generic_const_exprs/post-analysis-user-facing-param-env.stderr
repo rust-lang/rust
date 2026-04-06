@@ -1,5 +1,5 @@
 error[E0407]: method `unimplemented` is not a member of trait `std::ops::Add`
-  --> $DIR/post-analysis-user-facing-param-env.rs:12:5
+  --> $DIR/post-analysis-user-facing-param-env.rs:11:5
    |
 LL | /     fn unimplemented(self, _: &Foo) -> Self::Output {
 LL | |
@@ -7,17 +7,8 @@ LL | |         loop {}
 LL | |     }
    | |_____^ not a member of trait `std::ops::Add`
 
-warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/post-analysis-user-facing-param-env.rs:2:12
-   |
-LL | #![feature(generic_const_exprs)]
-   |            ^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0046]: not all trait items implemented, missing: `Output`, `add`
-  --> $DIR/post-analysis-user-facing-param-env.rs:6:1
+  --> $DIR/post-analysis-user-facing-param-env.rs:5:1
    |
 LL | / impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
 LL | |
@@ -30,7 +21,7 @@ LL | |     [(); 1 + 0]: Sized,
    = help: implement the missing item: `fn add(self, _: &'a Foo) -> <Self as Add<&'a Foo>>::Output { todo!() }`
 
 error[E0207]: the const parameter `NUM` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/post-analysis-user-facing-param-env.rs:6:10
+  --> $DIR/post-analysis-user-facing-param-env.rs:5:10
    |
 LL | impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
    |          ^^^^^^^^^^^^^^^^ unconstrained const parameter
@@ -38,7 +29,7 @@ LL | impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0046, E0207, E0407.
 For more information about an error, try `rustc --explain E0046`.

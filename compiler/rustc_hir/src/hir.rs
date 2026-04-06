@@ -23,9 +23,8 @@ use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Spanned;
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, Span, Symbol, kw, sym,
+    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, sym,
 };
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
@@ -398,12 +397,7 @@ impl<'hir> PathSegment<'hir> {
     }
 
     pub fn args(&self) -> &GenericArgs<'hir> {
-        if let Some(ref args) = self.args {
-            args
-        } else {
-            const DUMMY: &GenericArgs<'_> = &GenericArgs::none();
-            DUMMY
-        }
+        if let Some(ref args) = self.args { args } else { GenericArgs::NONE }
     }
 }
 
@@ -644,14 +638,12 @@ pub struct GenericArgs<'hir> {
 }
 
 impl<'hir> GenericArgs<'hir> {
-    pub const fn none() -> Self {
-        Self {
-            args: &[],
-            constraints: &[],
-            parenthesized: GenericArgsParentheses::No,
-            span_ext: DUMMY_SP,
-        }
-    }
+    pub const NONE: &'hir GenericArgs<'hir> = &GenericArgs {
+        args: &[],
+        constraints: &[],
+        parenthesized: GenericArgsParentheses::No,
+        span_ext: DUMMY_SP,
+    };
 
     /// Obtain the list of input types and the output type if the generic arguments are parenthesized.
     ///
@@ -1265,6 +1257,8 @@ pub struct HashIgnoredAttrId {
     pub attr_id: AttrId,
 }
 
+/// Many functions on this type have their documentation in the [`AttributeExt`] trait,
+/// since they defer their implementation directly to that trait.
 #[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Attribute {
     /// A parsed built-in attribute.
@@ -1666,19 +1660,6 @@ impl<'tcx> MaybeOwner<'tcx> {
     pub fn unwrap(self) -> &'tcx OwnerInfo<'tcx> {
         self.as_owner().unwrap_or_else(|| panic!("Not a HIR owner"))
     }
-}
-
-/// The top-level data structure that stores the entire contents of
-/// the crate currently being compiled.
-///
-/// For more details, see the [rustc dev guide].
-///
-/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
-#[derive(Debug)]
-pub struct Crate<'hir> {
-    pub owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
-    // Only present when incr. comp. is enabled.
-    pub opt_hir_hash: Option<Fingerprint>,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -3779,10 +3760,19 @@ pub struct DelegationGenerics {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
-pub enum InferDelegationKind<'hir> {
+pub enum InferDelegationSig<'hir> {
     Input(usize),
     // Place generics info here, as we always specify output type for delegations.
     Output(&'hir DelegationGenerics),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
+pub enum InferDelegation<'hir> {
+    /// Infer the type of this `DefId` through `tcx.type_of(def_id).instantiate_identity()`,
+    /// used for const types propagation.
+    DefId(DefId),
+    /// Used during signature inheritance, `DefId` corresponds to the signature function.
+    Sig(DefId, InferDelegationSig<'hir>),
 }
 
 /// The various kinds of types recognized by the compiler.
@@ -3794,7 +3784,7 @@ pub enum InferDelegationKind<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TyKind<'hir, Unambig = ()> {
     /// Actual type should be inherited from `DefId` signature
-    InferDelegation(DefId, InferDelegationKind<'hir>),
+    InferDelegation(InferDelegation<'hir>),
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
@@ -3945,7 +3935,7 @@ pub struct FnDecl<'hir> {
 impl<'hir> FnDecl<'hir> {
     pub fn opt_delegation_sig_id(&self) -> Option<DefId> {
         if let FnRetTy::Return(ty) = self.output
-            && let TyKind::InferDelegation(sig_id, _) = ty.kind
+            && let TyKind::InferDelegation(InferDelegation::Sig(sig_id, _)) = ty.kind
         {
             return Some(sig_id);
         }
@@ -3954,8 +3944,8 @@ impl<'hir> FnDecl<'hir> {
 
     pub fn opt_delegation_generics(&self) -> Option<&'hir DelegationGenerics> {
         if let FnRetTy::Return(ty) = self.output
-            && let TyKind::InferDelegation(_, kind) = ty.kind
-            && let InferDelegationKind::Output(generics) = kind
+            && let TyKind::InferDelegation(InferDelegation::Sig(_, kind)) = ty.kind
+            && let InferDelegationSig::Output(generics) = kind
         {
             return Some(generics);
         }

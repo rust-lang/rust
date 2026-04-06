@@ -34,8 +34,7 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Spanned, Symbol, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
@@ -1661,14 +1660,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let element_ty = if !args.is_empty() {
-            // This shouldn't happen unless there's another error
-            // (e.g., never patterns in inappropriate contexts).
-            if self.diverges.get() != Diverges::Maybe {
-                self.dcx()
-                    .struct_span_err(expr.span, "unexpected divergence state in checking array")
-                    .delay_as_bug();
-            }
-
             let coerce_to = expected
                 .to_option(self)
                 .and_then(|uty| {
@@ -1792,27 +1783,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_tuple(
         &self,
-        elts: &'tcx [hir::Expr<'tcx>],
+        elements: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
-        let flds = expected.only_has_type(self).and_then(|ty| {
-            let ty = self.try_structurally_resolve_type(expr.span, ty);
-            match ty.kind() {
-                ty::Tuple(flds) => Some(&flds[..]),
-                _ => None,
-            }
+        let mut expectations = expected
+            .only_has_type(self)
+            .and_then(|ty| self.try_structurally_resolve_type(expr.span, ty).opt_tuple_fields())
+            .unwrap_or_default()
+            .iter();
+
+        let elements = elements.iter().map(|e| {
+            let ty = expectations.next().unwrap_or_else(|| self.next_ty_var(e.span));
+            self.check_expr_coercible_to_type(e, ty, None);
+            ty
         });
 
-        let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| match flds {
-            Some(fs) if i < fs.len() => {
-                let ety = fs[i];
-                self.check_expr_coercible_to_type(e, ety, None);
-                ety
-            }
-            _ => self.check_expr_with_expectation(e, NoExpectation),
-        });
-        let tuple = Ty::new_tup_from_iter(self.tcx, elt_ts_iter);
+        let tuple = Ty::new_tup_from_iter(self.tcx, elements);
+
         if let Err(guar) = tuple.error_reported() {
             Ty::new_error(self.tcx, guar)
         } else {
@@ -1883,7 +1871,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !ocx.try_evaluate_obligations().is_empty() {
                     return Err(TypeError::Mismatch);
                 }
-                Ok(self.resolve_vars_if_possible(adt_ty))
+                Ok(adt_ty)
             })
             .ok()
         });

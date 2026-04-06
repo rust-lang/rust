@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: wrong trait in wide pointer vtable: expected `std::fmt::Debug`, but encountered `std::marker::Send`
+error: Undefined Behavior: constructing invalid value of type *const dyn std::fmt::Debug: wrong trait in wide pointer vtable: expected `std::fmt::Debug`, but encountered `std::marker::Send`
   --> tests/fail/validity/wrong-dyn-trait.rs:LL:CC
    |
 LL |     let _y: *const dyn fmt::Debug = unsafe { mem::transmute(x) };

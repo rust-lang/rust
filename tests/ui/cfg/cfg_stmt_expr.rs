@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: cfg.attr.allowed-positions
 #![allow(dead_code)]
 #![allow(unused_mut)]
 #![allow(unused_variables)]

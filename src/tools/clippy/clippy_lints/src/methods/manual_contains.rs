@@ -9,7 +9,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, HirId, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 
 use super::MANUAL_CONTAINS;
 

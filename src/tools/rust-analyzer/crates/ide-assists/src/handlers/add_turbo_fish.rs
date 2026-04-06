@@ -2,7 +2,7 @@ use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
     AstNode,
-    ast::{self, HasArgList, HasGenericArgs, make, syntax_factory::SyntaxFactory},
+    ast::{self, HasArgList, HasGenericArgs, syntax_factory::SyntaxFactory},
     syntax_editor::Position,
 };
 
@@ -94,20 +94,21 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 ident.text_range(),
                 |builder| {
                     let mut editor = builder.make_editor(let_stmt.syntax());
+                    let make = SyntaxFactory::without_mappings();
 
                     if let_stmt.semicolon_token().is_none() {
                         editor.insert(
                             Position::last_child_of(let_stmt.syntax()),
-                            make::tokens::semicolon(),
+                            make.token(syntax::SyntaxKind::SEMICOLON),
                         );
                     }
 
-                    let placeholder_ty = make::ty_placeholder().clone_for_update();
+                    let placeholder_ty = make.ty_placeholder();
 
                     if let Some(pat) = let_stmt.pat() {
                         let elements = vec![
-                            make::token(syntax::SyntaxKind::COLON).into(),
-                            make::token(syntax::SyntaxKind::WHITESPACE).into(),
+                            make.token(syntax::SyntaxKind::COLON).into(),
+                            make.whitespace(" ").into(),
                             placeholder_ty.syntax().clone().into(),
                         ];
                         editor.insert_all(Position::after(pat.syntax()), elements);
@@ -188,7 +189,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
 /// This will create a turbofish generic arg list corresponding to the number of arguments
 fn get_fish_head(make: &SyntaxFactory, number_of_arguments: usize) -> ast::GenericArgList {
-    let args = (0..number_of_arguments).map(|_| make::type_arg(make::ty_placeholder()).into());
+    let args = (0..number_of_arguments).map(|_| make.type_arg(make.ty_placeholder()).into());
     make.generic_arg_list(args, true)
 }
 

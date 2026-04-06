@@ -28,7 +28,7 @@ LL | const B4: Option<&mut i32> = helper(&mut 42);
    |                              |           creates a temporary value which is freed while still in use
    |                              using this value as a constant requires that borrow lasts for `'static`
 
-error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+error[E0080]: constructing invalid value of type &mut u16: encountered mutable reference or box pointing to read-only memory
   --> $DIR/mut_ref_in_final.rs:27:1
    |
 LL | const IMMUT_MUT_REF: &mut u16 = unsafe { mem::transmute(&13) };
@@ -39,7 +39,7 @@ LL | const IMMUT_MUT_REF: &mut u16 = unsafe { mem::transmute(&13) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+error[E0080]: constructing invalid value of type &mut u16: encountered mutable reference or box pointing to read-only memory
   --> $DIR/mut_ref_in_final.rs:29:1
    |
 LL | static IMMUT_MUT_REF_STATIC: &mut u16 = unsafe { mem::transmute(&13) };
@@ -120,7 +120,7 @@ LL | const RAW_MUT_COERCE_C: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
    = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
-error[E0080]: constructing invalid value at .<enum-variant(Some)>.0: encountered a dangling reference (0x2a[noalloc] has no provenance)
+error[E0080]: constructing invalid value of type Option<&mut i32>: at .<enum-variant(Some)>.0, encountered a dangling reference (0x2a[noalloc] has no provenance)
   --> $DIR/mut_ref_in_final.rs:86:5
    |
 LL |     const INT2PTR: Option<&mut i32> = helper_int2ptr();
@@ -131,7 +131,7 @@ LL |     const INT2PTR: Option<&mut i32> = helper_int2ptr();
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .<enum-variant(Some)>.0: encountered a dangling reference (0x2a[noalloc] has no provenance)
+error[E0080]: constructing invalid value of type Option<&mut i32>: at .<enum-variant(Some)>.0, encountered a dangling reference (0x2a[noalloc] has no provenance)
   --> $DIR/mut_ref_in_final.rs:87:5
    |
 LL |     static INT2PTR_STATIC: Option<&mut i32> = helper_int2ptr();
@@ -142,7 +142,7 @@ LL |     static INT2PTR_STATIC: Option<&mut i32> = helper_int2ptr();
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .<enum-variant(Some)>.0: encountered a dangling reference (use-after-free)
+error[E0080]: constructing invalid value of type Option<&mut i32>: at .<enum-variant(Some)>.0, encountered a dangling reference (use-after-free)
   --> $DIR/mut_ref_in_final.rs:93:5
    |
 LL |     const DANGLING: Option<&mut i32> = helper_dangling();
@@ -153,7 +153,7 @@ LL |     const DANGLING: Option<&mut i32> = helper_dangling();
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .<enum-variant(Some)>.0: encountered a dangling reference (use-after-free)
+error[E0080]: constructing invalid value of type Option<&mut i32>: at .<enum-variant(Some)>.0, encountered a dangling reference (use-after-free)
   --> $DIR/mut_ref_in_final.rs:94:5
    |
 LL |     static DANGLING_STATIC: Option<&mut i32> = helper_dangling();
