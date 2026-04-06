@@ -572,7 +572,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             self.add_data_range_place(val);
         }
         // Now turn it into a place.
-        self.ecx.ref_to_mplace(&imm)
+        self.ecx.imm_ptr_to_mplace(&imm)
     }
 
     fn check_wide_ptr_meta(
