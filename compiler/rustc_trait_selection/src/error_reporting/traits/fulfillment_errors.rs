@@ -14,7 +14,7 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions, msg,
     pluralize, struct_span_code_err,
 };
-use rustc_hir::attrs::diagnostic::OnUnimplementedNote;
+use rustc_hir::attrs::diagnostic::CustomDiagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem, Node, find_attr};
@@ -188,7 +188,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             })
                             .unwrap_or_default();
 
-                        let OnUnimplementedNote {
+                        let CustomDiagnostic {
                             message,
                             label,
                             notes,
@@ -907,12 +907,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
 
                     if let Some(command) = find_attr!(self.tcx, impl_did, OnConst {directive, ..} => directive.as_deref()).flatten(){
-                        let note = command.evaluate_directive(
-                             predicate.skip_binder().trait_ref,
-                            &condition_options,
+                        let note = command.eval(
+                            Some(&condition_options),
                             &format_args,
                         );
-                        let OnUnimplementedNote {
+                        let CustomDiagnostic {
                             message,
                             label,
                             notes,
