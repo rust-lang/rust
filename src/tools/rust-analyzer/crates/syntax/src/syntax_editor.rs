@@ -14,7 +14,7 @@ use std::{
 use rowan::TextRange;
 use rustc_hash::FxHashMap;
 
-use crate::{SyntaxElement, SyntaxNode, SyntaxToken};
+use crate::{AstNode, SyntaxElement, SyntaxNode, SyntaxToken};
 
 mod edit_algo;
 mod edits;
@@ -51,6 +51,26 @@ impl SyntaxEditor {
         };
 
         (editor, root)
+    }
+
+    pub fn new_typed<T>(root: &T) -> (Self, T)
+    where
+        T: AstNode,
+    {
+        let mut root = root.syntax().clone();
+
+        if root.parent().is_some() || root.is_mutable() {
+            root = root.clone_subtree()
+        };
+
+        let editor = Self {
+            root: root.clone(),
+            changes: Vec::new(),
+            mappings: SyntaxMapping::default(),
+            annotations: Vec::new(),
+        };
+
+        (editor, T::cast(root).unwrap())
     }
 
     pub fn add_annotation(&mut self, element: impl Element, annotation: SyntaxAnnotation) {
