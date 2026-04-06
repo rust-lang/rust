@@ -24,9 +24,9 @@ See [Allocator traits and `std::heap` #32838](https://github.com/rust-lang/rust/
 
 ## `tests/ui/allow-partial-mitigations`
 
-These tests exercise the check against partial mitigation enforcement.
+These tests exercise the support for mitigation coverage and the `allow-partial-mitigations` and `deny-partial-mitigations` options.
 
-See [the mitigation enforcement RFC](https://github.com/rust-lang/rfcs/pull/3855).
+See [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855).
 
 ## `tests/ui/annotate-moves`
 

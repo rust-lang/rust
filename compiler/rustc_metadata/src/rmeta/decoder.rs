@@ -79,10 +79,13 @@ impl MetadataBlob {
 /// own crate numbers.
 pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
-/// Target modifiers - abi or exploit mitigations flags that cause unsoundness when mixed
+/// Target modifiers - abi or exploit mitigations options that may cause unsoundness when mixed or
+/// partially enabled.
 pub(crate) type TargetModifiers = Vec<TargetModifier>;
 
-/// The set of enforceable mitigations (RFC 3855) that are currently enabled for this crate
+/// The set of mitigations that cannot be partially enabled (see
+/// [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855)), but are currently enabled for this
+/// crate.
 pub(crate) type DeniedPartialMitigations = Vec<DeniedPartialMitigation>;
 
 pub(crate) struct CrateMetadata {

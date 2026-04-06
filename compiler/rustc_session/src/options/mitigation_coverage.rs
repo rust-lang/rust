@@ -167,12 +167,12 @@ macro_rules! denied_partial_mitigations {
         #[allow(unused)]
         impl DeniedPartialMitigationKind {
             pub fn allowed_by_default_at(&self, edition: Edition) -> bool {
-                let enforced_since = match self {
-                    // Should change the enforced-since edition of StackProtector to 2015
+                let denied_since = match self {
+                    // Should change the denied-since edition of StackProtector to 2015
                     // (all editions) when `-C stack-protector` is stabilized.
                     $(DeniedPartialMitigationKind::$name => Edition::$since),*
                 };
-                edition < enforced_since
+                edition < denied_since
             }
         }
 
@@ -209,7 +209,9 @@ denied_partial_mitigations! {
     }
 }
 
-/// Denied-partial mitigations, see [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855)
+/// A mitigation that cannot be partially enabled (see
+/// [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855)), but are currently enabled for this
+/// crate.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
 pub struct DeniedPartialMitigation {
     pub kind: DeniedPartialMitigationKind,

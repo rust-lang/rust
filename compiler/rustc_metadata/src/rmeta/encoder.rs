@@ -716,8 +716,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // `SourceFiles` we actually need to encode.
         let source_map = stat!("source-map", || self.encode_source_map());
         let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
-        let denied_partial_mitigations =
-            stat!("enforced-mitigations", || self.encode_enabled_denied_partial_mitigations());
+        let denied_partial_mitigations = stat!("denied-partial-mitigations", || self
+            .encode_enabled_denied_partial_mitigations());
 
         let root = stat!("final", || {
             let attrs = tcx.hir_krate_attrs();

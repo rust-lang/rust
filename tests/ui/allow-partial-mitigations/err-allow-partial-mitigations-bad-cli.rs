@@ -5,7 +5,7 @@
 //@ edition:future
 //@ compile-flags: -Z unstable-options -Z deny-partial-mitigations=garbage
 
-// have a test that the list of mitigations is generated correctly
+// test that the list of mitigations in the error message is generated correctly
 
 //~? ERROR incorrect value `garbage` for unstable option `deny-partial-mitigations` - comma-separated list of mitigation kinds (available:
 
