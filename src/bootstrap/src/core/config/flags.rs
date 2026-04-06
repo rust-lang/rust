@@ -243,7 +243,7 @@ fn normalize_args(args: &[String]) -> Vec<String> {
 
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum Subcommand {
-    #[command(aliases = ["b"], long_about = "\n
+    #[command(visible_aliases = ["b"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories to the crates
         and/or artifacts to compile. For example, for a quick build of a usable
@@ -261,7 +261,7 @@ pub enum Subcommand {
         /// Pass `--timings` to Cargo to get crate build timings
         timings: bool,
     },
-    #[command(aliases = ["c"], long_about = "\n
+    #[command(visible_aliases = ["c"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories to the crates
         and/or artifacts to compile. For example:
@@ -330,7 +330,7 @@ pub enum Subcommand {
         #[arg(long)]
         all: bool,
     },
-    #[command(aliases = ["d"], long_about = "\n
+    #[command(visible_aliases = ["d"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories of documentation
         to build. For example:
@@ -351,7 +351,7 @@ pub enum Subcommand {
         /// render the documentation in JSON format in addition to the usual HTML format
         json: bool,
     },
-    #[command(aliases = ["t"], long_about = "\n
+    #[command(visible_aliases = ["t"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to test directories that
         should be compiled and run. For example:
@@ -476,7 +476,7 @@ pub enum Subcommand {
     Dist,
     /// Install distribution artifacts
     Install,
-    #[command(aliases = ["r"], long_about = "\n
+    #[command(visible_aliases = ["r"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to tools to build and run. For
         example:

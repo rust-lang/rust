@@ -55,7 +55,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::DefineOpaqueTypes;
@@ -1528,6 +1528,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             label_or_note(span, terr.to_string(self.tcx));
         }
 
+        if let Some(param_env) = param_env {
+            self.note_field_shadowed_by_private_candidate_in_cause(diag, cause, param_env);
+        }
+
         if self.check_and_note_conflicting_crates(diag, terr) {
             return;
         }
@@ -1793,12 +1797,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        self.note_and_explain_type_err(diag, terr, cause, span, cause.body_id.to_def_id());
+        let body_owner_def_id = (cause.body_id != CRATE_DEF_ID).then(|| cause.body_id.to_def_id());
+        self.note_and_explain_type_err(diag, terr, cause, span, body_owner_def_id);
         if let Some(exp_found) = exp_found
             && let exp_found = TypeError::Sorts(exp_found)
             && exp_found != terr
         {
-            self.note_and_explain_type_err(diag, exp_found, cause, span, cause.body_id.to_def_id());
+            self.note_and_explain_type_err(diag, exp_found, cause, span, body_owner_def_id);
         }
 
         if let Some(ValuePairs::TraitRefs(exp_found)) = values

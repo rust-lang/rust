@@ -20,15 +20,15 @@ LL |         .collect::<String>();
    |          required by a bound introduced by this call
    |
    = help: the trait `FromIterator<()>` is not implemented for `String`
-   = help: the following other types implement trait `FromIterator<A>`:
-             `String` implements `FromIterator<&char>`
-             `String` implements `FromIterator<&std::ascii::Char>`
-             `String` implements `FromIterator<&str>`
-             `String` implements `FromIterator<Box<str, A>>`
-             `String` implements `FromIterator<Cow<'_, str>>`
-             `String` implements `FromIterator<String>`
-             `String` implements `FromIterator<char>`
-             `String` implements `FromIterator<std::ascii::Char>`
+   = help: `String` implements trait `FromIterator<A>`:
+             FromIterator<&char>
+             FromIterator<&std::ascii::Char>
+             FromIterator<&str>
+             FromIterator<Box<str, A>>
+             FromIterator<Cow<'_, str>>
+             FromIterator<String>
+             FromIterator<char>
+             FromIterator<std::ascii::Char>
 note: the method call chain might not have had the expected associated types
   --> $DIR/semi-suggestion-when-stmt-and-expr-span-equal.rs:20:10
    |

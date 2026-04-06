@@ -1,6 +1,12 @@
 use base_db::target::TargetData;
 use either::Either;
-use hir_def::{HasModule, db::DefDatabase};
+use hir_def::{
+    DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, HasModule,
+    expr_store::Body,
+    signatures::{
+        EnumSignature, FunctionSignature, StructSignature, TypeAliasSignature, UnionSignature,
+    },
+};
 use project_model::{Sysroot, toolchain_info::QueryConfig};
 use rustc_hash::FxHashMap;
 use rustc_type_ir::inherent::GenericArgs as _;
@@ -49,18 +55,15 @@ fn eval_goal(
             let adt_or_type_alias_id = scope.declarations().find_map(|x| match x {
                 hir_def::ModuleDefId::AdtId(x) => {
                     let name = match x {
-                        hir_def::AdtId::StructId(x) => db
-                            .struct_signature(x)
+                        hir_def::AdtId::StructId(x) => StructSignature::of(&db, x)
                             .name
                             .display_no_db(file_id.edition(&db))
                             .to_smolstr(),
-                        hir_def::AdtId::UnionId(x) => db
-                            .union_signature(x)
+                        hir_def::AdtId::UnionId(x) => UnionSignature::of(&db, x)
                             .name
                             .display_no_db(file_id.edition(&db))
                             .to_smolstr(),
-                        hir_def::AdtId::EnumId(x) => db
-                            .enum_signature(x)
+                        hir_def::AdtId::EnumId(x) => EnumSignature::of(&db, x)
                             .name
                             .display_no_db(file_id.edition(&db))
                             .to_smolstr(),
@@ -68,8 +71,7 @@ fn eval_goal(
                     (name == "Goal").then_some(Either::Left(x))
                 }
                 hir_def::ModuleDefId::TypeAliasId(x) => {
-                    let name = db
-                        .type_alias_signature(x)
+                    let name = TypeAliasSignature::of(&db, x)
                         .name
                         .display_no_db(file_id.edition(&db))
                         .to_smolstr();
@@ -90,10 +92,13 @@ fn eval_goal(
             ),
             Either::Right(ty_id) => db.ty(ty_id.into()).instantiate_identity(),
         };
-        let param_env = db.trait_environment(match adt_or_type_alias_id {
-            Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
-            Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
-        });
+        let param_env = db.trait_environment(
+            match adt_or_type_alias_id {
+                Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
+                Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
+            }
+            .into(),
+        );
         let krate = match adt_or_type_alias_id {
             Either::Left(it) => it.krate(&db),
             Either::Right(it) => it.krate(&db),
@@ -123,8 +128,7 @@ fn eval_expr(
             .declarations()
             .find_map(|x| match x {
                 hir_def::ModuleDefId::FunctionId(x) => {
-                    let name = db
-                        .function_signature(x)
+                    let name = FunctionSignature::of(&db, x)
                         .name
                         .display_no_db(file_id.edition(&db))
                         .to_smolstr();
@@ -133,15 +137,16 @@ fn eval_expr(
                 _ => None,
             })
             .unwrap();
-        let hir_body = db.body(function_id.into());
+        let hir_body = Body::of(&db, function_id.into());
         let b = hir_body
             .bindings()
             .find(|x| x.1.name.display_no_db(file_id.edition(&db)).to_smolstr() == "goal")
             .unwrap()
             .0;
-        let infer = InferenceResult::for_body(&db, function_id.into());
+        let infer = InferenceResult::of(&db, DefWithBodyId::from(function_id));
         let goal_ty = infer.type_of_binding[b].clone();
-        let param_env = db.trait_environment(function_id.into());
+        let param_env =
+            db.trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(function_id)));
         let krate = function_id.krate(&db);
         db.layout_of_ty(goal_ty, ParamEnvAndCrate { param_env, krate }.store())
     })
@@ -379,6 +384,11 @@ struct Goal(Foo<S>);
 
 #[test]
 fn simd_types() {
+    let size = 16;
+    #[cfg(not(target_arch = "s390x"))]
+    let align = 16;
+    #[cfg(target_arch = "s390x")]
+    let align = 8;
     check_size_and_align(
         r#"
             #[repr(simd)]
@@ -386,8 +396,8 @@ fn simd_types() {
             struct Goal(SimdType);
         "#,
         "",
-        16,
-        16,
+        size,
+        align,
     );
 }
 

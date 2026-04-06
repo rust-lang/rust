@@ -11,7 +11,7 @@ use std::mem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Block, Expr, LetStmt, Pat, PatKind, Stmt};
 use rustc_index::Idx;
@@ -849,13 +849,13 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
 /// re-use in incremental scenarios. We may sometimes need to rerun the
 /// type checker even when the HIR hasn't changed, and in those cases
 /// we can avoid reconstructing the region scope tree.
-pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
-    let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
+pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &ScopeTree {
+    let typeck_root_def_id = tcx.typeck_root_def_id_local(def_id);
     if typeck_root_def_id != def_id {
         return tcx.region_scope_tree(typeck_root_def_id);
     }
 
-    let scope_tree = if let Some(body) = tcx.hir_maybe_body_owned_by(def_id.expect_local()) {
+    let scope_tree = if let Some(body) = tcx.hir_maybe_body_owned_by(def_id) {
         let mut visitor = ScopeResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),

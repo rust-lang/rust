@@ -12,7 +12,6 @@ pub(crate) struct OptimizeParser;
 
 impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     const PATH: &[Symbol] = &[sym::optimize];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -25,12 +24,13 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return None;
         };
 
         let Some(single) = list.single() else {
-            cx.expected_single_argument(list.span);
+            cx.adcx().expected_single_argument(list.span);
             return None;
         };
 
@@ -39,7 +39,8 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
             Some(sym::speed) => OptimizeAttr::Speed,
             Some(sym::none) => OptimizeAttr::DoNotOptimize,
             _ => {
-                cx.expected_specific_argument(single.span(), &[sym::size, sym::speed, sym::none]);
+                cx.adcx()
+                    .expected_specific_argument(single.span(), &[sym::size, sym::speed, sym::none]);
                 OptimizeAttr::Default
             }
         };
@@ -68,7 +69,6 @@ pub(crate) struct CoverageParser;
 
 impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
     const PATH: &[Symbol] = &[sym::coverage];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -85,17 +85,18 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(args) = args.list() else {
-            cx.expected_specific_argument_and_list(cx.attr_span, &[sym::on, sym::off]);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_specific_argument_and_list(attr_span, &[sym::on, sym::off]);
             return None;
         };
 
         let Some(arg) = args.single() else {
-            cx.expected_single_argument(args.span);
+            cx.adcx().expected_single_argument(args.span);
             return None;
         };
 
-        let fail_incorrect_argument =
-            |span| cx.expected_specific_argument(span, &[sym::on, sym::off]);
+        let mut fail_incorrect_argument =
+            |span| cx.adcx().expected_specific_argument(span, &[sym::on, sym::off]);
 
         let Some(arg) = arg.meta_item() else {
             fail_incorrect_argument(args.span);
@@ -119,7 +120,6 @@ pub(crate) struct ExportNameParser;
 
 impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Static),
@@ -136,11 +136,12 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
-            cx.expected_name_value(cx.attr_span, None);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
             return None;
         };
         let Some(name) = nv.value_as_str() else {
-            cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return None;
         };
         if name.as_str().contains('\0') {
@@ -157,7 +158,6 @@ pub(crate) struct RustcObjcClassParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcObjcClassParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_class];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
@@ -165,7 +165,8 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjcClassParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
-            cx.expected_name_value(cx.attr_span, None);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
             return None;
         };
         let Some(classname) = nv.value_as_str() else {
@@ -189,7 +190,6 @@ pub(crate) struct RustcObjcSelectorParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcObjcSelectorParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_selector];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
@@ -197,7 +197,8 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjcSelectorParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
-            cx.expected_name_value(cx.attr_span, None);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
             return None;
         };
         let Some(methname) = nv.value_as_str() else {
@@ -226,7 +227,7 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
     const ATTRIBUTES: AcceptMapping<Self, S> =
         &[(&[sym::naked], template!(Word), |this, cx, args| {
             if let Err(span) = args.no_args() {
-                cx.expected_no_args(span);
+                cx.adcx().expected_no_args(span);
                 return;
             }
 
@@ -294,10 +295,15 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
 
         let span = self.span?;
 
+        let Some(tools) = cx.tools else {
+            unreachable!("tools required while parsing attributes");
+        };
+
+        let tools = tools.iter().map(|tool| tool.name).collect::<Vec<_>>();
         // only if we found a naked attribute do we do the somewhat expensive check
         'outer: for other_attr in cx.all_attrs {
             for allowed_attr in ALLOW_LIST {
-                if other_attr.segments().next().is_some_and(|i| cx.tools.contains(&i.name)) {
+                if other_attr.segments().next().is_some_and(|i| tools.contains(&i.name)) {
                     // effectively skips the error message  being emitted below
                     // if it's a tool attribute
                     continue 'outer;
@@ -388,7 +394,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
                 ArgParser::NoArgs => UsedBy::Default,
                 ArgParser::List(list) => {
                     let Some(l) = list.single() else {
-                        cx.expected_single_argument(list.span);
+                        cx.adcx().expected_single_argument(list.span);
                         return;
                     };
 
@@ -418,7 +424,10 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
                             UsedBy::Linker
                         }
                         _ => {
-                            cx.expected_specific_argument(l.span(), &[sym::compiler, sym::linker]);
+                            cx.adcx().expected_specific_argument(
+                                l.span(),
+                                &[sym::compiler, sym::linker],
+                            );
                             return;
                         }
                     }
@@ -477,36 +486,39 @@ fn parse_tf_attribute<S: Stage>(
 ) -> impl IntoIterator<Item = (Symbol, Span)> {
     let mut features = Vec::new();
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span, args);
+        let attr_span = cx.attr_span;
+        cx.adcx().expected_list(attr_span, args);
         return features;
     };
     if list.is_empty() {
-        cx.warn_empty_attribute(cx.attr_span);
+        let attr_span = cx.attr_span;
+        cx.adcx().warn_empty_attribute(attr_span);
         return features;
     }
     for item in list.mixed() {
         let Some(name_value) = item.meta_item() else {
-            cx.expected_name_value(item.span(), Some(sym::enable));
+            cx.adcx().expected_name_value(item.span(), Some(sym::enable));
             return features;
         };
 
         // Validate name
         let Some(name) = name_value.path().word_sym() else {
-            cx.expected_name_value(name_value.path().span(), Some(sym::enable));
+            cx.adcx().expected_name_value(name_value.path().span(), Some(sym::enable));
             return features;
         };
         if name != sym::enable {
-            cx.expected_name_value(name_value.path().span(), Some(sym::enable));
+            cx.adcx().expected_name_value(name_value.path().span(), Some(sym::enable));
             return features;
         }
 
         // Use value
         let Some(name_value) = name_value.args().name_value() else {
-            cx.expected_name_value(item.span(), Some(sym::enable));
+            cx.adcx().expected_name_value(item.span(), Some(sym::enable));
             return features;
         };
         let Some(value_str) = name_value.value_as_str() else {
-            cx.expected_string_literal(name_value.value_span, Some(name_value.value_as_lit()));
+            cx.adcx()
+                .expected_string_literal(name_value.value_span, Some(name_value.value_as_lit()));
             return features;
         };
         for feature in value_str.as_str().split(",") {
@@ -587,6 +599,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
         r#"kernel_address = "on|off""#,
         r#"cfi = "on|off""#,
         r#"hwaddress = "on|off""#,
+        r#"kernel_hwaddress = "on|off""#,
         r#"kcfi = "on|off""#,
         r#"memory = "on|off""#,
         r#"memtag = "on|off""#,
@@ -595,12 +608,12 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
         r#"realtime = "nonblocking|blocking|caller""#,
     ]);
 
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return None;
         };
 
@@ -610,13 +623,13 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
 
         for item in list.mixed() {
             let Some(item) = item.meta_item() else {
-                cx.expected_name_value(item.span(), None);
+                cx.adcx().expected_name_value(item.span(), None);
                 continue;
             };
 
             let path = item.path().word_sym();
             let Some(value) = item.args().name_value() else {
-                cx.expected_name_value(item.span(), path);
+                cx.adcx().expected_name_value(item.span(), path);
                 continue;
             };
 
@@ -625,14 +638,15 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
                     Some(sym::on) => true,
                     Some(sym::off) => false,
                     Some(_) => {
-                        cx.expected_specific_argument_strings(
+                        cx.adcx().expected_specific_argument_strings(
                             value.value_span,
                             &[sym::on, sym::off],
                         );
                         return;
                     }
                     None => {
-                        cx.expected_string_literal(value.value_span, Some(value.value_as_lit()));
+                        cx.adcx()
+                            .expected_string_literal(value.value_span, Some(value.value_as_lit()));
                         return;
                     }
                 };
@@ -654,20 +668,22 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
                 Some(sym::memtag) => apply(SanitizerSet::MEMTAG),
                 Some(sym::shadow_call_stack) => apply(SanitizerSet::SHADOWCALLSTACK),
                 Some(sym::thread) => apply(SanitizerSet::THREAD),
-                Some(sym::hwaddress) => apply(SanitizerSet::HWADDRESS),
+                Some(sym::hwaddress) | Some(sym::kernel_hwaddress) => {
+                    apply(SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
+                }
                 Some(sym::realtime) => match value.value_as_str() {
                     Some(sym::nonblocking) => rtsan = Some(RtsanSetting::Nonblocking),
                     Some(sym::blocking) => rtsan = Some(RtsanSetting::Blocking),
                     Some(sym::caller) => rtsan = Some(RtsanSetting::Caller),
                     _ => {
-                        cx.expected_specific_argument_strings(
+                        cx.adcx().expected_specific_argument_strings(
                             value.value_span,
                             &[sym::nonblocking, sym::blocking, sym::caller],
                         );
                     }
                 },
                 _ => {
-                    cx.expected_specific_argument_strings(
+                    cx.adcx().expected_specific_argument_strings(
                         item.path().span(),
                         &[
                             sym::address,
@@ -679,6 +695,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
                             sym::shadow_call_stack,
                             sym::thread,
                             sym::hwaddress,
+                            sym::kernel_hwaddress,
                             sym::realtime,
                         ],
                     );
@@ -724,13 +741,13 @@ pub(crate) struct PatchableFunctionEntryParser;
 impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
     const PATH: &[Symbol] = &[sym::patchable_function_entry];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["prefix_nops = m, entry_nops = n"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(meta_item_list) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return None;
         };
 
@@ -738,7 +755,7 @@ impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
         let mut entry = None;
 
         if meta_item_list.len() == 0 {
-            cx.expected_list(meta_item_list.span, args);
+            cx.adcx().expected_list(meta_item_list.span, args);
             return None;
         }
 
@@ -747,13 +764,13 @@ impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
         for item in meta_item_list.mixed() {
             let Some(meta_item) = item.meta_item() else {
                 errored = true;
-                cx.expected_name_value(item.span(), None);
+                cx.adcx().expected_name_value(item.span(), None);
                 continue;
             };
 
             let Some(name_value_lit) = meta_item.args().name_value() else {
                 errored = true;
-                cx.expected_name_value(item.span(), None);
+                cx.adcx().expected_name_value(item.span(), None);
                 continue;
             };
 
@@ -762,7 +779,7 @@ impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
                     // Duplicate prefixes are not allowed
                     if prefix.is_some() {
                         errored = true;
-                        cx.duplicate_key(meta_item.path().span(), sym::prefix_nops);
+                        cx.adcx().duplicate_key(meta_item.path().span(), sym::prefix_nops);
                         continue;
                     }
                     &mut prefix
@@ -771,14 +788,14 @@ impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
                     // Duplicate entries are not allowed
                     if entry.is_some() {
                         errored = true;
-                        cx.duplicate_key(meta_item.path().span(), sym::entry_nops);
+                        cx.adcx().duplicate_key(meta_item.path().span(), sym::entry_nops);
                         continue;
                     }
                     &mut entry
                 }
                 _ => {
                     errored = true;
-                    cx.expected_specific_argument(
+                    cx.adcx().expected_specific_argument(
                         meta_item.path().span(),
                         &[sym::prefix_nops, sym::entry_nops],
                     );
@@ -788,13 +805,13 @@ impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
 
             let rustc_ast::LitKind::Int(val, _) = name_value_lit.value_as_lit().kind else {
                 errored = true;
-                cx.expected_integer_literal(name_value_lit.value_span);
+                cx.adcx().expected_integer_literal(name_value_lit.value_span);
                 continue;
             };
 
             let Ok(val) = val.get().try_into() else {
                 errored = true;
-                cx.expected_integer_literal_in_range(
+                cx.adcx().expected_integer_literal_in_range(
                     name_value_lit.value_span,
                     u8::MIN as isize,
                     u8::MAX as isize,

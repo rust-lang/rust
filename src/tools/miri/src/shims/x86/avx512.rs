@@ -191,9 +191,9 @@ fn vpdpbusd<'tcx>(
     // fn vpdpbusd(src: i32x16, a: u8x64, b: i8x64) -> i32x16;
     // fn vpdpbusd256(src: i32x8, a: u8x32, b: i8x32) -> i32x8;
     // fn vpdpbusd128(src: i32x4, a: u8x16, b: i8x16) -> i32x4;
-    assert_eq!(dest_len, src_len);
-    assert_eq!(dest_len * 4, a_len);
-    assert_eq!(a_len, b_len);
+    assert_eq!(src_len, dest_len);
+    assert_eq!(a_len, dest_len.strict_mul(4));
+    assert_eq!(b_len, a_len);
 
     for i in 0..dest_len {
         let src = ecx.read_scalar(&ecx.project_index(&src, i)?)?.to_i32()?;

@@ -433,6 +433,7 @@ fn sidebar_assoc_items<'a>(
 
     let mut assoc_consts = Vec::new();
     let mut assoc_types = Vec::new();
+    let mut assoc_fns = Vec::new();
     let mut methods = Vec::new();
     if let Some(v) = cache.impls.get(&did) {
         let mut used_links = FxHashSet::default();
@@ -443,7 +444,12 @@ fn sidebar_assoc_items<'a>(
             for impl_ in v.iter().map(|i| i.inner_impl()).filter(|i| i.trait_.is_none()) {
                 assoc_consts.extend(get_associated_constants(impl_, used_links_bor));
                 assoc_types.extend(get_associated_types(impl_, used_links_bor));
-                methods.extend(get_methods(impl_, false, used_links_bor, false, cx.tcx()));
+                methods.extend(get_methods(
+                    impl_,
+                    GetMethodsMode::AlsoCollectAssocFns { assoc_fns: &mut assoc_fns },
+                    used_links_bor,
+                    cx.tcx(),
+                ));
             }
             // We want links' order to be reproducible so we don't use unstable sort.
             assoc_consts.sort();
@@ -462,13 +468,18 @@ fn sidebar_assoc_items<'a>(
                 "associatedtype",
                 assoc_types,
             ),
+            LinkBlock::new(
+                Link::new("implementations", "Associated Functions"),
+                "method",
+                assoc_fns,
+            ),
             LinkBlock::new(Link::new("implementations", "Methods"), "method", methods),
         ];
 
         if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
-            if let Some(impl_) =
-                v.iter().find(|i| i.trait_did() == cx.tcx().lang_items().deref_trait())
-            {
+            if let Some(impl_) = v.iter().find(|i| {
+                i.trait_did() == cx.tcx().lang_items().deref_trait() && !i.is_negative_trait_impl()
+            }) {
                 let mut derefs = DefIdSet::default();
                 derefs.insert(did);
                 sidebar_deref_methods(
@@ -546,7 +557,15 @@ fn sidebar_deref_methods<'a>(
                     i.inner_impl().trait_.is_none()
                         && real_target.is_doc_subtype_of(&i.inner_impl().for_, c)
                 })
-                .flat_map(|i| get_methods(i.inner_impl(), true, used_links, deref_mut, cx.tcx()))
+                .flat_map(|i| {
+                    get_methods(
+                        i.inner_impl(),
+                        GetMethodsMode::Deref { deref_mut },
+                        used_links,
+                        cx.tcx(),
+                    )
+                    .collect::<Vec<_>>()
+                })
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
                 let id = if let Some(target_def_id) = real_target.def_id(c) {
@@ -579,6 +598,7 @@ fn sidebar_deref_methods<'a>(
                     .as_ref()
                     .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
                     .unwrap_or(false)
+                    && !i.is_negative_trait_impl()
             })
         {
             sidebar_deref_methods(
@@ -734,69 +754,82 @@ fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
     format!("{url}-{add}")
 }
 
+enum GetMethodsMode<'r, 'l> {
+    Deref { deref_mut: bool },
+    AlsoCollectAssocFns { assoc_fns: &'r mut Vec<Link<'l>> },
+}
+
 fn get_methods<'a>(
     i: &'a clean::Impl,
-    for_deref: bool,
+    mut mode: GetMethodsMode<'_, 'a>,
     used_links: &mut FxHashSet<String>,
-    deref_mut: bool,
     tcx: TyCtxt<'_>,
-) -> Vec<Link<'a>> {
-    i.items
-        .iter()
-        .filter_map(|item| {
-            if let Some(ref name) = item.name
-                && item.is_method()
-                && (!for_deref || super::should_render_item(item, deref_mut, tcx))
-            {
-                Some(Link::new(
+) -> impl Iterator<Item = Link<'a>> {
+    i.items.iter().filter_map(move |item| {
+        if let Some(ref name) = item.name
+            && item.is_method()
+        {
+            let mut build_link = || {
+                Link::new(
                     get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::Method)),
                     name.as_str(),
-                ))
-            } else {
-                None
+                )
+            };
+            match &mut mode {
+                &mut GetMethodsMode::Deref { deref_mut } => {
+                    if super::should_render_item(item, deref_mut, tcx) {
+                        Some(build_link())
+                    } else {
+                        None
+                    }
+                }
+                GetMethodsMode::AlsoCollectAssocFns { assoc_fns } => {
+                    if item.has_self_param() {
+                        Some(build_link())
+                    } else {
+                        assoc_fns.push(build_link());
+                        None
+                    }
+                }
             }
-        })
-        .collect()
+        } else {
+            None
+        }
+    })
 }
 
 fn get_associated_constants<'a>(
     i: &'a clean::Impl,
     used_links: &mut FxHashSet<String>,
-) -> Vec<Link<'a>> {
-    i.items
-        .iter()
-        .filter_map(|item| {
-            if let Some(ref name) = item.name
-                && item.is_associated_const()
-            {
-                Some(Link::new(
-                    get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocConst)),
-                    name.as_str(),
-                ))
-            } else {
-                None
-            }
-        })
-        .collect()
+) -> impl Iterator<Item = Link<'a>> {
+    i.items.iter().filter_map(|item| {
+        if let Some(ref name) = item.name
+            && item.is_associated_const()
+        {
+            Some(Link::new(
+                get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocConst)),
+                name.as_str(),
+            ))
+        } else {
+            None
+        }
+    })
 }
 
 fn get_associated_types<'a>(
     i: &'a clean::Impl,
     used_links: &mut FxHashSet<String>,
-) -> Vec<Link<'a>> {
-    i.items
-        .iter()
-        .filter_map(|item| {
-            if let Some(ref name) = item.name
-                && item.is_associated_type()
-            {
-                Some(Link::new(
-                    get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocType)),
-                    name.as_str(),
-                ))
-            } else {
-                None
-            }
-        })
-        .collect()
+) -> impl Iterator<Item = Link<'a>> {
+    i.items.iter().filter_map(|item| {
+        if let Some(ref name) = item.name
+            && item.is_associated_type()
+        {
+            Some(Link::new(
+                get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocType)),
+                name.as_str(),
+            ))
+        } else {
+            None
+        }
+    })
 }

@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Arch, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, LlvmAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::netbsd::opts();
@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Mips,
         options: TargetOptions {
             features: "+soft-float".into(),
-            llvm_abiname: "o32".into(),
+            llvm_abiname: LlvmAbi::O32,
             mcount: "__mcount".into(),
             endian: Endian::Little,
             ..base

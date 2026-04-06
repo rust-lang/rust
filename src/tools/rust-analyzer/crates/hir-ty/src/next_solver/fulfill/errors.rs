@@ -617,6 +617,7 @@ impl<'db> NextSolverError<'db> {
 }
 
 mod wf {
+    use hir_def::signatures::ImplSignature;
     use hir_def::{GeneralConstId, ItemContainerId};
     use rustc_type_ir::inherent::{
         AdtDef, BoundExistentialPredicates, GenericArgs as _, IntoKind, SliceLike, Term as _,
@@ -1054,7 +1055,7 @@ mod wf {
                         if let GeneralConstId::ConstId(uv_def) = uv.def.0
                             && let ItemContainerId::ImplId(impl_) =
                                 uv_def.loc(self.interner().db).container
-                            && self.interner().db.impl_signature(impl_).target_trait.is_none()
+                            && ImplSignature::of(self.interner().db, impl_).target_trait.is_none()
                         {
                             return; // Subtree is handled by above function
                         } else {

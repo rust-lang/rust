@@ -211,6 +211,7 @@ fn emit_malformed_attribute(
             BuiltinLintDiag::AttributeLint(AttributeLintKind::IllFormedAttributeInput {
                 suggestions: suggestions.clone(),
                 docs: template.docs,
+                help: None,
             }),
         );
     } else {

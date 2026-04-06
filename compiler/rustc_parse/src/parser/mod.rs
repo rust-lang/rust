@@ -1788,4 +1788,5 @@ pub enum ParseNtResult {
     Meta(Box<ast::AttrItem>),
     Path(Box<ast::Path>),
     Vis(Box<ast::Visibility>),
+    Guard(Box<ast::Guard>),
 }

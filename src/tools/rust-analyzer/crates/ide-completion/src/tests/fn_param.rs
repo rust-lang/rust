@@ -43,7 +43,7 @@ fn bar(file_id: usize) {}
 fn baz(file$0 id: u32) {}
 "#,
         expect![[r#"
-            bn file_id: usize,
+            bn file_id: usize
             kw mut
             kw ref
         "#]],

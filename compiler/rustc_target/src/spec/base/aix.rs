@@ -1,13 +1,13 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    Abi, BinaryFormat, Cc, CodeModel, LinkOutputKind, LinkerFlavor, Os, TargetOptions, crt_objects,
-    cvs,
+    BinaryFormat, Cc, CfgAbi, CodeModel, LinkOutputKind, LinkerFlavor, Os, TargetOptions,
+    crt_objects, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        abi: Abi::VecExtAbi,
+        cfg_abi: CfgAbi::VecExtAbi,
         code_model: Some(CodeModel::Large),
         cpu: "pwr7".into(),
         os: Os::Aix,

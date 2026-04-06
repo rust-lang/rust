@@ -1,4 +1,6 @@
-use crate::spec::{Arch, CodeModel, SanitizerSet, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{
+    Arch, CodeModel, LlvmAbi, SanitizerSet, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -16,8 +18,9 @@ pub(crate) fn target() -> Target {
             code_model: Some(CodeModel::Medium),
             cpu: "generic".into(),
             features: "+f,+d,+lsx,+relax".into(),
-            llvm_abiname: "lp64d".into(),
+            llvm_abiname: LlvmAbi::Lp64d,
             max_atomic_width: Some(64),
+            mcount: "_mcount".into(),
             crt_static_default: false,
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::CFI

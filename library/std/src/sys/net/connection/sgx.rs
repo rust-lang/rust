@@ -506,9 +506,23 @@ impl Iterator for LookupHost {
     }
 }
 
+pub(crate) fn lookup_host_string(addr: impl Into<String>) -> io::Result<LookupHost> {
+    Err(io::Error::new(io::ErrorKind::Uncategorized, NonIpSockAddr { host: addr.into() }))
+}
+
 pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
-    Err(io::Error::new(
-        io::ErrorKind::Uncategorized,
-        NonIpSockAddr { host: format!("{host}:{port}") },
-    ))
+    lookup_host_string(format!("{host}:{port}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unparseable_sockaddr() {
+        let addr = "local";
+        let error = addr.to_socket_addrs().unwrap_err();
+        let non_ip_addr = error.downcast::<NonIpSockAddr>().unwrap();
+        assert_eq!(addr, non_ip_addr.host);
+    }
 }

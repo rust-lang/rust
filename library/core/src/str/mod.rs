@@ -15,7 +15,7 @@ mod validations;
 
 use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::char::{self, EscapeDebugExtArgs};
-use crate::ops::Range;
+use crate::range::Range;
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ascii, mem};
@@ -3112,14 +3112,15 @@ impl str {
     /// # Examples
     /// ```
     /// #![feature(substr_range)]
+    /// use core::range::Range;
     ///
     /// let data = "a, b, b, a";
     /// let mut iter = data.split(", ").map(|s| data.substr_range(s).unwrap());
     ///
-    /// assert_eq!(iter.next(), Some(0..1));
-    /// assert_eq!(iter.next(), Some(3..4));
-    /// assert_eq!(iter.next(), Some(6..7));
-    /// assert_eq!(iter.next(), Some(9..10));
+    /// assert_eq!(iter.next(), Some(Range { start: 0, end: 1 }));
+    /// assert_eq!(iter.next(), Some(Range { start: 3, end: 4 }));
+    /// assert_eq!(iter.next(), Some(Range { start: 6, end: 7 }));
+    /// assert_eq!(iter.next(), Some(Range { start: 9, end: 10 }));
     /// ```
     #[must_use]
     #[unstable(feature = "substr_range", issue = "126769")]

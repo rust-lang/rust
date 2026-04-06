@@ -453,6 +453,13 @@ impl Item {
         self.stability.is_some_and(|x| x.is_unstable())
     }
 
+    pub(crate) fn is_exported_macro(&self) -> bool {
+        match self.kind {
+            ItemKind::MacroItem(..) => find_attr!(&self.attrs.other_attrs, MacroExport { .. }),
+            _ => false,
+        }
+    }
+
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
         self.item_id
             .as_def_id()
@@ -463,6 +470,15 @@ impl Item {
                 )
             })
             .unwrap_or(false)
+    }
+
+    /// Returns true if item is an associated function with a `self` parameter.
+    pub(crate) fn has_self_param(&self) -> bool {
+        if let ItemKind::MethodItem(box Function { decl, .. }, _) = &self.inner.kind {
+            decl.receiver_type().is_some()
+        } else {
+            false
+        }
     }
 
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
@@ -514,10 +530,10 @@ impl Item {
         def_id: DefId,
         name: Option<Symbol>,
         kind: ItemKind,
-        cx: &mut DocContext<'_>,
+        tcx: TyCtxt<'_>,
     ) -> Item {
         #[allow(deprecated)]
-        let hir_attrs = cx.tcx.get_all_attrs(def_id);
+        let hir_attrs = tcx.get_all_attrs(def_id);
 
         Self::from_def_id_and_attrs_and_parts(
             def_id,
@@ -885,6 +901,9 @@ pub(crate) enum ItemKind {
     TraitItem(Box<Trait>),
     TraitAliasItem(TraitAlias),
     ImplItem(Box<Impl>),
+    /// This variant is used only as a placeholder for trait impls in order to correctly compute
+    /// `doc_cfg` as trait impls are added to `clean::Crate` after we went through the whole tree.
+    PlaceholderImplItem,
     /// A required method in a trait declaration meaning it's only a function signature.
     RequiredMethodItem(Box<Function>, Defaultness),
     /// A method in a trait impl or a provided method in a trait declaration.
@@ -964,7 +983,8 @@ impl ItemKind {
             | AssocTypeItem(..)
             | StrippedItem(_)
             | KeywordItem
-            | AttributeItem => [].iter(),
+            | AttributeItem
+            | PlaceholderImplItem => [].iter(),
         }
     }
 }
@@ -1115,20 +1135,20 @@ impl GenericBound {
         matches!(self, Self::TraitBound(..))
     }
 
-    pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
-        self.is_bounded_by_lang_item(cx, LangItem::Sized)
+    pub(crate) fn is_sized_bound(&self, tcx: TyCtxt<'_>) -> bool {
+        self.is_bounded_by_lang_item(tcx, LangItem::Sized)
     }
 
-    pub(crate) fn is_meta_sized_bound(&self, cx: &DocContext<'_>) -> bool {
-        self.is_bounded_by_lang_item(cx, LangItem::MetaSized)
+    pub(crate) fn is_meta_sized_bound(&self, tcx: TyCtxt<'_>) -> bool {
+        self.is_bounded_by_lang_item(tcx, LangItem::MetaSized)
     }
 
-    fn is_bounded_by_lang_item(&self, cx: &DocContext<'_>, lang_item: LangItem) -> bool {
+    fn is_bounded_by_lang_item(&self, tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
         if let GenericBound::TraitBound(
             PolyTrait { ref trait_, .. },
             rustc_hir::TraitBoundModifiers::NONE,
         ) = *self
-            && cx.tcx.is_lang_item(trait_.def_id(), lang_item)
+            && tcx.is_lang_item(trait_.def_id(), lang_item)
         {
             return true;
         }

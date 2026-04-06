@@ -124,8 +124,6 @@ macro_rules! assert_ne {
     };
 }
 
-// FIXME add back debug_assert_matches doc link after bootstrap.
-
 /// Asserts that an expression matches the provided pattern.
 ///
 /// This macro is generally preferable to `assert!(matches!(value, pattern))`, because it can print
@@ -137,8 +135,10 @@ macro_rules! assert_ne {
 /// otherwise this macro will panic.
 ///
 /// Assertions are always checked in both debug and release builds, and cannot
-/// be disabled. See `debug_assert_matches!` for assertions that are disabled in
+/// be disabled. See [`debug_assert_matches!`] for assertions that are disabled in
 /// release builds by default.
+///
+/// [`debug_assert_matches!`]: crate::debug_assert_matches
 ///
 /// On panic, this macro will print the value of the expression with its debug representation.
 ///
@@ -1720,7 +1720,7 @@ pub(crate) mod builtin {
     ///
     /// See [the reference] for more info.
     ///
-    /// [the reference]: ../../../reference/attributes/derive.html
+    /// [the reference]: ../reference/attributes/derive.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     pub macro derive($item:item) {

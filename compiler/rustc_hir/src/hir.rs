@@ -397,12 +397,7 @@ impl<'hir> PathSegment<'hir> {
     }
 
     pub fn args(&self) -> &GenericArgs<'hir> {
-        if let Some(ref args) = self.args {
-            args
-        } else {
-            const DUMMY: &GenericArgs<'_> = &GenericArgs::none();
-            DUMMY
-        }
+        if let Some(ref args) = self.args { args } else { GenericArgs::NONE }
     }
 }
 
@@ -643,14 +638,12 @@ pub struct GenericArgs<'hir> {
 }
 
 impl<'hir> GenericArgs<'hir> {
-    pub const fn none() -> Self {
-        Self {
-            args: &[],
-            constraints: &[],
-            parenthesized: GenericArgsParentheses::No,
-            span_ext: DUMMY_SP,
-        }
-    }
+    pub const NONE: &'hir GenericArgs<'hir> = &GenericArgs {
+        args: &[],
+        constraints: &[],
+        parenthesized: GenericArgsParentheses::No,
+        span_ext: DUMMY_SP,
+    };
 
     /// Obtain the list of input types and the output type if the generic arguments are parenthesized.
     ///
@@ -1264,6 +1257,8 @@ pub struct HashIgnoredAttrId {
     pub attr_id: AttrId,
 }
 
+/// Many functions on this type have their documentation in the [`AttributeExt`] trait,
+/// since they defer their implementation directly to that trait.
 #[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Attribute {
     /// A parsed built-in attribute.
@@ -1308,6 +1303,19 @@ impl Attribute {
             Attribute::Parsed(_) => true,
             Attribute::Unparsed(_) => false,
         }
+    }
+
+    pub fn has_span_without_desugaring_kind(&self) -> bool {
+        let span = match self {
+            Attribute::Unparsed(attr) => attr.span,
+            Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::LintAttributes(sub_attrs)) => {
+                return sub_attrs.iter().any(|attr| attr.attr_span.desugaring_kind().is_none());
+            }
+            Attribute::Parsed(attr) => panic!("can't get span of parsed attr: {:?}", attr),
+        };
+
+        span.desugaring_kind().is_none()
     }
 }
 
@@ -1383,6 +1391,7 @@ impl AttributeExt for Attribute {
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) => cfgs[0].1,
+            Attribute::Parsed(AttributeKind::LintAttributes(sub_attrs)) => sub_attrs[0].attr_span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
@@ -3765,10 +3774,19 @@ pub struct DelegationGenerics {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
-pub enum InferDelegationKind<'hir> {
+pub enum InferDelegationSig<'hir> {
     Input(usize),
     // Place generics info here, as we always specify output type for delegations.
     Output(&'hir DelegationGenerics),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
+pub enum InferDelegation<'hir> {
+    /// Infer the type of this `DefId` through `tcx.type_of(def_id).instantiate_identity()`,
+    /// used for const types propagation.
+    DefId(DefId),
+    /// Used during signature inheritance, `DefId` corresponds to the signature function.
+    Sig(DefId, InferDelegationSig<'hir>),
 }
 
 /// The various kinds of types recognized by the compiler.
@@ -3780,7 +3798,7 @@ pub enum InferDelegationKind<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TyKind<'hir, Unambig = ()> {
     /// Actual type should be inherited from `DefId` signature
-    InferDelegation(DefId, InferDelegationKind<'hir>),
+    InferDelegation(InferDelegation<'hir>),
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
@@ -3931,7 +3949,7 @@ pub struct FnDecl<'hir> {
 impl<'hir> FnDecl<'hir> {
     pub fn opt_delegation_sig_id(&self) -> Option<DefId> {
         if let FnRetTy::Return(ty) = self.output
-            && let TyKind::InferDelegation(sig_id, _) = ty.kind
+            && let TyKind::InferDelegation(InferDelegation::Sig(sig_id, _)) = ty.kind
         {
             return Some(sig_id);
         }
@@ -3940,8 +3958,8 @@ impl<'hir> FnDecl<'hir> {
 
     pub fn opt_delegation_generics(&self) -> Option<&'hir DelegationGenerics> {
         if let FnRetTy::Return(ty) = self.output
-            && let TyKind::InferDelegation(_, kind) = ty.kind
-            && let InferDelegationKind::Output(generics) = kind
+            && let TyKind::InferDelegation(InferDelegation::Sig(_, kind)) = ty.kind
+            && let InferDelegationSig::Output(generics) = kind
         {
             return Some(generics);
         }

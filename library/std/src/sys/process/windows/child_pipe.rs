@@ -260,7 +260,7 @@ impl ChildPipe {
             Err(e) => Err(e),
             Ok(n) => {
                 unsafe {
-                    buf.advance_unchecked(n);
+                    buf.advance(n);
                 }
                 Ok(())
             }

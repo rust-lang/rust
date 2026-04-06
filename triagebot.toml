@@ -194,6 +194,11 @@ Hi relnotes-interest-group, this issue/PR could use some help in reviewing /
 adjusting release notes. Could you take a look if available? Thanks <3
 """
 
+[ping.gpu-target]
+message = """\
+Hi GPU experts, this issue/PR could use some guidance on how this should be
+resolved/implemented. Could you take a look if available? Thanks <3
+"""
 
 # ------------------------------------------------------------------------------
 # Autolabels
@@ -1068,7 +1073,11 @@ instead.
 """
 cc = ["@Amanieu", "@folkertdev", "@sayantn"]
 
-[mentions."library/core/src/intrinsics/simd.rs"]
+[mentions."library/std_detect"]
+message = "Some changes occurred in `std_detect`"
+cc = ["@Amanieu", "@folkertdev", "@sayantn"]
+
+[mentions."library/core/src/intrinsics/simd/mod.rs"]
 message = """
 Some changes occurred to the platform-builtins intrinsics. Make sure the
 LLVM backend as well as portable-simd gets adapted for the changes.
@@ -1407,6 +1416,15 @@ cc = ["@m-ou-se"]
 [mentions."compiler/rustc_ast_lowering/src/format.rs"]
 cc = ["@m-ou-se"]
 
+[mentions."src/ci/github-actions/jobs.yml"]
+message = """
+> [!WARNING]
+>
+> If you are changing how CI LLVM is built or linked, make sure to bump
+> `src/bootstrap/download-ci-llvm-stamp`.
+"""
+cc = ["@jieyouxu"]
+
 # Content-based mentions
 
 [mentions."#[miri::intrinsic_fallback_is_spec]"]
@@ -1580,13 +1598,16 @@ dep-bumps = [
 "/compiler/rustc_type_ir" =                              ["compiler", "types"]
 "/compiler/rustc_public" =                               ["project-stable-mir"]
 "/library/alloc" =                                       ["libs"]
+"/library/alloctests" =                                  ["libs"]
 "/library/core" =                                        ["libs", "@scottmcm"]
+"/library/coretests" =                                   ["libs"]
 "/library/panic_abort" =                                 ["libs"]
 "/library/panic_unwind" =                                ["libs"]
 "/library/proc_macro" =                                  ["@petrochenkov"]
 "/library/std" =                                         ["libs", "@ChrisDenton"]
 "/library/std/src/sys/pal/windows" =                     ["@ChrisDenton"]
 "/library/stdarch" =                                     ["libs"]
+"/library/std_detect" =                                  ["libs"]
 "/library/test" =                                        ["libs"]
 "/src/bootstrap" =                                       ["bootstrap"]
 "/src/ci" =                                              ["infra-ci"]

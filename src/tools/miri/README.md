@@ -476,8 +476,9 @@ to Miri failing to detect cases of undefined behavior in a program.
   but reports to the program that it did actually write. This is useful when you
   are not interested in the actual program's output, but only want to see Miri's
   errors and warnings.
-* `-Zmiri-recursive-validation` is a *highly experimental* flag that makes validity checking
-  recurse below references.
+* `-Zmiri-recursive-validation` is a *highly experimental* flag that makes validity checking recurse
+  *one level* below references. The in-memory value is treated as-if it was inside a
+  `MaybeDangling`, i.e., nested references do not even have to be dereferenceable.
 * `-Zmiri-preemption-rate` configures the probability that at the end of a basic block, the active
   thread will be preempted. The default is `0.01` (i.e., 1%). Setting this to `0` disables
   preemption. Note that even without preemption, the schedule is still non-deterministic:
@@ -641,6 +642,7 @@ Definite bugs found:
 * [`winit` registering a global constructor with the wrong ABI on Windows](https://github.com/rust-windowing/winit/issues/4435)
 * [`VecDeque::splice` confusing physical and logical indices](https://github.com/rust-lang/rust/issues/151758)
 * [Data race in `oneshot` channel](https://github.com/faern/oneshot/issues/69)
+* [Memory leak in serde-yaml-bw](https://github.com/bourumir-wyngs/serde-yaml-bw/issues/197)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

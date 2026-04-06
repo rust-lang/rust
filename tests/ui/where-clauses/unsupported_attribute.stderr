@@ -10,6 +10,22 @@ error: expected non-macro attribute, found attribute macro `derive`
 LL |     #[derive(Clone)] 'a: 'static,
    |       ^^^^^^ not a non-macro attribute
 
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:13:5
+   |
+LL |     #[doc = "doc"] T: Trait,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:14:5
+   |
+LL |     #[doc = "doc"] 'a: 'static,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
 error: `#[ignore]` attribute cannot be used on where predicates
   --> $DIR/unsupported_attribute.rs:15:5
    |
@@ -58,6 +74,22 @@ LL |     #[macro_use] 'a: 'static,
    |
    = help: `#[macro_use]` can be applied to crates, extern crates, and modules
 
+error: `#[allow]` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:21:5
+   |
+LL |     #[allow(unused)] T: Trait,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[allow]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, and use statements
+
+error: `#[allow]` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:22:5
+   |
+LL |     #[allow(unused)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[allow]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, and use statements
+
 error: `#[deprecated]` attribute cannot be used on where predicates
   --> $DIR/unsupported_attribute.rs:23:5
    |
@@ -89,38 +121,6 @@ LL |     #[automatically_derived] 'a: 'static,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/unsupported_attribute.rs:13:5
-   |
-LL |     #[doc = "doc"] T: Trait,
-   |     ^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/unsupported_attribute.rs:14:5
-   |
-LL |     #[doc = "doc"] 'a: 'static,
-   |     ^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/unsupported_attribute.rs:21:5
-   |
-LL |     #[allow(unused)] T: Trait,
-   |     ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
-
-error: most attributes are not supported in `where` clauses
-  --> $DIR/unsupported_attribute.rs:22:5
-   |
-LL |     #[allow(unused)] 'a: 'static,
-   |     ^^^^^^^^^^^^^^^^
-   |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
 
 error: most attributes are not supported in `where` clauses
   --> $DIR/unsupported_attribute.rs:27:5

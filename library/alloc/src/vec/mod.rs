@@ -898,9 +898,17 @@ impl<T> Vec<T> {
     where
         T: Freeze,
     {
-        unsafe { core::intrinsics::const_make_global(self.as_mut_ptr().cast()) };
-        let me = ManuallyDrop::new(self);
-        unsafe { slice::from_raw_parts(me.as_ptr(), me.len) }
+        // `const_make_global` requires the pointer to point to the beginning of a heap allocation,
+        // which is not the case when `self.capacity()` is 0, or if `T::IS_ZST`,
+        // which is why we instead return a new slice in this case.
+        if self.capacity() == 0 || T::IS_ZST {
+            let me = ManuallyDrop::new(self);
+            unsafe { slice::from_raw_parts(NonNull::<T>::dangling().as_ptr(), me.len) }
+        } else {
+            unsafe { core::intrinsics::const_make_global(self.as_mut_ptr().cast()) };
+            let me = ManuallyDrop::new(self);
+            unsafe { slice::from_raw_parts(me.as_ptr(), me.len) }
+        }
     }
 }
 
@@ -1054,8 +1062,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// use std::alloc::System;
     ///
-    /// # #[allow(unused_mut)]
-    /// let mut vec: Vec<i32, _> = Vec::new_in(System);
+    /// let vec: Vec<i32, System> = Vec::new_in(System);
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
@@ -1853,7 +1860,7 @@ impl<T, A: Allocator> Vec<T, A> {
         // SAFETY: `slice::from_raw_parts_mut` requires pointee is a contiguous, aligned buffer of
         // size `len` containing properly-initialized `T`s. Data must not be accessed through any
         // other pointer for the returned lifetime. Further, `len * size_of::<T>` <=
-        // `ISIZE::MAX` and allocation does not "wrap" through overflowing memory addresses.
+        // `isize::MAX` and allocation does not "wrap" through overflowing memory addresses.
         //
         // * Vec API guarantees that self.buf:
         //      * contains only properly-initialized items within 0..len

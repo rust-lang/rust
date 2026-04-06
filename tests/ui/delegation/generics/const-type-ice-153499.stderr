@@ -1,0 +1,30 @@
+error[E0425]: cannot find type `CStr` in this scope
+  --> $DIR/const-type-ice-153499.rs:4:33
+   |
+LL | trait Trait<'a, T, const F: fn(&CStr) -> usize> {
+   |                                 ^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::ffi::CStr;
+   |
+
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/const-type-ice-153499.rs:4:29
+   |
+LL | trait Trait<'a, T, const F: fn(&CStr) -> usize> {
+   |                             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/const-type-ice-153499.rs:10:14
+   |
+LL | reuse Trait::foo;
+   |              ^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

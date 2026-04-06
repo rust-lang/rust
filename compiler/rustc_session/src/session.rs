@@ -40,7 +40,7 @@ use crate::config::{
     Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
-use crate::lint::LintId;
+use crate::lint::{CheckLintNameResult, LintId, RegisteredTools};
 use crate::parse::{ParseSess, add_feature_diagnostics};
 use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
@@ -81,6 +81,15 @@ pub struct CompilerIO {
 pub trait DynLintStore: Any + DynSync + DynSend {
     /// Provides a way to access lint groups without depending on `rustc_lint`
     fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
+
+    fn check_lint_name(
+        &self,
+        lint_name: &str,
+        tool_name: Option<Symbol>,
+        registered_tools: &RegisteredTools,
+    ) -> CheckLintNameResult<'_>;
+
+    fn find_lints(&self, lint_name: &str) -> Option<&[LintId]>;
 }
 
 /// Represents the data associated with a compilation
@@ -533,9 +542,12 @@ impl Session {
     pub fn emit_lifetime_markers(&self) -> bool {
         self.opts.optimize != config::OptLevel::No
         // AddressSanitizer and KernelAddressSanitizer uses lifetimes to detect use after scope bugs.
+        //
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
-        // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
-        || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
+        //
+        // HWAddressSanitizer and KernelHWAddressSanitizer will use lifetimes to detect use after
+        // scope bugs in the future.
+        || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
     }
 
     pub fn diagnostic_width(&self) -> usize {
@@ -1358,6 +1370,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             {
                 sess.dcx().emit_err(errors::FunctionReturnThunkExternRequiresNonLargeCodeModel);
             }
+        }
+    }
+
+    if sess.opts.unstable_opts.packed_stack {
+        if sess.target.arch != Arch::S390x {
+            sess.dcx().emit_err(errors::UnsupportedPackedStack);
         }
     }
 }

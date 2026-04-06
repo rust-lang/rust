@@ -407,7 +407,7 @@ pub(crate) struct SelfInConstGenericTy {
 
 #[derive(Diagnostic)]
 #[diag(
-    "{$is_ogca ->
+    "{$is_gca ->
     [true] generic parameters in const blocks are only allowed as the direct value of a `type const`
     *[false] generic parameters may not be used in const operations
 }"
@@ -421,11 +421,11 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[help("add `#![feature(generic_const_exprs)]` to allow generic const expressions")]
     pub(crate) help: bool,
-    pub(crate) is_ogca: bool,
+    pub(crate) is_gca: bool,
     #[help(
         "consider factoring the expression into a `type const` item and use it as the const argument instead"
     )]
-    pub(crate) help_ogca: bool,
+    pub(crate) help_gca: bool,
 }
 
 #[derive(Debug)]
@@ -1199,6 +1199,15 @@ pub(crate) struct AttributesStartingWithRustcAreReserved {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "attributes containing a segment starting with `rustc` are reserved for use by the `rustc` compiler"
+)]
+pub(crate) struct AttributesContainingRustcAreReserved {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("cannot use {$article} {$descr} through an import")]
 pub(crate) struct CannotUseThroughAnImport {
     #[primary_span]
@@ -1582,4 +1591,152 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Ambiguity {
         }
         diag
     }
+}
+
+#[derive(Diagnostic)]
+#[diag("lifetime parameter `{$ident}` never used")]
+pub(crate) struct UnusedLifetime {
+    #[suggestion("elide the unused lifetime", code = "", applicability = "machine-applicable")]
+    pub deletion_span: Option<Span>,
+
+    pub ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag("ambiguous glob re-exports")]
+pub(crate) struct AmbiguousGlobReexports {
+    #[label("the name `{$name}` in the {$namespace} namespace is first re-exported here")]
+    pub first_reexport: Span,
+    #[label("but the name `{$name}` in the {$namespace} namespace is also re-exported here")]
+    pub duplicate_reexport: Span,
+
+    pub name: String,
+    pub namespace: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("private item shadows public glob re-export")]
+pub(crate) struct HiddenGlobReexports {
+    #[note(
+        "the name `{$name}` in the {$namespace} namespace is supposed to be publicly re-exported here"
+    )]
+    pub glob_reexport: Span,
+    #[note("but the private item here shadows it")]
+    pub private_item: Span,
+
+    pub name: String,
+    pub namespace: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("the item `{$ident}` is imported redundantly")]
+pub(crate) struct RedundantImport {
+    #[subdiagnostic]
+    pub subs: Vec<RedundantImportSub>,
+    pub ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum RedundantImportSub {
+    #[label("the item `{$ident}` is already imported here")]
+    ImportedHere {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label("the item `{$ident}` is already defined here")]
+    DefinedHere {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label("the item `{$ident}` is already imported by the extern prelude")]
+    ImportedPrelude {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label("the item `{$ident}` is already defined by the extern prelude")]
+    DefinedPrelude {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag("unnecessary qualification")]
+pub(crate) struct UnusedQualifications {
+    #[suggestion(
+        "remove the unnecessary path segments",
+        style = "verbose",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub removal_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "{$elided ->
+        [true] `&` without an explicit lifetime name cannot be used here
+        *[false] `'_` cannot be used here
+    }"
+)]
+pub(crate) struct AssociatedConstElidedLifetime {
+    #[suggestion(
+        "use the `'static` lifetime",
+        style = "verbose",
+        code = "{code}",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+
+    pub code: &'static str,
+    pub elided: bool,
+    #[note("cannot automatically infer `'static` because of other lifetimes in scope")]
+    pub lifetimes_in_scope: MultiSpan,
+}
+
+#[derive(Diagnostic)]
+#[diag("lifetime parameter `{$ident}` only used once")]
+pub(crate) struct SingleUseLifetime {
+    #[label("this lifetime...")]
+    pub param_span: Span,
+    #[label("...is used only here")]
+    pub use_span: Span,
+    #[subdiagnostic]
+    pub suggestion: Option<SingleUseLifetimeSugg>,
+
+    pub ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("elide the single-use lifetime", applicability = "machine-applicable")]
+pub(crate) struct SingleUseLifetimeSugg {
+    #[suggestion_part(code = "")]
+    pub deletion_span: Option<Span>,
+    #[suggestion_part(code = "{replace_lt}")]
+    pub use_span: Span,
+
+    pub replace_lt: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition"
+)]
+pub(crate) struct AbsPathWithModule {
+    #[subdiagnostic]
+    pub sugg: AbsPathWithModuleSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion("use `crate`", code = "{replacement}")]
+pub(crate) struct AbsPathWithModuleSugg {
+    #[primary_span]
+    pub span: Span,
+    #[applicability]
+    pub applicability: Applicability,
+    pub replacement: String,
 }

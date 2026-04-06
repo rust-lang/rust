@@ -3,6 +3,5 @@
 
 use bar::foo; //~ ERROR can't find crate for `bar`
 use foo::bar;
-//~^^ ERROR unresolved imports `bar::foo`, `foo::bar`
 
 fn main() {}

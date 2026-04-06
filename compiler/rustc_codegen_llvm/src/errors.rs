@@ -182,9 +182,9 @@ pub(crate) struct CopyBitcode {
 
 #[derive(Diagnostic)]
 #[diag(
-    "unknown debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo"
+    "unsupported debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo"
 )]
-pub(crate) struct UnknownCompression {
+pub(crate) struct UnsupportedCompression {
     pub algorithm: &'static str,
 }
 
@@ -204,3 +204,10 @@ pub(crate) struct MismatchedDataLayout<'a> {
 pub(crate) struct FixedX18InvalidArch<'a> {
     pub arch: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag("`-Zpacked-stack` is incompatible with `backchain` target feature")]
+#[note(
+    "enabling both `-Zpacked-stack` and the `backchain` target feature is incompatible with the default s390x ABI. Switch to s390x-unknown-none-softfloat if you need both attributes"
+)]
+pub(crate) struct PackedStackBackchainNeedsSoftfloat;

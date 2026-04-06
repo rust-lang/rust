@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/feature-gate-new_range.rs:4:41
+  --> $DIR/feature-gate-new_range.rs:2:41
    |
 LL |     let a: core::range::RangeFrom<u8> = 1..;
    |            --------------------------   ^^^ expected `RangeFrom<u8>`, found `RangeFrom<{integer}>`
@@ -14,7 +14,7 @@ LL |     let a: core::range::RangeFrom<u8> = (1..).into();
    |                                         +   ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/feature-gate-new_range.rs:6:37
+  --> $DIR/feature-gate-new_range.rs:4:37
    |
 LL |     let b: core::range::Range<u8> = 2..3;
    |            ----------------------   ^^^^ expected `Range<u8>`, found `Range<{integer}>`
@@ -29,7 +29,7 @@ LL |     let b: core::range::Range<u8> = (2..3).into();
    |                                     +    ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/feature-gate-new_range.rs:8:46
+  --> $DIR/feature-gate-new_range.rs:6:46
    |
 LL |     let c: core::range::RangeInclusive<u8> = 4..=5;
    |            -------------------------------   ^^^^^ expected `RangeInclusive<u8>`, found `RangeInclusive<{integer}>`

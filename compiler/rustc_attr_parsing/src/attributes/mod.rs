@@ -46,6 +46,7 @@ pub(crate) mod dummy;
 pub(crate) mod inline;
 pub(crate) mod instruction_set;
 pub(crate) mod link_attrs;
+pub(crate) mod lint;
 pub(crate) mod lint_helpers;
 pub(crate) mod loop_match;
 pub(crate) mod macro_attrs;
@@ -124,14 +125,8 @@ pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
     /// If you need the parser to accept more than one path, use [`AttributeParser`] instead
     const PATH: &[Symbol];
 
-    /// Configures the precedence of attributes with the same `PATH` on a syntax node.
-    const ATTRIBUTE_ORDER: AttributeOrder;
-
     /// Configures what to do when when the same attribute is
     /// applied more than once on the same syntax node.
-    ///
-    /// [`ATTRIBUTE_ORDER`](Self::ATTRIBUTE_ORDER) specified which one is assumed to be correct,
-    /// and this specified whether to, for example, warn or error on the other one.
     const ON_DUPLICATE: OnDuplicate<S>;
 
     const ALLOWED_TARGETS: AllowedTargets;
@@ -162,21 +157,8 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
         <T as SingleAttributeParser<S>>::TEMPLATE,
         |group: &mut Single<T, S>, cx, args| {
             if let Some(pa) = T::convert(cx, args) {
-                match T::ATTRIBUTE_ORDER {
-                    // keep the first and report immediately. ignore this attribute
-                    AttributeOrder::KeepInnermost => {
-                        if let Some((_, unused)) = group.1 {
-                            T::ON_DUPLICATE.exec::<T>(cx, cx.attr_span, unused);
-                            return;
-                        }
-                    }
-                    // keep the new one and warn about the previous,
-                    // then replace
-                    AttributeOrder::KeepOutermost => {
-                        if let Some((_, used)) = group.1 {
-                            T::ON_DUPLICATE.exec::<T>(cx, used, cx.attr_span);
-                        }
-                    }
+                if let Some((_, used)) = group.1 {
+                    T::ON_DUPLICATE.exec::<T>(cx, used, cx.attr_span);
                 }
 
                 group.1 = Some((pa, cx.attr_span));
@@ -206,7 +188,7 @@ pub(crate) enum OnDuplicate<S: Stage> {
     /// Custom function called when a duplicate attribute is found.
     ///
     /// - `unused` is the span of the attribute that was unused or bad because of some
-    ///   duplicate reason (see [`AttributeOrder`])
+    ///   duplicate reason
     /// - `used` is the span of the attribute that was used in favor of the unused attribute
     Custom(fn(cx: &AcceptContext<'_, '_, S>, used: Span, unused: Span)),
 }
@@ -223,8 +205,8 @@ impl<S: Stage> OnDuplicate<S> {
             OnDuplicate::WarnButFutureError => cx.warn_unused_duplicate_future_error(used, unused),
             OnDuplicate::Error => {
                 cx.emit_err(UnusedMultiple {
-                    this: used,
-                    other: unused,
+                    this: unused,
+                    other: used,
                     name: Symbol::intern(
                         &P::PATH.into_iter().map(|i| i.to_string()).collect::<Vec<_>>().join(".."),
                     ),
@@ -234,30 +216,6 @@ impl<S: Stage> OnDuplicate<S> {
             OnDuplicate::Custom(f) => f(cx, used, unused),
         }
     }
-}
-
-pub(crate) enum AttributeOrder {
-    /// Duplicates after the innermost instance of the attribute will be an error/warning.
-    /// Only keep the lowest attribute.
-    ///
-    /// Attributes are processed from bottom to top, so this raises a warning/error on all the attributes
-    /// further above the lowest one:
-    /// ```
-    /// #[stable(since="1.0")] //~ WARNING duplicated attribute
-    /// #[stable(since="2.0")]
-    /// ```
-    KeepInnermost,
-
-    /// Duplicates before the outermost instance of the attribute will be an error/warning.
-    /// Only keep the highest attribute.
-    ///
-    /// Attributes are processed from bottom to top, so this raises a warning/error on all the attributes
-    /// below the highest one:
-    /// ```
-    /// #[path="foo.rs"]
-    /// #[path="bar.rs"] //~ WARNING duplicated attribute
-    /// ```
-    KeepOutermost,
 }
 
 /// An even simpler version of [`SingleAttributeParser`]:
@@ -284,14 +242,13 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> Default for WithoutArgs<T, S> {
 
 impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for WithoutArgs<T, S> {
     const PATH: &[Symbol] = T::PATH;
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = T::ON_DUPLICATE;
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
+            cx.adcx().expected_no_args(span);
         }
         Some(T::CREATE(cx.attr_span))
     }

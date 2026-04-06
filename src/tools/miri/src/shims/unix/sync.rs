@@ -6,16 +6,20 @@ use crate::*;
 
 /// Do a bytewise comparison of the two places. This is used to check if
 /// a synchronization primitive matches its static initializer value.
+///
+/// `prefix`, if set, indicates that only the first N bytes should be compared.
 fn bytewise_equal<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     left: &MPlaceTy<'tcx>,
     right: &MPlaceTy<'tcx>,
+    prefix: Option<u64>,
 ) -> InterpResult<'tcx, bool> {
     let size = left.layout.size;
     assert_eq!(size, right.layout.size);
+    let cmp_size = prefix.map(Size::from_bytes).unwrap_or(size);
 
-    let left_bytes = ecx.read_bytes_ptr_strip_provenance(left.ptr(), size)?;
-    let right_bytes = ecx.read_bytes_ptr_strip_provenance(right.ptr(), size)?;
+    let left_bytes = ecx.read_bytes_ptr_strip_provenance(left.ptr(), cmp_size)?;
+    let right_bytes = ecx.read_bytes_ptr_strip_provenance(right.ptr(), cmp_size)?;
 
     interp_ok(left_bytes == right_bytes)
 }
@@ -208,8 +212,15 @@ fn mutex_kind_from_static_initializer<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     mutex: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, MutexKind> {
+    let prefix = match &ecx.tcx.sess.target.os {
+        // On android, there's a 4-byte `value` header followed by "padding", and some versions
+        // of libc leave that uninitialized. Only check the `value` bytes.
+        Os::Android => Some(4),
+        _ => None,
+    };
+    let is_initializer = |name| bytewise_equal(ecx, mutex, &ecx.eval_path(&["libc", name]), prefix);
+
     // All the static initializers recognized here *must* be checked in `mutex_init_offset`!
-    let is_initializer = |name| bytewise_equal(ecx, mutex, &ecx.eval_path(&["libc", name]));
 
     // PTHREAD_MUTEX_INITIALIZER is recognized on all targets.
     if is_initializer("PTHREAD_MUTEX_INITIALIZER")? {
@@ -292,10 +303,17 @@ where
         PTHREAD_UNINIT,
         PTHREAD_INIT,
         |ecx| {
+            let prefix = match &ecx.tcx.sess.target.os {
+                // On android, there's a 4-byte `value` header followed by "padding", and some
+                // versions of libc leave that uninitialized. Only check the `value` bytes.
+                Os::Android => Some(4),
+                _ => None,
+            };
             if !bytewise_equal(
                 ecx,
                 &rwlock,
                 &ecx.eval_path(&["libc", "PTHREAD_RWLOCK_INITIALIZER"]),
+                prefix,
             )? {
                 throw_ub_format!(
                     "`pthread_rwlock_t` was not properly initialized at this location, or it got overwritten"
@@ -419,10 +437,17 @@ where
         PTHREAD_UNINIT,
         PTHREAD_INIT,
         |ecx| {
+            let prefix = match &ecx.tcx.sess.target.os {
+                // On android, there's a 4-byte `value` header followed by "padding", and some
+                // versions of libc leave that uninitialized. Only check the `value` bytes.
+                Os::Android => Some(4),
+                _ => None,
+            };
             if !bytewise_equal(
                 ecx,
                 &cond,
                 &ecx.eval_path(&["libc", "PTHREAD_COND_INITIALIZER"]),
+                prefix,
             )? {
                 throw_ub_format!(
                     "`pthread_cond_t` was not properly initialized at this location, or it got overwritten"

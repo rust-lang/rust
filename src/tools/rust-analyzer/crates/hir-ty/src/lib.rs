@@ -61,8 +61,8 @@ mod tests;
 use std::{hash::Hash, ops::ControlFlow};
 
 use hir_def::{
-    CallableDefId, GenericDefId, TypeAliasId, TypeOrConstParamId, TypeParamId,
-    hir::generics::GenericParams, resolver::TypeNs, type_ref::Rawness,
+    CallableDefId, ExpressionStoreOwnerId, GenericDefId, TypeAliasId, TypeOrConstParamId,
+    TypeParamId, hir::generics::GenericParams, resolver::TypeNs, type_ref::Rawness,
 };
 use hir_expand::name::Name;
 use indexmap::{IndexMap, map::Entry};
@@ -507,7 +507,7 @@ pub fn associated_type_shorthand_candidates(
     let mut dedup_map = FxHashSet::default();
     let param_ty = Ty::new_param(interner, param, param_idx(db, param.into()).unwrap() as u32);
     // We use the ParamEnv and not the predicates because the ParamEnv elaborates bounds.
-    let param_env = db.trait_environment(def);
+    let param_env = db.trait_environment(ExpressionStoreOwnerId::from(def));
     for clause in param_env.clauses {
         let ClauseKind::Trait(trait_clause) = clause.kind().skip_binder() else { continue };
         if trait_clause.self_ty() != param_ty {

@@ -5,7 +5,7 @@ use either::Either;
 use hir::{
     Adt, AsAssocItem, AsExternAssocItem, CaptureKind, DisplayTarget, DropGlue,
     DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
-    MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo, VariantDef,
+    MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo, Variant,
     db::ExpandDatabase,
 };
 use ide_db::{
@@ -366,14 +366,14 @@ fn definition_owner_name(db: &RootDatabase, def: Definition, edition: Edition) -
             let parent_name = parent.name(db);
             let parent_name = parent_name.display(db, edition).to_string();
             return match parent {
-                VariantDef::Variant(variant) => {
+                Variant::EnumVariant(variant) => {
                     let enum_name = variant.parent_enum(db).name(db);
                     Some(format!("{}::{parent_name}", enum_name.display(db, edition)))
                 }
                 _ => Some(parent_name),
             };
         }
-        Definition::Variant(e) => Some(e.parent_enum(db).name(db)),
+        Definition::EnumVariant(e) => Some(e.parent_enum(db).name(db)),
         Definition::GenericParam(generic_param) => match generic_param.parent() {
             hir::GenericDef::Adt(it) => Some(it.name(db)),
             hir::GenericDef::Trait(it) => Some(it.name(db)),
@@ -470,7 +470,7 @@ pub(super) fn definition(
         Definition::Adt(adt @ (Adt::Struct(_) | Adt::Union(_))) => {
             adt.display_limited(db, config.max_fields_count, display_target).to_string()
         }
-        Definition::Variant(variant) => {
+        Definition::EnumVariant(variant) => {
             variant.display_limited(db, config.max_fields_count, display_target).to_string()
         }
         Definition::Adt(adt @ Adt::Enum(_)) => {
@@ -499,7 +499,7 @@ pub(super) fn definition(
     };
     let docs = def.docs_with_rangemap(db, famous_defs, display_target);
     let value = || match def {
-        Definition::Variant(it) => {
+        Definition::EnumVariant(it) => {
             if !it.parent_enum(db).is_data_carrying(db) {
                 match it.eval(db) {
                     Ok(it) => {
@@ -596,7 +596,7 @@ pub(super) fn definition(
             |_| {
                 let var_def = it.parent_def(db);
                 match var_def {
-                    hir::VariantDef::Struct(s) => {
+                    hir::Variant::Struct(s) => {
                         Adt::from(s).layout(db).ok().and_then(|layout| layout.field_offset(it))
                     }
                     _ => None,
@@ -627,7 +627,7 @@ pub(super) fn definition(
             |_| None,
             |_| None,
         ),
-        Definition::Variant(it) => render_memory_layout(
+        Definition::EnumVariant(it) => render_memory_layout(
             config.memory_layout,
             || it.layout(db),
             |_| None,
@@ -710,7 +710,7 @@ pub(super) fn definition(
                     has_dtor: Some(enum_drop_glue > fields_drop_glue),
                 }
             }
-            Definition::Variant(variant) => {
+            Definition::EnumVariant(variant) => {
                 let fields_drop_glue = variant
                     .fields(db)
                     .iter()

@@ -10,7 +10,7 @@ impl B<fn(&'static ())> {
 
 fn foo(y: B<fn(&'static ())>) {
     B::<for<'a> fn(&'a ())>::method(y);
-    //~^ ERROR no function or associated item named `method` found
+    //~^ ERROR no associated function or constant named `method` found
 }
 
 fn main() {}

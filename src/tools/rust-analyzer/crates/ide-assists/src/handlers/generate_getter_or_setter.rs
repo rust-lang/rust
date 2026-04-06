@@ -218,14 +218,14 @@ fn generate_getter_from_info(
     ctx: &AssistContext<'_>,
     info: &AssistInfo,
     record_field_info: &RecordFieldInfo,
-    syntax_factory: &SyntaxFactory,
+    make: &SyntaxFactory,
 ) -> ast::Fn {
     let (ty, body) = if matches!(info.assist_type, AssistType::MutGet) {
-        let self_expr = syntax_factory.expr_path(syntax_factory.ident_path("self"));
+        let self_expr = make.expr_path(make.ident_path("self"));
         (
-            syntax_factory.ty_ref(record_field_info.field_ty.clone(), true),
-            syntax_factory.expr_ref(
-                syntax_factory.expr_field(self_expr, &record_field_info.field_name.text()).into(),
+            make.ty_ref(record_field_info.field_ty.clone(), true),
+            make.expr_ref(
+                make.expr_field(self_expr, &record_field_info.field_name.text()).into(),
                 true,
             ),
         )
@@ -239,21 +239,20 @@ fn generate_getter_from_info(
                 .map(|conversion| {
                     cov_mark::hit!(convert_reference_type);
                     (
-                        conversion.convert_type(ctx.db(), module),
-                        conversion.getter(record_field_info.field_name.to_string()),
+                        conversion.convert_type_with_factory(make, ctx.db(), module),
+                        conversion.getter(make, record_field_info.field_name.to_string()),
                     )
                 })
         })()
         .unwrap_or_else(|| {
             (
-                syntax_factory.ty_ref(record_field_info.field_ty.clone(), false),
-                syntax_factory.expr_ref(
-                    syntax_factory
-                        .expr_field(
-                            syntax_factory.expr_path(syntax_factory.ident_path("self")),
-                            &record_field_info.field_name.text(),
-                        )
-                        .into(),
+                make.ty_ref(record_field_info.field_ty.clone(), false),
+                make.expr_ref(
+                    make.expr_field(
+                        make.expr_path(make.ident_path("self")),
+                        &record_field_info.field_name.text(),
+                    )
+                    .into(),
                     false,
                 ),
             )
@@ -261,18 +260,18 @@ fn generate_getter_from_info(
     };
 
     let self_param = if matches!(info.assist_type, AssistType::MutGet) {
-        syntax_factory.mut_self_param()
+        make.mut_self_param()
     } else {
-        syntax_factory.self_param()
+        make.self_param()
     };
 
     let strukt = &info.strukt;
-    let fn_name = syntax_factory.name(&record_field_info.fn_name);
-    let params = syntax_factory.param_list(Some(self_param), []);
-    let ret_type = Some(syntax_factory.ret_type(ty));
-    let body = syntax_factory.block_expr([], Some(body));
+    let fn_name = make.name(&record_field_info.fn_name);
+    let params = make.param_list(Some(self_param), []);
+    let ret_type = Some(make.ret_type(ty));
+    let body = make.block_expr([], Some(body));
 
-    syntax_factory.fn_(
+    make.fn_(
         None,
         strukt.visibility(),
         fn_name,
@@ -291,32 +290,29 @@ fn generate_getter_from_info(
 fn generate_setter_from_info(
     info: &AssistInfo,
     record_field_info: &RecordFieldInfo,
-    syntax_factory: &SyntaxFactory,
+    make: &SyntaxFactory,
 ) -> ast::Fn {
     let strukt = &info.strukt;
     let field_name = &record_field_info.fn_name;
-    let fn_name = syntax_factory.name(&format!("set_{field_name}"));
+    let fn_name = make.name(&format!("set_{field_name}"));
     let field_ty = &record_field_info.field_ty;
 
     // Make the param list
     // `(&mut self, $field_name: $field_ty)`
-    let field_param = syntax_factory.param(
-        syntax_factory.ident_pat(false, false, syntax_factory.name(field_name)).into(),
-        field_ty.clone(),
-    );
-    let params = syntax_factory.param_list(Some(syntax_factory.mut_self_param()), [field_param]);
+    let field_param =
+        make.param(make.ident_pat(false, false, make.name(field_name)).into(), field_ty.clone());
+    let params = make.param_list(Some(make.mut_self_param()), [field_param]);
 
     // Make the assignment body
     // `self.$field_name = $field_name`
-    let self_expr = syntax_factory.expr_path(syntax_factory.ident_path("self"));
-    let lhs = syntax_factory.expr_field(self_expr, field_name);
-    let rhs = syntax_factory.expr_path(syntax_factory.ident_path(field_name));
-    let assign_stmt =
-        syntax_factory.expr_stmt(syntax_factory.expr_assignment(lhs.into(), rhs).into());
-    let body = syntax_factory.block_expr([assign_stmt.into()], None);
+    let self_expr = make.expr_path(make.ident_path("self"));
+    let lhs = make.expr_field(self_expr, field_name);
+    let rhs = make.expr_path(make.ident_path(field_name));
+    let assign_stmt = make.expr_stmt(make.expr_assignment(lhs.into(), rhs).into());
+    let body = make.block_expr([assign_stmt.into()], None);
 
     // Make the setter fn
-    syntax_factory.fn_(
+    make.fn_(
         None,
         strukt.visibility(),
         fn_name,

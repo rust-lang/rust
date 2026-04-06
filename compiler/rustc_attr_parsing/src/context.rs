@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::sync::LazyLock;
 
@@ -14,7 +15,7 @@ use rustc_hir::{AttrPath, HirId};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{AttrId, ErrorGuaranteed, Span, Symbol};
 
 use crate::AttributeParser;
 // Glob imports to avoid big, bitrotty import lists
@@ -36,6 +37,7 @@ use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
 use crate::attributes::instruction_set::*;
 use crate::attributes::link_attrs::*;
+use crate::attributes::lint::*;
 use crate::attributes::lint_helpers::*;
 use crate::attributes::loop_match::*;
 use crate::attributes::macro_attrs::*;
@@ -60,7 +62,8 @@ use crate::attributes::transparency::*;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
 use crate::parser::{ArgParser, RefPathParser};
 use crate::session_diagnostics::{
-    AttributeParseError, AttributeParseErrorReason, ParsedDescription,
+    AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
+    ParsedDescription,
 };
 use crate::target_checking::AllowedTargets;
 type GroupType<S> = LazyLock<GroupTypeInner<S>>;
@@ -147,6 +150,7 @@ attribute_parsers!(
         ConfusablesParser,
         ConstStabilityParser,
         DocParser,
+        LintParser,
         MacroUseParser,
         NakedParser,
         OnConstParser,
@@ -397,11 +401,11 @@ impl Stage for Late {
     }
 }
 
-/// used when parsing attributes for miscellaneous things *before* ast lowering
+/// Used when parsing attributes for miscellaneous things *before* ast lowering
 pub struct Early {
-    /// Whether to emit errors or delay them as a bug
-    /// For most attributes, the attribute will be parsed again in the `Late` stage and in this case the errors should be delayed
-    /// But for some, such as `cfg`, the attribute will be removed before the `Late` stage so errors must be emitted
+    /// Whether to emit errors or delay them as a bug.
+    /// For most attributes, the attribute will be parsed again in the `Late` stage and in this case the errors should be delayed.
+    /// But for some, such as `cfg`, the attribute will be removed before the `Late` stage so errors must be emitted.
     pub emit_errors: ShouldEmit,
 }
 /// used when parsing attributes during ast lowering
@@ -414,19 +418,25 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
     pub(crate) shared: SharedContext<'f, 'sess, S>,
 
     /// The outer span of the attribute currently being parsed
+    ///
+    /// ```none
     /// #[attribute(...)]
     /// ^^^^^^^^^^^^^^^^^ outer span
+    /// ```
     /// For attributes in `cfg_attr`, the outer span and inner spans are equal.
     pub(crate) attr_span: Span,
-    /// The inner span of the attribute currently being parsed
+    /// The inner span of the attribute currently being parsed.
+    ///
+    /// ```none
     /// #[attribute(...)]
     ///   ^^^^^^^^^^^^^^  inner span
+    /// ```
     pub(crate) inner_span: Span,
 
-    /// Whether it is an inner or outer attribute
+    /// Whether it is an inner or outer attribute.
     pub(crate) attr_style: AttrStyle,
 
-    /// A description of the thing we are parsing using this attribute parser
+    /// A description of the thing we are parsing using this attribute parser.
     /// We are not only using these parsers for attributes, but also for macros such as the `cfg!()` macro.
     pub(crate) parsed_description: ParsedDescription,
 
@@ -437,6 +447,8 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
 
     /// The name of the attribute we're currently accepting.
     pub(crate) attr_path: AttrPath,
+
+    pub(crate) attr_id: AttrId,
 }
 
 impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
@@ -487,208 +499,8 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
 }
 
 impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
-    fn emit_parse_error(
-        &self,
-        span: Span,
-        reason: AttributeParseErrorReason<'_>,
-    ) -> ErrorGuaranteed {
-        self.emit_err(AttributeParseError {
-            span,
-            attr_span: self.attr_span,
-            template: self.template.clone(),
-            path: self.attr_path.clone(),
-            description: self.parsed_description,
-            reason,
-            suggestions: self.suggestions(),
-        })
-    }
-
-    /// error that a string literal was expected.
-    /// You can optionally give the literal you did find (which you found not to be a string literal)
-    /// which can make better errors. For example, if the literal was a byte string it will suggest
-    /// removing the `b` prefix.
-    pub(crate) fn expected_string_literal(
-        &self,
-        span: Span,
-        actual_literal: Option<&MetaItemLit>,
-    ) -> ErrorGuaranteed {
-        self.emit_parse_error(
-            span,
-            AttributeParseErrorReason::ExpectedStringLiteral {
-                byte_string: actual_literal.and_then(|i| {
-                    i.kind.is_bytestr().then(|| self.sess().source_map().start_point(i.span))
-                }),
-            },
-        )
-    }
-
-    /// Error that a filename string literal was expected.
-    pub(crate) fn expected_filename_literal(&self, span: Span) {
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedFilenameLiteral);
-    }
-
-    pub(crate) fn expected_integer_literal(&self, span: Span) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedIntegerLiteral)
-    }
-
-    pub(crate) fn expected_integer_literal_in_range(
-        &self,
-        span: Span,
-        lower_bound: isize,
-        upper_bound: isize,
-    ) -> ErrorGuaranteed {
-        self.emit_parse_error(
-            span,
-            AttributeParseErrorReason::ExpectedIntegerLiteralInRange { lower_bound, upper_bound },
-        )
-    }
-
-    pub(crate) fn expected_list(&self, span: Span, args: &ArgParser) -> ErrorGuaranteed {
-        let span = match args {
-            ArgParser::NoArgs => span,
-            ArgParser::List(list) => list.span,
-            ArgParser::NameValue(nv) => nv.args_span(),
-        };
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedList)
-    }
-
-    pub(crate) fn expected_list_with_num_args_or_more(
-        &self,
-        args: usize,
-        span: Span,
-    ) -> ErrorGuaranteed {
-        self.emit_parse_error(
-            span,
-            AttributeParseErrorReason::ExpectedListWithNumArgsOrMore { args },
-        )
-    }
-
-    pub(crate) fn expected_list_or_no_args(&self, span: Span) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedListOrNoArgs)
-    }
-
-    pub(crate) fn expected_nv_or_no_args(&self, span: Span) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNameValueOrNoArgs)
-    }
-
-    pub(crate) fn expected_non_empty_string_literal(&self, span: Span) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNonEmptyStringLiteral)
-    }
-
-    pub(crate) fn expected_no_args(&self, span: Span) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNoArgs)
-    }
-
-    /// emit an error that a `name` was expected here
-    pub(crate) fn expected_identifier(&self, span: Span) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedIdentifier)
-    }
-
-    /// emit an error that a `name = value` pair was expected at this span. The symbol can be given for
-    /// a nicer error message talking about the specific name that was found lacking a value.
-    pub(crate) fn expected_name_value(&self, span: Span, name: Option<Symbol>) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNameValue(name))
-    }
-
-    /// emit an error that a `name = value` pair was found where that name was already seen.
-    pub(crate) fn duplicate_key(&self, span: Span, key: Symbol) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::DuplicateKey(key))
-    }
-
-    /// an error that should be emitted when a [`MetaItemOrLitParser`](crate::parser::MetaItemOrLitParser)
-    /// was expected *not* to be a literal, but instead a meta item.
-    pub(crate) fn unexpected_literal(&self, span: Span) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::UnexpectedLiteral)
-    }
-
-    pub(crate) fn expected_single_argument(&self, span: Span) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedSingleArgument)
-    }
-
-    pub(crate) fn expected_at_least_one_argument(&self, span: Span) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedAtLeastOneArgument)
-    }
-
-    /// produces an error along the lines of `expected one of [foo, meow]`
-    pub(crate) fn expected_specific_argument(
-        &self,
-        span: Span,
-        possibilities: &[Symbol],
-    ) -> ErrorGuaranteed {
-        self.emit_parse_error(
-            span,
-            AttributeParseErrorReason::ExpectedSpecificArgument {
-                possibilities,
-                strings: false,
-                list: false,
-            },
-        )
-    }
-
-    /// produces an error along the lines of `expected one of [foo, meow] as an argument`.
-    /// i.e. slightly different wording to [`expected_specific_argument`](Self::expected_specific_argument).
-    pub(crate) fn expected_specific_argument_and_list(
-        &self,
-        span: Span,
-        possibilities: &[Symbol],
-    ) -> ErrorGuaranteed {
-        self.emit_parse_error(
-            span,
-            AttributeParseErrorReason::ExpectedSpecificArgument {
-                possibilities,
-                strings: false,
-                list: true,
-            },
-        )
-    }
-
-    /// produces an error along the lines of `expected one of ["foo", "meow"]`
-    pub(crate) fn expected_specific_argument_strings(
-        &self,
-        span: Span,
-        possibilities: &[Symbol],
-    ) -> ErrorGuaranteed {
-        self.emit_parse_error(
-            span,
-            AttributeParseErrorReason::ExpectedSpecificArgument {
-                possibilities,
-                strings: true,
-                list: false,
-            },
-        )
-    }
-
-    pub(crate) fn warn_empty_attribute(&mut self, span: Span) {
-        let attr_path = self.attr_path.clone().to_string();
-        let valid_without_list = self.template.word;
-        self.emit_lint(
-            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            AttributeLintKind::EmptyAttribute { first_span: span, attr_path, valid_without_list },
-            span,
-        );
-    }
-
-    pub(crate) fn warn_ill_formed_attribute_input(&mut self, lint: &'static Lint) {
-        let suggestions = self.suggestions();
-        let span = self.attr_span;
-        self.emit_lint(
-            lint,
-            AttributeLintKind::IllFormedAttributeInput { suggestions, docs: None },
-            span,
-        );
-    }
-
-    pub(crate) fn suggestions(&self) -> Vec<String> {
-        let style = match self.parsed_description {
-            // If the outer and inner spans are equal, we are parsing an embedded attribute
-            ParsedDescription::Attribute if self.attr_span == self.inner_span => {
-                AttrSuggestionStyle::EmbeddedAttribute
-            }
-            ParsedDescription::Attribute => AttrSuggestionStyle::Attribute(self.attr_style),
-            ParsedDescription::Macro => AttrSuggestionStyle::Macro,
-        };
-
-        self.template.suggestions(style, &self.attr_path)
+    pub(crate) fn adcx(&mut self) -> AttributeDiagnosticContext<'_, 'f, 'sess, S> {
+        AttributeDiagnosticContext { ctx: self, custom_suggestions: Vec::new() }
     }
 }
 
@@ -806,4 +618,298 @@ impl ShouldEmit {
             ShouldEmit::Nothing => diag.delay_as_bug(),
         }
     }
+}
+
+pub(crate) struct AttributeDiagnosticContext<'a, 'f, 'sess, S: Stage> {
+    ctx: &'a mut AcceptContext<'f, 'sess, S>,
+    custom_suggestions: Vec<Suggestion>,
+}
+
+impl<'a, 'f, 'sess: 'f, S> AttributeDiagnosticContext<'a, 'f, 'sess, S>
+where
+    S: Stage,
+{
+    fn emit_parse_error(
+        &mut self,
+        span: Span,
+        reason: AttributeParseErrorReason<'_>,
+    ) -> ErrorGuaranteed {
+        let suggestions = if !self.custom_suggestions.is_empty() {
+            AttributeParseErrorSuggestions::CreatedByParser(mem::take(&mut self.custom_suggestions))
+        } else {
+            AttributeParseErrorSuggestions::CreatedByTemplate(self.template_suggestions())
+        };
+
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            path: self.attr_path.clone(),
+            description: self.parsed_description,
+            reason,
+            suggestions,
+        })
+    }
+
+    /// Adds a custom suggestion to the diagnostic. This also prevents the default (template-based)
+    /// suggestion to be emitted.
+    pub(crate) fn push_suggestion(&mut self, msg: String, span: Span, code: String) -> &mut Self {
+        self.custom_suggestions.push(Suggestion { msg, sp: span, code });
+        self
+    }
+
+    pub(crate) fn template_suggestions(&self) -> Vec<String> {
+        let style = match self.parsed_description {
+            // If the outer and inner spans are equal, we are parsing an embedded attribute
+            ParsedDescription::Attribute if self.attr_span == self.inner_span => {
+                AttrSuggestionStyle::EmbeddedAttribute
+            }
+            ParsedDescription::Attribute => AttrSuggestionStyle::Attribute(self.attr_style),
+            ParsedDescription::Macro => AttrSuggestionStyle::Macro,
+        };
+
+        self.template.suggestions(style, &self.attr_path)
+    }
+}
+
+/// Helpers that can be used to generate errors during attribute parsing.
+impl<'a, 'f, 'sess: 'f, S> AttributeDiagnosticContext<'a, 'f, 'sess, S>
+where
+    S: Stage,
+{
+    pub(crate) fn expected_integer_literal_in_range(
+        &mut self,
+        span: Span,
+        lower_bound: isize,
+        upper_bound: isize,
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedIntegerLiteralInRange { lower_bound, upper_bound },
+        )
+    }
+
+    pub(crate) fn expected_list(&mut self, span: Span, args: &ArgParser) -> ErrorGuaranteed {
+        let span = match args {
+            ArgParser::NoArgs => span,
+            ArgParser::List(list) => list.span,
+            ArgParser::NameValue(nv) => nv.args_span(),
+        };
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedList)
+    }
+
+    pub(crate) fn expected_list_with_num_args_or_more(
+        &mut self,
+        args: usize,
+        span: Span,
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedListWithNumArgsOrMore { args },
+        )
+    }
+
+    pub(crate) fn expected_list_or_no_args(&mut self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedListOrNoArgs)
+    }
+
+    pub(crate) fn expected_nv_or_no_args(&mut self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNameValueOrNoArgs)
+    }
+
+    pub(crate) fn expected_non_empty_string_literal(&mut self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNonEmptyStringLiteral)
+    }
+
+    pub(crate) fn expected_no_args(&mut self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNoArgs)
+    }
+
+    /// Emit an error that a `name` was expected here
+    pub(crate) fn expected_identifier(&mut self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedIdentifier)
+    }
+
+    /// Emit an error that a `name = value` pair was expected at this span. The symbol can be given for
+    /// a nicer error message talking about the specific name that was found lacking a value.
+    pub(crate) fn expected_name_value(
+        &mut self,
+        span: Span,
+        name: Option<Symbol>,
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNameValue(name))
+    }
+
+    /// Emit an error that a `name = value` pair was found where that name was already seen.
+    pub(crate) fn duplicate_key(&mut self, span: Span, key: Symbol) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::DuplicateKey(key))
+    }
+
+    /// An error that should be emitted when a [`MetaItemOrLitParser`](crate::parser::MetaItemOrLitParser)
+    /// was expected *not* to be a literal, but instead a meta item.
+    pub(crate) fn unexpected_literal(&mut self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::UnexpectedLiteral)
+    }
+
+    pub(crate) fn expected_single_argument(&mut self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedSingleArgument)
+    }
+
+    pub(crate) fn expected_at_least_one_argument(&mut self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedAtLeastOneArgument)
+    }
+
+    /// Produces an error along the lines of `expected one of [foo, meow]`
+    pub(crate) fn expected_specific_argument(
+        &mut self,
+        span: Span,
+        possibilities: &[Symbol],
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedSpecificArgument {
+                possibilities,
+                strings: false,
+                list: false,
+            },
+        )
+    }
+
+    /// Produces an error along the lines of `expected one of [foo, meow] as an argument`.
+    /// i.e. slightly different wording to [`expected_specific_argument`](Self::expected_specific_argument).
+    pub(crate) fn expected_specific_argument_and_list(
+        &mut self,
+        span: Span,
+        possibilities: &[Symbol],
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedSpecificArgument {
+                possibilities,
+                strings: false,
+                list: true,
+            },
+        )
+    }
+
+    /// produces an error along the lines of `expected one of ["foo", "meow"]`
+    pub(crate) fn expected_specific_argument_strings(
+        &mut self,
+        span: Span,
+        possibilities: &[Symbol],
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedSpecificArgument {
+                possibilities,
+                strings: true,
+                list: false,
+            },
+        )
+    }
+
+    pub(crate) fn expected_nv_as_last_argument(
+        &mut self,
+        span: Span,
+        name_value_key: Symbol,
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedNameValueAsLastArgument { span, name_value_key },
+        )
+    }
+
+    pub(crate) fn warn_empty_attribute(&mut self, span: Span) {
+        let attr_path = self.attr_path.clone().to_string();
+        let valid_without_list = self.template.word;
+        self.emit_lint(
+            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
+            AttributeLintKind::EmptyAttribute { first_span: span, attr_path, valid_without_list },
+            span,
+        );
+    }
+
+    pub(crate) fn warn_ill_formed_attribute_input(&mut self, lint: &'static Lint) {
+        self.warn_ill_formed_attribute_input_with_help(lint, None)
+    }
+    pub(crate) fn warn_ill_formed_attribute_input_with_help(
+        &mut self,
+        lint: &'static Lint,
+        help: Option<String>,
+    ) {
+        let suggestions = self.suggestions();
+        let span = self.attr_span;
+        self.emit_lint(
+            lint,
+            AttributeLintKind::IllFormedAttributeInput { suggestions, docs: None, help },
+            span,
+        );
+    }
+
+    pub(crate) fn suggestions(&self) -> Vec<String> {
+        let style = match self.parsed_description {
+            // If the outer and inner spans are equal, we are parsing an embedded attribute
+            ParsedDescription::Attribute if self.attr_span == self.inner_span => {
+                AttrSuggestionStyle::EmbeddedAttribute
+            }
+            ParsedDescription::Attribute => AttrSuggestionStyle::Attribute(self.attr_style),
+            ParsedDescription::Macro => AttrSuggestionStyle::Macro,
+        };
+
+        self.template.suggestions(style, &self.attr_path)
+    }
+    /// Error that a string literal was expected.
+    /// You can optionally give the literal you did find (which you found not to be a string literal)
+    /// which can make better errors. For example, if the literal was a byte string it will suggest
+    /// removing the `b` prefix.
+    pub(crate) fn expected_string_literal(
+        &mut self,
+        span: Span,
+        actual_literal: Option<&MetaItemLit>,
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedStringLiteral {
+                byte_string: actual_literal.and_then(|i| {
+                    i.kind.is_bytestr().then(|| self.sess().source_map().start_point(i.span))
+                }),
+            },
+        )
+    }
+
+    /// Error that a filename string literal was expected.
+    pub(crate) fn expected_filename_literal(&mut self, span: Span) {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedFilenameLiteral);
+    }
+
+    pub(crate) fn expected_integer_literal(&mut self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedIntegerLiteral)
+    }
+}
+
+impl<'a, 'f, 'sess: 'f, S> Deref for AttributeDiagnosticContext<'a, 'f, 'sess, S>
+where
+    S: Stage,
+{
+    type Target = AcceptContext<'f, 'sess, S>;
+
+    fn deref(&self) -> &Self::Target {
+        self.ctx
+    }
+}
+
+impl<'a, 'f, 'sess: 'f, S> DerefMut for AttributeDiagnosticContext<'a, 'f, 'sess, S>
+where
+    S: Stage,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.ctx
+    }
+}
+
+/// Represents a custom suggestion that an attribute parser can emit.
+pub(crate) struct Suggestion {
+    pub(crate) msg: String,
+    pub(crate) sp: Span,
+    pub(crate) code: String,
 }

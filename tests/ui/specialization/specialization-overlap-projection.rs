@@ -2,7 +2,6 @@
 // projections involve specialization, so long as the associated type is
 // provided by the most specialized impl.
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
 
 trait Assoc {
     type Output;

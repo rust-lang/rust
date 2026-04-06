@@ -618,14 +618,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Report errors for the resolved macro.
-        for segment in &path.segments {
+        for (idx, segment) in path.segments.iter().enumerate() {
             if let Some(args) = &segment.args {
                 self.dcx().emit_err(errors::GenericArgumentsInMacroPath { span: args.span() });
             }
             if kind == MacroKind::Attr && segment.ident.as_str().starts_with("rustc") {
-                self.dcx().emit_err(errors::AttributesStartingWithRustcAreReserved {
-                    span: segment.ident.span,
-                });
+                if idx == 0 {
+                    self.dcx().emit_err(errors::AttributesStartingWithRustcAreReserved {
+                        span: segment.ident.span,
+                    });
+                } else {
+                    self.dcx().emit_err(errors::AttributesContainingRustcAreReserved {
+                        span: segment.ident.span,
+                    });
+                }
             }
         }
 

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_data_structures::sync::{AppendOnlyVec, DynSend, Lock};
+use rustc_data_structures::sync::{AppendOnlyVec, DynSend, DynSync, Lock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::{EmitterWithNote, stderr_destination};
 use rustc_errors::{
@@ -332,7 +332,7 @@ impl ParseSess {
     }
 
     pub fn dyn_buffer_lint<
-        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + 'static,
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSync + DynSend + 'static,
     >(
         &self,
         lint: &'static Lint,
@@ -344,7 +344,7 @@ impl ParseSess {
             lint,
             Some(span.into()),
             node_id,
-            DecorateDiagCompat::Dynamic(Box::new(callback)),
+            DecorateDiagCompat::Dynamic(Box::new(|dcx, level, _| callback(dcx, level))),
         )
     }
 

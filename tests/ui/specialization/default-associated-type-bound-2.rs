@@ -1,6 +1,5 @@
 // Check that generic predicates are also checked for default associated types.
 #![feature(specialization)]
-//~^ WARNING `specialization` is incomplete
 
 trait X<T> {
     type U: PartialEq<T>;

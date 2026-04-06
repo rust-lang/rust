@@ -197,7 +197,7 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
     let (name, arg_expr) = validate_method_call_expr(ctx, &method_call)?;
 
     let ast::Expr::ClosureExpr(closure_expr) = arg_expr else { return None };
-    let closure_body = closure_expr.body()?.clone_for_update();
+    let closure_body = closure_expr.body()?;
 
     let op_range = method_call.syntax().text_range();
     let label = format!("Apply De Morgan's law to `Iterator::{}`", name.text().as_str());

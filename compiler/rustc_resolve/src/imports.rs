@@ -6,13 +6,12 @@ use rustc_ast::NodeId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
+use rustc_errors::{Applicability, Diagnostic, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::{DefId, LocalDefIdMap};
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
     PUB_USE_OF_PRIVATE_EXTERN_CRATE, REDUNDANT_IMPORTS, UNUSED_IMPORTS,
@@ -26,9 +25,10 @@ use tracing::debug;
 use crate::Namespace::{self, *};
 use crate::diagnostics::{DiagMode, Suggestion, import_candidates};
 use crate::errors::{
-    CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
-    CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
-    ConsiderAddingMacroExport, ConsiderMarkingAsPub, ConsiderMarkingAsPubCrate,
+    self, CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS,
+    CannotBeReexportedPrivate, CannotBeReexportedPrivateNS, CannotDetermineImportResolution,
+    CannotGlobImportAllCrates, ConsiderAddingMacroExport, ConsiderMarkingAsPub,
+    ConsiderMarkingAsPubCrate,
 };
 use crate::ref_mut::CmCell;
 use crate::{
@@ -41,7 +41,7 @@ type Res = def::Res<NodeId>;
 
 /// A potential import declaration in the process of being planted into a module.
 /// Also used for lazily planting names from `--extern` flags to extern prelude.
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq, Debug)]
 pub(crate) enum PendingDecl<'ra> {
     Ready(Option<Decl<'ra>>),
     #[default]
@@ -674,6 +674,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
+        if self.cstore().had_extern_crate_load_failure() {
+            self.tcx.sess.dcx().abort_if_errors();
+        }
+
         if !errors.is_empty() {
             self.throw_unresolved_import_error(errors, glob_error);
             return;
@@ -721,11 +725,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         AMBIGUOUS_GLOB_REEXPORTS,
                         import.root_id,
                         import.root_span,
-                        BuiltinLintDiag::AmbiguousGlobReexports {
+                        errors::AmbiguousGlobReexports {
                             name: key.ident.name.to_string(),
                             namespace: key.ns.descr().to_string(),
-                            first_reexport_span: import.root_span,
-                            duplicate_reexport_span: amb_binding.span,
+                            first_reexport: import.root_span,
+                            duplicate_reexport: amb_binding.span,
                         },
                     );
                 }
@@ -753,11 +757,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 HIDDEN_GLOB_REEXPORTS,
                                 binding_id,
                                 binding.span,
-                                BuiltinLintDiag::HiddenGlobReexports {
+                                errors::HiddenGlobReexports {
                                     name: key.ident.name.to_string(),
                                     namespace: key.ns.descr().to_owned(),
-                                    glob_reexport_span: glob_decl.span,
-                                    private_item_span: binding.span,
+                                    glob_reexport: glob_decl.span,
+                                    private_item: binding.span,
                                 },
                             );
                         }
@@ -1535,11 +1539,31 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
             redundant_spans.sort();
             redundant_spans.dedup();
-            self.lint_buffer.buffer_lint(
+            self.lint_buffer.dyn_buffer_lint(
                 REDUNDANT_IMPORTS,
                 id,
                 import.span,
-                BuiltinLintDiag::RedundantImport(redundant_spans, source),
+                move |dcx, level| {
+                    let ident = source;
+                    let subs = redundant_spans
+                        .into_iter()
+                        .map(|(span, is_imported)| match (span.is_dummy(), is_imported) {
+                            (false, true) => {
+                                errors::RedundantImportSub::ImportedHere { span, ident }
+                            }
+                            (false, false) => {
+                                errors::RedundantImportSub::DefinedHere { span, ident }
+                            }
+                            (true, true) => {
+                                errors::RedundantImportSub::ImportedPrelude { span, ident }
+                            }
+                            (true, false) => {
+                                errors::RedundantImportSub::DefinedPrelude { span, ident }
+                            }
+                        })
+                        .collect();
+                    errors::RedundantImport { subs, ident }.into_diag(dcx, level)
+                },
             );
             return true;
         }

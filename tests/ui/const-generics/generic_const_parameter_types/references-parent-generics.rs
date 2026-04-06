@@ -1,7 +1,6 @@
 //@ revisions: feat nofeat
 
 #![cfg_attr(feat, feature(generic_const_parameter_types))]
-//[feat]~^ WARN the feature `generic_const_parameter_types` is incomplete
 
 trait Foo {
     type Assoc<const N: Self>;

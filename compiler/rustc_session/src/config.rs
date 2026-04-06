@@ -23,7 +23,8 @@ use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{
-    FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, Symbol, sym,
+    FileName, HashStableContext, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm,
+    Symbol, sym,
 };
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, PanicStrategy, SplitDebuginfo,
@@ -38,7 +39,7 @@ use crate::errors::FileWriteFail;
 pub use crate::options::*;
 use crate::search_paths::SearchPath;
 use crate::utils::CanonicalizedPath;
-use crate::{EarlyDiagCtxt, HashStableContext, Session, filesearch, lint};
+use crate::{EarlyDiagCtxt, Session, filesearch, lint};
 
 mod cfg;
 mod externs;
@@ -636,10 +637,10 @@ macro_rules! define_output_types {
             const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
         }
 
-        impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
+        impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OutputType {
             type KeyType = Self;
 
-            fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+            fn to_stable_hash_key(&self, _: &mut Hcx) -> Self::KeyType {
                 *self
             }
         }
@@ -1405,7 +1406,6 @@ impl Default for Options {
         };
 
         Options {
-            assert_incr_state: None,
             crate_types: Vec::new(),
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
@@ -2287,20 +2287,6 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
     if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
 }
 
-fn parse_assert_incr_state(
-    early_dcx: &EarlyDiagCtxt,
-    opt_assertion: &Option<String>,
-) -> Option<IncrementalStateAssertion> {
-    match opt_assertion {
-        Some(s) if s.as_str() == "loaded" => Some(IncrementalStateAssertion::Loaded),
-        Some(s) if s.as_str() == "not-loaded" => Some(IncrementalStateAssertion::NotLoaded),
-        Some(s) => {
-            early_dcx.early_fatal(format!("unexpected incremental state assertion value: {s}"))
-        }
-        None => None,
-    }
-}
-
 pub fn parse_externs(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
@@ -2505,8 +2491,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     }
 
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
-
-    let assert_incr_state = parse_assert_incr_state(early_dcx, &unstable_opts.assert_incr_state);
 
     if cg.profile_generate.enabled() && cg.profile_use.is_some() {
         early_dcx.early_fatal("options `-C profile-generate` and `-C profile-use` are exclusive");
@@ -2759,7 +2743,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
 
     Options {
-        assert_incr_state,
         crate_types,
         optimize: opt_level,
         debuginfo,
