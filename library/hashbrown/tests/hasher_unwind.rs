@@ -146,7 +146,13 @@ fn hashmap_reserve_survives_panicking_build_hasher_inner(count: usize) {
 #[test]
 fn hashmap_reserve_survives_panicking_build_hasher() {
     let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    for i in 0..111 {
-        hashmap_reserve_survives_panicking_build_hasher_inner(i);
+    if cfg!(miri) {
+        for i in [0, 50, 110] {
+            hashmap_reserve_survives_panicking_build_hasher_inner(i);
+        }
+    } else {
+        for i in 0..111 {
+            hashmap_reserve_survives_panicking_build_hasher_inner(i);
+        }
     }
 }
