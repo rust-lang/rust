@@ -11,11 +11,11 @@ pub struct DeadCodeLivenessSnapshot {
     pub ignored_derived_traits: LocalDefIdMap<FxIndexSet<DefId>>,
 }
 
-/// Dead-code liveness data across primary and deferred seeding.
+/// Dead-code liveness data for both analysis phases.
 ///
-/// `pre_deferred_seeding` is computed after the initial analysis pass but before deferred seeds
-/// are added.
-/// `final_result` is the liveness snapshot after all seeds have been processed.
+/// `pre_deferred_seeding` is computed before reachable-public and `#[allow(dead_code)]` seeding,
+/// and is used for lint `unused_pub_items_in_binary`.
+/// `final_result` is the final liveness snapshot used for lint `dead_code`.
 #[derive(Clone, Debug, HashStable)]
 pub struct DeadCodeLivenessSummary {
     pub pre_deferred_seeding: DeadCodeLivenessSnapshot,
