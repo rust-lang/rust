@@ -316,9 +316,27 @@ pub(super) fn unexpected_cfg_value(
     let is_from_cargo = rustc_session::utils::was_invoked_from_cargo();
     let is_from_external_macro = name_span.in_external_macro(sess.source_map());
 
-    // Show the full list if all possible values for a given name, but don't do it
-    // for names as the possibilities could be very long
-    let code_sugg = if !possibilities.is_empty() {
+    let code_sugg = if let Some((value, _)) = value
+        && sess.psess.check_config.well_known_names.contains(&name)
+        && let valid_names = possible_well_known_names_for_cfg_value(sess, value)
+        && !valid_names.is_empty()
+    {
+        // Suggest changing the name to something for which `value` is an expected value.
+        let max_suggestions = 3;
+        let suggestions = valid_names
+            .iter()
+            .take(max_suggestions)
+            .copied()
+            .map(|name| lints::unexpected_cfg_value::ChangeNameSuggestion {
+                span: name_span,
+                name,
+                value,
+            })
+            .collect::<Vec<_>>();
+        lints::unexpected_cfg_value::CodeSuggestion::ChangeName { suggestions }
+    } else if !possibilities.is_empty() {
+        // Show the full list if all possible values for a given name, but don't do it
+        // for names as the possibilities could be very long
         let expected_values = {
             let (possibilities, and_more) = sort_and_truncate_possibilities(
                 sess,
@@ -418,4 +436,23 @@ pub(super) fn unexpected_cfg_value(
         has_value: value.is_some(),
         value: value.map_or_else(String::new, |(v, _span)| v.to_string()),
     }
+}
+
+/// Ordering of the output is not stable, use this only in diagnostic code.
+fn possible_well_known_names_for_cfg_value(sess: &Session, value: Symbol) -> Vec<Symbol> {
+    #[allow(rustc::potential_query_instability)]
+    sess.psess
+        .check_config
+        .well_known_names
+        .iter()
+        .filter(|name| {
+            sess.psess
+                .check_config
+                .expecteds
+                .get(*name)
+                .map(|expected_values| expected_values.contains(&Some(value)))
+                .unwrap_or_default()
+        })
+        .copied()
+        .collect()
 }

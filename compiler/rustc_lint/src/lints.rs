@@ -2904,6 +2904,10 @@ pub(crate) mod unexpected_cfg_value {
 
             name: Symbol,
         },
+        ChangeName {
+            #[subdiagnostic]
+            suggestions: Vec<ChangeNameSuggestion>,
+        },
     }
 
     #[derive(Subdiagnostic)]
@@ -2959,6 +2963,20 @@ pub(crate) mod unexpected_cfg_value {
         pub have_none_possibility: bool,
         pub possibilities: DiagSymbolList,
         pub and_more: usize,
+    }
+
+    #[derive(Subdiagnostic)]
+    #[suggestion(
+        "`{$value}` is an expected value for `{$name}`",
+        code = "{name}",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    pub(crate) struct ChangeNameSuggestion {
+        #[primary_span]
+        pub span: Span,
+        pub name: Symbol,
+        pub value: Symbol,
     }
 
     #[derive(Subdiagnostic)]
