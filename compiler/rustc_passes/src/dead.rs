@@ -20,12 +20,14 @@ use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint::builtin::DEAD_CODE;
+use rustc_session::config::CrateType;
+use rustc_session::lint::builtin::{DEAD_CODE, UNUSED_PUB_ITEMS_IN_BINARY};
 use rustc_session::lint::{self, Lint, LintExpectationId};
 use rustc_span::{Symbol, kw};
 
 use crate::errors::{
-    ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,
+    ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UnusedPubItemsInBinaryNote,
+    UselessAssignment,
 };
 
 /// Any local definition that may call something in its body block should be explored. For example,
@@ -1086,6 +1088,13 @@ impl<'tcx> DeadVisitor<'tcx> {
         (level.level, level.lint_id)
     }
 
+    fn unused_pub_items_in_binary_note(&self) -> Option<UnusedPubItemsInBinaryNote> {
+        self.target_lint
+            .name
+            .eq(UNUSED_PUB_ITEMS_IN_BINARY.name)
+            .then_some(UnusedPubItemsInBinaryNote)
+    }
+
     // # Panics
     // All `dead_codes` must have the same lint level, otherwise we will intentionally ICE.
     // This is because we emit a multi-spanned lint using the lint level of the `dead_codes`'s
@@ -1197,6 +1206,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     descr,
                     participle,
                     name_list,
+                    unused_pub_items_in_binary_note: self.unused_pub_items_in_binary_note(),
                     change_fields_suggestion: fields_suggestion,
                     parent_info,
                     ignored_derived_impls,
@@ -1233,6 +1243,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     descr,
                     participle,
                     name_list,
+                    unused_pub_items_in_binary_note: self.unused_pub_items_in_binary_note(),
                     parent_info,
                     ignored_derived_impls,
                     enum_variants_with_same_name,
@@ -1308,13 +1319,32 @@ impl<'tcx> DeadVisitor<'tcx> {
 }
 
 fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
-    let Ok(DeadCodeLivenessSummary { final_result, .. }) =
+    let Ok(DeadCodeLivenessSummary { pre_deferred_seeding, final_result }) =
         tcx.live_symbols_and_ignored_derived_traits(()).as_ref()
     else {
         return;
     };
 
     let module_items = tcx.hir_module_items(module);
+
+    if tcx.crate_types().contains(&CrateType::Executable) {
+        let is_unused_pub = |def_id: LocalDefId| {
+            tcx.effective_visibilities(()).is_public_at_level(def_id, Level::Reachable)
+                && !pre_deferred_seeding.live_symbols.contains(&def_id)
+        };
+
+        lint_dead_code_or_unused_pub_items_in_binary(
+            tcx,
+            UNUSED_PUB_ITEMS_IN_BINARY,
+            module,
+            &pre_deferred_seeding.live_symbols,
+            &pre_deferred_seeding.ignored_derived_traits,
+            module_items.free_items().filter(|free_item| is_unused_pub(free_item.owner_id.def_id)),
+            module_items
+                .foreign_items()
+                .filter(|foreign_item| is_unused_pub(foreign_item.owner_id.def_id)),
+        );
+    }
 
     lint_dead_code_or_unused_pub_items_in_binary(
         tcx,

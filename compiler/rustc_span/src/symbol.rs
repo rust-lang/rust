@@ -2189,6 +2189,7 @@ symbols! {
         unstable_removed,
         untagged_unions,
         unused_imports,
+        unused_pub_items_in_binary,
         unwind,
         unwind_attributes,
         unwind_safe_trait,
