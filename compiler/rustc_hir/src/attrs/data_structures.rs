@@ -22,9 +22,7 @@ use thin_vec::ThinVec;
 use crate::attrs::diagnostic::*;
 use crate::attrs::pretty_printing::PrintAttribute;
 use crate::limit::Limit;
-use crate::{
-    DefaultBodyStability, HashIgnoredAttrId, PartialConstStability, RustcVersion, Stability,
-};
+use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
 
 #[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum EiiImplResolution {
@@ -904,8 +902,6 @@ pub struct LintAttribute {
     pub attr_style: AttrStyle,
     pub attr_span: Span,
     pub target_span: Span,
-    /// Needed by `LintExpectationId` to track fulfilled expectations
-    pub attr_id: HashIgnoredAttrId,
     pub lint_instances: ThinVec<LintInstance>,
 }
 

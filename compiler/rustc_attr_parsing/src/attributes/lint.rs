@@ -1,5 +1,4 @@
 use rustc_ast::LitKind;
-use rustc_hir::HashIgnoredAttrId;
 use rustc_hir::attrs::{LintAttribute, LintAttributeKind, LintInstance};
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::target::GenericParamKind;
@@ -251,7 +250,6 @@ fn validate_lint_attr<T: Lint, S: Stage>(
         lint_instances,
         attr_span: cx.attr_span,
         attr_style: cx.attr_style,
-        attr_id: HashIgnoredAttrId { attr_id: cx.attr_id },
         target_span: cx.target_span,
         kind: T::KIND,
     })
