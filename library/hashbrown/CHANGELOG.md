@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.2](https://github.com/rust-lang/hashbrown/compare/v0.16.1...v0.16.2) - 2026-04-06
+
+### Fixed
+
+- disable panic tests on wasm32
+
+### Other
+
+- Merge pull request #710 from Amanieu/fix-rehash-unwind
+- Reduce test runtime on Miri
+- Fix incorrect length if a hasher panics during rehash
+- Don't overwrite MIRIFLAGS, for testing
+- Actually test LSX, remove unused features
+- Lint SIMD code, fix generic expectation failures
+- fix match_same_arms lint
+- fix single_match_else lint
+- fix if_not_else lint
+- fix needless_continue lint
+- fix redundant_else lint
+- Merge pull request #690 from xtqqczze/clippy/manual_let_else
+- impl Error for TryReserveError
+- Merge pull request #697 from xtqqczze/must-use-constructors
+- Merge pull request #692 from N1ark/fix-uninit-slice
+- fix str_to_string lint
+- Merge pull request #687 from xtqqczze/clippy/ptr
+- Merge branch 'master' into clippy/ptr
+- Merge pull request #693 from xtqqczze/unwrap_unchecked
+- Merge pull request #685 from xtqqczze/clippy/cast_ptr_alignment
+- Merge pull request #686 from cuviper/into_map
+- Merge pull request #689 from xtqqczze/clippy/semicolon_if_nothing_returned
+- use cfg(panic = "unwind")
+- Merge pull request #682 from xtqqczze/patch-1
+- Clarify std default hasher
+- Move crate::raw::alloc into crate::alloc
+- Run cargo doc on CI
+- Replace manual rustdoc links with better ones
+- MSRV 1.85, edition 2024
+- Run taplo in CI
+- :invert isn't used in all cases; just inline it to avoid allowing a lint
+- Remove expectations that no longer apply
+- Replace allow with expect where possible
+- Deny unreachable_pub
+- Manually tweak unsafe block additions
+- Enable unsafe_op_in_unsafe_fn for 2024 compatibility, clippy fix
+- Apparently CI hard-coded 1.80 as a fixed point, now it's just 1.84
+- Clippy fix
+- Move lints to Cargo.toml
+- taplo fmt
+- Update MSRV
+- Merge pull request #675 from clarfonthey/unreachable-pub
+- Merge pull request #670 from clarfonthey/entry-into-entry
+- Improve entry API
+- Add hash_table::OccupiedEntry::replace_entry_with to mirror HashMap API
+- Override clone_from for HashTable
+- Rename raw table buckets to num_buckets
+
 ## [0.16.1](https://github.com/rust-lang/hashbrown/compare/v0.16.0...v0.16.1) - 2025-11-20
 
 ### Added
