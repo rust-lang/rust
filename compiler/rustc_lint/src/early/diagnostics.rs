@@ -6,7 +6,6 @@ use rustc_errors::{Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic
 use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_session::lint::BuiltinLintDiag;
 
 use crate::lints;
 
@@ -22,25 +21,6 @@ pub struct DiagAndSess<'sess> {
 impl<'a> Diagnostic<'a, ()> for DiagAndSess<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         (self.callback)(dcx, level, self.sess)
-    }
-}
-
-/// This is a diagnostic struct that will decorate a `BuiltinLintDiag`
-/// Directly creating the lint structs is expensive, using this will only decorate the lint structs when needed.
-pub struct DecorateBuiltinLint<'sess, 'tcx> {
-    pub sess: &'sess Session,
-    pub tcx: Option<TyCtxt<'tcx>>,
-    pub diagnostic: BuiltinLintDiag,
-}
-
-impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        match self.diagnostic {
-            BuiltinLintDiag::AttributeLint(kind) => {
-                DecorateAttrLint { sess: self.sess, tcx: self.tcx, diagnostic: &kind }
-                    .into_diag(dcx, level)
-            }
-        }
     }
 }
 

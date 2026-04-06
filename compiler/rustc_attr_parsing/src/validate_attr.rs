@@ -14,7 +14,6 @@ use rustc_hir::AttrPath;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_parse::parse_in;
 use rustc_session::errors::report_lit_error;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Span, Symbol, sym};
@@ -208,11 +207,11 @@ fn emit_malformed_attribute(
             ILL_FORMED_ATTRIBUTE_INPUT,
             span,
             ast::CRATE_NODE_ID,
-            BuiltinLintDiag::AttributeLint(AttributeLintKind::IllFormedAttributeInput {
+            AttributeLintKind::IllFormedAttributeInput {
                 suggestions: suggestions.clone(),
                 docs: template.docs,
                 help: None,
-            }),
+            },
         );
     } else {
         suggestions.sort();

@@ -652,13 +652,6 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
-// This could be a closure, but then implementing derive trait
-// becomes hacky (and it gets allocated).
-#[derive(Debug)]
-pub enum BuiltinLintDiag {
-    AttributeLint(AttributeLintKind),
-}
-
 #[derive(Debug, HashStable_Generic)]
 pub enum AttributeLintKind {
     UnusedDuplicate {
