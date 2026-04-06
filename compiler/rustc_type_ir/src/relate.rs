@@ -504,8 +504,6 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
         // Alias tend to mostly already be handled downstream due to normalization.
         (ty::Alias(a), ty::Alias(b)) => {
             let alias_ty = relation.relate(a, b)?;
-            assert_eq!(a.kind, b.kind);
-            assert_eq!(a.kind, alias_ty.kind);
             Ok(Ty::new_alias(cx, alias_ty))
         }
 

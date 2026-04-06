@@ -31,25 +31,30 @@ pub enum AliasTyKind<I: Interner> {
     /// A projection `<Type as Trait>::AssocType`.
     ///
     /// Can get normalized away if monomorphic enough.
-    Projection {
-        /// The `DefId` of the `TraitItem` or `ImplItem` for the associated type `N` depending on whether
-        /// this is a projection or an inherent projection or the `DefId` of the `OpaqueType` item if
-        /// this is an opaque.
-        ///
-        /// During codegen, `interner.type_of(def_id)` can be used to get the type of the
-        /// underlying type if the type is an opaque.
-        ///
-        /// Note that if this is an associated type, this is not the `DefId` of the
-        /// `TraitRef` containing this associated type, which is in `interner.associated_item(def_id).container`,
-        /// aka. `interner.parent(def_id)`.
-        def_id: I::DefId,
-    },
+    ///
+    /// The `def_id` is the `DefId` of the `TraitItem` for the associated type.
+    ///
+    /// Note that the `def_id` is not the `DefId` of the `TraitRef` containing this
+    /// associated type, which is in `interner.associated_item(def_id).container`,
+    /// aka. `interner.parent(def_id)`.
+    Projection { def_id: I::DefId },
+
     /// An associated type in an inherent `impl`
+    ///
+    /// The `def_id` is the `DefId` of the `ImplItem` for the associated type.
     Inherent { def_id: I::DefId },
+
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
     ///
-    /// Can only be normalized away in PostAnalysis mode or its defining scope.
+    /// `def_id` is the `DefId` of the `OpaqueType` item.
+    ///
+    ///
+    /// Can only be normalized away in `PostAnalysis` mode or its defining scope.
+    ///
+    /// During codegen, `interner.type_of(def_id)` can be used to get the type of the
+    /// underlying type if the type is an opaque.
     Opaque { def_id: I::DefId },
+
     /// A type alias that actually checks its trait bounds.
     ///
     /// Currently only used if the type alias references opaque types.

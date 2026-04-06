@@ -54,7 +54,6 @@ use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
@@ -182,11 +181,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, args) = match *ty.kind() {
-            ty::Alias(ty::AliasTy { kind, args, .. })
-                if self.tcx.def_kind(kind.def_id()) == DefKind::OpaqueTy =>
-            {
-                (kind.def_id(), args)
-            }
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => (def_id, args),
             ty::Alias(ty::AliasTy { kind, args, .. })
                 if self.tcx.is_impl_trait_in_trait(kind.def_id()) =>
             {

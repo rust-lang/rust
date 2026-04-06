@@ -644,52 +644,26 @@ impl<I: Interner> AliasTerm<I> {
     }
 
     pub fn to_term(self, interner: I) -> I::Term {
-        match self.kind(interner) {
-            AliasTermKind::ProjectionTy => Ty::new_alias(
-                interner,
-                ty::AliasTy {
-                    kind: ty::AliasTyKind::Projection { def_id: self.def_id },
-                    args: self.args,
-                    _use_alias_ty_new_instead: (),
-                },
-            )
-            .into(),
-            AliasTermKind::InherentTy => Ty::new_alias(
-                interner,
-                ty::AliasTy {
-                    kind: ty::AliasTyKind::Inherent { def_id: self.def_id },
-                    args: self.args,
-                    _use_alias_ty_new_instead: (),
-                },
-            )
-            .into(),
-            AliasTermKind::OpaqueTy => Ty::new_alias(
-                interner,
-                ty::AliasTy {
-                    kind: ty::AliasTyKind::Opaque { def_id: self.def_id },
-                    args: self.args,
-                    _use_alias_ty_new_instead: (),
-                },
-            )
-            .into(),
-            AliasTermKind::FreeTy => Ty::new_alias(
-                interner,
-                ty::AliasTy {
-                    kind: ty::AliasTyKind::Free { def_id: self.def_id },
-                    args: self.args,
-                    _use_alias_ty_new_instead: (),
-                },
-            )
-            .into(),
+        let alias_ty_kind = match self.kind(interner) {
             AliasTermKind::FreeConst
             | AliasTermKind::InherentConst
             | AliasTermKind::UnevaluatedConst
-            | AliasTermKind::ProjectionConst => I::Const::new_unevaluated(
-                interner,
-                ty::UnevaluatedConst::new(self.def_id.try_into().unwrap(), self.args),
-            )
-            .into(),
-        }
+            | AliasTermKind::ProjectionConst => {
+                return I::Const::new_unevaluated(
+                    interner,
+                    ty::UnevaluatedConst::new(self.def_id.try_into().unwrap(), self.args),
+                )
+                .into();
+            }
+
+            AliasTermKind::ProjectionTy => ty::Projection { def_id: self.def_id },
+            AliasTermKind::InherentTy => ty::Inherent { def_id: self.def_id },
+            AliasTermKind::OpaqueTy => ty::Opaque { def_id: self.def_id },
+            AliasTermKind::FreeTy => ty::Free { def_id: self.def_id },
+        };
+
+        Ty::new_alias(interner, ty::AliasTy::new_from_args(interner, alias_ty_kind, self.args))
+            .into()
     }
 }
 
