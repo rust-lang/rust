@@ -140,15 +140,15 @@ mod ffi {
         /// Log errors, warnings and tips.
         Tip,
         /// Debug print considered revisits.
-        /// Downgraded to `Tip` if `GENMC_DEBUG` is not enabled.
+        /// Downgraded to `Tip` if `ENABLE_GENMC_DEBUG` is not enabled.
         Debug1Revisits,
         /// Print the execution graph after every memory access.
         /// Also includes the previous debug log level.
-        /// Downgraded to `Tip` if `GENMC_DEBUG` is not enabled.
+        /// Downgraded to `Tip` if `ENABLE_GENMC_DEBUG` is not enabled.
         Debug2MemoryAccesses,
         /// Print reads-from values considered by GenMC.
         /// Also includes the previous debug log level.
-        /// Downgraded to `Tip` if `GENMC_DEBUG` is not enabled.
+        /// Downgraded to `Tip` if `ENABLE_GENMC_DEBUG` is not enabled.
         Debug3ReadsFrom,
     }
 
