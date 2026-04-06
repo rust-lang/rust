@@ -220,7 +220,7 @@ impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
         };
 
         let Some(meta) = single.meta_item() else {
-            cx.adcx().unexpected_literal(single.span());
+            cx.adcx().expected_not_literal(single.span());
             return None;
         };
 

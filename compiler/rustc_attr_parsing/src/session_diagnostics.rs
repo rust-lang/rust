@@ -565,7 +565,7 @@ pub(crate) enum AttributeParseErrorReason<'a> {
     },
     ExpectedNameValueOrNoArgs,
     ExpectedNonEmptyStringLiteral,
-    UnexpectedLiteral,
+    ExpectedNotLiteral,
     ExpectedNameValue(Option<Symbol>),
     DuplicateKey(Symbol),
     ExpectedSpecificArgument {
@@ -799,7 +799,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 diag.span_label(self.span, format!("found `{key}` used as a key more than once"));
                 diag.code(E0538);
             }
-            AttributeParseErrorReason::UnexpectedLiteral => {
+            AttributeParseErrorReason::ExpectedNotLiteral => {
                 diag.span_label(self.span, "didn't expect a literal here");
                 diag.code(E0565);
             }

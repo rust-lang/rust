@@ -744,7 +744,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcLayoutParser {
         let mut result = Vec::new();
         for item in items.mixed() {
             let Some(arg) = item.meta_item() else {
-                cx.adcx().unexpected_literal(item.span());
+                cx.adcx().expected_not_literal(item.span());
                 continue;
             };
             let Some(ident) = arg.ident() else {

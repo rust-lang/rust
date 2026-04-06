@@ -319,7 +319,7 @@ pub(crate) fn parse_stability<S: Stage>(
     for param in list.mixed() {
         let param_span = param.span();
         let Some(param) = param.meta_item() else {
-            cx.adcx().unexpected_literal(param.span());
+            cx.adcx().expected_not_literal(param.span());
             return None;
         };
 
@@ -390,7 +390,7 @@ pub(crate) fn parse_unstability<S: Stage>(
 
     for param in list.mixed() {
         let Some(param) = param.meta_item() else {
-            cx.adcx().unexpected_literal(param.span());
+            cx.adcx().expected_not_literal(param.span());
             return None;
         };
 
