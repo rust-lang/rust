@@ -6,7 +6,7 @@ pub use rustc_ast::attr::data_structures::*;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::{DesugaringKind, Span, Symbol, kw};
 use thin_vec::ThinVec;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::attrs::PrintAttribute;
 
@@ -58,7 +58,9 @@ impl Directive {
         args: &FormatArgs,
     ) -> CustomDiagnostic {
         let this = &args.this;
-        info!("eval({self:?}, this={this}, options={condition_options:?}, args ={args:?})");
+        debug!(
+            "Directive::eval({self:?}, this={this}, options={condition_options:?}, args ={args:?})"
+        );
 
         let Some(condition_options) = condition_options else {
             debug_assert!(
