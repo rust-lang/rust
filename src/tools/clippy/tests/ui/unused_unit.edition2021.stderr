@@ -119,7 +119,7 @@ LL | fn test3()-> (){}
    |           ^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> tests/ui/unused_unit.rs:131:13
+  --> tests/ui/unused_unit.rs:130:13
    |
 LL |     fn bar() -> () {
    |             ^^^^^^ help: remove the `-> ()`
