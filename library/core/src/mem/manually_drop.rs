@@ -1,6 +1,4 @@
-use crate::cmp::Ordering;
-use crate::hash::{Hash, Hasher};
-use crate::marker::{Destruct, StructuralPartialEq};
+use crate::marker::Destruct;
 use crate::mem::MaybeDangling;
 use crate::ops::{Deref, DerefMut, DerefPure};
 use crate::ptr;
@@ -155,7 +153,7 @@ use crate::ptr;
 /// [`MaybeUninit`]: crate::mem::MaybeUninit
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[lang = "manually_drop"]
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 #[rustc_pub_transparent]
 pub struct ManuallyDrop<T: ?Sized> {
@@ -289,37 +287,3 @@ impl<T: ?Sized> const DerefMut for ManuallyDrop<T> {
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized> DerefPure for ManuallyDrop<T> {}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized + Eq> Eq for ManuallyDrop<T> {}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized + PartialEq> PartialEq for ManuallyDrop<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.value.as_ref().eq(other.value.as_ref())
-    }
-}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized> StructuralPartialEq for ManuallyDrop<T> {}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized + Ord> Ord for ManuallyDrop<T> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.value.as_ref().cmp(other.value.as_ref())
-    }
-}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized + PartialOrd> PartialOrd for ManuallyDrop<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.value.as_ref().partial_cmp(other.value.as_ref())
-    }
-}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized + Hash> Hash for ManuallyDrop<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.value.as_ref().hash(state);
-    }
-}

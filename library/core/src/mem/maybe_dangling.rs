@@ -1,6 +1,5 @@
 #![unstable(feature = "maybe_dangling", issue = "118166")]
 
-use crate::marker::StructuralPartialEq;
 use crate::{mem, ptr};
 
 /// Allows wrapped [references] and [boxes] to dangle.
@@ -69,7 +68,7 @@ use crate::{mem, ptr};
 /// [`ManuallyDrop`]: crate::mem::ManuallyDrop
 #[repr(transparent)]
 #[rustc_pub_transparent]
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[lang = "maybe_dangling"]
 pub struct MaybeDangling<P: ?Sized>(P);
 
@@ -110,5 +109,3 @@ impl<P: ?Sized> MaybeDangling<P> {
         x
     }
 }
-
-impl<T: ?Sized> StructuralPartialEq for MaybeDangling<T> {}
