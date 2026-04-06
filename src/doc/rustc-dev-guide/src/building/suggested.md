@@ -206,11 +206,9 @@ vim.lsp.config('rust_analyzer', {
         local settings = vim.fs.joinpath(config.root_dir, "src/etc/rust_analyzer_zed.json")
         if vim.uv.fs_stat(settings) then
             local file = io.open(settings)
-            local content = file:read("*a")
+            -- nvim 0.12+ supports comments otherwise you'll need content:gsub("//[^\n]*", "").
+            local json = vim.json.decode(file:read("*a"), { skip_comments = true })
             file:close()
-            -- vim.json.decode doesn't support JSONC so we need strip out comments.
-            content = content:gsub("//[^\n]*", "")
-            local json = vim.json.decode(content)
             config.settings["rust-analyzer"] = json.lsp["rust-analyzer"].initialization_options
         end
         default_before_init(init_params, config)
