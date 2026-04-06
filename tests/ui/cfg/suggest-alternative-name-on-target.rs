@@ -32,8 +32,8 @@ struct D;
 #[cfg(target_abi = "windows")]
 //~^ ERROR unexpected `cfg` condition value:
 //~| NOTE see <https://doc.rust-lang.org
-//~| HELP `windows` is an expected value for `target_os`
 //~| HELP `windows` is an expected value for `target_family`
+//~| HELP `windows` is an expected value for `target_os`
 struct E;
 
 fn main() {}

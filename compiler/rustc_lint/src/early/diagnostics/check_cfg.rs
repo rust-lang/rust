@@ -438,10 +438,10 @@ pub(super) fn unexpected_cfg_value(
     }
 }
 
-/// Ordering of the output is not stable, use this only in diagnostic code.
 fn possible_well_known_names_for_cfg_value(sess: &Session, value: Symbol) -> Vec<Symbol> {
     #[allow(rustc::potential_query_instability)]
-    sess.psess
+    let mut names = sess
+        .psess
         .check_config
         .well_known_names
         .iter()
@@ -454,5 +454,7 @@ fn possible_well_known_names_for_cfg_value(sess: &Session, value: Symbol) -> Vec
                 .unwrap_or_default()
         })
         .copied()
-        .collect()
+        .collect::<Vec<_>>();
+    names.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+    names
 }
