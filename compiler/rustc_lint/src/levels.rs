@@ -17,6 +17,7 @@ use rustc_middle::lint::{
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
+use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::lint::builtin::{
     self, FORBIDDEN_LINT_GROUPS, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES,
@@ -405,7 +406,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
             DUMMY_SP,
             DUMMY_NODE_ID,
             Some(features),
-            rustc_attr_parsing::ShouldEmit::Nothing,
+            rustc_attr_parsing::ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             registered_tools,
         );
 
@@ -454,7 +455,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
                 target_span,
                 node_id,
                 Some(self.features),
-                rustc_attr_parsing::ShouldEmit::Nothing,
+                rustc_attr_parsing::ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
                 self.registered_tools,
             );
 
