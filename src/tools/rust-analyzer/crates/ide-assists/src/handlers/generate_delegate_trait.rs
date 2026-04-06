@@ -563,8 +563,7 @@ fn finalize_delegate(
         return Some(delegate.clone());
     }
 
-    let (mut editor, delegate) = SyntaxEditor::new(delegate.syntax().clone());
-    let delegate = ast::Impl::cast(delegate).unwrap();
+    let (mut editor, delegate) = SyntaxEditor::new_typed(delegate);
 
     // 1. Replace assoc_item_list if we have new items
     if let Some(items) = assoc_items

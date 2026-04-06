@@ -82,8 +82,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
     let make = SyntaxFactory::with_mappings();
 
-    let (mut editor, demorganed) = SyntaxEditor::new(bin_expr.syntax().clone());
-    let demorganed = ast::BinExpr::cast(demorganed).unwrap();
+    let (mut editor, demorganed) = SyntaxEditor::new_typed(&bin_expr);
     editor.replace(demorganed.op_token()?, make.token(inv_token));
 
     let mut exprs = VecDeque::from([

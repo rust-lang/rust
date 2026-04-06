@@ -261,8 +261,7 @@ impl<'db> ElseBlock<'db> {
             return block_expr.reset_indent();
         }
 
-        let (mut edit, block_expr) = SyntaxEditor::new(block_expr.reset_indent().syntax().clone());
-        let block_expr = ast::BlockExpr::cast(block_expr).unwrap();
+        let (mut edit, block_expr) = SyntaxEditor::new_typed(&block_expr.reset_indent());
 
         let last_stmt = block_expr.statements().last().map(|it| it.syntax().clone());
         let tail_expr = block_expr.tail_expr().map(|it| it.syntax().clone());

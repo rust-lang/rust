@@ -248,8 +248,7 @@ pub fn add_trait_assoc_items_to_impl(
         })
         .filter_map(|item| match item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                let (mut fn_editor, fn_) = SyntaxEditor::new(fn_.syntax().clone());
-                let fn_ = ast::Fn::cast(fn_).unwrap();
+                let (mut fn_editor, fn_) = SyntaxEditor::new_typed(&fn_);
                 let fill_expr: ast::Expr = match config.expr_fill_default {
                     ExprFillDefaultMode::Todo | ExprFillDefaultMode::Default => make.expr_todo(),
                     ExprFillDefaultMode::Underscore => make.expr_underscore().into(),
@@ -260,9 +259,7 @@ pub fn add_trait_assoc_items_to_impl(
                 ast::AssocItem::cast(new_fn_)
             }
             ast::AssocItem::TypeAlias(type_alias) => {
-                let (mut type_alias_editor, type_alias) =
-                    SyntaxEditor::new(type_alias.syntax().clone());
-                let type_alias = ast::TypeAlias::cast(type_alias).unwrap();
+                let (mut type_alias_editor, type_alias) = SyntaxEditor::new_typed(&type_alias);
                 if let Some(type_bound_list) = type_alias.type_bound_list() {
                     type_bound_list.remove(&mut type_alias_editor);
                 };
