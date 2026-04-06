@@ -110,7 +110,7 @@ fn add_missing_ok_or_some(
 ) -> Option<()> {
     let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
-    let expr_range = expr.syntax().text_range();
+    let expr_range = ctx.sema.original_range_opt(expr.syntax())?.range;
     let scope = ctx.sema.scope(expr.syntax())?;
 
     let expected_adt = d.expected.as_adt()?;
@@ -144,13 +144,13 @@ fn add_missing_ok_or_some(
                     // Empty block
                     let indent = block_indent + 1;
                     builder.insert(
-                        block.syntax().text_range().start() + TextSize::from(1),
+                        expr_range.start() + TextSize::from(1),
                         format!("\n{indent}{variant_name}(())\n{block_indent}"),
                     );
                 } else {
                     let indent = IndentLevel::from(1);
                     builder.insert(
-                        block.syntax().text_range().end() - TextSize::from(1),
+                        expr_range.end() - TextSize::from(1),
                         format!("{indent}{variant_name}(())\n{block_indent}"),
                     );
                 }
@@ -167,8 +167,7 @@ fn add_missing_ok_or_some(
             // Fix for forms like `fn foo() -> Result<(), String> { return; }`
             if ret_expr.expr().is_none() {
                 let mut builder = TextEdit::builder();
-                builder
-                    .insert(ret_expr.syntax().text_range().end(), format!(" {variant_name}(())"));
+                builder.insert(expr_range.end(), format!(" {variant_name}(())"));
                 let source_change = SourceChange::from_text_edit(
                     expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
                     builder.finish(),
@@ -181,8 +180,8 @@ fn add_missing_ok_or_some(
     }
 
     let mut builder = TextEdit::builder();
-    builder.insert(expr.syntax().text_range().start(), format!("{variant_name}("));
-    builder.insert(expr.syntax().text_range().end(), ")".to_owned());
+    builder.insert(expr_range.start(), format!("{variant_name}("));
+    builder.insert(expr_range.end(), ")".to_owned());
     let source_change = SourceChange::from_text_edit(
         expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
         builder.finish(),
@@ -201,6 +200,7 @@ fn remove_unnecessary_wrapper(
     let db = ctx.sema.db;
     let root = db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
+    // FIXME: support inside MacroCall?
     let expr = ctx.sema.original_ast_node(expr)?;
 
     let Expr::CallExpr(call_expr) = expr else {
@@ -287,6 +287,7 @@ fn remove_semicolon(
         return None;
     }
     let block = BlockExpr::cast(expr.syntax().clone())?;
+    // FIXME: support inside MacroCall?
     let expr_before_semi =
         block.statements().last().and_then(|s| ExprStmt::cast(s.syntax().clone()))?;
     let type_before_semi = ctx.sema.type_of_expr(&expr_before_semi.expr()?)?.original();
@@ -320,16 +321,13 @@ fn str_ref_to_owned(
 
     let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
-    let expr_range = expr.syntax().text_range();
+    let hir::FileRange { file_id, range } = ctx.sema.original_range_opt(expr.syntax())?;
 
     let to_owned = ".to_owned()".to_owned();
 
-    let edit = TextEdit::insert(expr.syntax().text_range().end(), to_owned);
-    let source_change = SourceChange::from_text_edit(
-        expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
-        edit,
-    );
-    acc.push(fix("str_ref_to_owned", "Add .to_owned() here", source_change, expr_range));
+    let edit = TextEdit::insert(range.end(), to_owned);
+    let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.sema.db), edit);
+    acc.push(fix("str_ref_to_owned", "Add .to_owned() here", source_change, range));
 
     Some(())
 }
@@ -574,6 +572,32 @@ fn div(x: i32, y: i32) -> Result<i32, ()> {
         return Err(());
     }
     Ok(x / y)
+}
+"#,
+        );
+
+        check_fix(
+            r#"
+//- minicore: option, result
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+identity! {
+    fn div(x: i32, y: i32) -> Result<i32, ()> {
+        if y == 0 {
+            return Err(());
+        }
+        x / y$0
+    }
+}
+"#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+identity! {
+    fn div(x: i32, y: i32) -> Result<i32, ()> {
+        if y == 0 {
+            return Err(());
+        }
+        Ok(x / y)
+    }
 }
 "#,
         );
@@ -1046,6 +1070,29 @@ struct String;
 
 fn test() -> String {
     "a".to_owned()
+}
+            "#,
+        );
+
+        check_fix(
+            r#"
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+struct String;
+
+identity! {
+    fn test() -> String {
+        "a"$0
+    }
+}
+            "#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+struct String;
+
+identity! {
+    fn test() -> String {
+        "a".to_owned()
+    }
 }
             "#,
         );
