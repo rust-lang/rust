@@ -608,6 +608,7 @@ impl GlobalState {
                                     format!("{base}/**/*.rs"),
                                     format!("{base}/**/Cargo.{{toml,lock}}"),
                                     format!("{base}/**/rust-analyzer.toml"),
+                                    format!("{base}/**/*.md"),
                                 ]
                             })
                         })
