@@ -163,7 +163,7 @@ fn compute_dbg_replacement(
                 None => false,
             };
             let expr = replace_nested_dbgs(expr.clone());
-            let expr = if wrap { make::expr_paren(expr).into() } else { expr.clone_subtree() };
+            let expr = if wrap { make::expr_paren(expr).into() } else { expr };
             (vec![macro_call.syntax().clone().into()], Some(expr))
         }
         // dbg!(expr0, expr1, ...)

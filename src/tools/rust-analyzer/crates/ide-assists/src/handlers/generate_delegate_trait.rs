@@ -363,9 +363,9 @@ fn generate_impl(
                         ast_strukt,
                         &old_impl,
                         &transform_args,
-                        trait_args.clone_subtree(),
+                        trait_args.clone(),
                     ) {
-                        *trait_args = new_args.clone_subtree();
+                        *trait_args = new_args.clone();
                         Some(new_args)
                     } else {
                         None

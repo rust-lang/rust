@@ -103,7 +103,7 @@ fn delete_else_before(container: SyntaxNode, edit: &mut SyntaxEditor) {
 fn wrap_let(assign: &ast::LetStmt, replacement: ast::BlockExpr) -> ast::BlockExpr {
     let try_wrap_assign = || {
         let initializer = assign.initializer()?.syntax().syntax_element();
-        let replacement = replacement.clone_subtree();
+        let (mut edit, replacement) = SyntaxEditor::with_ast_node(&replacement);
         let assign = assign.clone_for_update();
         let tail_expr = replacement.tail_expr()?;
         let before =
@@ -115,7 +115,6 @@ fn wrap_let(assign: &ast::LetStmt, replacement: ast::BlockExpr) -> ast::BlockExp
             .skip(1)
             .collect();
 
-        let (mut edit, _) = SyntaxEditor::new(replacement.syntax().clone());
         edit.insert_all(Position::before(tail_expr.syntax()), before);
         edit.insert_all(Position::after(tail_expr.syntax()), after);
         ast::BlockExpr::cast(edit.finish().new_root().clone())
