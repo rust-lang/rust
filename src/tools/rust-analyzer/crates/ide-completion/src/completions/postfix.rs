@@ -310,7 +310,7 @@ pub(crate) fn complete_postfix(
     if let ast::Expr::Literal(literal) = dot_receiver.clone()
         && let Some(literal_text) = ast::String::cast(literal.token())
     {
-        add_format_like_completions(acc, ctx, &dot_receiver_including_refs, cap, &literal_text);
+        add_format_like_completions(acc, ctx, dot_receiver, cap, &literal_text, semi);
     }
 
     postfix_snippet("return", "return expr", &format!("return {receiver_text}{semi}"))
@@ -1302,34 +1302,42 @@ fn main() {
         check_edit(
             "panic",
             r#"fn main() { "Panic with {a}".$0 }"#,
-            r#"fn main() { panic!("Panic with {a}") }"#,
+            r#"fn main() { panic!("Panic with {a}"); }"#,
         );
         check_edit(
             "println",
             r#"fn main() { "{ 2+2 } { SomeStruct { val: 1, other: 32 } :?}".$0 }"#,
-            r#"fn main() { println!("{} {:?}", 2+2, SomeStruct { val: 1, other: 32 }) }"#,
+            r#"fn main() { println!("{} {:?}", 2+2, SomeStruct { val: 1, other: 32 }); }"#,
         );
         check_edit(
             "loge",
             r#"fn main() { "{2+2}".$0 }"#,
-            r#"fn main() { log::error!("{}", 2+2) }"#,
+            r#"fn main() { log::error!("{}", 2+2); }"#,
         );
         check_edit(
             "logt",
             r#"fn main() { "{2+2}".$0 }"#,
-            r#"fn main() { log::trace!("{}", 2+2) }"#,
+            r#"fn main() { log::trace!("{}", 2+2); }"#,
         );
         check_edit(
             "logd",
             r#"fn main() { "{2+2}".$0 }"#,
-            r#"fn main() { log::debug!("{}", 2+2) }"#,
+            r#"fn main() { log::debug!("{}", 2+2); }"#,
         );
-        check_edit("logi", r#"fn main() { "{2+2}".$0 }"#, r#"fn main() { log::info!("{}", 2+2) }"#);
-        check_edit("logw", r#"fn main() { "{2+2}".$0 }"#, r#"fn main() { log::warn!("{}", 2+2) }"#);
+        check_edit(
+            "logi",
+            r#"fn main() { "{2+2}".$0 }"#,
+            r#"fn main() { log::info!("{}", 2+2); }"#,
+        );
+        check_edit(
+            "logw",
+            r#"fn main() { "{2+2}".$0 }"#,
+            r#"fn main() { log::warn!("{}", 2+2); }"#,
+        );
         check_edit(
             "loge",
             r#"fn main() { "{2+2}".$0 }"#,
-            r#"fn main() { log::error!("{}", 2+2) }"#,
+            r#"fn main() { log::error!("{}", 2+2); }"#,
         );
     }
 
