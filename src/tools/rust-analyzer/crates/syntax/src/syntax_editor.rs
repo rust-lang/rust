@@ -34,8 +34,10 @@ pub struct SyntaxEditor {
 impl SyntaxEditor {
     /// Creates a syntax editor from `root`.
     ///
-    /// Makes sure the root is detached and not mutable by cloning it if needed,
-    /// so all changes happen only within the editor.
+    /// The returned `root` is guaranteed to be a detached, immutable node.
+    /// If the provided node is not a root (i.e., has a parent) or is already
+    /// mutable, it is cloned into a fresh subtree to satisfy syntax editor
+    /// invariants.
     pub fn new(root: SyntaxNode) -> (Self, SyntaxNode) {
         let mut root = root;
 
@@ -53,22 +55,12 @@ impl SyntaxEditor {
         (editor, root)
     }
 
+    /// Typed-node variant of [`SyntaxEditor::new`].
     pub fn with_ast_node<T>(root: &T) -> (Self, T)
     where
         T: AstNode,
     {
-        let mut root = root.syntax().clone();
-
-        if root.parent().is_some() || root.is_mutable() {
-            root = root.clone_subtree()
-        };
-
-        let editor = Self {
-            root: root.clone(),
-            changes: Vec::new(),
-            mappings: SyntaxMapping::default(),
-            annotations: Vec::new(),
-        };
+        let (editor, root) = Self::new(root.syntax().clone());
 
         (editor, T::cast(root).unwrap())
     }
