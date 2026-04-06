@@ -723,10 +723,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             return;
         };
 
-        for (attr_index, LintAttribute { reason, lint_instances, attr_id, kind, .. }) in
+        for (attr_index, LintAttribute { reason, lint_instances, kind, target_span, .. }) in
             attrs.enumerate()
         {
-            let attr_id = attr_id.attr_id;
             let level = match kind {
                 LintAttributeKind::Allow => Level::Allow,
                 LintAttributeKind::Deny => Level::Deny,
@@ -737,12 +736,16 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         let lint_index = lint.lint_index().try_into().unwrap();
                         let attr_index = attr_index.try_into().unwrap();
                         let expectation_id = match source_hir_id {
-                            None => LintExpectationId::Unstable { attr_id, lint_index },
-                            Some(hir_id) => LintExpectationId::Stable {
-                                hir_id,
-                                attr_id,
+                            None => LintExpectationId::Unstable {
+                                target_span: *target_span,
                                 lint_index,
                                 attr_index,
+                            },
+                            Some(hir_id) => LintExpectationId::Stable {
+                                hir_id,
+                                lint_index,
+                                attr_index,
+                                target_span: *target_span,
                             },
                         };
 

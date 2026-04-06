@@ -252,6 +252,7 @@ fn validate_lint_attr<T: Lint, S: Stage>(
         attr_span: cx.attr_span,
         attr_style: cx.attr_style,
         attr_id: HashIgnoredAttrId { attr_id: cx.attr_id },
+        target_span: cx.target_span,
         kind: T::KIND,
     })
 }

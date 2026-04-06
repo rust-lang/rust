@@ -4,7 +4,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::LintExpectationId;
 use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 
 use crate::lints::{Expectation, ExpectationNote};
 
@@ -33,10 +33,12 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
     expectations
 }
 
-fn canonicalize_id(expect_id: &LintExpectationId) -> (rustc_span::AttrId, u16) {
+fn canonicalize_id(expect_id: &LintExpectationId) -> (Span, u16, u16) {
     match *expect_id {
-        LintExpectationId::Unstable { attr_id, lint_index, .. } => (attr_id, lint_index),
-        LintExpectationId::Stable { attr_id, lint_index, .. } => (attr_id, lint_index),
+        LintExpectationId::Unstable { target_span, lint_index, attr_index }
+        | LintExpectationId::Stable { target_span, lint_index, attr_index, .. } => {
+            (target_span, lint_index, attr_index)
+        }
     }
 }
 

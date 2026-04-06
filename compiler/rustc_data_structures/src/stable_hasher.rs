@@ -311,6 +311,38 @@ impl<T1: StableOrd, T2: StableOrd, T3: StableOrd, T4: StableOrd> StableOrd for (
     const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
+impl<T1, T2, T3, T4, T5, Hcx> HashStable<Hcx> for (T1, T2, T3, T4, T5)
+where
+    T1: HashStable<Hcx>,
+    T2: HashStable<Hcx>,
+    T3: HashStable<Hcx>,
+    T4: HashStable<Hcx>,
+    T5: HashStable<Hcx>,
+{
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        let (ref _0, ref _1, ref _2, ref _3, ref _4) = *self;
+        _0.hash_stable(hcx, hasher);
+        _1.hash_stable(hcx, hasher);
+        _2.hash_stable(hcx, hasher);
+        _3.hash_stable(hcx, hasher);
+        _4.hash_stable(hcx, hasher);
+    }
+}
+
+impl<T1: StableOrd, T2: StableOrd, T3: StableOrd, T4: StableOrd, T5: StableOrd> StableOrd
+    for (T1, T2, T3, T4, T5)
+{
+    const CAN_USE_UNSTABLE_SORT: bool = T1::CAN_USE_UNSTABLE_SORT
+        && T2::CAN_USE_UNSTABLE_SORT
+        && T3::CAN_USE_UNSTABLE_SORT
+        && T4::CAN_USE_UNSTABLE_SORT
+        && T5::CAN_USE_UNSTABLE_SORT;
+
+    // Ordering of tuples is a pure function of their elements' ordering, and since
+    // the ordering of each element is stable so must be the ordering of the tuple.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
+}
+
 impl<T: HashStable<Hcx>, Hcx> HashStable<Hcx> for [T] {
     default fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.len().hash_stable(hcx, hasher);

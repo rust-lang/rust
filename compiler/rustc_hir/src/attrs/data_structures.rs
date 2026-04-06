@@ -903,6 +903,7 @@ pub struct LintAttribute {
     pub kind: LintAttributeKind,
     pub attr_style: AttrStyle,
     pub attr_span: Span,
+    pub target_span: Span,
     /// Needed by `LintExpectationId` to track fulfilled expectations
     pub attr_id: HashIgnoredAttrId,
     pub lint_instances: ThinVec<LintInstance>,

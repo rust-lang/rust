@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt::Display;
+use std::hash::Hash;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
@@ -8,9 +9,10 @@ use rustc_data_structures::stable_hasher::{
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::{HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
-use rustc_span::{AttrId, HashStableContext, Ident, Span, Symbol, sym};
+use rustc_span::{HashStableContext, Ident, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -91,7 +93,7 @@ pub enum Applicability {
 /// instances might be loaded from cache. Lint messages can be emitted during an
 /// `EarlyLintPass` operating on the AST and during a `LateLintPass` traversing the
 /// HIR tree. The AST doesn't have enough information to create a stable id. The
-/// `LintExpectationId` will instead store the [`AttrId`] defining the expectation.
+/// `LintExpectationId` will instead store the `target_span` defining the expectation.
 /// These `LintExpectationId` will be updated to use the stable [`HirId`] once the
 /// AST has been lowered. The transformation is done by the `LintLevelsBuilder`
 ///
@@ -105,12 +107,12 @@ pub enum Applicability {
 pub enum LintExpectationId {
     /// Used for lints emitted during the `EarlyLintPass`. This id is not
     /// hash stable and should not be cached.
-    Unstable { attr_id: AttrId, lint_index: u16 },
+    Unstable { target_span: Span, lint_index: u16, attr_index: u16 },
     /// The [`HirId`] that the lint expectation is attached to. This id is
     /// stable and can be cached. The additional index ensures that nodes with
     /// several expectations can correctly match diagnostics to the individual
     /// expectation.
-    Stable { hir_id: HirId, attr_id: AttrId, attr_index: u16, lint_index: u16 },
+    Stable { hir_id: HirId, attr_index: u16, lint_index: u16, target_span: Span },
 }
 
 impl LintExpectationId {
@@ -140,12 +142,13 @@ impl<Hcx: HashStableContext> HashStable<Hcx> for LintExpectationId {
     #[inline]
     fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index, .. } => {
+            LintExpectationId::Stable { hir_id, target_span, attr_index, lint_index, .. } => {
                 hir_id.hash_stable(hcx, hasher);
+                target_span.hash_stable(hcx, hasher);
                 attr_index.hash_stable(hcx, hasher);
                 lint_index.hash_stable(hcx, hasher);
             }
-            _ => {
+            LintExpectationId::Unstable { .. } => {
                 unreachable!(
                     "HashStable should only be called for filled and stable `LintExpectationId`"
                 )
@@ -155,16 +158,16 @@ impl<Hcx: HashStableContext> HashStable<Hcx> for LintExpectationId {
 }
 
 impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for LintExpectationId {
-    type KeyType = (DefPathHash, ItemLocalId, u16, u16);
+    type KeyType = (DefPathHash, ItemLocalId, Span, u16, u16);
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &mut Hcx) -> Self::KeyType {
         match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index, .. } => {
+            LintExpectationId::Stable { hir_id, attr_index, lint_index, target_span, .. } => {
                 let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
-                (def_path_hash, lint_idx, *attr_index, *lint_index)
+                (def_path_hash, lint_idx, *target_span, *attr_index, *lint_index)
             }
-            _ => {
+            LintExpectationId::Unstable { .. } => {
                 unreachable!("HashStable should only be called for a filled `LintExpectationId`")
             }
         }
