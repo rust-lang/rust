@@ -10,7 +10,6 @@ pub struct X;
     note = "my other note"
 )]
 impl PartialEq for X {
-    //~^NOTE: my label
     fn eq(&self, _other: &X) -> bool {
         true
     }
@@ -20,6 +19,7 @@ const _: () = {
     let x = X;
     x == x;
     //~^ ERROR: my message
+    //~| NOTE: my label
     //~| NOTE: my note
     //~| NOTE: my other note
 };

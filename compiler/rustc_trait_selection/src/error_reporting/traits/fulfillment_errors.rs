@@ -905,7 +905,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         diag.primary_message(message);
                     }
                     if let Some(label) = label {
-                        diag.span_label(impl_span, label);
+                        diag.span_label(span, label);
                     }
                     for note in notes {
                         diag.note(note);

@@ -9,6 +9,7 @@ const _: () = {
     let x = X;
     x == x;
     //~^ ERROR: their message
+    //~| NOTE: their label
     //~| NOTE: trait `PartialEq` is implemented but not `const`
     //~| NOTE: their note
     //~| NOTE: their other note
