@@ -146,17 +146,17 @@ If running `./x check` on save is inconvenient, in VS Code you can use a [Build 
 
 For Neovim users, there are a few options:
 
-1. The easiest way is using [neoconf.nvim](https://github.com/folke/neoconf.nvim/) but it uses the
+1. The easiest way is using [neoconf.nvim][neoconf.nvim] but it uses the
    deprecated `require('lspconfig')` API which displays a warning on neovim 0.11+.
 2. Using `coc.nvim` is another option but it requires node.js to be installed.
 3. Using a custom script to load rust-analyzer settings.
 
 #### neoconf.nvim
 
-[neoconf.nvim](https://github.com/folke/neoconf.nvim/) allows for project-local configuration
+[neoconf.nvim][neoconf.nvim] allows for project-local configuration
 files with the native LSP. The steps for how to use it are below. Note that they require
 rust-analyzer to already be configured with Neovim. Steps for this can be
-[found here](https://rust-analyzer.github.io/book/other_editors.html#nvim-lsp).
+[found here][r-a nvim lsp].
 
 1. First install the plugin.
    This can be done by following the steps in the README.
@@ -176,8 +176,7 @@ The recommended settings live at [`src/etc/rust_analyzer_settings.json`].
 If you're running neovim 0.11+, you can configure rust-analyzer with just
 [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) and a custom script.
 
-1. Make sure rust-analyzer LSP is set up
-   <https://rust-analyzer.github.io/book/other_editors.html#nvim-lsp>
+1. Make sure [rust-analyzer LSP][r-a nvim lsp] is set up
 2. Create `$HOME/.config/nvim/after/plugged/rust_analyzer.lua` with the following content:
 
 ```lua
@@ -189,7 +188,7 @@ local default_before_init = vim.lsp.config['rust_analyzer'].before_init
 vim.lsp.config('rust_analyzer', {
     cmd = { 'rust-analyzer' },
     filetypes = { 'rust' },
-    -- To support rust_lang/rust, we need to detect when we're in the rust repo and use the git root
+    -- To support rust-lang/rust, we need to detect when we're in the rust repo and use the git root
     -- instead of cargo project root.
     root_dir = function(bufnr, on_dir)
         local git_root = vim.fs.root(bufnr, { '.git' })
@@ -203,7 +202,7 @@ vim.lsp.config('rust_analyzer', {
         default_root_dir(bufnr, on_dir)
     end,
     before_init = function(init_params, config)
-        -- When inside rust_lang/rust, we need to use the special rust_analyzer settings.
+        -- When inside rust-lang/rust, we need to use the special rust_analyzer settings.
         local settings = vim.fs.joinpath(config.root_dir, "src/etc/rust_analyzer_zed.json")
         if vim.uv.fs_stat(settings) then
             local file = io.open(settings)
@@ -226,6 +225,9 @@ make your own command in your config, or you can install a plugin such as
 [overseer.nvim](https://github.com/stevearc/overseer.nvim) that can [read VSCode's `task.json`
 files](https://github.com/stevearc/overseer.nvim/blob/master/doc/guides.md#vs-code-tasks),
 and follow the same instructions as above.
+
+[neoconf.nvim]: https://github.com/folke/neoconf.nvim/
+[r-a nvim lsp]: https://rust-analyzer.github.io/book/other_editors.html#nvim-lsp
 
 ### Emacs
 
