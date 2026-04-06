@@ -656,7 +656,6 @@ pub enum DeprecatedSinceKind {
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
 pub enum BuiltinLintDiag {
-    ElidedLifetimesInPaths(usize, Span, bool, Span),
     UnusedImports {
         remove_whole_use: bool,
         num_to_remove: usize,

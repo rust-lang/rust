@@ -2,10 +2,7 @@ use std::any::Any;
 use std::borrow::Cow;
 
 use rustc_data_structures::sync::DynSend;
-use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, Level,
-    elided_lifetime_in_path_suggestion,
-};
+use rustc_errors::{Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -39,21 +36,6 @@ pub struct DecorateBuiltinLint<'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            BuiltinLintDiag::ElidedLifetimesInPaths(
-                n,
-                path_span,
-                incl_angl_brckt,
-                insertion_span,
-            ) => lints::ElidedLifetimesInPaths {
-                subdiag: elided_lifetime_in_path_suggestion(
-                    self.sess.source_map(),
-                    n,
-                    path_span,
-                    incl_angl_brckt,
-                    insertion_span,
-                ),
-            }
-            .into_diag(dcx, level),
             BuiltinLintDiag::UnusedImports {
                 remove_whole_use,
                 num_to_remove,

@@ -1740,3 +1740,10 @@ pub(crate) struct AbsPathWithModuleSugg {
     pub applicability: Applicability,
     pub replacement: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("hidden lifetime parameters in types are deprecated")]
+pub(crate) struct ElidedLifetimesInPaths {
+    #[subdiagnostic]
+    pub subdiag: rustc_errors::ElidedLifetimeInPathSubdiag,
+}

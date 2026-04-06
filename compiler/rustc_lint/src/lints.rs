@@ -7,7 +7,7 @@ use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
-    ElidedLifetimeInPathSubdiag, EmissionGuarantee, Level, Subdiagnostic, SuggestionStyle, msg,
+    EmissionGuarantee, Level, Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -3037,13 +3037,6 @@ pub(crate) struct IllFormedAttributeInput {
 )]
 pub(crate) struct IllFormedAttributeInputHelp {
     pub lint: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("hidden lifetime parameters in types are deprecated")]
-pub(crate) struct ElidedLifetimesInPaths {
-    #[subdiagnostic]
-    pub subdiag: ElidedLifetimeInPathSubdiag,
 }
 
 #[derive(Diagnostic)]
