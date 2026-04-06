@@ -2996,14 +2996,17 @@ impl RawTableInner {
         }
 
         let mut guard = guard(self, move |self_| {
-            if let Some(drop) = drop {
-                for i in 0..self_.num_buckets() {
-                    unsafe {
-                        if *self_.ctrl(i) == Tag::DELETED {
-                            self_.set_ctrl(i, Tag::EMPTY);
+            for i in 0..self_.num_buckets() {
+                unsafe {
+                    // Any elements that haven't been rehashed yet have a
+                    // DELETED tag. These need to be dropped and have their tag
+                    // reset to EMPTY.
+                    if *self_.ctrl(i) == Tag::DELETED {
+                        self_.set_ctrl(i, Tag::EMPTY);
+                        if let Some(drop) = drop {
                             drop(self_.bucket_ptr(i, size_of));
-                            self_.items -= 1;
                         }
+                        self_.items -= 1;
                     }
                 }
             }
