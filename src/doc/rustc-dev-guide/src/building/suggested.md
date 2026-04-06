@@ -202,14 +202,18 @@ vim.lsp.config("rust_analyzer", {
         default_root_dir(bufnr, on_dir)
     end,
     before_init = function(init_params, config)
-        -- When inside rust-lang/rust, we need to use the special rust_analyzer settings.
+        -- When inside rust-lang/rust, we need to use the special rust-analyzer settings.
         local settings = vim.fs.joinpath(config.root_dir, "src/etc/rust_analyzer_zed.json")
         if vim.uv.fs_stat(settings) then
             local file = io.open(settings)
             -- nvim 0.12+ supports comments otherwise you'll need content:gsub("//[^\n]*", "").
             local json = vim.json.decode(file:read("*a"), { skip_comments = true })
             file:close()
-            config.settings["rust-analyzer"] = json.lsp["rust-analyzer"].initialization_options
+            config.settings["rust-analyzer"] = vim.tbl_deep_extend(
+                "force", -- Overwrite with the special settings when there is a conflict.
+                config.settings["rust-analyzer"] or {},
+                json.lsp["rust-analyzer"].initialization_options
+            )
         end
         default_before_init(init_params, config)
     end,
