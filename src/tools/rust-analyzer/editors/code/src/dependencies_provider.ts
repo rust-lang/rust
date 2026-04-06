@@ -6,9 +6,9 @@ import * as ra from "./lsp_ext";
 import type { FetchDependencyListResult } from "./lsp_ext";
 import { unwrapUndefinable } from "./util";
 
-export class RustDependenciesProvider
-    implements vscode.TreeDataProvider<Dependency | DependencyFile>
-{
+export class RustDependenciesProvider implements vscode.TreeDataProvider<
+    Dependency | DependencyFile
+> {
     dependenciesMap: { [id: string]: Dependency | DependencyFile };
     ctx: CtxInit;
 
