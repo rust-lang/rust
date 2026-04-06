@@ -1,0 +1,33 @@
+error[E0539]: malformed `expect` attribute input
+  --> $DIR/malformed-expect.rs:4:1
+   |
+LL | #[expect]
+   | ^^------^
+   |   |
+   |   expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[expect(lint1)]
+   |         +++++++
+LL | #[expect(lint1, lint2, ...)]
+   |         +++++++++++++++++++
+LL | #[expect(lint1, lint2, lint3, reason = "...")]
+   |         +++++++++++++++++++++++++++++++++++++
+
+error: wrong meta list delimiters
+  --> $DIR/malformed-expect.rs:8:24
+   |
+LL |     let _ : fn(#[expect[]] i32);
+   |                        ^^
+   |
+help: the delimiters should be `(` and `)`
+   |
+LL -     let _ : fn(#[expect[]] i32);
+LL +     let _ : fn(#[expect()] i32);
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0539`.
