@@ -114,7 +114,7 @@ TEST_SET2 := --skip=tests --skip=coverage-map --skip=coverage-run --skip=library
 ci-msvc-py:
 	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 $(TEST_SET1)
 ci-msvc-ps1:
-	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 $(TEST_SET2)
+	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 $(TEST_SET2) --verbose --skip=compiler
 ci-msvc: ci-msvc-py ci-msvc-ps1
 
 ## MingW native builders

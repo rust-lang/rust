@@ -572,6 +572,8 @@ auto:
   - name: i686-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --enable-sanitizers
+      RUSTC_LOG: trace
+      BOOTSTRAP_TRACING: trace
       SCRIPT: make ci-msvc-ps1
     <<: *job-windows
 
