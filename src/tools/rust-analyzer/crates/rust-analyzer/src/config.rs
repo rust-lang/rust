@@ -831,6 +831,9 @@ config_data! {
         ///
         /// Set this to `"all"` to pass `--all-features` to cargo.
         cargo_features: CargoFeaturesDef      = CargoFeaturesDef::Selected(vec![]),
+        /// Extra arguments passed only to `cargo metadata`, not to other cargo invocations.
+        /// Useful for flags like `--config` that `cargo metadata` supports.
+        cargo_metadataExtraArgs: Vec<String> = vec![],
         /// Whether to pass `--no-default-features` to cargo.
         cargo_noDefaultFeatures: bool    = false,
         /// Whether to skip fetching dependencies. If set to "true", the analysis is performed
@@ -2444,6 +2447,7 @@ impl Config {
             target_dir_config: self.target_dir_from_config(source_root),
             set_test: *self.cfg_setTest(source_root),
             no_deps: *self.cargo_noDeps(source_root),
+            metadata_extra_args: self.cargo_metadataExtraArgs(source_root).clone(),
         }
     }
 

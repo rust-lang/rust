@@ -996,6 +996,19 @@
             {
                 "title": "Cargo",
                 "properties": {
+                    "rust-analyzer.cargo.metadataExtraArgs": {
+                        "markdownDescription": "Extra arguments passed only to `cargo metadata`, not to other cargo invocations.\nUseful for flags like `--config` that `cargo metadata` supports.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            {
+                "title": "Cargo",
+                "properties": {
                     "rust-analyzer.cargo.noDefaultFeatures": {
                         "markdownDescription": "Whether to pass `--no-default-features` to cargo.",
                         "default": false,

@@ -166,6 +166,14 @@ List of features to activate.
 Set this to `"all"` to pass `--all-features` to cargo.
 
 
+## rust-analyzer.cargo.metadataExtraArgs {#cargo.metadataExtraArgs}
+
+Default: `[]`
+
+Extra arguments passed only to `cargo metadata`, not to other cargo invocations.
+Useful for flags like `--config` that `cargo metadata` supports.
+
+
 ## rust-analyzer.cargo.noDefaultFeatures {#cargo.noDefaultFeatures}
 
 Default: `false`
