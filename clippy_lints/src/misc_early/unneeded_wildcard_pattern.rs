@@ -41,7 +41,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
             .enumerate()
             .last()
     {
-        // Unlike the tuples above, structs have patfields rathter than patterns, and separate out the
+        // Unlike the tuples above, structs have patfields rather than patterns, and separate out the
         // `..` into a separate parameter. Also, the `..` can only be at the end of the pattern.
         let singlewild = patfields.len() - right_index - 1;
         span_lint(cx, patfields[singlewild].span.until(*rspan), right_index == 0);
