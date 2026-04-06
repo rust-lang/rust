@@ -181,10 +181,6 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
         .map(|file| std::path::absolute(cpp_files_base_path.join(file)).unwrap());
 
     let mut bridge = cxx_build::bridge("src/lib.rs");
-    // FIXME(genmc,cmake): Remove once the GenMC debug setting is available in the config.h file.
-    if enable_genmc_debug {
-        bridge.define("ENABLE_GENMC_DEBUG", None);
-    }
     bridge
         .opt_level(2)
         .debug(true) // Same settings that GenMC uses (default for cmake `RelWithDebInfo`)
