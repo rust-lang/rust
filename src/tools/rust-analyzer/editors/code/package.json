@@ -2909,7 +2909,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.bench.overrideCommand": {
-                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${executable_args}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe arguments passed to test binary args (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
+                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders:\n- `${package}`: package name.\n- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.\n- `${target}`: target name (empty for `--lib`).\n- `${test_name}`: the test path filter, e.g. `module::bench_func`.\n- `${exact}`: `--exact` for single benchmarks, empty for modules.\n- `${include_ignored}`: always empty for benchmarks.\n- `${executable_args}`: all of the above binary args bundled together\n    (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
                         "default": null,
                         "type": [
                             "null",
@@ -2938,7 +2938,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.doctest.overrideCommand": {
-                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${executable_args}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe arguments passed to test binary args (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
+                        "markdownDescription": "Override the command used for doc-test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders:\n- `${package}`: package name.\n- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.\n- `${target}`: target name (empty for `--lib`).\n- `${test_name}`: the test path filter, e.g. `module::func`.\n- `${exact}`: always empty for doc-tests.\n- `${include_ignored}`: always empty for doc-tests.\n- `${executable_args}`: all of the above binary args bundled together\n    (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
                         "default": null,
                         "type": [
                             "null",
@@ -2992,7 +2992,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.test.overrideCommand": {
-                        "markdownDescription": "Override the command used for test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${executable_args}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe arguments passed to test binary args (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
+                        "markdownDescription": "Override the command used for test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nAvailable placeholders:\n- `${package}`: package name.\n- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.\n- `${target}`: target name (empty for `--lib`).\n- `${test_name}`: the test path filter, e.g. `module::test_func`.\n- `${exact}`: `--exact` for single tests, empty for modules.\n- `${include_ignored}`: `--include-ignored` for single tests, empty otherwise.\n- `${executable_args}`: all of the above binary args bundled together\n    (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
                         "default": null,
                         "type": [
                             "null",

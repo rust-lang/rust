@@ -230,6 +230,21 @@ impl CargoTargetSpec {
         };
         let test_name = test_name.unwrap_or_default();
 
+        let exact = match kind {
+            RunnableKind::Test { test_id } | RunnableKind::Bench { test_id } => match test_id {
+                TestId::Path(_) => "",
+                TestId::Name(_) => "--exact",
+            },
+            _ => "",
+        };
+        let include_ignored = match kind {
+            RunnableKind::Test { test_id } => match test_id {
+                TestId::Path(_) => "",
+                TestId::Name(_) => "--include-ignored",
+            },
+            _ => "",
+        };
+
         let target_arg = |kind| match kind {
             TargetKind::Bin => "--bin",
             TargetKind::Test => "--test",
@@ -249,7 +264,9 @@ impl CargoTargetSpec {
                 .replace("${package}", &spec.package)
                 .replace("${target_arg}", target_arg(spec.target_kind))
                 .replace("${target}", target(spec.target_kind, &spec.target))
-                .replace("${test_name}", &test_name),
+                .replace("${test_name}", &test_name)
+                .replace("${exact}", exact)
+                .replace("${include_ignored}", include_ignored),
             _ => arg,
         };
 
