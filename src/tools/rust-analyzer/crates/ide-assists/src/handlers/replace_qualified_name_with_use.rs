@@ -111,7 +111,7 @@ fn target_path(ctx: &AssistContext<'_>, mut original_path: ast::Path) -> Option<
 }
 
 fn drop_generic_args(path: &ast::Path) -> ast::Path {
-    let (mut editor, path) = SyntaxEditor::new_typed(path);
+    let (mut editor, path) = SyntaxEditor::with_ast_node(path);
     if let Some(segment) = path.segment()
         && let Some(generic_args) = segment.generic_arg_list()
     {

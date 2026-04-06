@@ -209,7 +209,7 @@ fn replace_nested_dbgs(expanded: ast::Expr) -> ast::Expr {
         return replaced;
     }
 
-    let (mut editor, expanded) = SyntaxEditor::new_typed(&expanded);
+    let (mut editor, expanded) = SyntaxEditor::with_ast_node(&expanded);
     // We need to collect to avoid mutation during traversal.
     let macro_exprs: Vec<_> =
         expanded.syntax().descendants().filter_map(ast::MacroExpr::cast).collect();

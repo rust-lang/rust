@@ -103,7 +103,7 @@ fn edit_struct_def(
     // currently not triggered for struct definitions inside macro calls.
     let tuple_fields = record_fields.fields().filter_map(|f| {
         let (mut editor, field) =
-            SyntaxEditor::new_typed(&ast::make::tuple_field(f.visibility(), f.ty()?));
+            SyntaxEditor::with_ast_node(&ast::make::tuple_field(f.visibility(), f.ty()?));
         editor.insert_all(
             Position::first_child_of(field.syntax()),
             f.attrs().map(|attr| attr.syntax().clone().into()).collect(),

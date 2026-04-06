@@ -451,7 +451,7 @@ impl Ctx<'_> {
                 };
                 let found_path = self.target_module.find_path(self.source_scope.db, def, cfg)?;
                 let res = mod_path_to_ast(&found_path, self.target_edition);
-                let (mut res_editor, res) = SyntaxEditor::new_typed(&res);
+                let (mut res_editor, res) = SyntaxEditor::with_ast_node(&res);
                 if let Some(args) = path.segment().and_then(|it| it.generic_arg_list())
                     && let Some(segment) = res.segment()
                 {

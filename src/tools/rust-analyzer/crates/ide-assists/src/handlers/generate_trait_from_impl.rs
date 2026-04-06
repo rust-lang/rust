@@ -99,7 +99,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
         |builder| {
             let trait_items: ast::AssocItemList = {
                 let (mut trait_items_editor, trait_items) =
-                    SyntaxEditor::new_typed(&impl_assoc_items);
+                    SyntaxEditor::with_ast_node(&impl_assoc_items);
 
                 trait_items.assoc_items().for_each(|item| {
                     strip_body(&mut trait_items_editor, &item);

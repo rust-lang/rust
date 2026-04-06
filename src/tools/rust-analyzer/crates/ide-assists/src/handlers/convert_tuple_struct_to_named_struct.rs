@@ -104,7 +104,7 @@ fn edit_struct_def(
 ) {
     let record_fields = tuple_fields.fields().zip(names).filter_map(|(f, name)| {
         let (mut field_editor, field) =
-            SyntaxEditor::new_typed(&ast::make::record_field(f.visibility(), name, f.ty()?));
+            SyntaxEditor::with_ast_node(&ast::make::record_field(f.visibility(), name, f.ty()?));
         field_editor.insert_all(
             Position::first_child_of(field.syntax()),
             f.attrs().map(|attr| attr.syntax().clone().into()).collect(),

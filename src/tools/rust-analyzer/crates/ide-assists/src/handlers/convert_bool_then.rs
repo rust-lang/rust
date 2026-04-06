@@ -77,7 +77,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
         "Convert `if` expression to `bool::then` call",
         target,
         |builder| {
-            let (mut editor, closure_body) = SyntaxEditor::new_typed(&closure_body);
+            let (mut editor, closure_body) = SyntaxEditor::with_ast_node(&closure_body);
             // Rewrite all `Some(e)` in tail position to `e`
             for_each_tail_expr(&closure_body, &mut |e| {
                 let e = match e {
@@ -187,7 +187,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
                 e => mapless_make.block_expr(None, Some(e)),
             };
 
-            let (mut editor, closure_body) = SyntaxEditor::new_typed(&closure_body);
+            let (mut editor, closure_body) = SyntaxEditor::with_ast_node(&closure_body);
             // Wrap all tails in `Some(...)`
             let none_path = mapless_make.expr_path(mapless_make.ident_path("None"));
             let some_path = mapless_make.expr_path(mapless_make.ident_path("Some"));

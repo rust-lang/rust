@@ -67,7 +67,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
         format!("Generate `{trait_new}` impl from this `{trait_name}` trait"),
         target,
         |edit| {
-            let (mut editor, impl_clone) = SyntaxEditor::new_typed(&impl_def.reset_indent());
+            let (mut editor, impl_clone) = SyntaxEditor::with_ast_node(&impl_def.reset_indent());
             let factory = SyntaxFactory::without_mappings();
 
             apply_generate_mut_impl(&mut editor, &factory, &impl_clone, trait_new);
