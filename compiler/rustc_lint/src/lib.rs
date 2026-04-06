@@ -710,6 +710,10 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, \
          generic items must always be mangled",
     );
+    store.register_removed(
+        "dependency_on_unit_never_type_fallback",
+        "the code warned by this lint no longer compiles",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
