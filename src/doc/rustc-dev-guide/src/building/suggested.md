@@ -182,16 +182,16 @@ If you're running neovim 0.11+, you can configure rust-analyzer with just
 ```lua
 -- Capture the default functions from nvim-lspconfig/lsp/rust_analyzer.lua before overriding it.
 -- This file is in after/plugin to guarantee nvim-lspconfig has been initialised already.
-local default_root_dir = vim.lsp.config['rust_analyzer'].root_dir
-local default_before_init = vim.lsp.config['rust_analyzer'].before_init
+local default_root_dir = vim.lsp.config["rust_analyzer"].root_dir
+local default_before_init = vim.lsp.config["rust_analyzer"].before_init
 
-vim.lsp.config('rust_analyzer', {
-    cmd = { 'rust-analyzer' },
-    filetypes = { 'rust' },
+vim.lsp.config("rust_analyzer", {
+    cmd = { "rust-analyzer" },
+    filetypes = { "rust" },
     -- To support rust-lang/rust, we need to detect when we're in the rust repo and use the git root
     -- instead of cargo project root.
     root_dir = function(bufnr, on_dir)
-        local git_root = vim.fs.root(bufnr, { '.git' })
+        local git_root = vim.fs.root(bufnr, { ".git" })
         if git_root then
             if vim.uv.fs_stat(vim.fs.joinpath(git_root, "src/etc/rust_analyzer_zed.json")) then
                 on_dir(git_root)
@@ -215,7 +215,7 @@ vim.lsp.config('rust_analyzer', {
     end,
 })
 
-vim.lsp.enable('rust_analyzer')
+vim.lsp.enable("rust_analyzer")
 ```
 
 If you would like to use the build task that is described above, you may either
