@@ -656,13 +656,6 @@ pub enum DeprecatedSinceKind {
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
 pub enum BuiltinLintDiag {
-    UnusedImports {
-        remove_whole_use: bool,
-        num_to_remove: usize,
-        remove_spans: Vec<Span>,
-        test_module_span: Option<Span>,
-        span_snippets: Vec<String>,
-    },
     NamedArgumentUsedPositionally {
         /// Span where the named argument is used by position and will be replaced with the named
         /// argument name

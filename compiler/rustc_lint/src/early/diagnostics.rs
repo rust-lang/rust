@@ -36,31 +36,6 @@ pub struct DecorateBuiltinLint<'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            BuiltinLintDiag::UnusedImports {
-                remove_whole_use,
-                num_to_remove,
-                remove_spans,
-                test_module_span,
-                span_snippets,
-            } => {
-                let sugg = if remove_whole_use {
-                    lints::UnusedImportsSugg::RemoveWholeUse { span: remove_spans[0] }
-                } else {
-                    lints::UnusedImportsSugg::RemoveImports { remove_spans, num_to_remove }
-                };
-                let test_module_span =
-                    test_module_span.map(|span| self.sess.source_map().guess_head_span(span));
-
-                lints::UnusedImports {
-                    sugg,
-                    test_module_span,
-                    num_snippets: span_snippets.len(),
-                    span_snippets: DiagArgValue::StrListSepByAnd(
-                        span_snippets.into_iter().map(Cow::Owned).collect(),
-                    ),
-                }
-                .into_diag(dcx, level)
-            }
             BuiltinLintDiag::NamedArgumentUsedPositionally {
                 position_sp_to_replace,
                 position_sp_for_msg,
