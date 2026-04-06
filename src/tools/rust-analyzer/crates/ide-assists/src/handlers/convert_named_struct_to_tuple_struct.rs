@@ -102,11 +102,11 @@ fn edit_struct_def(
     // Note that we don't need to consider macro files in this function because this is
     // currently not triggered for struct definitions inside macro calls.
     let tuple_fields = record_fields.fields().filter_map(|f| {
-        let field = ast::make::tuple_field(f.visibility(), f.ty()?);
-        let mut editor = SyntaxEditor::new(field.syntax().clone());
+        let (mut editor, field) =
+            SyntaxEditor::with_ast_node(&ast::make::tuple_field(f.visibility(), f.ty()?));
         editor.insert_all(
             Position::first_child_of(field.syntax()),
-            f.attrs().map(|attr| attr.syntax().clone_subtree().clone_for_update().into()).collect(),
+            f.attrs().map(|attr| attr.syntax().clone().into()).collect(),
         );
         let field_syntax = editor.finish().new_root().clone();
         let field = ast::TupleField::cast(field_syntax)?;
@@ -328,8 +328,7 @@ fn delete_whitespace(edit: &mut SyntaxEditor, whitespace: Option<impl Element>) 
 }
 
 fn remove_trailing_comma(w: ast::WhereClause) -> SyntaxNode {
-    let w = w.syntax().clone_subtree();
-    let mut editor = SyntaxEditor::new(w.clone());
+    let (mut editor, w) = SyntaxEditor::new(w.syntax().clone());
     if let Some(last) = w.last_child_or_token()
         && last.kind() == T![,]
     {

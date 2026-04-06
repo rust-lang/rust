@@ -155,15 +155,15 @@ fn process_loop_body(
     let block_content = first.clone()..=children.last().unwrap_or(first);
 
     let continue_label = make::lifetime("'cont");
-    let break_expr = make::expr_break(Some(continue_label.clone()), None).clone_for_update();
-    let mut new_edit = SyntaxEditor::new(new_body.syntax().clone());
+    let break_expr = make::expr_break(Some(continue_label.clone()), None);
+    let (mut new_edit, _) = SyntaxEditor::new(new_body.syntax().clone());
     for continue_expr in &continues {
         new_edit.replace(continue_expr.syntax(), break_expr.syntax());
     }
     let new_body = new_edit.finish().new_root().clone();
     let elements = itertools::chain(
         [
-            continue_label.syntax().clone_for_update().syntax_element(),
+            continue_label.syntax().syntax_element(),
             make::token(T![:]).syntax_element(),
             make::tokens::single_space().syntax_element(),
             new_body.syntax_element(),

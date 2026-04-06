@@ -268,7 +268,8 @@ impl<'db> ElseBlock<'db> {
             return block_expr.reset_indent();
         }
 
-        let block_expr = block_expr.reset_indent().clone_subtree();
+        let (mut edit, block_expr) = SyntaxEditor::with_ast_node(&block_expr.reset_indent());
+
         let last_stmt = block_expr.statements().last().map(|it| it.syntax().clone());
         let tail_expr = block_expr.tail_expr().map(|it| it.syntax().clone());
         let Some(last_element) = tail_expr.clone().or(last_stmt.clone()) else {
@@ -277,7 +278,6 @@ impl<'db> ElseBlock<'db> {
         let whitespace = last_element.prev_sibling_or_token().filter(|it| it.kind() == WHITESPACE);
 
         let make = SyntaxFactory::without_mappings();
-        let mut edit = SyntaxEditor::new(block_expr.syntax().clone());
 
         if let Some(tail_expr) = block_expr.tail_expr()
             && !self.kind.is_unit()
@@ -287,7 +287,7 @@ impl<'db> ElseBlock<'db> {
         } else {
             let last_stmt = match block_expr.tail_expr() {
                 Some(expr) => make.expr_stmt(expr).syntax().clone(),
-                None => last_element.clone_for_update(),
+                None => last_element.clone(),
             };
             let whitespace =
                 make.whitespace(&whitespace.map_or(String::new(), |it| it.to_string()));

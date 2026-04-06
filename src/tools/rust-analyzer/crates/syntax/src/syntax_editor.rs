@@ -14,7 +14,7 @@ use std::{
 use rowan::TextRange;
 use rustc_hash::FxHashMap;
 
-use crate::{SyntaxElement, SyntaxNode, SyntaxToken};
+use crate::{AstNode, SyntaxElement, SyntaxNode, SyntaxToken};
 
 mod edit_algo;
 mod edits;
@@ -32,9 +32,37 @@ pub struct SyntaxEditor {
 }
 
 impl SyntaxEditor {
-    /// Creates a syntax editor to start editing from `root`
-    pub fn new(root: SyntaxNode) -> Self {
-        Self { root, changes: vec![], mappings: SyntaxMapping::default(), annotations: vec![] }
+    /// Creates a syntax editor from `root`.
+    ///
+    /// The returned `root` is guaranteed to be a detached, immutable node.
+    /// If the provided node is not a root (i.e., has a parent) or is already
+    /// mutable, it is cloned into a fresh subtree to satisfy syntax editor
+    /// invariants.
+    pub fn new(root: SyntaxNode) -> (Self, SyntaxNode) {
+        let mut root = root;
+
+        if root.parent().is_some() || root.is_mutable() {
+            root = root.clone_subtree()
+        };
+
+        let editor = Self {
+            root: root.clone(),
+            changes: Vec::new(),
+            mappings: SyntaxMapping::default(),
+            annotations: Vec::new(),
+        };
+
+        (editor, root)
+    }
+
+    /// Typed-node variant of [`SyntaxEditor::new`].
+    pub fn with_ast_node<T>(root: &T) -> (Self, T)
+    where
+        T: AstNode,
+    {
+        let (editor, root) = Self::new(root.syntax().clone());
+
+        (editor, T::cast(root).unwrap())
     }
 
     pub fn add_annotation(&mut self, element: impl Element, annotation: SyntaxAnnotation) {
@@ -420,10 +448,11 @@ mod tests {
             .into(),
         );
 
+        let (mut editor, root) = SyntaxEditor::with_ast_node(&root);
+
         let to_wrap = root.syntax().descendants().find_map(ast::TupleExpr::cast).unwrap();
         let to_replace = root.syntax().descendants().find_map(ast::BinExpr::cast).unwrap();
 
-        let mut editor = SyntaxEditor::new(root.syntax().clone());
         let make = SyntaxFactory::with_mappings();
 
         let name = make::name("var_name");
@@ -478,9 +507,8 @@ mod tests {
             None,
         );
 
+        let (mut editor, root) = SyntaxEditor::with_ast_node(&root);
         let second_let = root.syntax().descendants().find_map(ast::LetStmt::cast).unwrap();
-
-        let mut editor = SyntaxEditor::new(root.syntax().clone());
         let make = SyntaxFactory::without_mappings();
 
         editor.insert(
@@ -530,11 +558,12 @@ mod tests {
             ),
         );
 
+        let (mut editor, root) = SyntaxEditor::with_ast_node(&root);
+
         let inner_block =
             root.syntax().descendants().flat_map(ast::BlockExpr::cast).nth(1).unwrap();
         let second_let = root.syntax().descendants().find_map(ast::LetStmt::cast).unwrap();
 
-        let mut editor = SyntaxEditor::new(root.syntax().clone());
         let make = SyntaxFactory::with_mappings();
 
         let new_block_expr = make.block_expr([], Some(ast::Expr::BlockExpr(inner_block.clone())));
@@ -584,9 +613,9 @@ mod tests {
             None,
         );
 
-        let inner_block = root.clone();
+        let (mut editor, root) = SyntaxEditor::with_ast_node(&root);
 
-        let mut editor = SyntaxEditor::new(root.syntax().clone());
+        let inner_block = root;
         let make = SyntaxFactory::with_mappings();
 
         let new_block_expr = make.block_expr([], Some(ast::Expr::BlockExpr(inner_block.clone())));
@@ -632,7 +661,7 @@ mod tests {
             false,
         );
 
-        let mut editor = SyntaxEditor::new(parent_fn.syntax().clone());
+        let (mut editor, parent_fn) = SyntaxEditor::with_ast_node(&parent_fn);
 
         if let Some(ret_ty) = parent_fn.ret_type() {
             editor.delete(ret_ty.syntax().clone());
@@ -659,7 +688,8 @@ mod tests {
         let arg_list =
             make::arg_list([make::expr_literal("1").into(), make::expr_literal("2").into()]);
 
-        let mut editor = SyntaxEditor::new(arg_list.syntax().clone());
+        let (mut editor, arg_list) = SyntaxEditor::with_ast_node(&arg_list);
+
         let target_expr = make::token(parser::SyntaxKind::UNDERSCORE);
 
         for arg in arg_list.args() {
@@ -677,7 +707,8 @@ mod tests {
         let arg_list =
             make::arg_list([make::expr_literal("1").into(), make::expr_literal("2").into()]);
 
-        let mut editor = SyntaxEditor::new(arg_list.syntax().clone());
+        let (mut editor, arg_list) = SyntaxEditor::with_ast_node(&arg_list);
+
         let target_expr = make::expr_literal("3").clone_for_update();
 
         for arg in arg_list.args() {
@@ -695,7 +726,8 @@ mod tests {
         let arg_list =
             make::arg_list([make::expr_literal("1").into(), make::expr_literal("2").into()]);
 
-        let mut editor = SyntaxEditor::new(arg_list.syntax().clone());
+        let (mut editor, arg_list) = SyntaxEditor::with_ast_node(&arg_list);
+
         let target_expr = make::ext::expr_unit().clone_for_update();
 
         for arg in arg_list.args() {

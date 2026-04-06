@@ -248,27 +248,23 @@ pub fn add_trait_assoc_items_to_impl(
         })
         .filter_map(|item| match item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                let fn_ = fn_.clone_subtree();
+                let (mut fn_editor, fn_) = SyntaxEditor::with_ast_node(&fn_);
                 let fill_expr: ast::Expr = match config.expr_fill_default {
                     ExprFillDefaultMode::Todo | ExprFillDefaultMode::Default => make.expr_todo(),
                     ExprFillDefaultMode::Underscore => make.expr_underscore().into(),
                 };
                 let new_body = make.block_expr(None::<ast::Stmt>, Some(fill_expr));
-                let mut fn_editor = SyntaxEditor::new(fn_.syntax().clone());
                 fn_.replace_or_insert_body(&mut fn_editor, new_body);
                 let new_fn_ = fn_editor.finish().new_root().clone();
                 ast::AssocItem::cast(new_fn_)
             }
             ast::AssocItem::TypeAlias(type_alias) => {
-                let type_alias = type_alias.clone_subtree();
+                let (mut type_alias_editor, type_alias) = SyntaxEditor::with_ast_node(&type_alias);
                 if let Some(type_bound_list) = type_alias.type_bound_list() {
-                    let mut type_alias_editor = SyntaxEditor::new(type_alias.syntax().clone());
                     type_bound_list.remove(&mut type_alias_editor);
-                    let type_alias = type_alias_editor.finish().new_root().clone();
-                    ast::AssocItem::cast(type_alias)
-                } else {
-                    Some(ast::AssocItem::TypeAlias(type_alias))
-                }
+                };
+                let type_alias = type_alias_editor.finish().new_root().clone();
+                ast::AssocItem::cast(type_alias)
             }
             item => Some(item),
         })

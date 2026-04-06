@@ -473,8 +473,7 @@ enum Foo {
     }
 
     fn check_add_variant(before: &str, expected: &str, variant: ast::Variant) {
-        let enum_ = ast_from_text::<ast::Enum>(before);
-        let mut editor = SyntaxEditor::new(enum_.syntax().clone());
+        let (mut editor, enum_) = SyntaxEditor::with_ast_node(&ast_from_text::<ast::Enum>(before));
         if let Some(it) = enum_.variant_list() {
             it.add_variant(&mut editor, &variant)
         }
