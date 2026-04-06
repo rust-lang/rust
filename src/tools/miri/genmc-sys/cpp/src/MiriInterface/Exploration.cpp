@@ -567,7 +567,7 @@ void MiriGenmcShim::handle_thread_create(ThreadId thread_id, ThreadId parent_id)
     auto child_tid = std::get<int>(ret.result);
 
     // Sanity check the thread id, which is the index in the `threads_action_` array.
-    BUG_ON(child_tid != thread_id || child_tid <= 0 || child_tid != threads_action_.size());
+    VERIFY(child_tid == thread_id && child_tid > 0 && child_tid == threads_action_.size());
     threads_action_.push_back(Action(ActionKind::Load, Event(child_tid, 0)));
 }
 
