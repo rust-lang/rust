@@ -12127,14 +12127,7 @@ pub unsafe fn vld3q_dup_u64(a: *const u64) -> uint64x2x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3))]
 pub unsafe fn vld3q_f64(a: *const f64) -> float64x2x3_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld3.v2f64.p0"
-        )]
-        fn _vld3q_f64(ptr: *const float64x2_t) -> float64x2x3_t;
-    }
-    _vld3q_f64(a as _)
+    crate::core_arch::macros::deinterleaving_load!(f64, 2, 3, a)
 }
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s64)"]
@@ -12145,14 +12138,7 @@ pub unsafe fn vld3q_f64(a: *const f64) -> float64x2x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3))]
 pub unsafe fn vld3q_s64(a: *const i64) -> int64x2x3_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld3.v2i64.p0"
-        )]
-        fn _vld3q_s64(ptr: *const int64x2_t) -> int64x2x3_t;
-    }
-    _vld3q_s64(a as _)
+    crate::core_arch::macros::deinterleaving_load!(i64, 2, 3, a)
 }
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_f64)"]
