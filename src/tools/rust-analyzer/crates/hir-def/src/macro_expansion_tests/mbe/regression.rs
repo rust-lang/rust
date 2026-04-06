@@ -205,7 +205,7 @@ impl Clone for D3DVSHADERCAPS2_0 {
         *self
     }
 }
-#[cfg(feature = "impl-default")] impl Default for D3DVSHADERCAPS2_0 {
+#[cfg (feature = "impl-default")] impl Default for D3DVSHADERCAPS2_0 {
     #[inline] fn default() -> D3DVSHADERCAPS2_0 {
         unsafe {
             $crate::_core::mem::zeroed()
@@ -215,7 +215,7 @@ impl Clone for D3DVSHADERCAPS2_0 {
 
 #[repr(C)]
 #[derive(Copy)]
-#[cfg_attr(target_arch = "x86", repr(packed))] pub struct D3DCONTENTPROTECTIONCAPS {
+#[cfg_attr (target_arch = "x86", repr(packed))] pub struct D3DCONTENTPROTECTIONCAPS {
     pub Caps: u8,
 }
 impl Clone for D3DCONTENTPROTECTIONCAPS {
@@ -223,7 +223,7 @@ impl Clone for D3DCONTENTPROTECTIONCAPS {
         *self
     }
 }
-#[cfg(feature = "impl-default")] impl Default for D3DCONTENTPROTECTIONCAPS {
+#[cfg (feature = "impl-default")] impl Default for D3DCONTENTPROTECTIONCAPS {
     #[inline] fn default() -> D3DCONTENTPROTECTIONCAPS {
         unsafe {
             $crate::_core::mem::zeroed()
@@ -1001,8 +1001,8 @@ macro_rules! with_std {
     ($($i:item)*) => ($(#[cfg(feature = "std")]$i)*)
 }
 
-#[cfg(feature = "std")] mod m;
-#[cfg(feature = "std")] mod f;
+#[cfg (feature = "std")] mod m;
+#[cfg (feature = "std")] mod f;
 "#]],
     )
 }

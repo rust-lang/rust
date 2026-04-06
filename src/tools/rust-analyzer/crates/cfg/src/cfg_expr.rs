@@ -106,10 +106,54 @@ impl CfgExpr {
     }
 
     #[cfg(feature = "syntax")]
-    pub fn parse_from_ast(
-        ast: &mut std::iter::Peekable<syntax::ast::TokenTreeChildren>,
-    ) -> CfgExpr {
-        next_cfg_expr_from_ast(ast).unwrap_or(CfgExpr::Invalid)
+    pub fn parse_from_ast(ast: syntax::ast::CfgPredicate) -> CfgExpr {
+        use intern::sym;
+        use syntax::ast::{self, AstToken};
+
+        match ast {
+            ast::CfgPredicate::CfgAtom(atom) => {
+                let atom = match atom.key() {
+                    Some(ast::CfgAtomKey::True) => CfgAtom::Flag(sym::true_),
+                    Some(ast::CfgAtomKey::False) => CfgAtom::Flag(sym::false_),
+                    Some(ast::CfgAtomKey::Ident(key)) => {
+                        let key = Symbol::intern(key.text());
+                        match atom.string_token().and_then(ast::String::cast) {
+                            Some(value) => {
+                                if let Ok(value) = value.value() {
+                                    CfgAtom::KeyValue { key, value: Symbol::intern(&value) }
+                                } else {
+                                    return CfgExpr::Invalid;
+                                }
+                            }
+                            None => CfgAtom::Flag(key),
+                        }
+                    }
+                    None => return CfgExpr::Invalid,
+                };
+                CfgExpr::Atom(atom)
+            }
+            ast::CfgPredicate::CfgComposite(composite) => {
+                let Some(keyword) = composite.keyword() else {
+                    return CfgExpr::Invalid;
+                };
+                match keyword.text() {
+                    "all" => CfgExpr::All(
+                        composite.cfg_predicates().map(CfgExpr::parse_from_ast).collect(),
+                    ),
+                    "any" => CfgExpr::Any(
+                        composite.cfg_predicates().map(CfgExpr::parse_from_ast).collect(),
+                    ),
+                    "not" => {
+                        let mut inner = composite.cfg_predicates();
+                        let (Some(inner), None) = (inner.next(), inner.next()) else {
+                            return CfgExpr::Invalid;
+                        };
+                        CfgExpr::Not(Box::new(CfgExpr::parse_from_ast(inner)))
+                    }
+                    _ => CfgExpr::Invalid,
+                }
+            }
+        }
     }
 
     /// Fold the cfg by querying all basic `Atom` and `KeyValue` predicates.
@@ -126,65 +170,6 @@ impl CfgExpr {
             CfgExpr::Not(pred) => pred.fold(query).map(|s| !s),
         }
     }
-}
-
-#[cfg(feature = "syntax")]
-fn next_cfg_expr_from_ast(
-    it: &mut std::iter::Peekable<syntax::ast::TokenTreeChildren>,
-) -> Option<CfgExpr> {
-    use intern::sym;
-    use syntax::{NodeOrToken, SyntaxKind, T, ast};
-
-    let name = match it.next() {
-        None => return None,
-        Some(NodeOrToken::Token(ident)) if ident.kind().is_any_identifier() => {
-            Symbol::intern(ident.text())
-        }
-        Some(_) => return Some(CfgExpr::Invalid),
-    };
-
-    let ret = match it.peek() {
-        Some(NodeOrToken::Token(eq)) if eq.kind() == T![=] => {
-            it.next();
-            if let Some(NodeOrToken::Token(literal)) = it.peek()
-                && matches!(literal.kind(), SyntaxKind::STRING)
-            {
-                let dummy_span = span::Span {
-                    range: span::TextRange::empty(span::TextSize::new(0)),
-                    anchor: span::SpanAnchor {
-                        file_id: span::EditionedFileId::from_raw(0),
-                        ast_id: span::FIXUP_ERASED_FILE_AST_ID_MARKER,
-                    },
-                    ctx: span::SyntaxContext::root(span::Edition::Edition2015),
-                };
-                let literal =
-                    Symbol::intern(tt::token_to_literal(literal.text(), dummy_span).text());
-                it.next();
-                CfgAtom::KeyValue { key: name, value: literal.clone() }.into()
-            } else {
-                return Some(CfgExpr::Invalid);
-            }
-        }
-        Some(NodeOrToken::Node(subtree)) => {
-            let mut subtree_iter = ast::TokenTreeChildren::new(subtree).peekable();
-            it.next();
-            let mut subs = std::iter::from_fn(|| next_cfg_expr_from_ast(&mut subtree_iter));
-            match name {
-                s if s == sym::all => CfgExpr::All(subs.collect()),
-                s if s == sym::any => CfgExpr::Any(subs.collect()),
-                s if s == sym::not => {
-                    CfgExpr::Not(Box::new(subs.next().unwrap_or(CfgExpr::Invalid)))
-                }
-                _ => CfgExpr::Invalid,
-            }
-        }
-        _ => CfgAtom::Flag(name).into(),
-    };
-
-    // Eat comma separator
-    while it.next().is_some_and(|it| it.as_token().is_none_or(|it| it.kind() != T![,])) {}
-
-    Some(ret)
 }
 
 #[cfg(feature = "tt")]
