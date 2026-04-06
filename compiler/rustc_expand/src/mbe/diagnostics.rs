@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
-use rustc_hir::attrs::diagnostic::{Directive, FormatArgs, OnUnimplementedNote};
+use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
@@ -144,20 +144,15 @@ pub(super) fn failed_to_match_macro(
     (sp, guar)
 }
 
-fn on_missing_args_diagnostic(directive: &Directive) -> OnUnimplementedNote {
+fn on_missing_args_diagnostic(directive: &Directive) -> CustomDiagnostic {
     let args = FormatArgs {
         this: String::new(),
-        trait_sugared: String::new(),
+        this_sugared: String::new(),
         item_context: "macro invocation",
         generic_args: Vec::new(),
     };
 
-    OnUnimplementedNote {
-        message: directive.message.as_ref().map(|(_, message)| message.format(&args)),
-        label: directive.label.as_ref().map(|(_, label)| label.format(&args)),
-        notes: directive.notes.iter().map(|note| note.format(&args)).collect(),
-        ..Default::default()
-    }
+    directive.eval(None, &args)
 }
 
 /// The tracker used for the slow error path that collects useful info for diagnostics.
