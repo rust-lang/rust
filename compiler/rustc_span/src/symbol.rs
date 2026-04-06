@@ -1361,6 +1361,7 @@ symbols! {
         new_upper_exp,
         new_upper_hex,
         next,
+        niko,
         nll,
         no,
         no_builtins,
