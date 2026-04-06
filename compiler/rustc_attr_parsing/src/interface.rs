@@ -64,6 +64,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             sym,
             target_span,
             target_node_id,
+            Target::Crate, // Does not matter, we're not going to emit errors anyways
             features,
             ShouldEmit::Nothing,
         )
@@ -79,6 +80,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         sym: Symbol,
         target_span: Span,
         target_node_id: NodeId,
+        target: Target,
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
     ) -> Option<Attribute> {
@@ -86,7 +88,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             sess,
             attrs,
             Some(sym),
-            Target::Crate, // Does not matter, we're not going to emit errors anyways
+            target,
             target_span,
             target_node_id,
             features,
