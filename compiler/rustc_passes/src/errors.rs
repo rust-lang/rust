@@ -302,6 +302,8 @@ pub(crate) enum UnusedNote {
         "the `linker_messages` and `linker_info` lints can only be controlled at the root of a crate that needs to be linked"
     )]
     LinkerMessagesBinaryCrateOnly,
+    #[note("the `unused_pub_items_in_binary` lint has no effect in library crates")]
+    NoEffectUnusedPubItemsInBinary,
 }
 
 #[derive(Diagnostic)]

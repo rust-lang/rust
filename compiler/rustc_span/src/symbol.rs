@@ -2176,6 +2176,7 @@ symbols! {
                           from crates.io via `Cargo.toml` instead?",
         untagged_unions,
         unused_imports,
+        unused_pub_items_in_binary,
         unwind,
         unwind_attributes,
         unwind_safe_trait,
