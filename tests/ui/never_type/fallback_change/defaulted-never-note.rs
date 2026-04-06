@@ -1,7 +1,7 @@
 // Test diagnostic for the case where a trait is not implemented for `!`. If it is implemented
 // for `()`, we want to add a note saying that this might be caused by a breaking change in the
 // compiler.
-#![expect(dependency_on_unit_never_type_fallback, unused)]
+#![expect(unused)]
 
 trait OnlyUnit {}
 

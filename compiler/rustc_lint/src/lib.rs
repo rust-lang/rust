@@ -660,6 +660,10 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, \
          see <https://github.com/rust-lang/rust/issues/78586> for more information",
     );
+    store.register_removed(
+        "dependency_on_unit_never_type_fallback",
+        "the code warned by this lint no longer compiles",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
