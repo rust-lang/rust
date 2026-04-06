@@ -104,7 +104,6 @@ fn wrap_let(assign: &ast::LetStmt, replacement: ast::BlockExpr) -> ast::BlockExp
     let try_wrap_assign = || {
         let initializer = assign.initializer()?.syntax().syntax_element();
         let (mut edit, replacement) = SyntaxEditor::with_ast_node(&replacement);
-        let assign = assign.clone_for_update();
         let tail_expr = replacement.tail_expr()?;
         let before =
             assign.syntax().children_with_tokens().take_while(|it| *it != initializer).collect();
