@@ -133,7 +133,7 @@ fn process_loop_body(
 ) -> Option<()> {
     let last = previous_non_trivia_token(body.r_curly_token()?)?.syntax_element();
 
-    let new_body = body.indent(1.into()).clone_subtree();
+    let new_body = body.indent(1.into());
     let mut continues = vec![];
     collect_continue_to(
         &mut continues,

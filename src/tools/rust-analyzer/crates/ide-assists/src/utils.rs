@@ -330,10 +330,8 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
             Some(make.expr_method_call(receiver, make.name_ref(method), arg_list).into())
         }
         ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => match pe.expr()? {
-            ast::Expr::ParenExpr(parexpr) => {
-                parexpr.expr().map(|e| e.clone_subtree().clone_for_update())
-            }
-            _ => pe.expr().map(|e| e.clone_subtree().clone_for_update()),
+            ast::Expr::ParenExpr(parexpr) => parexpr.expr(),
+            _ => pe.expr(),
         },
         ast::Expr::Literal(lit) => match lit.kind() {
             ast::LiteralKind::Bool(b) => match b {

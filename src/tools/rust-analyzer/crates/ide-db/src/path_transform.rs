@@ -412,19 +412,16 @@ impl Ctx<'_> {
                         if old.parent().is_some() {
                             editor.replace(old, subst.clone().syntax());
                         } else {
-                            // Some `path_ty` has no parent, especially ones made for default value
-                            // of type parameters.
-                            // In this case, `ted` cannot replace `path_ty` with `subst` directly.
-                            // So, just replace its children as long as the `subst` is the same type.
-                            let new = subst.clone_subtree().clone_for_update();
-                            if !matches!(new, ast::Type::PathType(..)) {
-                                return None;
-                            }
                             let start = path_ty.syntax().first_child().map(NodeOrToken::Node)?;
                             let end = path_ty.syntax().last_child().map(NodeOrToken::Node)?;
                             editor.replace_all(
                                 start..=end,
-                                new.syntax().children().map(NodeOrToken::Node).collect::<Vec<_>>(),
+                                subst
+                                    .clone()
+                                    .syntax()
+                                    .children()
+                                    .map(NodeOrToken::Node)
+                                    .collect::<Vec<_>>(),
                             );
                         }
                     } else {

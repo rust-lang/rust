@@ -220,10 +220,8 @@ fn impl_def_from_trait(
         &impl_def,
         &target_scope,
     );
-    let assoc_item_list = if let Some((first, other)) =
-        assoc_items.split_first().map(|(first, other)| (first.clone_subtree(), other))
-    {
-        let first_item = if let ast::AssocItem::Fn(ref func) = first
+    let assoc_item_list = if let Some((first, other)) = assoc_items.split_first() {
+        let first_item = if let ast::AssocItem::Fn(func) = first
             && let Some(body) = gen_trait_fn_body(&make, func, trait_path, adt, None)
             && let Some(func_body) = func.body()
         {
