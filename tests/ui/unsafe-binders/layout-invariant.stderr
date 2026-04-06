@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `unsafe<'a> Adt<'a>: Copy` is not satisfied
+  --> $DIR/layout-invariant.rs:8:13
+   |
+LL | const None: Option<unsafe<> Option<unsafe<'a> Adt<'a>>> = None;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `unsafe<'a> Adt<'a>`
+   |
+   = note: required for `Option<unsafe<'a> Adt<'a>>` to implement `Copy`
+
+error[E0277]: the trait bound `unsafe<'a> Adt<'a>: Copy` is not satisfied
+  --> $DIR/layout-invariant.rs:8:59
+   |
+LL | const None: Option<unsafe<> Option<unsafe<'a> Adt<'a>>> = None;
+   |                                                           ^^^^ the trait `Copy` is not implemented for `unsafe<'a> Adt<'a>`
+   |
+   = note: required for `Option<unsafe<'a> Adt<'a>>` to implement `Copy`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
