@@ -34,7 +34,7 @@ use crate::{
     CompletionContext, CompletionItem, CompletionItemKind,
     context::{
         DotAccess, ItemListKind, NameContext, NameKind, NameRefContext, NameRefKind,
-        PathCompletionCtx, PathKind, PatternContext, TypeLocation, Visible,
+        PathCompletionCtx, PathKind, PatternContext, TypeAscriptionTarget, TypeLocation, Visible,
     },
     item::Builder,
     render::{
@@ -45,7 +45,7 @@ use crate::{
         macro_::render_macro,
         pattern::{render_struct_pat, render_variant_pat},
         render_expr, render_field, render_path_resolution, render_pattern_resolution,
-        render_tuple_field,
+        render_tuple_field, render_type_keyword_snippet,
         type_alias::{render_type_alias, render_type_alias_with_eq},
         union_literal::render_union_literal,
     },
@@ -104,6 +104,21 @@ impl Completions {
         }
     }
 
+    pub(crate) fn add_nameref_keywords_with_type_like(
+        &mut self,
+        ctx: &CompletionContext<'_>,
+        path_ctx: &PathCompletionCtx<'_>,
+    ) {
+        let mut add_keyword = |kw| {
+            render_type_keyword_snippet(ctx, path_ctx, kw, kw).add_to(self, ctx.db);
+        };
+        ["self::", "crate::"].into_iter().for_each(&mut add_keyword);
+
+        if ctx.depth_from_crate_root > 0 {
+            add_keyword("super::");
+        }
+    }
+
     pub(crate) fn add_nameref_keywords(&mut self, ctx: &CompletionContext<'_>) {
         ["self", "crate"].into_iter().for_each(|kw| self.add_keyword(ctx, kw));
 
@@ -112,11 +127,19 @@ impl Completions {
         }
     }
 
-    pub(crate) fn add_type_keywords(&mut self, ctx: &CompletionContext<'_>) {
-        self.add_keyword_snippet(ctx, "fn", "fn($1)");
-        self.add_keyword_snippet(ctx, "dyn", "dyn $0");
-        self.add_keyword_snippet(ctx, "impl", "impl $0");
-        self.add_keyword_snippet(ctx, "for", "for<$1>");
+    pub(crate) fn add_type_keywords(
+        &mut self,
+        ctx: &CompletionContext<'_>,
+        path_ctx: &PathCompletionCtx<'_>,
+    ) {
+        let mut add_keyword = |kw, snippet| {
+            render_type_keyword_snippet(ctx, path_ctx, kw, snippet).add_to(self, ctx.db);
+        };
+
+        add_keyword("fn", "fn($1)");
+        add_keyword("dyn", "dyn $0");
+        add_keyword("impl", "impl $0");
+        add_keyword("for", "for<$1>");
     }
 
     pub(crate) fn add_super_keyword(
@@ -747,6 +770,12 @@ pub(super) fn complete_name_ref(
                             field::complete_field_list_tuple_variant(acc, ctx, path_ctx);
                         }
                         TypeLocation::TypeAscription(ascription) => {
+                            if let TypeAscriptionTarget::RetType { item: Some(item), .. } =
+                                ascription
+                                && path_ctx.required_thin_arrow().is_some()
+                            {
+                                keyword::complete_for_and_where(acc, ctx, &item.clone().into());
+                            }
                             r#type::complete_ascribed_type(acc, ctx, path_ctx, ascription);
                         }
                         TypeLocation::GenericArg { .. }

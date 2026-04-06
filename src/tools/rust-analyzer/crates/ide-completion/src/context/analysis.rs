@@ -1278,15 +1278,14 @@ fn classify_name_ref<'db>(
                     let original = ast::Static::cast(name.syntax().parent()?)?;
                     TypeLocation::TypeAscription(TypeAscriptionTarget::Const(original.body()))
                 },
-                ast::RetType(it) => {
-                    it.thin_arrow_token()?;
+                ast::RetType(_) => {
                     let parent = match ast::Fn::cast(parent.parent()?) {
                         Some(it) => it.param_list(),
                         None => ast::ClosureExpr::cast(parent.parent()?)?.param_list(),
                     };
 
                     let parent = find_opt_node_in_file(original_file, parent)?.syntax().parent()?;
-                    TypeLocation::TypeAscription(TypeAscriptionTarget::RetType(match_ast! {
+                    let body = match_ast! {
                         match parent {
                             ast::ClosureExpr(it) => {
                                 it.body()
@@ -1296,7 +1295,9 @@ fn classify_name_ref<'db>(
                             },
                             _ => return None,
                         }
-                    }))
+                    };
+                    let item = ast::Fn::cast(parent);
+                    TypeLocation::TypeAscription(TypeAscriptionTarget::RetType { body, item })
                 },
                 ast::Param(it) => {
                     it.colon_token()?;
