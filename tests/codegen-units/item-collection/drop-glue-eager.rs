@@ -3,7 +3,7 @@
 //@ compile-flags:-Clink-dead-code
 //@ compile-flags:--crate-type=lib
 
-//~ MONO_ITEM fn std::ptr::drop_in_place::<StructWithDrop> - shim(Some(StructWithDrop))
+//~ MONO_ITEM fn std::ptr::drop_glue::<StructWithDrop> - shim(Some(StructWithDrop))
 struct StructWithDrop {
     x: i32,
 }
@@ -17,7 +17,7 @@ struct StructNoDrop {
     x: i32,
 }
 
-//~ MONO_ITEM fn std::ptr::drop_in_place::<EnumWithDrop> - shim(Some(EnumWithDrop))
+//~ MONO_ITEM fn std::ptr::drop_glue::<EnumWithDrop> - shim(Some(EnumWithDrop))
 enum EnumWithDrop {
     A(i32),
 }
@@ -37,14 +37,14 @@ impl<'a> Drop for StructWithDropAndLt<'a> {
     fn drop(&mut self) {}
 }
 
-//~ MONO_ITEM fn std::ptr::drop_in_place::<StructWithDropAndLt<'_>> - shim(Some(StructWithDropAndLt<'_>))
+//~ MONO_ITEM fn std::ptr::drop_glue::<StructWithDropAndLt<'_>> - shim(Some(StructWithDropAndLt<'_>))
 struct StructWithDropAndLt<'a> {
     x: &'a i32,
 }
 
 // Make sure we don't ICE when checking impossible predicates for the struct.
 // Regression test for <https://github.com/rust-lang/rust/issues/135515>.
-//~ MONO_ITEM fn std::ptr::drop_in_place::<StructWithLtAndPredicate<'_>> - shim(Some(StructWithLtAndPredicate<'_>))
+//~ MONO_ITEM fn std::ptr::drop_glue::<StructWithLtAndPredicate<'_>> - shim(Some(StructWithLtAndPredicate<'_>))
 struct StructWithLtAndPredicate<'a: 'a> {
     x: &'a i32,
 }
