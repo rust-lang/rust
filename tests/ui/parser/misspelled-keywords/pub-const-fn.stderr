@@ -1,0 +1,22 @@
+error: visibility `pub` is not followed by an item
+  --> $DIR/pub-const-fn.rs:1:1
+   |
+LL | pub cnst fn code() {}
+   | ^^^ the visibility
+   |
+   = help: you likely meant to define an item, e.g., `pub fn foo() {}`
+help: there is a keyword `const` with a similar name
+   |
+LL | pub const fn code() {}
+   |      +
+
+error: expected item, found `cnst`
+  --> $DIR/pub-const-fn.rs:1:5
+   |
+LL | pub cnst fn code() {}
+   |     ^^^^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 2 previous errors
+
