@@ -76,7 +76,7 @@ pub(super) fn failed_to_match_macro(
     let span = token.span.substitute_dummy(sp);
     let CustomDiagnostic {
         message: custom_message, label: custom_label, notes: custom_notes, ..
-    } = if matches!(token.kind, token::Eof) {
+    } = {
         let macro_name = name.to_string();
         on_missing_args
             .map(|directive| {
@@ -91,8 +91,6 @@ pub(super) fn failed_to_match_macro(
                 )
             })
             .unwrap_or_default()
-    } else {
-        CustomDiagnostic::default()
     };
 
     let mut err = match custom_message {

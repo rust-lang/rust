@@ -25,6 +25,7 @@ LL |     offset_of!(Container, field, too many arguments);
    |                                  ^^^ no rules expected this token in macro call
    |
    = note: while trying to match sequence end
+   = note: this macro expects a container type and a dot-separated field or variant path, like `offset_of!(Type, field)`
 
 error: unexpected token: `)`
   --> $DIR/offset-of-arg-count.rs:9:21

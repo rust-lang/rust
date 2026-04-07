@@ -8,12 +8,12 @@ The tracking issue for this feature is: [#152494]
 
 The `diagnostic_on_missing_args` feature adds the
 `#[diagnostic::on_missing_args(...)]` attribute for declarative macros.
-It lets a macro definition customize the diagnostic that is emitted when an invocation ends before
-all required arguments were provided.
+It lets a macro definition customize diagnostics for matcher failures after all arms have been
+tried, such as incomplete invocations or trailing extra arguments.
 
 This attribute currently applies to declarative macros such as `macro_rules!` and `pub macro`.
-It only affects diagnostics for incomplete invocations; other matcher failures continue to use the
-usual macro diagnostics.
+It is currently used for errors emitted by declarative macro matching itself; fragment parser
+errors still use their existing diagnostics.
 
 ```rust,compile_fail
 #![feature(diagnostic_on_missing_args)]

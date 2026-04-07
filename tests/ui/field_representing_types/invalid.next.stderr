@@ -25,6 +25,7 @@ LL |     let _: field_of!(Struct, field, extra);
    |                                     ^^^^^ no rules expected this token in macro call
    |
    = note: while trying to match sequence end
+   = note: this macro expects a container type and a field path, like `field_of!(Type, field)` or `field_of!(Enum, Variant.field)`
 
 error: offset_of expects dot-separated field and variant names
   --> $DIR/invalid.rs:27:28
