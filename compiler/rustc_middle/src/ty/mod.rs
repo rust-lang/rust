@@ -91,9 +91,9 @@ pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
-    AliasTerm, ArgOutlivesPredicate, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
-    ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef,
-    HostEffectPredicate, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
+    AliasTerm, AliasTermKind, ArgOutlivesPredicate, Clause, ClauseKind, CoercePredicate,
+    ExistentialPredicate, ExistentialPredicateStableCmpExt, ExistentialProjection,
+    ExistentialTraitRef, HostEffectPredicate, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
     PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
     PolyTraitRef, PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,

@@ -1655,7 +1655,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                 .map_bound(|pred| {
                     pred.term.as_const().map(|ct| {
                         let assoc_const_ty = tcx
-                            .type_of(pred.projection_term.def_id)
+                            .type_of(pred.projection_term.def_id())
                             .instantiate(tcx, pred.projection_term.args)
                             .skip_norm_wip();
                         ty::ClauseKind::ConstArgHasType(ct, assoc_const_ty)

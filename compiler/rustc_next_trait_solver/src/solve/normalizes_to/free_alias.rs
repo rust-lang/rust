@@ -24,16 +24,16 @@ where
         // Check where clauses
         self.add_goals(
             GoalSource::Misc,
-            cx.predicates_of(free_alias.def_id)
+            cx.predicates_of(free_alias.def_id())
                 .iter_instantiated(cx, free_alias.args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred)),
         );
 
         let actual = if free_alias.kind(cx).is_type() {
-            cx.type_of(free_alias.def_id).instantiate(cx, free_alias.args).skip_norm_wip().into()
+            cx.type_of(free_alias.def_id()).instantiate(cx, free_alias.args).skip_norm_wip().into()
         } else {
-            cx.const_of_item(free_alias.def_id)
+            cx.const_of_item(free_alias.def_id())
                 .instantiate(cx, free_alias.args)
                 .skip_norm_wip()
                 .into()

@@ -188,7 +188,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     bug!("generalized `{source_term:?} to infer, not an alias");
                 };
                 match source_alias.kind(self.tcx) {
-                    ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+                    ty::AliasTermKind::ProjectionTy { .. }
+                    | ty::AliasTermKind::ProjectionConst { .. } => {
                         // FIXME: This does not handle subtyping correctly, we could
                         // instead create a new inference variable `?normalized_source`, emitting
                         // `Projection(normalized_source, ?ty_normalized)` and
@@ -199,14 +200,14 @@ impl<'tcx> InferCtxt<'tcx> {
                         }]);
                     }
                     // The old solver only accepts projection predicates for associated types.
-                    ty::AliasTermKind::InherentTy
-                    | ty::AliasTermKind::FreeTy
-                    | ty::AliasTermKind::OpaqueTy => {
+                    ty::AliasTermKind::InherentTy { .. }
+                    | ty::AliasTermKind::FreeTy { .. }
+                    | ty::AliasTermKind::OpaqueTy { .. } => {
                         return Err(TypeError::CyclicTy(source_term.expect_type()));
                     }
-                    ty::AliasTermKind::InherentConst
-                    | ty::AliasTermKind::FreeConst
-                    | ty::AliasTermKind::UnevaluatedConst => {
+                    ty::AliasTermKind::InherentConst { .. }
+                    | ty::AliasTermKind::FreeConst { .. }
+                    | ty::AliasTermKind::UnevaluatedConst { .. } => {
                         return Err(TypeError::CyclicConst(source_term.expect_const()));
                     }
                 }

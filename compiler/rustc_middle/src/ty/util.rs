@@ -939,24 +939,24 @@ impl<'tcx> TyCtxt<'tcx> {
     // its (un)captured regions.
     pub fn opt_alias_variances(
         self,
-        kind: impl Into<ty::AliasTermKind>,
-        def_id: DefId,
+        kind: impl Into<ty::AliasTermKind<'tcx>>,
+        _def_id: DefId,
     ) -> Option<&'tcx [ty::Variance]> {
         match kind.into() {
-            ty::AliasTermKind::ProjectionTy => {
+            ty::AliasTermKind::ProjectionTy { def_id } => {
                 if self.is_impl_trait_in_trait(def_id) {
                     Some(self.variances_of(def_id))
                 } else {
                     None
                 }
             }
-            ty::AliasTermKind::OpaqueTy => Some(self.variances_of(def_id)),
-            ty::AliasTermKind::InherentTy
-            | ty::AliasTermKind::InherentConst
-            | ty::AliasTermKind::FreeTy
-            | ty::AliasTermKind::FreeConst
-            | ty::AliasTermKind::UnevaluatedConst
-            | ty::AliasTermKind::ProjectionConst => None,
+            ty::AliasTermKind::OpaqueTy { def_id } => Some(self.variances_of(def_id)),
+            ty::AliasTermKind::InherentTy { .. }
+            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::FreeTy { .. }
+            | ty::AliasTermKind::FreeConst { .. }
+            | ty::AliasTermKind::UnevaluatedConst { .. }
+            | ty::AliasTermKind::ProjectionConst { .. } => None,
         }
     }
 }

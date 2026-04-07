@@ -11,6 +11,7 @@ use crate::ty::{
 
 pub type TraitRef<'tcx> = ir::TraitRef<TyCtxt<'tcx>>;
 pub type AliasTerm<'tcx> = ir::AliasTerm<TyCtxt<'tcx>>;
+pub type AliasTermKind<'tcx> = ir::AliasTermKind<TyCtxt<'tcx>>;
 pub type ProjectionPredicate<'tcx> = ir::ProjectionPredicate<TyCtxt<'tcx>>;
 pub type ExistentialPredicate<'tcx> = ir::ExistentialPredicate<TyCtxt<'tcx>>;
 pub type ExistentialTraitRef<'tcx> = ir::ExistentialTraitRef<TyCtxt<'tcx>>;
@@ -656,7 +657,7 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(PredicateKind<'_>, 32);
-    static_assert_size!(WithCachedTypeInfo<PredicateKind<'_>>, 56);
+    static_assert_size!(PredicateKind<'_>, 40);
+    static_assert_size!(WithCachedTypeInfo<PredicateKind<'_>>, 64);
     // tidy-alphabetical-end
 }

@@ -22,7 +22,7 @@ where
         let cx = self.cx();
         let inherent = goal.predicate.alias;
 
-        let impl_def_id = cx.parent(inherent.def_id);
+        let impl_def_id = cx.parent(inherent.def_id());
         let impl_args = self.fresh_args_for_item(impl_def_id);
 
         // Equate impl header and add impl where clauses
@@ -46,16 +46,19 @@ where
         // to be very careful when changing the impl where-clauses to be productive.
         self.add_goals(
             GoalSource::Misc,
-            cx.predicates_of(inherent.def_id)
+            cx.predicates_of(inherent.def_id())
                 .iter_instantiated(cx, inherent_args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred)),
         );
 
         let normalized = if inherent.kind(cx).is_type() {
-            cx.type_of(inherent.def_id).instantiate(cx, inherent_args).skip_norm_wip().into()
+            cx.type_of(inherent.def_id()).instantiate(cx, inherent_args).skip_norm_wip().into()
         } else {
-            cx.const_of_item(inherent.def_id).instantiate(cx, inherent_args).skip_norm_wip().into()
+            cx.const_of_item(inherent.def_id())
+                .instantiate(cx, inherent_args)
+                .skip_norm_wip()
+                .into()
         };
         self.instantiate_normalizes_to_term(goal, normalized);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
