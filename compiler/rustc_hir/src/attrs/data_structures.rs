@@ -1251,6 +1251,14 @@ pub enum AttributeKind {
         local_inner_macros: bool,
     },
 
+    /// Represents `#![macro_token_limit = "N"]` — limits the number of tokens in a single
+    /// `macro_rules!` expansion input to prevent exponential token growth from hanging the compiler.
+    MacroTokenLimit {
+        attr_span: Span,
+        limit_span: Span,
+        limit: Limit,
+    },
+
     /// Represents `#[macro_use]`.
     MacroUse {
         span: Span,
@@ -1383,14 +1391,6 @@ pub enum AttributeKind {
 
     /// Represents [`#[recursion_limit]`](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute)
     RecursionLimit {
-        attr_span: Span,
-        limit_span: Span,
-        limit: Limit,
-    },
-
-    /// Represents `#![macro_token_limit = "N"]` — limits the number of tokens in a single
-    /// `macro_rules!` expansion input to prevent exponential token growth from hanging the compiler.
-    MacroTokenLimit {
         attr_span: Span,
         limit_span: Span,
         limit: Limit,

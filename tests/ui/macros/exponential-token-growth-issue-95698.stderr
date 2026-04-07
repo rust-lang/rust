@@ -1,5 +1,5 @@
 error: macro expansion token limit reached while expanding `from_cow_impls!`
-  --> $DIR/issue-N-exponential-token-growth.rs:N:N
+  --> $DIR/exponential-token-growth-issue-N.rs:N:N
    |
 LL | /         from_cow_impls!(
 LL | |             $($from, std::borrow::Cow::from),+

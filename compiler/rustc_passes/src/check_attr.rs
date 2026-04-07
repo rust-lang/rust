@@ -255,6 +255,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::LinkSection { .. }
                     | AttributeKind::Linkage(..)
                     | AttributeKind::MacroEscape( .. )
+                    | AttributeKind::MacroTokenLimit { .. }
                     | AttributeKind::MacroUse { .. }
                     | AttributeKind::Marker(..)
                     | AttributeKind::MoveSizeLimit { .. }
@@ -279,7 +280,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PreludeImport
                     | AttributeKind::ProfilerRuntime
                     | AttributeKind::RecursionLimit { .. }
-                    | AttributeKind::MacroTokenLimit { .. }
                     | AttributeKind::ReexportTestHarnessMain(..)
                     | AttributeKind::RegisterTool(..)
                     // handled below this loop and elsewhere
