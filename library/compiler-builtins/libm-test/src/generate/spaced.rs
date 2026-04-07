@@ -98,19 +98,21 @@ macro_rules! impl_spaced_input {
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let max_steps0 = iteration_count(ctx, 0);
-                // `f16` and `f32` can have exhaustive tests.
-                match total_value_count::<Arg0<Op>>() {
-                    Some(steps0) if steps0 <= max_steps0 => {
-                        let iter0 = exhaustive_float();
-                        let iter0 = iter0.map(|v| (v,));
-                        (EitherIter::A(iter0), steps0)
-                    }
-                    _ => {
-                        let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
-                        let iter0 = iter0.map(|v| (v,));
-                        (EitherIter::B(iter0), steps0)
-                    }
+
+                // Unary tests: `f16` and `f32` may be exhaustive.
+                if let Some(steps0) = total_value_count::<Arg0<Op>>()
+                    && steps0 <= max_steps0
+                {
+                    let iter0 = exhaustive_float();
+                    let iter0 = iter0.map(|v| (v,));
+
+                    return (EitherIter::A(iter0), steps0);
                 }
+
+                // Non-exhaustive, sweep a subset of inputs.
+                let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
+                let iter0 = iter0.map(|v| (v,));
+                (EitherIter::B(iter0), steps0)
             }
         }
 
@@ -121,24 +123,29 @@ macro_rules! impl_spaced_input {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 1);
-                // `f16` can have exhaustive tests.
-                match total_value_count::<Arg0<Op>>() {
-                    Some(count) if count <= max_steps0 && count <= max_steps1 => {
-                        let iter = exhaustive_float().flat_map(|first| {
-                            exhaustive_float().map(move |second| (first, second))
-                        });
-                        (EitherIter::A(iter), count.strict_mul(count))
-                    }
-                    _ => {
-                        let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
-                        let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
-                        let iter = iter0.flat_map(move |first| {
-                            iter1.clone().map(move |second| (first, second))
-                        });
-                        let count = steps0.strict_mul(steps1);
-                        (EitherIter::B(iter), count)
-                    }
+
+                // Binary test: `f16` may be exhaustive.
+                if let Some(steps0) = total_value_count::<Arg0<Op>>()
+                    && steps0 <= max_steps0
+                    && let Some(steps1) = total_value_count::<Arg1<Op>>()
+                    && steps1 <= max_steps1
+                {
+                    let iter = exhaustive_float()
+                        .flat_map(|first| exhaustive_float().map(move |second| (first, second)));
+                    let count = steps0.strict_mul(steps1);
+
+                    return (EitherIter::A(iter), count);
                 }
+
+                // Non-exhaustive, sweep a subset of inputs.
+                let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
+                let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
+
+                let iter =
+                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let count = steps0.strict_mul(steps1);
+
+                (EitherIter::B(iter), count)
             }
         }
 
@@ -150,33 +157,39 @@ macro_rules! impl_spaced_input {
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 1);
                 let max_steps2 = iteration_count(ctx, 2);
-                // `f16` can be exhaustive tested if `LIBM_EXTENSIVE_TESTS` is incresed.
-                match total_value_count::<Arg0<Op>>() {
-                    Some(count)
-                        if count <= max_steps0 && count <= max_steps1 && count <= max_steps2 =>
-                    {
-                        let iter = exhaustive_float().flat_map(|first| {
-                            exhaustive_float().flat_map(move |second| {
-                                exhaustive_float().map(move |third| (first, second, third))
-                            })
-                        });
-                        (EitherIter::A(iter), count.checked_pow(3).unwrap())
-                    }
-                    _ => {
-                        let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
-                        let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
-                        let (iter2, steps2) = logspace_steps::<Arg2<Op>>(ctx, 2, max_steps2);
 
-                        let iter = iter0
-                            .flat_map(move |first| iter1.clone().map(move |second| (first, second)))
-                            .flat_map(move |(first, second)| {
-                                iter2.clone().map(move |third| (first, second, third))
-                            });
-                        let count = steps0.strict_mul(steps1).strict_mul(steps2);
+                // Ternary test: `f16` may be exhaustive tested if `LIBM_EXTENSIVE_TESTS`
+                // is incresed.
+                if let Some(steps0) = total_value_count::<Arg0<Op>>()
+                    && steps0 <= max_steps0
+                    && let Some(steps1) = total_value_count::<Arg1<Op>>()
+                    && steps1 <= max_steps1
+                    && let Some(steps2) = total_value_count::<Arg2<Op>>()
+                    && steps2 <= max_steps2
+                {
+                    let iter = exhaustive_float().flat_map(|first| {
+                        exhaustive_float().flat_map(move |second| {
+                            exhaustive_float().map(move |third| (first, second, third))
+                        })
+                    });
+                    let count = steps0.strict_mul(steps1).strict_mul(steps2);
 
-                        (EitherIter::B(iter), count)
-                    }
+                    return (EitherIter::A(iter), count);
                 }
+
+                // Non-exhaustive, sweep a subset of inputs.
+                let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
+                let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
+                let (iter2, steps2) = logspace_steps::<Arg2<Op>>(ctx, 2, max_steps2);
+
+                let iter = iter0
+                    .flat_map(move |first| iter1.clone().map(move |second| (first, second)))
+                    .flat_map(move |(first, second)| {
+                        iter2.clone().map(move |third| (first, second, third))
+                    });
+                let count = steps0.strict_mul(steps1).strict_mul(steps2);
+
+                (EitherIter::B(iter), count)
             }
         }
 
@@ -188,27 +201,29 @@ macro_rules! impl_spaced_input {
                 let range0 = int_range(ctx, 0).unwrap_or(full_range());
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 1);
-                match total_value_count::<Arg1<Op>>() {
-                    Some(count1) if count1 <= max_steps1 => {
-                        let (iter0, steps0) = linear_ints(range0, max_steps0);
-                        let iter = iter0.flat_map(move |first| {
-                            exhaustive_float().map(move |second| (first, second))
-                        });
-                        let count = steps0.strict_mul(count1);
-                        (EitherIter::A(iter), count)
-                    }
-                    _ => {
-                        let (iter0, steps0) = linear_ints(range0, max_steps0);
-                        let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
 
-                        let iter = iter0.flat_map(move |first| {
-                            iter1.clone().map(move |second| (first, second))
-                        });
-                        let count = steps0.strict_mul(steps1);
+                if let Some(steps0) = total_value_count_int::<Arg0<Op>>()
+                    && steps0 <= max_steps0
+                    && let Some(steps1) = total_value_count::<Arg1<Op>>()
+                    && steps1 <= max_steps1
+                {
+                    let (iter0, steps0) = linear_ints(range0, max_steps0);
+                    let iter = iter0.flat_map(move |first| {
+                        exhaustive_float().map(move |second| (first, second))
+                    });
+                    let count = steps0.strict_mul(steps1);
 
-                        (EitherIter::B(iter), count)
-                    }
+                    return (EitherIter::A(iter), count);
                 }
+
+                let (iter0, steps0) = linear_ints(range0, max_steps0);
+                let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
+
+                let iter =
+                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let count = steps0.strict_mul(steps1);
+
+                (EitherIter::B(iter), count)
             }
         }
 
@@ -220,27 +235,26 @@ macro_rules! impl_spaced_input {
                 let max_steps0 = iteration_count(ctx, 0);
                 let range1 = int_range(ctx, 1).unwrap_or(full_range());
                 let max_steps1 = iteration_count(ctx, 1);
-                match total_value_count::<Arg0<Op>>() {
-                    Some(count0) if count0 <= max_steps0 => {
-                        let (iter1, steps1) = linear_ints(range1, max_steps1);
-                        let iter = exhaustive_float().flat_map(move |first| {
-                            iter1.clone().map(move |second| (first, second))
-                        });
-                        let count = count0.strict_mul(steps1);
-                        (EitherIter::A(iter), count)
-                    }
-                    _ => {
-                        let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
-                        let (iter1, steps1) = linear_ints(range1, max_steps1);
 
-                        let iter = iter0.flat_map(move |first| {
-                            iter1.clone().map(move |second| (first, second))
-                        });
-                        let count = steps0.strict_mul(steps1);
+                if let Some(steps0) = total_value_count::<Arg0<Op>>()
+                    && steps0 <= max_steps0
+                {
+                    let (iter1, steps1) = linear_ints(range1, max_steps1);
+                    let iter = exhaustive_float()
+                        .flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                    let count = steps0.strict_mul(steps1);
 
-                        (EitherIter::B(iter), count)
-                    }
+                    return (EitherIter::A(iter), count);
                 }
+
+                let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
+                let (iter1, steps1) = linear_ints(range1, max_steps1);
+
+                let iter =
+                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let count = steps0.strict_mul(steps1);
+
+                (EitherIter::B(iter), count)
             }
         }
     };
@@ -262,17 +276,17 @@ macro_rules! impl_spaced_input_int {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let range = int_range(ctx, 0).unwrap_or(full_range());
                 let max_steps0 = iteration_count(ctx, 0);
-                match total_value_count_int::<Arg0<Op>>() {
-                    Some(steps0) if steps0 <= max_steps0 => {
-                        let iter0 = range.map(|v| (v,));
-                        (EitherIter::A(iter0), steps0)
-                    }
-                    _ => {
-                        let (iter0, steps0) = linear_ints::<Arg0<Op>>(range, max_steps0);
-                        let iter0 = iter0.map(|v| (v,));
-                        (EitherIter::B(iter0), steps0)
-                    }
+
+                if let Some(steps0) = total_value_count_int::<Arg0<Op>>()
+                    && steps0 <= max_steps0
+                {
+                    let iter0 = range.map(|v| (v,));
+                    return (EitherIter::A(iter0), steps0);
                 }
+
+                let (iter0, steps0) = linear_ints::<Arg0<Op>>(range, max_steps0);
+                let iter0 = iter0.map(|v| (v,));
+                (EitherIter::B(iter0), steps0)
             }
         }
 
@@ -285,24 +299,26 @@ macro_rules! impl_spaced_input_int {
                 let range1 = int_range(ctx, 1).unwrap_or(full_range());
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 0);
-                match total_value_count_int::<Arg0<Op>>() {
-                    Some(count) if count <= max_steps0 && count < max_steps1 => {
-                        let iter = range0.flat_map(move |first| {
-                            range1.clone().map(move |second| (first, second))
-                        });
-                        let count = count.strict_mul(count);
-                        (EitherIter::A(iter), count)
-                    }
-                    _ => {
-                        let (iter0, steps0) = linear_ints::<Arg0<Op>>(range0, max_steps0);
-                        let (iter1, steps1) = linear_ints::<Arg1<Op>>(range1, max_steps1);
-                        let iter = iter0.flat_map(move |first| {
-                            iter1.clone().map(move |second| (first, second))
-                        });
-                        let count = steps0.strict_mul(steps1);
-                        (EitherIter::B(iter), count)
-                    }
+
+                if let Some(steps0) = total_value_count_int::<Arg0<Op>>()
+                    && steps0 <= max_steps0
+                && let Some(steps1) = total_value_count_int::<Arg1<Op>>()
+                    && steps1 <= max_steps1
+                {
+                    let iter = range0
+                        .flat_map(move |first| range1.clone().map(move |second| (first, second)));
+                    let count = steps0.strict_mul(steps1);
+
+                    return (EitherIter::A(iter), count);
                 }
+
+                let (iter0, steps0) = linear_ints::<Arg0<Op>>(range0, max_steps0);
+                let (iter1, steps1) = linear_ints::<Arg1<Op>>(range1, max_steps1);
+                let iter =
+                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let count = steps0.strict_mul(steps1);
+
+                (EitherIter::B(iter), count)
             }
         }
     };
@@ -318,24 +334,25 @@ macro_rules! impl_spaced_input_int {
                 let range1 = int_range(ctx, 1).unwrap_or(full_range());
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 0);
-                match total_value_count_int::<Arg0<Op>>() {
-                    Some(count) if count <= max_steps0 && count < max_steps1 => {
-                        let iter = range0.flat_map(move |first| {
-                            range1.clone().map(move |second| (first, second))
-                        });
-                        let count = count.strict_mul(count);
-                        (EitherIter::A(iter), count)
-                    }
-                    _ => {
-                        let (iter0, steps0) = linear_ints::<Arg0<Op>>(range0, max_steps0);
-                        let (iter1, steps1) = linear_ints::<Arg1<Op>>(range1, max_steps1);
-                        let iter = iter0.flat_map(move |first| {
-                            iter1.clone().map(move |second| (first, second))
-                        });
-                        let count = steps0.strict_mul(steps1);
-                        (EitherIter::B(iter), count)
-                    }
+
+                if let Some(steps0) = total_value_count_int::<Arg0<Op>>()
+                    && steps0 <= max_steps0
+                    && let Some(steps1) = total_value_count_int::<Arg1<Op>>()
+                    && steps1 <= max_steps1
+                {
+                    let iter = range0
+                        .flat_map(move |first| range1.clone().map(move |second| (first, second)));
+                    let count = steps0.strict_mul(steps1);
+
+                    return (EitherIter::A(iter), count);
                 }
+
+                let (iter0, steps0) = linear_ints::<Arg0<Op>>(range0, max_steps0);
+                let (iter1, steps1) = linear_ints::<Arg1<Op>>(range1, max_steps1);
+                let iter =
+                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let count = steps0.strict_mul(steps1);
+                (EitherIter::B(iter), count)
             }
         }
     };
