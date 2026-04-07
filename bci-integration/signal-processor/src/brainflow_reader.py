@@ -62,9 +62,11 @@ class BCIReader:
         state_manager: StateManager,
         synthetic: bool = True,
         board_id: int | None = None,
+        recorder: "SessionRecorder | None" = None,
     ) -> None:
         self._state_manager = state_manager
         self._synthetic = synthetic
+        self._recorder = recorder
         self._classifier = HeuristicClassifier()
         self._session_id = f"session-{uuid.uuid4().hex[:12]}"
 
@@ -196,6 +198,9 @@ class BCIReader:
                 }
 
                 self._state_manager.update_state(bci_state)
+
+                if self._recorder is not None:
+                    self._recorder.record(bci_state)
 
             except Exception:
                 logger.error("Error in acquisition loop", exc_info=True)

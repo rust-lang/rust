@@ -15,6 +15,8 @@ from fastapi import FastAPI
 from . import config
 from .brainflow_reader import BCIReader
 from .models import BCIStateModel, HealthResponse, StateResponse
+from .recorder import SessionRecorder
+from .replayer import SessionReplayer
 from .state_manager import StateManager
 
 logger = logging.getLogger(__name__)
@@ -22,32 +24,61 @@ logger = logging.getLogger(__name__)
 # Module-level references set by create_app()
 _state_manager: StateManager | None = None
 _reader: BCIReader | None = None
+_replayer: SessionReplayer | None = None
+_recorder: SessionRecorder | None = None
 _start_time: float = 0.0
 
 
-def create_app(synthetic: bool = True) -> FastAPI:
+def create_app(
+    synthetic: bool = True,
+    recorder: SessionRecorder | None = None,
+    replayer: SessionReplayer | None = None,
+    state_manager: StateManager | None = None,
+) -> FastAPI:
     """Create and configure the FastAPI application.
 
     Args:
         synthetic: Whether to use BrainFlow synthetic board.
+        recorder: Optional recorder to capture states during acquisition.
+        replayer: Optional replayer to use instead of BrainFlow.
+        state_manager: Optional pre-created StateManager (used by replayer).
 
     Returns:
         Configured FastAPI app instance.
     """
-    global _state_manager, _reader, _start_time
+    global _state_manager, _reader, _replayer, _recorder, _start_time
 
-    _state_manager = StateManager()
-    _reader = BCIReader(state_manager=_state_manager, synthetic=synthetic)
+    _state_manager = state_manager if state_manager is not None else StateManager()
+    _recorder = recorder
+    _replayer = replayer
+
+    if replayer is not None:
+        # Replay mode: replayer already has a reference to the state_manager
+        _reader = None
+    else:
+        _reader = BCIReader(
+            state_manager=_state_manager, synthetic=synthetic, recorder=recorder
+        )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         global _start_time
         _start_time = time.time()
         logger.info("Starting BCI Signal Processor...")
-        _reader.start()
+        if _recorder is not None:
+            _recorder.start()
+        if _replayer is not None:
+            _replayer.start()
+        elif _reader is not None:
+            _reader.start()
         yield
         logger.info("Shutting down BCI Signal Processor...")
-        _reader.stop()
+        if _replayer is not None:
+            _replayer.stop()
+        elif _reader is not None:
+            _reader.stop()
+        if _recorder is not None:
+            _recorder.stop()
 
     app = FastAPI(
         title="BCI State Server",
