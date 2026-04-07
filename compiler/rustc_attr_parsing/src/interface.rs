@@ -13,6 +13,7 @@ use rustc_session::Session;
 use rustc_session::lint::{BuiltinLintDiag, LintId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 
+use crate::attributes::AttributeSafety;
 use crate::context::{AcceptContext, FinalizeContext, FinalizeFn, SharedContext, Stage};
 use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
@@ -174,6 +175,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser) -> Option<T>,
         template: &AttributeTemplate,
         allow_expr_metavar: AllowExprMetavar,
+        expected_safety: AttributeSafety,
     ) -> Option<T> {
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
             panic!("parse_single called on a doc attr")
@@ -196,6 +198,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             attr.style,
             path,
             Some(normal_attr.item.unsafety),
+            expected_safety,
             ParsedDescription::Attribute,
             target_span,
             target_node_id,
@@ -217,6 +220,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         attr_style: AttrStyle,
         attr_path: AttrPath,
         attr_safety: Option<Safety>,
+        expected_safety: AttributeSafety,
         parsed_description: ParsedDescription,
         target_span: Span,
         target_node_id: NodeId,
@@ -238,7 +242,13 @@ impl<'sess> AttributeParser<'sess, Early> {
             )
         };
         if let Some(safety) = attr_safety {
-            parser.check_attribute_safety(&attr_path, inner_span, safety, &mut emit_lint)
+            parser.check_attribute_safety(
+                &attr_path,
+                inner_span,
+                safety,
+                expected_safety,
+                &mut emit_lint,
+            )
         }
         let attr_id = sess.psess.attr_id_generator.mk_attr_id();
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
@@ -355,17 +365,18 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         }
                     };
 
-                    self.check_attribute_safety(
-                        &attr_path,
-                        lower_span(n.item.span()),
-                        n.item.unsafety,
-                        &mut emit_lint,
-                    );
-
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
                     if let Some(accept) = S::parsers().accepters.get(parts.as_slice()) {
+                        self.check_attribute_safety(
+                            &attr_path,
+                            lower_span(n.item.span()),
+                            n.item.unsafety,
+                            accept.safety,
+                            &mut emit_lint,
+                        );
+
                         let Some(args) = ArgParser::from_attr_args(
                             args,
                             &parts,
@@ -438,6 +449,14 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             style: attr.style,
                             span: attr_span,
                         };
+
+                        self.check_attribute_safety(
+                            &attr_path,
+                            lower_span(n.item.span()),
+                            n.item.unsafety,
+                            AttributeSafety::Normal,
+                            &mut emit_lint,
+                        );
 
                         if !matches!(self.stage.should_emit(), ShouldEmit::Nothing)
                             && target == Target::Crate
