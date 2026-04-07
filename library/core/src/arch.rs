@@ -79,7 +79,7 @@ pub fn breakpoint() {
 
 /// The `core::arch::return_address!()` macro returns a pointer with an address that corresponds to the caller of the function that invoked the `return_address!()` macro, or a null pointer if it cannot be determined. The pointer has no provenance, as if created by `core::ptr::without_provenance`. It cannot be used to read memory (other than ZSTs)
 ///
-/// The value returned by the macro depends highly on the architecture and compiler (including any options set). In particular, it is allowed to be wrong (particularily if inlining is involved), or even contain a nonsense value. The result of this macro must not be relied upon for soundness or correctness, only for debugging purposes.
+/// The value returned by the macro depends highly on the architecture and compiler (including any options set). In particular, it is allowed to be wrong (particularly if inlining is involved), or even contain a nonsense value. The result of this macro must not be relied upon for soundness or correctness, only for debugging purposes.
 /// Formally, this function returns a pointer with a non-deterministic address and no provenance.
 ///
 /// This is equivalent to the gcc `__builtin_return_address(0)` intrinsic (other forms of the intrinsic are not supported). Because the operation can be always performed by the compiler without crashing or causing undefined behaviour, invoking the macro is a safe operation.
