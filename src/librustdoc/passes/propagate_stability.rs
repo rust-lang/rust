@@ -88,8 +88,6 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     | ItemKind::ForeignStaticItem(..)
                     | ItemKind::ForeignTypeItem
                     | ItemKind::MacroItem(..)
-                    | ItemKind::AttrMacroItem
-                    | ItemKind::DeriveMacroItem
                     | ItemKind::ProcMacroItem(..)
                     | ItemKind::ConstantItem(..) => {
                         // If any of the item's parents was stabilized later or is still unstable,

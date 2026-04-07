@@ -64,8 +64,6 @@ impl DocFolder for Stripper<'_, '_> {
             | clean::UnionItem(..)
             | clean::TraitAliasItem(..)
             | clean::MacroItem(..)
-            | clean::AttrMacroItem
-            | clean::DeriveMacroItem
             | clean::ForeignTypeItem => {
                 let item_id = i.item_id;
                 if item_id.is_local()
