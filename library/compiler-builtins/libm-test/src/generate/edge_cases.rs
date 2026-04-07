@@ -244,7 +244,7 @@ macro_rules! impl_edge_case_input {
                 let (iter1, steps1) = float_edge_cases::<Arg1<Op>>(ctx, 1);
                 let iter =
                     iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
-                let count = steps0.checked_mul(steps1).unwrap();
+                let count = steps0.strict_mul(steps1);
                 (iter, count)
             }
         }
@@ -263,11 +263,7 @@ macro_rules! impl_edge_case_input {
                     .flat_map(move |(first, second)| {
                         iter2.clone().map(move |third| (first, second, third))
                     });
-                let count = steps0
-                    .checked_mul(steps1)
-                    .unwrap()
-                    .checked_mul(steps2)
-                    .unwrap();
+                let count = steps0.strict_mul(steps1).strict_mul(steps2);
 
                 (iter, count)
             }
@@ -283,7 +279,7 @@ macro_rules! impl_edge_case_input {
 
                 let iter =
                     iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
-                let count = steps0.checked_mul(steps1).unwrap();
+                let count = steps0.strict_mul(steps1);
 
                 (iter, count)
             }
@@ -299,7 +295,7 @@ macro_rules! impl_edge_case_input {
 
                 let iter =
                     iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
-                let count = steps0.checked_mul(steps1).unwrap();
+                let count = steps0.strict_mul(steps1);
 
                 (iter, count)
             }
@@ -336,7 +332,7 @@ macro_rules! impl_edge_case_input_int {
                 let (iter1, steps1) = int_edge_cases(ctx, 1);
                 let iter =
                     iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
-                let count = steps0.checked_mul(steps1).unwrap();
+                let count = steps0.strict_mul(steps1);
                 (iter, count)
             }
         }
@@ -353,7 +349,7 @@ macro_rules! impl_edge_case_input_int {
                 let (iter1, steps1) = int_edge_cases(ctx, 1);
                 let iter =
                     iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
-                let count = steps0.checked_mul(steps1).unwrap();
+                let count = steps0.strict_mul(steps1);
                 (iter, count)
             }
         }
