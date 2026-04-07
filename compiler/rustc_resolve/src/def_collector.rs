@@ -378,7 +378,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             AssocItemKind::Type(box TyAlias { ident, .. }) => (*ident, DefKind::AssocTy),
             AssocItemKind::MacCall(..) => {
                 self.visit_macro_invoc(i.id);
-                self.brg_visit_assoc_item(i, ctxt);
+                self.visit_assoc_item_mac_call(i, ctxt);
                 return;
             }
             AssocItemKind::DelegationMac(..) => {

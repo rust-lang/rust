@@ -1418,28 +1418,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
             AssocItemKind::Type(box TyAlias { ident, .. }) => (ident, TypeNS),
 
-            AssocItemKind::MacCall(_) => {
-                match ctxt {
-                    AssocCtxt::Trait => {
-                        self.visit_invoc_in_module(item.id);
-                    }
-                    AssocCtxt::Impl { .. } => {
-                        let invoc_id = item.id.placeholder_to_expn_id();
-                        if !self.r.glob_delegation_invoc_ids.contains(&invoc_id) {
-                            self.r
-                                .impl_unexpanded_invocations
-                                .entry(self.r.invocation_parent(invoc_id))
-                                .or_default()
-                                .insert(invoc_id);
-                        }
-                        self.visit_invoc(item.id);
-                    }
-                }
-                return;
-            }
-
-            AssocItemKind::DelegationMac(..) => {
-                span_bug!(item.span, "delegation mac should already have been removed")
+            AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => {
+                span_bug!(item.span, "{item:#?} should already have been removed")
             }
         };
         let vis = self.resolve_visibility(&item.vis);
@@ -1470,6 +1450,29 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         }
 
         visit::walk_assoc_item(self, item, ctxt);
+    }
+
+    pub(crate) fn visit_assoc_item_mac_call(
+        &mut self,
+        item: &'a Item<AssocItemKind>,
+        ctxt: AssocCtxt,
+    ) {
+        match ctxt {
+            AssocCtxt::Trait => {
+                self.visit_invoc_in_module(item.id);
+            }
+            AssocCtxt::Impl { .. } => {
+                let invoc_id = item.id.placeholder_to_expn_id();
+                if !self.r.glob_delegation_invoc_ids.contains(&invoc_id) {
+                    self.r
+                        .impl_unexpanded_invocations
+                        .entry(self.r.invocation_parent(invoc_id))
+                        .or_default()
+                        .insert(invoc_id);
+                }
+                self.visit_invoc(item.id);
+            }
+        }
     }
 
     pub(crate) fn brg_visit_attribute(&mut self, attr: &'a ast::Attribute) {
