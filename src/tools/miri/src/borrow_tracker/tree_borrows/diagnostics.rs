@@ -15,7 +15,7 @@ use crate::*;
 #[derive(Clone, Copy, Debug)]
 pub enum AccessCause {
     Explicit(AccessKind),
-    Reborrow,
+    Reborrow(AccessKind),
     Dealloc,
     FnExit(AccessKind),
 }
@@ -24,7 +24,7 @@ impl fmt::Display for AccessCause {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Explicit(kind) => write!(f, "{kind}"),
-            Self::Reborrow => write!(f, "reborrow"),
+            Self::Reborrow(_) => write!(f, "reborrow"),
             Self::Dealloc => write!(f, "deallocation"),
             // This is dead code, since the protector release access itself can never
             // cause UB (while the protector is active, if some other access invalidates
@@ -40,7 +40,7 @@ impl AccessCause {
         let rel = if is_foreign { "foreign" } else { "child" };
         match self {
             Self::Explicit(kind) => format!("{rel} {kind}"),
-            Self::Reborrow => format!("reborrow (acting as a {rel} read access)"),
+            Self::Reborrow(kind) => format!("reborrow (acting as a {rel} {kind})"),
             Self::Dealloc => format!("deallocation (acting as a {rel} write access)"),
             Self::FnExit(kind) => format!("protector release (acting as a {rel} {kind})"),
         }

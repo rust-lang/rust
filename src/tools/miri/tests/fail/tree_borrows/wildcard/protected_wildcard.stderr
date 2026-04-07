@@ -12,8 +12,7 @@ LL |         *ref1 = 13;
 help: the accessed tag <TAG> was created here
   --> tests/fail/tree_borrows/wildcard/protected_wildcard.rs:LL:CC
    |
-LL |       let mut protect = |_arg: &mut u32| {
-   |  _______________________^
+LL | /     |_arg: &mut u32| {
 ...  |
 LL | |         *ref1 = 13;
 LL | |     };
@@ -21,8 +20,8 @@ LL | |     };
 help: the protected tag <TAG> was created here, in the initial state Reserved
   --> tests/fail/tree_borrows/wildcard/protected_wildcard.rs:LL:CC
    |
-LL |     let mut protect = |_arg: &mut u32| {
-   |                        ^^^^
+LL |     |_arg: &mut u32| {
+   |      ^^^^
    = note: stack backtrace:
            0: main::{closure#0}
                at tests/fail/tree_borrows/wildcard/protected_wildcard.rs:LL:CC

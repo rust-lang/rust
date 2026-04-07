@@ -73,6 +73,14 @@ impl LocationState {
         Self { permission, accessed: true, idempotent_foreign_access: sifa }
     }
 
+    #[cfg(test)]
+    pub fn possible(&self) -> bool {
+        if !self.accessed && self.permission.is_unique() {
+            return false;
+        }
+        return true;
+    }
+
     /// Check if the location has been accessed, i.e. if it has
     /// ever been accessed through a child pointer.
     pub fn accessed(&self) -> bool {

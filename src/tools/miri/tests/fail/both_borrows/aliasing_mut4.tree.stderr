@@ -1,34 +1,28 @@
-error: Undefined Behavior: write access through <TAG> at ALLOC[0x0] is forbidden
-  --> RUSTLIB/core/src/mem/mod.rs:LL:CC
+error: Undefined Behavior: reborrow through <TAG> at ALLOC[0x0] is forbidden
+  --> tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
    |
-LL |         crate::intrinsics::write_via_move(dest, src);
-   |                                                 ^^^ Undefined Behavior occurred here
+LL | fn safe(x: &i32, y: &mut Cell<i32>) {
+   |                  ^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
    = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
-   = help: this foreign write access would cause the protected tag <TAG> (currently Frozen) to become Disabled
+   = help: this reborrow (acting as a foreign write access) would cause the protected tag <TAG> (currently Frozen) to become Disabled
    = help: protected tags must never be Disabled
 help: the accessed tag <TAG> was created here
   --> tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
    |
-LL |     y.set(1);
-   |     ^^^^^^^^
+LL |     let xref = &mut x;
+   |                ^^^^^^
 help: the protected tag <TAG> was created here, in the initial state Frozen
   --> tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
    |
 LL | fn safe(x: &i32, y: &mut Cell<i32>) {
    |         ^
    = note: stack backtrace:
-           0: std::mem::replace
-               at RUSTLIB/core/src/mem/mod.rs:LL:CC
-           1: std::cell::Cell::replace
-               at RUSTLIB/core/src/cell.rs:LL:CC
-           2: std::cell::Cell::set
-               at RUSTLIB/core/src/cell.rs:LL:CC
-           3: safe
+           0: safe
                at tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
-           4: main
+           1: main
                at tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

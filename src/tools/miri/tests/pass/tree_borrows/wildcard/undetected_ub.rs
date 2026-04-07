@@ -3,7 +3,6 @@
 
 pub fn main() {
     uncertain_provenance();
-    protected_exposed();
     cross_tree_update_older_invalid_exposed();
 }
 
@@ -51,58 +50,6 @@ pub fn uncertain_provenance() {
     //              wild=ref1   wild=ref2
     //ref1 :        Frozen      UB
     //ref2 :        UB          Frozen
-}
-
-/// If a reference is protected, then all foreign writes to it cause UB.
-/// This effectively means any write needs to happen through a child of
-/// the protected reference.
-/// With this information we could further narrow the possible candidates
-/// for a wildcard write.
-/// However, currently tree borrows doesn't do this, so this test has UB
-/// that isn't detected.
-pub fn protected_exposed() {
-    let mut x: u32 = 42;
-
-    let ptr_base = &mut x as *mut u32;
-    let ref1 = unsafe { &mut *ptr_base };
-    let ref2 = unsafe { &mut *ptr_base };
-
-    let _int2 = ref2 as *mut u32 as usize;
-
-    fn protect(ref3: &mut u32) {
-        let int3 = ref3 as *mut u32 as usize;
-
-        //    ┌────────────┐
-        //    │            │
-        //    │  ptr_base  ├──────────────┐
-        //    │            │              │
-        //    └──────┬─────┘              │
-        //           │                    │
-        //           │                    │
-        //           ▼                    ▼
-        //    ┌────────────┐       ┌────────────┐
-        //    │            │       │            │
-        //    │ ref1(Res)  │       │ ref2(Res)* │
-        //    │            │       │            │
-        //    └──────┬─────┘       └────────────┘
-        //           │
-        //           │
-        //           ▼
-        //    ┌────────────┐
-        //    │            │
-        //    │ ref3(Res)* │
-        //    │            │
-        //    └────────────┘
-
-        // Since ref3 is protected, we could know that every write from outside it will be UB.
-        // This means we know that the access is through ref3, disabling ref2.
-        let wild = int3 as *mut u32;
-        unsafe { wild.write(13) }
-    }
-    protect(ref1);
-
-    // ref2 should be disabled, so this read causes UB, but we currently don't detect this.
-    let _fail = *ref2;
 }
 
 /// Checks how accesses from one subtree affect other subtrees.

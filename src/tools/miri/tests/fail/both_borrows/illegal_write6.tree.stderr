@@ -19,12 +19,6 @@ help: the protected tag <TAG> was created here, in the initial state Reserved
    |
 LL | fn foo(a: &mut u32, y: *mut u32) -> u32 {
    |        ^
-help: the protected tag <TAG> later transitioned to Unique due to a child write access at offsets [0x0..0x4]
-  --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
-   |
-LL |     *a = 1;
-   |     ^^^^^^
-   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
    = note: stack backtrace:
            0: foo
                at tests/fail/both_borrows/illegal_write6.rs:LL:CC

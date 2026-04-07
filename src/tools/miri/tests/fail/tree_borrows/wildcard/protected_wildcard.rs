@@ -1,5 +1,9 @@
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-permissive-provenance
 
+#![feature(rustc_attrs)]
+#![allow(internal_features)]
+#![feature(stmt_expr_attributes)]
+
 /// Checks if we pass a reference derived from a wildcard pointer
 /// that it gets correctly protected.
 pub fn main() {
@@ -12,7 +16,8 @@ pub fn main() {
     let wild = int2 as *mut u32;
     let wild_ref = unsafe { &mut *wild };
 
-    let mut protect = |_arg: &mut u32| {
+    let mut protect = #[rustc_no_writable] // forces test to have old behavior, thus testing the wanted property
+    |_arg: &mut u32| {
         // _arg is a protected pointer with wildcard parent.
 
         //    ┌────────────┐

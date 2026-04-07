@@ -4,7 +4,8 @@ use std::mem;
 
 fn safe(x: &mut i32, y: &mut i32) {
     //~[stack]^ ERROR: protect
-    *x = 1; //~[tree] ERROR: /write access through .* is forbidden/
+    //~[tree]^^ ERROR: /Undefined Behavior: reborrow through .* at .* is forbidden/
+    *x = 1;
     *y = 2;
 }
 

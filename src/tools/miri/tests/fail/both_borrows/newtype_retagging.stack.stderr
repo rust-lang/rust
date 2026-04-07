@@ -1,4 +1,4 @@
-error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [SharedReadOnly for <TAG>] which is strongly protected
   --> RUSTLIB/alloc/src/boxed.rs:LL:CC
    |
 LL |         Box(unsafe { Unique::new_unchecked(raw) }, alloc)

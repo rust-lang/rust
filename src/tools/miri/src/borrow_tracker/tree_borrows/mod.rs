@@ -1,4 +1,6 @@
 use rustc_abi::Size;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_middle::mir::{Mutability, RetagKind};
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty};
@@ -6,7 +8,7 @@ use rustc_middle::ty::{self, Ty};
 use self::foreign_access_skipping::IdempotentForeignAccess;
 use self::tree::LocationState;
 use crate::borrow_tracker::{AccessKind, GlobalState, GlobalStateInner, ProtectorKind};
-use crate::concurrency::data_race::NaReadType;
+use crate::concurrency::data_race::{NaReadType, NaWriteType};
 use crate::*;
 
 pub mod diagnostics;
@@ -109,13 +111,13 @@ impl<'tcx> Tree {
 pub struct NewPermission {
     /// Permission for the frozen part of the range.
     freeze_perm: Permission,
-    /// Whether a read access should be performed on the frozen part on a retag.
-    freeze_access: bool,
+    /// Whether and what kind of access should be performed on the frozen part on a retag.
+    freeze_access: Option<AccessKind>,
+    /// Whether a write access should be performed on the frozen part on a retag.
     /// Permission for the non-frozen part of the range.
     nonfreeze_perm: Permission,
-    /// Whether a read access should be performed on the non-frozen
-    /// part on a retag.
-    nonfreeze_access: bool,
+    /// Whether and what kind of access should be performed on the non-frozen part on a retag.
+    nonfreeze_access: Option<AccessKind>,
     /// Permission for memory outside the range.
     outside_perm: Permission,
     /// Whether this pointer is part of the arguments of a function call.
@@ -138,6 +140,19 @@ impl<'tcx> NewPermission {
         let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.typing_env());
         let is_protected = retag_kind == RetagKind::FnEntry;
 
+        // Check if the strong mode / writable optimization has been disabled for this function using the `#[rustc_no_writable]` attribute or the `-Zno-writable` flag
+        let def_id = cx.frame().instance().def_id();
+        let no_writable = find_attr!(cx.tcx, def_id, AttributeKind::RustcNoWritable)
+            || !cx
+                .machine
+                .borrow_tracker
+                .as_ref()
+                .unwrap()
+                .borrow()
+                .borrow_tracker_method
+                .get_tree_borrows_params()
+                .writable;
+
         if matches!(ref_mutability, Some(Mutability::Mut) | None if !ty_is_unpin) {
             // Mutable reference / Box to pinning type: retagging is a NOP.
             // FIXME: with `UnsafePinned`, this should do proper per-byte tracking.
@@ -159,14 +174,32 @@ impl<'tcx> NewPermission {
             _ => Permission::new_reserved_im(),
         };
 
-        // Everything except for `Cell` gets an initial access.
-        let initial_access = |perm: &Permission| !perm.is_cell();
+        // [0] contains freeze information, [1] contains non freeze information
+        let mut access_perms = [(freeze_perm, None), (nonfreeze_perm, None)];
+        for (permission, access) in &mut access_perms {
+            // Everything except for `Cell` gets an initial read.
+            if !permission.is_cell() {
+                // Every explicit mutable reference that gets an initial read also gets an initial write (except if it has been explicitly disabled using the `#[rustc_no_writable]` attribute or the `-Zno-writable` flag).
+                // Thus implicit mutable references (Two Phase borrowing) and Raw pointers are excluded.
+                if !no_writable
+                    && Some(Mutability::Mut) == ref_mutability
+                    && matches!(retag_kind, RetagKind::FnEntry)
+                {
+                    *access = Some(AccessKind::Write);
+
+                    // if cell gets a write, permission is gonna be set to Unique
+                    *permission = Permission::new_unique();
+                } else {
+                    *access = Some(AccessKind::Read);
+                }
+            }
+        }
 
         Some(NewPermission {
-            freeze_perm,
-            freeze_access: initial_access(&freeze_perm),
-            nonfreeze_perm,
-            nonfreeze_access: initial_access(&nonfreeze_perm),
+            freeze_perm: access_perms[0].0,
+            freeze_access: access_perms[0].1,
+            nonfreeze_perm: access_perms[1].0,
+            nonfreeze_access: access_perms[1].1,
             outside_perm: if ty_is_freeze { freeze_perm } else { nonfreeze_perm },
             protector: is_protected.then_some(if ref_mutability.is_some() {
                 // Strong protector for references
@@ -287,31 +320,36 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .precise_interior_mut;
 
         // Compute initial "inside" permissions.
-        let loc_state = |frozen: bool| -> LocationState {
+        let loc_state = |frozen: bool| -> (LocationState, Option<AccessKind>) {
             let (perm, access) = if frozen {
                 (new_perm.freeze_perm, new_perm.freeze_access)
             } else {
                 (new_perm.nonfreeze_perm, new_perm.nonfreeze_access)
             };
             let sifa = perm.strongest_idempotent_foreign_access(protected);
-            if access {
+
+            let state = if access.is_some() {
                 LocationState::new_accessed(perm, sifa)
             } else {
                 LocationState::new_non_accessed(perm, sifa)
-            }
+            };
+
+            (state, access)
         };
         let inside_perms = if !precise_interior_mut {
             // For `!Freeze` types, just pretend the entire thing is an `UnsafeCell`.
             let ty_is_freeze = place.layout.ty.is_freeze(*this.tcx, this.typing_env());
-            let state = loc_state(ty_is_freeze);
-            DedupRangeMap::new(ptr_size, state)
+            DedupRangeMap::new(ptr_size, loc_state(ty_is_freeze))
         } else {
             // The initial state will be overwritten by the visitor below.
-            let mut perms_map: DedupRangeMap<LocationState> = DedupRangeMap::new(
+            let mut perms_map = DedupRangeMap::new(
                 ptr_size,
-                LocationState::new_accessed(
-                    Permission::new_disabled(),
-                    IdempotentForeignAccess::None,
+                (
+                    LocationState::new_accessed(
+                        Permission::new_disabled(),
+                        IdempotentForeignAccess::None,
+                    ),
+                    None,
                 ),
             );
             this.visit_freeze_sensitive(place, ptr_size, |range, frozen| {
@@ -324,42 +362,71 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             perms_map
         };
 
-        let alloc_extra = this.get_alloc_extra(alloc_id)?;
-        let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
+        for (perm_range, (_perm, access)) in inside_perms.iter_all() {
+            if let Some(access) = access {
+                // Some reborrows incur a read/write access to the parent.
+                // As a write also implies a read, a single write is performed instead of a read and a write.
 
-        for (perm_range, perm) in inside_perms.iter_all() {
-            if perm.accessed() {
-                // Some reborrows incur a read access to the parent.
+                // writing to an immutable allocation (static variables) is UB, check this here
+                if *access == AccessKind::Write
+                    && this.get_alloc_mutability(alloc_id).unwrap().is_not()
+                {
+                    throw_ub!(WriteToReadOnly(alloc_id))
+                }
+
                 // Adjust range to be relative to allocation start (rather than to `place`).
                 let range_in_alloc = AllocRange {
                     start: Size::from_bytes(perm_range.start) + base_offset,
                     size: Size::from_bytes(perm_range.end - perm_range.start),
                 };
 
+                let alloc_extra = this.get_alloc_extra(alloc_id)?;
+                let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
+
                 tree_borrows.perform_access(
                     parent_prov,
                     range_in_alloc,
-                    AccessKind::Read,
-                    diagnostics::AccessCause::Reborrow,
+                    *access,
+                    diagnostics::AccessCause::Reborrow(*access),
                     this.machine.borrow_tracker.as_ref().unwrap(),
                     alloc_id,
                     this.machine.current_user_relevant_span(),
                 )?;
 
+                // don't need it anymore
+                drop(tree_borrows);
+
                 // Also inform the data race model (but only if any bytes are actually affected).
                 if range_in_alloc.size.bytes() > 0 {
                     if let Some(data_race) = alloc_extra.data_race.as_vclocks_ref() {
-                        data_race.read_non_atomic(
-                            alloc_id,
-                            range_in_alloc,
-                            NaReadType::Retag,
-                            Some(place.layout.ty),
-                            &this.machine,
-                        )?
+                        match access {
+                            AccessKind::Read =>
+                                data_race.read_non_atomic(
+                                    alloc_id,
+                                    range_in_alloc,
+                                    NaReadType::Retag,
+                                    Some(place.layout.ty),
+                                    &this.machine,
+                                )?,
+                            AccessKind::Write =>
+                                data_race.write_non_atomic(
+                                    alloc_id,
+                                    range_in_alloc,
+                                    NaWriteType::Retag,
+                                    Some(place.layout.ty),
+                                    &this.machine,
+                                )?,
+                        };
                     }
                 }
             }
         }
+
+        let mut tree_borrows = this.get_alloc_extra(alloc_id)?.borrow_tracker_tb().borrow_mut();
+
+        // remove access information
+        let inside_perms = inside_perms.transform(|_, (loc_state, _)| loc_state);
+
         // Record the parent-child pair in the tree.
         tree_borrows.new_child(
             base_offset,
@@ -550,9 +617,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // argument doesn't matter
             // (`ty_is_freeze || true` in `new_reserved` will always be `true`).
             freeze_perm: Permission::new_reserved_frz(),
-            freeze_access: true,
+            freeze_access: Some(AccessKind::Write),
             nonfreeze_perm: Permission::new_reserved_frz(),
-            nonfreeze_access: true,
+            nonfreeze_access: Some(AccessKind::Write),
             outside_perm: Permission::new_reserved_frz(),
             protector: Some(ProtectorKind::StrongProtector),
         };

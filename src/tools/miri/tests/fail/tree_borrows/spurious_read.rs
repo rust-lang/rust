@@ -5,6 +5,9 @@
 //@compile-flags: -Zmiri-deterministic-concurrency
 //@compile-flags: -Zmiri-tree-borrows
 
+#![feature(rustc_attrs)]
+#![allow(internal_features)]
+
 use std::sync::{Arc, Barrier};
 use std::thread;
 
@@ -70,10 +73,11 @@ fn retagx_retagy_retx_writey_rety() {
         synchronized!(b, "start");
         let ptr = ptr;
         synchronized!(b, "retag x (&mut, protect)");
+        #[rustc_no_writable] // restore the old behavior, as we're testing reads here, not writes
         fn as_mut(x: &mut u8, b: (usize, Arc<Barrier>)) -> *mut u8 {
             synchronized!(b, "retag y (&mut, protect)");
             synchronized!(b, "location where spurious read of x would happen in the target");
-            // This is ensuring taht we have UB *without* the spurious read,
+            // This is ensuring that we have UB *without* the spurious read,
             // so we don't read here.
             synchronized!(b, "ret x");
             synchronized!(b, "write y");
@@ -97,6 +101,7 @@ fn retagx_retagy_retx_writey_rety() {
         let ptr = ptr;
         synchronized!(b, "retag x (&mut, protect)");
         synchronized!(b, "retag y (&mut, protect)");
+        #[rustc_no_writable]
         fn as_mut(y: &mut u8, b: (usize, Arc<Barrier>)) -> *mut u8 {
             synchronized!(b, "location where spurious read of x would happen in the target");
             synchronized!(b, "ret x");

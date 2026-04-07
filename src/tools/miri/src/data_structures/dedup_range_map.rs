@@ -55,6 +55,22 @@ impl<T> DedupRangeMap<T> {
             .unwrap()
     }
 
+    /// Creates a new [DedupRangeMap] of type `N` by applying `f` to all it's elements.
+    ///
+    /// The range for each element remains unchanged, use [DedupRangeMap::iter_mut] to change it. For more fine-grained control, the range is provided to `f`.
+    pub fn transform<F, N>(self, mut f: F) -> DedupRangeMap<N>
+    where
+        F: FnMut(&ops::Range<u64>, T) -> N,
+    {
+        DedupRangeMap {
+            v: self
+                .v
+                .into_iter()
+                .map(|elem| Elem { data: f(&elem.range, elem.data), range: elem.range })
+                .collect(),
+        }
+    }
+
     /// Provides read-only iteration over everything in the given range. This does
     /// *not* split items if they overlap with the edges. Do not use this to mutate
     /// through interior mutability.

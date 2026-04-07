@@ -1,5 +1,9 @@
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-permissive-provenance
 
+#![feature(rustc_attrs)]
+#![allow(internal_features)]
+#![feature(stmt_expr_attributes)]
+
 pub fn main() {
     multiple_exposed_siblings();
     multiple_exposed_child();
@@ -132,7 +136,8 @@ fn protector_conflicted_release() {
     let ref1 = unsafe { &mut *ptr_base };
     let ref2 = unsafe { &mut *ptr_base };
 
-    let protect = |arg: &mut u32| {
+    let protect = #[rustc_no_writable] // forces test to have old behavior, thus testing the wanted property
+    |arg: &mut u32| {
         // Expose arg.
         let int = arg as *mut u32 as usize;
         let wild = int as *mut u32;

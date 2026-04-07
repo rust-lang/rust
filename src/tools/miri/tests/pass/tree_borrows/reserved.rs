@@ -1,6 +1,9 @@
 // We disable the GC for this test because it would change what is printed.
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-provenance-gc=0
 
+#![feature(rustc_attrs)]
+#![allow(internal_features)]
+
 #[path = "../../utils/mod.rs"]
 #[macro_use]
 mod utils;
@@ -31,6 +34,7 @@ fn print(msg: &str) {
     eprintln!("{msg}");
 }
 
+#[rustc_no_writable] // force test to have old behavior, such that the correct property is tested
 unsafe fn read_second<T>(x: &mut T, y: *mut u8) {
     name!(x as *mut T as *mut u8=>1, "caller:x");
     name!(x as *mut T as *mut u8, "callee:x");

@@ -9,13 +9,17 @@ use crate::borrow_tracker::tree_borrows::exhaustive::{Exhaustive, precondition};
 impl Exhaustive for LocationState {
     fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
         // We keep `latest_foreign_access` at `None` as that's just a cache.
-        Box::new(<(Permission, bool)>::exhaustive().map(|(permission, accessed)| {
-            Self {
-                permission,
-                accessed,
-                idempotent_foreign_access: IdempotentForeignAccess::default(),
-            }
-        }))
+        Box::new(
+            <(Permission, bool)>::exhaustive()
+                .map(|(permission, accessed)| {
+                    Self {
+                        permission,
+                        accessed,
+                        idempotent_foreign_access: IdempotentForeignAccess::default(),
+                    }
+                })
+                .filter(|x| x.possible()),
+        )
     }
 }
 
@@ -438,17 +442,19 @@ mod spurious_read {
         /// Perform a read on the given pointer if its state is `accessed`.
         /// Must be called just after reborrowing a pointer, and just after
         /// removing a protector.
-        fn read_if_accessed(self, ptr: PtrSelector) -> Result<Self, ()> {
+        fn retag_dependent_access(self, ptr: PtrSelector) -> Result<Self, ()> {
             let accessed = match ptr {
-                PtrSelector::X => self.x.state.accessed,
-                PtrSelector::Y => self.y.state.accessed,
+                PtrSelector::X =>
+                    self.x.state.permission.protector_end_access().filter(|_| self.x.state.accessed),
+                PtrSelector::Y =>
+                    self.y.state.permission.protector_end_access().filter(|_| self.y.state.accessed),
                 PtrSelector::Other =>
                     panic!(
                         "the `accessed` status of `PtrSelector::Other` is unknown, do not pass it to `read_if_accessed`"
                     ),
             };
-            if accessed {
-                self.perform_test_access(&TestAccess { ptr, kind: AccessKind::Read })
+            if let Some(kind) = accessed {
+                self.perform_test_access(&TestAccess { ptr, kind })
             } else {
                 Ok(self)
             }
@@ -457,13 +463,13 @@ mod spurious_read {
         /// Remove the protector of `x`, including the implicit read on function exit.
         fn end_protector_x(self) -> Result<Self, ()> {
             let x = self.x.end_protector();
-            Self { x, ..self }.read_if_accessed(PtrSelector::X)
+            Self { x, ..self }.retag_dependent_access(PtrSelector::X)
         }
 
         /// Remove the protector of `y`, including the implicit read on function exit.
         fn end_protector_y(self) -> Result<Self, ()> {
             let y = self.y.end_protector();
-            Self { y, ..self }.read_if_accessed(PtrSelector::Y)
+            Self { y, ..self }.retag_dependent_access(PtrSelector::Y)
         }
 
         fn retag_y(self, new_y: LocStateProt) -> Result<Self, ()> {
@@ -473,7 +479,7 @@ mod spurious_read {
             }
             // `xy_rel` changes to "mutually foreign" now: `y` can no longer be a parent of `x`.
             Self { y: new_y, xy_rel: RelPosXY::MutuallyForeign, ..self }
-                .read_if_accessed(PtrSelector::Y)
+                .retag_dependent_access(PtrSelector::Y)
         }
 
         fn perform_test_event<RetX, RetY>(self, evt: &TestEvent<RetX, RetY>) -> Result<Self, ()> {
@@ -696,11 +702,12 @@ mod spurious_read {
         fn initial_state(&self) -> Result<LocStateProtPair, ()> {
             let (x, y) = self.retag_permissions();
             let state = LocStateProtPair { xy_rel: self.xy_rel, x, y };
-            state.read_if_accessed(PtrSelector::X)
+            state.retag_dependent_access(PtrSelector::X)
         }
     }
 
     #[test]
+    // TODO: this now fails, as `is_initial` now also can be Unique
     /// For each of the patterns described above, execute it once
     /// as-is, and once with a spurious read inserted. Report any UB
     /// in the target but not in the source.

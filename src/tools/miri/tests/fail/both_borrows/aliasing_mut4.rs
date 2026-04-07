@@ -1,12 +1,12 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-//@[tree]error-in-other-file: /write access through .* is forbidden/
 use std::cell::Cell;
 use std::mem;
 
 // Make sure &mut UnsafeCell also is exclusive
 fn safe(x: &i32, y: &mut Cell<i32>) {
     //~[stack]^ ERROR: protect
+    //~[tree]^^ ERROR: /Undefined Behavior: reborrow through .* at .* is forbidden/
     y.set(1);
     let _load = *x;
 }

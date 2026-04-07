@@ -1,23 +1,24 @@
-error: Undefined Behavior: write access through <TAG> at ALLOC[0x0] is forbidden
+error: Undefined Behavior: reborrow through <TAG> at ALLOC[0x0] is forbidden
   --> tests/fail/both_borrows/aliasing_mut1.rs:LL:CC
    |
-LL |     *x = 1;
-   |     ^^^^^^ Undefined Behavior occurred here
+LL | fn safe(x: &mut i32, y: &mut i32) {
+   |                      ^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
-   = help: the accessed tag <TAG> has state Reserved (conflicted) which forbids this child write access
-help: the accessed tag <TAG> was created here, in the initial state Reserved
+   = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
+   = help: this reborrow (acting as a foreign write access) would cause the protected tag <TAG> (currently Unique) to become Disabled
+   = help: protected tags must never be Disabled
+help: the accessed tag <TAG> was created here
+  --> tests/fail/both_borrows/aliasing_mut1.rs:LL:CC
+   |
+LL |     let xraw: *mut i32 = unsafe { mem::transmute(&mut x) };
+   |                                                  ^^^^^^
+help: the protected tag <TAG> was created here, in the initial state Reserved
   --> tests/fail/both_borrows/aliasing_mut1.rs:LL:CC
    |
 LL | fn safe(x: &mut i32, y: &mut i32) {
    |         ^
-help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to a reborrow (acting as a foreign read access) at offsets [0x0..0x4]
-  --> tests/fail/both_borrows/aliasing_mut1.rs:LL:CC
-   |
-LL | fn safe(x: &mut i32, y: &mut i32) {
-   |                      ^
-   = help: this transition corresponds to a temporary loss of write permissions until function exit
    = note: stack backtrace:
            0: safe
                at tests/fail/both_borrows/aliasing_mut1.rs:LL:CC

@@ -1,5 +1,9 @@
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-permissive-provenance
 
+#![feature(rustc_attrs)]
+#![allow(internal_features)]
+#![feature(stmt_expr_attributes)]
+
 /// Checks that wildcard accesses correctly infers the allowed permissions
 /// on protected conflicted pointers.
 pub fn main() {
@@ -9,7 +13,8 @@ pub fn main() {
     let ref1 = unsafe { &mut *ptr_base };
     let ref2 = unsafe { &mut *ptr_base };
 
-    let protect = |arg: &mut u32| {
+    let protect = #[rustc_no_writable] // TODO: disable new behavior for now to make test the old thing again. probably have to rewrite this to test the desired behavior instead of disabling new feature
+    |arg: &mut u32| {
         // Expose arg.
         let int = arg as *mut u32 as usize;
         let wild = int as *mut u32;

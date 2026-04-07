@@ -3,11 +3,15 @@
 // Shows the effect of the optimization of #4008.
 // The diagnostics change, but not the error itself.
 
+#![feature(rustc_attrs)]
+#![allow(internal_features)]
+
 // When this method is called, the tree will be a single line and look like this,
 // with other_ptr being the root at the top
 // other_ptr = root : Unique
 // intermediary     : Frozen // an intermediary node
 // m                : Reserved
+#[rustc_no_writable] // Force test to have old behavior. This makes sense here as we want to show the changed diagnostic tree and not specifically a special borrow.
 fn write_to_mut(m: &mut u8, other_ptr: *const u8) {
     unsafe {
         std::hint::black_box(*other_ptr);

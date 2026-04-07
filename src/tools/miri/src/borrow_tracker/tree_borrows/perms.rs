@@ -91,7 +91,7 @@ impl PartialOrd for PermissionPriv {
 impl PermissionPriv {
     /// Check if `self` can be the initial state of a pointer.
     fn is_initial(&self) -> bool {
-        matches!(self, ReservedFrz { conflicted: false } | Frozen | ReservedIM | Cell)
+        matches!(self, ReservedFrz { conflicted: false } | Frozen | ReservedIM | Cell | Unique)
     }
 
     /// Reject `ReservedIM` that cannot exist in the presence of a protector.
@@ -265,14 +265,19 @@ impl Permission {
         self.inner == Cell
     }
 
-    /// Default initial permission of the root of a new tree at inbounds positions.
-    /// Must *only* be used for the root, this is not in general an "initial" permission!
+    #[cfg(test)]
+    pub fn is_unique(&self) -> bool {
+        self.inner == Unique
+    }
+
+    /// Default initial permission for mutable references at the start of a function that is either
+    /// protected or not interior mutable (see *writable* and *strong mode*) and of the root of a new tree at inbounds positions.
     pub fn new_unique() -> Self {
         Self { inner: Unique }
     }
 
     /// Default initial permission of a reborrowed mutable reference that is either
-    /// protected or not interior mutable.
+    /// protected or not interior mutable and not at the start of a function (see *writable* and *strong mode*).
     pub fn new_reserved_frz() -> Self {
         Self { inner: ReservedFrz { conflicted: false } }
     }

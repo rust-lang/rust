@@ -5,6 +5,9 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 
+#![feature(rustc_attrs)]
+#![allow(internal_features)]
+
 use std::marker::PhantomData;
 use std::mem::{ManuallyDrop, MaybeUninit};
 use std::ptr::NonNull;
@@ -24,10 +27,12 @@ impl<T, const N: usize> RawSmallVec<T, N> {
         Self { inline: ManuallyDrop::new(inline) }
     }
 
+    #[rustc_no_writable]
     const fn as_mut_ptr_inline(&mut self) -> *mut T {
         &raw mut self.inline as *mut T
     }
 
+    #[rustc_no_writable]
     const unsafe fn as_mut_ptr_heap(&mut self) -> *mut T {
         self.heap.0.as_ptr()
     }
@@ -77,6 +82,7 @@ impl<T, const N: usize> SmallVec<T, N> {
         size_of::<T>() == 0
     }
 
+    #[rustc_no_writable]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         if self.len.on_heap(Self::is_zst()) {
             // SAFETY: see above
