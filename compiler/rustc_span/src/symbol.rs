@@ -1644,6 +1644,7 @@ symbols! {
         residual,
         result,
         result_ffi_guarantees,
+        return_address,
         return_position_impl_trait_in_trait,
         return_type_notation,
         riscv32,
