@@ -3,6 +3,7 @@
 use std::{debug_assert_matches, fmt};
 
 use rustc_abi::ExternAbi;
+use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -19,8 +20,8 @@ use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
 };
 use crate::ty::{
-    self, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate, Region, Ty,
-    TyCtxt,
+    self, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate, Region,
+    RegionKind, Ty, TyCtxt,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -100,7 +101,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ExprConst = ty::Expr<'tcx>;
     type ValTree = ty::ValTree<'tcx>;
     type ScalarInt = ty::ScalarInt;
-
+    type InternedRegionKind = Interned<'tcx, ty::RegionKind<'tcx>>;
     type Region = Region<'tcx>;
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
@@ -721,6 +722,22 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.opt_item_name(id).unwrap_or_else(|| {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })
+    }
+
+    fn get_anon_re_bounds_lifetime(self, idx: usize) -> Option<Vec<Region<'tcx>>> {
+        self.lifetimes.anon_re_bounds.get(idx)
+    }
+
+    fn get_anon_re_canonical_bounds_lifetime(self, idx: usize) -> Option<Region<'tcx>> {
+        self.lifetimes.anon_re_canonical_bounds.get(idx).copied()
+    }
+
+    fn get_re_static_lifetime(self) -> Region<'tcx> {
+        self.lifetimes.re_static
+    }
+
+    fn intern_region(self, region_kind: RegionKind<'tcx>) -> Region<'tcx> {
+        self.intern_region(region_kind)
     }
 }
 
