@@ -398,14 +398,6 @@ Tests for `#[deprecated]` attribute and `deprecated_in_future` internal lint.
 
 Tests for `Deref` and `DerefMut` traits.
 
-## `tests/ui/deref-patterns`: `#![feature(deref_patterns)]` and `#![feature(string_deref_patterns)]`
-
-Tests for `#![feature(deref_patterns)]` and `#![feature(string_deref_patterns)]`. See [Deref patterns | The Unstable book](https://doc.rust-lang.org/nightly/unstable-book/language-features/deref-patterns.html).
-
-**FIXME**: May have some overlap with `tests/ui/pattern/deref-patterns`.
-
-See [`std::ops::Deref`](https://doc.rust-lang.org/std/ops/trait.Deref.html) and [`std::ops::DerefMut`](https://doc.rust-lang.org/std/ops/trait.DerefMut.html)
-
 ## `tests/ui/derived-errors/`: Derived Error Messages
 
 Tests for quality of diagnostics involving suppression of cascading errors in some cases to avoid overwhelming the user.

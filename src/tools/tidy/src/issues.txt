@@ -834,8 +834,6 @@ ui/cycle-trait/issue-12511.rs
 ui/debuginfo/issue-105386-debuginfo-ub.rs
 ui/deprecation/issue-66340-deprecated-attr-non-meta-grammar.rs
 ui/deprecation/issue-84637-deprecated-associated-function.rs
-ui/deref-patterns/issue-71676-1.rs
-ui/deref-patterns/issue-71676-2.rs
 ui/derived-errors/issue-30580.rs
 ui/derived-errors/issue-31997-1.rs
 ui/derived-errors/issue-31997.rs
