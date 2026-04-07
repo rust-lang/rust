@@ -1,5 +1,5 @@
 error[E0201]: duplicate definitions with name `method`:
-  --> $DIR/glob-glob-conflict.rs:26:5
+  --> $DIR/glob-glob-conflict.rs:30:5
    |
 LL |     fn method(&self) -> u8;
    |     ----------------------- item in trait
@@ -10,7 +10,7 @@ LL |     reuse Trait2::*;
    |     ^^^^^^^^^^^^^^^^ duplicate definition
 
 error[E0201]: duplicate definitions with name `method`:
-  --> $DIR/glob-glob-conflict.rs:30:5
+  --> $DIR/glob-glob-conflict.rs:34:5
    |
 LL |     fn method(&self) -> u8;
    |     ----------------------- item in trait
@@ -20,6 +20,57 @@ LL |     reuse Trait1::*;
 LL |     reuse Trait1::*;
    |     ^^^^^^^^^^^^^^^^ duplicate definition
 
-error: aborting due to 2 previous errors
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/glob-glob-conflict.rs:10:8
+   |
+LL |     fn method(&self) -> u8;
+   |        ^^^^^^ argument #1 of type `&_` is missing
+   |
+note: method defined here
+  --> $DIR/glob-glob-conflict.rs:10:8
+   |
+LL |     fn method(&self) -> u8;
+   |        ^^^^^^  ----
+help: provide the argument
+   |
+LL |     fn method(/* value */)(&self) -> u8;
+   |              +++++++++++++
 
-For more information about this error, try `rustc --explain E0201`.
+error[E0308]: mismatched types
+  --> $DIR/glob-glob-conflict.rs:10:8
+   |
+LL |     fn method(&self) -> u8;
+   |        ^^^^^^- help: consider using a semicolon here: `;`
+   |        |
+   |        expected `()`, found `u8`
+   |        expected `()` because of default return type
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/glob-glob-conflict.rs:5:8
+   |
+LL |     fn method(&self) -> u8;
+   |        ^^^^^^ argument #1 of type `&_` is missing
+   |
+note: method defined here
+  --> $DIR/glob-glob-conflict.rs:5:8
+   |
+LL |     fn method(&self) -> u8;
+   |        ^^^^^^  ----
+help: provide the argument
+   |
+LL |     fn method(/* value */)(&self) -> u8;
+   |              +++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/glob-glob-conflict.rs:5:8
+   |
+LL |     fn method(&self) -> u8;
+   |        ^^^^^^- help: consider using a semicolon here: `;`
+   |        |
+   |        expected `()`, found `u8`
+   |        expected `()` because of default return type
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0061, E0201, E0308.
+For more information about an error, try `rustc --explain E0061`.
