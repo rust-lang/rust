@@ -1,3 +1,11 @@
+error: `#[automatically_derived]` attribute cannot be used on crates
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:22:1
+   |
+LL | #![automatically_derived]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[automatically_derived]` can only be applied to trait impl blocks
+
 error[E0658]: use of an internal attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:11:1
    |
@@ -7,6 +15,15 @@ LL | #![rustc_main]
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `#[rustc_main]` attribute is an internal implementation detail that will never be stable
    = note: the `#[rustc_main]` attribute is used internally to specify test entry point function
+
+error: `#[automatically_derived]` attribute cannot be used on crates
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:22:1
+   |
+LL | #![automatically_derived]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `#[macro_export]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:9:1
@@ -54,6 +71,7 @@ LL | #![automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `#[no_link]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:30:1
@@ -360,7 +378,7 @@ LL | #![no_mangle]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions and statics
 
-error: aborting due to 37 previous errors; 6 warnings emitted
+error: aborting due to 39 previous errors; 6 warnings emitted
 
 Some errors have detailed explanations: E0517, E0658.
 For more information about an error, try `rustc --explain E0517`.

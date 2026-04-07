@@ -22,5 +22,29 @@ error: unknown lint: `rust_2018_idiots`
 LL | #![deny(rust_2018_idiots)]
    |         ^^^^^^^^^^^^^^^^ help: did you mean: `rust_2018_idioms`
 
-error: aborting due to 3 previous errors
+error: unknown lint: `not_a_real_lint`
+  --> $DIR/lint-unknown-lint.rs:3:10
+   |
+LL | #![allow(not_a_real_lint)]
+   |          ^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unknown lint: `dead_cod`
+  --> $DIR/lint-unknown-lint.rs:5:9
+   |
+LL | #![deny(dead_cod)]
+   |         ^^^^^^^^ help: did you mean: `dead_code`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unknown lint: `rust_2018_idiots`
+  --> $DIR/lint-unknown-lint.rs:9:9
+   |
+LL | #![deny(rust_2018_idiots)]
+   |         ^^^^^^^^^^^^^^^^ help: did you mean: `rust_2018_idioms`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 6 previous errors
 

@@ -6,5 +6,13 @@ LL | #![deny(temporary_cstring_as_ptr)]
    |
    = note: `#[warn(renamed_and_removed_lints)]` on by default
 
-warning: 1 warning emitted
+warning: lint `temporary_cstring_as_ptr` has been renamed to `dangling_pointers_from_temporaries`
+  --> $DIR/cstring-as-param.rs:3:9
+   |
+LL | #![deny(temporary_cstring_as_ptr)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `dangling_pointers_from_temporaries`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: 2 warnings emitted
 

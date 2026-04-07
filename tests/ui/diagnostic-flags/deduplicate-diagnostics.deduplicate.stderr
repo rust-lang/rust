@@ -1,9 +1,3 @@
-error: cannot find derive macro `Unresolved` in this scope
-  --> $DIR/deduplicate-diagnostics.rs:6:10
-   |
-LL | #[derive(Unresolved)]
-   |          ^^^^^^^^^^
-
 error[E0539]: malformed `deny` attribute input
   --> $DIR/deduplicate-diagnostics.rs:10:1
    |
@@ -24,6 +18,12 @@ LL + #[deny(lint1, lint2, ...)]
 LL - #[deny("literal")]
 LL + #[deny(lint1, lint2, lint3, reason = "...")]
    |
+
+error: cannot find derive macro `Unresolved` in this scope
+  --> $DIR/deduplicate-diagnostics.rs:6:10
+   |
+LL | #[derive(Unresolved)]
+   |          ^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

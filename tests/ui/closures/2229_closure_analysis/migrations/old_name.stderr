@@ -6,5 +6,13 @@ LL | #![allow(disjoint_capture_migration)]
    |
    = note: `#[warn(renamed_and_removed_lints)]` on by default
 
-warning: 1 warning emitted
+warning: lint `disjoint_capture_migration` has been renamed to `rust_2021_incompatible_closure_captures`
+  --> $DIR/old_name.rs:6:10
+   |
+LL | #![allow(disjoint_capture_migration)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `rust_2021_incompatible_closure_captures`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: 2 warnings emitted
 

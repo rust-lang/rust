@@ -1,3 +1,102 @@
+error[E0539]: malformed `allow` attribute input
+  --> $DIR/malformed-attrs.rs:180:1
+   |
+LL | #[allow]
+   | ^^-----^
+   |   |
+   |   expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[allow(lint1)]
+   |        +++++++
+LL | #[allow(lint1, lint2, ...)]
+   |        +++++++++++++++++++
+LL | #[allow(lint1, lint2, lint3, reason = "...")]
+   |        +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `expect` attribute input
+  --> $DIR/malformed-attrs.rs:182:1
+   |
+LL | #[expect]
+   | ^^------^
+   |   |
+   |   expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[expect(lint1)]
+   |         +++++++
+LL | #[expect(lint1, lint2, ...)]
+   |         +++++++++++++++++++
+LL | #[expect(lint1, lint2, lint3, reason = "...")]
+   |         +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `warn` attribute input
+  --> $DIR/malformed-attrs.rs:184:1
+   |
+LL | #[warn]
+   | ^^----^
+   |   |
+   |   expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[warn(lint1)]
+   |       +++++++
+LL | #[warn(lint1, lint2, ...)]
+   |       +++++++++++++++++++
+LL | #[warn(lint1, lint2, lint3, reason = "...")]
+   |       +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `deny` attribute input
+  --> $DIR/malformed-attrs.rs:186:1
+   |
+LL | #[deny]
+   | ^^----^
+   |   |
+   |   expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[deny(lint1)]
+   |       +++++++
+LL | #[deny(lint1, lint2, ...)]
+   |       +++++++++++++++++++
+LL | #[deny(lint1, lint2, lint3, reason = "...")]
+   |       +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `forbid` attribute input
+  --> $DIR/malformed-attrs.rs:188:1
+   |
+LL | #[forbid]
+   | ^^------^
+   |   |
+   |   expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[forbid(lint1)]
+   |         +++++++
+LL | #[forbid(lint1, lint2, ...)]
+   |         +++++++++++++++++++
+LL | #[forbid(lint1, lint2, lint3, reason = "...")]
+   |         +++++++++++++++++++++++++++++++++++++
+
+error[E0565]: malformed `automatically_derived` attribute input
+  --> $DIR/malformed-attrs.rs:192:1
+   |
+LL | #[automatically_derived = 18]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^----^
+   | |                       |
+   | |                       didn't expect any arguments here
+   | help: must be of the form: `#[automatically_derived]`
+
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/malformed-attrs.rs:106:1
    |
@@ -52,6 +151,112 @@ LL | #[allow_internal_unsafe = 1]
    |
    = help: add `#![feature(allow_internal_unsafe)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0539]: malformed `allow` attribute input
+  --> $DIR/malformed-attrs.rs:180:1
+   |
+LL | #[allow]
+   | ^^-----^
+   |   |
+   |   expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[allow(lint1)]
+   |        +++++++
+LL | #[allow(lint1, lint2, ...)]
+   |        +++++++++++++++++++
+LL | #[allow(lint1, lint2, lint3, reason = "...")]
+   |        +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `expect` attribute input
+  --> $DIR/malformed-attrs.rs:182:1
+   |
+LL | #[expect]
+   | ^^------^
+   |   |
+   |   expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[expect(lint1)]
+   |         +++++++
+LL | #[expect(lint1, lint2, ...)]
+   |         +++++++++++++++++++
+LL | #[expect(lint1, lint2, lint3, reason = "...")]
+   |         +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `warn` attribute input
+  --> $DIR/malformed-attrs.rs:184:1
+   |
+LL | #[warn]
+   | ^^----^
+   |   |
+   |   expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[warn(lint1)]
+   |       +++++++
+LL | #[warn(lint1, lint2, ...)]
+   |       +++++++++++++++++++
+LL | #[warn(lint1, lint2, lint3, reason = "...")]
+   |       +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `deny` attribute input
+  --> $DIR/malformed-attrs.rs:186:1
+   |
+LL | #[deny]
+   | ^^----^
+   |   |
+   |   expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[deny(lint1)]
+   |       +++++++
+LL | #[deny(lint1, lint2, ...)]
+   |       +++++++++++++++++++
+LL | #[deny(lint1, lint2, lint3, reason = "...")]
+   |       +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `forbid` attribute input
+  --> $DIR/malformed-attrs.rs:188:1
+   |
+LL | #[forbid]
+   | ^^------^
+   |   |
+   |   expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[forbid(lint1)]
+   |         +++++++
+LL | #[forbid(lint1, lint2, ...)]
+   |         +++++++++++++++++++
+LL | #[forbid(lint1, lint2, lint3, reason = "...")]
+   |         +++++++++++++++++++++++++++++++++++++
+
+error[E0565]: malformed `automatically_derived` attribute input
+  --> $DIR/malformed-attrs.rs:192:1
+   |
+LL | #[automatically_derived = 18]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^----^
+   | |                       |
+   | |                       didn't expect any arguments here
+   | help: must be of the form: `#[automatically_derived]`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0539]: malformed `windows_subsystem` attribute input
   --> $DIR/malformed-attrs.rs:26:1
@@ -522,6 +727,7 @@ LL | #[allow]
    |   expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[allow(lint1)]
@@ -540,6 +746,7 @@ LL | #[expect]
    |   expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[expect(lint1)]
@@ -558,6 +765,7 @@ LL | #[warn]
    |   expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[warn(lint1)]
@@ -576,6 +784,7 @@ LL | #[deny]
    |   expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[deny(lint1)]
@@ -594,6 +803,7 @@ LL | #[forbid]
    |   expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[forbid(lint1)]
@@ -622,6 +832,8 @@ LL | #[automatically_derived = 18]
    | |                       |
    | |                       didn't expect any arguments here
    | help: must be of the form: `#[automatically_derived]`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0565]: malformed `non_exhaustive` attribute input
   --> $DIR/malformed-attrs.rs:200:1
@@ -855,7 +1067,7 @@ LL |     #[coroutine = 63] || {}
    = note: expected unit type `()`
               found coroutine `{coroutine@$DIR/malformed-attrs.rs:115:23: 115:25}`
 
-error: aborting due to 75 previous errors; 8 warnings emitted
+error: aborting due to 87 previous errors; 8 warnings emitted
 
 Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.

@@ -17,6 +17,18 @@ LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:76:1
+   |
+LL | #[automatically_derived]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:75:1
+   |
+LL | #[automatically_derived]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:37:1
    |
 LL | #[no_link]
@@ -126,6 +138,7 @@ note: attribute also specified here
    |
 LL | #[automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:80:1
@@ -316,5 +329,5 @@ note: attribute also specified here
 LL | #![no_builtins]
    | ^^^^^^^^^^^^^^^
 
-error: aborting due to 25 previous errors
+error: aborting due to 26 previous errors
 

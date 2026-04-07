@@ -441,6 +441,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
         &mut self,
         attrs: &[ast::Attribute],
         node_id: NodeId,
+        target: Target,
         target_span: Span,
     ) -> BuilderPush {
         let prev = self.provider.cur;
@@ -451,7 +452,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
                 self.sess,
                 attrs,
                 ALLOW_LISTED_ATTRS,
-                Target::Fn,
+                target,
                 target_span,
                 node_id,
                 Some(self.features),

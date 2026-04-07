@@ -1,3 +1,24 @@
+error[E0539]: malformed `deny` attribute input
+  --> $DIR/deduplicate-diagnostics.rs:10:1
+   |
+LL | #[deny("literal")]
+   | ^^^^^^^---------^^
+   |        |
+   |        expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[deny("literal")]
+LL + #[deny(lint1)]
+   |
+LL - #[deny("literal")]
+LL + #[deny(lint1, lint2, ...)]
+   |
+LL - #[deny("literal")]
+LL + #[deny(lint1, lint2, lint3, reason = "...")]
+   |
+
 error: cannot find derive macro `Unresolved` in this scope
   --> $DIR/deduplicate-diagnostics.rs:6:10
    |
@@ -21,6 +42,7 @@ LL | #[deny("literal")]
    |        expected a valid identifier here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[deny("literal")]
@@ -33,6 +55,28 @@ LL - #[deny("literal")]
 LL + #[deny(lint1, lint2, lint3, reason = "...")]
    |
 
-error: aborting due to 3 previous errors
+error[E0539]: malformed `deny` attribute input
+  --> $DIR/deduplicate-diagnostics.rs:10:1
+   |
+LL | #[deny("literal")]
+   | ^^^^^^^---------^^
+   |        |
+   |        expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[deny("literal")]
+LL + #[deny(lint1)]
+   |
+LL - #[deny("literal")]
+LL + #[deny(lint1, lint2, ...)]
+   |
+LL - #[deny("literal")]
+LL + #[deny(lint1, lint2, lint3, reason = "...")]
+   |
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0539`.

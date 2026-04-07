@@ -6,6 +6,14 @@ LL | #![deny(temporary_cstring_as_ptr)]
    |
    = note: `#[warn(renamed_and_removed_lints)]` on by default
 
+warning: lint `temporary_cstring_as_ptr` has been renamed to `dangling_pointers_from_temporaries`
+  --> $DIR/cstring-as-ptr.rs:2:9
+   |
+LL | #![deny(temporary_cstring_as_ptr)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `dangling_pointers_from_temporaries`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: this creates a dangling pointer because temporary `CString` is dropped at end of statement
   --> $DIR/cstring-as-ptr.rs:15:48
    |
@@ -41,5 +49,5 @@ LL |     mymacro!();
    = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
    = note: this error originates in the macro `mymacro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors; 2 warnings emitted
 

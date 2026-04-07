@@ -22,5 +22,57 @@ LL - #[allow [ foo_lint ] ]
 LL + #[allow ( foo_lint ) ]
    |
 
-error: aborting due to 2 previous errors
+error: wrong meta list delimiters
+  --> $DIR/malformed-meta-delim.rs:3:9
+   |
+LL | #[allow { foo_lint } ]
+   |         ^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: the delimiters should be `(` and `)`
+   |
+LL - #[allow { foo_lint } ]
+LL + #[allow ( foo_lint ) ]
+   |
+
+error: wrong meta list delimiters
+  --> $DIR/malformed-meta-delim.rs:8:9
+   |
+LL | #[allow [ foo_lint ] ]
+   |         ^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: the delimiters should be `(` and `)`
+   |
+LL - #[allow [ foo_lint ] ]
+LL + #[allow ( foo_lint ) ]
+   |
+
+error: wrong meta list delimiters
+  --> $DIR/malformed-meta-delim.rs:3:9
+   |
+LL | #[allow { foo_lint } ]
+   |         ^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: the delimiters should be `(` and `)`
+   |
+LL - #[allow { foo_lint } ]
+LL + #[allow ( foo_lint ) ]
+   |
+
+error: wrong meta list delimiters
+  --> $DIR/malformed-meta-delim.rs:8:9
+   |
+LL | #[allow [ foo_lint ] ]
+   |         ^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: the delimiters should be `(` and `)`
+   |
+LL - #[allow [ foo_lint ] ]
+LL + #[allow ( foo_lint ) ]
+   |
+
+error: aborting due to 6 previous errors
 

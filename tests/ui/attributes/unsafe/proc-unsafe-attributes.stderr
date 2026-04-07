@@ -1,3 +1,19 @@
+error: `allow` is not an unsafe attribute
+  --> $DIR/proc-unsafe-attributes.rs:23:3
+   |
+LL | #[unsafe(allow(dead_code))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `allow` is not an unsafe attribute
+  --> $DIR/proc-unsafe-attributes.rs:27:3
+   |
+LL | #[unsafe(allow(unsafe(dead_code)))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
 error: expected identifier, found keyword `unsafe`
   --> $DIR/proc-unsafe-attributes.rs:27:16
    |
@@ -8,6 +24,27 @@ help: escape `unsafe` to use it as an identifier
    |
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
+
+error[E0565]: malformed `allow` attribute input
+  --> $DIR/proc-unsafe-attributes.rs:27:1
+   |
+LL | #[unsafe(allow(unsafe(dead_code)))]
+   | ^^^^^^^^^^^^^^^^^^^^^-----------^^^
+   |                      |
+   |                      didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[unsafe(allow(unsafe(dead_code)))]
+LL + #[allow(lint1)]
+   |
+LL - #[unsafe(allow(unsafe(dead_code)))]
+LL + #[allow(lint1, lint2, ...)]
+   |
+LL - #[unsafe(allow(unsafe(dead_code)))]
+LL + #[allow(lint1, lint2, lint3, reason = "...")]
+   |
 
 error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
   --> $DIR/proc-unsafe-attributes.rs:1:1
@@ -33,6 +70,24 @@ error: the `#[proc_macro_attribute]` attribute is only usable with crates of the
 LL | #[unsafe(proc_macro_attribute)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: `allow` is not an unsafe attribute
+  --> $DIR/proc-unsafe-attributes.rs:23:3
+   |
+LL | #[unsafe(allow(dead_code))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `allow` is not an unsafe attribute
+  --> $DIR/proc-unsafe-attributes.rs:27:3
+   |
+LL | #[unsafe(allow(unsafe(dead_code)))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: expected identifier, found keyword `unsafe`
   --> $DIR/proc-unsafe-attributes.rs:27:16
    |
@@ -44,6 +99,28 @@ help: escape `unsafe` to use it as an identifier
    |
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
+
+error[E0565]: malformed `allow` attribute input
+  --> $DIR/proc-unsafe-attributes.rs:27:1
+   |
+LL | #[unsafe(allow(unsafe(dead_code)))]
+   | ^^^^^^^^^^^^^^^^^^^^^-----------^^^
+   |                      |
+   |                      didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[unsafe(allow(unsafe(dead_code)))]
+LL + #[allow(lint1)]
+   |
+LL - #[unsafe(allow(unsafe(dead_code)))]
+LL + #[allow(lint1, lint2, ...)]
+   |
+LL - #[unsafe(allow(unsafe(dead_code)))]
+LL + #[allow(lint1, lint2, lint3, reason = "...")]
+   |
 
 error: `proc_macro` is not an unsafe attribute
   --> $DIR/proc-unsafe-attributes.rs:1:3
@@ -105,6 +182,7 @@ LL | #[unsafe(allow(dead_code))]
    |   ^^^^^^ this is not an unsafe attribute
    |
    = note: extraneous unsafe is not allowed in attributes
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `allow` is not an unsafe attribute
   --> $DIR/proc-unsafe-attributes.rs:27:3
@@ -113,6 +191,7 @@ LL | #[unsafe(allow(unsafe(dead_code)))]
    |   ^^^^^^ this is not an unsafe attribute
    |
    = note: extraneous unsafe is not allowed in attributes
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: expected identifier, found keyword `unsafe`
   --> $DIR/proc-unsafe-attributes.rs:27:16
@@ -135,6 +214,7 @@ LL | #[unsafe(allow(unsafe(dead_code)))]
    |                      didn't expect any arguments here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[unsafe(allow(unsafe(dead_code)))]
@@ -147,6 +227,6 @@ LL - #[unsafe(allow(unsafe(dead_code)))]
 LL + #[allow(lint1, lint2, lint3, reason = "...")]
    |
 
-error: aborting due to 15 previous errors
+error: aborting due to 21 previous errors
 
 For more information about this error, try `rustc --explain E0565`.
