@@ -150,7 +150,10 @@ Such a try build will not execute any tests, and it will allow compilation warni
 It is useful when you want to
 get an optimized toolchain as fast as possible, for a Crater run or performance benchmarks,
 even if it might not be working fully correctly.
-If you want to do a full build for the default try job,
+
+The CI job executed in fast try builds has a special suffix (`-quick`),
+to distinguish it from a full build of the default try job.
+If you want to do the full build instead,
 specify its job name in a job pattern (explained below).
 
 If you want to run custom CI jobs in a try build and make sure that they pass all tests and do
