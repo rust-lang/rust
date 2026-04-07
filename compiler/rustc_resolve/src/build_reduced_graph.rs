@@ -1401,18 +1401,13 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         self.parent_scope.macro_rules = orig_current_macro_rules_scope;
     }
 
-    pub(crate) fn brg_visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
-        let (ident, ns) = match item.kind {
-            AssocItemKind::Const(box ConstItem { ident, .. })
-            | AssocItemKind::Fn(box Fn { ident, .. })
-            | AssocItemKind::Delegation(box Delegation { ident, .. }) => (ident, ValueNS),
-
-            AssocItemKind::Type(box TyAlias { ident, .. }) => (ident, TypeNS),
-
-            AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => {
-                span_bug!(item.span, "{item:#?} should already have been removed")
-            }
-        };
+    pub(crate) fn brg_visit_assoc_item(
+        &mut self,
+        item: &'a AssocItem,
+        ctxt: AssocCtxt,
+        ident: Ident,
+        ns: Namespace,
+    ) {
         let vis = self.resolve_visibility(&item.vis);
         let feed = self.r.feed(item.id);
         let local_def_id = feed.key();

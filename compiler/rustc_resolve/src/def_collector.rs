@@ -6,6 +6,7 @@ use rustc_attr_parsing::{AttributeParser, Early, OmitDoc, ShouldEmit};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::Target;
+use rustc_hir::def::Namespace::{TypeNS, ValueNS};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
@@ -365,16 +366,19 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
-        let (ident, def_kind) = match &i.kind {
+        let (ident, def_kind, ns) = match &i.kind {
             AssocItemKind::Fn(box Fn { ident, .. })
-            | AssocItemKind::Delegation(box Delegation { ident, .. }) => (*ident, DefKind::AssocFn),
+            | AssocItemKind::Delegation(box Delegation { ident, .. }) => {
+                (*ident, DefKind::AssocFn, ValueNS)
+            }
             AssocItemKind::Const(box ConstItem { ident, rhs_kind, .. }) => (
                 *ident,
                 DefKind::AssocConst {
                     is_type_const: matches!(rhs_kind, ConstItemRhsKind::TypeConst { .. }),
                 },
+                ValueNS,
             ),
-            AssocItemKind::Type(box TyAlias { ident, .. }) => (*ident, DefKind::AssocTy),
+            AssocItemKind::Type(box TyAlias { ident, .. }) => (*ident, DefKind::AssocTy, TypeNS),
             AssocItemKind::MacCall(..) => {
                 self.visit_macro_invoc(i.id);
                 self.visit_assoc_item_mac_call(i, ctxt);
@@ -386,7 +390,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         };
 
         let def = self.create_def(i.id, Some(ident.name), def_kind, i.span);
-        self.with_parent(def, |this| this.brg_visit_assoc_item(i, ctxt));
+        self.with_parent(def, |this| this.brg_visit_assoc_item(i, ctxt, ident, ns));
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
