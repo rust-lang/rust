@@ -144,8 +144,12 @@ pub mod partial_availability {
     libm_intrinsics! {
         fn acos(x: f64) -> f64;
         fn acosf(n: f32) -> f32;
+        fn acosh(x: f64) -> f64;
+        fn acoshf(x: f32) -> f32;
         fn asin(x: f64) -> f64;
         fn asinf(n: f32) -> f32;
+        fn asinh(x: f64) -> f64;
+        fn asinhf(x: f32) -> f32;
         fn atan(x: f64) -> f64;
         fn atan2(x: f64, y: f64) -> f64;
         fn atan2f(a: f32, b: f32) -> f32;
