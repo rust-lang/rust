@@ -124,8 +124,8 @@
                 ],
                 "license": {
                   "copyright": [
-                    "2014 Mozilla Foundation",
-                    "2014 Telefonica S.A"
+                    "2014, Mozilla Foundation",
+                    "2014, Telefonica S.A"
                   ],
                   "spdx": "OFL-1.1"
                 },
@@ -148,7 +148,7 @@
             ],
             "license": {
               "copyright": [
-                "2010, 2012, 2014-2023 Adobe Systems Incorporated"
+                "2010, 2012, 2014-2023, Adobe Systems Incorporated"
               ],
               "spdx": "OFL-1.1"
             },
