@@ -278,7 +278,7 @@ macro_rules! gated {
 }
 
 macro_rules! rustc_attr {
-    (TEST, $attr:ident, $(,)?) => {
+    (TEST, $attr:ident $(,)?) => {
         rustc_attr!(    $attr,
             concat!(
                 "the `#[",
@@ -287,7 +287,7 @@ macro_rules! rustc_attr {
             ),
         )
     };
-    ($attr:ident, $($notes:expr),* $(,)?) => {
+    ($attr:ident $(, $notes:expr)* $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
             safety: AttributeSafety::Normal,
@@ -326,98 +326,100 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     // Conditional compilation:
-    ungated!(cfg,),
-    ungated!(cfg_attr,),
+    ungated!(cfg),
+    ungated!(cfg_attr),
 
     // Testing:
-    ungated!(ignore,),
-    ungated!(should_panic,),
+    ungated!(ignore),
+    ungated!(should_panic),
 
     // Macros:
-    ungated!(automatically_derived,),
-    ungated!(macro_use,),
-    ungated!(macro_escape,), // Deprecated synonym for `macro_use`.
-    ungated!(macro_export,),
-    ungated!(proc_macro,),
-    ungated!(proc_macro_derive,),
-    ungated!(proc_macro_attribute,),
+    ungated!(automatically_derived),
+    ungated!(macro_use),
+    ungated!(macro_escape), // Deprecated synonym for `macro_use`.
+    ungated!(macro_export),
+    ungated!(proc_macro),
+    ungated!(proc_macro_derive),
+    ungated!(proc_macro_attribute),
 
     // Lints:
-    ungated!(warn,),
-    ungated!(allow,),
-    ungated!(expect,),
-    ungated!(forbid,),
-    ungated!(deny,),
-    ungated!(must_use,),
+    ungated!(warn),
+    ungated!(allow),
+    ungated!(expect),
+    ungated!(forbid),
+    ungated!(deny),
+    ungated!(must_use),
     gated!(must_not_suspend, experimental!(must_not_suspend)),
-    ungated!(deprecated,),
+    ungated!(deprecated),
 
     // Crate properties:
-    ungated!(crate_name,),
-    ungated!(crate_type,),
+    ungated!(crate_name),
+    ungated!(crate_type),
 
     // ABI, linking, symbols, and FFI
-    ungated!(link,),
-    ungated!(link_name,),
-    ungated!(no_link,),
-    ungated!(repr,),
+    ungated!(link),
+    ungated!(link_name),
+    ungated!(no_link),
+    ungated!(repr),
     // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     gated!(rustc_align,fn_align, experimental!(rustc_align)),
     gated!(rustc_align_static,static_align, experimental!(rustc_align_static)),
-    ungated!(unsafe(Edition2024) export_name,),
-    ungated!(unsafe(Edition2024) link_section,),
-    ungated!(unsafe(Edition2024) no_mangle,),
-    ungated!(used,),
-    ungated!(link_ordinal,),
-    ungated!(unsafe naked,),
+    ungated!(unsafe(Edition2024) export_name),
+    ungated!(unsafe(Edition2024) link_section),
+    ungated!(unsafe(Edition2024) no_mangle),
+    ungated!(used),
+    ungated!(link_ordinal),
+    ungated!(unsafe naked),
     // See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
     rustc_attr!(rustc_pass_indirectly_in_non_rustic_abis, "types marked with `#[rustc_pass_indirectly_in_non_rustic_abis]` are always passed indirectly by non-Rustic ABIs"),
 
     // Limits:
-    ungated!(recursion_limit,),
-    ungated!(type_length_limit,),
+    ungated!(recursion_limit),
+    ungated!(type_length_limit),
     gated!(
         move_size_limit, large_assignments, experimental!(move_size_limit)
     ),
 
     // Entry point:
-    ungated!(no_main,),
+    ungated!(no_main),
 
     // Modules, prelude, and resolution:
-    ungated!(path,),
-    ungated!(no_std,),
-    ungated!(no_implicit_prelude,),
-    ungated!(non_exhaustive,),
+    ungated!(path),
+    ungated!(no_std),
+    ungated!(no_implicit_prelude),
+    ungated!(non_exhaustive),
 
     // Runtime
-    ungated!(windows_subsystem,),
+    ungated!(windows_subsystem),
     ungated!(// RFC 2070
-        panic_handler,),
+        panic_handler
+    ),
 
     // Code generation:
-    ungated!(inline,),
-    ungated!(cold,),
-    ungated!(no_builtins,),
-    ungated!(target_feature,),
-    ungated!(track_caller,),
-    ungated!(instruction_set,),
+    ungated!(inline),
+    ungated!(cold),
+    ungated!(no_builtins),
+    ungated!(target_feature),
+    ungated!(track_caller),
+    ungated!(instruction_set),
     gated!(
         unsafe force_target_feature,
         effective_target_features, experimental!(force_target_feature)
     ),
     gated!(
         sanitize,
-         sanitize, experimental!(sanitize),),
+        sanitize, experimental!(sanitize)
+    ),
     gated!(
         coverage,
         coverage_attribute, experimental!(coverage)
     ),
 
-    ungated!(doc,),
+    ungated!(doc),
 
     // Debugging
-    ungated!(debugger_visualizer,),
-    ungated!(collapse_debuginfo,),
+    ungated!(debugger_visualizer),
+    ungated!(collapse_debuginfo),
 
     // ==========================================================================
     // Unstable attributes:
@@ -431,18 +433,21 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Testing:
     gated!(
         test_runner, custom_test_frameworks,
-        "custom test frameworks are an unstable feature",),
+        "custom test frameworks are an unstable feature"
+    ),
 
     gated!(
         reexport_test_harness_main, custom_test_frameworks,
-        "custom test frameworks are an unstable feature",),
+        "custom test frameworks are an unstable feature"
+    ),
 
     // RFC #1268
     gated!(
         marker,marker_trait_attr, experimental!(marker)
     ),
     gated!(
-        thread_local,"`#[thread_local]` is an experimental feature, and does not currently handle destructors",),
+        thread_local,"`#[thread_local]` is an experimental feature, and does not currently handle destructors"
+    ),
     gated!(
         no_core, experimental!(no_core)
     ),
@@ -459,7 +464,8 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         unsafe ffi_const, experimental!(ffi_const)
     ),
     gated!(
-        register_tool, experimental!(register_tool),),
+        register_tool, experimental!(register_tool)
+    ),
     // `#[cfi_encoding = ""]`
     gated!(
         cfi_encoding,
@@ -501,14 +507,14 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
 
-    ungated!(feature,),
+    ungated!(feature),
     // DuplicatesOk since it has its own validation
-    ungated!(stable,),
-    ungated!(unstable,),
-    ungated!(unstable_feature_bound,),
-    ungated!(rustc_const_unstable,),
-    ungated!(rustc_const_stable,),
-    ungated!(rustc_default_body_unstable,),
+    ungated!(stable),
+    ungated!(unstable),
+    ungated!(unstable_feature_bound),
+    ungated!(rustc_const_unstable),
+    ungated!(rustc_const_stable),
+    ungated!(rustc_default_body_unstable),
     gated!(
         allow_internal_unstable,
         "allow_internal_unstable side-steps feature gating and stability checks",
@@ -538,7 +544,8 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(fundamental, experimental!(fundamental)),
     gated!(
         may_dangle, dropck_eyepatch,
-        "`may_dangle` has unstable semantics and may be removed in the future",),
+        "`may_dangle` has unstable semantics and may be removed in the future"
+    ),
 
     rustc_attr!(rustc_never_type_options,
         "`rustc_never_type_options` is used to experiment with never type fallback and work on \
@@ -549,12 +556,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes: Runtime related:
     // ==========================================================================
 
-    rustc_attr!(rustc_allocator,),
-    rustc_attr!(rustc_nounwind,),
-    rustc_attr!(rustc_reallocator,),
-    rustc_attr!(rustc_deallocator,),
-    rustc_attr!(rustc_allocator_zeroed,),
-    rustc_attr!(rustc_allocator_zeroed_variant,),
+    rustc_attr!(rustc_allocator),
+    rustc_attr!(rustc_nounwind),
+    rustc_attr!(rustc_reallocator),
+    rustc_attr!(rustc_deallocator),
+    rustc_attr!(rustc_allocator_zeroed),
+    rustc_attr!(rustc_allocator_zeroed_variant),
     gated!(
         default_lib_allocator, allocator_internals, experimental!(default_lib_allocator),
     ),
@@ -570,11 +577,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(
         compiler_builtins,
         "the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate \
-        which contains compiler-rt intrinsics and will never be stable",),
+        which contains compiler-rt intrinsics and will never be stable"
+    ),
     gated!(
         profiler_runtime,
         "the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate \
-        which contains the profiler runtime and will never be stable",),
+        which contains the profiler runtime and will never be stable"
+    ),
 
     // ==========================================================================
     // Internal attributes, Linkage:
@@ -582,21 +591,23 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     gated!(
         linkage,
-        "the `linkage` attribute is experimental and not portable across platforms",),
-    rustc_attr!(rustc_std_internal_symbol,),
-    rustc_attr!(rustc_objc_class,),
-    rustc_attr!(rustc_objc_selector,),
+        "the `linkage` attribute is experimental and not portable across platforms"
+    ),
+    rustc_attr!(rustc_std_internal_symbol),
+    rustc_attr!(rustc_objc_class),
+    rustc_attr!(rustc_objc_selector),
 
     // ==========================================================================
     // Internal attributes, Macro related:
     // ==========================================================================
 
-    rustc_attr!(rustc_builtin_macro,),
-    rustc_attr!(rustc_proc_macro_decls,),
+    rustc_attr!(rustc_builtin_macro),
+    rustc_attr!(rustc_proc_macro_decls),
     rustc_attr!(rustc_macro_transparency,
-        "used internally for testing macro hygiene",),
-    rustc_attr!(rustc_autodiff,),
-    rustc_attr!(rustc_offload_kernel,),
+        "used internally for testing macro hygiene"
+    ),
+    rustc_attr!(rustc_autodiff),
+    rustc_attr!(rustc_offload_kernel),
     // Traces that are left when `cfg` and `cfg_attr` attributes are expanded.
     // The attributes are not gated, to avoid stability errors, but they cannot be used in stable
     // or unstable code directly because `sym::cfg_(attr_)trace` are not valid identifiers, they
@@ -612,37 +623,37 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(rustc_on_unimplemented,"see `#[diagnostic::on_unimplemented]` for the stable equivalent of this attribute"
     ),
-    rustc_attr!(rustc_confusables,),
+    rustc_attr!(rustc_confusables),
     // Enumerates "identity-like" conversion methods to suggest on type mismatch.
-    rustc_attr!(rustc_conversion_suggestion,),
+    rustc_attr!(rustc_conversion_suggestion),
     // Prevents field reads in the marked trait or method to be considered
     // during dead code analysis.
-    rustc_attr!(rustc_trivial_field_reads,),
+    rustc_attr!(rustc_trivial_field_reads),
     // Used by the `rustc::potential_query_instability` lint to warn methods which
     // might not be stable during incremental compilation.
-    rustc_attr!(rustc_lint_query_instability,),
+    rustc_attr!(rustc_lint_query_instability),
     // Used by the `rustc::untracked_query_information` lint to warn methods which
     // might not be stable during incremental compilation.
-    rustc_attr!(rustc_lint_untracked_query_information,),
+    rustc_attr!(rustc_lint_untracked_query_information),
     // Used by the `rustc::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
     // types (as well as any others in future).
-    rustc_attr!(rustc_lint_opt_ty,),
+    rustc_attr!(rustc_lint_opt_ty),
     // Used by the `rustc::bad_opt_access` lint on fields
     // types (as well as any others in future).
-    rustc_attr!(rustc_lint_opt_deny_field_access,),
+    rustc_attr!(rustc_lint_opt_deny_field_access),
 
     // ==========================================================================
     // Internal attributes, Const related:
     // ==========================================================================
 
-    rustc_attr!(rustc_promotable,),
-    rustc_attr!(rustc_legacy_const_generics,),
+    rustc_attr!(rustc_promotable),
+    rustc_attr!(rustc_legacy_const_generics),
     // Do not const-check this function's body. It will always get replaced during CTFE via `hook_special_const_fn`.
-    rustc_attr!(rustc_do_not_const_check, "`#[rustc_do_not_const_check]` skips const-check for this function's body",),
+    rustc_attr!(rustc_do_not_const_check, "`#[rustc_do_not_const_check]` skips const-check for this function's body"),
     rustc_attr!(rustc_const_stable_indirect,
-        "this is an internal implementation detail",),
+        "this is an internal implementation detail"),
     rustc_attr!(rustc_intrinsic_const_stable_indirect,
-          "this is an internal implementation detail",),
+          "this is an internal implementation detail"),
     rustc_attr!(rustc_allow_const_fn_unstable,
                 "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
     ),
@@ -652,40 +663,33 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     rustc_attr!(rustc_layout_scalar_valid_range_start, "the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable \
-        niche optimizations in the standard library",),
+        niche optimizations in the standard library"),
     rustc_attr!(rustc_layout_scalar_valid_range_end, "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
-        niche optimizations in the standard library",),
+        niche optimizations in the standard library"),
     rustc_attr!(rustc_simd_monomorphize_lane_limit, "the `#[rustc_simd_monomorphize_lane_limit]` attribute is just used by std::simd \
-        for better error messages",),
+        for better error messages"),
     rustc_attr!(rustc_nonnull_optimization_guaranteed,
         "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document \
         guaranteed niche optimizations in the standard library",
         "the compiler does not even check whether the type indeed is being non-null-optimized; \
-        it is your responsibility to ensure that the attribute is only used on types that are optimized",),
+        it is your responsibility to ensure that the attribute is only used on types that are optimized"),
 
     // ==========================================================================
     // Internal attributes, Misc:
     // ==========================================================================
     gated!(
         lang,lang_items,
-        "lang items are subject to change",),
-    rustc_attr!(rustc_as_ptr, "`#[rustc_as_ptr]` is used to mark functions returning pointers to their inner allocations"
+        "lang items are subject to change"
     ),
-    rustc_attr!(rustc_should_not_be_called_on_const_items, "`#[rustc_should_not_be_called_on_const_items]` is used to mark methods that don't make sense to be called on interior mutable consts"
-    ),
-    rustc_attr!(rustc_pass_by_value, "`#[rustc_pass_by_value]` is used to mark types that must be passed by value instead of reference"
-    ),
-    rustc_attr!(rustc_never_returns_null_ptr, "`#[rustc_never_returns_null_ptr]` is used to mark functions returning non-null pointers"
-    ),
-    rustc_attr!(rustc_no_implicit_autorefs, "`#[rustc_no_implicit_autorefs]` is used to mark functions for which an autoref to the dereference of a raw pointer should not be used as an argument"
-    ),
-    rustc_attr!(rustc_coherence_is_core, "`#![rustc_coherence_is_core]` allows inherent methods on builtin types, only intended to be used in `core`"
-    ),
-    rustc_attr!(rustc_coinductive, "`#[rustc_coinductive]` changes a trait to be coinductive, allowing cycles in the trait solver"
-    ),
-    rustc_attr!(rustc_allow_incoherent_impl, "`#[rustc_allow_incoherent_impl]` has to be added to all impl items of an incoherent inherent impl"
-    ),
-    rustc_attr!(rustc_preserve_ub_checks, "`#![rustc_preserve_ub_checks]` prevents the designated crate from evaluating whether UB checks are enabled when optimizing MIR",),
+    rustc_attr!(rustc_as_ptr, "`#[rustc_as_ptr]` is used to mark functions returning pointers to their inner allocations"),
+    rustc_attr!(rustc_should_not_be_called_on_const_items, "`#[rustc_should_not_be_called_on_const_items]` is used to mark methods that don't make sense to be called on interior mutable consts"),
+    rustc_attr!(rustc_pass_by_value, "`#[rustc_pass_by_value]` is used to mark types that must be passed by value instead of reference"),
+    rustc_attr!(rustc_never_returns_null_ptr, "`#[rustc_never_returns_null_ptr]` is used to mark functions returning non-null pointers"),
+    rustc_attr!(rustc_no_implicit_autorefs, "`#[rustc_no_implicit_autorefs]` is used to mark functions for which an autoref to the dereference of a raw pointer should not be used as an argument"),
+    rustc_attr!(rustc_coherence_is_core, "`#![rustc_coherence_is_core]` allows inherent methods on builtin types, only intended to be used in `core`"),
+    rustc_attr!(rustc_coinductive, "`#[rustc_coinductive]` changes a trait to be coinductive, allowing cycles in the trait solver"),
+    rustc_attr!(rustc_allow_incoherent_impl, "`#[rustc_allow_incoherent_impl]` has to be added to all impl items of an incoherent inherent impl"),
+    rustc_attr!(rustc_preserve_ub_checks, "`#![rustc_preserve_ub_checks]` prevents the designated crate from evaluating whether UB checks are enabled when optimizing MIR"),
     rustc_attr!(rustc_deny_explicit_impl,
         "`#[rustc_deny_explicit_impl]` enforces that a trait can have no user-provided impls"
     ),
@@ -720,18 +724,19 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(rustc_inherit_overflow_checks,"the `#[rustc_inherit_overflow_checks]` attribute is just used to control \
         overflow checking behavior of several functions in the standard library that are inlined \
-        across crates",),
+        across crates"
+    ),
     rustc_attr!(rustc_reservation_impl,"the `#[rustc_reservation_impl]` attribute is internally used \
         for reserving `impl<T> From<!> for T` as part of the effort to stabilize `!`"
     ),
-    rustc_attr!(rustc_test_marker, "the `#[rustc_test_marker]` attribute is used internally to track tests",),
+    rustc_attr!(rustc_test_marker, "the `#[rustc_test_marker]` attribute is used internally to track tests"),
     rustc_attr!(rustc_unsafe_specialization_marker,
         "the `#[rustc_unsafe_specialization_marker]` attribute is used to check specializations"
     ),
     rustc_attr!(rustc_specialization_trait,
         "the `#[rustc_specialization_trait]` attribute is used to check specializations"
     ),
-    rustc_attr!(rustc_main,"the `#[rustc_main]` attribute is used internally to specify test entry point function",),
+    rustc_attr!(rustc_main,"the `#[rustc_main]` attribute is used internally to specify test entry point function"),
     rustc_attr!(rustc_skip_during_method_dispatch, "the `#[rustc_skip_during_method_dispatch]` attribute is used to exclude a trait \
         from method dispatch when the receiver is of the following type, for compatibility in \
         editions < 2021 (array) or editions < 2024 (boxed_slice)"
@@ -745,7 +750,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         rustc_intrinsic,intrinsics,
-        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items",),
+        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items"),
     rustc_attr!(rustc_no_mir_inline,"`#[rustc_no_mir_inline]` prevents the MIR inliner from inlining a function while not affecting codegen"
     ),
     rustc_attr!(rustc_force_inline,"`#[rustc_force_inline]` forces a free function to be inlined"),
@@ -755,38 +760,38 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Testing:
     // ==========================================================================
 
-    rustc_attr!(TEST, rustc_effective_visibility,),
-    rustc_attr!(TEST, rustc_dump_inferred_outlives,),
-    rustc_attr!(TEST, rustc_capture_analysis,),
-    rustc_attr!(TEST, rustc_insignificant_dtor,),
-    rustc_attr!(TEST, rustc_no_implicit_bounds,),
-    rustc_attr!(TEST, rustc_strict_coherence,),
-    rustc_attr!(TEST, rustc_dump_variances,),
-    rustc_attr!(TEST, rustc_dump_variances_of_opaques,),
-    rustc_attr!(TEST, rustc_hidden_type_of_opaques,),
-    rustc_attr!(TEST, rustc_layout,),
-    rustc_attr!(TEST, rustc_abi,),
-    rustc_attr!(TEST, rustc_regions,),
-    rustc_attr!(TEST, rustc_delayed_bug_from_inside_query,),
-    rustc_attr!(TEST, rustc_dump_user_args,),
-    rustc_attr!(TEST, rustc_evaluate_where_clauses,),
-    rustc_attr!(TEST, rustc_if_this_changed,),
-    rustc_attr!(TEST, rustc_then_this_would_need,),
-    rustc_attr!(TEST, rustc_clean,),
-    rustc_attr!(TEST, rustc_partition_reused,),
-    rustc_attr!(TEST, rustc_partition_codegened,),
-    rustc_attr!(TEST, rustc_expected_cgu_reuse,),
-    rustc_attr!(TEST, rustc_symbol_name,),
-    rustc_attr!(TEST, rustc_def_path,),
-    rustc_attr!(TEST, rustc_mir,),
-    gated!(custom_mir,"the `#[custom_mir]` attribute is just used for the Rust test suite",),
-    rustc_attr!(TEST, rustc_dump_item_bounds,),
-    rustc_attr!(TEST, rustc_dump_predicates,),
-    rustc_attr!(TEST, rustc_dump_def_parents,),
-    rustc_attr!(TEST, rustc_dump_object_lifetime_defaults,),
-    rustc_attr!(TEST, rustc_dump_vtable,),
-    rustc_attr!(TEST, rustc_dummy,),
-    rustc_attr!(TEST, pattern_complexity_limit,),
+    rustc_attr!(TEST, rustc_effective_visibility),
+    rustc_attr!(TEST, rustc_dump_inferred_outlives),
+    rustc_attr!(TEST, rustc_capture_analysis),
+    rustc_attr!(TEST, rustc_insignificant_dtor),
+    rustc_attr!(TEST, rustc_no_implicit_bounds),
+    rustc_attr!(TEST, rustc_strict_coherence),
+    rustc_attr!(TEST, rustc_dump_variances),
+    rustc_attr!(TEST, rustc_dump_variances_of_opaques),
+    rustc_attr!(TEST, rustc_hidden_type_of_opaques),
+    rustc_attr!(TEST, rustc_layout),
+    rustc_attr!(TEST, rustc_abi),
+    rustc_attr!(TEST, rustc_regions),
+    rustc_attr!(TEST, rustc_delayed_bug_from_inside_query),
+    rustc_attr!(TEST, rustc_dump_user_args),
+    rustc_attr!(TEST, rustc_evaluate_where_clauses),
+    rustc_attr!(TEST, rustc_if_this_changed),
+    rustc_attr!(TEST, rustc_then_this_would_need),
+    rustc_attr!(TEST, rustc_clean),
+    rustc_attr!(TEST, rustc_partition_reused),
+    rustc_attr!(TEST, rustc_partition_codegened),
+    rustc_attr!(TEST, rustc_expected_cgu_reuse),
+    rustc_attr!(TEST, rustc_symbol_name),
+    rustc_attr!(TEST, rustc_def_path),
+    rustc_attr!(TEST, rustc_mir),
+    gated!(custom_mir,"the `#[custom_mir]` attribute is just used for the Rust test suite"),
+    rustc_attr!(TEST, rustc_dump_item_bounds),
+    rustc_attr!(TEST, rustc_dump_predicates),
+    rustc_attr!(TEST, rustc_dump_def_parents),
+    rustc_attr!(TEST, rustc_dump_object_lifetime_defaults),
+    rustc_attr!(TEST, rustc_dump_vtable),
+    rustc_attr!(TEST, rustc_dummy),
+    rustc_attr!(TEST, pattern_complexity_limit),
 ];
 
 pub fn is_builtin_attr_name(name: Symbol) -> bool {
