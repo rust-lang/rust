@@ -89,13 +89,16 @@ fn f() {
         //[riscv32imafc]~^^ ERROR `d` target feature is not enabled
 
         // Clobber-only registers
-        // vreg
-        asm!("", out("v0") _); // ok
+        // vreg — also gated on a vector target feature (v or a Zve sub-extension)
+        asm!("", out("v0") _);
+        //~^ ERROR invalid register `v0`: register requires the `v` target feature or a Zve sub-extension
         asm!("", in("v0") x);
-        //~^ ERROR can only be used as a clobber
+        //~^ ERROR invalid register `v0`: register requires the `v` target feature or a Zve sub-extension
+        //~| ERROR can only be used as a clobber
         //~| ERROR type `i32` cannot be used with this register class
         asm!("", out("v0") x);
-        //~^ ERROR can only be used as a clobber
+        //~^ ERROR invalid register `v0`: register requires the `v` target feature or a Zve sub-extension
+        //~| ERROR can only be used as a clobber
         //~| ERROR type `i32` cannot be used with this register class
         asm!("/* {} */", in(vreg) x);
         //~^ ERROR can only be used as a clobber

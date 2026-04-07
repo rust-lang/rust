@@ -72,6 +72,39 @@ fn not_e(
     }
 }
 
+/// Returns `true` if any RISC-V vector extension is enabled.
+///
+/// The vector registers v0–v31 are only architecturally present when at least
+/// one of the standard V extension or a Zve sub-extension is enabled.  Using
+/// them as clobbers on a target that has none of these features would silently
+/// emit incorrect assembly, so they are gated here just like `freg` is gated
+/// on `+f`/`+d`.
+pub(crate) fn has_vector(target_features: &FxIndexSet<Symbol>) -> bool {
+    // The full V extension ("v") implies all Zve sub-extensions.
+    // Zve sub-extensions are the minimal vector profiles; the smallest is zve32x.
+    target_features.contains(&sym::character('v'))
+        || target_features.contains(&Symbol::intern("zve32x"))
+        || target_features.contains(&Symbol::intern("zve32f"))
+        || target_features.contains(&Symbol::intern("zve64x"))
+        || target_features.contains(&Symbol::intern("zve64f"))
+        || target_features.contains(&Symbol::intern("zve64d"))
+}
+
+fn require_vector(
+    _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
+    target_features: &FxIndexSet<Symbol>,
+    _target: &Target,
+    _is_clobber: bool,
+) -> Result<(), &'static str> {
+    if has_vector(target_features) {
+        Ok(())
+    } else {
+        Err("register requires the `v` target feature or a Zve sub-extension \
+             (zve32x, zve32f, zve64x, zve64f, or zve64d)")
+    }
+}
+
 def_regs! {
     RiscV RiscVInlineAsmReg RiscVInlineAsmRegClass {
         x1: reg = ["x1", "ra"],
@@ -132,38 +165,38 @@ def_regs! {
         f29: freg = ["f29", "ft9"],
         f30: freg = ["f30", "ft10"],
         f31: freg = ["f31", "ft11"],
-        v0: vreg = ["v0"],
-        v1: vreg = ["v1"],
-        v2: vreg = ["v2"],
-        v3: vreg = ["v3"],
-        v4: vreg = ["v4"],
-        v5: vreg = ["v5"],
-        v6: vreg = ["v6"],
-        v7: vreg = ["v7"],
-        v8: vreg = ["v8"],
-        v9: vreg = ["v9"],
-        v10: vreg = ["v10"],
-        v11: vreg = ["v11"],
-        v12: vreg = ["v12"],
-        v13: vreg = ["v13"],
-        v14: vreg = ["v14"],
-        v15: vreg = ["v15"],
-        v16: vreg = ["v16"],
-        v17: vreg = ["v17"],
-        v18: vreg = ["v18"],
-        v19: vreg = ["v19"],
-        v20: vreg = ["v20"],
-        v21: vreg = ["v21"],
-        v22: vreg = ["v22"],
-        v23: vreg = ["v23"],
-        v24: vreg = ["v24"],
-        v25: vreg = ["v25"],
-        v26: vreg = ["v26"],
-        v27: vreg = ["v27"],
-        v28: vreg = ["v28"],
-        v29: vreg = ["v29"],
-        v30: vreg = ["v30"],
-        v31: vreg = ["v31"],
+        v0: vreg = ["v0"] % require_vector,
+        v1: vreg = ["v1"] % require_vector,
+        v2: vreg = ["v2"] % require_vector,
+        v3: vreg = ["v3"] % require_vector,
+        v4: vreg = ["v4"] % require_vector,
+        v5: vreg = ["v5"] % require_vector,
+        v6: vreg = ["v6"] % require_vector,
+        v7: vreg = ["v7"] % require_vector,
+        v8: vreg = ["v8"] % require_vector,
+        v9: vreg = ["v9"] % require_vector,
+        v10: vreg = ["v10"] % require_vector,
+        v11: vreg = ["v11"] % require_vector,
+        v12: vreg = ["v12"] % require_vector,
+        v13: vreg = ["v13"] % require_vector,
+        v14: vreg = ["v14"] % require_vector,
+        v15: vreg = ["v15"] % require_vector,
+        v16: vreg = ["v16"] % require_vector,
+        v17: vreg = ["v17"] % require_vector,
+        v18: vreg = ["v18"] % require_vector,
+        v19: vreg = ["v19"] % require_vector,
+        v20: vreg = ["v20"] % require_vector,
+        v21: vreg = ["v21"] % require_vector,
+        v22: vreg = ["v22"] % require_vector,
+        v23: vreg = ["v23"] % require_vector,
+        v24: vreg = ["v24"] % require_vector,
+        v25: vreg = ["v25"] % require_vector,
+        v26: vreg = ["v26"] % require_vector,
+        v27: vreg = ["v27"] % require_vector,
+        v28: vreg = ["v28"] % require_vector,
+        v29: vreg = ["v29"] % require_vector,
+        v30: vreg = ["v30"] % require_vector,
+        v31: vreg = ["v31"] % require_vector,
         #error = ["x9", "s1"] =>
             "s1 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["x8", "s0", "fp"] =>
