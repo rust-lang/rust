@@ -24,6 +24,7 @@ use smallvec::SmallVec;
 use super::*;
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::query::{IntoQueryKey, Providers};
+use crate::ty::region::{RegionExt, RegionUtilitiesExt};
 use crate::ty::{
     ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitPredicate,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,

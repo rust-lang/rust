@@ -21,6 +21,7 @@ use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarKind, CanonicalVarKinds};
 use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
 use crate::mono::MonoItem;
+use crate::ty::region::RegionExt;
 use crate::ty::{self, AdtDef, GenericArgsRef, Ty, TyCtxt};
 use crate::{mir, traits};
 

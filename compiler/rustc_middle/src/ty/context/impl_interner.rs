@@ -102,7 +102,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ValTree = ty::ValTree<'tcx>;
     type ScalarInt = ty::ScalarInt;
     type InternedRegionKind = Interned<'tcx, ty::RegionKind<'tcx>>;
-    type Region = Region<'tcx>;
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
 

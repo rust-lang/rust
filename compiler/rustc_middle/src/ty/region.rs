@@ -1,45 +1,20 @@
-use rustc_data_structures::intern::Interned;
 use rustc_errors::MultiSpan;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Symbol, kw, sym};
-use rustc_type_ir::RegionKind as IrRegionKind;
 pub use rustc_type_ir::RegionVid;
+use rustc_type_ir::{Region as IrRegion, RegionKind as IrRegionKind};
 use tracing::debug;
 
 use crate::ty::{self, BoundVar, TyCtxt, TypeFlags};
 
+pub type Region<'tcx> = IrRegion<TyCtxt<'tcx>>;
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 
-/// Use this rather than `RegionKind`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
-#[rustc_pass_by_value]
-pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
-
-impl<'tcx> rustc_type_ir::inherent::IntoKind for Region<'tcx> {
-    type Kind = RegionKind<'tcx>;
-
-    fn kind(self) -> RegionKind<'tcx> {
-        *self.0.0
-    }
-}
-
-impl<'tcx> rustc_type_ir::Flags for Region<'tcx> {
-    fn flags(&self) -> TypeFlags {
-        self.type_flags()
-    }
-
-    fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
-        match self.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) => debruijn.shifted_in(1),
-            _ => ty::INNERMOST,
-        }
-    }
-}
-
+#[extension(pub trait RegionExt<'tcx>)]
 impl<'tcx> Region<'tcx> {
     #[inline]
-    pub fn new_early_param(
+    fn new_early_param(
         tcx: TyCtxt<'tcx>,
         early_bound_region: ty::EarlyParamRegion,
     ) -> Region<'tcx> {
@@ -47,47 +22,13 @@ impl<'tcx> Region<'tcx> {
     }
 
     #[inline]
-    pub fn new_bound(
-        tcx: TyCtxt<'tcx>,
-        debruijn: ty::DebruijnIndex,
-        bound_region: ty::BoundRegion<'tcx>,
-    ) -> Region<'tcx> {
-        // Use a pre-interned one when possible.
-        if let ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon } = bound_region
-            && let Some(inner) = tcx.lifetimes.anon_re_bounds.get(debruijn.as_usize())
-            && let Some(re) = inner.get(var.as_usize()).copied()
-        {
-            re
-        } else {
-            tcx.intern_region(ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound_region))
-        }
-    }
-
-    #[inline]
-    pub fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: ty::BoundVar) -> Region<'tcx> {
-        // Use a pre-interned one when possible.
-        if let Some(re) = tcx.lifetimes.anon_re_canonical_bounds.get(var.as_usize()).copied() {
-            re
-        } else {
-            tcx.intern_region(ty::ReBound(
-                ty::BoundVarIndexKind::Canonical,
-                ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
-            ))
-        }
-    }
-
-    #[inline]
-    pub fn new_late_param(
-        tcx: TyCtxt<'tcx>,
-        scope: DefId,
-        kind: LateParamRegionKind,
-    ) -> Region<'tcx> {
+    fn new_late_param(tcx: TyCtxt<'tcx>, scope: DefId, kind: LateParamRegionKind) -> Region<'tcx> {
         let data = LateParamRegion { scope, kind };
         tcx.intern_region(ty::ReLateParam(data))
     }
 
     #[inline]
-    pub fn new_var(tcx: TyCtxt<'tcx>, v: ty::RegionVid) -> Region<'tcx> {
+    fn new_var(tcx: TyCtxt<'tcx>, v: ty::RegionVid) -> Region<'tcx> {
         // Use a pre-interned one when possible.
         tcx.lifetimes
             .re_vars
@@ -96,24 +37,16 @@ impl<'tcx> Region<'tcx> {
             .unwrap_or_else(|| tcx.intern_region(ty::ReVar(v)))
     }
 
-    #[inline]
-    pub fn new_placeholder(
-        tcx: TyCtxt<'tcx>,
-        placeholder: ty::PlaceholderRegion<'tcx>,
-    ) -> Region<'tcx> {
-        tcx.intern_region(ty::RePlaceholder(placeholder))
-    }
-
     /// Constructs a `RegionKind::ReError` region.
     #[track_caller]
-    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Region<'tcx> {
+    fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Region<'tcx> {
         tcx.intern_region(ty::ReError(guar))
     }
 
     /// Constructs a `RegionKind::ReError` region and registers a delayed bug to ensure it gets
     /// used.
     #[track_caller]
-    pub fn new_error_misc(tcx: TyCtxt<'tcx>) -> Region<'tcx> {
+    fn new_error_misc(tcx: TyCtxt<'tcx>) -> Region<'tcx> {
         Region::new_error_with_message(
             tcx,
             DUMMY_SP,
@@ -124,7 +57,7 @@ impl<'tcx> Region<'tcx> {
     /// Constructs a `RegionKind::ReError` region and registers a delayed bug with the given `msg`
     /// to ensure it gets used.
     #[track_caller]
-    pub fn new_error_with_message<S: Into<MultiSpan>>(
+    fn new_error_with_message<S: Into<MultiSpan>>(
         tcx: TyCtxt<'tcx>,
         span: S,
         msg: &'static str,
@@ -135,7 +68,7 @@ impl<'tcx> Region<'tcx> {
 
     /// Avoid this in favour of more specific `new_*` methods, where possible,
     /// to avoid the cost of the `match`.
-    pub fn new_from_kind(tcx: TyCtxt<'tcx>, kind: RegionKind<'tcx>) -> Region<'tcx> {
+    fn new_from_kind(tcx: TyCtxt<'tcx>, kind: RegionKind<'tcx>) -> Region<'tcx> {
         match kind {
             ty::ReEarlyParam(region) => Region::new_early_param(tcx, region),
             ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), region) => {
@@ -156,39 +89,14 @@ impl<'tcx> Region<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
-    fn new_bound(
-        interner: TyCtxt<'tcx>,
-        debruijn: ty::DebruijnIndex,
-        var: ty::BoundRegion<'tcx>,
-    ) -> Self {
-        Region::new_bound(interner, debruijn, var)
-    }
-
-    fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
-        Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon })
-    }
-
-    fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: rustc_type_ir::BoundVar) -> Self {
-        Region::new_canonical_bound(tcx, var)
-    }
-
-    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderRegion<'tcx>) -> Self {
-        Region::new_placeholder(tcx, placeholder)
-    }
-
-    fn new_static(tcx: TyCtxt<'tcx>) -> Self {
-        tcx.lifetimes.re_static
-    }
-}
-
 /// Region utilities
+#[extension(pub trait RegionUtilitiesExt<'tcx>)]
 impl<'tcx> Region<'tcx> {
-    pub fn kind(self) -> RegionKind<'tcx> {
+    fn kind(self) -> RegionKind<'tcx> {
         *self.0.0
     }
 
-    pub fn get_name(self, tcx: TyCtxt<'tcx>) -> Option<Symbol> {
+    fn get_name(self, tcx: TyCtxt<'tcx>) -> Option<Symbol> {
         match self.kind() {
             ty::ReEarlyParam(ebr) => ebr.is_named().then_some(ebr.name),
             ty::ReBound(_, br) => br.kind.get_name(tcx),
@@ -199,7 +107,7 @@ impl<'tcx> Region<'tcx> {
         }
     }
 
-    pub fn get_name_or_anon(self, tcx: TyCtxt<'tcx>) -> Symbol {
+    fn get_name_or_anon(self, tcx: TyCtxt<'tcx>) -> Symbol {
         match self.get_name(tcx) {
             Some(name) => name,
             None => sym::anon,
@@ -207,7 +115,7 @@ impl<'tcx> Region<'tcx> {
     }
 
     /// Is this region named by the user?
-    pub fn is_named(self, tcx: TyCtxt<'tcx>) -> bool {
+    fn is_named(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
             ty::ReEarlyParam(ebr) => ebr.is_named(),
             ty::ReBound(_, br) => br.kind.is_named(tcx),
@@ -221,39 +129,39 @@ impl<'tcx> Region<'tcx> {
     }
 
     #[inline]
-    pub fn is_error(self) -> bool {
+    fn is_error(self) -> bool {
         matches!(self.kind(), ty::ReError(_))
     }
 
     #[inline]
-    pub fn is_static(self) -> bool {
+    fn is_static(self) -> bool {
         matches!(self.kind(), ty::ReStatic)
     }
 
     #[inline]
-    pub fn is_erased(self) -> bool {
+    fn is_erased(self) -> bool {
         matches!(self.kind(), ty::ReErased)
     }
 
     #[inline]
-    pub fn is_bound(self) -> bool {
+    fn is_bound(self) -> bool {
         matches!(self.kind(), ty::ReBound(..))
     }
 
     #[inline]
-    pub fn is_placeholder(self) -> bool {
+    fn is_placeholder(self) -> bool {
         matches!(self.kind(), ty::RePlaceholder(..))
     }
 
     #[inline]
-    pub fn bound_at_or_above_binder(self, index: ty::DebruijnIndex) -> bool {
+    fn bound_at_or_above_binder(self, index: ty::DebruijnIndex) -> bool {
         match self.kind() {
             ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) => debruijn >= index,
             _ => false,
         }
     }
 
-    pub fn type_flags(self) -> TypeFlags {
+    fn type_flags(self) -> TypeFlags {
         let mut flags = TypeFlags::empty();
 
         match self.kind() {
@@ -301,14 +209,14 @@ impl<'tcx> Region<'tcx> {
     }
 
     /// True for free regions other than `'static`.
-    pub fn is_param(self) -> bool {
+    fn is_param(self) -> bool {
         matches!(self.kind(), ty::ReEarlyParam(_) | ty::ReLateParam(_))
     }
 
     /// True for free region in the current context.
     ///
     /// This is the case for `'static` and param regions.
-    pub fn is_free(self) -> bool {
+    fn is_free(self) -> bool {
         match self.kind() {
             ty::ReStatic | ty::ReEarlyParam(..) | ty::ReLateParam(..) => true,
             ty::ReVar(..)
@@ -319,11 +227,11 @@ impl<'tcx> Region<'tcx> {
         }
     }
 
-    pub fn is_var(self) -> bool {
+    fn is_var(self) -> bool {
         matches!(self.kind(), ty::ReVar(_))
     }
 
-    pub fn as_var(self) -> RegionVid {
+    fn as_var(self) -> RegionVid {
         match self.kind() {
             ty::ReVar(vid) => vid,
             _ => bug!("expected region {:?} to be of kind ReVar", self),
@@ -332,7 +240,7 @@ impl<'tcx> Region<'tcx> {
 
     /// Given some item `binding_item`, check if this region is a generic parameter introduced by it
     /// or one of the parent generics. Returns the `DefId` of the parameter definition if so.
-    pub fn opt_param_def_id(self, tcx: TyCtxt<'tcx>, binding_item: DefId) -> Option<DefId> {
+    fn opt_param_def_id(self, tcx: TyCtxt<'tcx>, binding_item: DefId) -> Option<DefId> {
         match self.kind() {
             ty::ReEarlyParam(ebr) => {
                 Some(tcx.generics_of(binding_item).region_param(ebr, tcx).def_id)

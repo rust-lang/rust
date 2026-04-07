@@ -4,6 +4,7 @@ use rustc_span::def_id::DefId;
 use tracing::{debug, instrument, trace};
 
 use crate::error::ConstNotUsedTraitAlias;
+use crate::ty::region::RegionExt;
 use crate::ty::{
     self, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
 };
