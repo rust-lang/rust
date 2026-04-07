@@ -215,15 +215,40 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
                     *node = node.clone_for_update();
                 }
             }
+            Change::Insert(_, SyntaxElement::Token(token))
+            | Change::Replace(_, Some(SyntaxElement::Token(token))) => {
+                if let Some(parent) = token.parent() {
+                    let idx = token.index();
+                    let new_parent = parent.clone_subtree().clone_for_update();
+                    *token = new_parent
+                        .children_with_tokens()
+                        .nth(idx)
+                        .and_then(SyntaxElement::into_token)
+                        .unwrap();
+                }
+            }
             Change::InsertAll(_, elements)
             | Change::ReplaceWithMany(_, elements)
             | Change::ReplaceAll(_, elements) => {
                 for element in elements {
-                    if let SyntaxElement::Node(node) = element {
-                        if node.parent().is_some() {
-                            *node = node.clone_subtree().clone_for_update();
-                        } else if !node.is_mutable() {
-                            *node = node.clone_for_update();
+                    match element {
+                        SyntaxElement::Node(node) => {
+                            if node.parent().is_some() {
+                                *node = node.clone_subtree().clone_for_update();
+                            } else if !node.is_mutable() {
+                                *node = node.clone_for_update();
+                            }
+                        }
+                        SyntaxElement::Token(token) => {
+                            if let Some(parent) = token.parent() {
+                                let idx = token.index();
+                                let new_parent = parent.clone_subtree().clone_for_update();
+                                *token = new_parent
+                                    .children_with_tokens()
+                                    .nth(idx)
+                                    .and_then(SyntaxElement::into_token)
+                                    .unwrap();
+                            }
                         }
                     }
                 }
