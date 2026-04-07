@@ -6074,7 +6074,16 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
     let ty::ClauseKind::Projection(proj) = clause else {
         return;
     };
-    let name = tcx.item_name(proj.projection_term.def_id);
+    let Some(name) = tcx
+        .opt_rpitit_info(proj.projection_term.def_id)
+        .and_then(|data| match data {
+            ty::ImplTraitInTraitData::Trait { fn_def_id, .. } => Some(tcx.item_name(fn_def_id)),
+            ty::ImplTraitInTraitData::Impl { .. } => None,
+        })
+        .or_else(|| tcx.opt_item_name(proj.projection_term.def_id))
+    else {
+        return;
+    };
     let mut predicates = generics.predicates.iter().peekable();
     let mut prev: Option<(&hir::WhereBoundPredicate<'_>, Span)> = None;
     while let Some(pred) = predicates.next() {
