@@ -266,7 +266,7 @@ impl Config {
         });
         let llvm_sha = match llvm_freshness {
             PathFreshness::LastModifiedUpstream { upstream } => upstream,
-            PathFreshness::HasLocalModifications { upstream } => upstream,
+            PathFreshness::HasLocalModifications { upstream, modifications: _ } => upstream,
             PathFreshness::MissingUpstream => {
                 eprintln!("error: could not find commit hash for downloading LLVM");
                 eprintln!("HELP: maybe your repository history is too shallow?");
