@@ -461,8 +461,8 @@ impl<'tcx> InterPat<'tcx> {
                     extra_data.scope = extra.scope
                 }
 
-                extra_data.guard_patterns.push(condition);
                 MatchPairTree::for_pattern(place_builder, subpattern, cx, match_pairs, extra_data);
+                extra_data.guard_patterns.push(super::OrderedPatternData::One(condition));
                 return;
             }
 
