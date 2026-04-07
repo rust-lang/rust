@@ -532,6 +532,18 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                     | hir::MatchSource::AwaitDesugar
                     | hir::MatchSource::FormatArgs => None,
                 };
+
+                // Check if the match would be exhaustive if all guards were removed.
+                // If so, we leave a note that guards don't count towards exhaustivity.
+                let would_be_exhaustive_without_guards = {
+                    let any_arm_has_guard = tarms.iter().any(|arm| arm.has_guard);
+                    any_arm_has_guard && {
+                        let guardless_arms: Vec<_> =
+                            tarms.iter().map(|arm| MatchArm { has_guard: false, ..*arm }).collect();
+                        rustc_pattern_analysis::rustc::analyze_match(&cx, &guardless_arms, scrut.ty)
+                            .is_ok_and(|report| report.non_exhaustiveness_witnesses.is_empty())
+                    }
+                };
                 self.error = Err(report_non_exhaustive_match(
                     &cx,
                     self.thir,
@@ -540,6 +552,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                     witnesses,
                     arms,
                     braces_span,
+                    would_be_exhaustive_without_guards,
                 ));
             }
         }
@@ -1154,6 +1167,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     witnesses: Vec<WitnessPat<'p, 'tcx>>,
     arms: &[ArmId],
     braces_span: Option<Span>,
+    would_be_exhaustive_without_guards: bool,
 ) -> ErrorGuaranteed {
     let is_empty_match = arms.is_empty();
     let non_empty_enum = match scrut_ty.kind() {
@@ -1364,8 +1378,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         },
     );
 
-    let all_arms_have_guards = arms.iter().all(|arm_id| thir[*arm_id].guard.is_some());
-    if !is_empty_match && all_arms_have_guards {
+    if would_be_exhaustive_without_guards {
         err.subdiagnostic(NonExhaustiveMatchAllArmsGuarded);
     }
     if let Some((span, sugg)) = suggestion {
