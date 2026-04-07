@@ -16,7 +16,7 @@ use ide_db::{
 // | Editor  | Action Name |
 // |---------|-------------|
 // | VS Code | **rust-analyzer: View Crate Graph** |
-pub(crate) fn view_crate_graph(db: &RootDatabase, full: bool) -> Result<String, String> {
+pub(crate) fn view_crate_graph(db: &RootDatabase, full: bool) -> String {
     let all_crates = all_crates(db);
     let crates_to_render = all_crates
         .iter()
@@ -36,7 +36,7 @@ pub(crate) fn view_crate_graph(db: &RootDatabase, full: bool) -> Result<String, 
 
     let mut dot = Vec::new();
     dot::render(&graph, &mut dot).unwrap();
-    Ok(String::from_utf8(dot).unwrap())
+    String::from_utf8(dot).unwrap()
 }
 
 struct DotCrateGraph<'db> {
