@@ -42,6 +42,13 @@ def main() -> None:
         default=None,
         help="Replay a recorded JSONL session instead of using BrainFlow",
     )
+    parser.add_argument(
+        "--model",
+        type=str,
+        metavar="PATH",
+        default=None,
+        help="Path to a trained ML model (.joblib) for brain state classification",
+    )
     args = parser.parse_args()
 
     # Validate mutually exclusive options
@@ -59,6 +66,7 @@ def main() -> None:
     )
 
     # Import here to avoid circular imports and to pass flags
+    from .classifier import create_classifier
     from .server import create_app
     from .recorder import SessionRecorder
     from .replayer import SessionReplayer
@@ -66,6 +74,10 @@ def main() -> None:
 
     recorder = None
     replayer = None
+
+    # Resolve model path: CLI flag > env var > None
+    model_path = args.model or config.MODEL_PATH
+    classifier = create_classifier(model_path) if model_path else None
 
     if args.record:
         recorder = SessionRecorder(file_path=args.record)
@@ -76,7 +88,7 @@ def main() -> None:
         replayer = SessionReplayer(file_path=args.replay, state_manager=state_mgr)
         app = create_app(synthetic=True, replayer=replayer, state_manager=state_mgr)
     else:
-        app = create_app(synthetic=args.synthetic, recorder=recorder)
+        app = create_app(synthetic=args.synthetic, recorder=recorder, classifier=classifier)
 
     # Graceful shutdown on SIGINT/SIGTERM
     def handle_signal(signum, frame):

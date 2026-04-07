@@ -1,4 +1,4 @@
-.PHONY: install test run-synthetic test-python test-plugin build-plugin clean
+.PHONY: install test run-synthetic test-python test-plugin build-plugin clean train
 
 # Python signal processor
 install:
@@ -19,6 +19,10 @@ test-plugin:
 
 # All tests
 test: test-python test-plugin
+
+# Train ML classifier
+train:
+	cd signal-processor && python -m src.train_model --generate-synthetic --seconds 30 --output models/brain_state_rf.joblib
 
 # Clean artifacts
 clean:

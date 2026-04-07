@@ -19,6 +19,9 @@ ARTIFACT_AMPLITUDE_UV: float = float(os.environ.get("BCI_ARTIFACT_AMPLITUDE_UV",
 STALE_THRESHOLD_MS: int = int(os.environ.get("BCI_STALE_THRESHOLD_MS", "2000"))
 STALE_WARNING_MS: int = int(os.environ.get("BCI_STALE_WARNING_MS", "5000"))
 
+# ML Classifier
+MODEL_PATH: str | None = os.environ.get("BCI_MODEL_PATH", None)
+
 # Webhooks
 WEBHOOK_COOLDOWN_MS: int = int(os.environ.get("BCI_WEBHOOK_COOLDOWN_MS", "1000"))
 WEBHOOK_TIMEOUT_S: int = int(os.environ.get("BCI_WEBHOOK_TIMEOUT_S", "5"))

@@ -13,7 +13,7 @@ import numpy as np
 from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
 
 from . import config
-from .classifier import HeuristicClassifier
+from .classifier import Classifier, HeuristicClassifier
 from .dsp import (
     assess_signal_quality,
     compute_attention,
@@ -63,11 +63,12 @@ class BCIReader:
         synthetic: bool = True,
         board_id: int | None = None,
         recorder: "SessionRecorder | None" = None,
+        classifier: Classifier | None = None,
     ) -> None:
         self._state_manager = state_manager
         self._synthetic = synthetic
         self._recorder = recorder
-        self._classifier = HeuristicClassifier()
+        self._classifier: Classifier = classifier if classifier is not None else HeuristicClassifier()
         self._session_id = f"session-{uuid.uuid4().hex[:12]}"
 
         # Set up BrainFlow board

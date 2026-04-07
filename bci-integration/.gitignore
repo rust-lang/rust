@@ -38,6 +38,9 @@ env/
 .DS_Store
 Thumbs.db
 
+# ML models
+*.joblib
+
 # Logs
 logs/
 *.log

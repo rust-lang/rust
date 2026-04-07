@@ -1,10 +1,15 @@
-"""Heuristic brain state classifier.
+"""Brain state classifiers: heuristic and ML-based.
 
-Classifies brain state from band powers and derived scores using threshold rules.
-No ML -- transparent, deterministic logic suitable for a prototype.
+Provides a Classifier protocol, a HeuristicClassifier (threshold rules),
+and an MLClassifier (Random Forest via scikit-learn).
 """
 
+import logging
+import os
 from dataclasses import dataclass
+from typing import Protocol, runtime_checkable
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -12,6 +17,20 @@ class ClassificationResult:
     primary: str
     confidence: float
     secondary: list[dict[str, object]]
+
+
+@runtime_checkable
+class Classifier(Protocol):
+    """Protocol for brain state classifiers."""
+
+    def classify(
+        self,
+        band_powers: dict[str, float],
+        attention: float,
+        relaxation: float,
+        cognitive_load: float,
+        signal_quality: float,
+    ) -> ClassificationResult: ...
 
 
 class HeuristicClassifier:
@@ -141,3 +160,113 @@ class HeuristicClassifier:
             confidence=round(confidence, 3),
             secondary=secondary,
         )
+
+
+class MLClassifier:
+    """Classifies brain state using a trained scikit-learn model.
+
+    Falls back to HeuristicClassifier if the model file doesn't exist.
+
+    Args:
+        model_path: Path to a joblib-serialized sklearn model.
+    """
+
+    # Feature vector order -- must match train_model.py
+    FEATURE_NAMES = (
+        "delta", "theta", "alpha", "beta", "gamma",
+        "attention", "relaxation", "cognitive_load", "signal_quality",
+    )
+
+    # Label order used during training -- must match train_model.py
+    STATES = ("focused", "relaxed", "stressed", "drowsy", "meditative", "active")
+
+    def __init__(self, model_path: str) -> None:
+        self._fallback: HeuristicClassifier | None = None
+        self._model = None
+        self._classes: list[str] = []
+
+        if not os.path.isfile(model_path):
+            logger.warning(
+                "ML model file not found at %s -- falling back to HeuristicClassifier",
+                model_path,
+            )
+            self._fallback = HeuristicClassifier()
+            return
+
+        try:
+            import joblib
+
+            self._model = joblib.load(model_path)
+            self._classes = list(self._model.classes_)
+            logger.info("Loaded ML classifier from %s (classes: %s)", model_path, self._classes)
+        except Exception:
+            logger.exception("Failed to load ML model from %s -- falling back to heuristic", model_path)
+            self._fallback = HeuristicClassifier()
+
+    def classify(
+        self,
+        band_powers: dict[str, float],
+        attention: float,
+        relaxation: float,
+        cognitive_load: float,
+        signal_quality: float,
+    ) -> ClassificationResult:
+        if self._fallback is not None:
+            return self._fallback.classify(
+                band_powers, attention, relaxation, cognitive_load, signal_quality,
+            )
+
+        # Low signal quality guard (same as heuristic)
+        if signal_quality < 0.2:
+            return ClassificationResult(primary="unknown", confidence=0.0, secondary=[])
+
+        import numpy as np
+
+        feature_vector = np.array([[
+            band_powers.get("delta", 0.0),
+            band_powers.get("theta", 0.0),
+            band_powers.get("alpha", 0.0),
+            band_powers.get("beta", 0.0),
+            band_powers.get("gamma", 0.0),
+            attention,
+            relaxation,
+            cognitive_load,
+            signal_quality,
+        ]])
+
+        probas = self._model.predict_proba(feature_vector)[0]
+
+        # Pair classes with probabilities, sort descending
+        ranked = sorted(zip(self._classes, probas), key=lambda x: x[1], reverse=True)
+
+        primary_state = ranked[0][0]
+        primary_prob = float(ranked[0][1])
+
+        # Scale confidence by signal quality
+        confidence = round(primary_prob * signal_quality, 3)
+
+        secondary = [
+            {"state": state, "confidence": round(float(prob) * signal_quality, 3)}
+            for state, prob in ranked[1:]
+            if prob > 0.05
+        ]
+
+        return ClassificationResult(
+            primary=primary_state,
+            confidence=confidence,
+            secondary=secondary,
+        )
+
+
+def create_classifier(model_path: str | None = None) -> Classifier:
+    """Factory: create the appropriate classifier.
+
+    Args:
+        model_path: Path to a joblib ML model file. If None, uses heuristic.
+
+    Returns:
+        A Classifier instance.
+    """
+    if model_path is not None:
+        return MLClassifier(model_path)
+    return HeuristicClassifier()

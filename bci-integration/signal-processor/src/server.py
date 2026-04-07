@@ -14,6 +14,7 @@ from fastapi import FastAPI, HTTPException
 
 from . import config
 from .brainflow_reader import BCIReader
+from .classifier import Classifier
 from .models import (
     BCIStateModel,
     HealthResponse,
@@ -42,6 +43,7 @@ def create_app(
     recorder: SessionRecorder | None = None,
     replayer: SessionReplayer | None = None,
     state_manager: StateManager | None = None,
+    classifier: Classifier | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -50,6 +52,7 @@ def create_app(
         recorder: Optional recorder to capture states during acquisition.
         replayer: Optional replayer to use instead of BrainFlow.
         state_manager: Optional pre-created StateManager (used by replayer).
+        classifier: Optional classifier override. Defaults to HeuristicClassifier.
 
     Returns:
         Configured FastAPI app instance.
@@ -76,7 +79,8 @@ def create_app(
         _reader = None
     else:
         _reader = BCIReader(
-            state_manager=_state_manager, synthetic=synthetic, recorder=recorder
+            state_manager=_state_manager, synthetic=synthetic, recorder=recorder,
+            classifier=classifier,
         )
 
     @asynccontextmanager
