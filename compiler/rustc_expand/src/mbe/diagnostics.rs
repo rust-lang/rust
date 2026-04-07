@@ -74,14 +74,26 @@ pub(super) fn failed_to_match_macro(
     };
 
     let span = token.span.substitute_dummy(sp);
-    let custom = if matches!(token.kind, token::Eof) {
-        on_missing_args.map(on_missing_args_diagnostic)
+    let CustomDiagnostic {
+        message: custom_message, label: custom_label, notes: custom_notes, ..
+    } = if matches!(token.kind, token::Eof) {
+        let macro_name = name.to_string();
+        on_missing_args
+            .map(|directive| {
+                directive.eval(
+                    None,
+                    &FormatArgs {
+                        this: macro_name.clone(),
+                        this_sugared: macro_name,
+                        item_context: "macro invocation",
+                        generic_args: Vec::new(),
+                    },
+                )
+            })
+            .unwrap_or_default()
     } else {
-        None
+        CustomDiagnostic::default()
     };
-    let custom_message = custom.as_ref().and_then(|diag| diag.message.clone());
-    let custom_label = custom.as_ref().and_then(|diag| diag.label.clone());
-    let custom_notes = custom.map_or_else(Vec::new, |diag| diag.notes);
 
     let mut err = match custom_message {
         Some(message) => psess.dcx().struct_span_err(span, message),
@@ -142,17 +154,6 @@ pub(super) fn failed_to_match_macro(
     }
     let guar = err.emit();
     (sp, guar)
-}
-
-fn on_missing_args_diagnostic(directive: &Directive) -> CustomDiagnostic {
-    let args = FormatArgs {
-        this: String::new(),
-        this_sugared: String::new(),
-        item_context: "macro invocation",
-        generic_args: Vec::new(),
-    };
-
-    directive.eval(None, &args)
 }
 
 /// The tracker used for the slow error path that collects useful info for diagnostics.

@@ -345,7 +345,9 @@ fn parse_arg(
         Position::ArgumentNamed(name) => match (mode, Symbol::intern(name)) {
             // Only `#[rustc_on_unimplemented]` can use these
             (Mode::RustcOnUnimplemented { .. }, sym::ItemContext) => FormatArg::ItemContext,
-            (Mode::RustcOnUnimplemented { .. }, sym::This) => FormatArg::This,
+            (Mode::RustcOnUnimplemented { .. } | Mode::DiagnosticOnMissingArgs, sym::This) => {
+                FormatArg::This
+            }
             (Mode::RustcOnUnimplemented { .. }, sym::Trait) => FormatArg::Trait,
             // Any attribute can use these
             (_, kw::SelfUpper) => FormatArg::SelfUpper,

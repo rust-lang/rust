@@ -1359,7 +1359,9 @@ pub(crate) struct OnMoveMalformedFormatLiterals {
 
 #[derive(Diagnostic)]
 #[diag("unknown parameter `{$name}`")]
-#[help("format parameters are not supported by `#[diagnostic::on_missing_args]`")]
+#[help(
+    r#"only {"`{This}`"} is supported as a format parameter in `#[diagnostic::on_missing_args]`"#
+)]
 pub(crate) struct OnMissingArgsMalformedFormatLiterals {
     pub name: Symbol,
 }
