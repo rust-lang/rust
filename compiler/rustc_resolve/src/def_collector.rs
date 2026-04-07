@@ -9,7 +9,6 @@ use rustc_hir::Target;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
-use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, instrument};
 
@@ -21,10 +20,9 @@ pub(crate) fn collect_definitions<'ra>(
     fragment: &AstFragment,
     parent_scope: ParentScope<'ra>,
 ) -> MacroRulesScopeRef<'ra> {
-    let expansion = parent_scope.expansion;
-    let invocation_parent = resolver.invocation_parents[&expansion];
+    let invocation_parent = resolver.invocation_parents[&parent_scope.expansion];
     debug!("new fragment to visit with invocation_parent: {invocation_parent:?}");
-    let mut visitor = DefCollector { r: resolver, expansion, invocation_parent, parent_scope };
+    let mut visitor = DefCollector { r: resolver, invocation_parent, parent_scope };
     fragment.visit_with(&mut visitor);
     visitor.parent_scope.macro_rules
 }
@@ -33,7 +31,6 @@ pub(crate) fn collect_definitions<'ra>(
 pub(crate) struct DefCollector<'a, 'ra, 'tcx> {
     pub(crate) r: &'a mut Resolver<'ra, 'tcx>,
     invocation_parent: InvocationParent,
-    expansion: LocalExpnId,
     pub(crate) parent_scope: ParentScope<'ra>,
 }
 
@@ -56,7 +53,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 node_id,
                 name,
                 def_kind,
-                self.expansion.to_expn_id(),
+                self.parent_scope.expansion.to_expn_id(),
                 span.with_parent(None),
             )
             .def_id()
@@ -88,7 +85,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     fn collect_field(&mut self, field: &'a FieldDef, index: Option<usize>) {
         let index = |this: &Self| {
             index.unwrap_or_else(|| {
-                let node_id = NodeId::placeholder_from_expn_id(this.expansion);
+                let node_id = NodeId::placeholder_from_expn_id(this.parent_scope.expansion);
                 this.r.placeholder_field_indices[&node_id]
             })
         };
