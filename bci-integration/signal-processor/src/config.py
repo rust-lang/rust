@@ -25,3 +25,6 @@ MODEL_PATH: str | None = os.environ.get("BCI_MODEL_PATH", None)
 # Webhooks
 WEBHOOK_COOLDOWN_MS: int = int(os.environ.get("BCI_WEBHOOK_COOLDOWN_MS", "1000"))
 WEBHOOK_TIMEOUT_S: int = int(os.environ.get("BCI_WEBHOOK_TIMEOUT_S", "5"))
+
+# WebSocket
+WS_HEARTBEAT_INTERVAL_S: int = int(os.environ.get("BCI_WS_HEARTBEAT_INTERVAL_S", "30"))

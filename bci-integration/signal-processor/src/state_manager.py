@@ -15,6 +15,7 @@ class StateManager:
     def __init__(
         self,
         on_state_change: Any | None = None,
+        on_state_update: Any | None = None,
     ) -> None:
         self._lock = threading.Lock()
         self._state: dict[str, Any] | None = None
@@ -23,6 +24,7 @@ class StateManager:
         self._device_connected: bool = False
         self._previous_primary: str | None = None
         self._on_state_change = on_state_change
+        self._on_state_update = on_state_update
 
     def update_state(self, state: dict[str, Any]) -> None:
         """Update the stored state (called from BrainFlow reader thread).
@@ -57,6 +59,10 @@ class StateManager:
         # Fire callback outside lock to avoid deadlocks
         if fire_callback:
             self._on_state_change(old_state_copy, new_state_copy)
+
+        # Fire on_state_update on every call (not just transitions)
+        if self._on_state_update is not None:
+            self._on_state_update(dict(state))
 
     def get_state(self) -> dict[str, Any] | None:
         """Get the latest state with staleness_ms updated.

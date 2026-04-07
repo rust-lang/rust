@@ -1,16 +1,19 @@
 """FastAPI HTTP server for the BCI State Server.
 
 Endpoints:
-    GET /state  - Returns current BCIState wrapped in state_response
-    GET /health - Returns server health status
+    GET  /state   - Returns current BCIState wrapped in state_response
+    GET  /health  - Returns server health status
+    WS   /ws      - WebSocket endpoint for real-time BCI state streaming
+    GET  /ws/info - WebSocket connection info for monitoring
 """
 
+import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 
 from . import config
 from .brainflow_reader import BCIReader
@@ -26,6 +29,7 @@ from .recorder import SessionRecorder
 from .replayer import SessionReplayer
 from .state_manager import StateManager
 from .webhook_manager import WebhookManager
+from .ws_manager import WebSocketManager
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +39,7 @@ _reader: BCIReader | None = None
 _replayer: SessionReplayer | None = None
 _recorder: SessionRecorder | None = None
 _webhook_manager: WebhookManager | None = None
+_ws_manager: WebSocketManager | None = None
 _start_time: float = 0.0
 
 
@@ -57,19 +62,36 @@ def create_app(
     Returns:
         Configured FastAPI app instance.
     """
-    global _state_manager, _reader, _replayer, _recorder, _webhook_manager, _start_time
+    global _state_manager, _reader, _replayer, _recorder, _webhook_manager, _ws_manager, _start_time
 
     _webhook_manager = WebhookManager()
+    _ws_manager = WebSocketManager()
 
     def _on_state_change(old_state, new_state):
         _webhook_manager.check_and_fire(old_state, new_state)
 
+    def _on_state_update(state):
+        """Broadcast every state update to WebSocket clients."""
+        if _ws_manager is not None and _ws_manager.connection_count > 0:
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(_ws_manager.broadcast(state))
+            except RuntimeError:
+                # No running event loop (e.g. called from a non-async thread).
+                # Schedule on a new loop if needed -- but in practice the
+                # FastAPI server loop will be running.
+                pass
+
     if state_manager is not None:
         _state_manager = state_manager
-        # Attach callback to pre-existing state manager
+        # Attach callbacks to pre-existing state manager
         _state_manager._on_state_change = _on_state_change
+        _state_manager._on_state_update = _on_state_update
     else:
-        _state_manager = StateManager(on_state_change=_on_state_change)
+        _state_manager = StateManager(
+            on_state_change=_on_state_change,
+            on_state_update=_on_state_update,
+        )
 
     _recorder = recorder
     _replayer = replayer
@@ -193,5 +215,31 @@ def create_app(
         if not removed:
             raise HTTPException(status_code=404, detail="Webhook not found")
         return {"deleted": True}
+
+    @app.websocket("/ws")
+    async def websocket_endpoint(ws: WebSocket) -> None:
+        """Accept a WebSocket connection and stream BCI state updates."""
+        await _ws_manager.connect(ws)
+        try:
+            # Send the current state immediately on connect
+            current = _state_manager.get_state()
+            if current is not None:
+                await ws.send_json(current)
+
+            # Keep the connection alive -- wait for client messages (pings)
+            while True:
+                # recv with a timeout so we can detect disconnects
+                await ws.receive_text()
+        except WebSocketDisconnect:
+            pass
+        except Exception:
+            logger.debug("WebSocket connection error", exc_info=True)
+        finally:
+            _ws_manager.disconnect(ws)
+
+    @app.get("/ws/info")
+    def ws_info() -> dict:
+        """Return WebSocket connection info for monitoring."""
+        return {"connections": _ws_manager.connection_count}
 
     return app

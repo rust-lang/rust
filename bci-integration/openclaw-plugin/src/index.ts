@@ -4,32 +4,47 @@
  * Fetches real-time brain state from the BCI State Server and injects
  * a natural language summary into the agent's system context via the
  * before_prompt_build lifecycle hook.
+ *
+ * Supports optional WebSocket streaming (BCI_USE_WEBSOCKET=true) for
+ * lower-latency state updates with automatic HTTP fallback.
  */
 
 import { definePluginEntry } from "openclaw";
 
 const STALE_THRESHOLD_MS = 5000;
 const FETCH_TIMEOUT_MS = 2000;
+const WS_RECONNECT_DELAY_MS = 2000;
+
+interface BCIState {
+  timestamp_unix_ms: number;
+  session_id: string;
+  device_id: string;
+  state: { primary: string; confidence: number };
+  scores: { attention?: number; relaxation?: number; cognitive_load?: number };
+  signal_quality: number;
+  staleness_ms?: number;
+  natural_language_summary: string;
+  [key: string]: unknown;
+}
 
 interface BCIStateResponse {
   available: boolean;
   timestamp_unix_ms: number;
-  bci_state?: {
-    timestamp_unix_ms: number;
-    session_id: string;
-    device_id: string;
-    state: { primary: string; confidence: number };
-    scores: { attention?: number; relaxation?: number; cognitive_load?: number };
-    signal_quality: number;
-    staleness_ms?: number;
-    natural_language_summary: string;
-    [key: string]: unknown;
-  };
+  bci_state?: BCIState;
   error?: string;
 }
 
 function getBaseUrl(): string {
   return process.env.BCI_STATE_SERVER_URL ?? "http://127.0.0.1:7680";
+}
+
+function getWsUrl(): string {
+  const base = getBaseUrl();
+  return base.replace(/^http/, "ws") + "/ws";
+}
+
+function useWebSocket(): boolean {
+  return process.env.BCI_USE_WEBSOCKET === "true";
 }
 
 async function fetchState(baseUrl: string): Promise<BCIStateResponse> {
@@ -43,6 +58,87 @@ async function fetchState(baseUrl: string): Promise<BCIStateResponse> {
     return (await res.json()) as BCIStateResponse;
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+/**
+ * Manages a persistent WebSocket connection to the BCI state server.
+ * Caches the latest state and auto-reconnects on disconnect.
+ */
+class BCIWebSocketClient {
+  private ws: WebSocket | null = null;
+  private cachedState: BCIState | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private url: string;
+  private closed = false;
+
+  constructor(url: string) {
+    this.url = url;
+  }
+
+  connect(): void {
+    if (this.closed) return;
+    try {
+      this.ws = new WebSocket(this.url);
+
+      this.ws.onmessage = (event: MessageEvent) => {
+        try {
+          this.cachedState = JSON.parse(
+            typeof event.data === "string" ? event.data : String(event.data),
+          ) as BCIState;
+        } catch {
+          // Ignore malformed messages
+        }
+      };
+
+      this.ws.onclose = () => {
+        this.ws = null;
+        this.scheduleReconnect();
+      };
+
+      this.ws.onerror = () => {
+        // onclose will fire after onerror, triggering reconnect
+        try {
+          this.ws?.close();
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      this.scheduleReconnect();
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.closed || this.reconnectTimer) return;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect();
+    }, WS_RECONNECT_DELAY_MS);
+  }
+
+  getState(): BCIState | null {
+    return this.cachedState;
+  }
+
+  isConnected(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
+
+  close(): void {
+    this.closed = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch {
+        // ignore
+      }
+      this.ws = null;
+    }
   }
 }
 
@@ -66,13 +162,41 @@ function buildContext(response: BCIStateResponse): string {
   return summary;
 }
 
+function buildContextFromState(state: BCIState): string {
+  let summary = state.natural_language_summary;
+
+  if (state.staleness_ms != null && state.staleness_ms > STALE_THRESHOLD_MS) {
+    const staleSec = (state.staleness_ms / 1000).toFixed(1);
+    summary = `[WARNING: BCI state is stale (${staleSec}s old), may be unreliable] ${summary}`;
+  }
+
+  return summary;
+}
+
 export default definePluginEntry({
   name: "bci",
   register(api) {
     const baseUrl = getBaseUrl();
+    let wsClient: BCIWebSocketClient | null = null;
+
+    // If WebSocket mode is enabled, start a persistent connection
+    if (useWebSocket()) {
+      wsClient = new BCIWebSocketClient(getWsUrl());
+      wsClient.connect();
+    }
 
     // Lifecycle hook: inject brain state summary before every AI turn
     api.on("before_prompt_build", async () => {
+      // Try WebSocket cached state first
+      if (wsClient !== null) {
+        const cached = wsClient.getState();
+        if (cached !== null) {
+          return { prependSystemContext: buildContextFromState(cached) };
+        }
+        // WebSocket has no cached state yet -- fall through to HTTP
+      }
+
+      // HTTP polling (default, or fallback when WS has no data)
       try {
         const response = await fetchState(baseUrl);
         return { prependSystemContext: buildContext(response) };
@@ -103,5 +227,16 @@ export default definePluginEntry({
 });
 
 // Re-export helpers for testing
-export { fetchState, buildContext, getBaseUrl, STALE_THRESHOLD_MS, FETCH_TIMEOUT_MS };
-export type { BCIStateResponse };
+export {
+  fetchState,
+  buildContext,
+  buildContextFromState,
+  getBaseUrl,
+  getWsUrl,
+  useWebSocket,
+  BCIWebSocketClient,
+  STALE_THRESHOLD_MS,
+  FETCH_TIMEOUT_MS,
+  WS_RECONNECT_DELAY_MS,
+};
+export type { BCIStateResponse, BCIState };
