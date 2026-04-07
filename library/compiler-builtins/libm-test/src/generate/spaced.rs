@@ -4,6 +4,7 @@ use std::ops::RangeInclusive;
 use libm::support::{Float, Int, MinInt};
 
 use crate::domain::get_domain;
+use crate::generate::{product2, product3};
 use crate::num::full_range;
 use crate::run_cfg::{int_range, iteration_count};
 use crate::{Arg0, Arg1, Arg2, CheckCtx, MathOp, linear_ints, logspace};
@@ -136,8 +137,7 @@ macro_rules! impl_spaced_input {
                     let (iter0, steps0) = exhaustive_float();
                     let (iter1, steps1) = exhaustive_float();
 
-                    let iter = iter0
-                        .flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                    let iter = product2(iter0, iter1);
                     let count = steps0.strict_mul(steps1);
 
                     return (EitherIter::A(iter), count);
@@ -147,8 +147,7 @@ macro_rules! impl_spaced_input {
                 let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
                 let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
 
-                let iter =
-                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let iter = product2(iter0, iter1);
                 let count = steps0.strict_mul(steps1);
 
                 (EitherIter::B(iter), count)
@@ -177,11 +176,7 @@ macro_rules! impl_spaced_input {
                     let (iter1, steps1) = exhaustive_float();
                     let (iter2, steps2) = exhaustive_float();
 
-                    let iter = iter0
-                        .flat_map(move |first| iter1.clone().map(move |second| (first, second)))
-                        .flat_map(move |(first, second)| {
-                            iter2.clone().map(move |third| (first, second, third))
-                        });
+                    let iter = product3(iter0, iter1, iter2);
                     let count = steps0.strict_mul(steps1).strict_mul(steps2);
 
                     return (EitherIter::A(iter), count);
@@ -192,11 +187,7 @@ macro_rules! impl_spaced_input {
                 let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
                 let (iter2, steps2) = logspace_steps::<Arg2<Op>>(ctx, 2, max_steps2);
 
-                let iter = iter0
-                    .flat_map(move |first| iter1.clone().map(move |second| (first, second)))
-                    .flat_map(move |(first, second)| {
-                        iter2.clone().map(move |third| (first, second, third))
-                    });
+                let iter = product3(iter0, iter1, iter2);
                 let count = steps0.strict_mul(steps1).strict_mul(steps2);
 
                 (EitherIter::B(iter), count)
@@ -220,8 +211,7 @@ macro_rules! impl_spaced_input {
                     let (iter0, steps0) = linear_ints(range0, max_steps0);
                     let (iter1, steps1) = exhaustive_float();
 
-                    let iter = iter0
-                        .flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                    let iter = product2(iter0, iter1);
                     let count = steps0.strict_mul(steps1);
 
                     return (EitherIter::A(iter), count);
@@ -230,8 +220,7 @@ macro_rules! impl_spaced_input {
                 let (iter0, steps0) = linear_ints(range0, max_steps0);
                 let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
 
-                let iter =
-                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let iter = product2(iter0, iter1);
                 let count = steps0.strict_mul(steps1);
 
                 (EitherIter::B(iter), count)
@@ -253,8 +242,7 @@ macro_rules! impl_spaced_input {
                     let (iter0, steps0) = exhaustive_float();
                     let (iter1, steps1) = linear_ints(range1, max_steps1);
 
-                    let iter = iter0
-                        .flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                    let iter = product2(iter0, iter1);
                     let count = steps0.strict_mul(steps1);
 
                     return (EitherIter::A(iter), count);
@@ -263,8 +251,7 @@ macro_rules! impl_spaced_input {
                 let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
                 let (iter1, steps1) = linear_ints(range1, max_steps1);
 
-                let iter =
-                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let iter = product2(iter0, iter1);
                 let count = steps0.strict_mul(steps1);
 
                 (EitherIter::B(iter), count)
@@ -315,11 +302,10 @@ macro_rules! impl_spaced_input_int {
 
                 if let Some(steps0) = total_value_count_int::<Arg0<Op>>()
                     && steps0 <= max_steps0
-                && let Some(steps1) = total_value_count_int::<Arg1<Op>>()
+                    && let Some(steps1) = total_value_count_int::<Arg1<Op>>()
                     && steps1 <= max_steps1
                 {
-                    let iter = range0
-                        .flat_map(move |first| range1.clone().map(move |second| (first, second)));
+                    let iter = product2(range0, range1);
                     let count = steps0.strict_mul(steps1);
 
                     return (EitherIter::A(iter), count);
@@ -327,8 +313,8 @@ macro_rules! impl_spaced_input_int {
 
                 let (iter0, steps0) = linear_ints::<Arg0<Op>>(range0, max_steps0);
                 let (iter1, steps1) = linear_ints::<Arg1<Op>>(range1, max_steps1);
-                let iter =
-                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+
+                let iter = product2(iter0, iter1);
                 let count = steps0.strict_mul(steps1);
 
                 (EitherIter::B(iter), count)
@@ -353,8 +339,7 @@ macro_rules! impl_spaced_input_int {
                     && let Some(steps1) = total_value_count_int::<Arg1<Op>>()
                     && steps1 <= max_steps1
                 {
-                    let iter = range0
-                        .flat_map(move |first| range1.clone().map(move |second| (first, second)));
+                    let iter = product2(range0, range1);
                     let count = steps0.strict_mul(steps1);
 
                     return (EitherIter::A(iter), count);
@@ -362,8 +347,8 @@ macro_rules! impl_spaced_input_int {
 
                 let (iter0, steps0) = linear_ints::<Arg0<Op>>(range0, max_steps0);
                 let (iter1, steps1) = linear_ints::<Arg1<Op>>(range1, max_steps1);
-                let iter =
-                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+
+                let iter = product2(iter0, iter1);
                 let count = steps0.strict_mul(steps1);
                 (EitherIter::B(iter), count)
             }

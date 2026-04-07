@@ -48,3 +48,28 @@ impl<I: Iterator> Iterator for KnownSize<I> {
 }
 
 impl<I: Iterator> ExactSizeIterator for KnownSize<I> {}
+
+/// Yield `(a0, b0), ..., (a0, bn), ..., (an, bn)` for iterators `[a0, ..., an]` and
+/// `[b0, ..., bn]`.
+fn product2<I0, I1>(i0: I0, i1: I1) -> impl Iterator<Item = (I0::Item, I1::Item)>
+where
+    I0: Iterator<Item: Copy>,
+    I1: Iterator<Item: Copy> + Clone,
+{
+    i0.flat_map(move |first| i1.clone().map(move |second| (first, second)))
+}
+
+/// Yield `(a0, b0, c0), ..., (a0, b0, cn), ..., (a0, bn, cn), ..., (an, bn, cn)` for iterators
+/// `[a0, ..., an]`, `[b0, ..., bn]` and `[c0, ..., cn]`.
+fn product3<I0, I1, I2>(
+    i0: I0,
+    i1: I1,
+    i2: I2,
+) -> impl Iterator<Item = (I0::Item, I1::Item, I2::Item)>
+where
+    I0: Iterator<Item: Copy>,
+    I1: Iterator<Item: Copy> + Clone,
+    I2: Iterator<Item: Copy> + Clone,
+{
+    product2(product2(i0, i1), i2).map(|((first, second), third)| (first, second, third))
+}

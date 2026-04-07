@@ -9,8 +9,8 @@ use rand::prelude::Distribution;
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-use super::KnownSize;
 use crate::CheckCtx;
+use crate::generate::{KnownSize, product2, product3};
 use crate::num::full_range;
 use crate::run_cfg::{int_range, iteration_count};
 
@@ -69,8 +69,7 @@ macro_rules! impl_random_input {
                 let count1 = iteration_count(ctx, 1);
                 let iter0 = random_floats(count0);
                 let iter1 = random_floats(count1);
-                let iter =
-                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let iter = product2(iter0, iter1);
                 let count = count0.strict_mul(count1);
                 (iter, count)
             }
@@ -84,11 +83,7 @@ macro_rules! impl_random_input {
                 let iter0 = random_floats(count0);
                 let iter1 = random_floats(count1);
                 let iter2 = random_floats(count2);
-                let iter = iter0
-                    .flat_map(move |first| iter1.clone().map(move |second| (first, second)))
-                    .flat_map(move |(first, second)| {
-                        iter2.clone().map(move |third| (first, second, third))
-                    });
+                let iter = product3(iter0, iter1, iter2);
                 let count = count0.strict_mul(count1).strict_mul(count2);
                 (iter, count)
             }
@@ -101,8 +96,7 @@ macro_rules! impl_random_input {
                 let range0 = int_range::<i32>(ctx, 0).unwrap_or(full_range());
                 let iter0 = random_ints(count0, range0);
                 let iter1 = random_floats(count1);
-                let iter =
-                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let iter = product2(iter0, iter1);
                 let count = count0.strict_mul(count1);
                 (iter, count)
             }
@@ -115,8 +109,7 @@ macro_rules! impl_random_input {
                 let range1 = int_range::<i32>(ctx, 1).unwrap_or(full_range());
                 let iter0 = random_floats(count0);
                 let iter1 = random_ints(count1, range1.clone());
-                let iter =
-                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let iter = product2(iter0, iter1);
                 let count = count0.strict_mul(count1);
                 (iter, count)
             }
@@ -150,8 +143,7 @@ macro_rules! impl_random_input_int {
                 let range1 = int_range::<$ity>(ctx, 1).unwrap_or(full_range());
                 let iter0 = random_ints(count0, range0);
                 let iter1 = random_ints(count1, range1.clone());
-                let iter =
-                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let iter = product2(iter0, iter1);
                 (iter, count0 * count1)
             }
         }
@@ -167,8 +159,7 @@ macro_rules! impl_random_input_int {
                 let range1 = int_range::<u32>(ctx, 1).unwrap_or(full_range());
                 let iter0 = random_ints(count0, range0);
                 let iter1 = random_ints(count1, range1.clone());
-                let iter =
-                    iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
+                let iter = product2(iter0, iter1);
                 (iter, count0 * count1)
             }
         }
