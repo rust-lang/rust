@@ -1359,9 +1359,7 @@ pub(crate) struct OnMoveMalformedFormatLiterals {
 
 #[derive(Diagnostic)]
 #[diag("unknown parameter `{$name}`")]
-#[help(
-    r#"the only supported format parameter for `#[diagnostic::on_missing_args]` is {"`{This}`"}"#
-)]
+#[help(r#"use {"`{This}`"} to refer to the macro name"#)]
 pub(crate) struct OnMissingArgsMalformedFormatLiterals {
     pub name: Symbol,
 }

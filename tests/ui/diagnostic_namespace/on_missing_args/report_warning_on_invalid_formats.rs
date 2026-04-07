@@ -2,7 +2,7 @@
 #![feature(diagnostic_on_missing_args)]
 
 #[diagnostic::on_missing_args(
-    message = "pair! is missing {T}",
+    message = "{T}! is missing arguments",
     //~^ WARN unknown parameter `T`
 )]
 macro_rules! pair {
