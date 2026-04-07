@@ -66,14 +66,14 @@ impl<T, A: Iterator<Item = T>, B: Iterator<Item = T>> Iterator for EitherIter<A,
 
 /// Gets the total number of possible values, returning `None` if that number doesn't fit in a
 /// `u64`.
-fn value_count<F: Float>() -> Option<u64>
+fn total_value_count<F: Float>() -> Option<u64>
 where
     u64: TryFrom<F::Int>,
 {
-    value_count_int::<F::Int>()
+    total_value_count_int::<F::Int>()
 }
 
-fn value_count_int<I: Int>() -> Option<u64>
+fn total_value_count_int<I: Int>() -> Option<u64>
 where
     u64: TryFrom<I::Unsigned>,
 {
@@ -83,7 +83,7 @@ where
 }
 
 /// Returns an iterator of every possible value of type `F`.
-fn all_values<F: Float>() -> impl Iterator<Item = F>
+fn exhaustive_float<F: Float>() -> impl Iterator<Item = F>
 where
     RangeInclusive<F::Int>: Iterator<Item = F::Int>,
 {
@@ -99,9 +99,9 @@ macro_rules! impl_spaced_input {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let max_steps0 = iteration_count(ctx, 0);
                 // `f16` and `f32` can have exhaustive tests.
-                match value_count::<Arg0<Op>>() {
+                match total_value_count::<Arg0<Op>>() {
                     Some(steps0) if steps0 <= max_steps0 => {
-                        let iter0 = all_values();
+                        let iter0 = exhaustive_float();
                         let iter0 = iter0.map(|v| (v,));
                         (EitherIter::A(iter0), steps0)
                     }
@@ -122,10 +122,11 @@ macro_rules! impl_spaced_input {
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 1);
                 // `f16` can have exhaustive tests.
-                match value_count::<Arg0<Op>>() {
+                match total_value_count::<Arg0<Op>>() {
                     Some(count) if count <= max_steps0 && count <= max_steps1 => {
-                        let iter = all_values()
-                            .flat_map(|first| all_values().map(move |second| (first, second)));
+                        let iter = exhaustive_float().flat_map(|first| {
+                            exhaustive_float().map(move |second| (first, second))
+                        });
                         (EitherIter::A(iter), count.checked_mul(count).unwrap())
                     }
                     _ => {
@@ -150,13 +151,13 @@ macro_rules! impl_spaced_input {
                 let max_steps1 = iteration_count(ctx, 1);
                 let max_steps2 = iteration_count(ctx, 2);
                 // `f16` can be exhaustive tested if `LIBM_EXTENSIVE_TESTS` is incresed.
-                match value_count::<Arg0<Op>>() {
+                match total_value_count::<Arg0<Op>>() {
                     Some(count)
                         if count <= max_steps0 && count <= max_steps1 && count <= max_steps2 =>
                     {
-                        let iter = all_values().flat_map(|first| {
-                            all_values().flat_map(move |second| {
-                                all_values().map(move |third| (first, second, third))
+                        let iter = exhaustive_float().flat_map(|first| {
+                            exhaustive_float().flat_map(move |second| {
+                                exhaustive_float().map(move |third| (first, second, third))
                             })
                         });
                         (EitherIter::A(iter), count.checked_pow(3).unwrap())
@@ -191,11 +192,12 @@ macro_rules! impl_spaced_input {
                 let range0 = int_range(ctx, 0).unwrap_or(full_range());
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 1);
-                match value_count::<Arg1<Op>>() {
+                match total_value_count::<Arg1<Op>>() {
                     Some(count1) if count1 <= max_steps1 => {
                         let (iter0, steps0) = linear_ints(range0, max_steps0);
-                        let iter = iter0
-                            .flat_map(move |first| all_values().map(move |second| (first, second)));
+                        let iter = iter0.flat_map(move |first| {
+                            exhaustive_float().map(move |second| (first, second))
+                        });
                         (EitherIter::A(iter), steps0.checked_mul(count1).unwrap())
                     }
                     _ => {
@@ -221,10 +223,10 @@ macro_rules! impl_spaced_input {
                 let max_steps0 = iteration_count(ctx, 0);
                 let range1 = int_range(ctx, 1).unwrap_or(full_range());
                 let max_steps1 = iteration_count(ctx, 1);
-                match value_count::<Arg0<Op>>() {
+                match total_value_count::<Arg0<Op>>() {
                     Some(count0) if count0 <= max_steps0 => {
                         let (iter1, steps1) = linear_ints(range1, max_steps1);
-                        let iter = all_values().flat_map(move |first| {
+                        let iter = exhaustive_float().flat_map(move |first| {
                             iter1.clone().map(move |second| (first, second))
                         });
                         (EitherIter::A(iter), count0.checked_mul(steps1).unwrap())
@@ -262,7 +264,7 @@ macro_rules! impl_spaced_input_int {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let range = int_range(ctx, 0).unwrap_or(full_range());
                 let max_steps0 = iteration_count(ctx, 0);
-                match value_count_int::<Arg0<Op>>() {
+                match total_value_count_int::<Arg0<Op>>() {
                     Some(steps0) if steps0 <= max_steps0 => {
                         let iter0 = range.map(|v| (v,));
                         (EitherIter::A(iter0), steps0)
@@ -285,7 +287,7 @@ macro_rules! impl_spaced_input_int {
                 let range1 = int_range(ctx, 1).unwrap_or(full_range());
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 0);
-                match value_count_int::<Arg0<Op>>() {
+                match total_value_count_int::<Arg0<Op>>() {
                     Some(count) if count <= max_steps0 && count < max_steps1 => {
                         let iter = range0.flat_map(move |first| {
                             range1.clone().map(move |second| (first, second))
@@ -317,7 +319,7 @@ macro_rules! impl_spaced_input_int {
                 let range1 = int_range(ctx, 1).unwrap_or(full_range());
                 let max_steps0 = iteration_count(ctx, 0);
                 let max_steps1 = iteration_count(ctx, 0);
-                match value_count_int::<Arg0<Op>>() {
+                match total_value_count_int::<Arg0<Op>>() {
                     Some(count) if count <= max_steps0 && count < max_steps1 => {
                         let iter = range0.flat_map(move |first| {
                             range1.clone().map(move |second| (first, second))
