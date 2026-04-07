@@ -612,13 +612,6 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         borrow: &BorrowData<'tcx>,
         kind_place: Option<(WriteKind, Place<'tcx>)>,
     ) -> BorrowExplanation<'tcx> {
-        // For pinned borrows, the borrow lifetime is extended beyond the NLL region.
-        // The region inference can't explain why the borrow is still active,
-        // so return Unexplained and let the caller provide context.
-        if borrow.is_pinned() {
-            return BorrowExplanation::Unexplained;
-        }
-
         let regioncx = &self.regioncx;
         let body: &Body<'_> = self.body;
         let tcx = self.infcx.tcx;

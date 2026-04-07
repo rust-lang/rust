@@ -2,9 +2,10 @@ error[E0499]: cannot borrow `*x.pointer` as mutable more than once at a time
   --> $DIR/reborrow-once.rs:12:14
    |
 LL |     twice(x, x);
-   |           -  ^ second mutable borrow occurs here
-   |           |
-   |           first mutable borrow occurs here
+   |     ----- -  ^ second mutable borrow occurs here
+   |     |     |
+   |     |     first mutable borrow occurs here
+   |     first borrow later used by call
 
 error: aborting due to 1 previous error
 

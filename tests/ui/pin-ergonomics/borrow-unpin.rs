@@ -8,8 +8,8 @@
 // have to makes sure `&pin mut place` and `&pin const place` cannot violate
 // the mut-xor-share rules.
 
-use std::pin::Pin;
 use std::marker::PhantomPinned;
+use std::pin::Pin;
 
 #[cfg(pinned)]
 #[derive(Default)]
@@ -36,7 +36,6 @@ fn immutable_pin_mut_then_move() {
     //~^ ERROR cannot move out of `foo` because it is borrowed
     foo_pin_mut(x); //
 }
-
 
 fn pin_mut_then_move() {
     let mut foo = Foo::default();
