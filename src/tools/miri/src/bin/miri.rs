@@ -519,6 +519,7 @@ fn main() -> ExitCode {
             miri_config.borrow_tracker =
                 Some(BorrowTrackerMethod::TreeBorrows(TreeBorrowsParams {
                     precise_interior_mut: true,
+                    writable: true,
                 }));
         } else if arg == "-Zmiri-tree-borrows-no-precise-interior-mut" {
             match &mut miri_config.borrow_tracker {
@@ -528,6 +529,16 @@ fn main() -> ExitCode {
                 _ =>
                     fatal_error!(
                         "`-Zmiri-tree-borrows` is required before `-Zmiri-tree-borrows-no-precise-interior-mut`"
+                    ),
+            };
+        } else if arg == "-Zno-writable" {
+            match &mut miri_config.borrow_tracker {
+                Some(BorrowTrackerMethod::TreeBorrows(params)) => {
+                    params.writable = false;
+                }
+                _ =>
+                    eprintln!(
+                        "Warning: `-Zno-writable` only has an effect in Miri if `-Zmiri-tree-borrows` is before it. The flag still will have an effect in the compiler."
                     ),
             };
         } else if arg == "-Zmiri-disable-data-race-detector" {

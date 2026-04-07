@@ -529,6 +529,7 @@ Some native rustc `-Z` flags are also very relevant for Miri:
   sets this flag per default.
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
   enables this per default because it is needed for [Stacked Borrows] and [Tree Borrows].
+* `-Zno-writable` disables the strong mode globally, thus disabling the tracking of spurious writes. This also stops the compiler from adding the `writable` attribute. This only has an effect in Miri if [Tree Borrows] are enabled.
 
 Moreover, Miri recognizes some environment variables:
 
