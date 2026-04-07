@@ -10,11 +10,13 @@ use std::any::type_name;
 use std::cmp::min;
 use std::ops::RangeInclusive;
 use std::process::ExitCode;
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::{fmt, time};
+use std::sync::{LazyLock, OnceLock};
+use std::{env, fmt, time};
 
+use rand::TryRng;
 use rand::distr::{Distribution, StandardUniform};
+use rand::rngs::SysRng;
 use rayon::prelude::*;
 use time::{Duration, Instant};
 use traits::{Float, Generator, Int};
@@ -44,8 +46,41 @@ const MAX_BITS_FOR_EXHAUUSTIVE: u32 = 32;
 /// `--skip-huge`.
 const HUGE_TEST_CUTOFF: u64 = 5_000_000;
 
-/// Seed for tests that use a deterministic RNG.
-const SEED: [u8; 32] = *b"3.141592653589793238462643383279";
+const SEED_ENV: &str = "TEST_FLOAT_PARSE_SEED";
+
+/// Seed for tests that use a deterministic RNG, and its b64 representation for printing. Taken
+/// from env if provided,
+static SEED: LazyLock<([u8; 32], Box<str>)> = LazyLock::new(|| {
+    let seed = match env::var(SEED_ENV) {
+        Ok(s) => {
+            seed_from_str(&s).unwrap_or_else(|| panic!("{SEED_ENV} must be 32 bytes, hex encoded"))
+        }
+        Err(_) => {
+            let mut seed = [0u8; 32];
+            SysRng.try_fill_bytes(&mut seed).unwrap();
+            seed
+        }
+    };
+
+    let lo = u128::from_le_bytes(seed[..16].try_into().unwrap());
+    let hi = u128::from_le_bytes(seed[16..].try_into().unwrap());
+    let encoded = format!("{hi:032x}{lo:032x}").into_boxed_str();
+
+    (seed, encoded)
+});
+
+fn seed_from_str(s: &str) -> Option<[u8; 32]> {
+    let hi = s.get(..32)?;
+    let hi = u128::from_str_radix(hi, 16).ok()?;
+    let lo = s.get(32..)?;
+    let lo = u128::from_str_radix(lo, 16).ok()?;
+
+    let mut out = [0u8; 32];
+    out[..16].copy_from_slice(&lo.to_le_bytes());
+    out[16..].copy_from_slice(&hi.to_le_bytes());
+
+    Some(out)
+}
 
 /// Global configuration.
 #[derive(Debug)]
@@ -78,8 +113,10 @@ pub fn run(cfg: Config, include: &[String], exclude: &[String]) -> ExitCode {
     let threads = std::thread::available_parallelism().map(Into::into).unwrap_or(0) * 3 / 2;
     rayon::ThreadPoolBuilder::new().num_threads(threads).build_global().unwrap();
 
+    println!("Starting test runner");
+    println!("Using {SEED_ENV}={}`", SEED.1);
     let mut tests = register_tests(&cfg);
-    println!("registered");
+    println!("Tests registered");
     let initial_tests: Vec<_> = tests.iter().map(|t| t.name.clone()).collect();
 
     let unmatched: Vec<_> = include

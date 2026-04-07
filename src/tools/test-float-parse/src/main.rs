@@ -39,12 +39,24 @@ enum ArgMode {
 }
 
 fn main() -> ExitCode {
-    if cfg!(debug_assertions) {
+    let opt = env!("OPT_LEVEL");
+    let profile = env!("PROFILE");
+
+    println!("Crate config:");
+    println!("    opt level: {opt}");
+    println!("    profile: {profile}");
+    println!("    debug assertions: {}", cfg!(debug_assertions));
+
+    if !matches!(opt, "2" | "3") || profile != "release" {
+        // Warn for `profile != release` because optimizations being on for this crate (always,
+        // via the workspace Cargo.toml)  may not mean they are on for dependencies.
         println!(
-            "WARNING: running in debug mode. Release mode is recommended to reduce test duration."
+            "WARNING: test-float-parse may be running unoptimized or with unoptimized \
+            dependencies. Release mode is recommended to reduce test duration."
         );
         std::thread::sleep(Duration::from_secs(2));
     }
+    println!("Running with debug assertions={}", cfg!(debug_assertions));
 
     let args: Vec<_> = std::env::args().skip(1).collect();
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
