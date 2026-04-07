@@ -353,8 +353,7 @@ enum VisResolutionError<'a> {
 struct Segment {
     ident: Ident,
     id: Option<NodeId>,
-    /// Signals whether this `PathSegment` has generic arguments. Used to avoid providing
-    /// nonsensical suggestions.
+    /// Signals whether this `PathSegment` has generic arguments.
     has_generic_args: bool,
     /// Signals whether this `PathSegment` has lifetime arguments.
     has_lifetime_args: bool,

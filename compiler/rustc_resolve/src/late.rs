@@ -2158,7 +2158,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
                     self.r.tcx.parent(def_id)
                 }
-                Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
+                Res::Def(DefKind::Variant, def_id)
+                    if i + 2 == proj_start && segment.has_generic_args =>
+                {
+                    self.r.tcx.parent(def_id)
+                }
+                Res::Def(DefKind::Variant, def_id)
+                    if i + 1 == proj_start
+                        && !i.checked_sub(1).is_some_and(|i| path[i].has_generic_args) =>
+                {
                     self.r.tcx.parent(def_id)
                 }
                 Res::Def(DefKind::Struct, def_id)
