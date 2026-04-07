@@ -173,6 +173,29 @@ impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
     }
 }
 
+pub(crate) struct MacroTokenLimitParser;
+
+impl<S: Stage> SingleAttributeParser<S> for MacroTokenLimitParser {
+    const PATH: &[Symbol] = &[sym::macro_token_limit];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let ArgParser::NameValue(nv) = args else {
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
+            return None;
+        };
+
+        Some(AttributeKind::MacroTokenLimit {
+            limit: cx.parse_limit_int(nv)?,
+            attr_span: cx.attr_span,
+            limit_span: nv.value_span,
+        })
+    }
+}
+
 pub(crate) struct NoCoreParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for NoCoreParser {

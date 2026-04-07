@@ -40,3 +40,13 @@ pub(crate) fn get_recursion_limit(attrs: &[Attribute], sess: &Session) -> Limit 
             .map_or(limit_from_crate, |min| min.max(limit_from_crate)),
     )
 }
+
+/// Default token limit for macro expansion input (2^20 ≈ 1 million tokens).
+const DEFAULT_MACRO_TOKEN_LIMIT: usize = 1 << 20;
+
+// This one is also read prior to macro expansion.
+pub(crate) fn get_macro_token_limit(attrs: &[Attribute], _sess: &Session) -> Limit {
+    let limit_from_crate = find_attr!(attrs, MacroTokenLimit { limit, .. } => limit.0)
+        .unwrap_or(DEFAULT_MACRO_TOKEN_LIMIT);
+    Limit::new(limit_from_crate)
+}

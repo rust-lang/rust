@@ -1,0 +1,20 @@
+error: macro expansion token limit reached while expanding `from_cow_impls!`
+  --> $DIR/issue-N-exponential-token-growth.rs:N:N
+   |
+LL | /         from_cow_impls!(
+LL | |             $($from, std::borrow::Cow::from),+
+LL | |         );
+   | |_________^
+...
+LL | / from_cow_impls!(
+LL | |     uN,
+LL | |     uN,
+LL | | );
+   | |_- in this macro invocation
+   |
+   = help: the macro input has N tokens, exceeding the limit of N
+   = note: this is typically caused by a macro that recursively produces exponentially growing output; consider adding `#![macro_token_limit = "N"]` to your crate if this is intentional
+   = note: this error originates in the macro `from_cow_impls` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to N previous error
+

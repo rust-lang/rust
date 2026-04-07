@@ -687,6 +687,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-type_length_limit-attribute"),
         FutureWarnFollowing, EncodeCrossCrate::No
     ),
+    ungated!(
+        macro_token_limit, CrateLevel,
+        template!(NameValueStr: "N"),
+        FutureWarnFollowing, EncodeCrossCrate::No
+    ),
     gated!(
         move_size_limit, CrateLevel, template!(NameValueStr: "N"), ErrorFollowing,
         EncodeCrossCrate::No, large_assignments, experimental!(move_size_limit)

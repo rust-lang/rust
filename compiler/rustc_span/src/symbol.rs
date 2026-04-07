@@ -1199,6 +1199,7 @@ symbols! {
         macro_metavar_expr,
         macro_metavar_expr_concat,
         macro_reexport,
+        macro_token_limit,
         macro_use,
         macro_vis_matcher,
         macros_in_extern,

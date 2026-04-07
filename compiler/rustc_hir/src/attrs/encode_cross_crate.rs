@@ -93,6 +93,7 @@ impl AttributeKind {
             ProcMacroDerive { .. } => No,
             ProfilerRuntime => No,
             RecursionLimit { .. } => No,
+            MacroTokenLimit { .. } => No,
             ReexportTestHarnessMain(..) => No,
             RegisterTool(..) => No,
             Repr { .. } => No,

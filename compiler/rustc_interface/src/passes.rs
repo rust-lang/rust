@@ -201,10 +201,12 @@ fn configure_and_expand(
 
         // Create the config for macro expansion
         let recursion_limit = get_recursion_limit(pre_configured_attrs, sess);
+        let macro_token_limit = get_macro_token_limit(pre_configured_attrs, sess);
         let cfg = rustc_expand::expand::ExpansionConfig {
             crate_name,
             features,
             recursion_limit,
+            macro_token_limit,
             trace_mac: sess.opts.unstable_opts.trace_macros,
             should_test: sess.is_test_crate(),
             span_debug: sess.opts.unstable_opts.span_debug,
@@ -1488,4 +1490,18 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
         ShouldEmit::EarlyFatal { also_emit_lints: false },
     );
     crate::limits::get_recursion_limit(attr.as_slice(), sess)
+}
+
+fn get_macro_token_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {
+    let attr = AttributeParser::parse_limited_should_emit(
+        sess,
+        &krate_attrs,
+        sym::macro_token_limit,
+        DUMMY_SP,
+        rustc_ast::node_id::CRATE_NODE_ID,
+        Target::Crate,
+        None,
+        ShouldEmit::EarlyFatal { also_emit_lints: false },
+    );
+    crate::limits::get_macro_token_limit(attr.as_slice(), sess)
 }

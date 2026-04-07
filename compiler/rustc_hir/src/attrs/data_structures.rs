@@ -1388,6 +1388,14 @@ pub enum AttributeKind {
         limit: Limit,
     },
 
+    /// Represents `#![macro_token_limit = "N"]` — limits the number of tokens in a single
+    /// `macro_rules!` expansion input to prevent exponential token growth from hanging the compiler.
+    MacroTokenLimit {
+        attr_span: Span,
+        limit_span: Span,
+        limit: Limit,
+    },
+
     /// Represents `#[reexport_test_harness_main]`
     ReexportTestHarnessMain(Symbol),
 

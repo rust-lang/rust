@@ -279,6 +279,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PreludeImport
                     | AttributeKind::ProfilerRuntime
                     | AttributeKind::RecursionLimit { .. }
+                    | AttributeKind::MacroTokenLimit { .. }
                     | AttributeKind::ReexportTestHarnessMain(..)
                     | AttributeKind::RegisterTool(..)
                     // handled below this loop and elsewhere
