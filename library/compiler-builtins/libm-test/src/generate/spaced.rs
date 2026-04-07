@@ -127,7 +127,7 @@ macro_rules! impl_spaced_input {
                         let iter = exhaustive_float().flat_map(|first| {
                             exhaustive_float().map(move |second| (first, second))
                         });
-                        (EitherIter::A(iter), count.checked_mul(count).unwrap())
+                        (EitherIter::A(iter), count.strict_mul(count))
                     }
                     _ => {
                         let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
@@ -135,7 +135,7 @@ macro_rules! impl_spaced_input {
                         let iter = iter0.flat_map(move |first| {
                             iter1.clone().map(move |second| (first, second))
                         });
-                        let count = steps0.checked_mul(steps1).unwrap();
+                        let count = steps0.strict_mul(steps1);
                         (EitherIter::B(iter), count)
                     }
                 }
@@ -172,11 +172,7 @@ macro_rules! impl_spaced_input {
                             .flat_map(move |(first, second)| {
                                 iter2.clone().map(move |third| (first, second, third))
                             });
-                        let count = steps0
-                            .checked_mul(steps1)
-                            .unwrap()
-                            .checked_mul(steps2)
-                            .unwrap();
+                        let count = steps0.strict_mul(steps1).strict_mul(steps2);
 
                         (EitherIter::B(iter), count)
                     }
@@ -198,7 +194,8 @@ macro_rules! impl_spaced_input {
                         let iter = iter0.flat_map(move |first| {
                             exhaustive_float().map(move |second| (first, second))
                         });
-                        (EitherIter::A(iter), steps0.checked_mul(count1).unwrap())
+                        let count = steps0.strict_mul(count1);
+                        (EitherIter::A(iter), count)
                     }
                     _ => {
                         let (iter0, steps0) = linear_ints(range0, max_steps0);
@@ -207,7 +204,7 @@ macro_rules! impl_spaced_input {
                         let iter = iter0.flat_map(move |first| {
                             iter1.clone().map(move |second| (first, second))
                         });
-                        let count = steps0.checked_mul(steps1).unwrap();
+                        let count = steps0.strict_mul(steps1);
 
                         (EitherIter::B(iter), count)
                     }
@@ -229,7 +226,8 @@ macro_rules! impl_spaced_input {
                         let iter = exhaustive_float().flat_map(move |first| {
                             iter1.clone().map(move |second| (first, second))
                         });
-                        (EitherIter::A(iter), count0.checked_mul(steps1).unwrap())
+                        let count = count0.strict_mul(steps1);
+                        (EitherIter::A(iter), count)
                     }
                     _ => {
                         let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
@@ -238,7 +236,7 @@ macro_rules! impl_spaced_input {
                         let iter = iter0.flat_map(move |first| {
                             iter1.clone().map(move |second| (first, second))
                         });
-                        let count = steps0.checked_mul(steps1).unwrap();
+                        let count = steps0.strict_mul(steps1);
 
                         (EitherIter::B(iter), count)
                     }
@@ -292,7 +290,8 @@ macro_rules! impl_spaced_input_int {
                         let iter = range0.flat_map(move |first| {
                             range1.clone().map(move |second| (first, second))
                         });
-                        (EitherIter::A(iter), count.checked_mul(count).unwrap())
+                        let count = count.strict_mul(count);
+                        (EitherIter::A(iter), count)
                     }
                     _ => {
                         let (iter0, steps0) = linear_ints::<Arg0<Op>>(range0, max_steps0);
@@ -300,7 +299,7 @@ macro_rules! impl_spaced_input_int {
                         let iter = iter0.flat_map(move |first| {
                             iter1.clone().map(move |second| (first, second))
                         });
-                        let count = steps0.checked_mul(steps1).unwrap();
+                        let count = steps0.strict_mul(steps1);
                         (EitherIter::B(iter), count)
                     }
                 }
@@ -324,7 +323,8 @@ macro_rules! impl_spaced_input_int {
                         let iter = range0.flat_map(move |first| {
                             range1.clone().map(move |second| (first, second))
                         });
-                        (EitherIter::A(iter), count.checked_mul(count).unwrap())
+                        let count = count.strict_mul(count);
+                        (EitherIter::A(iter), count)
                     }
                     _ => {
                         let (iter0, steps0) = linear_ints::<Arg0<Op>>(range0, max_steps0);
@@ -332,7 +332,7 @@ macro_rules! impl_spaced_input_int {
                         let iter = iter0.flat_map(move |first| {
                             iter1.clone().map(move |second| (first, second))
                         });
-                        let count = steps0.checked_mul(steps1).unwrap();
+                        let count = steps0.strict_mul(steps1);
                         (EitherIter::B(iter), count)
                     }
                 }
