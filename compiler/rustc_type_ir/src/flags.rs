@@ -1,6 +1,6 @@
 use crate::inherent::*;
 use crate::visit::Flags;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, Region};
 
 bitflags::bitflags! {
     /// Flags that we track on types. These flags are propagated upwards
@@ -446,7 +446,7 @@ impl<I: Interner> FlagComputation<I> {
         }
     }
 
-    fn add_region(&mut self, r: I::Region) {
+    fn add_region(&mut self, r: Region<I>) {
         self.add_flags(r.flags());
         if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) = r.kind() {
             self.add_bound_var(debruijn);

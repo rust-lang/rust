@@ -4,7 +4,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContex
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::inherent::*;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, Region};
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
@@ -34,7 +34,7 @@ impl<I: Interner> OpaqueTypeKey<I> {
     pub fn fold_captured_lifetime_args(
         self,
         cx: I,
-        mut f: impl FnMut(I::Region) -> I::Region,
+        mut f: impl FnMut(Region<I>) -> Region<I>,
     ) -> Self {
         let Self { def_id, args } = self;
         let variances = cx.variances_of(def_id.into());

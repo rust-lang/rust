@@ -5,20 +5,23 @@ use rustc_macros::HashStable_NoContext;
 use tracing::debug;
 
 use crate::inherent::*;
+use crate::lift::Lift;
+use crate::relate::{Relate, RelateResult, TypeRelation};
 use crate::{
-    BoundRegion, BoundRegionKind, BoundVar, BoundVarIndexKind, DebruijnIndex, Flags, Interner,
-    PlaceholderRegion, RegionKind, TypeFlags,
+    BoundRegion, BoundRegionKind, BoundVar, BoundVarIndexKind, DebruijnIndex, FallibleTypeFolder,
+    Flags, Interner, PlaceholderRegion, RegionKind, TypeFlags, TypeFoldable, TypeFolder,
+    TypeVisitable, TypeVisitor,
 };
 
 /// Use this rather than `RegionKind`, whenever possible.
 #[derive_where(Clone, Copy, Debug, PartialEq, Eq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 #[rustc_pass_by_value]
-pub struct Region2<I: Interner>(I::InternedRegionKind);
+pub struct Region<I: Interner>(I::InternedRegionKind);
 // pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 
 // These are only the `inherent` trait methods that have been ported across
-impl<I: Interner> Region2<I> {
+impl<I: Interner> Region<I> {
     #[inline]
     pub fn new_bound(interner: I, debruijn: DebruijnIndex, bound_region: BoundRegion<I>) -> Self {
         // Use a pre-interned one when possible.
@@ -123,7 +126,7 @@ impl<I: Interner> Region2<I> {
     }
 }
 
-impl<I: Interner> Flags for Region2<I> {
+impl<I: Interner> Flags for Region<I> {
     fn flags(&self) -> TypeFlags {
         self.type_flags()
     }
@@ -136,7 +139,7 @@ impl<I: Interner> Flags for Region2<I> {
     }
 }
 
-impl<I: Interner> IntoKind for Region2<I> {
+impl<I: Interner> IntoKind for Region<I> {
     type Kind = RegionKind<I>;
 
     fn kind(self) -> Self::Kind {
@@ -149,5 +152,42 @@ impl<'tcx, T: Copy> IntoKind for Interned<'tcx, T> {
 
     fn kind(self) -> Self::Kind {
         *self.0
+    }
+}
+
+impl<I: Interner> Relate<I> for Region<I> {
+    fn relate<R: TypeRelation<I>>(
+        relation: &mut R,
+        a: Region<I>,
+        b: Region<I>,
+    ) -> RelateResult<I, Region<I>> {
+        relation.regions(a, b)
+    }
+}
+
+impl<I: Interner> TypeVisitable<I> for Region<I> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        visitor.visit_region(*self)
+    }
+}
+
+impl<I: Interner> TypeFoldable<I> for Region<I> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        folder.try_fold_region(self)
+    }
+
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        folder.fold_region(self)
+    }
+}
+
+impl<I: Interner, U: Interner> Lift<U> for Region<I>
+where
+    RegionKind<I>: Lift<U, Lifted = RegionKind<U>>,
+{
+    type Lifted = Region<U>;
+
+    fn lift_to_interner(self, interner: U) -> Option<Self::Lifted> {
+        Some(interner.intern_region(self.kind().lift_to_interner(interner)?))
     }
 }

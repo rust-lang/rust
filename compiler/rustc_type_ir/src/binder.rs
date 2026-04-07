@@ -16,7 +16,7 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldabl
 use crate::inherent::*;
 use crate::lift::Lift;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex};
+use crate::{self as ty, DebruijnIndex, Interner, Region, UniverseIndex};
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
@@ -339,7 +339,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         c.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         match r.kind() {
             ty::ReBound(index, br) if index == ty::BoundVarIndexKind::Bound(self.binder_index) => {
                 let idx = br.var().as_usize();
@@ -699,7 +699,7 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
         t
     }
 
-    fn fold_region(&mut self, r: I::Region) -> I::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         // Note: This routine only handles regions that are bound on
         // type declarations and other outer declarations, not those
         // bound in *fn types*. Region instantiation of the bound
@@ -837,7 +837,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     fn region_param_expected(
         &self,
         ebr: I::EarlyParamRegion,
-        r: I::Region,
+        r: Region<I>,
         kind: ty::GenericArgKind<I>,
     ) -> ! {
         panic!(
@@ -852,7 +852,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 
     #[cold]
     #[inline(never)]
-    fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: I::Region) -> ! {
+    fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: Region<I>) -> ! {
         panic!(
             "region parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             ebr,
@@ -913,7 +913,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         }
     }
 
-    fn shift_region_through_binders(&self, region: I::Region) -> I::Region {
+    fn shift_region_through_binders(&self, region: Region<I>) -> Region<I> {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
             region
         } else {
@@ -950,6 +950,14 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 pub enum BoundVarIndexKind {
     Bound(DebruijnIndex),
     Canonical,
+}
+
+impl<U: Interner> Lift<U> for BoundVarIndexKind {
+    type Lifted = BoundVarIndexKind;
+
+    fn lift_to_interner(self, _interner: U) -> Option<Self::Lifted> {
+        Some(self)
+    }
 }
 
 /// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
@@ -1111,6 +1119,17 @@ impl<I: Interner> BoundVariableKind<I> {
 pub struct BoundRegion<I: Interner> {
     pub var: ty::BoundVar,
     pub kind: BoundRegionKind<I>,
+}
+
+impl<I: Interner, U: Interner> Lift<U> for BoundRegion<I>
+where
+    BoundRegionKind<I>: Lift<U, Lifted = BoundRegionKind<U>>,
+{
+    type Lifted = BoundRegion<U>;
+
+    fn lift_to_interner(self, interner: U) -> Option<Self::Lifted> {
+        Some(BoundRegion { var: self.var, kind: self.kind.lift_to_interner(interner)? })
+    }
 }
 
 impl<I: Interner> core::fmt::Debug for BoundRegion<I> {
