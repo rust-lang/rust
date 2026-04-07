@@ -665,7 +665,11 @@ impl DocParser {
                 let span = cx.attr_span;
                 cx.emit_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::IllFormedAttributeInput { suggestions, docs: None },
+                    AttributeLintKind::IllFormedAttributeInput {
+                        suggestions,
+                        docs: None,
+                        help: None,
+                    },
                     span,
                 );
             }

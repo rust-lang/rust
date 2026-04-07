@@ -6,11 +6,10 @@ use std::ops::ControlFlow;
 use either::Either;
 use hir::{ClosureKind, Path};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::attrs::diagnostic::FormatArgs;
+use rustc_hir::attrs::diagnostic::{CustomDiagnostic, FormatArgs};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
 use rustc_hir::{
@@ -146,7 +145,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 self.body.local_decls[moved_place.local].ty.kind()
                 && let Some(Some(directive)) = find_attr!(self.infcx.tcx, item_def.did(), OnMove { directive, .. }  => directive)
             {
-                let item_name = self.infcx.tcx.item_name(item_def.did()).to_string();
+                let this = self.infcx.tcx.item_name(item_def.did()).to_string();
                 let mut generic_args: Vec<_> = self
                     .infcx
                     .tcx
@@ -155,21 +154,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     .iter()
                     .filter_map(|param| Some((param.name, args[param.index as usize].to_string())))
                     .collect();
-                generic_args.push((kw::SelfUpper, item_name));
+                generic_args.push((kw::SelfUpper, this.clone()));
 
                 let args = FormatArgs {
-                    this: String::new(),
-                    trait_sugared: String::new(),
+                    this,
+                    // Unused
+                    this_sugared: String::new(),
+                    // Unused
                     item_context: "",
                     generic_args,
                 };
-                (
-                    directive.message.as_ref().map(|e| e.1.format(&args)),
-                    directive.label.as_ref().map(|e| e.1.format(&args)),
-                    directive.notes.iter().map(|e| e.format(&args)).collect(),
-                )
+                let CustomDiagnostic { message, label, notes, parent_label: _ } =
+                    directive.eval(None, &args);
+
+                (message, label, notes)
             } else {
-                (None, None, ThinVec::new())
+                (None, None, Vec::new())
             };
 
             let mut err = self.cannot_act_on_moved_value(
@@ -914,12 +914,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if show_assign_sugg {
             struct LetVisitor {
                 decl_span: Span,
-                sugg_span: Option<Span>,
+                sugg: Option<(Span, bool)>,
             }
 
             impl<'v> Visitor<'v> for LetVisitor {
                 fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
-                    if self.sugg_span.is_some() {
+                    if self.sugg.is_some() {
                         return;
                     }
 
@@ -927,19 +927,23 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // but we could suggest `todo!()` for all uninitialized bindings in the pattern
                     if let hir::StmtKind::Let(hir::LetStmt { span, ty, init: None, pat, .. }) =
                         &ex.kind
-                        && let hir::PatKind::Binding(..) = pat.kind
+                        && let hir::PatKind::Binding(binding_mode, ..) = pat.kind
                         && span.contains(self.decl_span)
                     {
-                        self.sugg_span = ty.map_or(Some(self.decl_span), |ty| Some(ty.span));
+                        // Insert after the whole binding pattern so suggestions stay valid for
+                        // bindings with `@` subpatterns like `ref mut x @ v`.
+                        let strip_ref = matches!(binding_mode.0, hir::ByRef::Yes(..));
+                        self.sugg =
+                            ty.map_or(Some((pat.span, strip_ref)), |ty| Some((ty.span, strip_ref)));
                     }
                     hir::intravisit::walk_stmt(self, ex);
                 }
             }
 
-            let mut visitor = LetVisitor { decl_span, sugg_span: None };
+            let mut visitor = LetVisitor { decl_span, sugg: None };
             visitor.visit_body(&body);
-            if let Some(span) = visitor.sugg_span {
-                self.suggest_assign_value(&mut err, moved_place, span);
+            if let Some((span, strip_ref)) = visitor.sugg {
+                self.suggest_assign_value(&mut err, moved_place, span, strip_ref);
             }
         }
         err
@@ -950,8 +954,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         err: &mut Diag<'_>,
         moved_place: PlaceRef<'tcx>,
         sugg_span: Span,
+        strip_ref: bool,
     ) {
-        let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
+        let mut ty = moved_place.ty(self.body, self.infcx.tcx).ty;
+        if strip_ref && let ty::Ref(_, inner, _) = ty.kind() {
+            ty = *inner;
+        }
         debug!("ty: {:?}, kind: {:?}", ty, ty.kind());
 
         let Some(assign_value) = self.infcx.err_ctxt().ty_kind_suggestion(self.infcx.param_env, ty)

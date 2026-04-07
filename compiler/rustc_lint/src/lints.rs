@@ -2904,6 +2904,10 @@ pub(crate) mod unexpected_cfg_value {
 
             name: Symbol,
         },
+        ChangeName {
+            #[subdiagnostic]
+            suggestions: Vec<ChangeNameSuggestion>,
+        },
     }
 
     #[derive(Subdiagnostic)]
@@ -2962,6 +2966,20 @@ pub(crate) mod unexpected_cfg_value {
     }
 
     #[derive(Subdiagnostic)]
+    #[suggestion(
+        "`{$value}` is an expected value for `{$name}`",
+        code = "{name}",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    pub(crate) struct ChangeNameSuggestion {
+        #[primary_span]
+        pub span: Span,
+        pub name: Symbol,
+        pub value: Symbol,
+    }
+
+    #[derive(Subdiagnostic)]
     pub(crate) enum InvocationHelp {
         #[note(
             "see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration"
@@ -3009,6 +3027,16 @@ pub(crate) struct IllFormedAttributeInput {
     #[note("for more information, visit <{$docs}>")]
     pub has_docs: bool,
     pub docs: &'static str,
+    #[subdiagnostic]
+    pub help: Option<IllFormedAttributeInputHelp>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(
+    "if you meant to silence a warning, consider using #![allow({$lint})] or #![expect({$lint})]"
+)]
+pub(crate) struct IllFormedAttributeInputHelp {
+    pub lint: String,
 }
 
 #[derive(Diagnostic)]

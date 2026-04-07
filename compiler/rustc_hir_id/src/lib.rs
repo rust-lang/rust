@@ -65,7 +65,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OwnerId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
         hcx.def_path_hash(self.to_def_id())
     }
 }
@@ -180,7 +180,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for HirId {
     type KeyType = (DefPathHash, ItemLocalId);
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> (DefPathHash, ItemLocalId) {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> (DefPathHash, ItemLocalId) {
         let def_path_hash = self.owner.def_id.to_stable_hash_key(hcx);
         (def_path_hash, self.local_id)
     }
@@ -190,7 +190,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for ItemLocalId {
     type KeyType = ItemLocalId;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &Hcx) -> ItemLocalId {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> ItemLocalId {
         *self
     }
 }

@@ -6797,9 +6797,11 @@ Released 2018-09-13
 [`manual_midpoint`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_midpoint
 [`manual_next_back`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_next_back
 [`manual_non_exhaustive`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_non_exhaustive
+[`manual_noop_waker`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_noop_waker
 [`manual_ok_err`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_ok_err
 [`manual_ok_or`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_ok_or
 [`manual_option_as_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_option_as_slice
+[`manual_option_zip`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_option_zip
 [`manual_pattern_char_comparison`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_pattern_char_comparison
 [`manual_pop_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_pop_if
 [`manual_range_contains`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_range_contains

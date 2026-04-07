@@ -359,8 +359,7 @@ fn generate_thin_lto_work<B: WriteBackendMethods>(
     dcx: DiagCtxtHandle<'_>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
-    needs_thin_lto: Vec<(String, B::ModuleBuffer)>,
-    import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
+    needs_thin_lto: Vec<ThinLtoInput<B>>,
 ) -> Vec<(ThinLtoWorkItem<B>, u64)> {
     let _prof_timer = prof.generic_activity("codegen_thin_generate_lto_work");
 
@@ -371,7 +370,6 @@ fn generate_thin_lto_work<B: WriteBackendMethods>(
         exported_symbols_for_lto,
         each_linked_rlib_for_lto,
         needs_thin_lto,
-        import_only_modules,
     );
     lto_modules
         .into_iter()
@@ -398,16 +396,12 @@ enum MaybeLtoModules<B: WriteBackendMethods> {
         exported_symbols_for_lto: Arc<Vec<String>>,
         each_linked_rlib_file_for_lto: Vec<PathBuf>,
         needs_fat_lto: Vec<FatLtoInput<B>>,
-        lto_import_only_modules:
-            Vec<(SerializedModule<<B as WriteBackendMethods>::ModuleBuffer>, WorkProduct)>,
     },
     ThinLto {
         cgcx: CodegenContext,
         exported_symbols_for_lto: Arc<Vec<String>>,
         each_linked_rlib_file_for_lto: Vec<PathBuf>,
-        needs_thin_lto: Vec<(String, <B as WriteBackendMethods>::ModuleBuffer)>,
-        lto_import_only_modules:
-            Vec<(SerializedModule<<B as WriteBackendMethods>::ModuleBuffer>, WorkProduct)>,
+        needs_thin_lto: Vec<ThinLtoInput<B>>,
     },
 }
 
@@ -603,30 +597,28 @@ pub fn produce_final_output_artifacts(
     // Clean up unwanted temporary files.
 
     // We create the following files by default:
-    //  - #crate#.#module-name#.bc
-    //  - #crate#.#module-name#.o
-    //  - #crate#.crate.metadata.bc
-    //  - #crate#.crate.metadata.o
-    //  - #crate#.o (linked from crate.##.o)
-    //  - #crate#.bc (copied from crate.##.bc)
+    //  - #crate#.#module-name#.rcgu.bc
+    //  - #crate#.#module-name#.rcgu.o
+    //  - #crate#.o (linked from crate.##.rcgu.o)
+    //  - #crate#.bc (copied from crate.##.rcgu.bc)
     // We may create additional files if requested by the user (through
     // `-C save-temps` or `--emit=` flags).
 
     if !sess.opts.cg.save_temps {
-        // Remove the temporary .#module-name#.o objects. If the user didn't
+        // Remove the temporary .#module-name#.rcgu.o objects. If the user didn't
         // explicitly request bitcode (with --emit=bc), and the bitcode is not
         // needed for building an rlib, then we must remove .#module-name#.bc as
         // well.
 
-        // Specific rules for keeping .#module-name#.bc:
+        // Specific rules for keeping .#module-name#.rcgu.bc:
         //  - If the user requested bitcode (`user_wants_bitcode`), and
         //    codegen_units > 1, then keep it.
         //  - If the user requested bitcode but codegen_units == 1, then we
-        //    can toss .#module-name#.bc because we copied it to .bc earlier.
+        //    can toss .#module-name#.rcgu.bc because we copied it to .bc earlier.
         //  - If we're not building an rlib and the user didn't request
-        //    bitcode, then delete .#module-name#.bc.
+        //    bitcode, then delete .#module-name#.rcgu.bc.
         // If you change how this works, also update back::link::link_rlib,
-        // where .#module-name#.bc files are (maybe) deleted after making an
+        // where .#module-name#.rcgu.bc files are (maybe) deleted after making an
         // rlib.
         let needs_crate_object = crate_output.outputs.contains_key(&OutputType::Exe);
 
@@ -686,7 +678,6 @@ pub fn produce_final_output_artifacts(
 
     // We leave the following files around by default:
     //  - #crate#.o
-    //  - #crate#.crate.metadata.o
     //  - #crate#.bc
     // These are used in linking steps and will be cleaned up afterward.
 }
@@ -785,6 +776,11 @@ pub(crate) enum WorkItemResult<B: WriteBackendMethods> {
 pub enum FatLtoInput<B: WriteBackendMethods> {
     Serialized { name: String, buffer: SerializedModule<B::ModuleBuffer> },
     InMemory(ModuleCodegen<B::Module>),
+}
+
+pub enum ThinLtoInput<B: WriteBackendMethods> {
+    Red { name: String, buffer: SerializedModule<B::ModuleBuffer> },
+    Green { wp: WorkProduct, buffer: SerializedModule<B::ModuleBuffer> },
 }
 
 /// Actual LTO type we end up choosing based on multiple factors.
@@ -973,8 +969,7 @@ fn do_fat_lto<B: WriteBackendMethods>(
     tm_factory: TargetMachineFactoryFn<B>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
-    mut needs_fat_lto: Vec<FatLtoInput<B>>,
-    import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
+    needs_fat_lto: Vec<FatLtoInput<B>>,
 ) -> CompiledModule {
     let _timer = prof.verbose_generic_activity("LLVM_fatlto");
 
@@ -982,10 +977,6 @@ fn do_fat_lto<B: WriteBackendMethods>(
     let dcx = dcx.handle();
 
     check_lto_allowed(&cgcx, dcx);
-
-    for (module, wp) in import_only_modules {
-        needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, buffer: module })
-    }
 
     B::optimize_and_codegen_fat_lto(
         cgcx,
@@ -1005,11 +996,7 @@ fn do_thin_lto<B: WriteBackendMethods>(
     tm_factory: TargetMachineFactoryFn<B>,
     exported_symbols_for_lto: Arc<Vec<String>>,
     each_linked_rlib_for_lto: Vec<PathBuf>,
-    needs_thin_lto: Vec<(String, <B as WriteBackendMethods>::ModuleBuffer)>,
-    lto_import_only_modules: Vec<(
-        SerializedModule<<B as WriteBackendMethods>::ModuleBuffer>,
-        WorkProduct,
-    )>,
+    needs_thin_lto: Vec<ThinLtoInput<B>>,
 ) -> Vec<CompiledModule> {
     let _timer = prof.verbose_generic_activity("LLVM_thinlto");
 
@@ -1046,7 +1033,6 @@ fn do_thin_lto<B: WriteBackendMethods>(
         &exported_symbols_for_lto,
         &each_linked_rlib_for_lto,
         needs_thin_lto,
-        lto_import_only_modules,
     ) {
         let insertion_index =
             work_items.binary_search_by_key(&cost, |&(_, cost)| cost).unwrap_or_else(|e| e);
@@ -1264,13 +1250,16 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
     let mut each_linked_rlib_for_lto = Vec::new();
     let mut each_linked_rlib_file_for_lto = Vec::new();
-    drop(link::each_linked_rlib(crate_info, None, &mut |cnum, path| {
-        if link::ignored_for_lto(sess, crate_info, cnum) {
-            return;
-        }
-        each_linked_rlib_for_lto.push(cnum);
-        each_linked_rlib_file_for_lto.push(path.to_path_buf());
-    }));
+    if sess.lto() != Lto::No && sess.lto() != Lto::ThinLocal {
+        drop(link::each_linked_rlib(crate_info, None, &mut |cnum, path| {
+            if link::ignored_for_lto(sess, crate_info, cnum) {
+                return;
+            }
+
+            each_linked_rlib_for_lto.push(cnum);
+            each_linked_rlib_file_for_lto.push(path.to_path_buf());
+        }));
+    }
 
     // Compute the set of symbols we need to retain when doing LTO (if we need to)
     let exported_symbols_for_lto =
@@ -1723,7 +1712,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         }
                         Ok(WorkItemResult::NeedsThinLto(name, thin_buffer)) => {
                             assert!(needs_fat_lto.is_empty());
-                            needs_thin_lto.push((name, thin_buffer));
+                            needs_thin_lto.push(ThinLtoInput::Red {
+                                name,
+                                buffer: SerializedModule::Local(thin_buffer),
+                            });
                         }
                         Err(Some(WorkerFatalError)) => {
                             // Like `CodegenAborted`, wait for remaining work to finish.
@@ -1766,16 +1758,23 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 needs_fat_lto.push(FatLtoInput::InMemory(allocator_module));
             }
 
+            for (module, wp) in lto_import_only_modules {
+                needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, buffer: module })
+            }
+
             return Ok(MaybeLtoModules::FatLto {
                 cgcx,
                 exported_symbols_for_lto,
                 each_linked_rlib_file_for_lto,
                 needs_fat_lto,
-                lto_import_only_modules,
             });
         } else if !needs_thin_lto.is_empty() || !lto_import_only_modules.is_empty() {
             assert!(compiled_modules.is_empty());
             assert!(needs_fat_lto.is_empty());
+
+            for (buffer, wp) in lto_import_only_modules {
+                needs_thin_lto.push(ThinLtoInput::Green { wp, buffer })
+            }
 
             if cgcx.lto == Lto::ThinLocal {
                 compiled_modules.extend(do_thin_lto::<B>(
@@ -1786,12 +1785,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     exported_symbols_for_lto,
                     each_linked_rlib_file_for_lto,
                     needs_thin_lto,
-                    lto_import_only_modules,
                 ));
             } else {
                 if let Some(allocator_module) = allocator_module.take() {
                     let thin_buffer = B::serialize_module(allocator_module.module_llvm, true);
-                    needs_thin_lto.push((allocator_module.name, thin_buffer));
+                    needs_thin_lto.push(ThinLtoInput::Red {
+                        name: allocator_module.name,
+                        buffer: SerializedModule::Local(thin_buffer),
+                    });
                 }
 
                 return Ok(MaybeLtoModules::ThinLto {
@@ -1799,7 +1800,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     exported_symbols_for_lto,
                     each_linked_rlib_file_for_lto,
                     needs_thin_lto,
-                    lto_import_only_modules,
                 });
             }
         }
@@ -2173,7 +2173,6 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                 exported_symbols_for_lto,
                 each_linked_rlib_file_for_lto,
                 needs_fat_lto,
-                lto_import_only_modules,
             } => {
                 let tm_factory = self.backend.target_machine_factory(
                     sess,
@@ -2190,7 +2189,6 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         &exported_symbols_for_lto,
                         &each_linked_rlib_file_for_lto,
                         needs_fat_lto,
-                        lto_import_only_modules,
                     )],
                     allocator_module: None,
                 }
@@ -2200,7 +2198,6 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                 exported_symbols_for_lto,
                 each_linked_rlib_file_for_lto,
                 needs_thin_lto,
-                lto_import_only_modules,
             } => {
                 let tm_factory = self.backend.target_machine_factory(
                     sess,
@@ -2217,7 +2214,6 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         exported_symbols_for_lto,
                         each_linked_rlib_file_for_lto,
                         needs_thin_lto,
-                        lto_import_only_modules,
                     ),
                     allocator_module: None,
                 }

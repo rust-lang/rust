@@ -172,7 +172,7 @@
 
 // These come from `core` & `alloc` and only in one flavor: no poisoning.
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-pub use core::sync::Exclusive;
+pub use core::sync::SyncView;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;
 

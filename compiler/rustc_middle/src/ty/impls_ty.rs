@@ -53,10 +53,9 @@ where
     type KeyType = Fingerprint;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> Fingerprint {
+    fn to_stable_hash_key(&self, hcx: &mut StableHashingContext<'a>) -> Fingerprint {
         let mut hasher = StableHasher::new();
-        let mut hcx: StableHashingContext<'a> = hcx.clone();
-        self.hash_stable(&mut hcx, &mut hasher);
+        self.hash_stable(hcx, &mut hasher);
         hasher.finish()
     }
 }
@@ -88,7 +87,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for region::Scope {
     type KeyType = region::Scope;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> region::Scope {
+    fn to_stable_hash_key(&self, _: &mut StableHashingContext<'a>) -> region::Scope {
         *self
     }
 }

@@ -143,7 +143,7 @@ impl<'a, T: Copy + 'a, I: Iterator<Item = &'a T>> UnordItems<&'a T, I> {
 
 impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     #[inline]
-    pub fn into_sorted<Hcx>(self, hcx: &Hcx) -> Vec<T>
+    pub fn into_sorted<Hcx>(self, hcx: &mut Hcx) -> Vec<T>
     where
         T: ToStableHashKey<Hcx>,
     {
@@ -168,7 +168,7 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     }
 
     #[inline]
-    pub fn collect_sorted<Hcx, C>(self, hcx: &Hcx, cache_sort_key: bool) -> C
+    pub fn collect_sorted<Hcx, C>(self, hcx: &mut Hcx, cache_sort_key: bool) -> C
     where
         T: ToStableHashKey<Hcx>,
         C: FromIterator<T> + BorrowMut<[T]>,
@@ -315,7 +315,7 @@ impl<V: Eq + Hash> UnordSet<V> {
     /// `cache_sort_key` when the [ToStableHashKey::to_stable_hash_key] implementation
     /// for `V` is expensive (e.g. a `DefId -> DefPathHash` lookup).
     #[inline]
-    pub fn to_sorted<Hcx>(&self, hcx: &Hcx, cache_sort_key: bool) -> Vec<&V>
+    pub fn to_sorted<Hcx>(&self, hcx: &mut Hcx, cache_sort_key: bool) -> Vec<&V>
     where
         V: ToStableHashKey<Hcx>,
     {
@@ -357,7 +357,7 @@ impl<V: Eq + Hash> UnordSet<V> {
     /// `cache_sort_key` when the [ToStableHashKey::to_stable_hash_key] implementation
     /// for `V` is expensive (e.g. a `DefId -> DefPathHash` lookup).
     #[inline]
-    pub fn into_sorted<Hcx>(self, hcx: &Hcx, cache_sort_key: bool) -> Vec<V>
+    pub fn into_sorted<Hcx>(self, hcx: &mut Hcx, cache_sort_key: bool) -> Vec<V>
     where
         V: ToStableHashKey<Hcx>,
     {
@@ -555,7 +555,7 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     /// `cache_sort_key` when the [ToStableHashKey::to_stable_hash_key] implementation
     /// for `K` is expensive (e.g. a `DefId -> DefPathHash` lookup).
     #[inline]
-    pub fn to_sorted<Hcx>(&self, hcx: &Hcx, cache_sort_key: bool) -> Vec<(&K, &V)>
+    pub fn to_sorted<Hcx>(&self, hcx: &mut Hcx, cache_sort_key: bool) -> Vec<(&K, &V)>
     where
         K: ToStableHashKey<Hcx>,
     {
@@ -582,7 +582,7 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     /// `cache_sort_key` when the [ToStableHashKey::to_stable_hash_key] implementation
     /// for `K` is expensive (e.g. a `DefId -> DefPathHash` lookup).
     #[inline]
-    pub fn into_sorted<Hcx>(self, hcx: &Hcx, cache_sort_key: bool) -> Vec<(K, V)>
+    pub fn into_sorted<Hcx>(self, hcx: &mut Hcx, cache_sort_key: bool) -> Vec<(K, V)>
     where
         K: ToStableHashKey<Hcx>,
     {
@@ -610,7 +610,11 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     /// `cache_sort_key` when the [ToStableHashKey::to_stable_hash_key] implementation
     /// for `K` is expensive (e.g. a `DefId -> DefPathHash` lookup).
     #[inline]
-    pub fn values_sorted<Hcx>(&self, hcx: &Hcx, cache_sort_key: bool) -> impl Iterator<Item = &V>
+    pub fn values_sorted<Hcx>(
+        &self,
+        hcx: &mut Hcx,
+        cache_sort_key: bool,
+    ) -> impl Iterator<Item = &V>
     where
         K: ToStableHashKey<Hcx>,
     {
@@ -710,7 +714,7 @@ impl<Hcx, V: Hash + Eq + HashStable<Hcx>> HashStable<Hcx> for UnordBag<V> {
 
 #[inline]
 fn to_sorted_vec<Hcx, T, K, I>(
-    hcx: &Hcx,
+    hcx: &mut Hcx,
     iter: I,
     cache_sort_key: bool,
     extract_key: fn(&T) -> &K,
