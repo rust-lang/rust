@@ -749,3 +749,26 @@ fn duration_fp_mul_rounding() {
     // This is precisely 9223372036854775807999999999.5 ns, which *should* round up.
     assert_eq!(Duration::MAX.mul_f64(0.5_f64), Duration::from_secs(9223372036854775808));
 }
+
+#[test]
+#[cfg_attr(not(target_has_reliable_f128), ignore)]
+fn duration_fp_div_rounding() {
+    let nanos = 1u128 << 93;
+    let divisor = ((1u64 << 47) - 1) as f64 / (1u64 << 47) as f64;
+    // This precise result in ns would start 9903520314283112567937171456.500000000000003...
+    // If that is rounded too early to 9903520314283112567937171456.5,
+    // then the final result may be incorrectly rounded down again by
+    // `round_to_even()`, but `round()` would have been ok in this case.
+    assert_eq!(
+        Duration::from_nanos_u128(nanos).div_f64(divisor),
+        Duration::from_nanos_u128(9903520314283112567937171457),
+    );
+    // This precise result in ns would start 9903520314283112567937171455.499999999999996...
+    // If that is rounded too early to 9903520314283112567937171455.5,
+    // then the final result would be incorrectly rounded up again,
+    // whether that used `round()` or `round_to_even()`.
+    assert_eq!(
+        Duration::from_nanos_u128(nanos - 1).div_f64(divisor),
+        Duration::from_nanos_u128(9903520314283112567937171455),
+    );
+}
