@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature `field_projections`
-  --> $DIR/feature-gate-field-projections.rs:18:27
+  --> $DIR/feature-gate-field-projections.rs:223:27
    |
 LL |     let _ = project_ref::<field_of!(Foo, 0)>(&Foo(()));
    |                           ^^^^^^^^
@@ -9,27 +9,127 @@ LL |     let _ = project_ref::<field_of!(Foo, 0)>(&Foo(()));
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `field_projections`
-  --> $DIR/feature-gate-field-projections.rs:1:18
+  --> $DIR/feature-gate-field-projections.rs:3:5
    |
-LL | use std::field::{Field, field_of};
-   |                  ^^^^^
-   |
-   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
-   = help: add `#![feature(field_projections)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable library feature `field_projections`
-  --> $DIR/feature-gate-field-projections.rs:1:25
-   |
-LL | use std::field::{Field, field_of};
-   |                         ^^^^^^^^
+LL | use std::field::Field;
+   |     ^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `field_projections`
-  --> $DIR/feature-gate-field-projections.rs:5:19
+  --> $DIR/feature-gate-field-projections.rs:4:5
+   |
+LL | use std::field::Subplace;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:5:5
+   |
+LL | use std::field::field_of;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:6:5
+   |
+LL | use std::ops::DropHusk;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:7:5
+   |
+LL | use std::ops::Place;
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:8:5
+   |
+LL | use std::ops::PlaceBorrow;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:9:5
+   |
+LL | use std::ops::PlaceDeref;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:10:5
+   |
+LL | use std::ops::PlaceDrop;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:11:5
+   |
+LL | use std::ops::PlaceMove;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:12:5
+   |
+LL | use std::ops::PlaceRead;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:13:5
+   |
+LL | use std::ops::PlaceWrapper;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:14:5
+   |
+LL | use std::ops::PlaceWrite;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:18:19
    |
 LL | fn project_ref<F: Field>(
    |                   ^^^^^
@@ -39,7 +139,472 @@ LL | fn project_ref<F: Field>(
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `field_projections`
-  --> $DIR/feature-gate-field-projections.rs:11:5
+  --> $DIR/feature-gate-field-projections.rs:33:5
+   |
+LL |     type Target = T;
+   |     ^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:31:17
+   |
+LL | impl<T: ?Sized> Place for MyPtr<T> {
+   |                 ^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:45:5
+   |
+LL |     const SAFETY: bool = true;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:47:5
+   |
+LL |     unsafe fn read(this: *const Self, sub: S) -> S::Target {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:40:8
+   |
+LL |     S: Subplace<Source = T>,
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:36:19
+   |
+LL | unsafe impl<T, S> PlaceRead<S> for MyPtr<T>
+   |                   ^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:64:5
+   |
+LL |     const SAFETY: bool = true;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:66:5
+   |
+LL |     unsafe fn write(this: *const Self, sub: S, value: S::Target) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:59:8
+   |
+LL |     S: Subplace<Source = T>,
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:55:19
+   |
+LL | unsafe impl<T, S> PlaceWrite<S> for MyPtr<T>
+   |                   ^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:77:8
+   |
+LL |     S: Subplace<Source = T>,
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:74:19
+   |
+LL | unsafe impl<T, S> PlaceMove<S> for MyPtr<T>
+   |                   ^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:91:5
+   |
+LL |     unsafe fn drop(this: *const Self, sub: S) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:88:8
+   |
+LL |     S: Subplace<Source = T>,
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:84:19
+   |
+LL | unsafe impl<T, S> PlaceDrop<S> for MyPtr<T>
+   |                   ^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:101:5
+   |
+LL |     unsafe fn drop_husk(this: *const Self) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:98:16
+   |
+LL | unsafe impl<T> DropHusk for MyPtr<T> {
+   |                ^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:117:5
+   |
+LL |     const SAFETY: bool = true;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:119:5
+   |
+LL |     unsafe fn borrow(this: *const Self, sub: S) -> MyPtr<S::Target> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:113:8
+   |
+LL |     S: Subplace<Source = T>,
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:108:19
+   |
+LL | unsafe impl<T, S> PlaceBorrow<S, MyPtr<S::Target>> for MyPtr<T>
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:136:5
+   |
+LL |     unsafe fn deref(this: *const Self, sub: S) -> *const S::Target {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:130:8
+   |
+LL |     S: Subplace<Source = T>,
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:133:16
+   |
+LL |     S::Target: Place,
+   |                ^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:127:19
+   |
+LL | unsafe impl<T, S> PlaceDeref<S> for MyPtr<T>
+   |                   ^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:146:8
+   |
+LL |     S: Subplace<Source = T>,
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:149:24
+   |
+LL |     S::Target: Sized + Place,
+   |                        ^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:153:21
+   |
+LL |         let value = PlaceRead::read(place, sub);
+   |                     ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:154:9
+   |
+LL |         PlaceWrite::write(place, sub, value);
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:155:17
+   |
+LL |         let _ = PlaceBorrow::<_, MyPtr<_>>::borrow(place, sub);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:156:17
+   |
+LL |         let _ = PlaceDeref::deref(place, sub);
+   |                 ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:157:9
+   |
+LL |         PlaceDrop::drop(place, sub);
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:158:9
+   |
+LL |         DropHusk::drop_husk(place);
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:166:5
+   |
+LL |     type Target = T;
+   |     ^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:164:17
+   |
+LL | impl<T: ?Sized> Place for MyWrapper<T> {
+   |                 ^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:176:5
+   |
+LL |     type Wrapped = MyWrapped<S>;
+   |     ^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:178:5
+   |
+LL |     fn wrap(sub: S) -> MyWrapped<S> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:173:8
+   |
+LL |     S: Subplace<Source = T>,
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:169:19
+   |
+LL | unsafe impl<T, S> PlaceWrapper<S> for MyWrapper<T>
+   |                   ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:193:5
+   |
+LL |     type Source = MyWrapper<S::Source>;
+   |     ^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:195:5
+   |
+LL |     type Target = MyWrapper<S::Target>;
+   |     ^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:198:5
+   |
+LL | /     fn offset(
+LL | |
+LL | |         self,
+LL | |         metadata: <Self::Source as Pointee>::Metadata,
+LL | |
+LL | |     ) -> (usize, <Self::Target as Pointee>::Metadata) {
+   | |_____________________________________________________^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:191:8
+   |
+LL |     S: Subplace,
+   |        ^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:187:16
+   |
+LL | unsafe impl<S> Subplace for MyWrapped<S>
+   |                ^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:213:8
+   |
+LL |     S: Subplace<Source = T>,
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:217:17
+   |
+LL |         let _ = <MyWrapper<T> as PlaceWrapper<S>>::wrap(sub);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:24:5
    |
 LL |     F::Type: Sized,
    |     ^^^^^^^
@@ -49,7 +614,7 @@ LL |     F::Type: Sized,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `field_projections`
-  --> $DIR/feature-gate-field-projections.rs:7:9
+  --> $DIR/feature-gate-field-projections.rs:20:9
    |
 LL |     r: &F::Base,
    |         ^^^^^^^
@@ -59,7 +624,7 @@ LL |     r: &F::Base,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `field_projections`
-  --> $DIR/feature-gate-field-projections.rs:8:7
+  --> $DIR/feature-gate-field-projections.rs:21:7
    |
 LL | ) -> &F::Type
    |       ^^^^^^^
@@ -69,7 +634,313 @@ LL | ) -> &F::Type
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `field_projections`
-  --> $DIR/feature-gate-field-projections.rs:13:42
+  --> $DIR/feature-gate-field-projections.rs:40:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:47:50
+   |
+LL |     unsafe fn read(this: *const Self, sub: S) -> S::Target {
+   |                                                  ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:59:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:66:55
+   |
+LL |     unsafe fn write(this: *const Self, sub: S, value: S::Target) {
+   |                                                       ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:113:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:119:58
+   |
+LL |     unsafe fn borrow(this: *const Self, sub: S) -> MyPtr<S::Target> {
+   |                                                          ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:130:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:136:58
+   |
+LL |     unsafe fn deref(this: *const Self, sub: S) -> *const S::Target {
+   |                                                          ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:201:20
+   |
+LL |         metadata: <Self::Source as Pointee>::Metadata,
+   |                    ^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:203:19
+   |
+LL |     ) -> (usize, <Self::Target as Pointee>::Metadata) {
+   |                   ^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:40:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:43:5
+   |
+LL |     S::Target: Sized,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:59:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:62:5
+   |
+LL |     S::Target: Sized,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:77:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:77:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:80:5
+   |
+LL |     S::Target: Sized,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:88:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:113:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:108:40
+   |
+LL | unsafe impl<T, S> PlaceBorrow<S, MyPtr<S::Target>> for MyPtr<T>
+   |                                        ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:130:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:133:5
+   |
+LL |     S::Target: Place,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:146:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:146:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:149:5
+   |
+LL |     S::Target: Sized + Place,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:173:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:193:29
+   |
+LL |     type Source = MyWrapper<S::Source>;
+   |                             ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0322]: explicit impls for the `Subplace` trait are not permitted
+  --> $DIR/feature-gate-field-projections.rs:187:1
+   |
+LL | / unsafe impl<S> Subplace for MyWrapped<S>
+LL | |
+LL | |
+LL | | where
+LL | |     S: Subplace,
+   | |________________^ impl of `Subplace` not allowed
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:195:29
+   |
+LL |     type Target = MyWrapper<S::Target>;
+   |                             ^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:213:17
+   |
+LL |     S: Subplace<Source = T>,
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/feature-gate-field-projections.rs:26:42
    |
 LL |     unsafe { &*ptr::from_ref(r).byte_add(F::OFFSET).cast() }
    |                                          ^^^^^^^^^
@@ -78,6 +949,7 @@ LL |     unsafe { &*ptr::from_ref(r).byte_add(F::OFFSET).cast() }
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 8 previous errors
+error: aborting due to 94 previous errors
 
-For more information about this error, try `rustc --explain E0658`.
+Some errors have detailed explanations: E0322, E0658.
+For more information about an error, try `rustc --explain E0322`.

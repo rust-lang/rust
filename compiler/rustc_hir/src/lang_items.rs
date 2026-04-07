@@ -444,6 +444,33 @@ language_item_table! {
     FieldType,               sym::field_type,              field_type,                 Target::AssocTy,        GenericRequirement::Exact(0);
     FieldOffset,             sym::field_offset,            field_offset,               Target::AssocConst,     GenericRequirement::Exact(0);
 
+    // Field projections lang-items.
+    Subplace,               sym::subplace,              subplace,               Target::Trait,                                      GenericRequirement::Exact(0);
+    SubplaceSource,         sym::subplace_source,       subplace_source,        Target::AssocTy,                                    GenericRequirement::Exact(0);
+    SubplaceTarget,         sym::subplace_target,       subplace_target,        Target::AssocTy,                                    GenericRequirement::Exact(0);
+    SubplaceOffset,         sym::subplace_offset,       subplace_offset,        Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(0);
+    Place,                  sym::place,                 place,                  Target::Trait,                                      GenericRequirement::Exact(0);
+    PlaceTarget,            sym::place_target,          place_target,           Target::AssocTy,                                    GenericRequirement::Exact(0);
+    PlaceRead,              sym::place_read,            place_read,             Target::Trait,                                      GenericRequirement::Exact(1);
+    PlaceReadSafety,        sym::place_read_safety,     place_read_safety,      Target::AssocConst,                                 GenericRequirement::Exact(1);
+    PlaceReadRead,          sym::place_read_read,       place_read_read,        Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
+    PlaceWrite,             sym::place_write,           place_write,            Target::Trait,                                      GenericRequirement::Exact(1);
+    PlaceWriteSafety,       sym::place_write_safety,    place_write_safety,     Target::AssocConst,                                 GenericRequirement::Exact(1);
+    PlaceWriteWrite,        sym::place_write_write,     place_write_write,      Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
+    PlaceMove,              sym::place_move,            place_move,             Target::Trait,                                      GenericRequirement::Exact(1);
+    PlaceDrop,              sym::place_drop,            place_drop,             Target::Trait,                                      GenericRequirement::Exact(1);
+    PlaceDropDrop,          sym::place_drop_drop,       place_drop_drop,        Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
+    DropHusk,               sym::drop_husk,             drop_husk,              Target::Trait,                                      GenericRequirement::Exact(0);
+    DropHuskDropHusk,       sym::drop_husk_drop_husk,   drop_husk_drop_husk,    Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(0);
+    PlaceBorrow,            sym::place_borrow,          place_borrow,           Target::Trait,                                      GenericRequirement::Exact(2);
+    PlaceBorrowSafety,      sym::place_borrow_safety,   place_borrow_safety,    Target::AssocConst,                                 GenericRequirement::Exact(2);
+    PlaceBorrowBorrow,      sym::place_borrow_borrow,   place_borrow_borrow,    Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(2);
+    PlaceDeref,             sym::place_deref,           place_deref,            Target::Trait,                                      GenericRequirement::Exact(1);
+    PlaceDerefDeref,        sym::place_deref_deref,     place_deref_deref,      Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
+    PlaceWrapper,           sym::place_wrapper,         place_wrapper,          Target::Trait,                                      GenericRequirement::Exact(1);
+    PlaceWrapperWrapped,    sym::place_wrapper_wrapped, place_wrapper_wrapped,  Target::AssocTy,                                    GenericRequirement::Exact(1);
+    PlaceWrapperWrap,       sym::place_wrapper_wrap,    place_wrapper_wrap,     Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
+
     // Used to fallback `{float}` to `f32` when `f32: From<{float}>`
     From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);
 }
