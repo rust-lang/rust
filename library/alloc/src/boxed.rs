@@ -1143,6 +1143,15 @@ impl<T, A: Allocator> Box<[T], A> {
     /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(alloc_slice_into_array)]
+    /// let box_slice: Box<[i32]> = Box::new([1, 2, 3]);
+    ///
+    /// let box_array: Box<[i32; 3]> = box_slice.into_array().unwrap();
+    /// ```
     #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
     #[must_use]

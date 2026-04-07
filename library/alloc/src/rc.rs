@@ -1240,6 +1240,17 @@ impl<T, A: Allocator> Rc<[T], A> {
     /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(alloc_slice_into_array)]
+    /// use std::rc::Rc;
+    ///
+    /// let rc_slice: Rc<[i32]> = Rc::new([1, 2, 3]);
+    ///
+    /// let rc_array: Rc<[i32; 3]> = rc_slice.into_array().unwrap();
+    /// ```
     #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
     #[must_use]

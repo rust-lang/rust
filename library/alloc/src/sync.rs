@@ -1393,6 +1393,17 @@ impl<T, A: Allocator> Arc<[T], A> {
     /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(alloc_slice_into_array)]
+    /// use std::sync::Arc;
+    ///
+    /// let arc_slice: Arc<[i32]> = Arc::new([1, 2, 3]);
+    ///
+    /// let arc_array: Arc<[i32; 3]> = arc_slice.into_array().unwrap();
+    /// ```
     #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
     #[must_use]
