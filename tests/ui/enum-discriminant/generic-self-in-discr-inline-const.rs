@@ -9,7 +9,9 @@ use std::marker::PointeeSized;
 enum What<T: PointeeSized> {
     X = const { { let _: *mut Self; 1_usize } },
     //~^ ERROR generic `Self` types are not permitted in enum discriminant values
-    Y(*mut T),
+    Y = { let _f = || { let _: *mut Self; }; 1_usize },
+    //~^ ERROR generic `Self` types are not permitted in enum discriminant values
+    Z(*mut T),
 }
 
 fn main() {}

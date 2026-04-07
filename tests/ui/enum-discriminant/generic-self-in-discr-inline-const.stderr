@@ -4,5 +4,11 @@ error: generic `Self` types are not permitted in enum discriminant values
 LL |     X = const { { let _: *mut Self; 1_usize } },
    |                               ^^^^
 
-error: aborting due to 1 previous error
+error: generic `Self` types are not permitted in enum discriminant values
+  --> $DIR/generic-self-in-discr-inline-const.rs:12:37
+   |
+LL |     Y = { let _f = || { let _: *mut Self; }; 1_usize },
+   |                                     ^^^^
+
+error: aborting due to 2 previous errors
 
