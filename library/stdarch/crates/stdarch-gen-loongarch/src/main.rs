@@ -571,21 +571,21 @@ fn gen_bind_body(
     } else if para_num == 3 && in_t[1] == "CVPOINTER" && in_t[2] == "SI" {
         call_params = match asm_fmts[2].as_str() {
             "si12" => format!(
-                "static_assert_simm_bits!(IMM_S12, 12);\n    {unsafe_start}transmute(__{current_name}(transmute(a), mem_addr, IMM_S12)){unsafe_end}"
+                "static_assert_simm_bits!(IMM_S12, 12);\n    {unsafe_start}__{current_name}(transmute(a), mem_addr, IMM_S12){unsafe_end}"
             ),
             _ => panic!("unsupported assembly format: {}", asm_fmts[2]),
         };
     } else if para_num == 3 && in_t[1] == "CVPOINTER" && in_t[2] == "DI" {
         call_params = match asm_fmts[2].as_str() {
             "rk" => format!(
-                "{unsafe_start}transmute(__{current_name}(transmute(a), mem_addr, transmute(b))){unsafe_end}"
+                "{unsafe_start}__{current_name}(transmute(a), mem_addr, transmute(b)){unsafe_end}"
             ),
             _ => panic!("unsupported assembly format: {}", asm_fmts[2]),
         };
     } else if para_num == 4 {
         call_params = match (asm_fmts[2].as_str(), current_name.chars().last().unwrap()) {
             ("si8", t) => format!(
-                "static_assert_simm_bits!(IMM_S8, 8);\n    static_assert_uimm_bits!(IMM{0}, {0});\n    {unsafe_start}transmute(__{current_name}(transmute(a), mem_addr, IMM_S8, IMM{0})){unsafe_end}",
+                "static_assert_simm_bits!(IMM_S8, 8);\n    static_assert_uimm_bits!(IMM{0}, {0});\n    {unsafe_start}__{current_name}(transmute(a), mem_addr, IMM_S8, IMM{0}){unsafe_end}",
                 type_to_imm(t)
             ),
             (_, _) => panic!(
