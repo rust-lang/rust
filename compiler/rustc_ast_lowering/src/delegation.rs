@@ -128,14 +128,12 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         {
             self.get_sig_id(delegation_info.resolution_node, span)
         } else {
-            return self.generate_delegation_error(
-                self.dcx().span_delayed_bug(
-                    span,
-                    format!("LoweringContext: the delegation {:?} is unresolved", item_id),
-                ),
+            self.dcx().span_delayed_bug(
                 span,
-                delegation,
+                format!("LoweringContext: the delegation {:?} is unresolved", item_id),
             );
+
+            return self.generate_delegation_error(span, delegation);
         };
 
         match sig_id {
@@ -172,7 +170,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
                 DelegationResults { body_id, sig, ident, generics }
             }
-            Err(err) => self.generate_delegation_error(err, span, delegation),
+            Err(_) => self.generate_delegation_error(span, delegation),
         }
     }
 
@@ -604,7 +602,6 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
     fn generate_delegation_error(
         &mut self,
-        err: ErrorGuaranteed,
         span: Span,
         delegation: &Delegation,
     ) -> DelegationResults<'hir> {
@@ -622,36 +619,35 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let ident = self.lower_ident(delegation.ident);
 
         let body_id = self.lower_body(|this| {
-            let body_expr = match delegation.body.as_ref() {
-                Some(box block) => {
-                    // Generates a block when we failed to resolve delegation, where a target expression is its only statement,
-                    // thus there will be no ICEs on further stages of analysis (see #144594)
+            let path = this.lower_qpath(
+                delegation.id,
+                &delegation.qself,
+                &delegation.path,
+                ParamMode::Optional,
+                AllowReturnTypeNotation::No,
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                None,
+            );
 
-                    // As we generate a void function we want to convert target expression to statement to avoid additional
-                    // errors, such as mismatched return type
-                    let stmts = this.arena.alloc_from_iter([hir::Stmt {
-                        hir_id: this.next_id(),
-                        kind: rustc_hir::StmtKind::Semi(
-                            this.arena.alloc(this.lower_target_expr(block)),
-                        ),
-                        span,
-                    }]);
-
-                    let block = this.arena.alloc(hir::Block {
-                        stmts,
-                        expr: None,
-                        hir_id: this.next_id(),
-                        rules: hir::BlockCheckMode::DefaultBlock,
-                        span,
-                        targeted_by_break: false,
-                    });
-
-                    hir::ExprKind::Block(block, None)
-                }
-                None => hir::ExprKind::Err(err),
+            let callee_path = this.arena.alloc(this.mk_expr(hir::ExprKind::Path(path), span));
+            let args = if let Some(box block) = delegation.body.as_ref() {
+                this.arena.alloc_slice(&[this.lower_target_expr(block)])
+            } else {
+                &mut []
             };
 
-            (&[], this.mk_expr(body_expr, span))
+            let call = this.arena.alloc(this.mk_expr(hir::ExprKind::Call(callee_path, args), span));
+
+            let block = this.arena.alloc(hir::Block {
+                stmts: &[],
+                expr: Some(call),
+                hir_id: this.next_id(),
+                rules: hir::BlockCheckMode::DefaultBlock,
+                span,
+                targeted_by_break: false,
+            });
+
+            (&[], this.mk_expr(hir::ExprKind::Block(block, None), span))
         });
 
         let generics = hir::Generics::empty();
