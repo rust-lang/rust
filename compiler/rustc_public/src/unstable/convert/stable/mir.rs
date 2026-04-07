@@ -1,6 +1,6 @@
 //! Conversion of internal Rust compiler `mir` items to stable ones.
 
-use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::mono::MonoItem;
 use rustc_middle::{bug, mir};
 use rustc_public_bridge::context::CompilerCtxt;
 use rustc_public_bridge::{Tables, bridge};

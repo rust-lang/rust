@@ -6,7 +6,7 @@
 
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::mono::{MonoItem, MonoItemData};
+use rustc_middle::mono::{MonoItem, MonoItemData};
 
 use crate::prelude::*;
 
