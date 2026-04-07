@@ -41,6 +41,36 @@ class BCIStateModel(BaseModel):
     natural_language_summary: str = Field(max_length=512)
 
 
+class WebhookFilter(BaseModel):
+    """Filter criteria for webhook notifications."""
+    state_is: str | None = None
+    score_below: dict[str, float] | None = None
+    score_above: dict[str, float] | None = None
+
+
+class WebhookRegistration(BaseModel):
+    """Request body for registering a webhook."""
+    url: str
+    filters: WebhookFilter | None = None
+
+
+class WebhookInfo(BaseModel):
+    """Info about a registered webhook."""
+    id: str
+    url: str
+    filters: WebhookFilter | None = None
+    created_at: int
+
+
+class WebhookEvent(BaseModel):
+    """Payload sent to webhook endpoints."""
+    event: str
+    previous_state: str
+    new_state: str
+    bci_state: dict
+    timestamp_unix_ms: int
+
+
 class StateResponse(BaseModel):
     """Matches state_server_api.schema.json#/definitions/state_response."""
     available: bool

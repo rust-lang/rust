@@ -10,14 +10,21 @@ import time
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 from . import config
 from .brainflow_reader import BCIReader
-from .models import BCIStateModel, HealthResponse, StateResponse
+from .models import (
+    BCIStateModel,
+    HealthResponse,
+    StateResponse,
+    WebhookInfo,
+    WebhookRegistration,
+)
 from .recorder import SessionRecorder
 from .replayer import SessionReplayer
 from .state_manager import StateManager
+from .webhook_manager import WebhookManager
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +33,7 @@ _state_manager: StateManager | None = None
 _reader: BCIReader | None = None
 _replayer: SessionReplayer | None = None
 _recorder: SessionRecorder | None = None
+_webhook_manager: WebhookManager | None = None
 _start_time: float = 0.0
 
 
@@ -46,9 +54,20 @@ def create_app(
     Returns:
         Configured FastAPI app instance.
     """
-    global _state_manager, _reader, _replayer, _recorder, _start_time
+    global _state_manager, _reader, _replayer, _recorder, _webhook_manager, _start_time
 
-    _state_manager = state_manager if state_manager is not None else StateManager()
+    _webhook_manager = WebhookManager()
+
+    def _on_state_change(old_state, new_state):
+        _webhook_manager.check_and_fire(old_state, new_state)
+
+    if state_manager is not None:
+        _state_manager = state_manager
+        # Attach callback to pre-existing state manager
+        _state_manager._on_state_change = _on_state_change
+    else:
+        _state_manager = StateManager(on_state_change=_on_state_change)
+
     _recorder = recorder
     _replayer = replayer
 
@@ -79,6 +98,8 @@ def create_app(
             _reader.stop()
         if _recorder is not None:
             _recorder.stop()
+        if _webhook_manager is not None:
+            _webhook_manager.shutdown()
 
     app = FastAPI(
         title="BCI State Server",
@@ -148,5 +169,25 @@ def create_app(
             session_id=_state_manager.session_id,
             last_update_unix_ms=last_update,
         )
+
+    @app.post("/webhooks")
+    def register_webhook(body: WebhookRegistration) -> dict:
+        """Register a new webhook for state-change notifications."""
+        filters_dict = body.filters.model_dump(exclude_none=True) if body.filters else None
+        wh_id = _webhook_manager.register(url=body.url, filters=filters_dict or None)
+        return {"id": wh_id, "registered": True}
+
+    @app.get("/webhooks")
+    def list_webhooks() -> list[WebhookInfo]:
+        """List all registered webhooks."""
+        return [WebhookInfo(**wh) for wh in _webhook_manager.list()]
+
+    @app.delete("/webhooks/{webhook_id}")
+    def delete_webhook(webhook_id: str) -> dict:
+        """Unregister a webhook by id."""
+        removed = _webhook_manager.unregister(webhook_id)
+        if not removed:
+            raise HTTPException(status_code=404, detail="Webhook not found")
+        return {"deleted": True}
 
     return app
