@@ -232,16 +232,13 @@ impl CargoTargetSpec {
 
         let exact = match kind {
             RunnableKind::Test { test_id } | RunnableKind::Bench { test_id } => match test_id {
-                TestId::Path(_) => "",
-                TestId::Name(_) => "--exact",
+                TestId::Path(_) => "--exact",
+                TestId::Name(_) => "",
             },
             _ => "",
         };
         let include_ignored = match kind {
-            RunnableKind::Test { test_id } => match test_id {
-                TestId::Path(_) => "",
-                TestId::Name(_) => "--include-ignored",
-            },
+            RunnableKind::Test { .. } => "--include-ignored",
             _ => "",
         };
 
