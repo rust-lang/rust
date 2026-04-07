@@ -4749,11 +4749,16 @@ class DocSearch {
                 })(),
                 "query": parsedQuery,
             };
-        } else if (parsedQuery.error !== null) {
+        } else if (parsedQuery.error !== null || parsedQuery.foundElems === 0) {
+            // Symbol-only queries like `==` do not parse into type elements,
+            // but can still match exact item names or doc aliases.
+            const others = parsedQuery.userQuery.length === 0 ?
+                (async function*() {})() :
+                innerRunNameQuery(currentCrate);
             return {
                 "in_args": (async function*() {})(),
                 "returned": (async function*() {})(),
-                "others": innerRunNameQuery(currentCrate),
+                "others": others,
                 "query": parsedQuery,
             };
         } else {
@@ -4764,14 +4769,12 @@ class DocSearch {
             return {
                 "in_args": (async function*() {})(),
                 "returned": (async function*() {})(),
-                "others": parsedQuery.foundElems === 0 ?
-                    (async function*() {})() :
-                    innerRunTypeQuery(
-                        parsedQuery.elems,
-                        parsedQuery.returned,
-                        typeInfo,
-                        currentCrate,
-                    ),
+                "others": innerRunTypeQuery(
+                    parsedQuery.elems,
+                    parsedQuery.returned,
+                    typeInfo,
+                    currentCrate,
+                ),
                 "query": parsedQuery,
             };
         }
