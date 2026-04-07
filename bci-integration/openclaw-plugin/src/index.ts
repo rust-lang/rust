@@ -15,6 +15,19 @@ const STALE_THRESHOLD_MS = 5000;
 const FETCH_TIMEOUT_MS = 2000;
 const WS_RECONNECT_DELAY_MS = 2000;
 
+interface PauseEvent {
+  pause_type: string; // "deliberate" | "automatic"
+  trigger: string; // "jaw_clench" | "drowsiness" | "headset_removed"
+  confidence: number;
+  timestamp_unix_ms: number;
+  recommended_action: string; // "pause" | "slow_down" | "stop"
+}
+
+interface ResumeEvent {
+  timestamp_unix_ms: number;
+  reason: string;
+}
+
 interface BCIState {
   timestamp_unix_ms: number;
   session_id: string;
@@ -24,6 +37,8 @@ interface BCIState {
   signal_quality: number;
   staleness_ms?: number;
   natural_language_summary: string;
+  pause_event?: PauseEvent;
+  resume_event?: ResumeEvent;
   [key: string]: unknown;
 }
 
@@ -68,6 +83,7 @@ async function fetchState(baseUrl: string): Promise<BCIStateResponse> {
 class BCIWebSocketClient {
   private ws: WebSocket | null = null;
   private cachedState: BCIState | null = null;
+  private pauseState: PauseEvent | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private url: string;
   private closed = false;
@@ -83,9 +99,18 @@ class BCIWebSocketClient {
 
       this.ws.onmessage = (event: MessageEvent) => {
         try {
-          this.cachedState = JSON.parse(
+          const state = JSON.parse(
             typeof event.data === "string" ? event.data : String(event.data),
           ) as BCIState;
+          this.cachedState = state;
+
+          // Cache deliberate pause events so the hook can surface them
+          if (state.pause_event?.pause_type === "deliberate") {
+            this.pauseState = state.pause_event;
+          }
+          if (state.resume_event) {
+            this.pauseState = null;
+          }
         } catch {
           // Ignore malformed messages
         }
@@ -121,6 +146,10 @@ class BCIWebSocketClient {
     return this.cachedState;
   }
 
+  getPauseState(): PauseEvent | null {
+    return this.pauseState;
+  }
+
   isConnected(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
@@ -142,6 +171,24 @@ class BCIWebSocketClient {
   }
 }
 
+function applyPauseResumePrefix(state: BCIState, summary: string): string {
+  if (state.resume_event) {
+    summary = `[RESUMED: User has resumed. Continue normally.] ${summary}`;
+  }
+
+  if (state.pause_event) {
+    if (state.pause_event.pause_type === "deliberate") {
+      summary = `[PAUSE: User deliberately paused via brain signal (jaw clench). Wait for resume before continuing.] ${summary}`;
+    } else if (state.pause_event.trigger === "drowsiness") {
+      summary = `[NOTICE: User appears drowsy. Keep responses very brief. Consider suggesting a break.] ${summary}`;
+    } else if (state.pause_event.trigger === "headset_removed") {
+      summary = `[NOTICE: BCI headset was removed. Ignore brain state data.] ${summary}`;
+    }
+  }
+
+  return summary;
+}
+
 function buildContext(response: BCIStateResponse): string {
   if (!response.available) {
     return "BCI: device not connected";
@@ -159,6 +206,8 @@ function buildContext(response: BCIStateResponse): string {
     summary = `[WARNING: BCI state is stale (${staleSec}s old), may be unreliable] ${summary}`;
   }
 
+  summary = applyPauseResumePrefix(bci, summary);
+
   return summary;
 }
 
@@ -169,6 +218,8 @@ function buildContextFromState(state: BCIState): string {
     const staleSec = (state.staleness_ms / 1000).toFixed(1);
     summary = `[WARNING: BCI state is stale (${staleSec}s old), may be unreliable] ${summary}`;
   }
+
+  summary = applyPauseResumePrefix(state, summary);
 
   return summary;
 }
@@ -239,4 +290,4 @@ export {
   FETCH_TIMEOUT_MS,
   WS_RECONNECT_DELAY_MS,
 };
-export type { BCIStateResponse, BCIState };
+export type { BCIStateResponse, BCIState, PauseEvent, ResumeEvent };

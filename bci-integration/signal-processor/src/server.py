@@ -25,6 +25,7 @@ from .models import (
     WebhookInfo,
     WebhookRegistration,
 )
+from .pause_detector import PauseDetector
 from .recorder import SessionRecorder
 from .replayer import SessionReplayer
 from .state_manager import StateManager
@@ -40,6 +41,7 @@ _replayer: SessionReplayer | None = None
 _recorder: SessionRecorder | None = None
 _webhook_manager: WebhookManager | None = None
 _ws_manager: WebSocketManager | None = None
+_pause_detector: PauseDetector | None = None
 _start_time: float = 0.0
 
 
@@ -62,10 +64,11 @@ def create_app(
     Returns:
         Configured FastAPI app instance.
     """
-    global _state_manager, _reader, _replayer, _recorder, _webhook_manager, _ws_manager, _start_time
+    global _state_manager, _reader, _replayer, _recorder, _webhook_manager, _ws_manager, _pause_detector, _start_time
 
     _webhook_manager = WebhookManager()
     _ws_manager = WebSocketManager()
+    _pause_detector = PauseDetector()
 
     def _on_state_change(old_state, new_state):
         _webhook_manager.check_and_fire(old_state, new_state)
@@ -102,7 +105,7 @@ def create_app(
     else:
         _reader = BCIReader(
             state_manager=_state_manager, synthetic=synthetic, recorder=recorder,
-            classifier=classifier,
+            classifier=classifier, pause_detector=_pause_detector,
         )
 
     @asynccontextmanager
@@ -236,6 +239,17 @@ def create_app(
             logger.debug("WebSocket connection error", exc_info=True)
         finally:
             _ws_manager.disconnect(ws)
+
+    @app.get("/pause")
+    def get_pause_state() -> dict:
+        """Return current pause detection state."""
+        if _pause_detector is None:
+            return {"paused": False, "reason": None, "since_ms": None}
+        return {
+            "paused": _pause_detector.is_paused,
+            "reason": _pause_detector.pause_reason,
+            "since_ms": _pause_detector.pause_since_ms,
+        }
 
     @app.get("/ws/info")
     def ws_info() -> dict:

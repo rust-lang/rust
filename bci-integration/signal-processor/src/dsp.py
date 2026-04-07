@@ -205,6 +205,41 @@ def assess_signal_quality(data: np.ndarray) -> float:
     return float(np.mean(scores))
 
 
+def compute_high_gamma_power(data: np.ndarray, sample_rate: int = config.SAMPLE_RATE) -> float:
+    """Compute power in the high-gamma band (30-100Hz).
+
+    Used for jaw clench detection. Jaw clenches produce strong EMG artifacts
+    that manifest as broadband high-frequency power.
+
+    Args:
+        data: 1D or 2D array of EEG samples. If 2D, shape is (channels, samples)
+              and results are averaged across channels.
+        sample_rate: Sampling rate in Hz.
+
+    Returns:
+        Average power in the 30-100Hz band (uV^2/Hz).
+    """
+    if data.ndim == 1:
+        data = data.reshape(1, -1)
+
+    n_samples = data.shape[1]
+    nperseg = min(n_samples, sample_rate)
+    if nperseg < 4:
+        return 0.0
+
+    powers = []
+    for ch in range(data.shape[0]):
+        channel_data = data[ch]
+        if not np.all(np.isfinite(channel_data)):
+            continue
+        freqs, psd = welch(channel_data, fs=sample_rate, nperseg=nperseg)
+        powers.append(_band_power(freqs, psd, 30.0, 100.0))
+
+    if not powers:
+        return 0.0
+    return float(np.mean(powers))
+
+
 def sanitize_data(data: np.ndarray) -> np.ndarray:
     """Replace NaN/Inf with 0.
 

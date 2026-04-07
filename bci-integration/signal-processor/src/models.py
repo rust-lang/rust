@@ -27,6 +27,21 @@ class BandPowers(BaseModel):
     gamma: float = Field(ge=0, default=0.0)
 
 
+class PauseEventModel(BaseModel):
+    """Represents a detected pause trigger."""
+    pause_type: str  # "deliberate" | "automatic"
+    trigger: str  # "jaw_clench" | "drowsiness" | "headset_removed"
+    confidence: float = Field(ge=0, le=1)
+    timestamp_unix_ms: int
+    recommended_action: str  # "pause" | "slow_down" | "stop"
+
+
+class ResumeEventModel(BaseModel):
+    """Represents a resume from paused state."""
+    timestamp_unix_ms: int
+    reason: str
+
+
 class BCIStateModel(BaseModel):
     """Matches bci_state.schema.json."""
     timestamp_unix_ms: int
@@ -39,6 +54,8 @@ class BCIStateModel(BaseModel):
     artifact_probability: float = Field(ge=0, le=1, default=0.0)
     staleness_ms: int = Field(ge=0, default=0)
     natural_language_summary: str = Field(max_length=512)
+    pause_event: PauseEventModel | None = None
+    resume_event: ResumeEventModel | None = None
 
 
 class WebhookFilter(BaseModel):

@@ -19,6 +19,15 @@ ARTIFACT_AMPLITUDE_UV: float = float(os.environ.get("BCI_ARTIFACT_AMPLITUDE_UV",
 STALE_THRESHOLD_MS: int = int(os.environ.get("BCI_STALE_THRESHOLD_MS", "2000"))
 STALE_WARNING_MS: int = int(os.environ.get("BCI_STALE_WARNING_MS", "5000"))
 
+# Pause Detection
+CLENCH_THRESHOLD_FACTOR: float = float(os.environ.get("BCI_CLENCH_THRESHOLD_FACTOR", "3.0"))
+CLENCH_WINDOW_S: float = float(os.environ.get("BCI_CLENCH_WINDOW_S", "2.0"))
+CLENCH_MIN_DURATION_MS: int = int(os.environ.get("BCI_CLENCH_MIN_DURATION_MS", "100"))
+DROWSINESS_WINDOW_SIZE: int = int(os.environ.get("BCI_DROWSINESS_WINDOW_SIZE", "20"))
+DROWSINESS_ATTENTION_THRESHOLD: float = float(os.environ.get("BCI_DROWSINESS_ATTENTION_THRESHOLD", "0.25"))
+HEADSET_REMOVED_WINDOW_SIZE: int = int(os.environ.get("BCI_HEADSET_REMOVED_WINDOW_SIZE", "8"))
+HEADSET_REMOVED_QUALITY_THRESHOLD: float = float(os.environ.get("BCI_HEADSET_REMOVED_QUALITY_THRESHOLD", "0.05"))
+
 # ML Classifier
 MODEL_PATH: str | None = os.environ.get("BCI_MODEL_PATH", None)
 

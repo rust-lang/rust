@@ -23,6 +23,7 @@ from .dsp import (
     estimate_artifact_probability,
     sanitize_data,
 )
+from .pause_detector import PauseDetector
 from .state_manager import StateManager
 
 logger = logging.getLogger(__name__)
@@ -64,11 +65,13 @@ class BCIReader:
         board_id: int | None = None,
         recorder: "SessionRecorder | None" = None,
         classifier: Classifier | None = None,
+        pause_detector: PauseDetector | None = None,
     ) -> None:
         self._state_manager = state_manager
         self._synthetic = synthetic
         self._recorder = recorder
         self._classifier: Classifier = classifier if classifier is not None else HeuristicClassifier()
+        self._pause_detector = pause_detector
         self._session_id = f"session-{uuid.uuid4().hex[:12]}"
 
         # Set up BrainFlow board
@@ -197,6 +200,25 @@ class BCIReader:
                     "staleness_ms": 0,
                     "natural_language_summary": nl_summary,
                 }
+
+                # Pause detection
+                if self._pause_detector is not None:
+                    pause_event = self._pause_detector.update(
+                        eeg_data=eeg_data,
+                        band_powers=band_powers,
+                        attention=attention,
+                        signal_quality=signal_quality,
+                        sample_rate=config.SAMPLE_RATE,
+                    )
+                    if pause_event is not None:
+                        bci_state["pause_event"] = pause_event.to_dict()
+
+                    # Check for resume
+                    if self._pause_detector.check_resume(attention, signal_quality):
+                        bci_state["resume_event"] = {
+                            "timestamp_unix_ms": now_ms,
+                            "reason": "alert_state_returned",
+                        }
 
                 self._state_manager.update_state(bci_state)
 
