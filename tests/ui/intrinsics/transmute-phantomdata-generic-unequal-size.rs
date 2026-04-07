@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/32377>
 //@ normalize-stderr: "\d+ bits" -> "N bits"
 
 use std::mem;
