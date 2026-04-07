@@ -217,9 +217,9 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             }
             Change::Insert(_, SyntaxElement::Token(token))
             | Change::Replace(_, Some(SyntaxElement::Token(token))) => {
-                if token.parent().is_some() {
+                if let Some(parent) = token.parent() {
                     let idx = token.index();
-                    let new_parent = token.parent().unwrap().clone_subtree().clone_for_update();
+                    let new_parent = parent.clone_subtree().clone_for_update();
                     *token = new_parent
                         .children_with_tokens()
                         .nth(idx)
@@ -240,10 +240,9 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
                             }
                         }
                         SyntaxElement::Token(token) => {
-                            if token.parent().is_some() {
+                            if let Some(parent) = token.parent() {
                                 let idx = token.index();
-                                let new_parent =
-                                    token.parent().unwrap().clone_subtree().clone_for_update();
+                                let new_parent = parent.clone_subtree().clone_for_update();
                                 *token = new_parent
                                     .children_with_tokens()
                                     .nth(idx)
