@@ -1,0 +1,60 @@
+error[E0046]: not all trait items implemented, missing: `bar`
+  --> $DIR/return-type-notation-where-clause-doesnt-apply.rs:11:1
+   |
+LL |     async fn bar();
+   |     --------------- `bar` from trait
+...
+LL | impl<T: Foo<bar(..): Send>> Foo for T where T: Bar {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `bar` in implementation
+
+error[E0277]: the trait bound `(): Foo` is not satisfied
+  --> $DIR/return-type-notation-where-clause-doesnt-apply.rs:27:15
+   |
+LL |     needs_foo(());
+   |     --------- ^^ the trait `Bar` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/return-type-notation-where-clause-doesnt-apply.rs:9:1
+   |
+LL | trait Bar {}
+   | ^^^^^^^^^
+note: required for `()` to implement `Foo`
+  --> $DIR/return-type-notation-where-clause-doesnt-apply.rs:11:29
+   |
+LL | impl<T: Foo<bar(..): Send>> Foo for T where T: Bar {}
+   |                             ^^^     ^          --- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `()` to implement `Foo`
+note: required by a bound in `needs_foo`
+  --> $DIR/return-type-notation-where-clause-doesnt-apply.rs:14:22
+   |
+LL | fn needs_foo(_: impl Foo) {}
+   |                      ^^^ required by this bound in `needs_foo`
+
+error[E0275]: overflow evaluating the requirement `impl Future<Output = ()> { <() as Foo>::bar(..) } == _`
+  --> $DIR/return-type-notation-where-clause-doesnt-apply.rs:27:5
+   |
+LL |     needs_foo(());
+   |     ^^^^^^^^^^^^^
+   |
+note: required for `()` to implement `Foo`
+  --> $DIR/return-type-notation-where-clause-doesnt-apply.rs:11:29
+   |
+LL | impl<T: Foo<bar(..): Send>> Foo for T where T: Bar {}
+   |                      ----   ^^^     ^
+   |                      |
+   |                      unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `()` to implement `Foo`
+note: required by a bound in `needs_foo`
+  --> $DIR/return-type-notation-where-clause-doesnt-apply.rs:14:22
+   |
+LL | fn needs_foo(_: impl Foo) {}
+   |                      ^^^ required by this bound in `needs_foo`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0046, E0275, E0277.
+For more information about an error, try `rustc --explain E0046`.
