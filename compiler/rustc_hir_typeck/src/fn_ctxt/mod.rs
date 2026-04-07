@@ -403,9 +403,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         match ty.kind() {
             ty::Adt(adt_def, _) => Some(*adt_def),
             // FIXME(#104767): Should we handle bound regions here?
-            ty::Alias(ty::Projection | ty::Inherent | ty::Free, _)
-                if !ty.has_escaping_bound_vars() =>
-            {
+            ty::Alias(ty::AliasTy {
+                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                ..
+            }) if !ty.has_escaping_bound_vars() => {
                 if self.next_trait_solver() {
                     self.try_structurally_resolve_type(span, ty).ty_adt_def()
                 } else {
@@ -423,8 +424,11 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             // WF obligations that are registered elsewhere, but they have a
             // better cause code assigned to them in `add_required_obligations_for_hir`.
             // This means that they should shadow obligations with worse spans.
-            if let ty::Alias(ty::Projection | ty::Free, ty::AliasTy { args, def_id, .. }) =
-                ty.kind()
+            if let ty::Alias(ty::AliasTy {
+                kind: ty::Projection { def_id } | ty::Free { def_id },
+                args,
+                ..
+            }) = ty.kind()
             {
                 self.add_required_obligations_for_hir(span, *def_id, args, hir_id);
             }

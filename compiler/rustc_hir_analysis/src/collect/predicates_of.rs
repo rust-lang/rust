@@ -513,11 +513,16 @@ pub(super) fn explicit_predicates_of<'tcx>(
             //     identity args of the trait.
             // * It must be an associated type for this trait (*not* a
             //   supertrait).
-            if let ty::Alias(ty::Projection, projection) = ty.kind() {
+            if let &ty::Alias(
+                projection @ ty::AliasTy {
+                    kind: ty::Projection { def_id: projection_def_id }, ..
+                },
+            ) = ty.kind()
+            {
                 projection.args == trait_identity_args
                     // FIXME(return_type_notation): This check should be more robust
-                    && !tcx.is_impl_trait_in_trait(projection.def_id)
-                    && tcx.parent(projection.def_id) == def_id.to_def_id()
+                    && !tcx.is_impl_trait_in_trait(projection_def_id)
+                    && tcx.parent(projection_def_id) == def_id.to_def_id()
             } else {
                 false
             }

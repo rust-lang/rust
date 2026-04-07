@@ -242,7 +242,11 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
         match *ty.kind() {
             // Print all nominal types as paths (unlike `pretty_print_type`).
             ty::FnDef(def_id, args)
-            | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
+            | ty::Alias(ty::AliasTy {
+                kind: ty::Projection { def_id } | ty::Opaque { def_id },
+                args,
+                ..
+            })
             | ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
@@ -264,7 +268,9 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
                 Ok(())
             }
 
-            ty::Alias(ty::Inherent, _) => panic!("unexpected inherent projection"),
+            ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
+                panic!("unexpected inherent projection")
+            }
 
             _ => self.pretty_print_type(ty),
         }

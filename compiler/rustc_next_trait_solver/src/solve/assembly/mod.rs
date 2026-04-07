@@ -11,7 +11,7 @@ use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{
-    self as ty, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    self as ty, AliasTy, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
     elaborate,
 };
@@ -687,7 +687,7 @@ where
         candidates: &mut Vec<Candidate<I>>,
         consider_self_bounds: AliasBoundKind,
     ) {
-        let (kind, alias_ty) = match self_ty.kind() {
+        let alias_ty = match self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -735,8 +735,10 @@ where
                 return;
             }
 
-            ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
-            ty::Alias(ty::Inherent | ty::Free, _) => {
+            ty::Alias(
+                alias_ty @ AliasTy { kind: ty::Projection { .. } | ty::Opaque { .. }, .. },
+            ) => alias_ty,
+            ty::Alias(AliasTy { kind: ty::Inherent { .. } | ty::Free { .. }, .. }) => {
                 self.cx().delay_bug(format!("could not normalize {self_ty:?}, it is not WF"));
                 return;
             }
@@ -746,7 +748,7 @@ where
             AliasBoundKind::SelfBounds => {
                 for assumption in self
                     .cx()
-                    .item_self_bounds(alias_ty.def_id)
+                    .item_self_bounds(alias_ty.kind.def_id())
                     .iter_instantiated(self.cx(), alias_ty.args)
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
@@ -761,7 +763,7 @@ where
             AliasBoundKind::NonSelfBounds => {
                 for assumption in self
                     .cx()
-                    .item_non_self_bounds(alias_ty.def_id)
+                    .item_non_self_bounds(alias_ty.kind.def_id())
                     .iter_instantiated(self.cx(), alias_ty.args)
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
@@ -777,7 +779,7 @@ where
 
         candidates.extend(G::consider_additional_alias_assumptions(self, goal, alias_ty));
 
-        if kind != ty::Projection {
+        if !matches!(alias_ty.kind, ty::Projection { .. }) {
             return;
         }
 
@@ -1023,7 +1025,7 @@ where
                     self.cx
                 }
                 fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-                    if let ty::Alias(ty::Opaque, alias_ty) = ty.kind() {
+                    if let ty::Alias(alias_ty) = ty.kind() {
                         if alias_ty == self.alias_ty {
                             return self.self_ty;
                         }
@@ -1041,7 +1043,7 @@ where
             // in a `?x: Trait<u32>` alias-bound candidate.
             for item_bound in self
                 .cx()
-                .item_self_bounds(alias_ty.def_id)
+                .item_self_bounds(alias_ty.kind.def_id())
                 .iter_instantiated(self.cx(), alias_ty.args)
             {
                 let assumption =

@@ -546,14 +546,16 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     pub fn is_of_param(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Param(_) => true,
-            ty::Alias(ty::Projection, p) => self.is_of_param(p.self_ty()),
+            ty::Alias(p @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
+                self.is_of_param(p.self_ty())
+            }
             _ => false,
         }
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'tcx>) -> bool {
         if let Some(ty) = p.term().skip_binder().as_type() {
-            matches!(ty.kind(), ty::Alias(ty::Projection, proj) if proj == &p.skip_binder().projection_term.expect_ty(self.tcx))
+            matches!(ty.kind(), ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &p.skip_binder().projection_term.expect_ty(self.tcx))
         } else {
             false
         }

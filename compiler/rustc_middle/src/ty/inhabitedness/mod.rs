@@ -109,16 +109,18 @@ impl<'tcx> Ty<'tcx> {
                 InhabitedPredicate::True
             }
             Never => InhabitedPredicate::False,
-            Param(_) | Alias(ty::Inherent | ty::Projection | ty::Free, _) => {
-                InhabitedPredicate::GenericType(self)
-            }
-            Alias(ty::Opaque, alias_ty) => {
-                match alias_ty.def_id.as_local() {
+            Param(_)
+            | Alias(ty::AliasTy {
+                kind: ty::Inherent { .. } | ty::Projection { .. } | ty::Free { .. },
+                ..
+            }) => InhabitedPredicate::GenericType(self),
+            &Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+                match def_id.as_local() {
                     // Foreign opaque is considered inhabited.
                     None => InhabitedPredicate::True,
                     // Local opaque type may possibly be revealed.
                     Some(local_def_id) => {
-                        let key = ty::OpaqueTypeKey { def_id: local_def_id, args: alias_ty.args };
+                        let key = ty::OpaqueTypeKey { def_id: local_def_id, args };
                         InhabitedPredicate::OpaqueType(key)
                     }
                 }
