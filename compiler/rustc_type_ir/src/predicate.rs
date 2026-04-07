@@ -562,33 +562,52 @@ impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
-pub enum AliasTermKind {
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub enum AliasTermKind<I: Interner> {
     /// A projection `<Type as Trait>::AssocType`.
     ///
     /// Can get normalized away if monomorphic enough.
-    ProjectionTy,
+    ///
+    /// The `def_id` is the `DefId` of the `TraitItem` for the associated type.
+    ///
+    /// Note that the `def_id` is not the `DefId` of the `TraitRef` containing this
+    /// associated type, which is in `interner.associated_item(def_id).container`,
+    /// aka. `interner.parent(def_id)`.
+    ProjectionTy { def_id: I::DefId },
+
     /// An associated type in an inherent `impl`
-    InherentTy,
+    ///
+    /// The `def_id` is the `DefId` of the `ImplItem` for the associated type.
+    InherentTy { def_id: I::DefId },
+
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
     ///
-    /// Can only be normalized away in PostAnalysis mode or its defining scope.
-    OpaqueTy,
-    /// A free type alias that actually checks its trait bounds.
+    /// `def_id` is the `DefId` of the `OpaqueType` item.
+    ///
+    /// Can only be normalized away in `PostAnalysis` mode or its defining scope.
+    ///
+    /// During codegen, `interner.type_of(def_id)` can be used to get the type of the
+    /// underlying type if the type is an opaque.
+    OpaqueTy { def_id: I::DefId },
+
+    /// A type alias that actually checks its trait bounds.
     ///
     /// Currently only used if the type alias references opaque types.
     /// Can always be normalized away.
-    FreeTy,
+    FreeTy { def_id: I::DefId },
 
     /// An unevaluated anonymous constants.
-    UnevaluatedConst,
+    UnevaluatedConst { def_id: I::DefId },
     /// An unevaluated const coming from an associated const.
-    ProjectionConst,
+    ProjectionConst { def_id: I::DefId },
     /// A top level const item not part of a trait or impl.
-    FreeConst,
+    FreeConst { def_id: I::DefId },
     /// An associated const in an inherent `impl`
-    InherentConst,
+    InherentConst { def_id: I::DefId },
 }
 
 impl AliasTermKind {
@@ -655,17 +674,7 @@ pub struct AliasTerm<I: Interner> {
     /// while for TAIT it is used for the generic parameters of the alias.
     pub args: I::GenericArgs,
 
-    /// The `DefId` of the `TraitItem` or `ImplItem` for the associated type `N` depending on whether
-    /// this is a projection or an inherent projection or the `DefId` of the `OpaqueType` item if
-    /// this is an opaque.
-    ///
-    /// During codegen, `interner.type_of(def_id)` can be used to get the type of the
-    /// underlying type if the type is an opaque.
-    ///
-    /// Note that if this is an associated type, this is not the `DefId` of the
-    /// `TraitRef` containing this associated type, which is in `interner.associated_item(def_id).container`,
-    /// aka. `interner.parent(def_id)`.
-    pub def_id: I::DefId,
+    pub kind: AliasTermKind<I>,
 
     /// This field exists to prevent the creation of `AliasTerm` without using [`AliasTerm::new_from_args`].
     #[derive_where(skip(Debug))]
