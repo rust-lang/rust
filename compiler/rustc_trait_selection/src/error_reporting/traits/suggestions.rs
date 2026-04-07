@@ -2132,6 +2132,60 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         false
     }
 
+    pub(super) fn suggest_borrow_for_unsized_closure_return<G: EmissionGuarantee>(
+        &self,
+        body_id: LocalDefId,
+        err: &mut Diag<'_, G>,
+        predicate: ty::Predicate<'tcx>,
+    ) {
+        let Some(pred) = predicate.as_trait_clause() else {
+            return;
+        };
+        if !self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) {
+            return;
+        }
+
+        let Some(span) = err.span.primary_span() else {
+            return;
+        };
+        let Some(node_body_id) = self.tcx.hir_node_by_def_id(body_id).body_id() else {
+            return;
+        };
+        let body = self.tcx.hir_body(node_body_id);
+        let mut expr_finder = FindExprBySpan::new(span, self.tcx);
+        expr_finder.visit_expr(body.value);
+        let Some(expr) = expr_finder.result else {
+            return;
+        };
+
+        let closure = match expr.kind {
+            hir::ExprKind::Call(_, args) => args.iter().find_map(|arg| match arg.kind {
+                hir::ExprKind::Closure(closure) => Some(closure),
+                _ => None,
+            }),
+            hir::ExprKind::MethodCall(_, _, args, _) => {
+                args.iter().find_map(|arg| match arg.kind {
+                    hir::ExprKind::Closure(closure) => Some(closure),
+                    _ => None,
+                })
+            }
+            _ => None,
+        };
+        let Some(closure) = closure else {
+            return;
+        };
+        if !matches!(closure.fn_decl.output, hir::FnRetTy::DefaultReturn(_)) {
+            return;
+        }
+
+        err.span_suggestion_verbose(
+            self.tcx.hir_body(closure.body).value.span.shrink_to_lo(),
+            "consider borrowing the value",
+            "&",
+            Applicability::MaybeIncorrect,
+        );
+    }
+
     pub(super) fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span> {
         let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig, .. }, .. }) =
             self.tcx.hir_node_by_def_id(obligation.cause.body_id)
