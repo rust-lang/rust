@@ -603,6 +603,9 @@ fn receiver_for_self_ty<'tcx>(
 /// contained by the trait object, because the object that needs to be coerced is behind
 /// a pointer.
 ///
+/// If lowering already produced an error in the receiver type, we conservatively treat it as
+/// undispatchable instead of asking the solver.
+///
 /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result in
 /// a new check that `Trait` is dyn-compatible, creating a cycle.
 /// Instead, we emulate a placeholder by introducing a new type parameter `U` such that
@@ -629,6 +632,10 @@ fn receiver_is_dispatchable<'tcx>(
     receiver_ty: Ty<'tcx>,
 ) -> bool {
     debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
+
+    if receiver_ty.references_error() {
+        return false;
+    }
 
     let (Some(unsize_did), Some(dispatch_from_dyn_did)) =
         (tcx.lang_items().unsize_trait(), tcx.lang_items().dispatch_from_dyn_trait())
