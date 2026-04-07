@@ -6,10 +6,19 @@ use std::env;
 use configure::{Config, Library, set_cfg};
 
 fn main() {
-    println!("cargo::rerun-if-changed=build.rs");
+    let cfg = Config::from_env(Library::CompilerBuiltins);
+
+    // Work around building as part of `builtins-shim`: if only `build.rs` is used, Cargo always
+    // considers the build dirty because `builtins-shim/build.rs` does not exist. If only
+    // `../c-b/build.rs` is used, the same may happen if not built in the workspace.
+    if cfg.manifest_dir.file_name().unwrap() == "builtins-shim" {
+        println!("cargo::rerun-if-changed=../compiler-builtins/build.rs");
+    } else {
+        println!("cargo::rerun-if-changed=build.rs");
+    }
+
     println!("cargo::rerun-if-changed=../libm/configure.rs");
 
-    let cfg = Config::from_env(Library::CompilerBuiltins);
     configure::emit(&cfg);
     configure_check_cfg();
 
