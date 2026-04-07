@@ -2418,7 +2418,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// moving the binding once the guard has evaluated to true (see below).
     fn bind_and_guard_matched_candidate(
         &mut self,
-        sub_branch: MatchTreeSubBranch<'tcx>,
+        mut sub_branch: MatchTreeSubBranch<'tcx>,
         fake_borrows: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
@@ -2436,7 +2436,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return self.cfg.start_new_block();
         }
 
-        self.ascribe_types(block, sub_branch.ascriptions);
+        self.ascribe_types(block, mem::take(&mut sub_branch.ascriptions));
 
         if !sub_branch.guard_patterns.is_empty()
             || arm_match_scope.is_some_and(|(arm, _)| arm.guard.is_some())
@@ -2445,20 +2445,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let mut guards = sub_branch.guard_patterns;
             let (arm_span, arm_scope, match_scope) =
-                if let Some((arm, match_scope)) = arm_match_scope {
-                    let mut span = arm.span;
-                    if let Some(arm_guard) = arm.guard {
-                        span = span.to(self.thir[arm_guard].span);
-                        guards.push(arm_guard);
-                    };
-                    (span, arm.scope, match_scope)
-                } else {
-                    let span = sub_branch.span;
-                    // There must be a scope if a guard pattern is present
-                    let scope = sub_branch.scope.unwrap();
-
-                    (span, scope, scope)
-                };
+                self.extract_span_scope(&mut sub_branch, arm_match_scope);
+            let guards = sub_branch.guard_patterns;
 
             // Bindings for guards require some extra handling to automatically
             // insert implicit references/dereferences.
@@ -2569,6 +2557,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
             block
         }
+    }
+
+    fn extract_span_scope(
+        &mut self,
+        sub_branch: &mut MatchTreeSubBranch<'tcx>,
+        arm_match_scope: Option<(&Arm<'tcx>, Scope)>,
+    ) -> (Span, Scope, Scope) {
+        let (arm_span, arm_scope, match_scope) = if let Some((arm, match_scope)) = arm_match_scope {
+            let mut span = arm.span;
+            if let Some(arm_guard) = arm.guard {
+                span = span.to(self.thir[arm_guard].span);
+                sub_branch.guard_patterns.push(arm_guard);
+            };
+            (span, arm.scope, match_scope)
+        } else {
+            let span = sub_branch.span;
+            // There must be a scope if a guard pattern is present
+            let scope = sub_branch.scope.unwrap();
+
+            (span, scope, scope)
+        };
+        (arm_span, arm_scope, match_scope)
     }
 
     /// Append `AscribeUserType` statements onto the end of `block`
