@@ -15,7 +15,6 @@ use rustc_ast::{
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ResolverExpand;
-use rustc_expand::expand::AstFragment;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
@@ -31,7 +30,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
-use crate::def_collector::{DefCollector, collect_definitions};
+use crate::def_collector::DefCollector;
 use crate::diagnostics::StructCtor;
 use crate::imports::{ImportData, ImportKind, OnUnknownData};
 use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
@@ -235,14 +234,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             self.all_crate_macros_already_registered = true;
         }
-    }
-
-    pub(crate) fn build_reduced_graph(
-        &mut self,
-        fragment: &AstFragment,
-        parent_scope: ParentScope<'ra>,
-    ) -> MacroRulesScopeRef<'ra> {
-        collect_definitions(self, fragment, parent_scope)
     }
 
     pub(crate) fn build_reduced_graph_external(&self, module: ExternModule<'ra>) {
