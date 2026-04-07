@@ -233,18 +233,14 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         for (index, item) in items.iter().filter(|i| !i.is_stripped()).enumerate() {
             // To prevent having new "bang macro attribute/derive" sections in the module,
             // we cheat by turning them into their "proc-macro equivalent".
-            if let clean::ItemKind::MacroItem(_, kinds) = &item.kind
-                && !kinds.contains(MacroKinds::BANG)
-            {
-                // This is a placeholder, no need to list it in the module items.
-                continue;
+            for type_ in item.types() {
+                let type_ = match type_ {
+                    ItemType::BangMacroAttribute => ItemType::ProcAttribute,
+                    ItemType::BangMacroDerive => ItemType::ProcDerive,
+                    type_ => type_,
+                };
+                not_stripped_items.entry(type_).or_default().push((index, item));
             }
-            let type_ = match item.type_() {
-                ItemType::BangMacroAttribute => ItemType::ProcAttribute,
-                ItemType::BangMacroDerive => ItemType::ProcDerive,
-                type_ => type_,
-            };
-            not_stripped_items.entry(type_).or_default().push((index, item));
         }
 
         // the order of item types in the listing

@@ -2,7 +2,6 @@ use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::StabilityLevel;
-use rustc_hir::def::MacroKinds;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, TyCtxt};
@@ -382,8 +381,6 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
             | clean::AttributeItem
-            | clean::AttrMacroItem
-            | clean::DeriveMacroItem
             | clean::KeywordItem => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
@@ -491,7 +488,6 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     // Item has a name, so it must also have a DefId (can't be an impl, let alone a blanket or auto impl).
     let item_def_id = item.item_id.as_def_id().unwrap();
     let (parent_did, parent_path) = match item.kind {
-        clean::MacroItem(_, kinds) if !kinds.contains(MacroKinds::BANG) => return,
         clean::StrippedItem(..) => return,
         clean::ProvidedAssocConstItem(..)
         | clean::ImplAssocConstItem(..)
@@ -592,12 +588,14 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         _ => item_def_id,
     };
     let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
+    let mut types = item.types();
     let info = IndexItemInfo::new(
         tcx,
         cache,
         item,
         parent_did,
         clean_impl_generics(cache.parent_stack.last()).as_ref(),
+        types.next().unwrap(),
     );
     let index_item = IndexItem {
         defid: Some(defid),
@@ -611,7 +609,11 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         impl_id,
         info,
     };
-
+    for type_ in types {
+        let mut index_item_copy = index_item.clone();
+        index_item_copy.info.ty = type_;
+        cache.search_index.push(index_item_copy);
+    }
     cache.search_index.push(index_item);
 }
 

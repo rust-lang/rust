@@ -53,12 +53,7 @@ impl JsonRenderer<'_> {
         let clean::ItemInner { name, item_id, .. } = *item.inner;
         let id = self.id_from_item(item);
         let inner = match item.kind {
-            clean::KeywordItem
-            | clean::AttributeItem
-            // Placeholder so no need to handle it.
-            | clean::AttrMacroItem
-            // Placeholder so no need to handle it.
-            | clean::DeriveMacroItem => return None,
+            clean::KeywordItem | clean::AttributeItem => return None,
             clean::StrippedItem(ref inner) => {
                 match &**inner {
                     // We document stripped modules as with `Module::is_stripped` set to
@@ -343,7 +338,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         },
         // `convert_item` early returns `None` for stripped items, keywords, attributes and
         // "special" macro rules.
-        KeywordItem | AttributeItem | AttrMacroItem | DeriveMacroItem => unreachable!(),
+        KeywordItem | AttributeItem => unreachable!(),
         StrippedItem(inner) => {
             match inner.as_ref() {
                 ModuleItem(m) => ItemEnum::Module(Module {

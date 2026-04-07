@@ -1272,7 +1272,14 @@ pub(crate) fn build_index(
         &cache.orphan_impl_items
     {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
-            let info = IndexItemInfo::new(tcx, cache, item, Some(parent), impl_generics.as_ref());
+            let info = IndexItemInfo::new(
+                tcx,
+                cache,
+                item,
+                Some(parent),
+                impl_generics.as_ref(),
+                item.type_(),
+            );
             search_index.push(IndexItem {
                 defid: item.item_id.as_def_id(),
                 name: item.name.unwrap(),

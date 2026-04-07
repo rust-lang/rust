@@ -158,7 +158,7 @@ pub(crate) fn try_inline(
             })
         }
         Res::Def(DefKind::Macro(kinds), did) => {
-            let (mac, others) = build_macro(cx.tcx, did, name, kinds);
+            let mac = build_macro(cx.tcx, did, name, kinds);
 
             let type_kind = match kinds {
                 MacroKinds::BANG => ItemType::Macro,
@@ -168,15 +168,7 @@ pub(crate) fn try_inline(
                 _ => ItemType::Macro,
             };
             record_extern_fqn(cx, did, type_kind);
-            let first = try_inline_inner(cx, mac, did, name, import_def_id);
-            if let Some(others) = others {
-                for mac_kind in others {
-                    let mut mac = first.clone();
-                    mac.inner.kind = mac_kind;
-                    ret.push(mac);
-                }
-            }
-            ret.push(first);
+            ret.push(try_inline_inner(cx, mac, did, name, import_def_id));
             return Some(ret);
         }
         _ => return None,
@@ -793,52 +785,24 @@ fn build_macro(
     def_id: DefId,
     name: Symbol,
     macro_kinds: MacroKinds,
-) -> (clean::ItemKind, Option<Vec<clean::ItemKind>>) {
+) -> clean::ItemKind {
     match CStore::from_tcx(tcx).load_macro_untracked(tcx, def_id) {
         LoadedMacro::MacroDef { def, .. } => match macro_kinds {
-            MacroKinds::BANG => (
-                clean::MacroItem(
-                    clean::Macro {
-                        source: utils::display_macro_source(tcx, name, &def),
-                        macro_rules: def.macro_rules,
-                    },
-                    MacroKinds::BANG,
-                ),
-                None,
+            MacroKinds::DERIVE => clean::ProcMacroItem(clean::ProcMacro {
+                kind: MacroKind::Derive,
+                helpers: Vec::new(),
+            }),
+            MacroKinds::ATTR => clean::ProcMacroItem(clean::ProcMacro {
+                kind: MacroKind::Attr,
+                helpers: Vec::new(),
+            }),
+            _ => clean::MacroItem(
+                clean::Macro {
+                    source: utils::display_macro_source(tcx, name, &def),
+                    macro_rules: def.macro_rules,
+                },
+                macro_kinds,
             ),
-            MacroKinds::DERIVE => (
-                clean::ProcMacroItem(clean::ProcMacro {
-                    kind: MacroKind::Derive,
-                    helpers: Vec::new(),
-                }),
-                None,
-            ),
-            MacroKinds::ATTR => (
-                clean::ProcMacroItem(clean::ProcMacro {
-                    kind: MacroKind::Attr,
-                    helpers: Vec::new(),
-                }),
-                None,
-            ),
-            _ => {
-                let mut kinds = Vec::new();
-                kinds.push(clean::MacroItem(
-                    clean::Macro {
-                        source: utils::display_macro_source(tcx, name, &def),
-                        macro_rules: def.macro_rules,
-                    },
-                    macro_kinds,
-                ));
-                for kind in macro_kinds.iter().filter(|kind| *kind != MacroKinds::BANG) {
-                    match kind {
-                        MacroKinds::ATTR => kinds.push(clean::AttrMacroItem),
-                        MacroKinds::DERIVE => kinds.push(clean::DeriveMacroItem),
-                        _ => panic!("unsupported macro kind {kind:?}"),
-                    }
-                }
-                let kind = kinds.pop().expect("no supported macro kind found");
-                (kind, Some(kinds))
-            }
         },
         LoadedMacro::ProcMacro(ext) => {
             // Proc macros can only have a single kind
@@ -848,7 +812,7 @@ fn build_macro(
                 MacroKinds::DERIVE => MacroKind::Derive,
                 _ => unreachable!(),
             };
-            (clean::ProcMacroItem(clean::ProcMacro { kind, helpers: ext.helper_attrs }), None)
+            clean::ProcMacroItem(clean::ProcMacro { kind, helpers: ext.helper_attrs })
         }
     }
 }

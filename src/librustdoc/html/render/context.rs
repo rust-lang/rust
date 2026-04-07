@@ -10,7 +10,6 @@ use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def::MacroKinds;
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -352,14 +351,13 @@ impl<'tcx> Context<'tcx> {
                 Some(s) => s,
             };
 
-            let type_ = item.type_();
-
-            if inserted.entry(type_).or_default().insert(name) {
-                let type_ = type_.to_string();
-                let name = name.to_string();
-                map.entry(type_)
-                    .or_default()
-                    .push(SidebarItem { name, is_macro_rules: item.is_macro_placeholder() });
+            let is_macro_rules = item.is_macro_rules();
+            for type_ in item.types() {
+                if inserted.entry(type_).or_default().insert(name) {
+                    let type_ = type_.to_string();
+                    let name = name.to_string();
+                    map.entry(type_).or_default().push(SidebarItem { name, is_macro_rules });
+                }
             }
         }
 
@@ -840,7 +838,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         info!("Recursing into {}", self.dst.display());
 
-        if !item.is_stripped() && !item.is_macro_placeholder() {
+        if !item.is_stripped() {
             let buf = self.render_item(item, true);
             // buf will be empty if the module is stripped and there is no redirect for it
             if !buf.is_empty() {
@@ -896,19 +894,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.info.render_redirect_pages = item.is_stripped();
         }
 
-        if item.is_macro_placeholder() {
-            if !self.info.render_redirect_pages {
-                self.shared.all.borrow_mut().append(full_path(self, item), &item);
-            }
-            return Ok(());
-        }
-
         let buf = self.render_item(item, false);
         // buf will be empty if the item is stripped and there is no redirect for it
         if !buf.is_empty() {
-            if !self.info.render_redirect_pages
-                && !matches!(item.kind, clean::ItemKind::MacroItem(_, kinds) if !kinds.contains(MacroKinds::BANG))
-            {
+            if !self.info.render_redirect_pages {
                 self.shared.all.borrow_mut().append(full_path(self, item), &item);
             }
 
