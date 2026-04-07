@@ -1946,6 +1946,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         false
     }
 
+    /// Suggest removing `&` from a function parameter type like `&impl Future`.
+    fn suggest_remove_ref_from_param(&self, param: &hir::Param<'_>, err: &mut Diag<'_>) -> bool {
+        if let Some(decl) = self.tcx.parent_hir_node(param.hir_id).fn_decl()
+            && let Some(input_ty) = decl.inputs.iter().find(|t| param.ty_span.contains(t.span))
+            && let hir::TyKind::Ref(_, mut_ty) = input_ty.kind
+        {
+            let ref_span = input_ty.span.until(mut_ty.ty.span);
+            match self.tcx.sess.source_map().span_to_snippet(ref_span) {
+                Ok(snippet) if snippet.starts_with("&") => {
+                    err.span_suggestion_verbose(
+                        ref_span,
+                        "consider removing the `&` from the parameter type",
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
     pub(super) fn suggest_remove_await(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -1958,6 +1981,104 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // and if not maybe suggest doing something else? If we kept the expression around we
             // could also check if it is an fn call (very likely) and suggest changing *that*, if
             // it is from the local crate.
+
+            // If the type is `&T` where `T: Future`, suggest removing `&`
+            // instead of removing `.await`.
+            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
+                obligation.predicate.kind().skip_binder()
+                && let ty::Ref(_, inner_ty, hir::Mutability::Not) = *pred.self_ty().kind()
+                && !matches!(inner_ty.kind(), ty::Dynamic(..))
+                && let future_trait =
+                    self.tcx.require_lang_item(LangItem::Future, obligation.cause.span)
+                && self
+                    .type_implements_trait(future_trait, [inner_ty], obligation.param_env)
+                    .must_apply_modulo_regions()
+            {
+                let suggested = match expr.kind {
+                    // Case 1: `(&something).await` — direct borrow expression
+                    hir::ExprKind::AddrOf(_, _, inner_expr) => {
+                        if let Ok(snippet) =
+                            self.tcx.sess.source_map().span_to_snippet(inner_expr.span)
+                        {
+                            err.span_suggestion_verbose(
+                                expr.span,
+                                "consider removing the leading `&`-reference",
+                                snippet,
+                                Applicability::MaybeIncorrect,
+                            );
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    // Cases 2 & 3: variable path — check let-binding or parameter
+                    hir::ExprKind::Path(hir::QPath::Resolved(None, path)) => {
+                        if let Res::Local(hir_id) = path.res
+                            && let hir::Node::Pat(binding) = self.tcx.hir_node(hir_id)
+                        {
+                            let parent = self.tcx.parent_hir_node(binding.hir_id);
+                            match parent {
+                                // Case 2: `let fut = &something; fut.await`
+                                hir::Node::LetStmt(local)
+                                    if local.ty.is_none()
+                                        && let Some(init) = local.init
+                                        && let hir::ExprKind::AddrOf(_, _, inner) = init.kind =>
+                                {
+                                    let ref_span = init.span.until(inner.span);
+                                    match self.tcx.sess.source_map().span_to_snippet(ref_span) {
+                                        Ok(snippet) if snippet.starts_with("&") => {
+                                            err.span_suggestion_verbose(
+                                                ref_span,
+                                                "consider removing the leading `&`-reference",
+                                                "",
+                                                Applicability::MaybeIncorrect,
+                                            );
+                                            true
+                                        }
+                                        _ => false,
+                                    }
+                                }
+                                // Case 3a: `async fn foo(fut: &impl Future) { fut.await }`
+                                // In async fn, params are desugared: `let fut = __arg0;`
+                                // with `LocalSource::AsyncFn`. Follow init back to the
+                                // original parameter.
+                                hir::Node::LetStmt(local)
+                                    if matches!(local.source, hir::LocalSource::AsyncFn)
+                                        && let Some(init) = local.init
+                                        && let hir::ExprKind::Path(hir::QPath::Resolved(
+                                            None,
+                                            arg_path,
+                                        )) = init.kind
+                                        && let Res::Local(arg_hir_id) = arg_path.res
+                                        && let hir::Node::Pat(arg_binding) =
+                                            self.tcx.hir_node(arg_hir_id)
+                                        && let hir::Node::Param(param) =
+                                            self.tcx.parent_hir_node(arg_binding.hir_id) =>
+                                {
+                                    self.suggest_remove_ref_from_param(param, err)
+                                }
+                                // Case 3b: `fn foo(fut: &impl Future) { fut.await }`
+                                hir::Node::Param(param) => {
+                                    self.suggest_remove_ref_from_param(param, err)
+                                }
+                                _ => false,
+                            }
+                        } else {
+                            false
+                        }
+                    }
+                    _ => false,
+                };
+                if suggested {
+                    return;
+                }
+                // Fallback: emit a help message when we can't provide a specific span
+                err.help(
+                    "a reference to a future is not a future; \
+                     consider removing the leading `&`-reference",
+                );
+                return;
+            }
 
             // use nth(1) to skip one layer of desugaring from `IntoIter::into_iter`
             if let Some((_, hir::Node::Expr(await_expr))) = self.tcx.hir_parent_iter(*hir_id).nth(1)
