@@ -1,0 +1,31 @@
+error: `[const]` is not allowed here
+  --> $DIR/const-closure-in-non-const-trait-impl-method.rs:7:23
+   |
+LL |     fn test() -> impl [const] Fn();
+   |                       ^^^^^^^
+   |
+note: this function is not `const`, so it cannot have `[const]` trait bounds
+  --> $DIR/const-closure-in-non-const-trait-impl-method.rs:7:8
+   |
+LL |     fn test() -> impl [const] Fn();
+   |        ^^^^
+
+error[E0379]: functions in trait impls cannot be declared const
+  --> $DIR/const-closure-in-non-const-trait-impl-method.rs:12:5
+   |
+LL |     const fn test() -> impl [const] Fn() {
+   |     ^^^^^ functions in trait impls cannot be const
+   |
+help: remove the `const` ...
+   |
+LL -     const fn test() -> impl [const] Fn() {
+LL +     fn test() -> impl [const] Fn() {
+   |
+help: ... and declare the impl to be const instead
+   |
+LL | impl<T: Foo> const Foo for &mut T {
+   |              +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0379`.
