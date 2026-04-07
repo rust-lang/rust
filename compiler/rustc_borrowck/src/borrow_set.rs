@@ -121,19 +121,6 @@ impl<'tcx> BorrowData<'tcx> {
     pub fn assigned_place(&self) -> mir::Place<'tcx> {
         self.assigned_place
     }
-
-    pub(crate) fn is_pinned(&self) -> bool {
-        matches!(self.pinnedness, Pinnedness::Pinned { .. })
-    }
-
-    /// Returns the Pin result place if this borrow is pinned.
-    #[allow(dead_code)]
-    pub(crate) fn pin_target_local(&self) -> Option<mir::Local> {
-        match self.pinnedness {
-            Pinnedness::Pinned { to, .. } => Some(to.local),
-            Pinnedness::Not => None,
-        }
-    }
 }
 
 impl<'tcx> fmt::Display for BorrowData<'tcx> {

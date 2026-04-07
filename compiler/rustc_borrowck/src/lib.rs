@@ -294,7 +294,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     promoted: IndexVec<Promoted, Body<'tcx>>,
     move_data: MoveData<'tcx>,
     borrow_set: BorrowSet<'tcx>,
-    pin_set: PinSet<'tcx>,
+    pin_set: PinSet,
     location_table: PoloniusLocationTable,
     location_map: Rc<DenseLocationMap>,
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
@@ -339,7 +339,7 @@ fn borrowck_collect_region_constraints<'tcx>(
 
     let locals_are_invalidated_at_exit = tcx.hir_body_owner_kind(def).is_fn_or_closure();
     let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
-    let pin_set_data = PinSet::build(tcx, body);
+    let pin_set = PinSet::build(tcx, body, &borrow_set);
 
     let location_map = Rc::new(DenseLocationMap::new(body));
 
@@ -375,7 +375,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         promoted,
         move_data,
         borrow_set,
-        pin_set: pin_set_data,
+        pin_set,
         location_table,
         location_map,
         universal_region_relations,
@@ -486,7 +486,6 @@ fn borrowck_check_region_constraints<'tcx>(
             used_mut: Default::default(),
             used_mut_upvars: SmallVec::new(),
             borrow_set: &borrow_set,
-            pin_set: &pin_set,
             upvars: &[],
             local_names: OnceCell::from(IndexVec::from_elem(None, &promoted_body.local_decls)),
             region_names: RefCell::default(),
@@ -526,7 +525,6 @@ fn borrowck_check_region_constraints<'tcx>(
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
         borrow_set: &borrow_set,
-        pin_set: &pin_set,
         upvars: tcx.closure_captures(def),
         local_names: OnceCell::new(),
         region_names: RefCell::default(),
@@ -608,7 +606,7 @@ fn get_flow_results<'a, 'tcx>(
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
-    pin_set: &'a PinSet<'tcx>,
+    pin_set: &'a PinSet,
     regioncx: &RegionInferenceContext<'tcx>,
 ) -> Results<'tcx, Borrowck<'a, 'tcx>> {
     // We compute these four analyses individually, but them combine them into
@@ -618,7 +616,8 @@ fn get_flow_results<'a, 'tcx>(
         body,
         Some("borrowck"),
     );
-    let pins = Pins::new(tcx, body, pin_set).iterate_to_fixpoint(tcx, body, Some("borrowck"));
+    let pins =
+        Pins::new(tcx, body, borrow_set, pin_set).iterate_to_fixpoint(tcx, body, Some("borrowck"));
     let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data).iterate_to_fixpoint(
         tcx,
         body,
@@ -646,9 +645,9 @@ fn get_flow_results<'a, 'tcx>(
         uninits.entry_states,
         ever_inits.entry_states
     )
-    .map(|(borrows, pins, uninits, ever_inits)| BorrowckDomain {
+    .map(|(borrows, pinned_borrows, uninits, ever_inits)| BorrowckDomain {
         borrows,
-        pins,
+        pinned_borrows,
         uninits,
         ever_inits,
     })
@@ -777,10 +776,6 @@ pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 
     /// The set of borrows extracted from the MIR
     borrow_set: &'a BorrowSet<'tcx>,
-
-    /// The set of pins extracted from the MIR
-    #[allow(dead_code)]
-    pin_set: &'a PinSet<'tcx>,
 
     /// Information about upvars not necessarily preserved in types or MIR
     upvars: &'tcx [&'tcx ty::CapturedPlace<'tcx>],
@@ -1266,7 +1261,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         location: Location,
         state: &'s BorrowckDomain,
     ) -> Cow<'s, MixedBitSet<BorrowIndex>> {
-        let mut borrows = if let Some(polonius) = &self.polonius_output {
+        if let Some(polonius) = &self.polonius_output {
             // Use polonius output if it has been enabled.
             let location = self.location_table.start_index(location);
             let mut polonius_output = MixedBitSet::new_empty(self.borrow_set.len());
@@ -1276,22 +1271,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             Cow::Owned(polonius_output)
         } else {
             Cow::Borrowed(&state.borrows)
-        };
-
-        // For pinned borrows, the Pins dataflow determines their liveness
-        // independently of NLL regions. If a pin is active, its corresponding
-        // borrow should be treated as in scope even if NLL killed it.
-        for (borrow_idx, borrow_data) in self.borrow_set.iter_enumerated() {
-            if let crate::borrow_set::Pinnedness::Pinned { at, .. } = borrow_data.pinnedness {
-                if let Some(pin_idx) = self.pin_set.get_index_of(&at) {
-                    if state.pins.contains(pin_idx) && !borrows.contains(borrow_idx) {
-                        borrows.to_mut().insert(borrow_idx);
-                    }
-                }
-            }
         }
-
-        borrows
     }
 
     #[instrument(level = "debug", skip(self, state))]
@@ -1306,6 +1286,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let mut error_reported = false;
 
         let borrows_in_scope = self.borrows_in_scope(location, state);
+        let pinned_borrows = &state.pinned_borrows;
 
         each_borrow_involving_path(
             self,
@@ -1313,7 +1294,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             self.body,
             (sd, place_span.0),
             self.borrow_set,
-            |borrow_index| borrows_in_scope.contains(borrow_index),
+            |borrow_index| {
+                borrows_in_scope.contains(borrow_index) || pinned_borrows.contains(borrow_index)
+            },
             |this, borrow_index, borrow| match (rw, borrow.kind) {
                 // Obviously an activation is compatible with its own
                 // reservation (or even prior activating uses of same
@@ -1374,6 +1357,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 }
 
                 (Reservation(kind) | Activation(kind, _) | Write(kind), _) => {
+                    if pinned_borrows.contains(borrow_index)
+                        && !borrows_in_scope.contains(borrow_index)
+                    {
+                        // drop or write to the place is allowed after pinning
+                        if matches!(
+                            kind,
+                            WriteKind::StorageDeadOrDrop | WriteKind::Mutate | WriteKind::Replace
+                        ) {
+                            return ControlFlow::Continue(());
+                        }
+                    }
+
                     match rw {
                         Reservation(..) => {
                             debug!(
@@ -1396,9 +1391,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     error_reported = true;
                     match kind {
                         WriteKind::MutableBorrow(bk) => {
-                            let err =
-                                this.report_conflicting_borrow(location, place_span, bk, borrow);
-                            this.buffer_error(err);
+                            if pinned_borrows.contains(borrow_index) {
+                                this.report_mutably_borrow_after_pinned(
+                                    location, place_span, borrow,
+                                );
+                            } else {
+                                let err = this
+                                    .report_conflicting_borrow(location, place_span, bk, borrow);
+                                this.buffer_error(err);
+                            }
                         }
                         WriteKind::StorageDeadOrDrop => this
                             .report_borrowed_value_does_not_live_long_enough(
@@ -1411,7 +1412,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }
                         WriteKind::Move => {
-                            this.report_move_out_while_borrowed(location, place_span, borrow)
+                            if pinned_borrows.contains(borrow_index) {
+                                this.report_move_after_pinned(location, place_span, borrow);
+                            } else {
+                                this.report_move_out_while_borrowed(location, place_span, borrow)
+                            }
                         }
                         WriteKind::Replace => {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
