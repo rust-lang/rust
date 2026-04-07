@@ -590,14 +590,17 @@ pub(crate) fn render_type_keyword_snippet(
     let mut item =
         CompletionItem::new(CompletionItemKind::Keyword, source_range, label, ctx.edition);
 
-    let cap = ctx.config.snippet_cap;
-    if let Some(cap) = cap {
+    let insert_text = if !snippet.contains('$') {
+        item.insert_text(snippet);
+        snippet
+    } else if let Some(cap) = ctx.config.snippet_cap {
         item.insert_snippet(cap, snippet);
-    }
+        snippet
+    } else {
+        label
+    };
 
-    let insert_text = if cap.is_some() { snippet } else { label }.to_owned();
-    adds_ret_type_arrow(ctx, path_ctx, &mut item, insert_text);
-
+    adds_ret_type_arrow(ctx, path_ctx, &mut item, insert_text.to_owned());
     item
 }
 
