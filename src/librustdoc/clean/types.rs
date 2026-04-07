@@ -750,6 +750,29 @@ impl Item {
         ItemType::from(self)
     }
 
+    // FIXME: Return an iterator instead of a `ThinVec`.
+    pub(crate) fn types(&self) -> ThinVec<ItemType> {
+        if let ItemKind::MacroItem(_, macro_kinds) = self.kind {
+            let mut types = ThinVec::with_capacity(3);
+            for kind in macro_kinds.iter() {
+                match kind {
+                    MacroKinds::ATTR => types.push(ItemType::BangMacroAttribute),
+                    MacroKinds::DERIVE => types.push(ItemType::BangMacroDerive),
+                    MacroKinds::BANG => types.push(ItemType::Macro),
+                    _ => panic!("unsupported macro kind {kind:?}"),
+                }
+            }
+            return types;
+        }
+        let mut types = ThinVec::with_capacity(1);
+        types.push(self.type_());
+        types
+    }
+
+    pub(crate) fn is_macro_rules(&self) -> bool {
+        matches!(self.kind, ItemKind::MacroItem(..))
+    }
+
     pub(crate) fn defaultness(&self) -> Option<Defaultness> {
         match self.kind {
             ItemKind::MethodItem(_, defaultness) | ItemKind::RequiredMethodItem(_, defaultness) => {
@@ -761,14 +784,7 @@ impl Item {
 
     /// Generates the HTML file name based on the item kind.
     pub(crate) fn html_filename(&self) -> String {
-        let type_ = if self.is_macro_placeholder() { ItemType::Macro } else { self.type_() };
-        format!("{type_}.{}.html", self.name.unwrap())
-    }
-
-    /// If the current item is a "fake" macro (ie, `AttrMacroItem | ItemKind::DeriveMacroItem` which
-    /// don't hold any data), it returns `true`.
-    pub(crate) fn is_macro_placeholder(&self) -> bool {
-        matches!(self.kind, ItemKind::AttrMacroItem | ItemKind::DeriveMacroItem)
+        format!("{type_}.{name}.html", type_ = self.type_(), name = self.name.unwrap())
     }
 
     /// Returns a `FnHeader` if `self` is a function item, otherwise returns `None`.
@@ -930,13 +946,9 @@ pub(crate) enum ItemKind {
     ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
     ForeignTypeItem,
+    /// A bang macro. it can be multiple things (macro, derive and attribute, potentially multiple
+    /// at once). Don't forget to look into the `MacroKinds` values.
     MacroItem(Macro, MacroKinds),
-    /// This is NOT an attribute proc-macro but a bang macro with support for being used as an
-    /// attribute macro.
-    AttrMacroItem,
-    /// This is NOT an attribute proc-macro but a bang macro with support for being used as a
-    /// derive macro.
-    DeriveMacroItem,
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
@@ -992,8 +1004,6 @@ impl ItemKind {
             | ForeignStaticItem(_, _)
             | ForeignTypeItem
             | MacroItem(..)
-            | AttrMacroItem
-            | DeriveMacroItem
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | RequiredAssocConstItem(..)

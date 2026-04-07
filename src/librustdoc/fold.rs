@@ -89,8 +89,6 @@ pub(crate) trait DocFolder: Sized {
             | ForeignStaticItem(..)
             | ForeignTypeItem
             | MacroItem(..)
-            | AttrMacroItem
-            | DeriveMacroItem
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | RequiredAssocConstItem(..)

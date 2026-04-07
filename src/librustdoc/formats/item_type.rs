@@ -132,8 +132,6 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::ForeignFunctionItem(..) => ItemType::Function, // no ForeignFunction
             clean::ForeignStaticItem(..) => ItemType::Static,     // no ForeignStatic
             clean::MacroItem(..) => ItemType::Macro,
-            clean::AttrMacroItem => ItemType::BangMacroAttribute,
-            clean::DeriveMacroItem => ItemType::BangMacroDerive,
             clean::PrimitiveItem(..) => ItemType::Primitive,
             clean::RequiredAssocConstItem(..)
             | clean::ProvidedAssocConstItem(..)
@@ -167,10 +165,9 @@ impl ItemType {
             DefKind::Trait => Self::Trait,
             DefKind::TyAlias => Self::TypeAlias,
             DefKind::TraitAlias => Self::TraitAlias,
-            DefKind::Macro(MacroKinds::BANG) => ItemType::Macro,
             DefKind::Macro(MacroKinds::ATTR) => ItemType::ProcAttribute,
             DefKind::Macro(MacroKinds::DERIVE) => ItemType::ProcDerive,
-            DefKind::Macro(_) => todo!("Handle macros with multiple kinds"),
+            DefKind::Macro(_) => ItemType::Macro,
             DefKind::ForeignTy => Self::ForeignType,
             DefKind::Variant => Self::Variant,
             DefKind::Field => Self::StructField,
