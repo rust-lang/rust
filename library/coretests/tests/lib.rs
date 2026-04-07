@@ -14,6 +14,7 @@
 #![feature(char_internals)]
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
+#![feature(cmp_minmax)]
 #![feature(const_array)]
 #![feature(const_bool)]
 #![feature(const_cell_traits)]
