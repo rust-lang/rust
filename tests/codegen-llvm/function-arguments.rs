@@ -106,15 +106,21 @@ pub fn named_borrow<'r>(_: &'r i32) {}
 #[no_mangle]
 pub fn unsafe_borrow(_: &UnsafeInner) {}
 
-// CHECK: @mutable_unsafe_borrow(ptr noalias noundef align 2 dereferenceable(2) %_1)
+// CHECK: @mutable_unsafe_borrow(ptr noalias noundef writable align 2 dereferenceable(2) %_1)
 // ... unless this is a mutable borrow, those never alias
 #[no_mangle]
 pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {}
 
-// CHECK: @mutable_borrow(ptr noalias noundef align 4 dereferenceable(4) %_1)
+// CHECK: @mutable_borrow(ptr noalias noundef writable align 4 dereferenceable(4) %_1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {}
+
+// CHECK: @mutable_borrow_no_writable(ptr noalias noundef align 4 dereferenceable(4) %_1)
+// checks that rustc_no_writable removes the writable attribute
+#[no_mangle]
+#[rustc_no_writable]
+pub fn mutable_borrow_no_writable(_: &mut i32) {}
 
 // CHECK: noundef nonnull align 4 ptr @mutable_borrow_ret()
 #[no_mangle]
@@ -147,7 +153,7 @@ pub fn borrowed_struct(_: &S) {}
 #[no_mangle]
 pub fn option_borrow(_x: Option<&i32>) {}
 
-// CHECK: @option_borrow_mut(ptr noalias noundef align 4 dereferenceable_or_null(4) %_x)
+// CHECK: @option_borrow_mut(ptr noalias noundef writable align 4 dereferenceable_or_null(4) %_x)
 #[no_mangle]
 pub fn option_borrow_mut(_x: Option<&mut i32>) {}
 
@@ -216,7 +222,7 @@ pub fn helper(_: usize) {}
 pub fn slice(_: &[u8]) {}
 
 // CHECK: @mutable_slice(
-// CHECK-SAME: ptr noalias noundef nonnull %_1.0,
+// CHECK-SAME: ptr noalias noundef nonnull writable %_1.0,
 // CHECK-SAME: [[USIZE]] noundef range({{i32 0, -2147483648|i64 0, -9223372036854775808}}) %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
@@ -271,7 +277,7 @@ pub fn trait_box_pin2(_: Box<dyn Drop + UnsafeUnpin>) {}
 
 // Same for mutable references (with a non-zero minimal size so that we also see the
 // `dereferenceable` disappear).
-// CHECK: @trait_mutref(ptr noalias noundef align 4 dereferenceable(4){{( %_1.0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %_1.1)?}})
+// CHECK: @trait_mutref(ptr noalias noundef writable align 4 dereferenceable(4){{( %_1.0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %_1.1)?}})
 #[no_mangle]
 pub fn trait_mutref(_: &mut (i32, dyn Drop + Unpin + UnsafeUnpin)) {}
 // CHECK: @trait_mutref_pin1(ptr noundef nonnull align 4{{( %_1.0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %_1.1)?}})

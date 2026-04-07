@@ -7,7 +7,7 @@
 
 use std::marker::PhantomPinned;
 
-// CHECK: define internal void @{{.*}}core{{.*}}ptr{{.*}}drop_in_place{{.*}}StructUnpin{{.*}}(ptr noalias noundef align 4 dereferenceable(12) %{{.+}})
+// CHECK: define internal void @{{.*}}core{{.*}}ptr{{.*}}drop_in_place{{.*}}StructUnpin{{.*}}(ptr noalias noundef writable align 4 dereferenceable(12) %{{.+}})
 
 // CHECK: define internal void @{{.*}}core{{.*}}ptr{{.*}}drop_in_place{{.*}}StructNotUnpin{{.*}}(ptr noundef nonnull align 4 %{{.+}})
 

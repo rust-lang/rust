@@ -38,11 +38,12 @@ trait ArgAttributesExt {
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
     [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
 
-const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 4] = [
+const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 5] = [
     (ArgAttribute::NoAlias, llvm::AttributeKind::NoAlias),
     (ArgAttribute::NonNull, llvm::AttributeKind::NonNull),
     (ArgAttribute::ReadOnly, llvm::AttributeKind::ReadOnly),
     (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
+    (ArgAttribute::Writable, llvm::AttributeKind::Writable),
 ];
 
 const CAPTURES_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 3] = [

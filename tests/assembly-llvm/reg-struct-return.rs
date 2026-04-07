@@ -13,6 +13,7 @@
 //@ needs-llvm-components: x86
 
 #![feature(no_core)]
+#![feature(rustc_attrs)]
 #![no_std]
 #![no_core]
 #![crate_type = "lib"]
@@ -131,6 +132,7 @@ mod Large {
     }
 
     #[unsafe(no_mangle)]
+    #[rustc_no_writable] // as we do not want to test this here, disable it
     pub unsafe extern "C" fn large_caller(dst: &mut LargeStruct) {
         // CHECK-LABEL: large_caller
         // CHECK: calll large

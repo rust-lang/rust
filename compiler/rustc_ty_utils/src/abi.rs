@@ -2,8 +2,8 @@ use std::{assert_matches, iter};
 
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{Align, BackendRepr, ExternAbi, PointerKind, Scalar, Size};
-use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{self as hir, find_attr};
 use rustc_middle::bug;
 use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
 use rustc_middle::query::Providers;
@@ -355,6 +355,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
     offset: Size,
     is_return: bool,
     drop_target_pointee: Option<Ty<'tcx>>,
+    def_id: Option<DefId>,
 ) -> ArgAttributes {
     let mut attrs = ArgAttributes::new();
 
@@ -430,6 +431,15 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
             if no_alias && !is_return {
                 attrs.set(ArgAttribute::NoAlias);
+
+                // set writable if no_alias is set, it's a mutable reference and the feature is not disabled
+                let no_writable = match def_id {
+                    Some(def_id) => find_attr!(tcx, def_id, RustcNoWritable),
+                    None => false, // If no def_id exists, there can't exist an attribute for that def_id so rustc_no_writable can't be set
+                } || tcx.sess.opts.unstable_opts.no_writable;
+                if matches!(kind, PointerKind::MutableRef { .. }) && !no_writable {
+                    attrs.set(ArgAttribute::Writable);
+                }
             }
 
             if matches!(kind, PointerKind::SharedRef { frozen: true }) && !is_return {
@@ -624,6 +634,7 @@ fn fn_abi_new_uncached<'tcx>(
                 // Only set `drop_target_pointee` for the data part of a wide pointer.
                 // See `arg_attrs_for_rust_scalar` docs for more information.
                 drop_target_pointee.filter(|_| offset == Size::ZERO),
+                determined_fn_def_id,
             )
         }))
     };
