@@ -474,9 +474,9 @@
 //!
 //! In an intrusive doubly-linked list, the collection itself does not own the memory in which
 //! each of its elements is stored. Instead, each client is free to allocate space for elements it
-//! adds to the list in whichever manner it likes, including on the stack! Elements can live on a
-//! stack frame that lives shorter than the collection does provided the elements that live in a
-//! given stack frame are removed from the list before going out of scope.
+//! adds to the list in whichever manner it likes, including on the stack! Elements can be stored
+//! in a stack frame shorter-lived than the collection, provided they are removed from the list
+//! before that frame goes out of scope.
 //!
 //! To make such an intrusive data structure work, every element stores pointers to its predecessor
 //! and successor within its own data, rather than having the list structure itself managing those
