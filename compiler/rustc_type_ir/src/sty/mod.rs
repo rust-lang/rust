@@ -1,3 +1,5 @@
+use std::fmt;
+
 use derive_where::derive_where;
 use rustc_data_structures::intern::Interned;
 #[cfg(feature = "nightly")]
@@ -14,11 +16,10 @@ use crate::{
 };
 
 /// Use this rather than `RegionKind`, whenever possible.
-#[derive_where(Clone, Copy, Debug, PartialEq, Eq, Hash; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 #[rustc_pass_by_value]
-pub struct Region<I: Interner>(I::InternedRegionKind);
-// pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
+pub struct Region<I: Interner>(pub I::InternedRegionKind);
 
 // These are only the `inherent` trait methods that have been ported across
 impl<I: Interner> Region<I> {
@@ -162,6 +163,12 @@ impl<I: Interner> Relate<I> for Region<I> {
         b: Region<I>,
     ) -> RelateResult<I, Region<I>> {
         relation.regions(a, b)
+    }
+}
+
+impl<I: Interner> fmt::Debug for Region<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.kind())
     }
 }
 
