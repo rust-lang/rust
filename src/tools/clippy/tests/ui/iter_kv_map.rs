@@ -235,3 +235,15 @@ fn issue16515() {
     hash_map.into_iter().filter_map(|(_, v)| (v > 0).then_some(1));
     //~^ iter_kv_map
 }
+
+fn issue16742() {
+    let map: HashMap<u32, Vec<u32>> = HashMap::new();
+    map.iter().flat_map(|(_, v)| v.iter().map(|i| *i + 1));
+    //~^ iter_kv_map
+    map.iter().flat_map(|(_, v)| v);
+    //~^ iter_kv_map
+
+    let map: HashMap<u32, Vec<u32>> = HashMap::new();
+    map.into_iter().flat_map(|(_, v)| v);
+    //~^ iter_kv_map
+}

@@ -50,7 +50,7 @@ pub trait HashStable<Hcx> {
 /// bringing maps into a predictable order before hashing them.
 pub trait ToStableHashKey<Hcx> {
     type KeyType: Ord + Sized + HashStable<Hcx>;
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> Self::KeyType;
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> Self::KeyType;
 }
 
 /// Trait for marking a type as having a sort order that is
@@ -427,7 +427,7 @@ impl StableOrd for String {
 impl<Hcx> ToStableHashKey<Hcx> for String {
     type KeyType = String;
     #[inline]
-    fn to_stable_hash_key(&self, _: &Hcx) -> Self::KeyType {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> Self::KeyType {
         self.clone()
     }
 }
@@ -435,7 +435,7 @@ impl<Hcx> ToStableHashKey<Hcx> for String {
 impl<Hcx, T1: ToStableHashKey<Hcx>, T2: ToStableHashKey<Hcx>> ToStableHashKey<Hcx> for (T1, T2) {
     type KeyType = (T1::KeyType, T2::KeyType);
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> Self::KeyType {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> Self::KeyType {
         (self.0.to_stable_hash_key(hcx), self.1.to_stable_hash_key(hcx))
     }
 }

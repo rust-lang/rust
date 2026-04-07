@@ -77,8 +77,8 @@ fn emit_lint(cx: &LateContext<'_>, span: Span, kind: &str, note: &'static str, s
 
 /// Checks `vec![Vec::with_capacity(x); n]`
 fn check_vec_macro(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if matching_root_macro_call(cx, expr.span, sym::vec_macro).is_some()
-        && let Some(VecArgs::Repeat(repeat_expr, len_expr)) = VecArgs::hir(cx, expr)
+    if let Some(VecArgs::Repeat(repeat_expr, len_expr)) = VecArgs::hir(cx, expr)
+        && matching_root_macro_call(cx, expr.span, sym::vec_macro).is_some()
         && fn_def_id(cx, repeat_expr).is_some_and(|did| cx.tcx.is_diagnostic_item(sym::vec_with_capacity, did))
         && !len_expr.span.from_expansion()
         && let Some(Constant::Int(2..)) = ConstEvalCtxt::new(cx).eval(expr_or_init(cx, len_expr))

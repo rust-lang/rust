@@ -1,8 +1,11 @@
 #![warn(clippy::manual_pop_if)]
 #![allow(clippy::collapsible_if, clippy::redundant_closure)]
+#![feature(binary_heap_pop_if)]
 
-use std::collections::VecDeque;
+use std::collections::{BinaryHeap, VecDeque};
 use std::marker::PhantomData;
+
+fn main() {}
 
 // FakeVec has the same methods as Vec but isn't actually a Vec
 struct FakeVec<T>(PhantomData<T>);
@@ -17,25 +20,35 @@ impl<T> FakeVec<T> {
     }
 }
 
-fn is_some_and_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
+fn is_some_and_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>, mut heap: BinaryHeap<i32>) {
+    //~v manual_pop_if
     if vec.last().is_some_and(|x| *x > 2) {
-        //~^ manual_pop_if
         vec.pop().unwrap();
     }
 
+    //~v manual_pop_if
     if vec.last().is_some_and(|x| *x > 2) {
-        //~^ manual_pop_if
+        unsafe { vec.pop().unwrap_unchecked() };
+    }
+
+    //~v manual_pop_if
+    if vec.last().is_some_and(|x| *x > 2) {
         vec.pop().expect("element");
     }
 
+    //~v manual_pop_if
     if deque.back().is_some_and(|x| *x > 2) {
-        //~^ manual_pop_if
         deque.pop_back().unwrap();
     }
 
+    //~v manual_pop_if
     if deque.front().is_some_and(|x| *x > 2) {
-        //~^ manual_pop_if
         deque.pop_front().unwrap();
+    }
+
+    //~v manual_pop_if
+    if heap.peek().is_some_and(|x| *x > 2) {
+        heap.pop().unwrap();
     }
 }
 
@@ -52,24 +65,6 @@ fn is_some_and_pattern_negative(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
         fake_vec.pop().unwrap();
     }
 
-    // Do not lint, else-if branch
-    if false {
-        // something
-    } else if vec.last().is_some_and(|x| *x > 2) {
-        vec.pop().unwrap();
-    }
-
-    // Do not lint, value used in let binding
-    if vec.last().is_some_and(|x| *x > 2) {
-        let _value = vec.pop().unwrap();
-        println!("Popped: {}", _value);
-    }
-
-    // Do not lint, value used in expression
-    if vec.last().is_some_and(|x| *x > 2) {
-        println!("Popped: {}", vec.pop().unwrap());
-    }
-
     // Do not lint, else block
     let _result = if vec.last().is_some_and(|x| *x > 2) {
         vec.pop().unwrap()
@@ -78,32 +73,46 @@ fn is_some_and_pattern_negative(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
     };
 }
 
-fn if_let_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
+fn if_let_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>, mut heap: BinaryHeap<i32>) {
+    //~v manual_pop_if
     if let Some(x) = vec.last() {
-        //~^ manual_pop_if
         if *x > 2 {
             vec.pop().unwrap();
         }
     }
 
+    //~v manual_pop_if
     if let Some(x) = vec.last() {
-        //~^ manual_pop_if
+        if *x > 2 {
+            unsafe { vec.pop().unwrap_unchecked() };
+        }
+    }
+
+    //~v manual_pop_if
+    if let Some(x) = vec.last() {
         if *x > 2 {
             vec.pop().expect("element");
         }
     }
 
+    //~v manual_pop_if
     if let Some(x) = deque.back() {
-        //~^ manual_pop_if
         if *x > 2 {
             deque.pop_back().unwrap();
         }
     }
 
+    //~v manual_pop_if
     if let Some(x) = deque.front() {
-        //~^ manual_pop_if
         if *x > 2 {
             deque.pop_front().unwrap();
+        }
+    }
+
+    //~v manual_pop_if
+    if let Some(x) = heap.peek() {
+        if *x > 2 {
+            heap.pop().unwrap();
         }
     }
 }
@@ -132,13 +141,6 @@ fn if_let_pattern_negative(mut vec: Vec<i32>) {
         }
     }
 
-    // Do not lint, value used in let binding
-    if let Some(x) = vec.last() {
-        if *x > 2 {
-            let _val = vec.pop().unwrap();
-        }
-    }
-
     // Do not lint, else block
     let _result = if let Some(x) = vec.last() {
         if *x > 2 { vec.pop().unwrap() } else { 0 }
@@ -147,11 +149,17 @@ fn if_let_pattern_negative(mut vec: Vec<i32>) {
     };
 }
 
-fn let_chain_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
+fn let_chain_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>, mut heap: BinaryHeap<i32>) {
     if let Some(x) = vec.last() //~ manual_pop_if
         && *x > 2
     {
         vec.pop().unwrap();
+    }
+
+    if let Some(x) = vec.last() //~ manual_pop_if
+        && *x > 2
+    {
+        unsafe { vec.pop().unwrap_unchecked() };
     }
 
     if let Some(x) = vec.last() //~ manual_pop_if
@@ -171,6 +179,12 @@ fn let_chain_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
     {
         deque.pop_front().unwrap();
     }
+
+    if let Some(x) = heap.peek() //~ manual_pop_if
+        && *x > 2
+    {
+        heap.pop().unwrap();
+    }
 }
 
 fn let_chain_pattern_negative(mut vec: Vec<i32>) {
@@ -189,20 +203,6 @@ fn let_chain_pattern_negative(mut vec: Vec<i32>) {
         vec.pop().unwrap();
     }
 
-    // Do not lint, value used in let binding
-    if let Some(x) = vec.last()
-        && *x > 2
-    {
-        let _val = vec.pop().unwrap();
-    }
-
-    // Do not lint, value used in expression
-    if let Some(x) = vec.last()
-        && *x > 2
-    {
-        println!("Popped: {}", vec.pop().unwrap());
-    }
-
     // Do not lint, else block
     let _result = if let Some(x) = vec.last()
         && *x > 2
@@ -213,25 +213,35 @@ fn let_chain_pattern_negative(mut vec: Vec<i32>) {
     };
 }
 
-fn map_unwrap_or_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
+fn map_unwrap_or_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>, mut heap: BinaryHeap<i32>) {
+    //~v manual_pop_if
     if vec.last().map(|x| *x > 2).unwrap_or(false) {
-        //~^ manual_pop_if
         vec.pop().unwrap();
     }
 
+    //~v manual_pop_if
     if vec.last().map(|x| *x > 2).unwrap_or(false) {
-        //~^ manual_pop_if
+        unsafe { vec.pop().unwrap_unchecked() };
+    }
+
+    //~v manual_pop_if
+    if vec.last().map(|x| *x > 2).unwrap_or(false) {
         vec.pop().expect("element");
     }
 
+    //~v manual_pop_if
     if deque.back().map(|x| *x > 2).unwrap_or(false) {
-        //~^ manual_pop_if
         deque.pop_back().unwrap();
     }
 
+    //~v manual_pop_if
     if deque.front().map(|x| *x > 2).unwrap_or(false) {
-        //~^ manual_pop_if
         deque.pop_front().unwrap();
+    }
+
+    //~v manual_pop_if
+    if heap.peek().map(|x| *x > 2).unwrap_or(false) {
+        heap.pop().unwrap();
     }
 }
 
@@ -258,11 +268,6 @@ fn map_unwrap_or_pattern_negative(mut vec: Vec<i32>) {
         vec.pop().unwrap();
     }
 
-    // Do not lint, value used in let binding
-    if vec.last().map(|x| *x > 2).unwrap_or(false) {
-        let _val = vec.pop().unwrap();
-    }
-
     // Do not lint, else block
     let _result = if vec.last().map(|x| *x > 2).unwrap_or(false) {
         vec.pop().unwrap()
@@ -273,8 +278,8 @@ fn map_unwrap_or_pattern_negative(mut vec: Vec<i32>) {
 
 // this makes sure we do not expand vec![] in the suggestion
 fn handle_macro_in_closure(mut vec: Vec<Vec<i32>>) {
+    //~v manual_pop_if
     if vec.last().is_some_and(|e| *e == vec![1]) {
-        //~^ manual_pop_if
         vec.pop().unwrap();
     }
 }
@@ -299,21 +304,21 @@ fn msrv_too_low_vecdeque(mut deque: VecDeque<i32>) {
 
 #[clippy::msrv = "1.86.0"]
 fn msrv_high_enough_vec(mut vec: Vec<i32>) {
+    //~v manual_pop_if
     if vec.last().is_some_and(|x| *x > 2) {
-        //~^ manual_pop_if
         vec.pop().unwrap();
     }
 }
 
 #[clippy::msrv = "1.93.0"]
 fn msrv_high_enough_vecdeque(mut deque: VecDeque<i32>) {
+    //~v manual_pop_if
     if deque.back().is_some_and(|x| *x > 2) {
-        //~^ manual_pop_if
         deque.pop_back().unwrap();
     }
 
+    //~v manual_pop_if
     if deque.front().is_some_and(|x| *x > 2) {
-        //~^ manual_pop_if
         deque.pop_front().unwrap();
     }
 }
