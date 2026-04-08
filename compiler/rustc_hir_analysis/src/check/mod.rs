@@ -408,7 +408,7 @@ fn bounds_from_generic_predicates<'tcx>(
                     format!(
                         "{}: {}",
                         region.to_string(),
-                        v.into_iter().map(Region::to_string).collect::<Vec<_>>().join(" + ")
+                        v.into_iter().map(|r| r.to_string()).collect::<Vec<_>>().join(" + ")
                     )
                 } else {
                     region.to_string()
