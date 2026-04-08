@@ -550,7 +550,7 @@ impl LLVMLink {
 
     /// Alters all the unsigned types from the signature. This is required where
     /// a signed and unsigned variant require the same binding to an exposed
-    /// LLVM instrinsic.
+    /// LLVM intrinsic.
     pub fn sanitise_uints(&mut self) {
         let transform = |tk: &mut TypeKind| {
             if let Some(BaseType::Sized(BaseTypeKind::UInt, size)) = tk.base_type() {
@@ -1139,7 +1139,7 @@ impl Intrinsic {
             } else {
                 /* If we do not need to reorder anything then immediately add
                  * the expressions from the big_endian_expressions and
-                 * concatinate the compose vector */
+                 * concatenate the compose vector */
                 variant.big_endian_compose.extend(big_endian_expressions);
                 variant
                     .big_endian_compose
@@ -1157,11 +1157,11 @@ impl Intrinsic {
 
             /* If we do not create a shuffle call we do not need modify the
              * return value and append to the big endian ast array. A bit confusing
-             * as in code we are making the final call before caputuring the return
+             * as in code we are making the final call before capturing the return
              * value of the intrinsic that has been called.*/
             let ret_val_name = "ret_val".to_string();
             if let Some(simd_shuffle_call) = create_shuffle_call(&ret_val_name, return_type) {
-                /* There is a possibility that the funcion arguments did not
+                /* There is a possibility that the function arguments did not
                  * require big endian treatment, thus we need to now add the
                  * original function body before appending the return value.*/
                 if variant.big_endian_compose.is_empty() {
@@ -1695,8 +1695,8 @@ enum Endianness {
     NA,
 }
 
-/// Based on the endianess will create the appropriate intrinsic, or simply
-/// create the desired intrinsic without any endianess
+/// Based on the endianness will create the appropriate intrinsic, or simply
+/// create the desired intrinsic without any endianness
 fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut TokenStream) {
     let signature = &intrinsic.signature;
     let fn_name = signature.fn_name().to_string();
