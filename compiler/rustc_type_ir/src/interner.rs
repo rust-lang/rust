@@ -5,6 +5,8 @@ use std::ops::Deref;
 
 use rustc_ast_ir::Movability;
 use rustc_index::bit_set::DenseBitSet;
+#[cfg(feature = "nightly")]
+use rustc_serialize::Decoder;
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
@@ -429,6 +431,14 @@ pub trait Interner:
     fn get_re_static_lifetime(self) -> Region<Self>;
 
     fn intern_region(self, region_kind: RegionKind<Self>) -> Region<Self>;
+}
+
+/// A decoder that can reconstruct interned IR values by supplying an interner.
+#[cfg(feature = "nightly")]
+pub trait InternerDecoder: Decoder {
+    type Interner: Interner;
+
+    fn interner(&self) -> Self::Interner;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

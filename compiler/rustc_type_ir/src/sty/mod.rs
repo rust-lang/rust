@@ -4,6 +4,8 @@ use derive_where::derive_where;
 use rustc_data_structures::intern::Interned;
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_NoContext;
+#[cfg(feature = "nightly")]
+use rustc_serialize::{Decodable, Encodable};
 use tracing::debug;
 
 use crate::inherent::*;
@@ -196,5 +198,25 @@ where
 
     fn lift_to_interner(self, interner: U) -> Option<Self::Lifted> {
         Some(interner.intern_region(self.kind().lift_to_interner(interner)?))
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<I: Interner, E: rustc_serialize::Encoder> Encodable<E> for Region<I>
+where
+    RegionKind<I>: Encodable<E>,
+{
+    fn encode(&self, e: &mut E) {
+        self.kind().encode(e);
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<I: Interner, D: crate::InternerDecoder<Interner = I>> Decodable<D> for Region<I>
+where
+    RegionKind<I>: Decodable<D>,
+{
+    fn decode(decoder: &mut D) -> Self {
+        decoder.interner().intern_region(Decodable::decode(decoder))
     }
 }

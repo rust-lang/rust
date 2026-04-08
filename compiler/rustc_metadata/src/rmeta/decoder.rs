@@ -389,11 +389,6 @@ impl<'a> BlobDecodeContext<'a> {
 impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
-    #[inline]
-    fn interner(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
     fn cached_ty_for_shorthand<F>(&mut self, shorthand: usize, or_insert_with: F) -> Ty<'tcx>
     where
         F: FnOnce(&mut Self) -> Ty<'tcx>,
@@ -427,6 +422,15 @@ impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
     fn decode_alloc_id(&mut self) -> rustc_middle::mir::interpret::AllocId {
         let ads = self.alloc_decoding_session;
         ads.decode_alloc_id(self)
+    }
+}
+
+impl<'a, 'tcx> rustc_type_ir::InternerDecoder for MetadataDecodeContext<'a, 'tcx> {
+    type Interner = TyCtxt<'tcx>;
+
+    #[inline]
+    fn interner(&self) -> Self::Interner {
+        self.tcx
     }
 }
 
