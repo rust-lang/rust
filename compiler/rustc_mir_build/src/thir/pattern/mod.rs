@@ -15,10 +15,8 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
-use rustc_middle::middle::region;
 use rustc_middle::thir::{
-    Ascription, DerefPatBorrowMode, FieldPat, LocalVarId, Pat, PatExtra, PatKind, PatRange,
-    PatRangeBoundary,
+    Ascription, DerefPatBorrowMode, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
@@ -321,8 +319,6 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let ty = self.typeck_results.node_type(pat.hir_id);
         let span = pat.span;
 
-        let mut extra = None;
-
         // Some of these match arms return a `Box<Pat>` early, while others
         // evaluate to a `PatKind` that will become a `Box<Pat>` at the end of
         // this function.
@@ -451,27 +447,17 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
 
             hir::PatKind::Or(pats) => PatKind::Or { pats: self.lower_patterns(pats) },
 
-            hir::PatKind::Guard(pat, condition) => {
-                // In some cases during MIR lowering we need a Scope
-                let scope = region::Scope {
-                    local_id: pat.hir_id.local_id,
-                    data: region::ScopeData::MatchGuard,
-                };
-
-                extra = Some(Box::new(PatExtra { scope: Some(scope), ..Default::default() }));
-
-                PatKind::Guard {
-                    subpattern: self.lower_pattern(pat),
-                    condition: self.upper.mirror_expr(condition),
-                }
-            }
+            hir::PatKind::Guard(pat, condition) => PatKind::Guard {
+                subpattern: self.lower_pattern(pat),
+                condition: self.upper.mirror_expr(condition),
+            },
 
             hir::PatKind::Err(guar) => PatKind::Error(guar),
         };
 
         // For pattern kinds that haven't already returned, create a `thir::Pat`
         // with the HIR pattern node's type and span.
-        Box::new(Pat { span, ty, kind, extra })
+        Box::new(Pat { span, ty, kind, extra: None })
     }
 
     fn lower_tuple_subpats(
