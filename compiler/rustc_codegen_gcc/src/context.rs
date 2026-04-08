@@ -11,7 +11,7 @@ use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, MiscCodege
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::interpret::Allocation;
-use rustc_middle::mir::mono::CodegenUnit;
+use rustc_middle::mono::CodegenUnit;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError,

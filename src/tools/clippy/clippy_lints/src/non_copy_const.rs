@@ -35,8 +35,8 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::mir::{ConstValue, UnevaluatedConst};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{
-    self, AliasTyKind, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable,
-    TypeckResults, TypingEnv,
+    self, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeckResults,
+    TypingEnv,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::DUMMY_SP;
@@ -884,7 +884,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAssocFolder<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(AliasTyKind::Projection, ty) = ty.kind()
+        if let ty::Alias(
+            ty @ ty::AliasTy {
+                kind: ty::Projection { .. },
+                ..
+            },
+        ) = ty.kind()
             && ty.trait_def_id(self.tcx) == self.trait_id
             && ty.self_ty() == self.self_ty
         {

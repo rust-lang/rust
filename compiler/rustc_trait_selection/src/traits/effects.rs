@@ -178,11 +178,17 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
     let mut candidate = None;
 
     let mut consider_ty = obligation.predicate.self_ty();
-    while let ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) = *consider_ty.kind() {
-        if tcx.is_conditionally_const(alias_ty.def_id) {
+    while let ty::Alias(
+        alias_ty @ ty::AliasTy {
+            kind: kind @ (ty::Projection { def_id } | ty::Opaque { def_id }),
+            ..
+        },
+    ) = *consider_ty.kind()
+    {
+        if tcx.is_conditionally_const(def_id) {
             for clause in elaborate(
                 tcx,
-                tcx.explicit_implied_const_bounds(alias_ty.def_id)
+                tcx.explicit_implied_const_bounds(def_id)
                     .iter_instantiated_copied(tcx, alias_ty.args)
                     .map(|(trait_ref, _)| {
                         trait_ref.to_host_effect_clause(tcx, obligation.predicate.constness)
@@ -217,7 +223,7 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
             }
         }
 
-        if kind != ty::Projection {
+        if !matches!(kind, ty::Projection { .. }) {
             break;
         }
 
@@ -233,7 +239,7 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth,
-                tcx.const_conditions(alias_ty.def_id).instantiate(tcx, alias_ty.args),
+                tcx.const_conditions(alias_ty.kind.def_id()).instantiate(tcx, alias_ty.args),
                 nested,
             );
             nested.extend(const_conditions.into_iter().map(|(trait_ref, _)| {
@@ -259,8 +265,14 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
     let mut candidate = None;
 
     let mut consider_ty = obligation.predicate.self_ty();
-    while let ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) = *consider_ty.kind() {
-        for clause in tcx.item_bounds(alias_ty.def_id).iter_instantiated(tcx, alias_ty.args) {
+    while let ty::Alias(
+        alias_ty @ ty::AliasTy {
+            kind: kind @ (ty::Projection { def_id } | ty::Opaque { def_id }),
+            ..
+        },
+    ) = *consider_ty.kind()
+    {
+        for clause in tcx.item_bounds(def_id).iter_instantiated(tcx, alias_ty.args) {
             let bound_clause = clause.kind();
             let ty::ClauseKind::HostEffect(data) = bound_clause.skip_binder() else {
                 continue;
@@ -289,7 +301,7 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
             }
         }
 
-        if kind != ty::Projection {
+        if !matches!(kind, ty::Projection { .. }) {
             break;
         }
 
@@ -352,7 +364,7 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
         | ty::Foreign(..)
         | ty::Ref(_, _, ty::Mutability::Mut)
         | ty::Adt(_, _)
-        | ty::Alias(_, _)
+        | ty::Alias(_)
         | ty::Param(_)
         | ty::Placeholder(..) => Err(EvaluationFailure::NoSolution),
 

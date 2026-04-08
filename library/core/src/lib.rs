@@ -227,7 +227,7 @@ mod sealed {
 
 // We don't export this through #[macro_export] for now, to avoid breakage.
 #[unstable(feature = "autodiff", issue = "124509")]
-/// Unstable module containing the unstable `autodiff` macro.
+#[doc = include_str!("../../core/src/autodiff.md")]
 pub mod autodiff {
     #[unstable(feature = "autodiff", issue = "124509")]
     pub use crate::macros::builtin::{autodiff_forward, autodiff_reverse};

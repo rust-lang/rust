@@ -230,9 +230,11 @@ where
         // when merging candidates anyways.
         //
         // See tests/ui/impl-trait/auto-trait-leakage/avoid-query-cycle-via-item-bound.rs.
-        if let ty::Alias(ty::Opaque, opaque_ty) = goal.predicate.self_ty().kind() {
-            debug_assert!(ecx.opaque_type_is_rigid(opaque_ty.def_id));
-            for item_bound in cx.item_self_bounds(opaque_ty.def_id).skip_binder() {
+        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
+            goal.predicate.self_ty().kind()
+        {
+            debug_assert!(ecx.opaque_type_is_rigid(def_id));
+            for item_bound in cx.item_self_bounds(def_id).skip_binder() {
                 if item_bound
                     .as_trait_clause()
                     .is_some_and(|b| b.def_id() == goal.predicate.def_id())
@@ -1249,7 +1251,10 @@ where
             ty::Dynamic(..)
             | ty::Param(..)
             | ty::Foreign(..)
-            | ty::Alias(ty::Projection | ty::Free | ty::Inherent, ..)
+            | ty::Alias(ty::AliasTy {
+                kind: ty::Projection { .. } | ty::Free { .. } | ty::Inherent { .. },
+                ..
+            })
             | ty::Placeholder(..) => Some(Err(NoSolution)),
 
             ty::Infer(_) | ty::Bound(_, _) => panic!("unexpected type `{self_ty:?}`"),

@@ -29,11 +29,11 @@ where
 }
 
 impl<T, A1: Allocator, A2: Allocator> SpecExtend<T, IntoIter<T, A2>> for Vec<T, A1> {
-    fn spec_extend(&mut self, mut iterator: IntoIter<T, A2>) {
+    fn spec_extend(&mut self, iterator: IntoIter<T, A2>) {
         unsafe {
             self.append_elements(iterator.as_slice() as _);
         }
-        iterator.forget_remaining_elements();
+        iterator.forget_remaining_elements_and_dealloc();
     }
 }
 

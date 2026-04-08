@@ -158,9 +158,9 @@ then runs the compiler for each revision, reusing the incremental results from p
 
 The revisions should start with:
 
-* `rpass` — the test should compile and run successfully
-* `rfail` — the test should compile successfully, but the executable should fail to run
 * `cfail` — the test should fail to compile
+* `cpass` — the test should compile successully
+* `rpass` — the test should compile and run successfully
 
 To make the revisions unique, you should add a suffix like `rpass1` and `rpass2`.
 

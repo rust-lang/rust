@@ -126,8 +126,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     #[inline]
     pub fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
         fn reveal_inner<'tcx>(cx: &RustcPatCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
-            let ty::Alias(ty::Opaque, alias_ty) = *ty.kind() else { bug!() };
-            if let Some(local_def_id) = alias_ty.def_id.as_local() {
+            let ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Opaque { .. }, .. }) = *ty.kind()
+            else {
+                bug!()
+            };
+            if let Some(local_def_id) = alias_ty.kind.def_id().as_local() {
                 let key = ty::OpaqueTypeKey { def_id: local_def_id, args: alias_ty.args };
                 if let Some(ty) = cx.reveal_opaque_key(key) {
                     return RevealedTy(ty);
@@ -135,7 +138,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             }
             RevealedTy(ty)
         }
-        if let ty::Alias(ty::Opaque, _) = ty.kind() {
+        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) = ty.kind() {
             reveal_inner(self, ty)
         } else {
             RevealedTy(ty)
@@ -423,7 +426,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::UnsafeBinder(_)
-            | ty::Alias(_, _)
+            | ty::Alias(_)
             | ty::Param(_)
             | ty::Error(_) => ConstructorSet::Unlistable,
             ty::CoroutineWitness(_, _) | ty::Bound(_, _) | ty::Placeholder(_) | ty::Infer(_) => {

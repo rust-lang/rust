@@ -368,14 +368,14 @@ impl RustcInternal for MirConst {
 }
 
 impl RustcInternal for MonoItem {
-    type T<'tcx> = rustc_middle::mir::mono::MonoItem<'tcx>;
+    type T<'tcx> = rustc_middle::mono::MonoItem<'tcx>;
 
     fn internal<'tcx>(
         &self,
         tables: &mut Tables<'_, BridgeTys>,
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        use rustc_middle::mir::mono as rustc_mono;
+        use rustc_middle::mono as rustc_mono;
         match self {
             MonoItem::Fn(instance) => rustc_mono::MonoItem::Fn(instance.internal(tables, tcx)),
             MonoItem::Static(def) => rustc_mono::MonoItem::Static(def.internal(tables, tcx)),
