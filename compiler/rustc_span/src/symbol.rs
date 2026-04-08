@@ -11,7 +11,7 @@ use rustc_data_structures::stable_hasher::{
     HashStable, HashStableContext, StableCompare, StableHasher, ToStableHashKey,
 };
 use rustc_data_structures::sync::Lock;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic, symbols};
+use rustc_macros::{Decodable, Encodable, HashStable, symbols};
 
 use crate::edit_distance::find_best_match_for_name;
 use crate::{DUMMY_SP, Edition, Span, with_session_globals};
@@ -2308,7 +2308,7 @@ symbols! {
 /// `proc_macro`.
 pub const STDLIB_STABLE_CRATES: &[Symbol] = &[sym::std, sym::core, sym::alloc, sym::proc_macro];
 
-#[derive(Copy, Clone, Eq, HashStable_Generic, Encodable, Decodable)]
+#[derive(Copy, Clone, Eq, HashStable, Encodable, Decodable)]
 pub struct Ident {
     /// `name` should never be the empty symbol. If you are considering that,
     /// you are probably conflating "empty identifier with "no identifier" and

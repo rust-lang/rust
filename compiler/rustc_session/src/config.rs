@@ -19,7 +19,7 @@ use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtFlags};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
-use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{
@@ -88,7 +88,7 @@ pub enum CFProtection {
     Full,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, HashStable_Generic, Encodable, Decodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, HashStable, Encodable, Decodable)]
 pub enum OptLevel {
     /// `-Copt-level=0`
     No,
@@ -543,7 +543,7 @@ impl SwitchWithOptPath {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[derive(Encodable, BlobDecodable)]
 pub enum SymbolManglingVersion {
     Legacy,
@@ -619,7 +619,7 @@ macro_rules! define_output_types {
             }
         ),* $(,)?
     ) => {
-        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, HashStable_Generic)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, HashStable)]
         #[derive(Encodable, Decodable)]
         pub enum OutputType {
             $(
@@ -840,7 +840,7 @@ pub enum ResolveDocLinks {
 /// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
 /// dependency tracking for command-line arguments. Also only hash keys, since tracking
 /// should only depend on the output types, not the paths they're written to.
-#[derive(Clone, Debug, Hash, HashStable_Generic, Encodable, Decodable)]
+#[derive(Clone, Debug, Hash, HashStable, Encodable, Decodable)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<OutFileName>>);
 
 impl OutputTypes {
@@ -1054,7 +1054,7 @@ impl Input {
     }
 }
 
-#[derive(Clone, Hash, Debug, HashStable_Generic, PartialEq, Eq, Encodable, Decodable)]
+#[derive(Clone, Hash, Debug, HashStable, PartialEq, Eq, Encodable, Decodable)]
 pub enum OutFileName {
     Real(PathBuf),
     Stdout,
@@ -1129,7 +1129,7 @@ impl OutFileName {
     }
 }
 
-#[derive(Clone, Hash, Debug, HashStable_Generic, Encodable, Decodable)]
+#[derive(Clone, Hash, Debug, HashStable, Encodable, Decodable)]
 pub struct OutputFilenames {
     pub(crate) out_directory: PathBuf,
     /// Crate name. Never contains '-'.
@@ -1524,7 +1524,7 @@ impl UnstableOptions {
 }
 
 // The type of entry function, so users can have their own entry functions
-#[derive(Copy, Clone, PartialEq, Hash, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Hash, Debug, HashStable)]
 pub enum EntryFnType {
     Main {
         /// Specifies what to do with `SIGPIPE` before calling `fn main()`.

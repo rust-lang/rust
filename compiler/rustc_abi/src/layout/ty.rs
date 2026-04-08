@@ -2,7 +2,7 @@ use std::fmt;
 use std::ops::Deref;
 
 use rustc_data_structures::intern::Interned;
-use rustc_macros::HashStable_Generic;
+use rustc_macros::HashStable;
 
 use crate::layout::{FieldIdx, VariantIdx};
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
 
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Layout<'a>(pub Interned<'a, LayoutData<FieldIdx, VariantIdx>>);
 
@@ -71,7 +71,7 @@ impl<'a> Layout<'a> {
 /// to that obtained from `layout_of(ty)`, as we need to produce
 /// layouts for which Rust types do not exist, such as enum variants
 /// or synthetic fields of enums (i.e., discriminants) and wide pointers.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 pub struct TyAndLayout<'a, Ty> {
     pub ty: Ty,
     pub layout: Layout<'a>,

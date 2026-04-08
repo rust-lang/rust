@@ -7,7 +7,7 @@ use std::borrow::Cow;
 
 pub use fluent_bundle::types::FluentType;
 pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::Span;
 pub use unic_langid::{LanguageIdentifier, langid};
 
@@ -28,7 +28,7 @@ pub fn register_functions<R, M>(bundle: &mut fluent_bundle::bundle::FluentBundle
 /// diagnostic messages.
 ///
 /// Intended to be removed once diagnostics are entirely translatable.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable)]
 #[rustc_diagnostic_item = "DiagMessage"]
 pub enum DiagMessage {
     /// Non-translatable diagnostic message or a message that has been translated eagerly.
@@ -89,7 +89,7 @@ pub struct SpanLabel {
 ///   the error, and would be rendered with `^^^`.
 /// - They can have a *label*. In this case, the label is written next
 ///   to the mark in the snippet when we render.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Encodable, Decodable, HashStable)]
 pub struct MultiSpan {
     primary_spans: Vec<Span>,
     span_labels: Vec<(Span, DiagMessage)>,

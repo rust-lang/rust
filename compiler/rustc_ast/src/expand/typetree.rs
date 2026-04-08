@@ -21,9 +21,9 @@
 
 use std::fmt;
 
-use crate::expand::{Decodable, Encodable, HashStable_Generic};
+use crate::expand::{Decodable, Encodable, HashStable};
 
-#[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable)]
 pub enum Kind {
     Anything,
     Integer,
@@ -35,7 +35,7 @@ pub enum Kind {
     Unknown,
 }
 
-#[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable)]
 pub struct TypeTree(pub Vec<Type>);
 
 impl TypeTree {
@@ -59,13 +59,13 @@ impl TypeTree {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable)]
 pub struct FncTree {
     pub args: Vec<TypeTree>,
     pub ret: TypeTree,
 }
 
-#[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable)]
 pub struct Type {
     pub offset: isize,
     pub size: usize,

@@ -2,11 +2,11 @@ use std::fmt;
 use std::ops::{Div, Mul};
 
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable};
 
 /// New-type wrapper around `usize` for representing limits. Ensures that comparisons against
 /// limits are consistent throughout the compiler.
-#[derive(Clone, Copy, Debug, HashStable_Generic, Encodable, Decodable)]
+#[derive(Clone, Copy, Debug, HashStable, Encodable, Decodable)]
 pub struct Limit(pub usize);
 
 impl Limit {

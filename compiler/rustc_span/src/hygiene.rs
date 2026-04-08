@@ -37,7 +37,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::{debug, trace};
 
@@ -129,7 +129,7 @@ impl !Ord for LocalExpnId {}
 impl !PartialOrd for LocalExpnId {}
 
 /// A unique hash value associated to an expansion.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable)]
 pub struct ExpnHash(Fingerprint);
 
 impl ExpnHash {
@@ -163,7 +163,7 @@ impl ExpnHash {
 /// A property of a macro expansion that determines how identifiers
 /// produced by that expansion are resolved.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug, Encodable, Decodable)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable)]
 pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
     /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
@@ -965,7 +965,7 @@ impl Span {
 
 /// A subset of properties from both macro definition and macro call available through global data.
 /// Avoid using this if you have access to the original definition or call structures.
-#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
 pub struct ExpnData {
     // --- The part unique to each expansion.
     pub kind: ExpnKind,
@@ -1112,7 +1112,7 @@ impl ExpnData {
 }
 
 /// Expansion kind.
-#[derive(Clone, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Debug, PartialEq, Encodable, Decodable, HashStable)]
 pub enum ExpnKind {
     /// No expansion, aka root expansion. Only `ExpnId::root()` has this kind.
     Root,
@@ -1141,7 +1141,7 @@ impl ExpnKind {
 
 /// The kind of macro invocation or definition.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
     Bang,
@@ -1176,7 +1176,7 @@ impl MacroKind {
 }
 
 /// The kind of AST transform.
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable)]
 pub enum AstPass {
     StdImports,
     TestHarness,
@@ -1194,7 +1194,7 @@ impl AstPass {
 }
 
 /// The kind of compiler desugaring.
-#[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable, HashStable)]
 pub enum DesugaringKind {
     QuestionMark,
     TryBlock,

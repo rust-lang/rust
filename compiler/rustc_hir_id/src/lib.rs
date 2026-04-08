@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 use rustc_data_structures::stable_hasher::{
     HashStable, HashStableContext, StableHasher, StableOrd, ToStableHashKey,
 };
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, DefIndex, DefPathHash, LocalDefId};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
@@ -81,7 +81,7 @@ impl ToStableHashKey for OwnerId {
 /// the `local_id` part of the `HirId` changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, HashStable)]
 #[rustc_pass_by_value]
 pub struct HirId {
     pub owner: OwnerId,

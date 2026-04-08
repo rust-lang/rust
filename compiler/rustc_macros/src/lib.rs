@@ -62,10 +62,6 @@ decl_derive!(
     [HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive
 );
 decl_derive!(
-    // FIXME: synonym of `HashStable`, will be removed shortly
-    [HashStable_Generic, attributes(stable_hasher)] => hash_stable::hash_stable_derive
-);
-decl_derive!(
     [HashStable_NoContext, attributes(stable_hasher)] => hash_stable::hash_stable_no_context_derive
 );
 
