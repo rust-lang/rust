@@ -88,7 +88,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, OutlivesPredicate, Region, Ty, TyCtxt, TypingMode,
+    self, GenericArgs, GenericArgsRef, OutlivesPredicate, Region, RegionUtilitiesExt, Ty, TyCtxt,
+    TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -405,7 +406,8 @@ fn bounds_from_generic_predicates<'tcx>(
                     && !v.is_empty()
                 {
                     format!(
-                        "{region}: {}",
+                        "{}: {}",
+                        region.to_string(),
                         v.into_iter().map(Region::to_string).collect::<Vec<_>>().join(" + ")
                     )
                 } else {

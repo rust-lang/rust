@@ -14,9 +14,9 @@ use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInfer
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Upcast,
+    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, RegionUtilitiesExt, Ty,
+    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, DUMMY_SP, Span};
@@ -916,7 +916,9 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                 e
             } else {
                 bug!(
-                    "expected to map region {region} to early-bound identity region, but got {id_region}"
+                    "expected to map region {} to early-bound identity region, but got {}",
+                    region.to_string(),
+                    id_region.to_string()
                 );
             }
         } else {

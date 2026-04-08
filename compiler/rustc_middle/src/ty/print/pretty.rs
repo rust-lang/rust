@@ -3122,7 +3122,6 @@ macro_rules! define_print_and_forward_display {
 }
 
 forward_display_to_print! {
-    ty::Region<'tcx>,
     Ty<'tcx>,
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ty::Const<'tcx>
