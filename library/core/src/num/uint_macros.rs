@@ -214,7 +214,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn leading_zeros(self) -> u32 {
-            return intrinsics::ctlz(self as $ActualT);
+            $(#[cfg($Pred)] {
+                return intrinsics::ctlz(self as $ActualT);
+            })+
         }
 
         /// Returns the number of trailing zeros in the binary representation
@@ -563,11 +565,13 @@ macro_rules! uint_impl {
         #[inline(always)]
         #[track_caller]
         pub const unsafe fn unchecked_funnel_shl(self, low: Self, n: u32) -> Self {
-            assert_unsafe_precondition!(
-                check_language_ub,
-                concat!(stringify!($SelfT), "::unchecked_funnel_shl cannot overflow"),
-                (n: u32 = n) => n < <$ActualT>::BITS,
-            );
+            $(#[cfg($Pred)] {
+                assert_unsafe_precondition!(
+                    check_language_ub,
+                    concat!(stringify!($SelfT), "::unchecked_funnel_shl cannot overflow"),
+                    (n: u32 = n) => n < <$ActualT>::BITS,
+                );
+            })+
 
             // SAFETY: this is guaranteed to be safe by the caller.
             unsafe {
@@ -590,11 +594,13 @@ macro_rules! uint_impl {
         #[inline(always)]
         #[track_caller]
         pub const unsafe fn unchecked_funnel_shr(self, low: Self, n: u32) -> Self {
-            assert_unsafe_precondition!(
-                check_language_ub,
-                concat!(stringify!($SelfT), "::unchecked_funnel_shr cannot overflow"),
-                (n: u32 = n) => n < <$ActualT>::BITS,
-            );
+            $(#[cfg($Pred)] {
+                assert_unsafe_precondition!(
+                    check_language_ub,
+                    concat!(stringify!($SelfT), "::unchecked_funnel_shr cannot overflow"),
+                    (n: u32 = n) => n < <$ActualT>::BITS,
+                );
+            })+
 
             // SAFETY: this is guaranteed to be safe by the caller.
             unsafe {
@@ -674,7 +680,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn swap_bytes(self) -> Self {
-            intrinsics::bswap(self as $ActualT) as Self
+            $(#[cfg($Pred)] {
+                intrinsics::bswap(self as $ActualT) as Self
+            })+
         }
 
         /// Returns an integer with the bit locations specified by `mask` packed
@@ -691,7 +699,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn extract_bits(self, mask: Self) -> Self {
-            imp::int_bits::$ActualT::extract_impl(self as $ActualT, mask as $ActualT) as $SelfT
+            $(#[cfg($Pred)] {
+                imp::int_bits::$ActualT::extract_impl(self as $ActualT, mask as $ActualT) as $SelfT
+            })+
         }
 
         /// Returns an integer with the least significant bits of `self`
@@ -708,7 +718,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn deposit_bits(self, mask: Self) -> Self {
-            imp::int_bits::$ActualT::deposit_impl(self as $ActualT, mask as $ActualT) as $SelfT
+            $(#[cfg($Pred)] {
+                imp::int_bits::$ActualT::deposit_impl(self as $ActualT, mask as $ActualT) as $SelfT
+            })+
         }
 
         /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
@@ -729,7 +741,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn reverse_bits(self) -> Self {
-            intrinsics::bitreverse(self as $ActualT) as Self
+            $(#[cfg($Pred)] {
+                intrinsics::bitreverse(self as $ActualT) as Self
+            })+
         }
 
         /// Converts an integer from big endian to the target's endianness.
@@ -2020,13 +2034,15 @@ macro_rules! uint_impl {
         #[inline(always)]
         #[track_caller]
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
-            assert_unsafe_precondition!(
-                check_language_ub,
-                concat!(stringify!($SelfT), "::unchecked_shl cannot overflow"),
-                (
-                    rhs: u32 = rhs,
-                ) => rhs < <$ActualT>::BITS,
-            );
+            $(#[cfg($Pred)] {
+                assert_unsafe_precondition!(
+                    check_language_ub,
+                    concat!(stringify!($SelfT), "::unchecked_shl cannot overflow"),
+                    (
+                        rhs: u32 = rhs,
+                    ) => rhs < <$ActualT>::BITS,
+                );
+            })+
 
             // SAFETY: this is guaranteed to be safe by the caller.
             unsafe {
@@ -2205,13 +2221,15 @@ macro_rules! uint_impl {
         #[inline(always)]
         #[track_caller]
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
-            assert_unsafe_precondition!(
-                check_language_ub,
-                concat!(stringify!($SelfT), "::unchecked_shr cannot overflow"),
-                (
-                    rhs: u32 = rhs,
-                ) => rhs < <$ActualT>::BITS,
-            );
+            $(#[cfg($Pred)] {
+                assert_unsafe_precondition!(
+                    check_language_ub,
+                    concat!(stringify!($SelfT), "::unchecked_shr cannot overflow"),
+                    (
+                        rhs: u32 = rhs,
+                    ) => rhs < <$ActualT>::BITS,
+                );
+            })+
 
             // SAFETY: this is guaranteed to be safe by the caller.
             unsafe {
@@ -2943,8 +2961,10 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn overflowing_add(self, rhs: Self) -> (Self, bool) {
-            let (a, b) = intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT);
-            (a as Self, b)
+            $(#[cfg($Pred)] {
+                let (a, b) = intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT);
+                (a as Self, b)
+            })+
         }
 
         /// Calculates `self` + `rhs` + `carry` and returns a tuple containing
@@ -3042,8 +3062,10 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
-            let (a, b) = intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT);
-            (a as Self, b)
+            $(#[cfg($Pred)] {
+                let (a, b) = intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT);
+                (a as Self, b)
+            })+
         }
 
         /// Calculates `self` &minus; `rhs` &minus; `borrow` and returns a tuple
@@ -3165,8 +3187,10 @@ macro_rules! uint_impl {
                           without modifying the original"]
         #[inline(always)]
         pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
-            let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
-            (a as Self, b)
+            $(#[cfg($Pred)] {
+                let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
+                (a as Self, b)
+            })+
         }
 
         /// Calculates the complete double-width product `self * rhs`.
@@ -3658,24 +3682,26 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            let result = imp::int_sqrt::$ActualT(self as $ActualT) as $SelfT;
+            $(#[cfg($Pred)] {
+                let result = imp::int_sqrt::$ActualT(self as $ActualT) as $SelfT;
 
-            // Inform the optimizer what the range of outputs is. If testing
-            // `core` crashes with no panic message and a `num::int_sqrt::u*`
-            // test failed, it's because your edits caused these assertions or
-            // the assertions in `fn isqrt` of `nonzero.rs` to become false.
-            //
-            // SAFETY: Integer square root is a monotonically nondecreasing
-            // function, which means that increasing the input will never
-            // cause the output to decrease. Thus, since the input for unsigned
-            // integers is bounded by `[0, <$ActualT>::MAX]`, sqrt(n) will be
-            // bounded by `[sqrt(0), sqrt(<$ActualT>::MAX)]`.
-            unsafe {
-                const MAX_RESULT: $SelfT = imp::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT;
-                crate::hint::assert_unchecked(result <= MAX_RESULT);
-            }
+                // Inform the optimizer what the range of outputs is. If testing
+                // `core` crashes with no panic message and a `num::int_sqrt::u*`
+                // test failed, it's because your edits caused these assertions or
+                // the assertions in `fn isqrt` of `nonzero.rs` to become false.
+                //
+                // SAFETY: Integer square root is a monotonically nondecreasing
+                // function, which means that increasing the input will never
+                // cause the output to decrease. Thus, since the input for unsigned
+                // integers is bounded by `[0, <$ActualT>::MAX]`, sqrt(n) will be
+                // bounded by `[sqrt(0), sqrt(<$ActualT>::MAX)]`.
+                unsafe {
+                    const MAX_RESULT: $SelfT = imp::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT;
+                    crate::hint::assert_unchecked(result <= MAX_RESULT);
+                }
 
-            result
+                result
+            })+
         }
 
         /// Performs Euclidean division.
