@@ -77,6 +77,12 @@ pub(crate) enum Pinnedness<'tcx> {
     Pinned { to: mir::Place<'tcx>, at: Location },
 }
 
+impl<'tcx> Pinnedness<'tcx> {
+    pub(crate) fn is_pinned(&self) -> bool {
+        matches!(self, Self::Pinned { .. })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BorrowData<'tcx> {
     /// Location where the borrow reservation starts.

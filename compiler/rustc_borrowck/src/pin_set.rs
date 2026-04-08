@@ -8,10 +8,8 @@ use crate::consumers::BorrowSet;
 use crate::dataflow::BorrowIndex;
 
 pub(crate) struct PinSet {
-    /// Map from Pin result location to the borrows it pinned.
+    /// Map from Pin aggregate location to the borrows it pinned.
     pub(crate) pin_location_map: FxIndexMap<Location, FxIndexSet<BorrowIndex>>,
-    /// Map from Pin result local to all the borrows it pined.
-    pub(crate) pin_local_map: FxIndexMap<mir::Local, FxIndexSet<BorrowIndex>>,
 }
 
 impl PinSet {
@@ -20,19 +18,14 @@ impl PinSet {
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
     ) -> Self {
-        let mut visitor = GatherPins {
-            tcx,
-            body,
-            borrow_set,
-            pin_location_map: Default::default(),
-            pin_local_map: Default::default(),
-        };
+        let mut visitor =
+            GatherPins { tcx, body, borrow_set, pin_location_map: Default::default() };
 
         for (block, block_data) in traversal::preorder(body) {
             visitor.visit_basic_block_data(block, block_data);
         }
 
-        PinSet { pin_location_map: visitor.pin_location_map, pin_local_map: visitor.pin_local_map }
+        PinSet { pin_location_map: visitor.pin_location_map }
     }
 }
 
@@ -41,7 +34,6 @@ struct GatherPins<'a, 'tcx> {
     body: &'a Body<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
     pin_location_map: FxIndexMap<Location, FxIndexSet<BorrowIndex>>,
-    pin_local_map: FxIndexMap<mir::Local, FxIndexSet<BorrowIndex>>,
 }
 
 impl<'tcx> Visitor<'tcx> for GatherPins<'_, 'tcx> {
@@ -66,8 +58,7 @@ impl<'tcx> Visitor<'tcx> for GatherPins<'_, 'tcx> {
             && let Some((borrow_location, _borrowed_place)) = self.find_original_borrowed_place(location, ref_place)
             && let Some(idx) = self.borrow_set.get_index_of(&borrow_location)
         {
-            self.pin_location_map.entry(borrow_location).or_default().insert(idx);
-            self.pin_local_map.entry(pin_result_place.local).or_default().insert(idx);
+            self.pin_location_map.entry(location).or_default().insert(idx);
         }
 
         self.super_assign(pin_result_place, rvalue, location)
