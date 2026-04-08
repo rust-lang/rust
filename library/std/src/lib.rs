@@ -468,9 +468,7 @@ extern crate std as realstd;
 
 // The standard macros that are not built-in to the compiler.
 #[macro_use]
-#[doc(hidden)]
-#[unstable(feature = "std_internals", issue = "none")]
-pub mod macros;
+mod macros;
 
 // The runtime entry point and a few unstable public functions used by the
 // compiler
