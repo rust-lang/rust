@@ -278,8 +278,8 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::MalformedOnUnimplementedAttr { span } => {
                 lints::MalformedOnUnimplementedAttrLint { span }.into_diag(dcx, level)
             }
-            &AttributeLintKind::MalformedOnUnknownItemdAttr { span } => {
-                lints::MalformedOnUnknownItemAttrLint { span }.into_diag(dcx, level)
+            &AttributeLintKind::MalformedOnUnknownAttr { span } => {
+                lints::MalformedOnUnknownAttrLint { span }.into_diag(dcx, level)
             }
             &AttributeLintKind::MalformedOnConstAttr { span } => {
                 lints::MalformedOnConstAttrLint { span }.into_diag(dcx, level)
@@ -342,8 +342,8 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::IgnoredUnlessCrateSpecified { level: attr_level, name } => {
                 lints::IgnoredUnlessCrateSpecified { level: attr_level, name }.into_diag(dcx, level)
             }
-            &AttributeLintKind::MissingOptionsForOnUnknownItem => {
-                lints::MissingOptionsForOnUnknownItemAttr.into_diag(dcx, level)
+            &AttributeLintKind::MissingOptionsForOnUnknown => {
+                lints::MissingOptionsForOnUnknownAttr.into_diag(dcx, level)
             }
         }
     }

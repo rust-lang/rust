@@ -80,7 +80,7 @@ impl AttributeKind {
             OnConst { .. } => Yes,
             OnMove { .. } => Yes,
             OnUnimplemented { .. } => Yes,
-            OnUnknownItem { .. } => Yes,
+            OnUnknown { .. } => Yes,
             Optimize(..) => No,
             PanicRuntime => No,
             PatchableFunctionEntry { .. } => Yes,

@@ -3647,9 +3647,9 @@ pub(crate) struct IgnoredDiagnosticOption {
 pub(crate) struct MissingOptionsForOnUnimplementedAttr;
 
 #[derive(Diagnostic)]
-#[diag("missing options for `on_unknown_item` attribute")]
+#[diag("missing options for `on_unknown` attribute")]
 #[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnUnknownItemAttr;
+pub(crate) struct MissingOptionsForOnUnknownAttr;
 
 #[derive(Diagnostic)]
 #[diag("missing options for `on_const` attribute")]
@@ -3670,9 +3670,9 @@ pub(crate) struct MalformedOnUnimplementedAttrLint {
 }
 
 #[derive(Diagnostic)]
-#[diag("malformed `on_unknown_item` attribute")]
+#[diag("malformed `on_unknown` attribute")]
 #[help("only `message`, `note` and `label` are allowed as options")]
-pub(crate) struct MalformedOnUnknownItemAttrLint {
+pub(crate) struct MalformedOnUnknownAttrLint {
     #[label("invalid option found here")]
     pub span: Span,
 }

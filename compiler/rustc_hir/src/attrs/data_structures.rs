@@ -1335,8 +1335,8 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
-    /// Represents `#[diagnostic::on_unknown_item]`
-    OnUnknownItem {
+    /// Represents `#[diagnostic::on_unknown]`
+    OnUnknown {
         span: Span,
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
