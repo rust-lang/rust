@@ -12,6 +12,10 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveDeadDrops {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        if body.coroutine.is_none() {
+            return;
+        }
+
         let move_data = MoveData::gather_moves(body, tcx, |_| true);
 
         let mut maybe_init_cursor = MaybeInitializedPlaces::new(tcx, body, &move_data)

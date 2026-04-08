@@ -555,7 +555,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 
     tcx.ensure_done().check_liveness(def);
 
-    let (body, _) = tcx.mir_promoted(def);
+    let body = tcx.mir_post_borrowck_cleanup(def);
     let mut body = body.steal();
 
     if let Some(error_reported) = tainted_by_errors {
