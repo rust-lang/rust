@@ -2,8 +2,8 @@ use std::cmp;
 
 use libc::c_uint;
 use rustc_abi::{
-    ArmCall, BackendRepr, CanonAbi, HasDataLayout, InterruptKind, Primitive, Reg, RegKind, Size,
-    X86Call,
+    ArmCall, BackendRepr, CanonAbi, Float, HasDataLayout, Integer, InterruptKind, Primitive, Reg,
+    RegKind, Size, X86Call,
 };
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -137,7 +137,30 @@ impl LlvmType for Reg {
                 128 => cx.type_f128(),
                 _ => bug!("unsupported float: {:?}", self),
             },
-            RegKind::Vector => cx.type_vector(cx.type_i8(), self.size.bytes()),
+            RegKind::Vector { hint_vector_elem } => {
+                // NOTE: it is valid to ignore the element type hint (and always pick i8).
+                // But providing a more accurate type means fewer casts in LLVM IR,
+                // which helps with optimization.
+                let ty = match hint_vector_elem {
+                    Primitive::Int(integer, _) => match integer {
+                        Integer::I8 => cx.type_ix(8),
+                        Integer::I16 => cx.type_ix(16),
+                        Integer::I32 => cx.type_ix(32),
+                        Integer::I64 => cx.type_ix(64),
+                        Integer::I128 => cx.type_ix(128),
+                    },
+                    Primitive::Float(float) => match float {
+                        Float::F16 => cx.type_f16(),
+                        Float::F32 => cx.type_f32(),
+                        Float::F64 => cx.type_f64(),
+                        Float::F128 => cx.type_f128(),
+                    },
+                    Primitive::Pointer(_) => cx.type_ptr(),
+                };
+
+                let len = self.size.bytes() / hint_vector_elem.size(cx).bytes();
+                cx.type_vector(ty, len)
+            }
         }
     }
 }
