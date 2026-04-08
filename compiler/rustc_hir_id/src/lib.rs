@@ -66,7 +66,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OwnerId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
-        hcx.def_path_hash(self.to_def_id())
+        self.to_def_id().to_stable_hash_key(hcx)
     }
 }
 

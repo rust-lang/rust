@@ -405,14 +405,14 @@ rustc_data_structures::define_id_collections!(
 impl<Hcx: HashStableContext> HashStable<Hcx> for DefId {
     #[inline]
     fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        hcx.def_path_hash(*self).hash_stable(hcx, hasher);
+        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
 impl<Hcx: HashStableContext> HashStable<Hcx> for LocalDefId {
     #[inline]
     fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        hcx.def_path_hash(self.to_def_id()).local_hash().hash_stable(hcx, hasher);
+        self.to_stable_hash_key(hcx).local_hash().hash_stable(hcx, hasher);
     }
 }
 
@@ -437,7 +437,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for LocalDefId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
-        hcx.def_path_hash(self.to_def_id())
+        self.to_def_id().to_stable_hash_key(hcx)
     }
 }
 
