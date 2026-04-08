@@ -79,18 +79,31 @@ pub(crate) fn cargo_config_env(
     for (key, entry) in env_toml {
         let key = key.as_ref().as_ref();
         let value = match entry.as_ref() {
-            DeValue::String(s) => String::from(s.clone()),
+            DeValue::String(s) => {
+                // Plain string entries have no `force` option, so they should not
+                // override existing environment variables (matching Cargo behavior).
+                if extra_env.get(key).is_some_and(Option::is_some) {
+                    continue;
+                }
+                if let Ok(val) = std::env::var(key) { val } else { String::from(s.clone()) }
+            }
             DeValue::Table(entry) => {
                 // Each entry MUST have a `value` key.
                 let Some(map) = entry.get("value").and_then(|v| v.as_ref().as_str()) else {
                     continue;
                 };
-                // If the entry already exists in the environment AND the `force` key is not set to
-                // true, then don't overwrite the value.
-                if extra_env.get(key).is_some_and(Option::is_some)
-                    && !entry.get("force").and_then(|v| v.as_ref().as_bool()).unwrap_or(false)
-                {
-                    continue;
+                let is_forced =
+                    entry.get("force").and_then(|v| v.as_ref().as_bool()).unwrap_or(false);
+                // If the entry already exists in the environment AND the `force` key is not set
+                // to true, use the existing value instead of the config value.
+                if !is_forced {
+                    if extra_env.get(key).is_some_and(Option::is_some) {
+                        continue;
+                    }
+                    if let Ok(val) = std::env::var(key) {
+                        env.insert(key, val);
+                        continue;
+                    }
                 }
 
                 if let Some(base) = entry.get("relative").and_then(|v| {
