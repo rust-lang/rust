@@ -103,12 +103,12 @@ macro_rules! uint_impl {
         pub const MIN: Self = 0;
 
         /// The largest value that can be represented by this integer type
-        #[doc = concat!("(2<sup>", $BITS, "</sup> &minus; 1", $bound_condition, ").")]
+        $(#[cfg_attr($Pred, doc = concat!("(2<sup>", $BITS, "</sup> &minus; 1", $bound_condition, ")."))])+
         ///
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($MaxV), ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($MaxV), ");"))])+
         /// ```
         #[stable(feature = "assoc_int_consts", since = "1.43.0")]
         pub const MAX: Self = !0;
@@ -118,7 +118,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");"))])+
         /// ```
         #[stable(feature = "int_bits_const", since = "1.53.0")]
         pub const BITS: u32 = Self::MAX.count_ones();
@@ -132,7 +132,7 @@ macro_rules! uint_impl {
         /// assert_eq!(n.count_ones(), 3);
         ///
         #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
-        #[doc = concat!("assert_eq!(max.count_ones(), ", stringify!($BITS), ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(max.count_ones(), ", stringify!($BITS), ");"))])+
         ///
         #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
         /// assert_eq!(zero.count_ones(), 0);
@@ -154,7 +154,7 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
-        #[doc = concat!("assert_eq!(zero.count_zeros(), ", stringify!($BITS), ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(zero.count_zeros(), ", stringify!($BITS), ");"))])+
         ///
         #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
         /// assert_eq!(max.count_zeros(), 0);
@@ -179,7 +179,7 @@ macro_rules! uint_impl {
         /// the type you're using in the call rather than method syntax:
         /// ```
         /// let small = 1;
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::count_zeros(small), ", stringify!($BITS_MINUS_ONE) ,");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(", stringify!($SelfT), "::count_zeros(small), ", stringify!($BITS_MINUS_ONE) ,");"))])+
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
@@ -202,7 +202,7 @@ macro_rules! uint_impl {
         /// assert_eq!(n.leading_zeros(), 2);
         ///
         #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
-        #[doc = concat!("assert_eq!(zero.leading_zeros(), ", stringify!($BITS), ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(zero.leading_zeros(), ", stringify!($BITS), ");"))])+
         ///
         #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
         /// assert_eq!(max.leading_zeros(), 0);
@@ -227,7 +227,7 @@ macro_rules! uint_impl {
         /// assert_eq!(n.trailing_zeros(), 3);
         ///
         #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
-        #[doc = concat!("assert_eq!(zero.trailing_zeros(), ", stringify!($BITS), ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(zero.trailing_zeros(), ", stringify!($BITS), ");"))])+
         ///
         #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
         #[doc = concat!("assert_eq!(max.trailing_zeros(), 0);")]
@@ -253,7 +253,7 @@ macro_rules! uint_impl {
         /// assert_eq!(zero.leading_ones(), 0);
         ///
         #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
-        #[doc = concat!("assert_eq!(max.leading_ones(), ", stringify!($BITS), ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(max.leading_ones(), ", stringify!($BITS), ");"))])+
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
@@ -277,7 +277,7 @@ macro_rules! uint_impl {
         /// assert_eq!(zero.trailing_ones(), 0);
         ///
         #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
-        #[doc = concat!("assert_eq!(max.trailing_ones(), ", stringify!($BITS), ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(max.trailing_ones(), ", stringify!($BITS), ");"))])+
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
@@ -300,7 +300,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".bit_width(), 0);")]
         #[doc = concat!("assert_eq!(0b111_", stringify!($SelfT), ".bit_width(), 3);")]
         #[doc = concat!("assert_eq!(0b1110_", stringify!($SelfT), ".bit_width(), 4);")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.bit_width(), ", stringify!($BITS), ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.bit_width(), ", stringify!($BITS), ");"))])+
         /// ```
         #[unstable(feature = "uint_bit_width", issue = "142326")]
         #[must_use = "this returns the result of the operation, \
@@ -433,10 +433,10 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let n = ", $rot_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let m = ", $rot_result, ";")]
+        $(#[cfg_attr($Pred, doc = concat!("let n = ", $rot_op, stringify!($SelfT), ";"))])+
+        $(#[cfg_attr($Pred, doc = concat!("let m = ", $rot_result, ";"))])+
         ///
-        #[doc = concat!("assert_eq!(n.rotate_left(", $rot, "), m);")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(n.rotate_left(", $rot, "), m);"))])+
         #[doc = concat!("assert_eq!(n.rotate_left(1024), n);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -462,10 +462,10 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let n = ", $rot_result, stringify!($SelfT), ";")]
-        #[doc = concat!("let m = ", $rot_op, ";")]
+        $(#[cfg_attr($Pred, doc = concat!("let n = ", $rot_result, stringify!($SelfT), ";"))])+
+        $(#[cfg_attr($Pred, doc = concat!("let m = ", $rot_op, ";"))])+
         ///
-        #[doc = concat!("assert_eq!(n.rotate_right(", $rot, "), m);")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(n.rotate_right(", $rot, "), m);"))])+
         #[doc = concat!("assert_eq!(n.rotate_right(1024), n);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -496,11 +496,11 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// #![feature(funnel_shifts)]
-        #[doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let m = ", $fshl_result, ";")]
+        $(#[cfg_attr($Pred, doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";"))])+
+        $(#[cfg_attr($Pred, doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";"))])+
+        $(#[cfg_attr($Pred, doc = concat!("let m = ", $fshl_result, ";"))])+
         ///
-        #[doc = concat!("assert_eq!(a.funnel_shl(b, ", $rot, "), m);")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(a.funnel_shl(b, ", $rot, "), m);"))])+
         /// ```
         #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
         #[unstable(feature = "funnel_shifts", issue = "145686")]
@@ -531,11 +531,11 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// #![feature(funnel_shifts)]
-        #[doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let m = ", $fshr_result, ";")]
+        $(#[cfg_attr($Pred, doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";"))])+
+        $(#[cfg_attr($Pred, doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";"))])+
+        $(#[cfg_attr($Pred, doc = concat!("let m = ", $fshr_result, ";"))])+
         ///
-        #[doc = concat!("assert_eq!(a.funnel_shr(b, ", $rot, "), m);")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(a.funnel_shr(b, ", $rot, "), m);"))])+
         /// ```
         #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
         #[unstable(feature = "funnel_shifts", issue = "145686")]
@@ -643,10 +643,10 @@ macro_rules! uint_impl {
         /// ```
         /// #![feature(uint_carryless_mul)]
         ///
-        #[doc = concat!("let a = ", $clmul_lhs, stringify!($SelfT), ";")]
-        #[doc = concat!("let b = ", $clmul_rhs, stringify!($SelfT), ";")]
+        $(#[cfg_attr($Pred, doc = concat!("let a = ", $clmul_lhs, stringify!($SelfT), ";"))])+
+        $(#[cfg_attr($Pred, doc = concat!("let b = ", $clmul_rhs, stringify!($SelfT), ";"))])+
         ///
-        #[doc = concat!("assert_eq!(a.carryless_mul(b), ", $clmul_result, ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(a.carryless_mul(b), ", $clmul_result, ");"))])+
         /// ```
         #[rustc_const_unstable(feature = "uint_carryless_mul", issue = "152080")]
         #[doc(alias = "clmul")]
@@ -663,10 +663,10 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let n = ", $swap_op, stringify!($SelfT), ";")]
+        $(#[cfg_attr($Pred, doc = concat!("let n = ", $swap_op, stringify!($SelfT), ";"))])+
         /// let m = n.swap_bytes();
         ///
-        #[doc = concat!("assert_eq!(m, ", $swapped, ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(m, ", $swapped, ");"))])+
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
@@ -717,10 +717,10 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let n = ", $swap_op, stringify!($SelfT), ";")]
+        $(#[cfg_attr($Pred, doc = concat!("let n = ", $swap_op, stringify!($SelfT), ";"))])+
         /// let m = n.reverse_bits();
         ///
-        #[doc = concat!("assert_eq!(m, ", $reversed, ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(m, ", $reversed, ");"))])+
         #[doc = concat!("assert_eq!(0, 0", stringify!($SelfT), ".reverse_bits());")]
         /// ```
         #[stable(feature = "reverse_bits", since = "1.37.0")]
@@ -1955,7 +1955,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".checked_shl(4), Some(0x10));")]
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);")]
-        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".checked_shl(", stringify!($BITS_MINUS_ONE), "), Some(0));")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".checked_shl(", stringify!($BITS_MINUS_ONE), "), Some(0));"))])+
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
@@ -2047,8 +2047,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(0), 0b101);")]
         #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(1), 0b1010);")]
         #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(2), 0b10100);")]
-        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(", stringify!($BITS), "), 0);")]
-        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(1).unbounded_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(", stringify!($BITS), "), 0);"))])+
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(1).unbounded_shl(", stringify!($BITS_MINUS_ONE), "), 0);"))])+
         ///
         #[doc = concat!("let start : ", stringify!($SelfT), " = 13;")]
         /// let mut running = start;
@@ -2056,7 +2056,7 @@ macro_rules! uint_impl {
         ///     // The unbounded shift left by i is the same as `<< 1` i times
         ///     assert_eq!(running, start.unbounded_shl(i));
         ///     // Which is not always the case for a wrapping shift
-        #[doc = concat!("    assert_eq!(running == start.wrapping_shl(i), i < ", stringify!($BITS), ");")]
+        $(#[cfg_attr($Pred, doc = concat!("    assert_eq!(running == start.wrapping_shl(i), i < ", stringify!($BITS), ");"))])+
         ///
         ///     running <<= 1;
         /// }
@@ -2232,8 +2232,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(0), 0b1010);")]
         #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(1), 0b101);")]
         #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(2), 0b10);")]
-        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(", stringify!($BITS), "), 0);")]
-        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(1).unbounded_shr(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(", stringify!($BITS), "), 0);"))])+
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(1).unbounded_shr(", stringify!($BITS_MINUS_ONE), "), 0);"))])+
         ///
         #[doc = concat!("let start = ", stringify!($SelfT), "::rotate_right(13, 4);")]
         /// let mut running = start;
@@ -2241,7 +2241,7 @@ macro_rules! uint_impl {
         ///     // The unbounded shift right by i is the same as `>> 1` i times
         ///     assert_eq!(running, start.unbounded_shr(i));
         ///     // Which is not always the case for a wrapping shift
-        #[doc = concat!("    assert_eq!(running == start.wrapping_shr(i), i < ", stringify!($BITS), ");")]
+        $(#[cfg_attr($Pred, doc = concat!("    assert_eq!(running == start.wrapping_shr(i), i < ", stringify!($BITS), ");"))])+
         ///
         ///     running >>= 1;
         /// }
@@ -2809,8 +2809,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".wrapping_shl(1), 0b1010);")]
         #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".wrapping_shl(2), 0b10100);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.wrapping_shl(2), ", stringify!($SelfT), "::MAX - 3);")]
-        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shl(", stringify!($BITS), "), 42);")]
-        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shl(1).wrapping_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shl(", stringify!($BITS), "), 42);"))])+
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shl(1).wrapping_shl(", stringify!($BITS_MINUS_ONE), "), 0);"))])+
         #[doc = concat!("assert_eq!(1_", stringify!($SelfT), ".wrapping_shl(128), 1);")]
         #[doc = concat!("assert_eq!(5_", stringify!($SelfT), ".wrapping_shl(1025), 10);")]
         /// ```
@@ -2853,8 +2853,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".wrapping_shr(1), 0b101);")]
         #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".wrapping_shr(2), 0b10);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.wrapping_shr(1), ", stringify!($SignedT), "::MAX.cast_unsigned());")]
-        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shr(", stringify!($BITS), "), 42);")]
-        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shr(1).wrapping_shr(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shr(", stringify!($BITS), "), 42);"))])+
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shr(1).wrapping_shr(", stringify!($BITS_MINUS_ONE), "), 0);"))])+
         #[doc = concat!("assert_eq!(128_", stringify!($SelfT), ".wrapping_shr(128), 128);")]
         #[doc = concat!("assert_eq!(10_", stringify!($SelfT), ".wrapping_shr(1025), 5);")]
         /// ```
@@ -2955,7 +2955,7 @@ macro_rules! uint_impl {
         /// chaining together multiple additions to create a wider addition, and
         /// can be useful for bignum addition.
         ///
-        #[doc = concat!("This can be thought of as a ", stringify!($BITS), "-bit \"full adder\", in the electronics sense.")]
+        $(#[cfg_attr($Pred, doc = concat!("This can be thought of as a ", stringify!($BITS), "-bit \"full adder\", in the electronics sense."))])+
         ///
         /// If the input carry is false, this method is equivalent to
         /// [`overflowing_add`](Self::overflowing_add), and the output carry is
@@ -2966,10 +2966,10 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("//    3  MAX    (a = 3 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
-        #[doc = concat!("// +  5    7    (b = 5 × 2^", stringify!($BITS), " + 7)")]
+        $(#[cfg_attr($Pred, doc = concat!("//    3  MAX    (a = 3 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)"))])+
+        $(#[cfg_attr($Pred, doc = concat!("// +  5    7    (b = 5 × 2^", stringify!($BITS), " + 7)"))])+
         /// // ---------
-        #[doc = concat!("//    9    6    (sum = 9 × 2^", stringify!($BITS), " + 6)")]
+        $(#[cfg_attr($Pred, doc = concat!("//    9    6    (sum = 9 × 2^", stringify!($BITS), " + 6)"))])+
         ///
         #[doc = concat!("let (a1, a0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (3, ", stringify!($SelfT), "::MAX);")]
         #[doc = concat!("let (b1, b0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (5, 7);")]
@@ -3058,10 +3058,10 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("//    9    6    (a = 9 × 2^", stringify!($BITS), " + 6)")]
-        #[doc = concat!("// -  5    7    (b = 5 × 2^", stringify!($BITS), " + 7)")]
+        $(#[cfg_attr($Pred, doc = concat!("//    9    6    (a = 9 × 2^", stringify!($BITS), " + 6)"))])+
+        $(#[cfg_attr($Pred, doc = concat!("// -  5    7    (b = 5 × 2^", stringify!($BITS), " + 7)"))])+
         /// // ---------
-        #[doc = concat!("//    3  MAX    (diff = 3 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
+        $(#[cfg_attr($Pred, doc = concat!("//    3  MAX    (diff = 3 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)"))])+
         ///
         #[doc = concat!("let (a1, a0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (9, 6);")]
         #[doc = concat!("let (b1, b0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (5, 7);")]
@@ -3195,10 +3195,10 @@ macro_rules! uint_impl {
         /// Compared to other `*_mul` methods:
         /// ```
         /// #![feature(widening_mul)]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::widening_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), (0, 3));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::overflowing_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), (0, true));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::wrapping_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), 0);")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::checked_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), None);")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(", stringify!($SelfT), "::widening_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), (0, 3));"))])+
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(", stringify!($SelfT), "::overflowing_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), (0, true));"))])+
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(", stringify!($SelfT), "::wrapping_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), 0);"))])+
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(", stringify!($SelfT), "::checked_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), None);"))])+
         /// ```
         ///
         /// Please note that this example is shared among integer types, which is why `u32` is used.
@@ -3512,7 +3512,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(4), (0x10, false));")]
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(132), (0x10, true));")]
-        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".overflowing_shl(", stringify!($BITS_MINUS_ONE), "), (0, false));")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".overflowing_shl(", stringify!($BITS_MINUS_ONE), "), (0, false));"))])+
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
@@ -3969,13 +3969,13 @@ macro_rules! uint_impl {
         /// Returns the memory representation of this integer as a byte array in
         /// big-endian (network) byte order.
         ///
-        #[doc = $to_xe_bytes_doc]
+        $(#[cfg_attr($Pred, doc = $to_xe_bytes_doc)])+
         ///
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let bytes = ", $swap_op, stringify!($SelfT), ".to_be_bytes();")]
-        #[doc = concat!("assert_eq!(bytes, ", $be_bytes, ");")]
+        $(#[cfg_attr($Pred, doc = concat!("let bytes = ", $swap_op, stringify!($SelfT), ".to_be_bytes();"))])+
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(bytes, ", $be_bytes, ");"))])+
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
         #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
@@ -3989,13 +3989,13 @@ macro_rules! uint_impl {
         /// Returns the memory representation of this integer as a byte array in
         /// little-endian byte order.
         ///
-        #[doc = $to_xe_bytes_doc]
+        $(#[cfg_attr($Pred, doc = $to_xe_bytes_doc)])+
         ///
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let bytes = ", $swap_op, stringify!($SelfT), ".to_le_bytes();")]
-        #[doc = concat!("assert_eq!(bytes, ", $le_bytes, ");")]
+        $(#[cfg_attr($Pred, doc = concat!("let bytes = ", $swap_op, stringify!($SelfT), ".to_le_bytes();"))])+
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(bytes, ", $le_bytes, ");"))])+
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
         #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
@@ -4013,7 +4013,7 @@ macro_rules! uint_impl {
         /// should use [`to_be_bytes`] or [`to_le_bytes`], as appropriate,
         /// instead.
         ///
-        #[doc = $to_xe_bytes_doc]
+        $(#[cfg_attr($Pred, doc = $to_xe_bytes_doc)])+
         ///
         /// [`to_be_bytes`]: Self::to_be_bytes
         /// [`to_le_bytes`]: Self::to_le_bytes
@@ -4021,13 +4021,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let bytes = ", $swap_op, stringify!($SelfT), ".to_ne_bytes();")]
+        $(#[cfg_attr($Pred, doc = concat!("let bytes = ", $swap_op, stringify!($SelfT), ".to_ne_bytes();"))])+
         /// assert_eq!(
         ///     bytes,
         ///     if cfg!(target_endian = "big") {
-        #[doc = concat!("        ", $be_bytes)]
+        $(#[cfg_attr($Pred, doc = concat!("        ", $be_bytes))])+
         ///     } else {
-        #[doc = concat!("        ", $le_bytes)]
+        $(#[cfg_attr($Pred, doc = concat!("        ", $le_bytes))])+
         ///     }
         /// );
         /// ```
@@ -4048,13 +4048,13 @@ macro_rules! uint_impl {
         /// Creates a native endian integer value from its representation
         /// as a byte array in big endian.
         ///
-        #[doc = $from_xe_bytes_doc]
+        $(#[cfg_attr($Pred, doc = $from_xe_bytes_doc)])+
         ///
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let value = ", stringify!($SelfT), "::from_be_bytes(", $be_bytes, ");")]
-        #[doc = concat!("assert_eq!(value, ", $swap_op, ");")]
+        $(#[cfg_attr($Pred, doc = concat!("let value = ", stringify!($SelfT), "::from_be_bytes(", $be_bytes, ");"))])+
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(value, ", $swap_op, ");"))])+
         /// ```
         ///
         /// When starting from a slice rather than an array, fallible conversion APIs can be used:
@@ -4077,13 +4077,13 @@ macro_rules! uint_impl {
         /// Creates a native endian integer value from its representation
         /// as a byte array in little endian.
         ///
-        #[doc = $from_xe_bytes_doc]
+        $(#[cfg_attr($Pred, doc = $from_xe_bytes_doc)])+
         ///
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let value = ", stringify!($SelfT), "::from_le_bytes(", $le_bytes, ");")]
-        #[doc = concat!("assert_eq!(value, ", $swap_op, ");")]
+        $(#[cfg_attr($Pred, doc = concat!("let value = ", stringify!($SelfT), "::from_le_bytes(", $le_bytes, ");"))])+
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(value, ", $swap_op, ");"))])+
         /// ```
         ///
         /// When starting from a slice rather than an array, fallible conversion APIs can be used:
@@ -4113,17 +4113,17 @@ macro_rules! uint_impl {
         /// [`from_be_bytes`]: Self::from_be_bytes
         /// [`from_le_bytes`]: Self::from_le_bytes
         ///
-        #[doc = $from_xe_bytes_doc]
+        $(#[cfg_attr($Pred, doc = $from_xe_bytes_doc)])+
         ///
         /// # Examples
         ///
         /// ```
         #[doc = concat!("let value = ", stringify!($SelfT), "::from_ne_bytes(if cfg!(target_endian = \"big\") {")]
-        #[doc = concat!("    ", $be_bytes, "")]
+        $(#[cfg_attr($Pred, doc = concat!("    ", $be_bytes, ""))])+
         /// } else {
-        #[doc = concat!("    ", $le_bytes, "")]
+        $(#[cfg_attr($Pred, doc = concat!("    ", $le_bytes, ""))])+
         /// });
-        #[doc = concat!("assert_eq!(value, ", $swap_op, ");")]
+        $(#[cfg_attr($Pred, doc = concat!("assert_eq!(value, ", $swap_op, ");"))])+
         /// ```
         ///
         /// When starting from a slice rather than an array, fallible conversion APIs can be used:
