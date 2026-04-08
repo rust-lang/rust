@@ -14,7 +14,10 @@ use std::{
 use rowan::TextRange;
 use rustc_hash::FxHashMap;
 
-use crate::{AstNode, SyntaxElement, SyntaxNode, SyntaxToken};
+use crate::{
+    AstNode, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
+    ast::{self, edit::IndentLevel, make},
+};
 
 mod edit_algo;
 mod edits;
@@ -99,6 +102,28 @@ impl SyntaxEditor {
     pub fn insert_all(&mut self, position: Position, elements: Vec<SyntaxElement>) {
         debug_assert!(is_ancestor_or_self(&position.parent(), &self.root));
         self.changes.push(Change::InsertAll(position, elements))
+    }
+
+    pub fn insert_with_whitespace(&mut self, position: Position, element: impl Element) {
+        self.insert_all_with_whitespace(position, vec![element.syntax_element()])
+    }
+
+    pub fn insert_all_with_whitespace(
+        &mut self,
+        position: Position,
+        mut elements: Vec<SyntaxElement>,
+    ) {
+        if let Some(first) = elements.first()
+            && let Some(ws) = ws_before(&position, first)
+        {
+            elements.insert(0, ws.into());
+        }
+        if let Some(last) = elements.last()
+            && let Some(ws) = ws_after(&position, last)
+        {
+            elements.push(ws.into());
+        }
+        self.insert_all(position, elements)
     }
 
     pub fn delete(&mut self, element: impl Element) {
@@ -410,6 +435,74 @@ impl Element for SyntaxToken {
     fn syntax_element(self) -> SyntaxElement {
         self.into()
     }
+}
+
+fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
+    let prev = match &position.repr {
+        PositionRepr::FirstChild(_) => return None,
+        PositionRepr::After(it) => it,
+    };
+
+    if prev.kind() == T!['{']
+        && new.kind() == SyntaxKind::USE
+        && let Some(item_list) = prev.parent().and_then(ast::ItemList::cast)
+    {
+        let mut indent = IndentLevel::from_element(&item_list.syntax().clone().into());
+        indent.0 += 1;
+        return Some(make::tokens::whitespace(&format!("\n{indent}")));
+    }
+
+    if prev.kind() == T!['{']
+        && ast::Stmt::can_cast(new.kind())
+        && let Some(stmt_list) = prev.parent().and_then(ast::StmtList::cast)
+    {
+        let mut indent = IndentLevel::from_element(&stmt_list.syntax().clone().into());
+        indent.0 += 1;
+        return Some(make::tokens::whitespace(&format!("\n{indent}")));
+    }
+
+    ws_between(prev, new)
+}
+
+fn ws_after(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
+    let next = match &position.repr {
+        PositionRepr::FirstChild(parent) => parent.first_child_or_token()?,
+        PositionRepr::After(sibling) => sibling.next_sibling_or_token()?,
+    };
+    ws_between(new, &next)
+}
+
+fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken> {
+    if left.kind() == SyntaxKind::WHITESPACE || right.kind() == SyntaxKind::WHITESPACE {
+        return None;
+    }
+    if right.kind() == T![;] || right.kind() == T![,] {
+        return None;
+    }
+    if left.kind() == T![<] || right.kind() == T![>] {
+        return None;
+    }
+    if left.kind() == T![&] && right.kind() == SyntaxKind::LIFETIME {
+        return None;
+    }
+    if right.kind() == SyntaxKind::GENERIC_ARG_LIST {
+        return None;
+    }
+    if right.kind() == SyntaxKind::USE {
+        let mut indent = IndentLevel::from_element(left);
+        if left.kind() == SyntaxKind::USE {
+            indent.0 = IndentLevel::from_element(right).0.max(indent.0);
+        }
+        return Some(make::tokens::whitespace(&format!("\n{indent}")));
+    }
+    if left.kind() == SyntaxKind::ATTR {
+        let mut indent = IndentLevel::from_element(right);
+        if right.kind() == SyntaxKind::ATTR {
+            indent.0 = IndentLevel::from_element(left).0.max(indent.0);
+        }
+        return Some(make::tokens::whitespace(&format!("\n{indent}")));
+    }
+    Some(make::tokens::single_space())
 }
 
 fn is_ancestor_or_self(node: &SyntaxNode, ancestor: &SyntaxNode) -> bool {
