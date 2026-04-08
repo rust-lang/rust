@@ -29,7 +29,8 @@ use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
     PrintPolyTraitPredicateExt as _, PrintPolyTraitRefExt, PrintTraitPredicateExt as _,
-    with_forced_trimmed_paths, with_no_trimmed_paths, with_types_for_suggestion,
+    PrintTraitRefExt as _, with_forced_trimmed_paths, with_no_trimmed_paths,
+    with_types_for_suggestion,
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InferTy, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder,
@@ -1139,6 +1140,63 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
             err.help(format!("{msg}: `{name}({args})`"));
         }
+        true
+    }
+
+    pub(super) fn suggest_cast_to_fn_pointer(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diag<'_>,
+        leaf_trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        main_trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        span: Span,
+    ) -> bool {
+        let &[candidate] = &self.find_similar_impl_candidates(leaf_trait_predicate)[..] else {
+            return false;
+        };
+        let candidate = candidate.trait_ref;
+
+        if !matches!(
+            (candidate.self_ty().kind(), main_trait_predicate.self_ty().skip_binder().kind(),),
+            (ty::FnPtr(..), ty::FnDef(..))
+        ) {
+            return false;
+        }
+
+        let parenthesized_cast = |span: Span| {
+            vec![
+                (span.shrink_to_lo(), "(".to_string()),
+                (span.shrink_to_hi(), format!(" as {})", candidate.self_ty())),
+            ]
+        };
+        // Wrap method receivers and `&`-references in parens.
+        let suggestion =
+            if self.tcx.sess.source_map().span_look_ahead(span, ".", Some(50)).is_some() {
+                parenthesized_cast(span)
+            } else if let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) {
+                let mut expr_finder = FindExprBySpan::new(span, self.tcx);
+                expr_finder.visit_expr(body.value);
+                if let Some(expr) = expr_finder.result
+                    && let hir::ExprKind::AddrOf(_, _, expr) = expr.kind
+                {
+                    parenthesized_cast(expr.span)
+                } else {
+                    vec![(span.shrink_to_hi(), format!(" as {}", candidate.self_ty()))]
+                }
+            } else {
+                vec![(span.shrink_to_hi(), format!(" as {}", candidate.self_ty()))]
+            };
+
+        let trait_ = self.tcx.short_string(candidate.print_trait_sugared(), err.long_ty_path());
+        let self_ty = self.tcx.short_string(candidate.self_ty(), err.long_ty_path());
+        err.multipart_suggestion(
+            format!(
+                "the trait `{trait_}` is implemented for fn pointer \
+                 `{self_ty}`, try casting using `as`",
+            ),
+            suggestion,
+            Applicability::MaybeIncorrect,
+        );
         true
     }
 
