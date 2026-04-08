@@ -10,7 +10,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_session::Session;
-use rustc_session::lint::{BuiltinLintDiag, LintId};
+use rustc_session::lint::LintId;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 
 use crate::context::{AcceptContext, FinalizeContext, FinalizeFn, SharedContext, Stage};
@@ -124,14 +124,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             target,
             OmitDoc::Skip,
             std::convert::identity,
-            |lint_id, span, kind| {
-                sess.psess.buffer_lint(
-                    lint_id.lint,
-                    span,
-                    target_node_id,
-                    BuiltinLintDiag::AttributeLint(kind),
-                )
-            },
+            |lint_id, span, kind| sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind),
         )
     }
 
@@ -230,12 +223,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         let mut parser =
             Self { features, tools: None, parse_only: None, sess, stage: Early { emit_errors } };
         let mut emit_lint = |lint_id: LintId, span: Span, kind: AttributeLintKind| {
-            sess.psess.buffer_lint(
-                lint_id.lint,
-                span,
-                target_node_id,
-                BuiltinLintDiag::AttributeLint(kind),
-            )
+            sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind)
         };
         if let Some(safety) = attr_safety {
             parser.check_attribute_safety(&attr_path, inner_span, safety, &mut emit_lint)

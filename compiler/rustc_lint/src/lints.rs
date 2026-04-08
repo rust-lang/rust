@@ -7,7 +7,7 @@ use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
-    ElidedLifetimeInPathSubdiag, EmissionGuarantee, Level, Subdiagnostic, SuggestionStyle, msg,
+    EmissionGuarantee, Level, Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -3037,76 +3037,6 @@ pub(crate) struct IllFormedAttributeInput {
 )]
 pub(crate) struct IllFormedAttributeInputHelp {
     pub lint: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("hidden lifetime parameters in types are deprecated")]
-pub(crate) struct ElidedLifetimesInPaths {
-    #[subdiagnostic]
-    pub subdiag: ElidedLifetimeInPathSubdiag,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "{$num_snippets ->
-        [one] unused import: {$span_snippets}
-        *[other] unused imports: {$span_snippets}
-    }"
-)]
-pub(crate) struct UnusedImports {
-    #[subdiagnostic]
-    pub sugg: UnusedImportsSugg,
-    #[help("if this is a test module, consider adding a `#[cfg(test)]` to the containing module")]
-    pub test_module_span: Option<Span>,
-
-    pub span_snippets: DiagArgValue,
-    pub num_snippets: usize,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum UnusedImportsSugg {
-    #[suggestion(
-        "remove the whole `use` item",
-        applicability = "machine-applicable",
-        code = "",
-        style = "tool-only"
-    )]
-    RemoveWholeUse {
-        #[primary_span]
-        span: Span,
-    },
-    #[multipart_suggestion(
-        "{$num_to_remove ->
-            [one] remove the unused import
-            *[other] remove the unused imports
-        }",
-        applicability = "machine-applicable",
-        style = "tool-only"
-    )]
-    RemoveImports {
-        #[suggestion_part(code = "")]
-        remove_spans: Vec<Span>,
-        num_to_remove: usize,
-    },
-}
-
-#[derive(Diagnostic)]
-#[diag("named argument `{$named_arg_name}` is not used by name")]
-pub(crate) struct NamedArgumentUsedPositionally {
-    #[label("this named argument is referred to by position in formatting string")]
-    pub named_arg_sp: Span,
-    #[label("this formatting argument uses named argument `{$named_arg_name}` by position")]
-    pub position_label_sp: Option<Span>,
-    #[suggestion(
-        "use the named argument by name to avoid ambiguity",
-        style = "verbose",
-        code = "{name}",
-        applicability = "maybe-incorrect"
-    )]
-    pub suggestion: Option<Span>,
-
-    pub name: String,
-    pub named_arg_name: String,
 }
 
 #[derive(Diagnostic)]
