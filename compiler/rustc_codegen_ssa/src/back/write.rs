@@ -8,7 +8,6 @@ use std::{assert_matches, fs, io, mem, str, thread};
 use rustc_abi::Size;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::{self, Acquired};
-use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{
@@ -35,9 +34,8 @@ use rustc_span::{FileName, InnerSpan, Span, SpanData};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 use tracing::debug;
 
-use super::link::{self, ensure_removed};
-use super::lto::{self, SerializedModule};
-use crate::back::lto::check_lto_allowed;
+use crate::back::link::{self, ensure_removed};
+use crate::back::lto::{self, SerializedModule, check_lto_allowed};
 use crate::errors::ErrorCreatingRemarkDir;
 use crate::traits::*;
 use crate::{
@@ -774,13 +772,13 @@ pub(crate) enum WorkItemResult<B: WriteBackendMethods> {
 }
 
 pub enum FatLtoInput<B: WriteBackendMethods> {
-    Serialized { name: String, buffer: SerializedModule<B::ModuleBuffer> },
+    Serialized { name: String, bitcode_path: PathBuf },
     InMemory(ModuleCodegen<B::Module>),
 }
 
 pub enum ThinLtoInput<B: WriteBackendMethods> {
     Red { name: String, buffer: SerializedModule<B::ModuleBuffer> },
-    Green { wp: WorkProduct, buffer: SerializedModule<B::ModuleBuffer> },
+    Green { wp: WorkProduct, bitcode_path: PathBuf },
 }
 
 /// Actual LTO type we end up choosing based on multiple factors.
@@ -866,7 +864,7 @@ fn execute_optimize_work_item<B: WriteBackendMethods>(
                 });
                 WorkItemResult::NeedsFatLto(FatLtoInput::Serialized {
                     name: module.name,
-                    buffer: SerializedModule::Local(buffer),
+                    bitcode_path: path,
                 })
             }
             None => WorkItemResult::NeedsFatLto(FatLtoInput::InMemory(module)),
@@ -1166,10 +1164,7 @@ pub(crate) enum Message<B: WriteBackendMethods> {
 
     /// Similar to `CodegenDone`, but for reusing a pre-LTO artifact
     /// Sent from the main thread.
-    AddImportOnlyModule {
-        module_data: SerializedModule<B::ModuleBuffer>,
-        work_product: WorkProduct,
-    },
+    AddImportOnlyModule { bitcode_path: PathBuf, work_product: WorkProduct },
 
     /// The frontend has finished generating everything for all codegen units.
     /// Sent from the main thread.
@@ -1729,10 +1724,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     }
                 }
 
-                Message::AddImportOnlyModule { module_data, work_product } => {
+                Message::AddImportOnlyModule { bitcode_path, work_product } => {
                     assert_eq!(codegen_state, Ongoing);
                     assert_eq!(main_thread_state, MainThreadState::Codegenning);
-                    lto_import_only_modules.push((module_data, work_product));
+                    lto_import_only_modules.push((bitcode_path, work_product));
                     main_thread_state = MainThreadState::Idle;
                 }
             }
@@ -1758,8 +1753,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 needs_fat_lto.push(FatLtoInput::InMemory(allocator_module));
             }
 
-            for (module, wp) in lto_import_only_modules {
-                needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, buffer: module })
+            for (bitcode_path, wp) in lto_import_only_modules {
+                needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, bitcode_path })
             }
 
             return Ok(MaybeLtoModules::FatLto {
@@ -1772,8 +1767,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
             assert!(compiled_modules.is_empty());
             assert!(needs_fat_lto.is_empty());
 
-            for (buffer, wp) in lto_import_only_modules {
-                needs_thin_lto.push(ThinLtoInput::Green { wp, buffer })
+            for (bitcode_path, wp) in lto_import_only_modules {
+                needs_thin_lto.push(ThinLtoInput::Green { wp, bitcode_path })
             }
 
             if cgcx.lto == Lto::ThinLocal {
@@ -2285,20 +2280,13 @@ pub(crate) fn submit_pre_lto_module_to_llvm<B: WriteBackendMethods>(
     module: CachedModuleCodegen,
 ) {
     let filename = pre_lto_bitcode_filename(&module.name);
-    let bc_path = in_incr_comp_dir_sess(tcx.sess, &filename);
-    let file = fs::File::open(&bc_path)
-        .unwrap_or_else(|e| panic!("failed to open bitcode file `{}`: {}", bc_path.display(), e));
-
-    let mmap = unsafe {
-        Mmap::map(file).unwrap_or_else(|e| {
-            panic!("failed to mmap bitcode file `{}`: {}", bc_path.display(), e)
-        })
-    };
+    let bitcode_path = in_incr_comp_dir_sess(tcx.sess, &filename);
     // Schedule the module to be loaded
-    drop(coordinator.sender.send(Message::AddImportOnlyModule::<B> {
-        module_data: SerializedModule::FromUncompressedFile(mmap),
-        work_product: module.source,
-    }));
+    drop(
+        coordinator
+            .sender
+            .send(Message::AddImportOnlyModule::<B> { bitcode_path, work_product: module.source }),
+    );
 }
 
 fn pre_lto_bitcode_filename(module_name: &str) -> String {
