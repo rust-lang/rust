@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `a`
-  --> $DIR/dbg-issue-120327.rs:8:12
+  --> $DIR/dbg-issue-120327.rs:4:12
    |
 LL |     let a = String::new();
    |         - move occurs because `a` has type `String`, which does not implement the `Copy` trait
@@ -12,13 +12,9 @@ help: consider cloning the value if the performance cost is acceptable
    |
 LL |     dbg!(a.clone());
    |           ++++++++
-help: consider borrowing instead of transferring ownership
-   |
-LL |     dbg!(&a);
-   |          +
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/dbg-issue-120327.rs:14:12
+  --> $DIR/dbg-issue-120327.rs:10:12
    |
 LL |     let a = String::new();
    |         - move occurs because `a` has type `String`, which does not implement the `Copy` trait
@@ -31,13 +27,9 @@ help: consider cloning the value if the performance cost is acceptable
    |
 LL |     dbg!(1, 2, a.clone(), 1, 2);
    |                 ++++++++
-help: consider borrowing instead of transferring ownership
-   |
-LL |     dbg!(1, 2, &a, 1, 2);
-   |                +
 
 error[E0382]: use of moved value: `b`
-  --> $DIR/dbg-issue-120327.rs:20:12
+  --> $DIR/dbg-issue-120327.rs:16:12
    |
 LL |     let b: String = "".to_string();
    |         - move occurs because `b` has type `String`, which does not implement the `Copy` trait
@@ -50,13 +42,9 @@ help: consider cloning the value if the performance cost is acceptable
    |
 LL |     dbg!(a, b.clone());
    |              ++++++++
-help: consider borrowing instead of transferring ownership
-   |
-LL |     dbg!(a, &b);
-   |             +
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/dbg-issue-120327.rs:26:12
+  --> $DIR/dbg-issue-120327.rs:22:12
    |
 LL | fn x(a: String) -> String {
    |      - move occurs because `a` has type `String`, which does not implement the `Copy` trait
@@ -70,52 +58,47 @@ help: consider cloning the value if the performance cost is acceptable
    |
 LL |     dbg!(a.clone(), b);
    |           ++++++++
+
+error[E0382]: use of moved value: `b`
+  --> $DIR/dbg-issue-120327.rs:46:12
+   |
+LL |             tmp => {
+   |             --- value moved here
+...
+LL |     let b: String = "".to_string();
+   |         - move occurs because `b` has type `String`, which does not implement the `Copy` trait
+LL |     my_dbg!(b, 1);
+LL |     return b;
+   |            ^ value used here after move
+   |
 help: consider borrowing instead of transferring ownership
    |
-LL |     dbg!(&a, b);
-   |          +
+LL |     my_dbg!(&b, 1);
+   |             +
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |             ref tmp => {
+   |             +++
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/dbg-issue-120327.rs:30:13
+  --> $DIR/dbg-issue-120327.rs:57:12
    |
-LL | fn two_of_them(a: String) -> String {
-   |                - move occurs because `a` has type `String`, which does not implement the `Copy` trait
-LL |     dbg!(a, a);
-   |          -  ^ value used here after move
-   |          |
-   |          value moved here
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     dbg!(a.clone(), a);
-   |           ++++++++
-help: consider borrowing instead of transferring ownership
-   |
-LL |     dbg!(&a, a);
-   |          +
-
-error[E0382]: use of moved value: `a`
-  --> $DIR/dbg-issue-120327.rs:33:12
-   |
-LL | fn two_of_them(a: String) -> String {
-   |                - move occurs because `a` has type `String`, which does not implement the `Copy` trait
-LL |     dbg!(a, a);
-   |             - value moved here
+LL |     let a = String::new();
+   |         - move occurs because `a` has type `String`, which does not implement the `Copy` trait
+LL |     let _b = match a {
+LL |         tmp => {
+   |         --- value moved here
 ...
 LL |     return a;
    |            ^ value used here after move
    |
-help: consider cloning the value if the performance cost is acceptable
+help: borrow this binding in the pattern to avoid moving the value
    |
-LL |     dbg!(a, a.clone());
-   |              ++++++++
-help: consider borrowing instead of transferring ownership
-   |
-LL |     dbg!(a, &a);
-   |             +
+LL |         ref tmp => {
+   |         +++
 
 error[E0382]: borrow of moved value: `a`
-  --> $DIR/dbg-issue-120327.rs:42:14
+  --> $DIR/dbg-issue-120327.rs:65:14
    |
 LL |     let a: String = "".to_string();
    |         - move occurs because `a` has type `String`, which does not implement the `Copy` trait
@@ -128,10 +111,6 @@ help: consider cloning the value if the performance cost is acceptable
    |
 LL |     let _res = get_expr(dbg!(a.clone()));
    |                               ++++++++
-help: consider borrowing instead of transferring ownership
-   |
-LL |     let _res = get_expr(dbg!(&a));
-   |                              +
 
 error: aborting due to 7 previous errors
 

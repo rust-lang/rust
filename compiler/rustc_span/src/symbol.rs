@@ -763,7 +763,6 @@ symbols! {
         custom_test_frameworks,
         d,
         d32,
-        dbg_macro,
         dead_code,
         dealloc,
         debug,
