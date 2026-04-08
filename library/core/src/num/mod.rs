@@ -1073,6 +1073,11 @@ impl u8 {
     /// "field splitting" in the Bourne shell][bfs] considers *only*
     /// SPACE, HORIZONTAL TAB, and LINE FEED as whitespace.
     ///
+    /// Note: The Rust language parser uses a different definition of
+    /// whitespace, which includes U+000B VERTICAL TAB. The Rust standard
+    /// library (this function) does **not** include vertical tab, following
+    /// the WhatWG Infra Standard instead.
+    ///
     /// If you are writing a program that will process an existing
     /// file format, check what that format's definition of whitespace is
     /// before using this function.
