@@ -206,6 +206,7 @@ pub(crate) struct ProcMacroData {
 #[derive(MetadataEncodable, BlobDecodable)]
 pub(crate) struct CrateHeader {
     pub(crate) triple: TargetTuple,
+    /// Hash of the crate contents, including private items
     pub(crate) hash: Svh,
     pub(crate) name: Symbol,
     /// Whether this is the header for a proc-macro crate.
@@ -297,6 +298,21 @@ pub(crate) struct CrateRoot {
     symbol_mangling_version: SymbolManglingVersion,
 
     specialization_enabled_in: bool,
+
+    rdr_hashes: RDRHashes,
+}
+
+/// Hashes used for the feature [relink don't rebuild](https://github.com/rust-lang/compiler-team/issues/790)
+///
+/// This struct is not final. For example it might be
+/// beneficial for `cargo check` and `cargo build` to use different hashes for early cutoff. `check` doesn't really
+/// depend on spans of inlined/monomorphized mir, it also doesn't need private types used in them. While a full build will need it for code and debug info generation
+///
+/// All hashes here are equal to the hash from the crate header (the `crate_hash` query) when the feature is disabled.
+#[derive(MetadataEncodable, LazyDecodable)]
+struct RDRHashes {
+    /// Hash of the "public api". It tries to exclude things which cannot change the output in dependents, allowing to skip their rustc invocation, which can be quite expensive even if nothing has changed (macro expansion, checking that nothing changed in the query dependency graph is always executed)
+    public_api_hash: Svh,
 }
 
 /// On-disk representation of `DefId`.
