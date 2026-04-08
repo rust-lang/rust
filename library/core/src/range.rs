@@ -223,14 +223,12 @@ impl<T> const From<legacy::Range<T>> for Range<T> {
     }
 }
 
-/// A range bounded inclusively below and above (`start..=last`).
+/// A range bounded inclusively below and above.
 ///
-/// The `RangeInclusive` `start..=last` contains all values with `x >= start`
+/// The `RangeInclusive` contains all values with `x >= start`
 /// and `x <= last`. It is empty unless `start <= last`.
 ///
 /// # Examples
-///
-/// The `start..=last` syntax is a `RangeInclusive`:
 ///
 /// ```
 /// use core::range::RangeInclusive;
@@ -238,6 +236,11 @@ impl<T> const From<legacy::Range<T>> for Range<T> {
 /// assert_eq!(RangeInclusive::from(3..=5), RangeInclusive { start: 3, last: 5 });
 /// assert_eq!(3 + 4 + 5, RangeInclusive::from(3..=5).into_iter().sum());
 /// ```
+///
+/// # Edition notes
+///
+/// It is planned that the syntax  `start..=last` will construct this
+/// type in a future edition, but it does not do so today.
 #[lang = "RangeInclusiveCopy"]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
