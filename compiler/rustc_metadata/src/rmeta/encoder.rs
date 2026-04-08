@@ -777,6 +777,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 expn_hashes,
                 def_path_hash_map,
                 specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
+                rdr_hashes: RDRHashes { public_api_hash: tcx.crate_hash(LOCAL_CRATE) },
             })
         });
 
