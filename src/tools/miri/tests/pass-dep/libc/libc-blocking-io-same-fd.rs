@@ -24,7 +24,7 @@ fn main() {
         // two threads being blocked on the same fd at the same time.
         thread::sleep(Duration::from_millis(10));
 
-        let mut buffer = [22; 128];
+        let mut buffer = [22u8; 128];
         let bytes_written = unsafe {
             errno_result(net::send_all(peerfd, buffer.as_mut_ptr().cast(), buffer.len(), 0))
                 .unwrap()
@@ -35,20 +35,22 @@ fn main() {
     net::connect_ipv4(client_sockfd, addr);
 
     let reader_thread = thread::spawn(move || {
-        let mut buffer = [0; 8];
+        let mut buffer = [0u8; 8];
         let bytes_read = unsafe {
             errno_result(net::recv_all(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len(), 0))
                 .unwrap()
         };
         assert_eq!(bytes_read, 8);
+        assert_eq!(&buffer, &[22u8; 8]);
     });
 
-    let mut buffer = [0; 8];
+    let mut buffer = [0u8; 8];
     let bytes_read = unsafe {
         errno_result(net::recv_all(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len(), 0))
             .unwrap()
     };
     assert_eq!(bytes_read, 8);
+    assert_eq!(&buffer, &[22u8; 8]);
 
     reader_thread.join().unwrap();
     server_thread.join().unwrap();
