@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_middle::ty::{Region, RegionVid};
+use rustc_middle::ty::{Region, RegionUtilitiesExt, RegionVid};
 use tracing::debug;
 
 use super::*;

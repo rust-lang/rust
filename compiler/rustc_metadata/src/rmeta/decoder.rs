@@ -425,11 +425,11 @@ impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> rustc_type_ir::InternerDecoder for MetadataDecodeContext<'a, 'tcx> {
+impl<'a, 'tcx> rustc_middle::ty::InternerDecoder for MetadataDecodeContext<'a, 'tcx> {
     type Interner = TyCtxt<'tcx>;
 
     #[inline]
-    fn interner(&self) -> Self::Interner {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
