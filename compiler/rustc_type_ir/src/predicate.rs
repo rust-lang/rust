@@ -4,7 +4,8 @@ use std::hash::Hash;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{
-    Decodable, Decodable_NoContext, Encodable, Encodable_NoContext, HashStable_NoContext,
+    Decodable, Decodable_NoContext, Encodable, Encodable_NoContext, HashStable,
+    HashStable_NoContext,
 };
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
@@ -206,10 +207,7 @@ impl<I: Interner> fmt::Debug for TraitPredicate<I> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
-)]
+#[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext, HashStable))]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -249,10 +247,7 @@ impl ImplPolarity {
 /// Distinguished from [`ImplPolarity`] since we never compute goals with
 /// "reservation" level.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
-)]
+#[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext, HashStable))]
 pub enum PredicatePolarity {
     /// `Type: Trait`
     Positive,
@@ -497,7 +492,7 @@ impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable))]
 pub enum AliasTermKind {
     /// A projection `<Type as Trait>::AssocType`.
     ///
@@ -943,10 +938,7 @@ pub struct CoercePredicate<I: Interner> {
 impl<I: Interner> Eq for CoercePredicate<I> {}
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
-)]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, HashStable))]
 pub enum BoundConstness {
     /// `Type: const Trait`
     ///
