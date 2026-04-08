@@ -99,8 +99,8 @@ pub use self::predicate::{
     RegionOutlivesPredicate, SubtypePredicate, TraitPredicate, TraitRef, TypeOutlivesPredicate,
 };
 pub use self::region::{
-    EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionExt, RegionKind,
-    RegionUtilitiesExt, RegionVid,
+    EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionDiagArg, RegionExt,
+    RegionKind, RegionUtilitiesExt, RegionVid,
 };
 pub use self::sty::{
     AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy,

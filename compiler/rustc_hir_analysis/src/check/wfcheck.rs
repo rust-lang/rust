@@ -2496,7 +2496,10 @@ fn lint_redundant_lifetimes<'tcx>(
                     rustc_lint_defs::builtin::REDUNDANT_LIFETIMES,
                     tcx.local_def_id_to_hir_id(def_id.expect_local()),
                     tcx.def_span(def_id),
-                    RedundantLifetimeArgsLint { candidate, victim },
+                    RedundantLifetimeArgsLint {
+                        candidate: candidate.diag_arg(),
+                        victim: victim.diag_arg(),
+                    },
                 );
             }
         }
@@ -2508,7 +2511,7 @@ fn lint_redundant_lifetimes<'tcx>(
 #[note("you can use the `{$candidate}` lifetime directly, in place of `{$victim}`")]
 struct RedundantLifetimeArgsLint<'tcx> {
     /// The lifetime we have found to be redundant.
-    victim: ty::Region<'tcx>,
+    victim: ty::RegionDiagArg<'tcx>,
     // The lifetime we can replace the victim with.
-    candidate: ty::Region<'tcx>,
+    candidate: ty::RegionDiagArg<'tcx>,
 }

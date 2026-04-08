@@ -18,6 +18,9 @@ pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 #[derive(Copy, Clone)]
 pub struct RegionDisplay<'tcx>(pub Region<'tcx>);
 
+#[derive(Copy, Clone)]
+pub struct RegionDiagArg<'tcx>(pub Region<'tcx>);
+
 impl fmt::Display for RegionDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
@@ -28,9 +31,9 @@ impl fmt::Display for RegionDisplay<'_> {
     }
 }
 
-impl IntoDiagArg for RegionDisplay<'_> {
+impl IntoDiagArg for RegionDiagArg<'_> {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        DiagArgValue::Str(self.to_string().into())
+        DiagArgValue::Str(RegionDisplay(self.0).to_string().into())
     }
 }
 
@@ -117,6 +120,10 @@ impl<'tcx> Region<'tcx> {
 impl<'tcx> Region<'tcx> {
     fn display(self) -> RegionDisplay<'tcx> {
         RegionDisplay(self)
+    }
+
+    fn diag_arg(self) -> RegionDiagArg<'tcx> {
+        RegionDiagArg(self)
     }
 
     fn to_string(self) -> String {
