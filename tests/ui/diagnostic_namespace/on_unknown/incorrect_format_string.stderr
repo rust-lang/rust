@@ -43,51 +43,51 @@ LL | use std::does_not_exist6;
    = note: foo {}
 
 warning: format arguments are not allowed here
-  --> $DIR/incorrect_format_string.rs:3:47
+  --> $DIR/incorrect_format_string.rs:3:42
    |
-LL | #[diagnostic::on_unknown_item(message = "foo {}")]
-   |                                               ^
+LL | #[diagnostic::on_unknown(message = "foo {}")]
+   |                                          ^
    |
    = help: consider removing this format argument
    = note: `#[warn(malformed_diagnostic_format_literals)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: format arguments are not allowed here
-  --> $DIR/incorrect_format_string.rs:8:47
+  --> $DIR/incorrect_format_string.rs:8:42
    |
-LL | #[diagnostic::on_unknown_item(message = "foo {A}")]
-   |                                               ^
-   |
-   = help: consider removing this format argument
-
-warning: format arguments are not allowed here
-  --> $DIR/incorrect_format_string.rs:13:45
-   |
-LL | #[diagnostic::on_unknown_item(label = "foo {}")]
-   |                                             ^
+LL | #[diagnostic::on_unknown(message = "foo {A}")]
+   |                                          ^
    |
    = help: consider removing this format argument
 
 warning: format arguments are not allowed here
-  --> $DIR/incorrect_format_string.rs:18:45
+  --> $DIR/incorrect_format_string.rs:13:40
    |
-LL | #[diagnostic::on_unknown_item(label = "foo {A}")]
-   |                                             ^
-   |
-   = help: consider removing this format argument
-
-warning: format arguments are not allowed here
-  --> $DIR/incorrect_format_string.rs:23:44
-   |
-LL | #[diagnostic::on_unknown_item(note = "foo {}")]
-   |                                            ^
+LL | #[diagnostic::on_unknown(label = "foo {}")]
+   |                                        ^
    |
    = help: consider removing this format argument
 
 warning: format arguments are not allowed here
-  --> $DIR/incorrect_format_string.rs:28:44
+  --> $DIR/incorrect_format_string.rs:18:40
    |
-LL | #[diagnostic::on_unknown_item(note = "foo {A}")]
-   |                                            ^
+LL | #[diagnostic::on_unknown(label = "foo {A}")]
+   |                                        ^
+   |
+   = help: consider removing this format argument
+
+warning: format arguments are not allowed here
+  --> $DIR/incorrect_format_string.rs:23:39
+   |
+LL | #[diagnostic::on_unknown(note = "foo {}")]
+   |                                       ^
+   |
+   = help: consider removing this format argument
+
+warning: format arguments are not allowed here
+  --> $DIR/incorrect_format_string.rs:28:39
+   |
+LL | #[diagnostic::on_unknown(note = "foo {A}")]
+   |                                       ^
    |
    = help: consider removing this format argument
 

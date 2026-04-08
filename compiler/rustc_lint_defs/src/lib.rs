@@ -736,7 +736,7 @@ pub enum AttributeLintKind {
     MalformedOnUnimplementedAttr {
         span: Span,
     },
-    MalformedOnUnknownItemdAttr {
+    MalformedOnUnknownAttr {
         span: Span,
     },
     MalformedOnConstAttr {
@@ -760,7 +760,7 @@ pub enum AttributeLintKind {
     },
     MissingOptionsForOnUnimplemented,
     MissingOptionsForOnConst,
-    MissingOptionsForOnUnknownItem,
+    MissingOptionsForOnUnknown,
     MissingOptionsForOnMove,
     OnMoveMalformedFormatLiterals {
         name: Symbol,

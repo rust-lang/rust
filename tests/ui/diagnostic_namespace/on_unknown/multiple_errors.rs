@@ -1,7 +1,7 @@
-#![feature(diagnostic_on_unknown_item)]
+#![feature(diagnostic_on_unknown)]
 
 mod test1 {
-    #[diagnostic::on_unknown_item(
+    #[diagnostic::on_unknown(
         message = "custom message",
         label = "custom label",
         note = "custom note"
@@ -11,7 +11,7 @@ mod test1 {
 }
 
 mod test2 {
-    #[diagnostic::on_unknown_item(
+    #[diagnostic::on_unknown(
         message = "custom message",
         label = "custom label",
         note = "custom note"
@@ -21,7 +21,7 @@ mod test2 {
 }
 
 mod test3 {
-    #[diagnostic::on_unknown_item(
+    #[diagnostic::on_unknown(
         message = "custom message",
         label = "custom label",
         note = "custom note"
@@ -34,7 +34,7 @@ mod test3 {
 }
 
 mod test4 {
-    #[diagnostic::on_unknown_item(
+    #[diagnostic::on_unknown(
         message = "custom message",
         label = "custom label",
         note = "custom note"

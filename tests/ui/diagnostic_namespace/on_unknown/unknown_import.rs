@@ -1,9 +1,9 @@
-#![feature(diagnostic_on_unknown_item)]
+#![feature(diagnostic_on_unknown)]
 pub mod foo {
     pub struct Bar;
 }
 
-#[diagnostic::on_unknown_item(
+#[diagnostic::on_unknown(
     message = "first message",
     label = "first label",
     note = "custom note",

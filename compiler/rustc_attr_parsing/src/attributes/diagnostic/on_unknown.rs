@@ -5,19 +5,19 @@ use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
 
 #[derive(Default)]
-pub(crate) struct OnUnknownItemParser {
+pub(crate) struct OnUnknownParser {
     span: Option<Span>,
     directive: Option<(Span, Directive)>,
 }
 
-impl OnUnknownItemParser {
+impl OnUnknownParser {
     fn parse<'sess, S: Stage>(
         &mut self,
         cx: &mut AcceptContext<'_, 'sess, S>,
         args: &ArgParser,
         mode: Mode,
     ) {
-        if !cx.features().diagnostic_on_unknown_item() {
+        if !cx.features().diagnostic_on_unknown() {
             return;
         }
         let span = cx.attr_span;
@@ -28,7 +28,7 @@ impl OnUnknownItemParser {
             ArgParser::NoArgs | ArgParser::List(_) => {
                 cx.emit_lint(
                     MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MissingOptionsForOnUnknownItem,
+                    AttributeLintKind::MissingOptionsForOnUnknown,
                     span,
                 );
                 return;
@@ -36,7 +36,7 @@ impl OnUnknownItemParser {
             ArgParser::NameValue(_) => {
                 cx.emit_lint(
                     MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MalformedOnUnknownItemdAttr { span },
+                    AttributeLintKind::MalformedOnUnknownAttr { span },
                     span,
                 );
                 return;
@@ -49,12 +49,12 @@ impl OnUnknownItemParser {
     }
 }
 
-impl<S: Stage> AttributeParser<S> for OnUnknownItemParser {
+impl<S: Stage> AttributeParser<S> for OnUnknownParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
-        &[sym::diagnostic, sym::on_unknown_item],
+        &[sym::diagnostic, sym::on_unknown],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
         |this, cx, args| {
-            this.parse(cx, args, Mode::DiagnosticOnUnknownItem);
+            this.parse(cx, args, Mode::DiagnosticOnUnknown);
         },
     )];
     //FIXME attribute is not parsed for non-use statements but diagnostics are issued in `check_attr.rs`
@@ -62,7 +62,7 @@ impl<S: Stage> AttributeParser<S> for OnUnknownItemParser {
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if let Some(span) = self.span {
-            Some(AttributeKind::OnUnknownItem {
+            Some(AttributeKind::OnUnknown {
                 span,
                 directive: self.directive.map(|d| Box::new(d.1)),
             })

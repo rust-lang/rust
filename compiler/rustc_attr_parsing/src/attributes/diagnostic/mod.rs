@@ -24,7 +24,7 @@ pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
 pub(crate) mod on_move;
 pub(crate) mod on_unimplemented;
-pub(crate) mod on_unknown_item;
+pub(crate) mod on_unknown;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {
@@ -36,8 +36,8 @@ pub(crate) enum Mode {
     DiagnosticOnConst,
     /// `#[diagnostic::on_move]`
     DiagnosticOnMove,
-    /// `#[diagnostic::on_unknown_item]`
-    DiagnosticOnUnknownItem,
+    /// `#[diagnostic::on_unknown]`
+    DiagnosticOnUnknown,
 }
 
 fn merge_directives<S: Stage>(
@@ -125,10 +125,10 @@ fn parse_directive_items<'p, S: Stage>(
                         span,
                     );
                 }
-                Mode::DiagnosticOnUnknownItem => {
+                Mode::DiagnosticOnUnknown => {
                     cx.emit_lint(
                         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnUnknownItemdAttr { span },
+                        AttributeLintKind::MalformedOnUnknownAttr { span },
                         span,
                     );
                 }
@@ -150,7 +150,7 @@ fn parse_directive_items<'p, S: Stage>(
                 Mode::RustcOnUnimplemented => {
                     cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
                 }
-                Mode::DiagnosticOnUnimplemented |Mode::DiagnosticOnConst | Mode::DiagnosticOnMove | Mode::DiagnosticOnUnknownItem => {
+                Mode::DiagnosticOnUnimplemented |Mode::DiagnosticOnConst | Mode::DiagnosticOnMove | Mode::DiagnosticOnUnknown => {
                     cx.emit_lint(
                         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         AttributeLintKind::IgnoredDiagnosticOption {
@@ -337,7 +337,7 @@ fn parse_arg(
     is_source_literal: bool,
 ) -> FormatArg {
     let span = slice_span(input_span, arg.position_span.clone(), is_source_literal);
-    if matches!(mode, Mode::DiagnosticOnUnknownItem) {
+    if matches!(mode, Mode::DiagnosticOnUnknown) {
         warnings.push(FormatWarning::DisallowedPlaceholder { span });
         return FormatArg::AsIs(sym::empty_braces);
     }

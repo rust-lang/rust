@@ -75,8 +75,8 @@ struct DiagnosticOnConstOnlyForNonConstTraitImpls {
 struct DiagnosticOnMoveOnlyForAdt;
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_unknown_item]` can only be applied to `use` statements")]
-struct DiagnosticOnUnknownItemOnlyForImports {
+#[diag("`#[diagnostic::on_unknown]` can only be applied to `use` statements")]
+struct DiagnosticOnUnknownOnlyForImports {
     #[label("not an import")]
     item_span: Span,
 }
@@ -226,7 +226,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(AttributeKind::OnUnimplemented{span, directive}) => {self.check_diagnostic_on_unimplemented(*span, hir_id, target,directive.as_deref())},
-                Attribute::Parsed(AttributeKind::OnUnknownItem { span, .. }) => { self.check_diagnostic_on_unknown_item(*span, hir_id, target) },
+                Attribute::Parsed(AttributeKind::OnUnknown { span, .. }) => { self.check_diagnostic_on_unknown(*span, hir_id, target) },
                 Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
                 Attribute::Parsed(AttributeKind::OnMove { span, directive }) => {
                     self.check_diagnostic_on_move(*span, hir_id, target, directive.as_deref())
@@ -735,15 +735,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[diagnostic::on_unknown_item]` is applied to a trait impl
-    fn check_diagnostic_on_unknown_item(&self, attr_span: Span, hir_id: HirId, target: Target) {
+    /// Checks if `#[diagnostic::on_unknown]` is applied to a trait impl
+    fn check_diagnostic_on_unknown(&self, attr_span: Span, hir_id: HirId, target: Target) {
         if !matches!(target, Target::Use) {
             let item_span = self.tcx.hir_span(hir_id);
             self.tcx.emit_node_span_lint(
                 MISPLACED_DIAGNOSTIC_ATTRIBUTES,
                 hir_id,
                 attr_span,
-                DiagnosticOnUnknownItemOnlyForImports { item_span },
+                DiagnosticOnUnknownOnlyForImports { item_span },
             );
         }
     }
