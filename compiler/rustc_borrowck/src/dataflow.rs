@@ -696,21 +696,6 @@ impl<'a, 'tcx> Pins<'a, 'tcx> {
 
         state.kill_all(definitely_conflicting_pins);
     }
-
-    /// Kill any pins whose Pin result local is `local`.
-    /// This is used when the Pin value goes out of scope (StorageDead).
-    fn kill_pins_by_pin_local(
-        &self,
-        state: &mut <Self as Analysis<'tcx>>::Domain,
-        local: mir::Local,
-    ) {
-        debug!("kill_pins_by_pin_local: local={:?}", local);
-
-        let pins_of_local =
-            self.pin_set.pin_local_map.get(&local).into_iter().flat_map(|bs| bs.iter()).copied();
-
-        state.kill_all(pins_of_local);
-    }
 }
 
 /// Forward dataflow computation of the set of pins that are in scope at a particular location.
@@ -739,13 +724,15 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Pins<'_, 'tcx> {
     ) {
         // Kill pins early on reassignment/StorageDead so that the visitor
         // (which runs after the early phase) sees the updated pin state.
+        // Note: we do NOT kill pins when the Pin result local goes out of scope
+        // (kill_pins_by_pin_local), because a pinned place stays pinned until
+        // the place itself is reassigned.
         match &statement.kind {
             mir::StatementKind::Assign(box (lhs, _)) => {
                 self.kill_pins_on_place(state, *lhs);
             }
             mir::StatementKind::StorageDead(local) => {
                 self.kill_pins_on_place(state, Place::from(*local));
-                self.kill_pins_by_pin_local(state, *local);
             }
             _ => {}
         }
@@ -784,8 +771,6 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Pins<'_, 'tcx> {
             mir::StatementKind::StorageDead(local) => {
                 // Kill all pins on locals that are going out of scope
                 self.kill_pins_on_place(state, Place::from(*local));
-                // Also kill pins whose Pin result local is going out of scope
-                self.kill_pins_by_pin_local(state, *local);
             }
 
             mir::StatementKind::FakeRead(..)

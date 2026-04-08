@@ -1274,6 +1274,23 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
+    fn pinned_borrows<'s>(
+        &self,
+        state: &'s BorrowckDomain,
+    ) -> Option<&'s MixedBitSet<BorrowIndex>> {
+        // FIXME(pin_ergonomics): borrowck behaviors depend on a safe trait
+        // which should not contain any safety invariants.
+        // if place
+        //     .ty(self.body, self.infcx.tcx)
+        //     .ty
+        //     .is_unpin(self.infcx.tcx, self.body.typing_env(self.infcx.tcx))
+        // {
+        //     None
+        // } else {
+        Some(&state.pinned_borrows)
+        // }
+    }
+
     #[instrument(level = "debug", skip(self, state))]
     fn check_access_for_conflict(
         &mut self,
@@ -1286,7 +1303,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let mut error_reported = false;
 
         let borrows_in_scope = self.borrows_in_scope(location, state);
-        let pinned_borrows = &state.pinned_borrows;
+        let pinned_borrows = self.pinned_borrows(state);
 
         each_borrow_involving_path(
             self,
@@ -1295,7 +1312,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             (sd, place_span.0),
             self.borrow_set,
             |borrow_index| {
-                borrows_in_scope.contains(borrow_index) || pinned_borrows.contains(borrow_index)
+                borrows_in_scope.contains(borrow_index)
+                    || pinned_borrows.is_some_and(|p| p.contains(borrow_index))
             },
             |this, borrow_index, borrow| match (rw, borrow.kind) {
                 // Obviously an activation is compatible with its own
@@ -1333,6 +1351,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     ControlFlow::Continue(())
                 }
 
+                // Ignore the expired borrow (pinnedness never conflicts with a read)
+                (Read(_), BorrowKind::Mut { .. }) if !borrows_in_scope.contains(borrow_index) => {
+                    ControlFlow::Continue(())
+                }
+
                 (Read(kind), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
                     if !is_active(this.dominators(), borrow, location) {
@@ -1356,19 +1379,44 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     ControlFlow::Break(())
                 }
 
-                (Reservation(kind) | Activation(kind, _) | Write(kind), _) => {
-                    if pinned_borrows.contains(borrow_index)
-                        && !borrows_in_scope.contains(borrow_index)
-                    {
-                        // drop or write to the place is allowed after pinning
-                        if matches!(
-                            kind,
-                            WriteKind::StorageDeadOrDrop | WriteKind::Mutate | WriteKind::Replace
-                        ) {
-                            return ControlFlow::Continue(());
+                // Handle the expired borrows (only pinned borrows)
+                (Reservation(kind) | Activation(kind, _) | Write(kind), _)
+                    if !borrows_in_scope.contains(borrow_index) =>
+                {
+                    debug_assert!(
+                        pinned_borrows.is_none_or(|p| p.contains(borrow_index)),
+                        "unexpected expired but non-pinned borrow {borrow_index:?}: {borrow:?}",
+                    );
+                    match kind {
+                        // Pinnedness doesn't conflict with a drop or write
+                        WriteKind::StorageDeadOrDrop | WriteKind::Mutate | WriteKind::Replace => {
+                            ControlFlow::Continue(())
+                        }
+                        // Mutable (pinned) borrow doesn't conflict with an expired borrow
+                        WriteKind::MutableBorrow(_)
+                            if self
+                                .borrow_set
+                                .location_map
+                                .get(&location)
+                                .is_none_or(|b| b.pinnedness.is_pinned()) =>
+                        {
+                            ControlFlow::Continue(())
+                        }
+                        // Mutable (but non-pinned) borrow conflicts with an earlier pinned borrow
+                        WriteKind::MutableBorrow(_) => {
+                            this.report_mutably_borrow_after_pinned(location, place_span, borrow);
+                            error_reported = true;
+                            ControlFlow::Break(())
+                        }
+                        WriteKind::Move => {
+                            this.report_move_after_pinned(location, place_span, borrow);
+                            error_reported = true;
+                            ControlFlow::Break(())
                         }
                     }
+                }
 
+                (Reservation(kind) | Activation(kind, _) | Write(kind), _) => {
                     match rw {
                         Reservation(..) => {
                             debug!(
@@ -1391,15 +1439,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     error_reported = true;
                     match kind {
                         WriteKind::MutableBorrow(bk) => {
-                            if pinned_borrows.contains(borrow_index) {
-                                this.report_mutably_borrow_after_pinned(
-                                    location, place_span, borrow,
-                                );
-                            } else {
-                                let err = this
-                                    .report_conflicting_borrow(location, place_span, bk, borrow);
-                                this.buffer_error(err);
-                            }
+                            let err =
+                                this.report_conflicting_borrow(location, place_span, bk, borrow);
+                            this.buffer_error(err);
                         }
                         WriteKind::StorageDeadOrDrop => this
                             .report_borrowed_value_does_not_live_long_enough(
@@ -1412,11 +1454,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }
                         WriteKind::Move => {
-                            if pinned_borrows.contains(borrow_index) {
-                                this.report_move_after_pinned(location, place_span, borrow);
-                            } else {
-                                this.report_move_out_while_borrowed(location, place_span, borrow)
-                            }
+                            this.report_move_out_while_borrowed(location, place_span, borrow)
                         }
                         WriteKind::Replace => {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)

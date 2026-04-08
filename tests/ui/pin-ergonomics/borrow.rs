@@ -28,10 +28,8 @@ fn baz(mut x: Foo, mut y: Foo) {
     {
         let _x = &pin mut x;
     }
-    let _x = &mut x;
-    //~ ERROR cannot borrow `x` as mutable because it is pinned
-    let _x = x;
-    //~ ERROR cannot move out of `x` because it is pinned
+    let _x = &mut x; //~ ERROR cannot borrow `x` as mutable because it is pinned
+    let _x = x; //~ ERROR cannot move out of `x` because it is pinned
 
     x = Foo;
     let _x = &mut x; // ok
@@ -39,10 +37,8 @@ fn baz(mut x: Foo, mut y: Foo) {
     {
         let _y = &pin const y;
     }
-    let _y = &mut y;
-    //~ ERROR cannot borrow `y` as mutable because it is pinned
-    let _y = y;
-    //~ ERROR cannot move out of `y` because it is pinned
+    let _y = &mut y; //~ ERROR cannot borrow `y` as mutable because it is pinned
+    let _y = y; //~ ERROR cannot move out of `y` because it is pinned
 }
 
 fn main() {}
