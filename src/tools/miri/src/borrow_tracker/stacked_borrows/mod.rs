@@ -859,7 +859,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         info: RetagInfo, // diagnostics info about this retag
     ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
-        let place = this.ref_to_mplace(val)?;
+        let place = this.imm_ptr_to_mplace(val)?;
         let new_place = this.sb_retag_place(&place, new_perm, info)?;
         interp_ok(ImmTy::from_immediate(new_place.to_ref(this), val.layout))
     }

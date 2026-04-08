@@ -4,15 +4,16 @@ These documentation pages include resources by third parties. This copyright
 file applies only to those resources. The following third party resources are
 included, and carry their own copyright notices and license terms:
 
-* Fira Sans (FiraSans-Regular.woff2, FiraSans-Medium.woff2):
+* Fira (FiraSans-Regular.woff2, FiraSans-Medium.woff2,
+        FiraMono-Regular.woff2, FiraMono-Medium.woff2):
 
     Copyright (c) 2014, Mozilla Foundation https://mozilla.org/
-    with Reserved Font Name Fira Sans.
+    with Reserved Font Name < Fira >.
 
     Copyright (c) 2014, Telefonica S.A.
 
     Licensed under the SIL Open Font License, Version 1.1.
-    See FiraSans-LICENSE.txt.
+    See Fira-LICENSE.txt.
 
 * rustdoc.css, main.js, and playpen.js:
 

@@ -12,7 +12,7 @@ use rustc_middle::mir::interpret::{
     Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer, Scalar as InterpScalar,
     read_target_uint,
 };
-use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};

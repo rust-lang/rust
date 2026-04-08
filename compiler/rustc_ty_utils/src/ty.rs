@@ -222,13 +222,18 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) {
-        if let ty::Alias(ty::Projection, unshifted_alias_ty) = *ty.kind()
+        if let ty::Alias(
+            unshifted_alias_ty @ ty::AliasTy {
+                kind: ty::Projection { def_id: unshifted_alias_ty_def_id },
+                ..
+            },
+        ) = *ty.kind()
             && let Some(
                 ty::ImplTraitInTraitData::Trait { fn_def_id, .. }
                 | ty::ImplTraitInTraitData::Impl { fn_def_id, .. },
-            ) = self.tcx.opt_rpitit_info(unshifted_alias_ty.def_id)
+            ) = self.tcx.opt_rpitit_info(unshifted_alias_ty_def_id)
             && fn_def_id == self.fn_def_id
-            && self.seen.insert(unshifted_alias_ty.def_id)
+            && self.seen.insert(unshifted_alias_ty_def_id)
         {
             // We have entered some binders as we've walked into the
             // bounds of the RPITIT. Shift these binders back out when
@@ -253,7 +258,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // strategy, then just reinterpret the associated type like an opaque :^)
             let default_ty = self
                 .tcx
-                .type_of(shifted_alias_ty.def_id)
+                .type_of(shifted_alias_ty.kind.def_id())
                 .instantiate(self.tcx, shifted_alias_ty.args);
 
             self.predicates.push(
@@ -273,7 +278,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // easier to just do this.
             for bound in self
                 .tcx
-                .item_bounds(unshifted_alias_ty.def_id)
+                .item_bounds(unshifted_alias_ty_def_id)
                 .iter_instantiated(self.tcx, unshifted_alias_ty.args)
             {
                 bound.visit_with(self);
@@ -387,7 +392,7 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
         | ty::CoroutineWitness(_, _)
         | ty::Never
         | ty::Tuple(_)
-        | ty::Alias(_, _)
+        | ty::Alias(_)
         | ty::Param(_)
         | ty::Bound(_, _)
         | ty::Placeholder(_)

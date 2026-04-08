@@ -442,9 +442,11 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 label_or_note(diag, span, msg);
             }
             RegionOriginNote::WithName { span, msg, name, continues } => {
-                diag.arg("name", name);
-                diag.arg("continues", continues);
-                label_or_note(diag, span, msg);
+                label_or_note(
+                    diag,
+                    span,
+                    msg.arg("name", name).arg("continues", continues).format(),
+                );
             }
             RegionOriginNote::WithRequirement {
                 span,

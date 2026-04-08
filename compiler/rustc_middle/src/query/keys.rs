@@ -13,7 +13,7 @@ use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
 use crate::dep_graph::DepNodeIndex;
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::CanonicalQueryInput;
-use crate::mir::mono::CollectionMode;
+use crate::mono::CollectionMode;
 use crate::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;

@@ -94,6 +94,7 @@ jobs:
   dist-x86_64-linux: &job-dist-x86_64-linux
     name: dist-x86_64-linux
     env:
+      IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist.sh
     <<: *job-linux-36c-codebuild
@@ -150,6 +151,7 @@ pr:
 # it in each job definition.
 try:
   - <<: *job-dist-x86_64-linux
+    name: dist-x86_64-linux-quick
 
 # Jobs that only run when explicitly invoked in one of the following ways:
 # - comment `@bors try jobs=<job-name>`

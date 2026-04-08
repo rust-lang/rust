@@ -92,12 +92,12 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_opaque_ty(&mut self, alias_ty: ty::AliasTy<'tcx>) {
-        if !self.seen.insert(alias_ty.def_id.expect_local()) {
+        if !self.seen.insert(alias_ty.kind.def_id().expect_local()) {
             return;
         }
 
         // TAITs outside their defining scopes are ignored.
-        match self.tcx.local_opaque_ty_origin(alias_ty.def_id.expect_local()) {
+        match self.tcx.local_opaque_ty_origin(alias_ty.kind.def_id().expect_local()) {
             rustc_hir::OpaqueTyOrigin::FnReturn { .. }
             | rustc_hir::OpaqueTyOrigin::AsyncFn { .. } => {}
             rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty, .. } => match self.mode {
@@ -122,9 +122,9 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         }
 
         trace!(?alias_ty, "adding");
-        self.opaques.push(alias_ty.def_id.expect_local());
+        self.opaques.push(alias_ty.kind.def_id().expect_local());
 
-        let parent_count = self.tcx.generics_of(alias_ty.def_id).parent_count;
+        let parent_count = self.tcx.generics_of(alias_ty.kind.def_id()).parent_count;
         // Only check that the parent generics of the TAIT/RPIT are unique.
         // the args owned by the opaque are going to always be duplicate
         // lifetime params for RPITs, and empty for TAITs.
@@ -141,7 +141,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
                 // We use identity args here, because we already know that the opaque type uses
                 // only generic parameters, and thus instantiating would not give us more information.
                 for (pred, span) in
-                    self.tcx.explicit_item_bounds(alias_ty.def_id).iter_identity_copied()
+                    self.tcx.explicit_item_bounds(alias_ty.kind.def_id()).iter_identity_copied()
                 {
                     trace!(?pred);
                     self.visit_spanned(span, pred);
@@ -151,14 +151,14 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
                 self.tcx.dcx().emit_err(NotParam {
                     arg,
                     span: self.span(),
-                    opaque_span: self.tcx.def_span(alias_ty.def_id),
+                    opaque_span: self.tcx.def_span(alias_ty.kind.def_id()),
                 });
             }
             Err(NotUniqueParam::DuplicateParam(arg)) => {
                 self.tcx.dcx().emit_err(DuplicateArg {
                     arg,
                     span: self.span(),
-                    opaque_span: self.tcx.def_span(alias_ty.def_id),
+                    opaque_span: self.tcx.def_span(alias_ty.kind.def_id()),
                 });
             }
         }
@@ -203,21 +203,24 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         t.super_visit_with(self);
         match *t.kind() {
-            ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
+            ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Opaque { def_id }, .. })
+                if def_id.is_local() =>
+            {
                 self.visit_opaque_ty(alias_ty);
             }
             // Skips type aliases, as they are meant to be transparent.
             // FIXME(type_alias_impl_trait): can we require mentioning nested type aliases explicitly?
-            ty::Alias(ty::Free, alias_ty) if let Some(def_id) = alias_ty.def_id.as_local() => {
+            ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Free { def_id }, .. })
+                if let Some(def_id) = def_id.as_local() =>
+            {
                 if !self.seen.insert(def_id) {
                     return;
                 }
-                self.tcx
-                    .type_of(alias_ty.def_id)
-                    .instantiate(self.tcx, alias_ty.args)
-                    .visit_with(self);
+                self.tcx.type_of(def_id).instantiate(self.tcx, alias_ty.args).visit_with(self);
             }
-            ty::Alias(ty::Projection, alias_ty) => {
+            ty::Alias(
+                alias_ty @ ty::AliasTy { kind: ty::Projection { def_id: alias_def_id }, .. },
+            ) => {
                 // This avoids having to do normalization of `Self::AssocTy` by only
                 // supporting the case of a method defining opaque types from assoc types
                 // in the same impl block.
@@ -229,7 +232,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     if alias_ty.trait_ref(self.tcx) == impl_trait_ref {
                         for &assoc in self.tcx.associated_items(parent).in_definition_order() {
                             trace!(?assoc);
-                            if assoc.expect_trait_impl() != Ok(alias_ty.def_id) {
+                            if assoc.expect_trait_impl() != Ok(alias_def_id) {
                                 continue;
                             }
 
@@ -264,7 +267,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                         }
                     }
                 } else if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
-                    self.tcx.opt_rpitit_info(alias_ty.def_id)
+                    self.tcx.opt_rpitit_info(alias_def_id)
                     && fn_def_id == self.item.into()
                 {
                     // RPITIT in trait definitions get desugared to an associated type. For
@@ -278,8 +281,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     // `Projection(<Self as Trait>::synthetic_assoc_ty, trait_def::opaque)`
                     // assumption to the `param_env` of the default method. We also separately
                     // rely on that assumption here.
-                    let ty = self.tcx.type_of(alias_ty.def_id).instantiate(self.tcx, alias_ty.args);
-                    let ty::Alias(ty::Opaque, alias_ty) = *ty.kind() else { bug!("{ty:?}") };
+                    let ty = self.tcx.type_of(alias_def_id).instantiate(self.tcx, alias_ty.args);
+                    let ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
+                        *ty.kind()
+                    else {
+                        bug!("{ty:?}")
+                    };
                     self.visit_opaque_ty(alias_ty);
                 }
             }

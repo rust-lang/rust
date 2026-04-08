@@ -219,11 +219,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
-use rustc_middle::mir::mono::{
-    CollectionMode, InstantiationMode, MonoItem, NormalizationErrorInMono,
-};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Body, Location, MentionedItem, traversal};
+use rustc_middle::mono::{CollectionMode, InstantiationMode, MonoItem, NormalizationErrorInMono};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;

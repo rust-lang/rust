@@ -2978,7 +2978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(ident.span, "unknown field");
                 self.point_at_param_definition(&mut err, param_ty);
             }
-            ty::Alias(ty::Opaque, _) => {
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                 self.suggest_await_on_field_access(&mut err, ident, base, base_ty.peel_refs());
             }
             _ => {
