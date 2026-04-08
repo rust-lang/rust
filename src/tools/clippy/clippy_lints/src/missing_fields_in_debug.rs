@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::sym;
+use clippy_utils::{has_rustc_marker_type_attr, sym};
 use clippy_utils::visitors::{Visitable, for_each_expr};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
@@ -185,6 +185,8 @@ fn check_struct<'tcx>(
         .filter_map(|field| {
             if field_accesses.contains(&field.ident.name)
                 || field.ty.basic_res().is_lang_item(cx, LangItem::PhantomData)
+                // We exclude marker types (e.g. PhantomData, PhantomPinned) from emitting warnings
+                || has_rustc_marker_type_attr(cx.tcx, field.ty.basic_res())
             {
                 None
             } else {

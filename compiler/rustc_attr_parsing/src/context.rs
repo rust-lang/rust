@@ -308,6 +308,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcLintQueryInstabilityParser>>,
         Single<WithoutArgs<RustcLintUntrackedQueryInformationParser>>,
         Single<WithoutArgs<RustcMainParser>>,
+        Single<WithoutArgs<RustcMarkerTypeParser>>,
         Single<WithoutArgs<RustcNeverReturnsNullPtrParser>>,
         Single<WithoutArgs<RustcNoImplicitAutorefsParser>>,
         Single<WithoutArgs<RustcNoImplicitBoundsParser>>,

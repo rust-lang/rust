@@ -2,7 +2,7 @@
 #![warn(clippy::missing_fields_in_debug)]
 
 use std::fmt;
-use std::marker::PhantomData;
+use std::marker::{PhantomData, PhantomPinned};
 use std::ops::Deref;
 use std::thread::LocalKey;
 
@@ -179,16 +179,17 @@ mod comment1175473620 {
 }
 
 // https://github.com/rust-lang/rust-clippy/pull/10616#discussion_r1175488757
-// PhantomData is an exception and does not need to be included
-struct WithPD {
+// PhantomData and PhantomPinned are exceptions and do not need to be included
+struct WithPDPP {
     a: u8,
     b: u8,
-    c: PhantomData<String>,
+    c: PhantomPinned,
+    d: PhantomData<String>,
 }
 
-impl fmt::Debug for WithPD {
+impl fmt::Debug for WithPDPP {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("WithPD")
+        f.debug_struct("WithPDPP")
             .field("a", &self.a)
             .field("b", &self.b)
             .finish()
