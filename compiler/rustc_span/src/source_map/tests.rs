@@ -752,6 +752,25 @@ fn test_next_point() {
     assert!(sm.span_to_snippet(span).is_err());
 }
 
+#[test]
+fn test_span_followed_by_stops_at_end_of_file() {
+    let sm = SourceMap::new(FilePathMapping::empty());
+    sm.new_source_file(filename(&sm, "example.rs"), "x".to_string());
+
+    let span = Span::with_root_ctxt(BytePos(0), BytePos(1));
+    assert_eq!(sm.span_followed_by(span, "y"), None);
+}
+
+#[test]
+fn test_span_followed_by_skips_whitespace() {
+    let sm = SourceMap::new(FilePathMapping::empty());
+    sm.new_source_file(filename(&sm, "example.rs"), "x \n yz".to_string());
+
+    let span = Span::with_root_ctxt(BytePos(0), BytePos(1));
+    let span = sm.span_followed_by(span, "yz").unwrap();
+    assert_eq!(sm.span_to_snippet(span), Ok("yz".to_string()));
+}
+
 #[cfg(target_os = "linux")]
 #[test]
 fn read_binary_file_handles_lying_stat() {
