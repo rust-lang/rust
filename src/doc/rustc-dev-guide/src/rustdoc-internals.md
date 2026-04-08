@@ -108,19 +108,21 @@ Here is the list of passes as of <!-- date-check --> March 2023:
 - `calculate-doc-coverage` calculates information used for the `--show-coverage`
   flag.
 
-- `check-doc-test-visibility` runs `doctest` visibility–related `lint`s. This pass
+- `check-doc-test-visibility` runs `doctest` visibility–related `lint`s.
+  This pass
   runs before `strip-private`, which is why it needs to be separate from `run-lints`.
 
 - `collect-intra-doc-links` resolves [intra-doc links](https://doc.rust-lang.org/nightly/rustdoc/write-documentation/linking-to-items-by-name.html).
 
-- `collect-trait-impls` collects `trait` `impl`s for each item in the crate. For
+- `collect-trait-impls` collects `trait` `impl`s for each item in the crate.
+  For
   example, if we define a `struct` that implements a `trait`, this pass will note
   that the `struct` implements that `trait`.
 
 - `propagate-doc-cfg` propagates `#[doc(cfg(...))]` to child items.
 
-- `run-lints` runs some of `rustdoc`'s `lint`s, defined in `passes/lint`. This is
-  the last pass to run.
+- `run-lints` runs some of `rustdoc`'s `lint`s, defined in `passes/lint`.
+  This is the last pass to run.
 
   - `bare_urls` detects links that are not linkified, e.g., in Markdown such as
     `Go to https://example.com/.` It suggests wrapping the link with angle brackets:
@@ -233,7 +235,8 @@ is complicated from two other constraints that `rustdoc` runs under:
   configurations, such as `libstd` having a single package of docs that
   cover all supported operating systems.
   This means `rustdoc` has to be able to generate docs from `HIR`.
-* Docs can inline across crates. Since crate metadata doesn't contain `HIR`,
+* Docs can inline across crates.
+  Since crate metadata doesn't contain `HIR`,
   it must be possible to generate inlined docs from the `rustc_middle` data.
 
 The "clean" [`AST`][ast] acts as a common output format for both input formats.
