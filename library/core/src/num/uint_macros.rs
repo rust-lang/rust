@@ -29,6 +29,69 @@ macro_rules! uint_impl {
         from_xe_bytes_doc = $from_xe_bytes_doc:expr,
         bound_condition = $bound_condition:literal,
     ) => {
+        uint_impl! {
+            Self = $SelfT,
+            SignedT = $SignedT,
+
+            #[cfg(true)] {
+                ActualT = $ActualT,
+                BITS = $BITS,
+                BITS_MINUS_ONE = $BITS_MINUS_ONE,
+                MAX = $MaxV,
+                rot = $rot,
+                rot_op = $rot_op,
+                rot_result = $rot_result,
+                fsh_op = $fsh_op,
+                fshl_result = $fshl_result,
+                fshr_result = $fshr_result,
+                clmul_lhs = $clmul_lhs,
+                clmul_rhs = $clmul_rhs,
+                clmul_result = $clmul_result,
+                swap_op = $swap_op,
+                swapped = $swapped,
+                reversed = $reversed,
+                le_bytes = $le_bytes,
+                be_bytes = $be_bytes,
+                to_xe_bytes_doc = $to_xe_bytes_doc,
+                from_xe_bytes_doc = $from_xe_bytes_doc,
+                bound_condition = $bound_condition,
+            }
+        }
+    };
+
+    (
+        Self = $SelfT:ty,
+        SignedT = $SignedT:ident,
+
+        $(#[cfg($Pred:expr)] {
+            ActualT = $ActualT:ident,
+
+            // These are all for use *only* in doc comments.
+            // As such, they're all passed as literals -- passing them as a string
+            // literal is fine if they need to be multiple code tokens.
+            // In non-comments, use the associated constants rather than these.
+            BITS = $BITS:literal,
+            BITS_MINUS_ONE = $BITS_MINUS_ONE:literal,
+            MAX = $MaxV:literal,
+            rot = $rot:literal,
+            rot_op = $rot_op:literal,
+            rot_result = $rot_result:literal,
+            fsh_op = $fsh_op:literal,
+            fshl_result = $fshl_result:literal,
+            fshr_result = $fshr_result:literal,
+            clmul_lhs = $clmul_lhs:literal,
+            clmul_rhs = $clmul_rhs:literal,
+            clmul_result = $clmul_result:literal,
+            swap_op = $swap_op:literal,
+            swapped = $swapped:literal,
+            reversed = $reversed:literal,
+            le_bytes = $le_bytes:literal,
+            be_bytes = $be_bytes:literal,
+            to_xe_bytes_doc = $to_xe_bytes_doc:expr,
+            from_xe_bytes_doc = $from_xe_bytes_doc:expr,
+            bound_condition = $bound_condition:literal,
+        }),+
+    ) => {
         /// The smallest value that can be represented by this integer type.
         ///
         /// # Examples
