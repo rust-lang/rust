@@ -363,8 +363,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
     // Only pointer types handled below.
     let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return attrs };
 
-    // Set `nonnull` if the validity range excludes zero, or for the argument to `drop_in_place`,
-    // which must be nonnull per its documented safety requirements.
+    // Set `nonnull` if the validity range excludes zero.
     if !valid_range.contains(0) {
         attrs.set(ArgAttribute::NonNull);
     }

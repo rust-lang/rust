@@ -403,7 +403,7 @@ fn upstream_monomorphizations_provider(
 
     let mut instances: DefIdMap<UnordMap<_, _>> = Default::default();
 
-    let drop_in_place_fn_def_id = tcx.lang_items().drop_glue_fn();
+    let drop_glue_fn_def_id = tcx.lang_items().drop_glue_fn();
     let async_drop_in_place_fn_def_id = tcx.lang_items().async_drop_in_place_fn();
 
     for &cnum in cnums.iter() {
@@ -411,11 +411,10 @@ fn upstream_monomorphizations_provider(
             let (def_id, args) = match *exported_symbol {
                 ExportedSymbol::Generic(def_id, args) => (def_id, args),
                 ExportedSymbol::DropGlue(ty) => {
-                    if let Some(drop_in_place_fn_def_id) = drop_in_place_fn_def_id {
+                    if let Some(drop_in_place_fn_def_id) = drop_glue_fn_def_id {
                         (drop_in_place_fn_def_id, tcx.mk_args(&[ty.into()]))
                     } else {
-                        // `drop_in_place` in place does not exist, don't try
-                        // to use it.
+                        // `drop_glue` does not exist, don't try to use it.
                         continue;
                     }
                 }
@@ -587,7 +586,7 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
         }
         ExportedSymbol::DropGlue(ty) => rustc_symbol_mangling::symbol_name_for_instance_in_crate(
             tcx,
-            Instance::resolve_drop_in_place(tcx, ty),
+            Instance::resolve_drop_glue(tcx, ty),
             instantiating_crate,
         ),
         ExportedSymbol::AsyncDropGlueCtorShim(ty) => {

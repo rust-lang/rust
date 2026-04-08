@@ -1228,7 +1228,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
             return false;
         }
 
-        // With -Z panic-in-drop=abort, drop_in_place never unwinds.
+        // With -Z panic-in-drop=abort, `drop_glue` never unwinds.
         //
         // This is not part of `codegen_fn_attrs` as it can differ between crates
         // and therefore cannot be computed in core.

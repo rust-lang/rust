@@ -569,7 +569,7 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
     // not a coroutine body itself; it just has its drop built out of it.
     let _ = body.coroutine.take();
     // Make sure the resume argument is not included here, since we're
-    // building a body for `drop_in_place`.
+    // building a body for `drop_glue`.
     body.arg_count = 1;
 
     let source_info = SourceInfo::outermost(body.span);
@@ -602,8 +602,8 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
 
     // Update the body's def to become the drop glue.
     let coroutine_instance = body.source.instance;
-    let drop_in_place = tcx.require_lang_item(LangItem::DropGlue, body.span);
-    let drop_instance = InstanceKind::DropGlue(drop_in_place, Some(coroutine_ty));
+    let drop_glue = tcx.require_lang_item(LangItem::DropGlue, body.span);
+    let drop_instance = InstanceKind::DropGlue(drop_glue, Some(coroutine_ty));
 
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
     // filename.

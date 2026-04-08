@@ -69,7 +69,7 @@ fn opt_incr_drop_glue_mode<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Instantiati
     let Some(dtor) = adt_def.destructor(tcx) else {
         // We use LocalCopy for drops of enums only; this code is inherited from
         // https://github.com/rust-lang/rust/pull/67332 and the theory is that we get to optimize
-        // out code like drop_in_place(Option::None) before crate-local ThinLTO, which improves
+        // out code like `drop_glue(&mut Option::None)` before crate-local ThinLTO, which improves
         // compile time. At the time of writing, simply removing this entire check does seem to
         // regress incr-opt compile times. But it sure seems like a more sophisticated check could
         // do better here.
@@ -80,8 +80,8 @@ fn opt_incr_drop_glue_mode<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Instantiati
         }
     };
 
-    // We've gotten to a drop_in_place for a type that directly implements Drop.
-    // The drop glue is a wrapper for the Drop::drop impl, and we are an optimized build, so in an
+    // We've gotten to a `drop_glue` for a type that directly implements Drop.
+    // The drop glue is a wrapper for the `Drop::drop` impl, and we are an optimized build, so in an
     // effort to coordinate with the mode that the actual impl will get, we make the glue also
     // LocalCopy.
     if tcx.cross_crate_inlinable(dtor.did) {
