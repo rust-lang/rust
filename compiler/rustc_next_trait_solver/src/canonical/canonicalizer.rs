@@ -391,7 +391,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Alias(_, _)
+            | ty::Alias(_)
             | ty::Bound(_, _)
             | ty::Error(_) => {
                 return ensure_sufficient_stack(|| t.super_fold_with(self));

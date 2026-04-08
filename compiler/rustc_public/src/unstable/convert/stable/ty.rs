@@ -12,14 +12,14 @@ use crate::ty::{
 };
 use crate::unstable::Stable;
 
-impl<'tcx> Stable<'tcx> for ty::AliasTyKind {
+impl<'tcx> Stable<'tcx> for ty::AliasTyKind<'tcx> {
     type T = crate::ty::AliasKind;
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
         match self {
-            ty::Projection => crate::ty::AliasKind::Projection,
-            ty::Inherent => crate::ty::AliasKind::Inherent,
-            ty::Opaque => crate::ty::AliasKind::Opaque,
-            ty::Free => crate::ty::AliasKind::Free,
+            ty::Projection { .. } => crate::ty::AliasKind::Projection,
+            ty::Inherent { .. } => crate::ty::AliasKind::Inherent,
+            ty::Opaque { .. } => crate::ty::AliasKind::Opaque,
+            ty::Free { .. } => crate::ty::AliasKind::Free,
         }
     }
 }
@@ -31,8 +31,11 @@ impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::AliasTy { args, def_id, .. } = self;
-        crate::ty::AliasTy { def_id: tables.alias_def(*def_id), args: args.stable(tables, cx) }
+        let ty::AliasTy { args, kind, .. } = self;
+        crate::ty::AliasTy {
+            def_id: tables.alias_def(kind.def_id()),
+            args: args.stable(tables, cx),
+        }
     }
 }
 
@@ -451,8 +454,8 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| ty.stable(tables, cx)).collect(),
             )),
-            ty::Alias(alias_kind, alias_ty) => {
-                TyKind::Alias(alias_kind.stable(tables, cx), alias_ty.stable(tables, cx))
+            ty::Alias(_alias_ty) => {
+                todo!()
             }
             ty::Param(param_ty) => TyKind::Param(param_ty.stable(tables, cx)),
             ty::Bound(ty::BoundVarIndexKind::Canonical, _) => {

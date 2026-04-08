@@ -240,7 +240,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
 
     if tcx.local_crate_exports_generics() {
         use rustc_hir::attrs::Linkage;
-        use rustc_middle::mir::mono::{MonoItem, Visibility};
+        use rustc_middle::mono::{MonoItem, Visibility};
         use rustc_middle::ty::InstanceKind;
 
         // Normally, we require that shared monomorphizations are not hidden,

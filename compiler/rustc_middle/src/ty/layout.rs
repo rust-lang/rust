@@ -385,7 +385,11 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 );
 
                 match tail.kind() {
-                    ty::Param(_) | ty::Alias(ty::Projection | ty::Inherent, _) => {
+                    ty::Param(_)
+                    | ty::Alias(ty::AliasTy {
+                        kind: ty::Projection { .. } | ty::Inherent { .. },
+                        ..
+                    }) => {
                         debug_assert!(tail.has_non_region_param());
                         Ok(SizeSkeleton::Pointer {
                             non_zero,

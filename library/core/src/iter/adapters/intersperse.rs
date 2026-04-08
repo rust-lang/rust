@@ -20,7 +20,7 @@ impl<I: Iterator> Intersperse<I>
 where
     I::Item: Clone,
 {
-    pub(in crate::iter) fn new(iter: I, separator: I::Item) -> Self {
+    pub(in crate::iter) const fn new(iter: I, separator: I::Item) -> Self {
         Self { started: false, separator, next_item: None, iter }
     }
 }
@@ -129,7 +129,7 @@ where
     I: Iterator,
     G: FnMut() -> I::Item,
 {
-    pub(in crate::iter) fn new(iter: I, separator: G) -> Self {
+    pub(in crate::iter) const fn new(iter: I, separator: G) -> Self {
         Self { started: false, separator, next_item: None, iter }
     }
 }
