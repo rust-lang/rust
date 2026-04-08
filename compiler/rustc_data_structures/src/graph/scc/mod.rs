@@ -13,6 +13,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::Range;
 
+use rustc_hash::FxHashMap;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use tracing::{debug, instrument, trace};
 
@@ -156,6 +157,113 @@ impl<N: Idx, S: Idx + Ord> Sccs<N, S> {
                 })
                 .collect(),
         )
+    }
+
+    /// Merge a bunch of SCCs `to_merge` into `predecessor`. `predecessor`
+    /// must be a source in the graph in the sense that it reaches every node in it.
+    /// In other words, the merging into `predecessor`'s SCC must not add
+    /// any new successors to it. This reindexes the SCCs (because some disappear)
+    /// and so consumes the instance.
+    ///
+    /// This preserves dependency order since any merged SCC is not reachable from
+    /// any other SCC (so removing them preserves order), and the order of `predecessor`
+    /// does not change, since it must be last as it reaches everything.
+    ///
+    /// This operation is mainly useful in borrowck, where `'static` is such a
+    /// predecessor in the outlives constraint graph.
+    ///
+    /// Every time an SCC is constructed, `on_new_scc(old, new, &to_merge)` is called
+    /// with the old and new indices, and the current list of known SCCs merged. This
+    /// is meant to be used to update any [`Annotation`]s or other external structures
+    /// that depends on SCC indices.
+    #[instrument(skip(self, on_new_scc))]
+    pub fn merge_into<S2: Idx, F>(
+        self,
+        mut to_merge: FxHashSet<S>,
+        predecessor: S,
+        mut on_new_scc: F,
+    ) -> Sccs<N, S2>
+    where
+        F: FnMut(S, S2, &FxHashSet<S>) -> (),
+    {
+        assert!(!to_merge.contains(&predecessor), "Can't merge {predecessor:?} into itself!");
+
+        // Calling this method does not preserve dependency order if this
+        // doesn't hold, since this is one of the properties we exploit
+        // for a cheap merge. `predecessor` needs to precede *everything*.
+        // (This constraint is stronger than it needs to be; this tests if it
+        // precedes it in one step, it's fine if it's also in more than one,
+        // but that requires a full graph search to check and good enough for 'static).
+        for scc in self.all_sccs() {
+            debug_assert!(
+                scc == predecessor || self.successors(predecessor).contains(&scc),
+                "{predecessor:?} is not a source, does not precede {scc:?}!"
+            );
+        }
+
+        let mut scc_details = IndexVec::new();
+        let mut all_successors = Vec::new();
+
+        let mut old_to_new_scc = FxHashMap::default();
+
+        // Collect predecessors and translate unaffected nodes into their new IDs
+        for old_scc in self.all_sccs() {
+            if to_merge.contains(&old_scc) || old_scc == predecessor {
+                // These are handled separately (below)
+                continue;
+            }
+
+            // This requires two iterations over successors.
+            // It's possible to optimise this by adding them
+            // speculatively and then undoing that if we find one
+            // that shouldn't be added, but that's complicated
+            // and error prone and this shouldn't be too bad.
+            if self.successors(old_scc).iter().any(|successor| to_merge.contains(successor)) {
+                debug!("{old_scc:?} reaches a merged node; merge it into {predecessor:?}!");
+                to_merge.insert(old_scc);
+                continue;
+            }
+
+            // We now know `old_scc` is unaffected by the merge.
+            let all_successors_start = all_successors.len();
+            all_successors.extend(self.successors(old_scc).into_iter().map(|old_successor| old_to_new_scc.get(old_successor).expect("Iteration should have been in dependency order, so {old_successor:?} should have been visited and added before {old_scc:?}!")));
+            let all_successors_end = all_successors.len();
+            let new_scc =
+                scc_details.push(SccDetails { range: all_successors_start..all_successors_end });
+            on_new_scc(old_scc, new_scc, &to_merge);
+            old_to_new_scc.insert(old_scc, new_scc);
+        }
+
+        // Handle the merge; map the merged SCCs into `predecessor`,
+        // and update `predecessor` itself.
+        //
+        // OPTIMISATION IDEA: we could avoid storing a list of every
+        // SCC here if we used `predecessor` as its own successor for
+        // a sentinel value. However, this would cause `successors()`
+        // to return an iterator, which is a larger change.
+        let all_successors_start = all_successors.len();
+
+        // This SCC, by definition, precedes every SCC. Add them ALL.
+        all_successors.extend(scc_details.indices()); // Notably, `scc_details` does not yet hold this SCC!
+        let all_successors_end = all_successors.len();
+
+        // Finally, add the SCC we merged into back.
+        let new_predecessor =
+            scc_details.push(SccDetails { range: all_successors_start..all_successors_end });
+        on_new_scc(predecessor, new_predecessor, &to_merge);
+
+        old_to_new_scc.insert(predecessor, new_predecessor);
+
+        // All the merged SCCs become `new_predecessor`; they're gone.
+        for merged_scc in to_merge.iter() {
+            old_to_new_scc.insert(*merged_scc, new_predecessor);
+        }
+
+        debug!("The full mapping after reconstruction is: {old_to_new_scc:?}");
+
+        // Finally, translate the mapping from graph nodes to SCCs to the new SCC indices.
+        let scc_indices = self.scc_indices.into_iter().map(|s| old_to_new_scc[&s]).collect();
+        Sccs { scc_indices, scc_data: SccData { scc_details, all_successors } }
     }
 }
 

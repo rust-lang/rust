@@ -2,9 +2,8 @@
 //! (with placeholders and universes) and turn them into regular
 //! outlives constraints.
 use rustc_data_structures::frozen::Frozen;
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::graph::scc;
-use rustc_data_structures::graph::scc::Sccs;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::graph::scc::{self, Annotation, Sccs};
 use rustc_index::IndexVec;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::mir::ConstraintCategory;
@@ -280,31 +279,17 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
     }
     debug!("Placeholders present; activating placeholder handling logic!");
 
-    let added_constraints = rewrite_placeholder_outlives(
-        &constraint_sccs,
-        &scc_annotations,
+    let (constraint_sccs, scc_annotations) = rewrite_placeholder_outlives(
+        constraint_sccs,
+        scc_annotations,
         fr_static,
         &mut outlives_constraints,
     );
 
-    let (constraint_sccs, scc_annotations) = if added_constraints {
-        let mut annotations = SccAnnotations::init(&definitions);
-
-        // We changed the constraint set and so must recompute SCCs.
-        // Optimisation opportunity: if we can add them incrementally (and that's
-        // possible because edges to 'static always only merge SCCs into 'static),
-        // we would potentially save a lot of work here.
-        (compute_sccs(&outlives_constraints, &mut annotations), annotations.scc_to_annotation)
-    } else {
-        // If we didn't add any back-edges; no more work needs doing
-        debug!("No constraints rewritten!");
-        (constraint_sccs, scc_annotations.scc_to_annotation)
-    };
-
     LoweredConstraints {
         constraint_sccs,
-        definitions,
         scc_annotations,
+        definitions,
         outlives_constraints: Frozen::freeze(outlives_constraints),
         type_tests,
         liveness_constraints,
@@ -314,16 +299,14 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
 }
 
 pub(crate) fn rewrite_placeholder_outlives<'tcx>(
-    sccs: &Sccs<RegionVid, ConstraintSccIndex>,
-    annotations: &SccAnnotations<'_, '_, RegionTracker>,
+    sccs: Sccs<RegionVid, ConstraintSccIndex>,
+    annotations: SccAnnotations<'_, '_, RegionTracker>,
     fr_static: RegionVid,
     outlives_constraints: &mut OutlivesConstraintSet<'tcx>,
-) -> bool {
-    // Changed to `true` if we added any constraints and need to
-    // recompute SCCs.
-    let mut added_constraints = false;
+) -> (Sccs<RegionVid, ConstraintSccIndex>, IndexVec<ConstraintSccIndex, RegionTracker>) {
+    let mut forced_to_outlive_static = FxHashSet::default();
 
-    let annotations = &annotations.scc_to_annotation;
+    let annotations = annotations.scc_to_annotation;
 
     for scc in sccs.all_sccs() {
         // No point in adding 'static: 'static!
@@ -371,7 +354,8 @@ pub(crate) fn rewrite_placeholder_outlives<'tcx>(
         // FIXME: if we can extract a useful blame span here, future error
         // reporting and constraint search can be simplified.
 
-        added_constraints = true;
+        forced_to_outlive_static.insert(scc);
+
         outlives_constraints.push(OutlivesConstraint {
             sup: annotation.representative.rvid(),
             sub: fr_static,
@@ -382,5 +366,42 @@ pub(crate) fn rewrite_placeholder_outlives<'tcx>(
             from_closure: false,
         });
     }
-    added_constraints
+
+    if forced_to_outlive_static.is_empty() {
+        debug!("Added no `: 'static`s that mattered; reusing old SCCs!");
+        return (sccs, annotations);
+    }
+
+    // Now we need to fix the SCC annotations and SCC graph to match
+    // the outlives graph we modified.
+
+    let static_scc = sccs.scc(fr_static);
+
+    let mut scc_to_annotation: IndexVec<ConstraintSccIndex, RegionTracker> = IndexVec::new();
+
+    // Now we need to update the SCCs to account for the new constraints.
+    let new_sccs = sccs.merge_into(
+        forced_to_outlive_static,
+        static_scc,
+        |old_scc, new_scc, forced_to_outlive_static| {
+            debug!("Mapping {old_scc:?} to {new_scc:?}");
+            let annotation_idx = scc_to_annotation.push(annotations[old_scc]);
+            assert_eq!(annotation_idx, new_scc, "Annotation SCC indices out of step!");
+
+            // Merge the annotations for the SCCs 'static just ate.
+            // This only executes once, since we only add 'static (and indeed any SCC) once.
+            // Since 'static is the final step, we know that we also have the full list
+            // of merged SCCs in `forced_to_outlive_static`.
+            if old_scc == static_scc {
+                // This instability does not matter since the merging isn't order-dependent.
+                #[allow(rustc::potential_query_instability)]
+                for merged_old_scc in forced_to_outlive_static.iter() {
+                    let merged_annotation = annotations[*merged_old_scc];
+                    scc_to_annotation[new_scc].update_scc(&merged_annotation);
+                }
+            }
+        },
+    );
+
+    (new_sccs, scc_to_annotation)
 }

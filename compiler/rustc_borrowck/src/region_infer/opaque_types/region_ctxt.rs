@@ -57,21 +57,15 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             };
 
         let mut scc_annotations = SccAnnotations::init(&definitions);
-        let mut constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
+        let constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
 
-        let added_constraints = crate::handle_placeholders::rewrite_placeholder_outlives(
-            &constraint_sccs,
-            &scc_annotations,
-            universal_regions.fr_static,
-            &mut outlives_constraints,
-        );
-
-        if added_constraints {
-            scc_annotations = SccAnnotations::init(&definitions);
-            constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
-        }
-
-        let scc_annotations = scc_annotations.scc_to_annotation;
+        let (constraint_sccs, scc_annotations) =
+            crate::handle_placeholders::rewrite_placeholder_outlives(
+                constraint_sccs,
+                scc_annotations,
+                universal_regions.fr_static,
+                &mut outlives_constraints,
+            );
 
         // Unlike the `RegionInferenceContext`, we only care about free regions
         // and fully ignore liveness and placeholders.
