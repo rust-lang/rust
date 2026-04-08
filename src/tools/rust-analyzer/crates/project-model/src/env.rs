@@ -172,3 +172,45 @@ env.RA_TEST_NOT_AN_OBJECT = "value"
     assert_eq!(env.get("RA_TEST_OVERWRITTEN").as_deref(), Some("newvalue"));
     assert_eq!(env.get("RA_TEST_NOT_AN_OBJECT").as_deref(), Some("value"));
 }
+
+#[test]
+fn cargo_config_env_respects_process_env() {
+    use itertools::Itertools;
+
+    let cwd = paths::AbsPathBuf::try_from(
+        paths::Utf8PathBuf::try_from(std::env::current_dir().unwrap()).unwrap(),
+    )
+    .unwrap();
+    let config_path = cwd.join(".cargo").join("config.toml");
+
+    // SAFETY: this test is not run in parallel with other tests that depend on these env vars.
+    unsafe {
+        std::env::set_var("RA_TEST_PROCESS_ENV_STRING", "from_process");
+        std::env::set_var("RA_TEST_PROCESS_ENV_TABLE", "from_process");
+        std::env::set_var("RA_TEST_PROCESS_ENV_FORCED", "from_process");
+    }
+
+    let raw = r#"
+env.RA_TEST_PROCESS_ENV_STRING = "from_config"
+env.RA_TEST_PROCESS_ENV_TABLE.value = "from_config"
+env.RA_TEST_PROCESS_ENV_FORCED.value = "from_config"
+env.RA_TEST_PROCESS_ENV_FORCED.force = true
+"#;
+    let raw = raw.lines().map(|l| format!("{l} # {config_path}")).join("\n");
+    let config = CargoConfigFile::from_string_for_test(raw);
+    let extra_env = FxHashMap::default();
+    let env = cargo_config_env(&Some(config), &extra_env);
+
+    // Plain string form should use process env value, not config value
+    assert_eq!(env.get("RA_TEST_PROCESS_ENV_STRING").as_deref(), Some("from_process"));
+    // Table form without force should use process env value, not config value
+    assert_eq!(env.get("RA_TEST_PROCESS_ENV_TABLE").as_deref(), Some("from_process"));
+    // Table form with force=true should override process env
+    assert_eq!(env.get("RA_TEST_PROCESS_ENV_FORCED").as_deref(), Some("from_config"));
+
+    unsafe {
+        std::env::remove_var("RA_TEST_PROCESS_ENV_STRING");
+        std::env::remove_var("RA_TEST_PROCESS_ENV_TABLE");
+        std::env::remove_var("RA_TEST_PROCESS_ENV_FORCED");
+    }
+}
