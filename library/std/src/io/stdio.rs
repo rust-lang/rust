@@ -1148,10 +1148,12 @@ pub fn try_set_output_capture(
 /// if the local stream is in use by another thread, it will just fall back to
 /// the global stream.
 ///
-/// However, if the actual I/O causes an error, this function does panic.
+/// However, if the actual I/O causes an error, this function does panic,
+/// except for `EAGAIN`/`WouldBlock` errors which are silently ignored to
+/// match C behavior in redirection scenarios (e.g., Docker containers).
 ///
-/// Writing to non-blocking stdout/stderr can cause an error, which will lead
-/// this function to panic.
+/// Writing to non-blocking stdout/stderr can cause a `WouldBlock` error,
+/// which will be silently ignored to match C behavior.
 fn print_to<T>(args: fmt::Arguments<'_>, global_s: fn() -> T, label: &str)
 where
     T: Write,
@@ -1162,7 +1164,10 @@ where
     }
 
     if let Err(e) = global_s().write_fmt(args) {
-        panic!("failed printing to {label}: {e}");
+        // Ignore EAGAIN/WouldBlock errors to match C behavior in redirection scenarios
+        if e.kind() != std::io::ErrorKind::WouldBlock {
+            panic!("failed printing to {label}: {e}");
+        }
     }
 }
 
