@@ -652,34 +652,6 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
-// This could be a closure, but then implementing derive trait
-// becomes hacky (and it gets allocated).
-#[derive(Debug)]
-pub enum BuiltinLintDiag {
-    ElidedLifetimesInPaths(usize, Span, bool, Span),
-    UnusedImports {
-        remove_whole_use: bool,
-        num_to_remove: usize,
-        remove_spans: Vec<Span>,
-        test_module_span: Option<Span>,
-        span_snippets: Vec<String>,
-    },
-    NamedArgumentUsedPositionally {
-        /// Span where the named argument is used by position and will be replaced with the named
-        /// argument name
-        position_sp_to_replace: Option<Span>,
-        /// Span where the named argument is used by position and is used for lint messages
-        position_sp_for_msg: Option<Span>,
-        /// Span where the named argument's name is (so we know where to put the warning message)
-        named_arg_sp: Span,
-        /// String containing the named arguments name
-        named_arg_name: String,
-        /// Indicates if the named argument is used as a width/precision for formatting
-        is_formatting_arg: bool,
-    },
-    AttributeLint(AttributeLintKind),
-}
-
 #[derive(Debug, HashStable_Generic)]
 pub enum AttributeLintKind {
     UnusedDuplicate {

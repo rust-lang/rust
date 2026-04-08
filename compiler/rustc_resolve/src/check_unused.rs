@@ -23,13 +23,14 @@
 //  - `check_unused` finally emits the diagnostics based on the data generated
 //    in the last step
 
+use std::borrow::Cow;
+
 use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::MultiSpan;
+use rustc_errors::{DiagArgValue, Diagnostic, MultiSpan};
 use rustc_hir::def::{DefKind, Res};
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS, UNUSED_QUALIFICATIONS,
 };
@@ -511,16 +512,32 @@ impl Resolver<'_, '_> {
                 }
             };
 
-            visitor.r.lint_buffer.buffer_lint(
+            visitor.r.lint_buffer.dyn_buffer_lint_any(
                 UNUSED_IMPORTS,
                 unused.use_tree_id,
                 ms,
-                BuiltinLintDiag::UnusedImports {
-                    remove_whole_use,
-                    num_to_remove,
-                    remove_spans,
-                    test_module_span,
-                    span_snippets,
+                move |dcx, level, sess| {
+                    let sugg = if remove_whole_use {
+                        errors::UnusedImportsSugg::RemoveWholeUse { span: remove_spans[0] }
+                    } else {
+                        errors::UnusedImportsSugg::RemoveImports { remove_spans, num_to_remove }
+                    };
+                    let test_module_span = test_module_span.map(|span| {
+                        sess.downcast_ref::<rustc_session::Session>()
+                            .expect("expected a `Session`")
+                            .source_map()
+                            .guess_head_span(span)
+                    });
+
+                    errors::UnusedImports {
+                        sugg,
+                        test_module_span,
+                        num_snippets: span_snippets.len(),
+                        span_snippets: DiagArgValue::StrListSepByAnd(
+                            span_snippets.into_iter().map(Cow::Owned).collect(),
+                        ),
+                    }
+                    .into_diag(dcx, level)
                 },
             );
         }

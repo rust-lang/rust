@@ -17,7 +17,7 @@ use tracing::debug;
 
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
-use crate::{DecorateBuiltinLint, DiagAndSess};
+use crate::{DecorateAttrLint, DiagAndSess};
 
 pub(super) mod diagnostics;
 
@@ -42,10 +42,10 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
                     self.context.opt_span_lint(
                         lint_id.lint,
                         span,
-                        DecorateBuiltinLint {
+                        DecorateAttrLint {
                             sess: self.context.sess(),
                             tcx: self.tcx,
-                            diagnostic: b,
+                            diagnostic: &b,
                         },
                     );
                 }

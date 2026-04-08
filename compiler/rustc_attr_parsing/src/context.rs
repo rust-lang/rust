@@ -747,8 +747,8 @@ where
 
     /// An error that should be emitted when a [`MetaItemOrLitParser`](crate::parser::MetaItemOrLitParser)
     /// was expected *not* to be a literal, but instead a meta item.
-    pub(crate) fn unexpected_literal(&mut self, span: Span) -> ErrorGuaranteed {
-        self.emit_parse_error(span, AttributeParseErrorReason::UnexpectedLiteral)
+    pub(crate) fn expected_not_literal(&mut self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNotLiteral)
     }
 
     pub(crate) fn expected_single_argument(&mut self, span: Span) -> ErrorGuaranteed {
