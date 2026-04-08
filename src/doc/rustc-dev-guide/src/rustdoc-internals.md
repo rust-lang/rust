@@ -109,15 +109,14 @@ Here is the list of passes as of <!-- date-check --> March 2023:
   flag.
 
 - `check-doc-test-visibility` runs `doctest` visibility–related `lint`s.
-  This pass
-  runs before `strip-private`, which is why it needs to be separate from `run-lints`.
+  This pass runs before `strip-private`,
+  which is why it needs to be separate from `run-lints`.
 
 - `collect-intra-doc-links` resolves [intra-doc links](https://doc.rust-lang.org/nightly/rustdoc/write-documentation/linking-to-items-by-name.html).
 
 - `collect-trait-impls` collects `trait` `impl`s for each item in the crate.
-  For
-  example, if we define a `struct` that implements a `trait`, this pass will note
-  that the `struct` implements that `trait`.
+  For example, if we define a `struct` that implements a `trait`,
+  this pass will note that the `struct` implements that `trait`.
 
 - `propagate-doc-cfg` propagates `#[doc(cfg(...))]` to child items.
 
