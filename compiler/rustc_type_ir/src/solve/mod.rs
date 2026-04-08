@@ -4,7 +4,7 @@ use std::hash::Hash;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable, HashStable_NoContext};
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
@@ -25,7 +25,7 @@ pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 pub type QueryResult<I> = Result<CanonicalResponse<I>, NoSolution>;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(HashStable))]
 pub struct NoSolution;
 
 /// A goal is a statement, i.e. `predicate`, we want to prove
@@ -67,7 +67,7 @@ impl<I: Interner, P> Goal<I, P> {
 ///
 /// It is also used by proof tree visitors, e.g. for diagnostics purposes.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(HashStable))]
 pub enum GoalSource {
     Misc,
     /// A nested goal required to prove that types are equal/subtypes.
@@ -217,10 +217,7 @@ pub enum AliasBoundKind {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(HashStable_NoContext, Encodable_NoContext, Decodable_NoContext)
-)]
+#[cfg_attr(feature = "nightly", derive(HashStable, Encodable_NoContext, Decodable_NoContext))]
 pub enum BuiltinImplSource {
     /// A built-in impl that is considered trivial, without any nested requirements. They
     /// are preferred over where-clauses, and we want to track them explicitly.
@@ -286,7 +283,7 @@ impl<I: Interner> NestedNormalizationGoals<I> {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(HashStable))]
 pub enum Certainty {
     Yes,
     Maybe { cause: MaybeCause, opaque_types_jank: OpaqueTypesJank },
@@ -321,7 +318,7 @@ pub enum Certainty {
 /// a goal. It is good enough for now and only matters for very rare type inference
 /// edge cases. We can improve this later on if necessary.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(HashStable))]
 pub enum OpaqueTypesJank {
     AllGood,
     ErrorIfRigidSelfTy,
@@ -391,7 +388,7 @@ impl Certainty {
 
 /// Why we failed to evaluate a goal.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(HashStable))]
 pub enum MaybeCause {
     /// We failed due to ambiguity. This ambiguity can either
     /// be a true ambiguity, i.e. there are multiple different answers,
@@ -464,7 +461,7 @@ pub enum AdtDestructorKind {
 /// Which sizedness trait - `Sized`, `MetaSized`? `PointeeSized` is omitted as it is removed during
 /// lowering.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(HashStable))]
 pub enum SizedTraitKind {
     /// `Sized` trait
     Sized,

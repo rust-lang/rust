@@ -2,7 +2,7 @@ use std::fmt;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable, HashStable_NoContext};
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::{self as ty, Interner};
@@ -114,10 +114,7 @@ pub enum PredicateKind<I: Interner> {
 impl<I: Interner> Eq for PredicateKind<I> {}
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(HashStable_NoContext, Encodable_NoContext, Decodable_NoContext)
-)]
+#[cfg_attr(feature = "nightly", derive(HashStable, Encodable_NoContext, Decodable_NoContext))]
 pub enum AliasRelationDirection {
     Equate,
     Subtype,

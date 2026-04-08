@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable};
 
 use crate::fingerprint::Fingerprint;
 
@@ -20,7 +20,7 @@ use crate::fingerprint::Fingerprint;
     Encodable_NoContext,
     Decodable_NoContext,
     Hash,
-    HashStable_NoContext
+    HashStable
 )]
 pub struct Svh {
     hash: Fingerprint,
