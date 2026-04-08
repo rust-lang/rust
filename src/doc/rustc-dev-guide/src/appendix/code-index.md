@@ -1,9 +1,8 @@
 # Code Index
 
 rustc has a lot of important data structures.
-This is an attempt to give some
-guidance on where to learn more about some of the key data structures of the
-compiler.
+This is an attempt to give some guidance on where to learn more
+about some of the key data structures of the compiler.
 
 Item            |  Kind    | Short description           | Chapter            | Declaration
 ----------------|----------|-----------------------------|--------------------|-------------------
