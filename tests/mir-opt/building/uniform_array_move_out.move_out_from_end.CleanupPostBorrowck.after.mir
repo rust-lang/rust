@@ -26,12 +26,12 @@ fn move_out_from_end() -> () {
 
     bb2: {
         _1 = [move _2, move _3];
-        drop(_3) -> [return: bb3, unwind: bb8];
+        goto -> bb3;
     }
 
     bb3: {
         StorageDead(_3);
-        drop(_2) -> [return: bb4, unwind: bb9];
+        goto -> bb4;
     }
 
     bb4: {

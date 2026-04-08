@@ -13,7 +13,7 @@
       }
   
       bb1: {
-          _1 = Box::<Box<u32>>::new(move _2) -> [return: bb2, unwind: bb4];
+          _1 = Box::<Box<u32>>::new(move _2) -> [return: bb2, unwind continue];
       }
   
       bb2: {
@@ -25,14 +25,6 @@
           StorageDead(_1);
           _0 = const ();
           return;
-      }
-  
-      bb4 (cleanup): {
-          drop(_2) -> [return: bb5, unwind terminate(cleanup)];
-      }
-  
-      bb5 (cleanup): {
-          resume;
       }
   }
   

@@ -54,7 +54,7 @@ fn box_new(_1: T) -> Box<[T; 1024]> {
     bb3: {
         StorageDead(_9);
         StorageDead(_3);
-        drop(_2) -> [return: bb4, unwind: bb7];
+        goto -> bb4;
     }
 
     bb4: {
@@ -63,7 +63,7 @@ fn box_new(_1: T) -> Box<[T; 1024]> {
     }
 
     bb5 (cleanup): {
-        drop(_9) -> [return: bb6, unwind terminate(cleanup)];
+        goto -> bb6;
     }
 
     bb6 (cleanup): {

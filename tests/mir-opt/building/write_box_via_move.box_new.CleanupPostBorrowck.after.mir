@@ -26,7 +26,7 @@ fn box_new(_1: T) -> Box<[T; 1024]> {
         ((((*_4).1: std::mem::ManuallyDrop<[T; 1024]>).0: std::mem::MaybeDangling<[T; 1024]>).0: [T; 1024]) = [move _5; 1024];
         StorageDead(_5);
         _3 = move _4;
-        drop(_4) -> [return: bb2, unwind: bb5];
+        goto -> bb2;
     }
 
     bb2: {
@@ -36,7 +36,7 @@ fn box_new(_1: T) -> Box<[T; 1024]> {
 
     bb3: {
         StorageDead(_3);
-        drop(_2) -> [return: bb4, unwind: bb7];
+        goto -> bb4;
     }
 
     bb4: {
@@ -49,7 +49,7 @@ fn box_new(_1: T) -> Box<[T; 1024]> {
     }
 
     bb6 (cleanup): {
-        drop(_2) -> [return: bb7, unwind terminate(cleanup)];
+        goto -> bb7;
     }
 
     bb7 (cleanup): {

@@ -487,13 +487,16 @@ fn mir_promoted(
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 
-fn mir_post_borrowck_cleanup(
-    tcx: TyCtxt<'_>,
-    def: LocalDefId,
-) -> &Steal<Body<'_>> {
+fn mir_post_borrowck_cleanup(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.borrow().clone();
-    remove_dead_drops::RemoveDeadDrops.run_pass(tcx, &mut body);
+    pm::run_passes(
+        tcx,
+        &mut body,
+        &[&remove_dead_drops::RemoveDeadDrops],
+        None,
+        pm::Optimizations::Allowed,
+    );
     tcx.alloc_steal_mir(body)
 }
 
