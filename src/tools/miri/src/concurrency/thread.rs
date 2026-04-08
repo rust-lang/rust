@@ -18,6 +18,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::Os;
 
 use crate::concurrency::GlobalDataRaceHandler;
+use crate::concurrency::blocking_io::InterestReason;
 use crate::shims::tls;
 use crate::*;
 
@@ -822,7 +823,14 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             Err(e) => panic!("unexpected error while polling: {e}"),
         };
 
-        ready.into_iter().try_for_each(|thread_id| this.unblock_thread(thread_id, BlockReason::IO))
+        ready.into_iter().try_for_each(|(reason, source_id)| {
+            match reason {
+                InterestReason::ThreadBlocked(thread_id) => {
+                    this.machine.blocking_io.deregister(source_id, reason);
+                    this.unblock_thread(thread_id, BlockReason::IO)
+                }
+            }
+        })
     }
 
     /// Find all threads with expired timeouts, unblock them and execute their timeout callbacks.

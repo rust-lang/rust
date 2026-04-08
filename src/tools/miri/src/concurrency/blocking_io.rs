@@ -5,6 +5,7 @@ use mio::event::Source;
 use mio::{Events, Interest, Poll, Token};
 use rustc_data_structures::fx::FxHashMap;
 
+use crate::shims::FdId;
 use crate::*;
 
 /// Capacity of the event queue which can be polled at a time.
@@ -16,6 +17,17 @@ const IO_EVENT_CAPACITY: usize = 16;
 pub trait WithSource {
     /// Invoke `f` on the source inside `self`.
     fn with_source(&self, f: &mut dyn FnMut(&mut dyn Source) -> io::Result<()>) -> io::Result<()>;
+
+    /// Unique identifier of the file description to which the
+    /// source belongs.
+    fn id(&self) -> FdId;
+}
+
+#[derive(Debug, Hash, PartialEq, Clone, Copy, Eq, PartialOrd, Ord)]
+pub enum InterestReason {
+    /// A thread is blocked on this source and wants to get unblocked
+    /// when the interest on the source is fulfilled.
+    ThreadBlocked(ThreadId),
 }
 
 /// Manager for managing blocking host I/O in a non-blocking manner.
@@ -34,9 +46,9 @@ pub struct BlockingIoManager {
     /// This is not part of the state and only stored to avoid allocating a
     /// new buffer for every poll.
     events: Events,
-    /// Map between threads which are currently blocked and the
-    /// underlying I/O source.
-    sources: FxHashMap<ThreadId, Box<dyn WithSource>>,
+    /// Map from source ids to the actual sources and the registered interests for
+    /// every source.
+    sources: FxHashMap<FdId, (Box<dyn WithSource>, FxHashMap<InterestReason, Interest>)>,
 }
 
 impl BlockingIoManager {
@@ -59,8 +71,12 @@ impl BlockingIoManager {
     ///   specified duration.
     /// - If the timeout is [`None`] the poll blocks indefinitely until an event occurs.
     ///
-    /// Returns all threads that are ready because they received an I/O event.
-    pub fn poll(&mut self, timeout: Option<Duration>) -> Result<Vec<ThreadId>, io::Error> {
+    /// Returns all interest reasons which are fulfilled through an I/O event together with the
+    /// sources they are registered for.
+    pub fn poll(
+        &mut self,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<(InterestReason, FdId)>, io::Error> {
         let poll =
             self.poll.as_mut().expect("Blocking I/O should not be called with isolation enabled");
 
@@ -70,54 +86,135 @@ impl BlockingIoManager {
         let ready = self
             .events
             .iter()
-            .map(|event| {
+            .flat_map(|event| {
                 let token = event.token();
-                ThreadId::new_unchecked(token.0.try_into().unwrap())
+                let fd_id = FdId::new_unchecked(token.0);
+                let (_, interests) = self.sources.get(&fd_id).expect("Source should be registered");
+                interests
+                    .iter()
+                    .filter(|(_, interest)| {
+                        // Only retain interests of the source which are fulfilled by
+                        // the current event.
+                        (event.is_readable() && interest.is_readable())
+                            || (event.is_writable() && interest.is_writable())
+                            || (event.is_aio() && interest.is_aio())
+                            || (event.is_lio() && interest.is_lio())
+                            || (event.is_priority() && interest.is_priority())
+                    })
+                    .map(move |(reason, _)| (*reason, fd_id))
             })
             .collect::<Vec<_>>();
-
-        // Deregister all ready sources as we only want to receive one event per thread.
-        ready.iter().for_each(|thread_id| self.deregister(*thread_id));
 
         Ok(ready)
     }
 
-    /// Register a blocking I/O source for a thread together with it's poll interests.
-    ///
-    /// The source will be deregistered automatically once an event for it is received.
+    /// Register an interest for a blocking I/O source.
     ///
     /// As the OS can always produce spurious wake-ups, it's the callers responsibility to
     /// verify the requested I/O interests are really ready and to register again if they're not.
-    pub fn register(&mut self, source: Box<dyn WithSource>, thread: ThreadId, interests: Interest) {
+    ///
+    /// It's assumed that no interest is already registered for this source with the same reason!
+    pub fn register(
+        &mut self,
+        source: Box<dyn WithSource>,
+        reason: InterestReason,
+        interest: Interest,
+    ) {
         let poll =
             self.poll.as_ref().expect("Blocking I/O should not be called with isolation enabled");
 
-        let token = Token(thread.to_u32().to_usize());
+        let id = source.id();
+        let token = Token(id.to_usize());
 
-        // Treat errors from registering as fatal. On UNIX hosts this can only
-        // fail due to system resource errors (e.g. ENOMEM or ENOSPC).
-        source
-            .with_source(&mut |source| source.register(poll.registry(), token, interests))
-            .unwrap();
-        self.sources
-            .try_insert(thread, source)
-            .unwrap_or_else(|_| panic!("A thread cannot be registered twice at the same time"));
-    }
+        let Some((_, current_interests)) = self.sources.get_mut(&id) else {
+            // Treat errors from registering as fatal. On UNIX hosts this can only
+            // fail due to system resource errors (e.g. ENOMEM or ENOSPC).
+            source
+                .with_source(&mut |source| source.register(poll.registry(), token, interest))
+                .unwrap();
 
-    /// Deregister the event source for a thread. Returns the kind of I/O the thread was
-    /// blocked on.
-    fn deregister(&mut self, thread: ThreadId) {
-        let poll =
-            self.poll.as_ref().expect("Blocking I/O should not be called with isolation enabled");
-
-        let Some(source) = self.sources.remove(&thread) else {
-            panic!("Attempt to deregister a token which isn't registered")
+            self.sources.insert(id, (source, FxHashMap::from_iter([(reason, interest)])));
+            return;
         };
 
-        // Treat errors from deregistering as fatal. On UNIX hosts this can only
+        // The source is already registered. We need to check whether we need to
+        // reregister because the provided interest contains new interests for the source.
+
+        let old_interest =
+            interest_union(current_interests).expect("Source should contain at least one interest");
+
+        current_interests
+            .try_insert(reason, interest)
+            .unwrap_or_else(|_| panic!("Interest reason should be unique"));
+
+        let new_interest = old_interest.add(interest);
+        if new_interest == old_interest {
+            // The overall interests in the source did not change and thus we
+            // don't need to reregister the source.
+            return;
+        }
+
+        // The overall interests in the source changed. We need to reregister
+        // the source with the updated interests.
+
+        // Treat errors from reregistering as fatal. On UNIX hosts this can only
         // fail due to system resource errors (e.g. ENOMEM or ENOSPC).
-        source.with_source(&mut |source| source.deregister(poll.registry())).unwrap();
+        source
+            .with_source(&mut |source| source.reregister(poll.registry(), token, new_interest))
+            .unwrap();
     }
+
+    /// Deregister an interest from a blocking I/O source.
+    ///
+    /// The source and the interest on this source are assumed to be registered!
+    pub fn deregister(&mut self, source_id: FdId, reason: InterestReason) {
+        let poll =
+            self.poll.as_ref().expect("Blocking I/O should not be called with isolation enabled");
+
+        let token = Token(source_id.to_usize());
+        let (source, current_interests) =
+            self.sources.get_mut(&source_id).expect("Source should be registered");
+        let old_interest =
+            interest_union(current_interests).expect("Source should contain at least one interest");
+
+        current_interests
+            .remove(&reason)
+            .unwrap_or_else(|| panic!("Interest reason should be registered for source"));
+
+        let Some(new_interest) = interest_union(current_interests) else {
+            // There are no longer any interests in this source.
+            // We can thus deregister the source from the poll.
+
+            // Treat errors from deregistering as fatal. On UNIX hosts this can only
+            // fail due to system resource errors (e.g. ENOMEM or ENOSPC).
+            source.with_source(&mut |source| source.deregister(poll.registry())).unwrap();
+            self.sources.remove(&source_id);
+            return;
+        };
+
+        if new_interest == old_interest {
+            // The overall interests in the source did not change and thus we
+            // don't need to reregister the source.
+            return;
+        }
+
+        // The overall interests in the source changed. We need to reregister
+        // the source with the updated interests.
+
+        // Treat errors from reregistering as fatal. On UNIX hosts this can only
+        // fail due to system resource errors (e.g. ENOMEM or ENOSPC).
+        source
+            .with_source(&mut |source| source.reregister(poll.registry(), token, new_interest))
+            .unwrap();
+    }
+}
+
+/// Get the union of all interests for a source.
+fn interest_union(interests: &FxHashMap<InterestReason, Interest>) -> Option<Interest> {
+    interests
+        .values()
+        .copied()
+        .fold(None, |acc, interest| acc.map(|acc: Interest| acc.add(interest)).or(Some(interest)))
 }
 
 impl<'tcx> EvalContextExt<'tcx> for MiriInterpCx<'tcx> {}
@@ -140,7 +237,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.machine.blocking_io.register(
             Box::new(source),
-            this.machine.threads.active_thread(),
+            InterestReason::ThreadBlocked(this.machine.threads.active_thread()),
             interests,
         );
         this.block_thread(BlockReason::IO, timeout, callback);

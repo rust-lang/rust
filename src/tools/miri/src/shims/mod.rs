@@ -23,7 +23,7 @@ pub mod time;
 pub mod tls;
 pub mod unwind;
 
-pub use self::files::FdTable;
+pub use self::files::{FdId, FdTable};
 #[cfg(all(feature = "native-lib", unix))]
 pub use self::native_lib::trace::{init_sv, register_retcode_sv};
 pub use self::unix::{DirTable, EpollInterestTable};

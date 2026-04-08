@@ -1398,4 +1398,8 @@ impl WithSource for FileDescriptionRef<Socket> {
             _ => unreachable!(),
         }
     }
+
+    fn id(&self) -> FdId {
+        self.id()
+    }
 }
