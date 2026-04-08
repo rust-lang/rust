@@ -1960,6 +1960,47 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn trait_(
+        &self,
+        is_unsafe: bool,
+        ident: &str,
+        generic_param_list: Option<ast::GenericParamList>,
+        where_clause: Option<ast::WhereClause>,
+        assoc_items: ast::AssocItemList,
+    ) -> ast::Trait {
+        let ast = make::trait_(
+            is_unsafe,
+            ident,
+            generic_param_list.clone(),
+            where_clause.clone(),
+            assoc_items.clone(),
+        )
+        .clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(generic_param_list) = generic_param_list {
+                builder.map_node(
+                    generic_param_list.syntax().clone(),
+                    ast.generic_param_list().unwrap().syntax().clone(),
+                );
+            }
+            if let Some(where_clause) = where_clause {
+                builder.map_node(
+                    where_clause.syntax().clone(),
+                    ast.where_clause().unwrap().syntax().clone(),
+                );
+            }
+            builder.map_node(
+                assoc_items.syntax().clone(),
+                ast.assoc_item_list().unwrap().syntax().clone(),
+            );
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn ret_type(&self, ty: ast::Type) -> ast::RetType {
         let ast = make::ret_type(ty.clone()).clone_for_update();
 
