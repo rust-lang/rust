@@ -38,7 +38,7 @@ impl AttributeKind {
             Deprecated { .. } => Yes,
             DoNotRecommend { .. } => Yes,
             Doc(_) => Yes,
-            DocComment { .. } => Yes,
+            DocComment { .. } => No,
             EiiDeclaration(_) => Yes,
             EiiImpls(..) => No,
             ExportName { .. } => Yes,
