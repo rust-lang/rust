@@ -11,10 +11,12 @@ This is unfortunately quite difficult, as we may use a different candidate for n
 See [alias-bound vs where-bound](https://rustc-dev-guide.rust-lang.org/solve/candidate-preference.html#we-always-consider-aliasbound-candidates) and [global where-bound vs impl](https://rustc-dev-guide.rust-lang.org/solve/candidate-preference.html#we-prefer-global-where-bounds-over-impls).
 
 There are also some other subtle reasons for why we can't do so.
-The most stupid is that for rigid aliases, trying to normalize them does not consider any lifetime constraints from proving the trait bound.
+The most stupid is that for rigid aliases;
+trying to normalize them does not consider any lifetime constraints from proving the trait bound.
 This is necessary due to a lack of assumptions on binders - https://github.com/rust-lang/trait-system-refactor-initiative/issues/177 - and should be fixed longterm.
 
-A separate issue is that right now, fetching the `type_of` associated types for `Trait` goals or in shadowed `Projection` candidates can cause query cycles for RPITIT.
+A separate issue is that, right now,
+fetching the `type_of` associated types for `Trait` goals or in shadowed `Projection` candidates can cause query cycles for RPITIT.
 See https://github.com/rust-lang/trait-system-refactor-initiative/issues/185.
 
 There are also slight differences between candidates for some of the builtin impls, these do all seem generally undesirable and I consider them to be bugs which would be fixed if we had a unified approach here.
@@ -41,4 +43,3 @@ trait Trait<'a>: Super<'a, A = i32> {}
 // how to elaborate
 // T: Trait<'a> + for<'b> Super<'b, B = u32>
 ```
-
