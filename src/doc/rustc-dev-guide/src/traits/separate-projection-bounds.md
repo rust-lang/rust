@@ -21,7 +21,9 @@ See https://github.com/rust-lang/trait-system-refactor-initiative/issues/185.
 
 There are also slight differences between candidates for some of the builtin impls, these do all seem generally undesirable and I consider them to be bugs which would be fixed if we had a unified approach here.
 
-Finally, not having this split makes lowering where-clauses more annoying. With the current system having duplicate where-clauses is not an issue and it can easily happen when elaborating super trait bounds. We now need to make sure we merge all associated type constraints, e.g.
+Finally, not having this split makes lowering where-clauses more annoying.
+With the current system having duplicate where-clauses is not an issue and it can easily happen when elaborating super trait bounds.
+We now need to make sure we merge all associated type constraints, e.g.:
 
 ```rust
 trait Super {
