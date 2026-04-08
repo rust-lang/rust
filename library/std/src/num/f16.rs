@@ -608,6 +608,7 @@ impl f16 {
     #[doc(alias = "sincos")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[must_use]
     pub fn sin_cos(self) -> (f16, f16) {
         (self.sin(), self.cos())
     }

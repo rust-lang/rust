@@ -723,6 +723,7 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    #[must_use]
     pub const fn classify(self) -> FpCategory {
         // We used to have complicated logic here that avoids the simple bit-based tests to work
         // around buggy codegen for x87 targets (see
@@ -822,6 +823,7 @@ impl f32 {
     #[doc(alias = "nextUp")]
     #[stable(feature = "float_next_up_down", since = "1.86.0")]
     #[rustc_const_stable(feature = "float_next_up_down", since = "1.86.0")]
+    #[must_use]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -873,6 +875,7 @@ impl f32 {
     #[doc(alias = "nextDown")]
     #[stable(feature = "float_next_up_down", since = "1.86.0")]
     #[rustc_const_stable(feature = "float_next_up_down", since = "1.86.0")]
+    #[must_use]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -1089,6 +1092,8 @@ impl f32 {
     #[doc(alias = "average")]
     #[stable(feature = "num_midpoint", since = "1.85.0")]
     #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     pub const fn midpoint(self, other: f32) -> f32 {
         cfg_select! {
             // Allow faster implementation that have known good 64-bit float
