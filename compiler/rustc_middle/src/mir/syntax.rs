@@ -753,7 +753,7 @@ pub enum TerminatorKind<'tcx> {
     ///
     /// After drop elaboration: `Drop` terminators are a complete nop for types that have no drop
     /// glue. For other types, `Drop` terminators behave exactly like a call to
-    /// `core::mem::drop_in_place` with a pointer to the given place.
+    /// `core::mem::drop_glue` with a reference to the given place.
     ///
     /// `Drop` before drop elaboration is a *conditional* execution of the drop glue. Specifically,
     /// the `Drop` will be executed if...
