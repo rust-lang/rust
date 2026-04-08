@@ -102,16 +102,17 @@ LL |     mut_foo;
 LL |     ret;
    |     --- borrow later used here
 
-error[E0382]: use of moved value: `rc_foo`
+error[E0382]: the type `Rc` does not implement `Copy`
   --> $DIR/move-fn-self-receiver.rs:55:5
    |
 LL |     let rc_foo = Rc::new(Foo);
-   |         ------ move occurs because `rc_foo` has type `Rc<Foo>`, which does not implement the `Copy` trait
+   |         ------ this move could be avoided by cloning the original `Rc`, which is inexpensive
 LL |     rc_foo.use_rc_self();
    |            ------------- `rc_foo` moved due to this method call
 LL |     rc_foo;
    |     ^^^^^^ value used here after move
    |
+   = note: consider using `Rc::clone`
 note: `Foo::use_rc_self` takes ownership of the receiver `self`, which moves `rc_foo`
   --> $DIR/move-fn-self-receiver.rs:16:20
    |

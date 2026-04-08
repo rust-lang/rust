@@ -1022,7 +1022,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     if opaque_sub_vid == ty_sub_vid {
                         return Some(ty::AliasTy::new_from_args(
                             self.tcx,
-                            key.def_id.into(),
+                            ty::Opaque { def_id: key.def_id.into() },
                             key.args,
                         ));
                     }

@@ -28,7 +28,8 @@ begingroup "Building Miri"
 export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--locked"
-export CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT=true
+# FIXME: disabled since it causes libstd build failures
+#export CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT=true
 
 # Determine configuration for installed build (used by test-cargo-miri and `./miri bench`).
 # We use the default set of features for this.

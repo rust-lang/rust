@@ -327,30 +327,6 @@ pub(crate) struct InvalidMayDangle {
 }
 
 #[derive(Diagnostic)]
-#[diag("unused attribute")]
-pub(crate) struct UnusedDuplicate {
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
-    pub this: Span,
-    #[note("attribute also specified here")]
-    pub other: Span,
-    #[warning(
-        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-    )]
-    pub warning: bool,
-}
-
-#[derive(Diagnostic)]
-#[diag("multiple `{$name}` attributes")]
-pub(crate) struct UnusedMultiple {
-    #[primary_span]
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
-    pub this: Span,
-    #[note("attribute also specified here")]
-    pub other: Span,
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("this `#[deprecated]` annotation has no effect")]
 pub(crate) struct DeprecatedAnnotationHasNoEffect {
     #[suggestion(

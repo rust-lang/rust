@@ -1900,7 +1900,7 @@ fn check_must_not_suspend_ty<'tcx>(
         }
         ty::Adt(def, _) => check_must_not_suspend_def(tcx, def.did(), hir_id, data),
         // FIXME: support adding the attribute to TAITs
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
+        ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: def }, .. }) => {
             let mut has_emitted = false;
             for &(predicate, _) in tcx.explicit_item_bounds(def).skip_binder() {
                 // We only look at the `DefId`, so it is safe to skip the binder here.

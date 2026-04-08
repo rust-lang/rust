@@ -1,5 +1,5 @@
 error[E0080]: evaluation panicked: explicit panic
-  --> $DIR/def-site-eval.rs:13:20
+  --> $DIR/def-site-eval.rs:32:20
    |
 LL | const _<'_a>: () = panic!();
    |                    ^^^^^^^^ evaluation of `_` failed here

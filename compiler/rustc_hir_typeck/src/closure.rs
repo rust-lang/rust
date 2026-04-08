@@ -305,7 +305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_kind: hir::ClosureKind,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => self
                 .deduce_closure_signature_from_predicates(
                     expected_ty,
                     closure_kind,
@@ -1017,14 +1017,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     get_future_output(obligation.predicate, obligation.cause.span)
                 })?
             }
-            ty::Alias(ty::Projection, _) => {
+            ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                 return Some(Ty::new_error_with_message(
                     self.tcx,
                     closure_span,
                     "this projection should have been projected to an opaque type",
                 ));
             }
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => self
                 .tcx
                 .explicit_item_self_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)

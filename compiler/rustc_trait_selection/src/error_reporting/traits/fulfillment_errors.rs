@@ -882,7 +882,35 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let trait_name = self.tcx.item_name(trait_did);
 
             if self.tcx.is_const_trait(trait_did) && !self.tcx.is_const_trait_impl(impl_did) {
-                if let Some(impl_did) = impl_did.as_local()
+                if !impl_did.is_local() {
+                    diag.span_note(
+                        impl_span,
+                        format!("trait `{trait_name}` is implemented but not `const`"),
+                    );
+                }
+
+                if let Some(command) =
+                    find_attr!(self.tcx, impl_did, OnConst {directive, ..} => directive.as_deref())
+                        .flatten()
+                {
+                    let (_, format_args) = self.on_unimplemented_components(
+                        trait_ref,
+                        main_obligation,
+                        diag.long_ty_path(),
+                    );
+                    let CustomDiagnostic { message, label, notes, parent_label: _ } =
+                        command.eval(None, &format_args);
+
+                    if let Some(message) = message {
+                        diag.primary_message(message);
+                    }
+                    if let Some(label) = label {
+                        diag.span_label(span, label);
+                    }
+                    for note in notes {
+                        diag.note(note);
+                    }
+                } else if let Some(impl_did) = impl_did.as_local()
                     && let item = self.tcx.hir_expect_item(impl_did)
                     && let hir::ItemKind::Impl(item) = item.kind
                     && let Some(of_trait) = item.of_trait
@@ -894,43 +922,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         "const ".to_string(),
                         Applicability::MaybeIncorrect,
                     );
-                } else {
-                    diag.span_note(
-                        impl_span,
-                        format!("trait `{trait_name}` is implemented but not `const`"),
-                    );
-
-                    let (condition_options, format_args) = self.on_unimplemented_components(
-                        trait_ref,
-                        main_obligation,
-                        diag.long_ty_path(),
-                    );
-
-                    if let Some(command) = find_attr!(self.tcx, impl_did, OnConst {directive, ..} => directive.as_deref()).flatten(){
-                        let note = command.eval(
-                            Some(&condition_options),
-                            &format_args,
-                        );
-                        let CustomDiagnostic {
-                            message,
-                            label,
-                            notes,
-                            parent_label,
-                        } = note;
-
-                        if let Some(message) = message {
-                            diag.primary_message(message);
-                        }
-                        if let Some(label) = label {
-                            diag.span_label(impl_span, label);
-                        }
-                        for note in notes {
-                            diag.note(note);
-                        }
-                        if let Some(parent_label) = parent_label {
-                            diag.span_label(impl_span, parent_label);
-                        }
-                    }
                 }
             }
         }
@@ -1876,10 +1867,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Closure(..) => Some(9),
                 ty::Tuple(..) => Some(10),
                 ty::Param(..) => Some(11),
-                ty::Alias(ty::Projection, ..) => Some(12),
-                ty::Alias(ty::Inherent, ..) => Some(13),
-                ty::Alias(ty::Opaque, ..) => Some(14),
-                ty::Alias(ty::Free, ..) => Some(15),
+                ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }) => Some(12),
+                ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => Some(13),
+                ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => Some(14),
+                ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) => Some(15),
                 ty::Never => Some(16),
                 ty::Adt(..) => Some(17),
                 ty::Coroutine(..) => Some(18),
