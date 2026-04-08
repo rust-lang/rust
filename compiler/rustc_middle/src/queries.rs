@@ -672,6 +672,11 @@ rustc_queries! {
         desc { "promoting constants in MIR for `{}`", tcx.def_path_str(key) }
     }
 
+    query mir_post_borrowck_cleanup(key: LocalDefId) -> &'tcx Steal<mir::Body<'tcx>> {
+        no_hash
+        desc { "post borrowck cleanup of MIR for `{}`", tcx.def_path_str(key) }
+    }
+
     query closure_typeinfo(key: LocalDefId) -> ty::ClosureTypeInfo<'tcx> {
         desc {
             "finding symbols for captures of closure `{}`",
