@@ -16,7 +16,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     AstNode, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
-    ast::{self, edit::IndentLevel, make},
+    ast::{self, edit::IndentLevel, syntax_factory::SyntaxFactory},
 };
 
 mod edit_algo;
@@ -104,22 +104,28 @@ impl SyntaxEditor {
         self.changes.push(Change::InsertAll(position, elements))
     }
 
-    pub fn insert_with_whitespace(&mut self, position: Position, element: impl Element) {
-        self.insert_all_with_whitespace(position, vec![element.syntax_element()])
+    pub fn insert_with_whitespace(
+        &mut self,
+        position: Position,
+        element: impl Element,
+        factory: &SyntaxFactory,
+    ) {
+        self.insert_all_with_whitespace(position, vec![element.syntax_element()], factory)
     }
 
     pub fn insert_all_with_whitespace(
         &mut self,
         position: Position,
         mut elements: Vec<SyntaxElement>,
+        factory: &SyntaxFactory,
     ) {
         if let Some(first) = elements.first()
-            && let Some(ws) = ws_before(&position, first)
+            && let Some(ws) = ws_before(&position, first, factory)
         {
             elements.insert(0, ws.into());
         }
         if let Some(last) = elements.last()
-            && let Some(ws) = ws_after(&position, last)
+            && let Some(ws) = ws_after(&position, last, factory)
         {
             elements.push(ws.into());
         }
@@ -437,7 +443,11 @@ impl Element for SyntaxToken {
     }
 }
 
-fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
+fn ws_before(
+    position: &Position,
+    new: &SyntaxElement,
+    factory: &SyntaxFactory,
+) -> Option<SyntaxToken> {
     let prev = match &position.repr {
         PositionRepr::FirstChild(_) => return None,
         PositionRepr::After(it) => it,
@@ -449,7 +459,7 @@ fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
     {
         let mut indent = IndentLevel::from_element(&item_list.syntax().clone().into());
         indent.0 += 1;
-        return Some(make::tokens::whitespace(&format!("\n{indent}")));
+        return Some(factory.whitespace(&format!("\n{indent}")));
     }
 
     if prev.kind() == T!['{']
@@ -458,21 +468,29 @@ fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
     {
         let mut indent = IndentLevel::from_element(&stmt_list.syntax().clone().into());
         indent.0 += 1;
-        return Some(make::tokens::whitespace(&format!("\n{indent}")));
+        return Some(factory.whitespace(&format!("\n{indent}")));
     }
 
-    ws_between(prev, new)
+    ws_between(prev, new, factory)
 }
 
-fn ws_after(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
+fn ws_after(
+    position: &Position,
+    new: &SyntaxElement,
+    factory: &SyntaxFactory,
+) -> Option<SyntaxToken> {
     let next = match &position.repr {
         PositionRepr::FirstChild(parent) => parent.first_child_or_token()?,
         PositionRepr::After(sibling) => sibling.next_sibling_or_token()?,
     };
-    ws_between(new, &next)
+    ws_between(new, &next, factory)
 }
 
-fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken> {
+fn ws_between(
+    left: &SyntaxElement,
+    right: &SyntaxElement,
+    factory: &SyntaxFactory,
+) -> Option<SyntaxToken> {
     if left.kind() == SyntaxKind::WHITESPACE || right.kind() == SyntaxKind::WHITESPACE {
         return None;
     }
@@ -493,16 +511,16 @@ fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken
         if left.kind() == SyntaxKind::USE {
             indent.0 = IndentLevel::from_element(right).0.max(indent.0);
         }
-        return Some(make::tokens::whitespace(&format!("\n{indent}")));
+        return Some(factory.whitespace(&format!("\n{indent}")));
     }
     if left.kind() == SyntaxKind::ATTR {
         let mut indent = IndentLevel::from_element(right);
         if right.kind() == SyntaxKind::ATTR {
             indent.0 = IndentLevel::from_element(left).0.max(indent.0);
         }
-        return Some(make::tokens::whitespace(&format!("\n{indent}")));
+        return Some(factory.whitespace(&format!("\n{indent}")));
     }
-    Some(make::tokens::single_space())
+    Some(factory.whitespace(" "))
 }
 
 fn is_ancestor_or_self(node: &SyntaxNode, ancestor: &SyntaxNode) -> bool {
