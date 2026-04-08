@@ -83,7 +83,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
             ArgParser::List(list) => {
                 for param in list.mixed() {
                     let Some(param) = param.meta_item() else {
-                        cx.adcx().unexpected_literal(param.span());
+                        cx.adcx().expected_not_literal(param.span());
                         return None;
                     };
 

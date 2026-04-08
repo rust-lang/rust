@@ -93,7 +93,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
         let mut import_name_type = None;
         for item in items.mixed() {
             let Some(item) = item.meta_item() else {
-                cx.adcx().unexpected_literal(item.span());
+                cx.adcx().expected_not_literal(item.span());
                 continue;
             };
 
