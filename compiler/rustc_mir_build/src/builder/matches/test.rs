@@ -44,10 +44,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TestKind::ScalarEq { value }
             }
 
-            TestableCase::Range(ref range) => {
-                assert_eq!(range.ty, match_pair.pattern_ty);
-                TestKind::Range(Arc::clone(range))
-            }
+            TestableCase::Range(ref range) => TestKind::Range(Arc::clone(range)),
 
             TestableCase::Slice { len, op } => TestKind::SliceLen { len, op },
 
