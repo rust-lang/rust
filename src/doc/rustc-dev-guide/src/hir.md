@@ -96,10 +96,9 @@ The HIR uses a bunch of different identifiers that coexist and serve different p
   only local definitions are passed to functions that expect a local definition.
 
 - A [`HirId`] uniquely identifies a node in the HIR of the current crate.
-  It is composed
-  of two parts: an `owner` and a `local_id` that is unique within the `owner`.
-  This
-  combination makes for more stable values which are helpful for incremental compilation.
+  It is composed of two parts:
+  an `owner` and a `local_id` that is unique within the `owner`.
+  This combination makes for more stable values which are helpful for incremental compilation.
   Unlike [`DefId`]s, a [`HirId`] can refer to [fine-grained entities][Node] like expressions,
   but stays local to the current crate.
 
