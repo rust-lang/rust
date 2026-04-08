@@ -91,7 +91,7 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
 }
 
 pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, fn_sig_span: Span) {
-    if fn_sig.abi == ExternAbi::Custom {
+    if fn_sig.abi() == ExternAbi::Custom {
         // Function definitions that use `extern "custom"` must be naked functions.
         if !find_attr!(tcx, def_id, Naked(_)) {
             tcx.dcx().emit_err(crate::errors::AbiCustomClothedFunction {

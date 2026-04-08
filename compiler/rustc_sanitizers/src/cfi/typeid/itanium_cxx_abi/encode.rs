@@ -183,7 +183,7 @@ fn encode_fnsig<'tcx>(
 
     let mut encode_ty_options = EncodeTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("encode_fnsig: invalid option(s) `{:?}`", options.bits()));
-    match fn_sig.abi {
+    match fn_sig.abi() {
         ExternAbi::C { .. } => {
             encode_ty_options.insert(EncodeTyOptions::GENERALIZE_REPR_C);
         }
@@ -207,10 +207,10 @@ fn encode_fnsig<'tcx>(
             s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
         }
 
-        if fn_sig.c_variadic {
+        if fn_sig.c_variadic() {
             s.push('z');
         }
-    } else if fn_sig.c_variadic {
+    } else if fn_sig.c_variadic() {
         s.push('z');
     } else {
         // Empty parameter lists, whether declared as () or conventionally as (void), are

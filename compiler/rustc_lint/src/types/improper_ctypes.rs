@@ -816,7 +816,7 @@ impl<'tcx> ImproperCTypesLint {
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if let ty::FnPtr(_, hdr) = ty.kind()
-                    && !hdr.abi.is_rustic_abi()
+                    && !hdr.abi().is_rustic_abi()
                 {
                     self.tys.push(ty);
                 }

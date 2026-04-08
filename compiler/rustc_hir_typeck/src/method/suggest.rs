@@ -4366,7 +4366,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         _ => false,
                                     };
 
-                                    if !fn_sig.decl.implicit_self.has_implicit_self()
+                                    if !fn_sig.decl.implicit_self().has_implicit_self()
                                         && self_first_arg
                                     {
                                         if let Some(ty) = fn_sig.decl.inputs.get(0) {

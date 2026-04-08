@@ -39,13 +39,7 @@ fn fn_sig_for_fn_abi<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
 ) -> ty::FnSig<'tcx> {
     if let InstanceKind::ThreadLocalShim(..) = instance.def {
-        return tcx.mk_fn_sig(
-            [],
-            tcx.thread_local_ptr_ty(instance.def_id()),
-            false,
-            hir::Safety::Safe,
-            rustc_abi::ExternAbi::Rust,
-        );
+        return tcx.mk_fn_sig_safe_rust_abi([], tcx.thread_local_ptr_ty(instance.def_id()));
     }
 
     let ty = instance.ty(tcx, typing_env);
@@ -74,9 +68,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             tcx.mk_fn_sig(
                 iter::once(env_ty).chain(sig.inputs().iter().cloned()),
                 sig.output(),
-                sig.c_variadic,
-                sig.safety,
-                sig.abi,
+                sig.fn_sig_kind,
             )
         }
         ty::CoroutineClosure(def_id, args) => {
@@ -119,9 +111,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     args.as_coroutine_closure().tupled_upvars_ty(),
                     args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
                 ),
-                sig.c_variadic,
-                sig.safety,
-                sig.abi,
+                sig.fn_sig_kind,
             )
         }
         ty::Coroutine(did, args) => {
@@ -224,22 +214,10 @@ fn fn_sig_for_fn_abi<'tcx>(
             };
 
             if let Some(resume_ty) = resume_ty {
-                tcx.mk_fn_sig(
-                    [env_ty, resume_ty],
-                    ret_ty,
-                    false,
-                    hir::Safety::Safe,
-                    rustc_abi::ExternAbi::Rust,
-                )
+                tcx.mk_fn_sig_safe_rust_abi([env_ty, resume_ty], ret_ty)
             } else {
                 // `Iterator::next` doesn't have a `resume` argument.
-                tcx.mk_fn_sig(
-                    [env_ty],
-                    ret_ty,
-                    false,
-                    hir::Safety::Safe,
-                    rustc_abi::ExternAbi::Rust,
-                )
+                tcx.mk_fn_sig_safe_rust_abi([env_ty], ret_ty)
             }
         }
         _ => bug!("unexpected type {:?} in Instance::fn_sig", ty),
@@ -334,7 +312,7 @@ fn fn_abi_of_instance_raw<'tcx>(
         // If the function's body can be used to deduce parameter attributes, then adjust such
         // "no deduced attrs" ABI; otherwise, return that ABI unadjusted.
         params.determined_fn_def_id.map_or(fn_abi, |fn_def_id| {
-            fn_abi_adjust_for_deduced_attrs(&params.layout_cx, fn_abi, params.sig.abi, fn_def_id)
+            fn_abi_adjust_for_deduced_attrs(&params.layout_cx, fn_abi, params.sig.abi(), fn_def_id)
         })
     })
 }
@@ -567,11 +545,11 @@ fn fn_abi_new_uncached<'tcx>(
     let tcx = cx.tcx();
 
     let abi_map = AbiMap::from_target(&tcx.sess.target);
-    let conv = abi_map.canonize_abi(sig.abi, sig.c_variadic).unwrap();
+    let conv = abi_map.canonize_abi(sig.abi(), sig.c_variadic()).unwrap();
 
     let mut inputs = sig.inputs();
-    let extra_args = if sig.abi == ExternAbi::RustCall {
-        assert!(!sig.c_variadic && extra_args.is_empty());
+    let extra_args = if sig.abi() == ExternAbi::RustCall {
+        assert!(!sig.c_variadic() && extra_args.is_empty());
 
         if let Some(input) = sig.inputs().last()
             && let ty::Tuple(tupled_arguments) = input.kind()
@@ -585,7 +563,7 @@ fn fn_abi_new_uncached<'tcx>(
             );
         }
     } else {
-        assert!(sig.c_variadic || extra_args.is_empty());
+        assert!(sig.c_variadic() || extra_args.is_empty());
         extra_args
     };
 
@@ -638,7 +616,7 @@ fn fn_abi_new_uncached<'tcx>(
             .enumerate()
             .map(|(i, ty)| arg_of(ty, Some(i)))
             .collect::<Result<_, _>>()?,
-        c_variadic: sig.c_variadic,
+        c_variadic: sig.c_variadic(),
         fixed_count: inputs.len() as u32,
         conv,
         // FIXME return false for tls shim
@@ -646,12 +624,12 @@ fn fn_abi_new_uncached<'tcx>(
             tcx,
             // Since `#[rustc_nounwind]` can change unwinding, we cannot infer unwinding by `fn_def_id` for a virtual call.
             determined_fn_def_id,
-            sig.abi,
+            sig.abi(),
         ),
     };
-    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi);
+    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi());
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
-    fn_abi_sanity_check(cx, &fn_abi, sig.abi);
+    fn_abi_sanity_check(cx, &fn_abi, sig.abi());
     Ok(tcx.arena.alloc(fn_abi))
 }
 

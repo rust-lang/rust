@@ -493,7 +493,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         for (_, node) in self.infcx.tcx.hir_parent_iter(upvar_hir_id) {
                             if let Some(fn_decl) = node.fn_decl() {
                                 if !matches!(
-                                    fn_decl.implicit_self,
+                                    fn_decl.implicit_self(),
                                     hir::ImplicitSelfKind::RefImm | hir::ImplicitSelfKind::RefMut
                                 ) {
                                     err.span_suggestion_verbose(
@@ -810,7 +810,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     && let Some(ty) = sig.decl.inputs.get(local.index() - 1)
                     && let hir::TyKind::Ref(_, mut_ty) = ty.kind
                     && let hir::Mutability::Not = mut_ty.mutbl
-                    && sig.decl.implicit_self.has_implicit_self()
+                    && sig.decl.implicit_self().has_implicit_self()
                 {
                     Some(ty.span)
                 } else {
@@ -1147,7 +1147,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     arg_pos
                         .and_then(|pos| {
                             sig.decl.inputs.get(
-                                pos + if sig.decl.implicit_self.has_implicit_self() {
+                                pos + if sig.decl.implicit_self().has_implicit_self() {
                                     1
                                 } else {
                                     0

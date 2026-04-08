@@ -131,6 +131,29 @@ macro_rules! abi_impls {
                     $($e_name::$variant $( { unwind: $uw } )* => $tok,)*
                 }
             }
+            // ALL_VARIANTS.iter().position(|v| v == self), but const
+            // FIXME(FnSigKind): when PartialEq is stably const, use it instead
+            const fn internal_const_eq(&self, other: &Self) -> bool {
+                match (self, other) {
+                    $( ( $e_name::$variant $( { unwind: $uw } )* , $e_name::$variant $( { unwind: $uw } )* ) => true,)*
+                    _ => false,
+                }
+            }
+            pub const fn as_packed(&self) -> u8 {
+                let mut index = 0;
+                while index < $e_name::ALL_VARIANTS.len() {
+                    if self.internal_const_eq(&$e_name::ALL_VARIANTS[index]) {
+                        return index as u8;
+                    }
+                    index += 1;
+                }
+                panic!("unreachable: invalid ExternAbi variant");
+            }
+            pub const fn from_packed(index: u8) -> Self {
+                let index = index as usize;
+                assert!(index < $e_name::ALL_VARIANTS.len(), "invalid ExternAbi index");
+                $e_name::ALL_VARIANTS[index]
+            }
         }
 
         impl ::core::str::FromStr for $e_name {

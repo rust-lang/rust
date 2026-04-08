@@ -551,10 +551,10 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 let sig = sig_tys.with(hdr);
                 self.push("F");
                 self.wrap_binder(&sig, |p, sig| {
-                    if sig.safety.is_unsafe() {
+                    if sig.safety().is_unsafe() {
                         p.push("U");
                     }
-                    match sig.abi {
+                    match sig.abi() {
                         ExternAbi::Rust => {}
                         ExternAbi::C { unwind: false } => p.push("KC"),
                         abi => {
@@ -570,7 +570,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                     for &ty in sig.inputs() {
                         ty.print(p)?;
                     }
-                    if sig.c_variadic {
+                    if sig.c_variadic() {
                         p.push("v");
                     }
                     p.push("E");

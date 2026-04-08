@@ -1831,7 +1831,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         // as they are not explicit in HIR/Ty function signatures.
         // (instead, the `c_variadic` flag is set to `true`)
         let mut inputs = &decl.inputs[..];
-        if c_variadic {
+        if decl.c_variadic() {
             inputs = &inputs[..inputs.len() - 1];
         }
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
@@ -1894,12 +1894,8 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             },
         };
 
-        self.arena.alloc(hir::FnDecl {
-            inputs,
-            output,
-            c_variadic,
-            lifetime_elision_allowed: self.resolver.lifetime_elision_allowed(fn_node_id),
-            implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
+        let fn_decl_kind = hir::FnDeclFlags::default()
+            .set_implicit_self(decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
                 let is_mutable_pat = matches!(
                     arg.pat.kind,
                     PatKind::Ident(hir::BindingMode(_, Mutability::Mut), ..)
@@ -1921,8 +1917,11 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     }
                     _ => hir::ImplicitSelfKind::None,
                 }
-            }),
-        })
+            }))
+            .set_lifetime_elision_allowed(self.resolver.lifetime_elision_allowed(fn_node_id))
+            .set_c_variadic(c_variadic);
+
+        self.arena.alloc(hir::FnDecl { inputs, output, fn_decl_kind })
     }
 
     // Transforms `-> T` for `async fn` into `-> OpaqueTy { .. }`

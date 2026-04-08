@@ -1172,7 +1172,7 @@ fn clean_fn_decl_with_params<'tcx>(
     {
         output = output.sugared_async_return_type();
     }
-    FnDecl { inputs: params, output, c_variadic: decl.c_variadic }
+    FnDecl { inputs: params, output, c_variadic: decl.c_variadic() }
 }
 
 fn clean_poly_fn_sig<'tcx>(
@@ -1210,7 +1210,7 @@ fn clean_poly_fn_sig<'tcx>(
         })
         .collect();
 
-    FnDecl { inputs: params, output, c_variadic: sig.skip_binder().c_variadic }
+    FnDecl { inputs: params, output, c_variadic: sig.skip_binder().c_variadic() }
 }
 
 fn clean_trait_ref<'tcx>(trait_ref: &hir::TraitRef<'tcx>, cx: &mut DocContext<'tcx>) -> Path {

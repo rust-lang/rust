@@ -25,7 +25,7 @@ use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParamKind, HirId,
-    Item, ItemKind, MethodKind, Node, ParamName, Safety, Target, TraitItem, find_attr,
+    Item, ItemKind, MethodKind, Node, ParamName, Target, TraitItem, find_attr,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -1671,7 +1671,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         }
 
-        let expected_sig = tcx.mk_fn_sig(
+        let expected_sig = tcx.mk_fn_sig_safe_rust_abi(
             std::iter::repeat_n(
                 token_stream,
                 match kind {
@@ -1680,9 +1680,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 },
             ),
             token_stream,
-            false,
-            Safety::Safe,
-            ExternAbi::Rust,
         );
 
         if let Err(terr) = ocx.eq(&cause, param_env, expected_sig, sig) {

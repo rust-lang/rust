@@ -2344,21 +2344,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let inputs = trait_ref.args.type_at(1);
             let sig = match inputs.kind() {
                 ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id) => {
-                    infcx.tcx.mk_fn_sig(
-                        *inputs,
-                        infcx.next_ty_var(DUMMY_SP),
-                        false,
-                        hir::Safety::Safe,
-                        ExternAbi::Rust,
-                    )
+                    infcx.tcx.mk_fn_sig_safe_rust_abi(*inputs, infcx.next_ty_var(DUMMY_SP))
                 }
-                _ => infcx.tcx.mk_fn_sig(
-                    [inputs],
-                    infcx.next_ty_var(DUMMY_SP),
-                    false,
-                    hir::Safety::Safe,
-                    ExternAbi::Rust,
-                ),
+                _ => infcx.tcx.mk_fn_sig_safe_rust_abi([inputs], infcx.next_ty_var(DUMMY_SP)),
             };
 
             Ty::new_fn_ptr(infcx.tcx, ty::Binder::dummy(sig))
@@ -4669,11 +4657,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let [self_ty, found_ty] = trait_ref.args.as_slice()
             && let Some(fn_ty) = self_ty.as_type().filter(|ty| ty.is_fn())
             && let fn_sig @ ty::FnSig {
-                abi: ExternAbi::Rust,
-                c_variadic: false,
-                safety: hir::Safety::Safe,
                 ..
             } = fn_ty.fn_sig(tcx).skip_binder()
+            && fn_sig.abi() == ExternAbi::Rust
+            && !fn_sig.c_variadic()
+            && fn_sig.safety() == hir::Safety::Safe
 
             // Extract first param of fn sig with peeled refs, e.g. `fn(&T)` -> `T`
             && let Some(&ty::Ref(_, target_ty, needs_mut)) = fn_sig.inputs().first().map(|t| t.kind())

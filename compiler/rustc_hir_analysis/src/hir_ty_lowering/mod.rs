@@ -38,8 +38,9 @@ use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
-    self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput, Ty, TyCtxt,
-    TypeSuperFoldable, TypeVisitableExt, TypingMode, Upcast, const_lit_matches_ty, fold_regions,
+    self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
+    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Upcast, const_lit_matches_ty,
+    fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
@@ -3578,7 +3579,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         debug!(?output_ty);
 
-        let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, safety, abi);
+        let fn_sig_kind = FnSigKind::default()
+            .set_abi(abi)
+            .set_safe(safety.is_safe())
+            .set_c_variadic(decl.fn_decl_kind.c_variadic());
+        let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, fn_sig_kind);
         let fn_ptr_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
         if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(fn_ptr_ty), span, .. }) =

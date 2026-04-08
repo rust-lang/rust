@@ -154,19 +154,19 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
     ) -> RelateResult<I, ty::FnSig<I>> {
         let cx = relation.cx();
 
-        if a.c_variadic != b.c_variadic {
+        if a.c_variadic() != b.c_variadic() {
             return Err(TypeError::VariadicMismatch(ExpectedFound::new(
-                a.c_variadic,
-                b.c_variadic,
+                a.c_variadic(),
+                b.c_variadic(),
             )));
         }
 
-        if a.safety != b.safety {
-            return Err(TypeError::SafetyMismatch(ExpectedFound::new(a.safety, b.safety)));
+        if a.safety() != b.safety() {
+            return Err(TypeError::SafetyMismatch(ExpectedFound::new(a.safety(), b.safety())));
         }
 
-        if a.abi != b.abi {
-            return Err(TypeError::AbiMismatch(ExpectedFound::new(a.abi, b.abi)));
+        if a.abi() != b.abi() {
+            return Err(TypeError::AbiMismatch(ExpectedFound::new(a.abi(), b.abi())));
         };
 
         let a_inputs = a.inputs();
@@ -202,9 +202,7 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
             });
         Ok(ty::FnSig {
             inputs_and_output: cx.mk_type_list_from_iter(inputs_and_output)?,
-            c_variadic: a.c_variadic,
-            safety: a.safety,
-            abi: a.abi,
+            fn_sig_kind: a.fn_sig_kind,
         })
     }
 }
