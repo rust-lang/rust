@@ -329,19 +329,29 @@ const fn hex_digit(c: u8) -> Option<u8> {
 mod hex_fmt {
     use core::fmt;
 
-    use crate::support::Float;
+    use crate::support::{Float, div_ceil_u32};
 
     // Adapted from https://github.com/ericseppanen/hexfloat2/blob/a5c27932f0ff/src/format.rs
     pub(super) fn fmt_any_hex<F: Float>(x: &F, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if x.is_sign_negative() {
             write!(f, "-")?;
+        } else {
+            write!(f, "+")?;
         }
 
-        if x.is_snan() {
-            return write!(f, "sNaN");
-        } else if x.is_nan() {
-            return write!(f, "qNaN");
-        } else if x.is_infinite() {
+        if x.is_nan() {
+            if x.is_snan() {
+                write!(f, "sNaN")?;
+            } else if x.is_nan() {
+                write!(f, "qNaN")?;
+            }
+            let payload = x.frac() & !F::SIG_TOP_BIT;
+            let width = div_ceil_u32(F::SIG_BITS, 4) as usize + 2;
+            write!(f, "({payload:#0width$x})")?;
+            return Ok(());
+        }
+
+        if x.is_infinite() {
             return write!(f, "inf");
         } else if *x == F::ZERO {
             return write!(f, "0x0p+0");
@@ -478,7 +488,8 @@ mod hex_fmt {
 #[cfg(test)]
 mod parse_tests {
     extern crate std;
-    use std::string::String;
+
+    use std::string::{String, ToString};
     use std::{format, println};
 
     use super::*;
@@ -528,13 +539,17 @@ mod parse_tests {
         Ok(())
     }
 
+    /// Strip the qNaN/sNaN and payload since we don't parse that.
     #[cfg_attr(not(f16_enabled), expect(unused))]
-    pub fn canonicalize_snan_str(s: String) -> String {
+    pub fn canonicalize_snan_str(mut s: String) -> String {
         if s.contains("sNaN") || s.contains("qNaN") {
-            s.replace("sNaN", "NaN").replace("qNaN", "NaN")
-        } else {
-            s
+            s = s.replace("sNaN", "NaN").replace("qNaN", "NaN");
+            if let Some((nan, payload)) = s.split_once("(") {
+                assert!(payload.ends_with(")"));
+                s = nan.to_string();
+            }
         }
+        s
     }
 
     #[test]
@@ -1141,46 +1156,55 @@ mod print_tests {
     }
     #[test]
     fn spot_checks() {
-        assert_eq!(Hex(f32::MAX).to_string(), "0x1.fffffep+127");
-        assert_eq!(Hex(f64::MAX).to_string(), "0x1.fffffffffffffp+1023");
+        assert_eq!(Hex(f32::MAX).to_string(), "+0x1.fffffep+127");
+        assert_eq!(Hex(f64::MAX).to_string(), "+0x1.fffffffffffffp+1023");
 
         assert_eq!(Hex(f32::MIN).to_string(), "-0x1.fffffep+127");
         assert_eq!(Hex(f64::MIN).to_string(), "-0x1.fffffffffffffp+1023");
 
-        assert_eq!(Hex(f32::ZERO).to_string(), "0x0p+0");
-        assert_eq!(Hex(f64::ZERO).to_string(), "0x0p+0");
+        assert_eq!(Hex(f32::ZERO).to_string(), "+0x0p+0");
+        assert_eq!(Hex(f64::ZERO).to_string(), "+0x0p+0");
 
         assert_eq!(Hex(f32::NEG_ZERO).to_string(), "-0x0p+0");
         assert_eq!(Hex(f64::NEG_ZERO).to_string(), "-0x0p+0");
 
-        assert_eq!(Hex(f32::NAN).to_string(), "qNaN");
-        assert_eq!(Hex(f64::NAN).to_string(), "qNaN");
-        assert_eq!(Hex(f32::NEG_NAN).to_string(), "-qNaN");
-        assert_eq!(Hex(f64::NEG_NAN).to_string(), "-qNaN");
+        assert_eq!(Hex(f32::NAN).to_string(), "+qNaN(0x000000)");
+        assert_eq!(Hex(f64::NAN).to_string(), "+qNaN(0x0000000000000)");
+        assert_eq!(Hex(f32::NEG_NAN).to_string(), "-qNaN(0x000000)");
+        assert_eq!(Hex(f64::NEG_NAN).to_string(), "-qNaN(0x0000000000000)");
         if !cfg!(x86_no_sse2) {
             // FIXME(rust-lang/rust#115567): calls quiet the sNaN
-            assert_eq!(Hex(f32::SNAN).to_string(), "sNaN");
-            assert_eq!(Hex(f64::SNAN).to_string(), "sNaN");
-            assert_eq!(Hex(f32::NEG_SNAN).to_string(), "-sNaN");
-            assert_eq!(Hex(f64::NEG_SNAN).to_string(), "-sNaN");
+            assert_eq!(Hex(f32::SNAN).to_string(), "+sNaN(0x200000)");
+            assert_eq!(Hex(f64::SNAN).to_string(), "+sNaN(0x4000000000000)");
+            assert_eq!(Hex(f32::NEG_SNAN).to_string(), "-sNaN(0x200000)");
+            assert_eq!(Hex(f64::NEG_SNAN).to_string(), "-sNaN(0x4000000000000)");
+            assert_eq!(Hex(f32::from_bits(u32::MAX)).to_string(), "-qNaN(0x3fffff)");
+            assert_eq!(
+                Hex(f64::from_bits(u64::MAX)).to_string(),
+                "-qNaN(0x7ffffffffffff)"
+            );
         }
 
-        assert_eq!(Hex(f32::INFINITY).to_string(), "inf");
-        assert_eq!(Hex(f64::INFINITY).to_string(), "inf");
+        assert_eq!(Hex(f32::INFINITY).to_string(), "+inf");
+        assert_eq!(Hex(f64::INFINITY).to_string(), "+inf");
 
         assert_eq!(Hex(f32::NEG_INFINITY).to_string(), "-inf");
         assert_eq!(Hex(f64::NEG_INFINITY).to_string(), "-inf");
 
         #[cfg(f16_enabled)]
         {
-            assert_eq!(Hex(f16::MAX).to_string(), "0x1.ffcp+15");
+            assert_eq!(Hex(f16::MAX).to_string(), "+0x1.ffcp+15");
             assert_eq!(Hex(f16::MIN).to_string(), "-0x1.ffcp+15");
-            assert_eq!(Hex(f16::ZERO).to_string(), "0x0p+0");
+            assert_eq!(Hex(f16::ZERO).to_string(), "+0x0p+0");
             assert_eq!(Hex(f16::NEG_ZERO).to_string(), "-0x0p+0");
-            assert_eq!(Hex(f16::NAN).to_string(), "qNaN");
-            assert_eq!(Hex(f16::SNAN).to_string(), "sNaN");
-            assert_eq!(Hex(f16::NEG_NAN).to_string(), "-qNaN");
-            assert_eq!(Hex(f16::INFINITY).to_string(), "inf");
+
+            assert_eq!(Hex(f16::NAN).to_string(), "+qNaN(0x000)");
+            assert_eq!(Hex(f16::SNAN).to_string(), "+sNaN(0x100)");
+            assert_eq!(Hex(f16::NEG_NAN).to_string(), "-qNaN(0x000)");
+            assert_eq!(Hex(f16::NEG_SNAN).to_string(), "-sNaN(0x100)");
+            assert_eq!(Hex(f16::from_bits(u16::MAX)).to_string(), "-qNaN(0x1ff)");
+
+            assert_eq!(Hex(f16::INFINITY).to_string(), "+inf");
             assert_eq!(Hex(f16::NEG_INFINITY).to_string(), "-inf");
         }
 
@@ -1188,18 +1212,37 @@ mod print_tests {
         {
             assert_eq!(
                 Hex(f128::MAX).to_string(),
-                "0x1.ffffffffffffffffffffffffffffp+16383"
+                "+0x1.ffffffffffffffffffffffffffffp+16383"
             );
             assert_eq!(
                 Hex(f128::MIN).to_string(),
                 "-0x1.ffffffffffffffffffffffffffffp+16383"
             );
-            assert_eq!(Hex(f128::ZERO).to_string(), "0x0p+0");
+            assert_eq!(Hex(f128::ZERO).to_string(), "+0x0p+0");
             assert_eq!(Hex(f128::NEG_ZERO).to_string(), "-0x0p+0");
-            assert_eq!(Hex(f128::NAN).to_string(), "qNaN");
-            assert_eq!(Hex(f128::SNAN).to_string(), "sNaN");
-            assert_eq!(Hex(f128::NEG_NAN).to_string(), "-qNaN");
-            assert_eq!(Hex(f128::INFINITY).to_string(), "inf");
+
+            assert_eq!(
+                Hex(f128::NAN).to_string(),
+                "+qNaN(0x0000000000000000000000000000)"
+            );
+            assert_eq!(
+                Hex(f128::SNAN).to_string(),
+                "+sNaN(0x4000000000000000000000000000)"
+            );
+            assert_eq!(
+                Hex(f128::NEG_NAN).to_string(),
+                "-qNaN(0x0000000000000000000000000000)"
+            );
+            assert_eq!(
+                Hex(f128::NEG_SNAN).to_string(),
+                "-sNaN(0x4000000000000000000000000000)"
+            );
+            assert_eq!(
+                Hex(f128::from_bits(u128::MAX)).to_string(),
+                "-qNaN(0x7fffffffffffffffffffffffffff)"
+            );
+
+            assert_eq!(Hex(f128::INFINITY).to_string(), "+inf");
             assert_eq!(Hex(f128::NEG_INFINITY).to_string(), "-inf");
         }
     }

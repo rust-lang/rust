@@ -68,3 +68,10 @@ pub unsafe fn unchecked_div_isize(x: isize, y: isize) -> isize {
         }
     }
 }
+
+// FIXME(msrv): `div_ceil` is stablein 1.73.
+pub fn div_ceil_u32(a: u32, b: u32) -> u32 {
+    let d = a / b;
+    let r = a % b;
+    if r > 0 { d + 1 } else { d }
+}
