@@ -41,16 +41,14 @@ We’ll dig more into generics and substitutions in a little bit.
 For every type defined in the source code, there is a unique `DefId` (see [this
 chapter](../hir.md#identifiers-in-the-hir)).
 This includes ADTs and generics.
-In the `MyStruct<T>`
-definition we gave above, there are two `DefId`s: one for `MyStruct` and one for `T`.
- Notice that
-the code above does not generate a new `DefId` for `u32` because it is not defined in that code (it
-is only referenced).
+In the `MyStruct<T>` definition we gave above,
+there are two `DefId`s: one for `MyStruct` and one for `T`.
+Notice that the code above does not generate a new `DefId` for `u32`
+because it is not defined in that code (it is only referenced).
 
 `AdtDef` is more or less a wrapper around `DefId` with lots of useful helper methods.
 There is essentially a one-to-one relationship between `AdtDef` and `DefId`.
-You can get the `AdtDef` for a
-`DefId` with the [`tcx.adt_def(def_id)` query][adtdefq].
+You can get the `AdtDef` for a `DefId` with the [`tcx.adt_def(def_id)` query][adtdefq].
 `AdtDef`s are all interned, as shown by the `'tcx` lifetime.
 
 [adtdefq]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.adt_def
