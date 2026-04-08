@@ -953,7 +953,7 @@ You can match on the following names and values, using `name = "value"`:
    Only `"MainFunctionType"` is supported.
  - `from_desugaring`: Match against a particular variant of the `DesugaringKind` enum.
    The desugaring is identified by its variant name, for example
-   `"QuestionMark"` for `?` desugaring or `"TryBlock"` for `try` blocks.
+   `"QuestionMark"` for `?` desugaring, or `"TryBlock"` for `try` blocks.
  - `Self` and any generic arguments of the trait, like `Self = "alloc::string::String"`
    or `Rhs="i32"`.
 
