@@ -455,12 +455,6 @@ impl<'tcx> InterPat<'tcx> {
             }
 
             PatKind::Guard { ref subpattern, condition } => {
-                if extra_data.scope.is_none()
-                    && let Some(ref extra) = pattern.extra
-                {
-                    extra_data.scope = extra.scope
-                }
-
                 MatchPairTree::for_pattern(place_builder, subpattern, cx, match_pairs, extra_data);
                 extra_data.guard_patterns.push(super::OrderedPatternData::One(condition));
                 return;

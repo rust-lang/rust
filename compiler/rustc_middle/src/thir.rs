@@ -658,9 +658,6 @@ pub struct PatExtra<'tcx> {
     /// User-written types that must be preserved into MIR so that they can be
     /// checked.
     pub ascriptions: Vec<Ascription<'tcx>>,
-
-    #[type_visitable(ignore)]
-    pub scope: Option<region::Scope>,
 }
 
 #[derive(Clone, Debug, StableHash, TypeVisitable)]

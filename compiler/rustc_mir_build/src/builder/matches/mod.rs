@@ -969,9 +969,6 @@ struct PatternExtraData<'tcx> {
 
     /// [`ExprId`]s of subpattern conditions
     guard_patterns: Vec<OrderedPatternData<ExprId>>,
-
-    /// Scope of this sub-branch
-    scope: Option<Scope>,
 }
 
 impl<'tcx> PatternExtraData<'tcx> {
@@ -1021,7 +1018,6 @@ impl<'tcx> FlatPat<'tcx> {
             ascriptions: Vec::new(),
             is_never: pattern.is_never_pattern(),
             guard_patterns: Vec::new(),
-            scope: None,
         };
         MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
 
@@ -1436,8 +1432,6 @@ struct MatchTreeSubBranch<'tcx> {
     guard_patterns: Vec<ExprId>,
     /// Whether the sub-branch corresponds to a never pattern.
     is_never: bool,
-    /// Scope of this sub-branch; used mostly by guard patterns
-    scope: Option<Scope>,
 }
 
 /// A branch in the output of match lowering.
@@ -1495,7 +1489,6 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
                 &candidate.extra_data.guard_patterns,
             ),
             is_never: candidate.extra_data.is_never,
-            scope: candidate.extra_data.scope,
         }
     }
 }
