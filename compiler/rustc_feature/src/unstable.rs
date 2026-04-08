@@ -408,8 +408,6 @@ declare_features! (
     (unstable, cfg_target_compact, "1.63.0", Some(96901)),
     /// Allows `cfg(target_has_atomic_load_store = "...")`.
     (unstable, cfg_target_has_atomic, "1.60.0", Some(94039)),
-    /// Allows `cfg(target_has_atomic_equal_alignment = "...")`.
-    (unstable, cfg_target_has_atomic_equal_alignment, "1.60.0", Some(93822)),
     /// Allows `cfg(target_thread_local)`.
     (unstable, cfg_target_thread_local, "1.7.0", Some(29594)),
     /// Allows the use of `#[cfg(ub_checks)` to check if UB checks are enabled.

@@ -13,7 +13,6 @@
 #![feature(cfg_relocation_model)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
-#![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfg_ub_checks)]
 #![feature(fmt_debug)]
