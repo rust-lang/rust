@@ -25,25 +25,16 @@ LL |     fn method(self: &W) {}
    = note: type of `self` must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
-error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/dispatch-dyn-incompatible-that-does-not-deref.rs:14:5
+error[E0599]: no method named `method` found for reference `&dyn Foo` in the current scope
+  --> $DIR/dispatch-dyn-incompatible-that-does-not-deref.rs:14:7
    |
 LL |     fn method(self: &W) {}
-   |                     -- help: consider changing method `method`'s `self` parameter to be `&self`: `&Self`
+   |                     -- the method might not be found because of this arbitrary self type
 ...
 LL |     x.method();
-   |     ^^^^^^^^^^ `Foo` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/dispatch-dyn-incompatible-that-does-not-deref.rs:8:21
-   |
-LL | trait Foo: Deref<Target = W> {
-   |       --- this trait is not dyn compatible...
-LL |     fn method(self: &W) {}
-   |                     ^^ ...because method `method`'s `self` parameter cannot be dispatched on
+   |       ^^^^^^ method not found in `&dyn Foo`
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0038, E0307.
+Some errors have detailed explanations: E0038, E0307, E0599.
 For more information about an error, try `rustc --explain E0038`.
