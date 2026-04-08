@@ -1957,11 +1957,10 @@ impl Arch {
         use Arch::*;
 
         match self {
-            AArch64 | RiscV32 | RiscV64 => true,
-            AmdGpu | Arm | Arm64EC | Avr | Bpf | CSky | Hexagon | LoongArch32 | LoongArch64
-            | M68k | Mips | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC
-            | PowerPC64 | S390x | Sparc | Sparc64 | SpirV | Wasm32 | Wasm64 | X86 | X86_64
-            | Xtensa | Other(_) => false,
+            Arm64EC | AArch64 | RiscV32 | RiscV64 => true,
+            AmdGpu | Arm | Avr | Bpf | CSky | Hexagon | LoongArch32 | LoongArch64 | M68k | Mips
+            | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC | PowerPC64 | S390x
+            | Sparc | Sparc64 | SpirV | Wasm32 | Wasm64 | X86 | X86_64 | Xtensa | Other(_) => false,
         }
     }
 }
