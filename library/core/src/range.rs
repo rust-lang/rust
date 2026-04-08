@@ -45,10 +45,9 @@ use crate::iter::Step;
 use crate::ops::Bound::{self, Excluded, Included, Unbounded};
 use crate::ops::{IntoBounds, RangeBounds};
 
-/// A (half-open) range bounded inclusively below and exclusively above
-/// (`start..end` in a future edition).
+/// A (half-open) range bounded inclusively below and exclusively above.
 ///
-/// The range `start..end` contains all values with `start <= x < end`.
+/// The `Range` contains all values with `start <= x < end`.
 /// It is empty if `start >= end`.
 ///
 /// # Examples
@@ -60,6 +59,11 @@ use crate::ops::{IntoBounds, RangeBounds};
 /// assert_eq!(Range::from(3..5), Range { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, Range::from(3..6).into_iter().sum());
 /// ```
+///
+/// # Edition notes
+///
+/// It is planned that the syntax `start..end` will construct this
+/// type in a future edition, but it does not do so today.
 #[lang = "RangeCopy"]
 #[derive(Copy, Hash)]
 #[derive_const(Clone, Default, PartialEq, Eq)]
@@ -415,9 +419,9 @@ impl<T> const From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
     }
 }
 
-/// A range only bounded inclusively below (`start..`).
+/// A range only bounded inclusively below.
 ///
-/// The `RangeFrom` `start..` contains all values with `x >= start`.
+/// The `RangeFrom` contains all values with `x >= start`.
 ///
 /// *Note*: Overflow in the [`Iterator`] implementation (when the contained
 /// data type reaches its numerical limit) is allowed to panic, wrap, or
@@ -432,8 +436,6 @@ impl<T> const From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
 ///
 /// # Examples
 ///
-/// The `start..` syntax is a `RangeFrom`:
-///
 /// ```
 /// #![feature(new_range_api)]
 /// use core::range::RangeFrom;
@@ -441,6 +443,11 @@ impl<T> const From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
 /// assert_eq!(RangeFrom::from(2..), core::range::RangeFrom { start: 2 });
 /// assert_eq!(2 + 3 + 4, RangeFrom::from(2..).into_iter().take(3).sum());
 /// ```
+///
+/// # Edition notes
+///
+/// It is planned that the syntax  `start..` will construct this
+/// type in a future edition, but it does not do so today.
 #[lang = "RangeFromCopy"]
 #[derive(Copy, Hash)]
 #[derive_const(Clone, PartialEq, Eq)]
@@ -566,14 +573,12 @@ impl<T> const From<legacy::RangeFrom<T>> for RangeFrom<T> {
     }
 }
 
-/// A range only bounded inclusively above (`..=last`).
+/// A range only bounded inclusively above.
 ///
-/// The `RangeToInclusive` `..=last` contains all values with `x <= last`.
+/// The `RangeToInclusive` contains all values with `x <= last`.
 /// It cannot serve as an [`Iterator`] because it doesn't have a starting point.
 ///
 /// # Examples
-///
-/// The `..=last` syntax is a `RangeToInclusive`:
 ///
 /// ```
 /// #![feature(new_range_api)]
@@ -606,6 +611,11 @@ impl<T> const From<legacy::RangeFrom<T>> for RangeFrom<T> {
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
+///
+/// # Edition notes
+///
+/// It is planned that the syntax  `..=last` will construct this
+/// type in a future edition, but it does not do so today.
 #[lang = "RangeToInclusiveCopy"]
 #[doc(alias = "..=")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
