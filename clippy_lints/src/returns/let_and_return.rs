@@ -19,6 +19,7 @@ pub(super) fn check_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'_>) 
         && let Some(stmt) = block.stmts.last()
         && let StmtKind::Let(local) = &stmt.kind
         && local.ty.is_none()
+        && local.els.is_none()
         && cx.tcx.hir_attrs(local.hir_id).is_empty()
         && let Some(initexpr) = &local.init
         && let PatKind::Binding(_, local_id, _, _) = local.pat.kind
