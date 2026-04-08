@@ -124,38 +124,38 @@ fn parse_output_cargo_config_env_works() {
     .unwrap();
     let config_path = cwd.join(".cargo").join("config.toml");
     let raw = r#"
-env.CARGO_WORKSPACE_DIR.relative = true
-env.CARGO_WORKSPACE_DIR.value = ""
-env.INVALID.relative = "invalidbool"
-env.INVALID.value = "../relative"
-env.RELATIVE.relative = true
-env.RELATIVE.value = "../relative"
-env.TEST.value = "test"
-env.FORCED.value = "test"
-env.FORCED.force = true
-env.UNFORCED.value = "test"
-env.UNFORCED.forced = false
-env.OVERWRITTEN.value = "test"
-env.NOT_AN_OBJECT = "value"
+env.RA_TEST_WORKSPACE_DIR.relative = true
+env.RA_TEST_WORKSPACE_DIR.value = ""
+env.RA_TEST_INVALID.relative = "invalidbool"
+env.RA_TEST_INVALID.value = "../relative"
+env.RA_TEST_RELATIVE.relative = true
+env.RA_TEST_RELATIVE.value = "../relative"
+env.RA_TEST_UNSET.value = "test"
+env.RA_TEST_FORCED.value = "test"
+env.RA_TEST_FORCED.force = true
+env.RA_TEST_UNFORCED.value = "test"
+env.RA_TEST_UNFORCED.forced = false
+env.RA_TEST_OVERWRITTEN.value = "test"
+env.RA_TEST_NOT_AN_OBJECT = "value"
 "#;
     let raw = raw.lines().map(|l| format!("{l} # {config_path}")).join("\n");
     let config = CargoConfigFile::from_string_for_test(raw);
     let extra_env = [
-        ("FORCED", Some("ignored")),
-        ("UNFORCED", Some("newvalue")),
-        ("OVERWRITTEN", Some("newvalue")),
-        ("TEST", None),
+        ("RA_TEST_FORCED", Some("ignored")),
+        ("RA_TEST_UNFORCED", Some("newvalue")),
+        ("RA_TEST_OVERWRITTEN", Some("newvalue")),
+        ("RA_TEST_UNSET", None),
     ]
     .iter()
     .map(|(k, v)| (k.to_string(), v.map(ToString::to_string)))
     .collect();
     let env = cargo_config_env(&Some(config), &extra_env);
-    assert_eq!(env.get("CARGO_WORKSPACE_DIR").as_deref(), Some(cwd.join("").as_str()));
-    assert_eq!(env.get("RELATIVE").as_deref(), Some(cwd.join("../relative").as_str()));
-    assert_eq!(env.get("INVALID").as_deref(), Some("../relative"));
-    assert_eq!(env.get("TEST").as_deref(), Some("test"));
-    assert_eq!(env.get("FORCED").as_deref(), Some("test"));
-    assert_eq!(env.get("UNFORCED").as_deref(), Some("newvalue"));
-    assert_eq!(env.get("OVERWRITTEN").as_deref(), Some("newvalue"));
-    assert_eq!(env.get("NOT_AN_OBJECT").as_deref(), Some("value"));
+    assert_eq!(env.get("RA_TEST_WORKSPACE_DIR").as_deref(), Some(cwd.join("").as_str()));
+    assert_eq!(env.get("RA_TEST_RELATIVE").as_deref(), Some(cwd.join("../relative").as_str()));
+    assert_eq!(env.get("RA_TEST_INVALID").as_deref(), Some("../relative"));
+    assert_eq!(env.get("RA_TEST_UNSET").as_deref(), Some("test"));
+    assert_eq!(env.get("RA_TEST_FORCED").as_deref(), Some("test"));
+    assert_eq!(env.get("RA_TEST_UNFORCED").as_deref(), Some("newvalue"));
+    assert_eq!(env.get("RA_TEST_OVERWRITTEN").as_deref(), Some("newvalue"));
+    assert_eq!(env.get("RA_TEST_NOT_AN_OBJECT").as_deref(), Some("value"));
 }
