@@ -12,7 +12,6 @@ use rustc_ast::{
     self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
     ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TraitAlias, TyAlias,
 };
-use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ResolverExpand;
 use rustc_hir::Attribute;
@@ -1468,15 +1467,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 self.visit_invoc(item.id);
             }
         }
-    }
-
-    pub(crate) fn brg_visit_attribute(&mut self, attr: &'a ast::Attribute) {
-        if !attr.is_doc_comment() && attr::is_builtin_attr(attr) {
-            self.r
-                .builtin_attrs
-                .push((attr.get_normal_item().path.segments[0].ident, self.parent_scope));
-        }
-        visit::walk_attribute(self, attr);
     }
 
     pub(crate) fn brg_visit_field_def(&mut self, sf: &'a ast::FieldDef) {
