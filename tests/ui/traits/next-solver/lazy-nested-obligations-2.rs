@@ -1,8 +1,10 @@
-//@ compile-flags: -Znext-solver
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
-// FIXME(#149379): This fails on the old solver. The next solver used to accept it
-// thanks to lazy normalization, but that behavior regressed when output expectation
-// fudge handling was updated in #149320 and #150316.
+// FIXME(#149379): This was previously accepted by the next-solver, thanks to its
+// lazy normalization. But it started failing after #150316 due to changes in
+// output expectation fudging in #149320 and #150316.
 
 pub trait With {
     type F;
