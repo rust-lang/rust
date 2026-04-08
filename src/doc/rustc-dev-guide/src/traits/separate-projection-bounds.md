@@ -1,16 +1,21 @@
 # Having separate `Trait` and `Projection` bounds
 
-Given `T: Foo<AssocA = u32, AssocB = i32>` where-bound, we currently lower it to a `Trait(Foo<T>)` and separate `Projection(<T as Foo>::AssocA, u32)` and `Projection(<T as Foo>::AssocB, i32)` bounds. Why do we not represent this as a single `Trait(Foo[T], [AssocA = u32, AssocB = u32]` bound instead?
+Given `T: Foo<AssocA = u32, AssocB = i32>` where-bound, we currently lower it to a `Trait(Foo<T>)` and separate `Projection(<T as Foo>::AssocA, u32)` and `Projection(<T as Foo>::AssocB, i32)` bounds.
+Why do we not represent this as a single `Trait(Foo[T], [AssocA = u32, AssocB = u32]` bound instead?
 
 The way we prove `Projection` bounds directly relies on proving the corresponding `Trait` bound: [old solver](https://github.com/rust-lang/rust/blob/461e9738a47e313e4457957fa95ff6a19a4b88d4/compiler/rustc_trait_selection/src/traits/project.rs#L898) [new solver](https://github.com/rust-lang/rust/blob/461e9738a47e313e4457957fa95ff6a19a4b88d4/compiler/rustc_next_trait_solver/src/solve/normalizes_to/mod.rs#L37-L41).
 
 It feels like it might make more sense to just have a single implementation which checks whether a trait is implemented and returns (a way to compute) its associated types.
 
-This is unfortunately quite difficult, as we may use a different candidate for norm than for the corresponding trait bound. See [alias-bound vs where-bound](https://rustc-dev-guide.rust-lang.org/solve/candidate-preference.html#we-always-consider-aliasbound-candidates) and [global where-bound vs impl](https://rustc-dev-guide.rust-lang.org/solve/candidate-preference.html#we-prefer-global-where-bounds-over-impls).
+This is unfortunately quite difficult, as we may use a different candidate for norm than for the corresponding trait bound.
+See [alias-bound vs where-bound](https://rustc-dev-guide.rust-lang.org/solve/candidate-preference.html#we-always-consider-aliasbound-candidates) and [global where-bound vs impl](https://rustc-dev-guide.rust-lang.org/solve/candidate-preference.html#we-prefer-global-where-bounds-over-impls).
 
-There are also some other subtle reasons for why we can't do so. The most stupid is that for rigid aliases, trying to normalize them does not consider any lifetime constraints from proving the trait bound. This is necessary due to a lack of assumptions on binders - https://github.com/rust-lang/trait-system-refactor-initiative/issues/177 - and should be fixed longterm.
+There are also some other subtle reasons for why we can't do so.
+The most stupid is that for rigid aliases, trying to normalize them does not consider any lifetime constraints from proving the trait bound.
+This is necessary due to a lack of assumptions on binders - https://github.com/rust-lang/trait-system-refactor-initiative/issues/177 - and should be fixed longterm.
 
-A separate issue is that right now, fetching the `type_of` associated types for `Trait` goals or in shadowed `Projection` candidates can cause query cycles for RPITIT. See https://github.com/rust-lang/trait-system-refactor-initiative/issues/185.
+A separate issue is that right now, fetching the `type_of` associated types for `Trait` goals or in shadowed `Projection` candidates can cause query cycles for RPITIT.
+See https://github.com/rust-lang/trait-system-refactor-initiative/issues/185.
 
 There are also slight differences between candidates for some of the builtin impls, these do all seem generally undesirable and I consider them to be bugs which would be fixed if we had a unified approach here.
 
