@@ -148,9 +148,9 @@ It should now pass, yay!
 
 Somewhat hand-in-hand with the previous step, you should inspect the `.stderr`
 file that was created to see if it looks like how you expect.
-If you are adding
-a new diagnostic message, now would be a good time to also consider how readable
-the message looks overall, particularly for people new to Rust.
+If you are adding a new diagnostic message,
+now would be a good time to also consider how readable the message looks overall,
+particularly for people new to Rust.
 
 Our example `tests/ui/async-await/await-without-async.stderr` file should look
 like this:
@@ -206,9 +206,8 @@ highlight what is important about it.
 If there is an issue number associated with the test, include the issue number.
 
 This comment doesn't have to be super extensive.
-Just something like "Regression
-test for #18060: match arms were matching in the wrong order." might already be
-enough.
+Just something like the following might be enough:
+"Regression test for #18060: match arms were matching in the wrong order".
 
 These comments are very useful to others later on when your test breaks, since
 they often can highlight what the problem is.
