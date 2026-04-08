@@ -30,7 +30,7 @@ use std::{fmt, iter, mem};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hashes::Hash64;
@@ -1514,7 +1514,7 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl HashStableContex
         });
     }
 
-    ExpnHash::new(hcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(), expn_hash)
+    ExpnHash::new(LOCAL_CRATE.as_def_id().to_stable_hash_key(&mut hcx).stable_crate_id(), expn_hash)
 }
 
 impl<Hcx: HashStableContext> HashStable<Hcx> for SyntaxContext {
