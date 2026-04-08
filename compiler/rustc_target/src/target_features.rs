@@ -2,7 +2,7 @@
 //! Note that these are similar to but not always identical to LLVM's feature names,
 //! and Rust adds some features that do not correspond to LLVM features at all.
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_macros::HashStable_Generic;
+use rustc_macros::HashStable;
 use rustc_span::{Symbol, sym};
 
 use crate::spec::{Arch, FloatAbi, LlvmAbi, RustcAbi, Target};
@@ -12,7 +12,7 @@ use crate::spec::{Arch, FloatAbi, LlvmAbi, RustcAbi, Target};
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
 /// Stability information for target features.
-#[derive(Debug, Copy, Clone, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, HashStable)]
 pub enum Stability {
     /// This target feature is stable, it can be used in `#[target_feature]` and
     /// `#[cfg(target_feature)]`.

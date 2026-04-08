@@ -9,7 +9,7 @@
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
-use rustc_macros::{BlobDecodable, Encodable, HashStable_Generic, PrintAttribute};
+use rustc_macros::{BlobDecodable, Encodable, HashStable, PrintAttribute};
 use rustc_span::{Symbol, kw, sym};
 
 use crate::attrs::PrintAttribute;
@@ -18,7 +18,7 @@ use crate::{MethodKind, Target};
 
 /// All of the lang items, defined or not.
 /// Defined lang items can come from the current crate or its dependencies.
-#[derive(HashStable_Generic, Debug)]
+#[derive(HashStable, Debug)]
 pub struct LanguageItems {
     /// Mappings from lang items to their possibly found [`DefId`]s.
     /// The index corresponds to the order in [`LangItem`].

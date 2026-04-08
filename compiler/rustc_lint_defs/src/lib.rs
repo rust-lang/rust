@@ -9,7 +9,7 @@ use rustc_data_structures::stable_hasher::{
 };
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::{HirId, ItemLocalId};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -177,17 +177,7 @@ impl ToStableHashKey for LintExpectationId {
 ///
 /// See: <https://doc.rust-lang.org/rustc/lints/levels.html>
 #[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    PartialOrd,
-    Eq,
-    Ord,
-    Debug,
-    Hash,
-    Encodable,
-    Decodable,
-    HashStable_Generic
+    Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Encodable, Decodable, HashStable
 )]
 pub enum Level {
     /// The `allow` level will not issue any message.
@@ -652,7 +642,7 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
-#[derive(Debug, HashStable_Generic)]
+#[derive(Debug, HashStable)]
 pub enum AttributeLintKind {
     UnusedDuplicate {
         this: Span,
@@ -764,7 +754,7 @@ pub enum AttributeLintKind {
     OnMoveMalformedAttrExpectedLiteralOrDelimiter,
 }
 
-#[derive(Debug, Clone, HashStable_Generic)]
+#[derive(Debug, Clone, HashStable)]
 pub enum FormatWarning {
     PositionalArgument { span: Span, help: String },
     InvalidSpecifier { name: String, span: Span },
