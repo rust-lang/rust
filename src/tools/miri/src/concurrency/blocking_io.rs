@@ -127,6 +127,8 @@ impl BlockingIoManager {
         let token = Token(id.to_usize());
 
         let Some((_, current_interests)) = self.sources.get_mut(&id) else {
+            // The source is not yet registered.
+
             // Treat errors from registering as fatal. On UNIX hosts this can only
             // fail due to system resource errors (e.g. ENOMEM or ENOSPC).
             source
