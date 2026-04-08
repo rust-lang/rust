@@ -867,7 +867,7 @@ impl<'a> State<'a> {
                     self.print_ident(rename);
                 }
             }
-            ast::UseTreeKind::Glob => {
+            ast::UseTreeKind::Glob(_) => {
                 if !tree.prefix.segments.is_empty() {
                     self.print_path(&tree.prefix, false, 0);
                     self.word("::");

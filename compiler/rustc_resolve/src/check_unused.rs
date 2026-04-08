@@ -294,22 +294,25 @@ fn calc_unused_spans(
 ) -> UnusedSpanResult {
     // The full span is the whole item's span if this current tree is not nested inside another
     // This tells rustfix to remove the whole item if all the imports are unused
-    let full_span = if unused_import.use_tree.span == use_tree.span {
+    let full_span = if unused_import.use_tree.span() == use_tree.span() {
         unused_import.item_span
     } else {
-        use_tree.span
+        use_tree.span()
     };
     match use_tree.kind {
-        ast::UseTreeKind::Simple(..) | ast::UseTreeKind::Glob => {
+        ast::UseTreeKind::Simple(..) | ast::UseTreeKind::Glob(_) => {
             if unused_import.unused.contains(&use_tree_id) {
-                UnusedSpanResult::Unused { spans: vec![use_tree.span], remove: full_span }
+                UnusedSpanResult::Unused { spans: vec![use_tree.span()], remove: full_span }
             } else {
                 UnusedSpanResult::Used
             }
         }
         ast::UseTreeKind::Nested { items: ref nested, span: tree_span } => {
             if nested.is_empty() {
-                return UnusedSpanResult::Unused { spans: vec![use_tree.span], remove: full_span };
+                return UnusedSpanResult::Unused {
+                    spans: vec![use_tree.span()],
+                    remove: full_span,
+                };
             }
 
             let mut unused_spans = Vec::new();
@@ -340,10 +343,10 @@ fn calc_unused_spans(
                     } else if pos == nested.len() - 1 || used_children > 0 {
                         // Delete everything from the end of the last import, to delete the
                         // previous comma
-                        nested[pos - 1].0.span.shrink_to_hi().to(use_tree.span)
+                        nested[pos - 1].0.hi_span().shrink_to_hi().to(use_tree.hi_span())
                     } else {
                         // Delete everything until the next import, to delete the trailing commas
-                        use_tree.span.to(nested[pos + 1].0.span.shrink_to_lo())
+                        use_tree.prefix.span.to(nested[pos + 1].0.prefix.span.shrink_to_lo())
                     };
 
                     // Try to collapse adjacent spans into a single one. This prevents all cases of
@@ -379,11 +382,23 @@ fn calc_unused_spans(
                 if used_children == 1 && !contains_self {
                     // Left brace, from the start of the nested group to the first item.
                     to_remove.push(
-                        tree_span.shrink_to_lo().to(nested.first().unwrap().0.span.shrink_to_lo()),
+                        tree_span.shrink_to_lo().to(nested
+                            .first()
+                            .unwrap()
+                            .0
+                            .prefix
+                            .span
+                            .shrink_to_lo()),
                     );
                     // Right brace, from the end of the last item to the end of the nested group.
                     to_remove.push(
-                        nested.last().unwrap().0.span.shrink_to_hi().to(tree_span.shrink_to_hi()),
+                        nested
+                            .last()
+                            .unwrap()
+                            .0
+                            .hi_span()
+                            .shrink_to_hi()
+                            .to(tree_span.shrink_to_hi()),
                     );
                 }
 
