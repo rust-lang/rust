@@ -159,6 +159,7 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
         .out_dir(genmc_build_dir)
         .profile(GENMC_CMAKE_PROFILE)
         .define("BUILD_LLI", "OFF")
+        .define("EMIT_NA_LABELS", "OFF")
         .define("GENMC_DEBUG", if enable_genmc_debug { "ON" } else { "OFF" });
 
     // The actual compilation happens here:
