@@ -24,12 +24,14 @@ Adt(&'tcx AdtDef, GenericArgs<'tcx>)
 There are two parts:
 
 - The [`AdtDef`][adtdef] references the struct/enum/union but without the values for its type
-  parameters. In our example, this is the `MyStruct` part *without* the argument `u32`.
+  parameters.
+  In our example, this is the `MyStruct` part *without* the argument `u32`.
   (Note that in the HIR, structs, enums and unions are represented differently, but in `ty::Ty`,
   they are all represented using `TyKind::Adt`.)
 - The [`GenericArgs`] is a list of values that are to be substituted
-for the generic parameters.  In our example of `MyStruct<u32>`, we would end up with a list like
-`[u32]`. We’ll dig more into generics and substitutions in a little bit.
+for the generic parameters.
+ In our example of `MyStruct<u32>`, we would end up with a list like `[u32]`.
+We’ll dig more into generics and substitutions in a little bit.
 
 [adtdef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.AdtDef.html
 [`GenericArgs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgs.html
@@ -37,25 +39,29 @@ for the generic parameters.  In our example of `MyStruct<u32>`, we would end up 
 ### **`AdtDef` and `DefId`**
 
 For every type defined in the source code, there is a unique `DefId` (see [this
-chapter](../hir.md#identifiers-in-the-hir)). This includes ADTs and generics. In the `MyStruct<T>`
-definition we gave above, there are two `DefId`s: one for `MyStruct` and one for `T`.  Notice that
-the code above does not generate a new `DefId` for `u32` because it is not defined in that code (it
-is only referenced).
+chapter](../hir.md#identifiers-in-the-hir)).
+This includes ADTs and generics.
+In the `MyStruct<T>` definition we gave above,
+there are two `DefId`s: one for `MyStruct` and one for `T`.
+Notice that the code above does not generate a new `DefId` for `u32`
+because it is not defined in that code (it is only referenced).
 
-`AdtDef` is more or less a wrapper around `DefId` with lots of useful helper methods. There is
-essentially a one-to-one relationship between `AdtDef` and `DefId`. You can get the `AdtDef` for a
-`DefId` with the [`tcx.adt_def(def_id)` query][adtdefq]. `AdtDef`s are all interned, as shown
-by the `'tcx` lifetime.
+`AdtDef` is more or less a wrapper around `DefId` with lots of useful helper methods.
+There is essentially a one-to-one relationship between `AdtDef` and `DefId`.
+You can get the `AdtDef` for a `DefId` with the [`tcx.adt_def(def_id)` query][adtdefq].
+`AdtDef`s are all interned, as shown by the `'tcx` lifetime.
 
 [adtdefq]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.adt_def
 
 ## Question: Why not substitute “inside” the `AdtDef`?
 
-Recall that we represent a generic struct with `(AdtDef, args)`. So why bother with this scheme?
+Recall that we represent a generic struct with `(AdtDef, args)`.
+So why bother with this scheme?
 
 Well, the alternate way we could have chosen to represent types would be to always create a new,
-fully-substituted form of the `AdtDef` where all the types are already substituted. This seems like
-less of a hassle. However, the `(AdtDef, args)` scheme has some advantages over this.
+fully-substituted form of the `AdtDef` where all the types are already substituted.
+This seems like less of a hassle.
+However, the `(AdtDef, args)` scheme has some advantages over this.
 
 First, `(AdtDef, args)` scheme has an efficiency win:
 
@@ -68,7 +74,8 @@ struct MyStruct<T> {
 ```
 
 in an example like this, we can instantiate `MyStruct<A>` as `MyStruct<B>` (and so on) very cheaply,
-by just replacing the one reference to `A` with `B`. But if we eagerly instantiated all the fields,
+by just replacing the one reference to `A` with `B`.
+But if we eagerly instantiated all the fields,
 that could be a lot more work because we might have to go through all of the fields in the `AdtDef`
 and update all of their types.
 
@@ -83,7 +90,9 @@ definition of that name, and not carried along “within” the type itself).
 
 Given a generic type `MyType<A, B, …>`, we have to store the list of generic arguments for `MyType`.
 
-In rustc this is done using [`GenericArgs`]. `GenericArgs` is a thin pointer to a slice of [`GenericArg`] representing a list of generic arguments for a generic item. For example, given a `struct HashMap<K, V>` with two type parameters, `K` and `V`, the `GenericArgs` used to represent the type `HashMap<i32, u32>` would be represented by `&'tcx [tcx.types.i32, tcx.types.u32]`.
+In rustc this is done using [`GenericArgs`].
+`GenericArgs` is a thin pointer to a slice of [`GenericArg`] representing a list of generic arguments for a generic item.
+For example, given a `struct HashMap<K, V>` with two type parameters, `K` and `V`, the `GenericArgs` used to represent the type `HashMap<i32, u32>` would be represented by `&'tcx [tcx.types.i32, tcx.types.u32]`.
 
 `GenericArg` is conceptually an `enum` with three variants, one for type arguments, one for const arguments and one for lifetime arguments.
 In practice that is actually represented by [`GenericArgKind`] and [`GenericArg`] is a more space efficient version that has a method to
@@ -146,7 +155,8 @@ The construct `MyStruct::<u32>::func::<bool, char>` is represented by a tuple: a
 
 The [`ty::Generics`] type (returned by the [`generics_of`] query) contains the information of how a nested hierarchy
 gets flattened down to a list, and lets you figure out which index in the `GenericArgs` list corresponds to which
-generic. The general theme of how it works is outermost to innermost (`T` before `T2` in the example), left to right
+generic.
+The general theme of how it works is outermost to innermost (`T` before `T2` in the example), left to right
 (`T2` before `T3`), but there are several complications:
 
 - Traits have an implicit `Self` generic parameter which is the first (i.e. 0th) generic parameter. Note that `Self` doesn't mean a generic parameter in all situations, see [Res::SelfTyAlias](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def/enum.Res.html#variant.SelfTyAlias) and [Res::SelfCtor](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def/enum.Res.html#variant.SelfCtor).
