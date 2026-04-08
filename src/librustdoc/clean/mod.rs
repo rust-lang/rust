@@ -176,6 +176,35 @@ fn is_glob_import(tcx: TyCtxt<'_>, import_id: LocalDefId) -> bool {
     }
 }
 
+/// Returns true if `def_id` is a macro and should be inlined.
+pub(crate) fn macro_reexport_is_inline(
+    tcx: TyCtxt<'_>,
+    import_id: LocalDefId,
+    def_id: DefId,
+) -> bool {
+    if !matches!(tcx.def_kind(def_id), DefKind::Macro(MacroKinds::BANG)) {
+        return false;
+    }
+
+    for reexport_def_id in reexport_chain(tcx, import_id, def_id).iter().flat_map(|r| r.id()) {
+        let is_hidden = tcx.is_doc_hidden(reexport_def_id);
+        let is_inline = find_attr!(
+            inline::load_attrs(tcx, reexport_def_id),
+            Doc(d)
+            if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+        );
+
+        // hidden takes absolute priority over inline on the same node
+        if is_hidden {
+            return false;
+        }
+        if is_inline {
+            return true;
+        }
+    }
+    false
+}
+
 fn generate_item_with_correct_attrs(
     cx: &mut DocContext<'_>,
     kind: ItemKind,
@@ -201,7 +230,8 @@ fn generate_item_with_correct_attrs(
                 Doc(d)
                 if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
             ) || (is_glob_import(tcx, import_id)
-                && (cx.document_hidden() || !tcx.is_doc_hidden(def_id)));
+                && (cx.document_hidden() || !tcx.is_doc_hidden(def_id)))
+                || macro_reexport_is_inline(tcx, import_id, def_id);
             attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
             is_inline = is_inline || import_is_inline;
         }
