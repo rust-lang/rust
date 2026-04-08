@@ -130,9 +130,9 @@ f(&String::new());
 f(&String::new());
 ```
 
+The lifetime parameter on `foo` being early bound requires all callers of `f` to provide a borrow with the same lifetime.
 In this example, we call `foo`'s function item type twice, each time with a borrow of a temporary.
-These two borrows could not possibly have lifetimes that overlap as the temporaries are only alive during the function call, not after.
-The lifetime parameter on `foo` being early bound requires all callers of `f` to provide a borrow with the same lifetime, as this is not possible the borrow checker errors.
+These two borrows could not possibly have lifetimes that overlap as the temporaries are only alive during the function call, not after, so we get a compilation error.
 
 If the lifetime parameter on `foo` was late bound, this would be able to compile as each caller could provide a different lifetime argument for its borrow.
 See the following example, which demonstrates this using the `bar` function defined above:
