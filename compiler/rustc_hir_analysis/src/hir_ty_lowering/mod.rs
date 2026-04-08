@@ -3511,7 +3511,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         debug!(?output_ty);
 
-        let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, safety, abi);
+        let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.fn_args_kind, safety, abi);
         let fn_ptr_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
         if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(fn_ptr_ty), span, .. }) =

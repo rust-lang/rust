@@ -308,12 +308,7 @@ impl<I: Interner> TyKind<I> {
             ty::FnDef(def_id, args) => interner.fn_sig(def_id).instantiate(interner, args),
             ty::Error(_) => {
                 // ignore errors (#54954)
-                ty::Binder::dummy(ty::FnSig {
-                    inputs_and_output: Default::default(),
-                    c_variadic: false,
-                    safety: I::Safety::safe(),
-                    abi: I::Abi::rust(),
-                })
+                ty::Binder::dummy(ty::FnSig::dummy())
             }
             ty::Closure(..) => panic!(
                 "to get the signature of a closure, use `args.as_closure().sig()` not `fn_sig()`",
@@ -770,7 +765,9 @@ impl<I: Interner> Eq for TypeAndMut<I> {}
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnSig<I: Interner> {
     pub inputs_and_output: I::Tys,
-    pub c_variadic: bool,
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
+    pub fn_args_kind: I::FnArgsKind,
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
     pub safety: I::Safety,
@@ -791,8 +788,21 @@ impl<I: Interner> FnSig<I> {
     }
 
     pub fn is_fn_trait_compatible(self) -> bool {
-        let FnSig { safety, abi, c_variadic, .. } = self;
-        !c_variadic && safety.is_safe() && abi.is_rust()
+        let FnSig { safety, abi, .. } = self;
+        !self.c_variadic() && safety.is_safe() && abi.is_rust()
+    }
+
+    pub fn c_variadic(self) -> bool {
+        self.fn_args_kind.c_variadic()
+    }
+
+    pub fn dummy() -> Self {
+        Self {
+            inputs_and_output: Default::default(),
+            fn_args_kind: I::FnArgsKind::normal_kind(),
+            safety: I::Safety::safe(),
+            abi: I::Abi::rust(),
+        }
     }
 }
 
@@ -817,8 +827,12 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
         self.map_bound(|fn_sig| fn_sig.output())
     }
 
+    pub fn fn_args_kind(self) -> I::FnArgsKind {
+        self.skip_binder().fn_args_kind
+    }
+
     pub fn c_variadic(self) -> bool {
-        self.skip_binder().c_variadic
+        self.skip_binder().c_variadic()
     }
 
     pub fn safety(self) -> I::Safety {
@@ -836,7 +850,7 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
     // Used to split a single value into the two fields in `TyKind::FnPtr`.
     pub fn split(self) -> (ty::Binder<I, FnSigTys<I>>, FnHeader<I>) {
         let hdr =
-            FnHeader { c_variadic: self.c_variadic(), safety: self.safety(), abi: self.abi() };
+            FnHeader { fn_args_kind: self.fn_args_kind(), safety: self.safety(), abi: self.abi() };
         (self.map_bound(|sig| FnSigTys { inputs_and_output: sig.inputs_and_output }), hdr)
     }
 }
@@ -844,7 +858,7 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
 impl<I: Interner> fmt::Debug for FnSig<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let sig = self;
-        let FnSig { inputs_and_output: _, c_variadic, safety, abi } = sig;
+        let FnSig { inputs_and_output: _, fn_args_kind, safety, abi } = sig;
 
         write!(f, "{}", safety.prefix_str())?;
         if !abi.is_rust() {
@@ -859,7 +873,7 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
             }
             write!(f, "{ty:?}")?;
         }
-        if *c_variadic {
+        if fn_args_kind.c_variadic() {
             if inputs.is_empty() {
                 write!(f, "...")?;
             } else {
@@ -968,7 +982,7 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
     pub fn with(self, hdr: FnHeader<I>) -> ty::Binder<I, FnSig<I>> {
         self.map_bound(|sig_tys| FnSig {
             inputs_and_output: sig_tys.inputs_and_output,
-            c_variadic: hdr.c_variadic,
+            fn_args_kind: hdr.fn_args_kind,
             safety: hdr.safety,
             abi: hdr.abi,
         })
@@ -1002,9 +1016,23 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
 )]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnHeader<I: Interner> {
-    pub c_variadic: bool,
+    pub fn_args_kind: I::FnArgsKind,
     pub safety: I::Safety,
     pub abi: I::Abi,
+}
+
+impl<I: Interner> FnHeader<I> {
+    pub fn c_variadic(self) -> bool {
+        self.fn_args_kind.c_variadic()
+    }
+
+    pub fn dummy() -> Self {
+        Self {
+            fn_args_kind: I::FnArgsKind::normal_kind(),
+            safety: I::Safety::safe(),
+            abi: I::Abi::rust(),
+        }
+    }
 }
 
 impl<I: Interner> Eq for FnHeader<I> {}

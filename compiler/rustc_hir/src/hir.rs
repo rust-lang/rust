@@ -3932,6 +3932,52 @@ pub struct Param<'hir> {
     pub span: Span,
 }
 
+/// Is there any special handling for the function arguments?
+/// This is encoded as a `u16` to keep containing structs small.
+// FIXME(splat): add the splatted argument index as the rest of the u16
+// FIXME(not splat): replace this with a u8 instead
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub struct FnArgsKind(u16);
+
+impl fmt::Debug for FnArgsKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut f = f.debug_tuple("FnArgsKind");
+
+        let f = if self.normal() {
+            f.field(&"Normal")
+        } else if self.c_variadic() {
+            f.field(&"C Variadic")
+        } else {
+            unreachable!()
+        };
+
+        f.finish()
+    }
+}
+
+impl FnArgsKind {
+    // The highest values are reserved for these special cases.
+
+    /// No special handling for the function's arguments.
+    pub const NORMAL: Self = Self(u16::MAX);
+
+    /// The function arguments end with a C-style variadic argument.
+    pub const C_VARIADIC: Self = Self(u16::MAX - 1);
+
+    /// Are the function arguments normal?
+    #[inline]
+    pub fn normal(self) -> bool {
+        self == Self::NORMAL
+    }
+
+    /// Do the function arguments end with a C-style variadic argument?
+    #[inline]
+    pub fn c_variadic(self) -> bool {
+        self == Self::C_VARIADIC
+    }
+}
+
 /// Represents the header (not the body) of a function declaration.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct FnDecl<'hir> {
@@ -3940,7 +3986,7 @@ pub struct FnDecl<'hir> {
     /// Additional argument data is stored in the function's [body](Body::params).
     pub inputs: &'hir [Ty<'hir>],
     pub output: FnRetTy<'hir>,
-    pub c_variadic: bool,
+    pub fn_args_kind: FnArgsKind,
     /// Does the function have an implicit self?
     pub implicit_self: ImplicitSelfKind,
     /// Is lifetime elision allowed.
@@ -3966,6 +4012,20 @@ impl<'hir> FnDecl<'hir> {
         }
 
         None
+    }
+
+    pub fn c_variadic(&self) -> bool {
+        self.fn_args_kind.c_variadic()
+    }
+
+    pub fn dummy(span: Span) -> Self {
+        Self {
+            inputs: &[],
+            output: FnRetTy::DefaultReturn(span),
+            fn_args_kind: FnArgsKind::NORMAL,
+            implicit_self: ImplicitSelfKind::None,
+            lifetime_elision_allowed: true,
+        }
     }
 }
 

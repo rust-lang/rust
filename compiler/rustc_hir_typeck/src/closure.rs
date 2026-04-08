@@ -5,8 +5,8 @@ use std::ops::ControlFlow;
 
 use rustc_abi::ExternAbi;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{self as hir, Safety};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.mk_fn_sig(
                         [Ty::new_tup(tcx, sig.inputs())],
                         sig.output(),
-                        sig.c_variadic,
+                        sig.fn_args_kind,
                         sig.safety,
                         sig.abi,
                     )
@@ -231,7 +231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         Ty::new_tup_from_iter(tcx, sig.inputs().iter().copied()),
                                     ],
                                     Ty::new_tup(tcx, &[bound_yield_ty, bound_return_ty]),
-                                    sig.c_variadic,
+                                    sig.fn_args_kind,
                                     sig.safety,
                                     sig.abi,
                                 )
@@ -273,7 +273,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 liberated_sig = tcx.mk_fn_sig(
                     liberated_sig.inputs().iter().copied(),
                     coroutine_output_ty,
-                    liberated_sig.c_variadic,
+                    liberated_sig.fn_args_kind,
                     liberated_sig.safety,
                     liberated_sig.abi,
                 );
@@ -544,13 +544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ret_param_ty = projection.skip_binder().term.expect_type();
         debug!(?ret_param_ty);
 
-        let sig = projection.rebind(self.tcx.mk_fn_sig(
-            input_tys,
-            ret_param_ty,
-            false,
-            hir::Safety::Safe,
-            ExternAbi::Rust,
-        ));
+        let sig = projection.rebind(self.tcx.mk_fn_sig_safe_rust_normal(input_tys, ret_param_ty));
 
         Some(ExpectedSig { cause_span, sig })
     }
@@ -630,13 +624,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let return_ty =
             return_ty.unwrap_or_else(|| self.next_ty_var(cause_span.unwrap_or(DUMMY_SP)));
 
-        let sig = projection.rebind(self.tcx.mk_fn_sig(
-            input_tys,
-            return_ty,
-            false,
-            hir::Safety::Safe,
-            ExternAbi::Rust,
-        ));
+        let sig = projection.rebind(self.tcx.mk_fn_sig_safe_rust_normal(input_tys, return_ty));
 
         Some(ExpectedSig { cause_span, sig })
     }
@@ -727,7 +715,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Watch out for some surprises and just ignore the
         // expectation if things don't see to match up with what we
         // expect.
-        if expected_sig.sig.c_variadic() != decl.c_variadic {
+        if expected_sig.sig.c_variadic() != decl.c_variadic() {
             return self.sig_of_closure_no_expectation(expr_def_id, decl, closure_kind);
         } else if expected_sig.sig.skip_binder().inputs_and_output.len() != decl.inputs.len() + 1 {
             return self.sig_of_closure_with_mismatched_number_of_arguments(
@@ -745,8 +733,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.mk_fn_sig(
                 sig.inputs().iter().cloned(),
                 sig.output(),
-                sig.c_variadic,
-                hir::Safety::Safe,
+                sig.fn_args_kind,
+                Safety::Safe,
                 ExternAbi::RustCall,
             )
         });
@@ -884,8 +872,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expected_sigs.liberated_sig = self.tcx.mk_fn_sig(
                 inputs,
                 supplied_output_ty,
-                expected_sigs.liberated_sig.c_variadic,
-                hir::Safety::Safe,
+                expected_sigs.liberated_sig.fn_args_kind,
+                Safety::Safe,
                 ExternAbi::RustCall,
             );
 
@@ -961,8 +949,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.mk_fn_sig(
                 supplied_arguments,
                 supplied_return,
-                decl.c_variadic,
-                hir::Safety::Safe,
+                decl.fn_args_kind,
+                Safety::Safe,
                 ExternAbi::RustCall,
             ),
             bound_vars,
@@ -1124,8 +1112,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result = ty::Binder::dummy(self.tcx.mk_fn_sig(
             supplied_arguments,
             err_ty,
-            decl.c_variadic,
-            hir::Safety::Safe,
+            decl.fn_args_kind,
+            Safety::Safe,
             ExternAbi::RustCall,
         ));
 

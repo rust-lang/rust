@@ -15,7 +15,7 @@ use crate::mir::mono::{Instance, MonoItem, StaticDef};
 use crate::mir::{BinOp, Mutability, Place, ProjectionElem, RawPtrKind, Safety, UnOp};
 use crate::ty::{
     Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind,
-    ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
+    ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnArgsKind, FnSig,
     GenericArgKind, GenericArgs, IntTy, MirConst, Movability, Pattern, Region, RigidTy, Span,
     TermKind, TraitRef, Ty, TyConst, UintTy, VariantDef, VariantIdx,
 };
@@ -310,7 +310,7 @@ impl RustcInternal for FnSig {
     ) -> Self::T<'tcx> {
         tcx.lift(rustc_ty::FnSig {
             inputs_and_output: tcx.mk_type_list(&self.inputs_and_output.internal(tables, tcx)),
-            c_variadic: self.c_variadic,
+            fn_args_kind: self.fn_args_kind.internal(tables, tcx),
             safety: self.safety.internal(tables, tcx),
             abi: self.abi.internal(tables, tcx),
         })
@@ -617,6 +617,22 @@ impl RustcInternal for Abi {
             Abi::RiscvInterruptS => rustc_abi::ExternAbi::RiscvInterruptS,
             Abi::RustPreserveNone => rustc_abi::ExternAbi::RustPreserveNone,
             Abi::Custom => rustc_abi::ExternAbi::Custom,
+        }
+    }
+}
+
+impl RustcInternal for FnArgsKind {
+    type T<'tcx> = rustc_hir::FnArgsKind;
+
+    fn internal<'tcx>(
+        &self,
+        _tables: &mut Tables<'_, BridgeTys>,
+        _tcx: impl InternalCx<'tcx>,
+    ) -> Self::T<'tcx> {
+        match *self {
+            FnArgsKind::NORMAL => rustc_hir::FnArgsKind::NORMAL,
+            FnArgsKind::C_VARIADIC => rustc_hir::FnArgsKind::C_VARIADIC,
+            _ => unreachable!(),
         }
     }
 }

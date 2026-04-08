@@ -84,6 +84,24 @@ impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
     }
 }
 
+impl<'tcx> rustc_type_ir::inherent::FnArgsKind<TyCtxt<'tcx>> for hir::FnArgsKind {
+    fn args_kind(self) -> Self {
+        self
+    }
+
+    fn normal_kind() -> Self {
+        Self::NORMAL
+    }
+
+    fn normal(self) -> bool {
+        self.normal()
+    }
+
+    fn c_variadic(self) -> bool {
+        self.c_variadic()
+    }
+}
+
 impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for ExternAbi {
     fn rust() -> Self {
         ExternAbi::Rust
@@ -2142,7 +2160,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Tuple(params) => *params,
                 _ => bug!(),
             };
-            self.mk_fn_sig(params, s.output(), s.c_variadic, safety, ExternAbi::Rust)
+            self.mk_fn_sig(params, s.output(), s.fn_args_kind, safety, ExternAbi::Rust)
         })
     }
 
@@ -2419,7 +2437,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         inputs: I,
         output: I::Item,
-        c_variadic: bool,
+        fn_args_kind: hir::FnArgsKind,
         safety: hir::Safety,
         abi: ExternAbi,
     ) -> T::Output
@@ -2429,9 +2447,61 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         T::collect_and_apply(inputs.into_iter().chain(iter::once(output)), |xs| ty::FnSig {
             inputs_and_output: self.mk_type_list(xs),
-            c_variadic,
+            fn_args_kind,
             safety,
             abi,
+        })
+    }
+
+    /// `mk_fn_sig`, but with a Rust ABI, and no C-variadic argument.
+    pub fn mk_fn_sig_rust_normal<I, T>(
+        self,
+        inputs: I,
+        output: I::Item,
+        safety: hir::Safety,
+    ) -> T::Output
+    where
+        I: IntoIterator<Item = T>,
+        T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
+    {
+        T::collect_and_apply(inputs.into_iter().chain(iter::once(output)), |xs| ty::FnSig {
+            inputs_and_output: self.mk_type_list(xs),
+            fn_args_kind: hir::FnArgsKind::NORMAL,
+            safety,
+            abi: ExternAbi::Rust,
+        })
+    }
+
+    /// `mk_fn_sig`, but with a safe Rust ABI.
+    pub fn mk_fn_sig_safe_rust<I, T>(
+        self,
+        inputs: I,
+        output: I::Item,
+        fn_args_kind: hir::FnArgsKind,
+    ) -> T::Output
+    where
+        I: IntoIterator<Item = T>,
+        T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
+    {
+        T::collect_and_apply(inputs.into_iter().chain(iter::once(output)), |xs| ty::FnSig {
+            inputs_and_output: self.mk_type_list(xs),
+            fn_args_kind,
+            safety: hir::Safety::Safe,
+            abi: ExternAbi::Rust,
+        })
+    }
+
+    /// `mk_fn_sig`, but with a safe Rust ABI, and no C-variadic argument.
+    pub fn mk_fn_sig_safe_rust_normal<I, T>(self, inputs: I, output: I::Item) -> T::Output
+    where
+        I: IntoIterator<Item = T>,
+        T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
+    {
+        T::collect_and_apply(inputs.into_iter().chain(iter::once(output)), |xs| ty::FnSig {
+            inputs_and_output: self.mk_type_list(xs),
+            fn_args_kind: hir::FnArgsKind::NORMAL,
+            safety: hir::Safety::Safe,
+            abi: ExternAbi::Rust,
         })
     }
 

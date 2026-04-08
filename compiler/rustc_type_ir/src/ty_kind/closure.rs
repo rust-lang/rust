@@ -307,7 +307,7 @@ impl<I: Interner> CoroutineClosureArgs<I> {
                 resume_ty,
                 yield_ty,
                 return_ty,
-                c_variadic: hdr.c_variadic,
+                fn_args_kind: hdr.fn_args_kind,
                 safety: hdr.safety,
                 abi: hdr.abi,
             }
@@ -366,8 +366,10 @@ pub struct CoroutineClosureSignature<I: Interner> {
     // Like the `fn_sig_as_fn_ptr_ty` of a regular closure, these types
     // never actually differ. But we save them rather than recreating them
     // from scratch just for good measure.
-    /// Always false
-    pub c_variadic: bool,
+    /// Always non-c-variadic
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
+    pub fn_args_kind: I::FnArgsKind,
     /// Always `Normal` (safe)
     #[type_visitable(ignore)]
     #[type_foldable(identity)]

@@ -872,7 +872,7 @@ pub(crate) fn assert_assignable<'tcx>(
                 .normalize_erasing_late_bound_regions(fx.typing_env(), from_ty.fn_sig(fx.tcx));
             let FnSig {
                 inputs_and_output: types_from,
-                c_variadic: c_variadic_from,
+                fn_args_kind: fn_args_kind_from,
                 safety: unsafety_from,
                 abi: abi_from,
             } = from_sig;
@@ -880,7 +880,7 @@ pub(crate) fn assert_assignable<'tcx>(
                 fx.tcx.normalize_erasing_late_bound_regions(fx.typing_env(), to_ty.fn_sig(fx.tcx));
             let FnSig {
                 inputs_and_output: types_to,
-                c_variadic: c_variadic_to,
+                fn_args_kind: fn_args_kind_to,
                 safety: unsafety_to,
                 abi: abi_to,
             } = to_sig;
@@ -893,6 +893,8 @@ pub(crate) fn assert_assignable<'tcx>(
                     (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
                 }
             }
+            let c_variadic_from = fn_args_kind_from.c_variadic();
+            let c_variadic_to = fn_args_kind_to.c_variadic();
             assert_eq!(
                 c_variadic_from, c_variadic_to,
                 "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",

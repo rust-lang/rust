@@ -843,17 +843,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        if sig1.c_variadic {
+        if sig1.c_variadic() {
             if len1 > 0 {
                 values.0.push_normal(", ");
             }
-            values.0.push("...", !sig2.c_variadic);
+            values.0.push("...", !sig2.c_variadic());
         }
-        if sig2.c_variadic {
+        if sig2.c_variadic() {
             if len2 > 0 {
                 values.1.push_normal(", ");
             }
-            values.1.push("...", !sig1.c_variadic);
+            values.1.push("...", !sig1.c_variadic());
         }
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T

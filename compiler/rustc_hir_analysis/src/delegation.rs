@@ -523,7 +523,7 @@ fn check_constraints<'tcx>(
         }));
     };
 
-    if tcx.fn_sig(sig_id).skip_binder().skip_binder().c_variadic {
+    if tcx.fn_sig(sig_id).skip_binder().skip_binder().c_variadic() {
         // See issue #127443 for explanation.
         emit("delegation to C-variadic functions is not allowed");
     }

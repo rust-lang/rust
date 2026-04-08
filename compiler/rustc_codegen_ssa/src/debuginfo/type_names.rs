@@ -381,7 +381,7 @@ fn push_debuginfo_type_name<'tcx>(
                 pop_arg_separator(output);
             }
 
-            if sig.c_variadic {
+            if sig.c_variadic() {
                 if !sig.inputs().is_empty() {
                     output.push_str(", ...");
                 } else {

@@ -94,7 +94,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             user_provided_sig = self.tcx().mk_fn_sig(
                 user_provided_sig.inputs().iter().copied(),
                 output_ty,
-                user_provided_sig.c_variadic,
+                user_provided_sig.fn_args_kind,
                 user_provided_sig.safety,
                 user_provided_sig.abi,
             );

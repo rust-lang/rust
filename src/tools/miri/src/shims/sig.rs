@@ -1,7 +1,7 @@
 //! Everything related to checking the signature of shim invocations.
 
 use rustc_abi::{CanonAbi, ExternAbi};
-use rustc_hir::Safety;
+use rustc_hir::{FnArgsKind, Safety};
 use rustc_middle::ty::{Binder, FnSig, Ty};
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
@@ -275,7 +275,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         inputs_and_output.push(shim_sig.ret);
         let fn_sig_binder = Binder::dummy(FnSig {
             inputs_and_output: this.machine.tcx.mk_type_list(&inputs_and_output),
-            c_variadic: false,
+            fn_args_kind: FnArgsKind::NORMAL,
             // This does not matter for the ABI.
             safety: Safety::Safe,
             abi: shim_sig.abi,

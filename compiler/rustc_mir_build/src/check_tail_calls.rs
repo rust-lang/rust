@@ -180,11 +180,11 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             }
         }
 
-        if caller_sig.c_variadic {
+        if caller_sig.c_variadic() {
             self.report_c_variadic_caller(expr.span);
         }
 
-        if callee_sig.c_variadic {
+        if callee_sig.c_variadic() {
             self.report_c_variadic_callee(expr.span);
         }
     }

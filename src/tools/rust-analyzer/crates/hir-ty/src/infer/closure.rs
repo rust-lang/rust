@@ -164,13 +164,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 let coroutine_captures_by_ref_ty = Ty::new_fn_ptr(
                     interner,
                     Binder::bind_with_vars(
-                        interner.mk_fn_sig(
-                            [],
-                            self.types.types.unit,
-                            false,
-                            Safety::Safe,
-                            FnAbi::Rust,
-                        ),
+                        interner.mk_fn_sig_safe_rust_normal([], self.types.types.unit),
                         self.types.coroutine_captures_by_ref_bound_var_kinds,
                     ),
                 );
@@ -484,13 +478,8 @@ impl<'db> InferenceContext<'_, 'db> {
         let ret_param_ty = projection.skip_binder().term.expect_type();
         debug!(?ret_param_ty);
 
-        let sig = projection.rebind(self.interner().mk_fn_sig(
-            input_tys,
-            ret_param_ty,
-            false,
-            Safety::Safe,
-            FnAbi::Rust,
-        ));
+        let sig =
+            projection.rebind(self.interner().mk_fn_sig_safe_rust_normal(input_tys, ret_param_ty));
 
         Some(sig)
     }
@@ -572,13 +561,8 @@ impl<'db> InferenceContext<'_, 'db> {
         // that does not misuse a `FnSig` type, but that can be done separately.
         let return_ty = return_ty.unwrap_or_else(|| self.table.next_ty_var());
 
-        let sig = projection.rebind(self.interner().mk_fn_sig(
-            input_tys,
-            return_ty,
-            false,
-            Safety::Safe,
-            FnAbi::Rust,
-        ));
+        let sig =
+            projection.rebind(self.interner().mk_fn_sig_safe_rust_normal(input_tys, return_ty));
 
         Some(sig)
     }

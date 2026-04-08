@@ -203,6 +203,20 @@ pub trait Tys<I: Interner<Tys = Self>>:
     fn output(self) -> I::Ty;
 }
 
+pub trait FnArgsKind<I: Interner<FnArgsKind = Self>>: Copy + Debug + Hash + Eq {
+    /// The identity function.
+    fn args_kind(self) -> Self;
+
+    /// Returns the "normal" kind of function arguments (not splatted and not C-style variadic).
+    fn normal_kind() -> Self;
+
+    /// Are the function arguments normal?
+    fn normal(self) -> bool;
+
+    /// Do the function arguments end with a C-style variadic argument?
+    fn c_variadic(self) -> bool;
+}
+
 pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
     fn rust() -> Self;
 
