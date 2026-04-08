@@ -424,7 +424,7 @@ pub trait Interner:
 
     fn item_name(self, item_index: Self::DefId) -> Self::Symbol;
 
-    fn get_anon_re_bounds_lifetime(self, idx: usize) -> Option<Vec<Region<Self>>>;
+    fn get_anon_re_bounds_lifetime(self, idx: usize, var_idx: usize) -> Option<Region<Self>>;
 
     fn get_anon_re_canonical_bounds_lifetime(self, idx: usize) -> Option<Region<Self>>;
 

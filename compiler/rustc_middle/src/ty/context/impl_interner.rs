@@ -723,8 +723,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         })
     }
 
-    fn get_anon_re_bounds_lifetime(self, idx: usize) -> Option<Vec<Region<'tcx>>> {
-        self.lifetimes.anon_re_bounds.get(idx)
+    fn get_anon_re_bounds_lifetime(self, idx: usize, var_idx: usize) -> Option<Region<'tcx>> {
+        if let Some(inner) = self.lifetimes.anon_re_bounds.get(idx) {
+            inner.get(var_idx).copied()
+        } else {
+            None
+        }
     }
 
     fn get_anon_re_canonical_bounds_lifetime(self, idx: usize) -> Option<Region<'tcx>> {

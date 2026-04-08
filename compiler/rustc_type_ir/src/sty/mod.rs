@@ -29,10 +29,8 @@ impl<I: Interner> Region<I> {
     pub fn new_bound(interner: I, debruijn: DebruijnIndex, bound_region: BoundRegion<I>) -> Self {
         // Use a pre-interned one when possible.
         if let BoundRegion { var, kind: BoundRegionKind::Anon } = bound_region
-            // This
-            && let Some(inner) = interner.get_anon_re_bounds_lifetime(debruijn.as_usize())
-            // And this
-            && let Some(re) = inner.get(var.as_usize()).copied()
+            && let Some(re) =
+                interner.get_anon_re_bounds_lifetime(debruijn.as_usize(), var.as_usize())
         {
             re
         } else {
