@@ -14,7 +14,8 @@ use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeVisitableExt, TypingMode, suggest_constraining_type_params,
+    self, RegionUtilitiesExt, Ty, TyCtxt, TypeVisitableExt, TypingMode,
+    suggest_constraining_type_params,
 };
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -726,7 +727,7 @@ fn infringing_fields_error<'tcx>(
                     let ty = ty.to_string();
                     match error {
                         RegionResolutionError::ConcreteFailure(origin, a, b) => {
-                            let predicate = format!("{b}: {a}");
+                            let predicate = format!("{}: {}", b.to_string(), a.to_string());
                             errors
                                 .entry((ty.clone(), predicate.clone()))
                                 .or_default()
@@ -738,7 +739,7 @@ fn infringing_fields_error<'tcx>(
                             }
                         }
                         RegionResolutionError::GenericBoundFailure(origin, a, b) => {
-                            let predicate = format!("{a}: {b}");
+                            let predicate = format!("{}: {}", a.to_string(), b.to_string());
                             errors
                                 .entry((ty.clone(), predicate.clone()))
                                 .or_default()

@@ -16,7 +16,8 @@ use rustc_middle::ty::relate::{
     structurally_relate_tys,
 };
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, RegionExt, RegionUtilitiesExt, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::fcw;

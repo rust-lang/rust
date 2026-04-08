@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location};
-use rustc_middle::ty::{RegionVid, TyCtxt};
+use rustc_middle::ty::{RegionUtilitiesExt, RegionVid, TyCtxt};
 
 use crate::def_use::{self, DefUse};
 use crate::region_infer::{Cause, RegionInferenceContext};

@@ -2042,7 +2042,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         long_ty_path: &mut Option<PathBuf>,
     ) -> Option<(DiagStyledString, DiagStyledString)> {
         match values {
-            ValuePairs::Regions(exp_found) => self.expected_found_str(exp_found),
+            ValuePairs::Regions(exp_found) => self.expected_found_str_region(exp_found),
             ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found, long_ty_path),
             ValuePairs::Aliases(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
@@ -2114,6 +2114,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 DiagStyledString::highlighted(exp_found.found.to_string()),
             ),
         })
+    }
+
+    fn expected_found_str_region(
+        &self,
+        exp_found: ty::error::ExpectedFound<ty::Region<'tcx>>,
+    ) -> Option<(DiagStyledString, DiagStyledString)> {
+        let exp_found = self.resolve_vars_if_possible(exp_found);
+        if exp_found.references_error() {
+            return None;
+        }
+
+        Some((
+            DiagStyledString::highlighted(exp_found.expected.to_string()),
+            DiagStyledString::highlighted(exp_found.found.to_string()),
+        ))
     }
 
     /// Returns a string of the form "expected `{}`, found `{}`".

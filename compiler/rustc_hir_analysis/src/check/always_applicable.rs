@@ -11,7 +11,9 @@ use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::span_bug;
 use rustc_middle::ty::util::CheckRegions;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypingMode};
+use rustc_middle::ty::{
+    self, GenericArgsRef, RegionExt, RegionUtilitiesExt, Ty, TyCtxt, TypingMode,
+};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -264,13 +266,17 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
             let item_span = tcx.def_span(adt_def_id);
             let self_descr = tcx.def_descr(adt_def_id);
             let outlives = match error {
-                RegionResolutionError::ConcreteFailure(_, a, b) => format!("{b}: {a}"),
-                RegionResolutionError::GenericBoundFailure(_, generic, r) => {
-                    format!("{generic}: {r}")
+                RegionResolutionError::ConcreteFailure(_, a, b) => {
+                    format!("{}: {}", b.to_string(), a.to_string())
                 }
-                RegionResolutionError::SubSupConflict(_, _, _, a, _, b, _) => format!("{b}: {a}"),
+                RegionResolutionError::GenericBoundFailure(_, generic, r) => {
+                    format!("{generic}: {}", r.to_string())
+                }
+                RegionResolutionError::SubSupConflict(_, _, _, a, _, b, _) => {
+                    format!("{}: {}", b.to_string(), a.to_string())
+                }
                 RegionResolutionError::UpperBoundUniverseConflict(a, _, _, _, b) => {
-                    format!("{b}: {a}", a = ty::Region::new_var(tcx, a))
+                    format!("{}: {}", b.to_string(), ty::Region::new_var(tcx, a).to_string())
                 }
                 RegionResolutionError::CannotNormalize(..) => unreachable!(),
             };
