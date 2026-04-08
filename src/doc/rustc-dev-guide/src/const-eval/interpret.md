@@ -67,7 +67,7 @@ This is quite
 a mouthful: [`Operand`] can represent either data stored somewhere in the
 [interpreter memory](#memory) (`Operand::Indirect`), or (as an optimization)
 immediate data stored in-line.
- And [`Immediate`] can either be a single
+And [`Immediate`] can either be a single
 (potentially uninitialized) [scalar value][`Scalar`] (integer or thin pointer),
 or a pair of two of them.
 In our case, the single scalar value is *not* (yet) initialized.
@@ -98,7 +98,7 @@ After the evaluation is done, the return value is converted from [`Operand`] to
 what is needed *during* const evaluation, while [`ConstValue`] is shaped by the
 needs of the remaining parts of the compiler that consume the results of const
 evaluation.
- As part of this conversion, for types with scalar values, even if
+As part of this conversion, for types with scalar values, even if
 the resulting [`Operand`] is `Indirect`, it will return an immediate
 `ConstValue::Scalar(computed_value)` (instead of the usual `ConstValue::Indirect`).
 This makes using the result much more efficient and also more convenient, as no
@@ -119,13 +119,12 @@ the interpreter, but just use the cached result.
 The interpreter's outside-facing datastructures can be found in
 [rustc_middle/src/mir/interpret](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_middle/src/mir/interpret).
 This is mainly the error enum and the [`ConstValue`] and [`Scalar`] types.
-A
-`ConstValue` can be either `Scalar` (a single `Scalar`, i.e., integer or thin
+A `ConstValue` can be either `Scalar` (a single `Scalar`, i.e., integer or thin
 pointer), `Slice` (to represent byte slices and strings, as needed for pattern
 matching) or `Indirect`, which is used for anything else and refers to a virtual
 allocation.
 These allocations can be accessed via the methods on `tcx.interpret_interner`.
- A `Scalar` is either some `Raw` integer or a pointer;
+A `Scalar` is either some `Raw` integer or a pointer;
 see [the next section](#memory) for more on that.
 
 If you are expecting a numeric result, you can use `eval_usize` (panics on
@@ -136,28 +135,28 @@ in an `Option<u64>` yielding the `Scalar` if possible.
 
 To support any kind of pointers, the interpreter needs to have a "virtual memory" that the
 pointers can point to.
- This is implemented in the [`Memory`] type.
- In the simplest model, every global variable, stack variable and every dynamic
+This is implemented in the [`Memory`] type.
+In the simplest model, every global variable, stack variable and every dynamic
 allocation corresponds to an [`Allocation`] in that memory.
- (Actually using an
+(Actually using an
 allocation for every MIR stack variable would be very inefficient; that's why we
 have `Operand::Immediate` for stack variables that are both small and never have
 their address taken.
- But that is purely an optimization.)
+But that is purely an optimization.)
 
 Such an `Allocation` is basically just a sequence of `u8` storing the value of
 each byte in this allocation.
- (Plus some extra data, see below.)  Every
+(Plus some extra data, see below.)  Every
 `Allocation` has a globally unique `AllocId` assigned in `Memory`.
- With that, a
+With that, a
 [`Pointer`] consists of a pair of an `AllocId` (indicating the allocation) and
 an offset into the allocation (indicating which byte of the allocation the
 pointer points to).
- It may seem odd that a `Pointer` is not just an integer
+It may seem odd that a `Pointer` is not just an integer
 address, but remember that during const evaluation, we cannot know at which
 actual integer address the allocation will end up -- so we use `AllocId` as
 symbolic base addresses, which means we need a separate offset.
- (As an aside,
+(As an aside,
 it turns out that pointers at run-time are
 [more than just integers, too](https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#pointer-provenance).)
 
@@ -175,11 +174,10 @@ Pointer arithmetic on `a` will only ever change its offset; the `AllocId` stays 
 This, however, causes a problem when we want to store a `Pointer` into an
 `Allocation`: we cannot turn it into a sequence of `u8` of the right length!
 `AllocId` and offset together are twice as big as a pointer "seems" to be.
- This
-is what the `relocation` field of `Allocation` is for: the byte offset of the
+This is what the `relocation` field of `Allocation` is for: the byte offset of the
 `Pointer` gets stored as a bunch of `u8`, while its `AllocId` gets stored
 out-of-band.
- The two are reassembled when the `Pointer` is read from memory.
+The two are reassembled when the `Pointer` is read from memory.
 The other bit of extra data an `Allocation` needs is `undef_mask` for keeping
 track of which of its bytes are initialized.
 
@@ -187,24 +185,23 @@ track of which of its bytes are initialized.
 
 `Memory` exists only during evaluation; it gets destroyed when the
 final value of the constant is computed.
- In case that constant contains any
+In case that constant contains any
 pointers, those get "interned" and moved to a global "const eval memory" that is
 part of `TyCtxt`.
- These allocations stay around for the remaining computation
+These allocations stay around for the remaining computation
 and get serialized into the final output (so that dependent crates can use
 them).
 
 Moreover, to also support function pointers, the global memory in `TyCtxt` can
 also contain "virtual allocations": instead of an `Allocation`, these contain an
 `Instance`.
- That allows a `Pointer` to point to either normal data or a
+That allows a `Pointer` to point to either normal data or a
 function, which is needed to be able to evaluate casts from function pointers to
 raw pointers.
 
 Finally, the [`GlobalAlloc`] type used in the global memory also contains a
 variant `Static` that points to a particular `const` or `static` item.
- This is
-needed to support circular statics, where we need to have a `Pointer` to a
+This is needed to support circular statics, where we need to have a `Pointer` to a
 `static` for which we cannot yet have an `Allocation` as we do not know the
 bytes of its value.
 
@@ -217,10 +214,10 @@ bytes of its value.
 
 One common cause of confusion in the interpreter is that being a pointer *value* and having
 a pointer *type* are entirely independent properties.
- By "pointer value", we
+By "pointer value", we
 refer to a `Scalar::Ptr` containing a `Pointer` and thus pointing somewhere into
 the interpreter's virtual memory.
- This is in contrast to `Scalar::Raw`, which is just some concrete integer.
+This is in contrast to `Scalar::Raw`, which is just some concrete integer.
 
 However, a variable of pointer or reference *type*, such as `*const T` or `&T`,
 does not have to have a pointer *value*: it could be obtained by casting or
@@ -253,8 +250,7 @@ A stack frame is defined by the `Frame` type in
 and contains all the local variables memory (`None` at the start of evaluation).
 Each frame refers to the
 evaluation of either the root constant or subsequent calls to `const fn`.
-The
-evaluation of another constant simply calls `tcx.const_eval_*`, which produce an
+The evaluation of another constant simply calls `tcx.const_eval_*`, which produce an
 entirely new and independent stack frame.
 
 The frames are just a `Vec<Frame>`, there's no way to actually refer to a
