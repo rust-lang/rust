@@ -879,62 +879,59 @@ mod tests_panicking {
     extern crate std;
     use super::*;
 
-    // HACK(msrv): 1.63 rejects unknown width float literals at an AST level, so use a macro to
-    // hide them from the AST.
+    #[test]
     #[cfg(f16_enabled)]
-    macro_rules! f16_tests {
-        () => {
-            #[test]
-            fn test_f16_almost_extra_precision() {
-                // Exact maximum precision allowed
-                hf16("0x1.ffcp+0");
-            }
-
-            #[test]
-            #[should_panic(expected = "the value is too precise")]
-            fn test_f16_extra_precision() {
-                // One bit more than the above.
-                hf16("0x1.ffdp+0");
-            }
-
-            #[test]
-            #[should_panic(expected = "the value is too huge")]
-            fn test_f16_overflow() {
-                // One bit more than the above.
-                hf16("0x1p+16");
-            }
-
-            #[test]
-            fn test_f16_tiniest() {
-                let x = hf16("0x1.p-24");
-                let y = hf16("0x0.001p-12");
-                let z = hf16("0x0.8p-23");
-                assert_eq!(x, y);
-                assert_eq!(x, z);
-            }
-
-            #[test]
-            #[should_panic(expected = "the value is too tiny")]
-            fn test_f16_too_tiny() {
-                hf16("0x1.p-25");
-            }
-
-            #[test]
-            #[should_panic(expected = "the value is too tiny")]
-            fn test_f16_also_too_tiny() {
-                hf16("0x0.8p-24");
-            }
-
-            #[test]
-            #[should_panic(expected = "the value is too tiny")]
-            fn test_f16_again_too_tiny() {
-                hf16("0x0.001p-13");
-            }
-        };
+    fn test_f16_almost_extra_precision() {
+        // Exact maximum precision allowed
+        hf16("0x1.ffcp+0");
     }
 
+    #[test]
     #[cfg(f16_enabled)]
-    f16_tests!();
+    #[should_panic(expected = "the value is too precise")]
+    fn test_f16_extra_precision() {
+        // One bit more than the above.
+        hf16("0x1.ffdp+0");
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    #[should_panic(expected = "the value is too huge")]
+    fn test_f16_overflow() {
+        // One bit more than the above.
+        hf16("0x1p+16");
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    fn test_f16_tiniest() {
+        let x = hf16("0x1.p-24");
+        let y = hf16("0x0.001p-12");
+        let z = hf16("0x0.8p-23");
+        assert_eq!(x, y);
+        assert_eq!(x, z);
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    #[should_panic(expected = "the value is too tiny")]
+    fn test_f16_too_tiny() {
+        hf16("0x1.p-25");
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    #[should_panic(expected = "the value is too tiny")]
+    fn test_f16_also_too_tiny() {
+        hf16("0x0.8p-24");
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    #[should_panic(expected = "the value is too tiny")]
+    fn test_f16_again_too_tiny() {
+        hf16("0x0.001p-13");
+    }
 
     #[test]
     fn test_f32_almost_extra_precision() {
@@ -1003,68 +1000,66 @@ mod tests_panicking {
         hf64("0x1.abcdabcdabcdf8p+0");
     }
 
-    // HACK(msrv): 1.63 rejects unknown width float literals at an AST level, so use a macro to
-    // hide them from the AST.
+    #[test]
     #[cfg(f128_enabled)]
-    macro_rules! f128_tests {
-        () => {
-            #[test]
-            fn test_f128_almost_extra_precision() {
-                // Exact maximum precision allowed
-                hf128("0x1.ffffffffffffffffffffffffffffp+16383");
-            }
-
-            #[test]
-            #[should_panic(expected = "the value is too precise")]
-            fn test_f128_extra_precision() {
-                // Just below the maximum finite.
-                hf128("0x1.fffffffffffffffffffffffffffe8p+16383");
-            }
-            #[test]
-            #[should_panic(expected = "the value is too huge")]
-            fn test_f128_extra_precision_overflow() {
-                // One bit more than the above. Should overflow.
-                hf128("0x1.ffffffffffffffffffffffffffff8p+16383");
-            }
-
-            #[test]
-            #[should_panic(expected = "the value is too huge")]
-            fn test_f128_overflow() {
-                // One bit more than the above.
-                hf128("0x1p+16384");
-            }
-
-            #[test]
-            fn test_f128_tiniest() {
-                let x = hf128("0x1.p-16494");
-                let y = hf128("0x0.0000000000000001p-16430");
-                let z = hf128("0x0.8p-16493");
-                assert_eq!(x, y);
-                assert_eq!(x, z);
-            }
-
-            #[test]
-            #[should_panic(expected = "the value is too tiny")]
-            fn test_f128_too_tiny() {
-                hf128("0x1.p-16495");
-            }
-
-            #[test]
-            #[should_panic(expected = "the value is too tiny")]
-            fn test_f128_again_too_tiny() {
-                hf128("0x0.0000000000000001p-16431");
-            }
-
-            #[test]
-            #[should_panic(expected = "the value is too tiny")]
-            fn test_f128_also_too_tiny() {
-                hf128("0x0.8p-16494");
-            }
-        };
+    fn test_f128_almost_extra_precision() {
+        // Exact maximum precision allowed
+        hf128("0x1.ffffffffffffffffffffffffffffp+16383");
     }
 
+    #[test]
     #[cfg(f128_enabled)]
-    f128_tests!();
+    #[should_panic(expected = "the value is too precise")]
+    fn test_f128_extra_precision() {
+        // Just below the maximum finite.
+        hf128("0x1.fffffffffffffffffffffffffffe8p+16383");
+    }
+    #[test]
+    #[cfg(f128_enabled)]
+    #[should_panic(expected = "the value is too huge")]
+    fn test_f128_extra_precision_overflow() {
+        // One bit more than the above. Should overflow.
+        hf128("0x1.ffffffffffffffffffffffffffff8p+16383");
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    #[should_panic(expected = "the value is too huge")]
+    fn test_f128_overflow() {
+        // One bit more than the above.
+        hf128("0x1p+16384");
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    fn test_f128_tiniest() {
+        let x = hf128("0x1.p-16494");
+        let y = hf128("0x0.0000000000000001p-16430");
+        let z = hf128("0x0.8p-16493");
+        assert_eq!(x, y);
+        assert_eq!(x, z);
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    #[should_panic(expected = "the value is too tiny")]
+    fn test_f128_too_tiny() {
+        hf128("0x1.p-16495");
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    #[should_panic(expected = "the value is too tiny")]
+    fn test_f128_again_too_tiny() {
+        hf128("0x0.0000000000000001p-16431");
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    #[should_panic(expected = "the value is too tiny")]
+    fn test_f128_also_too_tiny() {
+        hf128("0x0.8p-16494");
+    }
 }
 
 #[cfg(test)]
