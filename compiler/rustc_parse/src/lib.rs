@@ -1,9 +1,9 @@
 //! The main parser interface.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(assert_matches))]
 #![cfg_attr(bootstrap, feature(if_let_guard))]
 #![cfg_attr(test, feature(iter_order_by))]
+#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(default_field_values)]

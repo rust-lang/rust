@@ -89,6 +89,7 @@
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
 #![feature(ascii_char)]
+#![feature(assert_matches)]
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
 #![feature(bstr)]
