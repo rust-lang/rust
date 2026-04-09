@@ -1,3 +1,17 @@
+error[E0452]: malformed lint attribute input
+  --> $DIR/proc-unsafe-attributes.rs:27:16
+   |
+LL | #[unsafe(allow(unsafe(dead_code)))]
+   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/proc-unsafe-attributes.rs:27:16
+   |
+LL | #[unsafe(allow(unsafe(dead_code)))]
+   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: expected identifier, found keyword `unsafe`
   --> $DIR/proc-unsafe-attributes.rs:27:16
    |
@@ -33,17 +47,21 @@ error: the `#[proc_macro_attribute]` attribute is only usable with crates of the
 LL | #[unsafe(proc_macro_attribute)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: expected identifier, found keyword `unsafe`
+error[E0452]: malformed lint attribute input
   --> $DIR/proc-unsafe-attributes.rs:27:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
-   |                ^^^^^^ expected identifier, found keyword
+   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: escape `unsafe` to use it as an identifier
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/proc-unsafe-attributes.rs:27:16
    |
-LL | #[unsafe(allow(r#unsafe(dead_code)))]
-   |                ++
+LL | #[unsafe(allow(unsafe(dead_code)))]
+   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `proc_macro` is not an unsafe attribute
   --> $DIR/proc-unsafe-attributes.rs:1:3
@@ -114,39 +132,23 @@ LL | #[unsafe(allow(unsafe(dead_code)))]
    |
    = note: extraneous unsafe is not allowed in attributes
 
-error: expected identifier, found keyword `unsafe`
+error[E0452]: malformed lint attribute input
   --> $DIR/proc-unsafe-attributes.rs:27:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
-   |                ^^^^^^ expected identifier, found keyword
+   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: escape `unsafe` to use it as an identifier
-   |
-LL | #[unsafe(allow(r#unsafe(dead_code)))]
-   |                ++
 
-error[E0565]: malformed `allow` attribute input
-  --> $DIR/proc-unsafe-attributes.rs:27:1
+error[E0452]: malformed lint attribute input
+  --> $DIR/proc-unsafe-attributes.rs:27:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
-   | ^^^^^^^^^^^^^^^^^^^^^-----------^^^
-   |                      |
-   |                      didn't expect any arguments here
+   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[unsafe(allow(unsafe(dead_code)))]
-LL + #[allow(lint1)]
-   |
-LL - #[unsafe(allow(unsafe(dead_code)))]
-LL + #[allow(lint1, lint2, ...)]
-   |
-LL - #[unsafe(allow(unsafe(dead_code)))]
-LL + #[allow(lint1, lint2, lint3, reason = "...")]
-   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 15 previous errors
+error: aborting due to 18 previous errors
 
-For more information about this error, try `rustc --explain E0565`.
+Some errors have detailed explanations: E0452, E0565.
+For more information about an error, try `rustc --explain E0452`.

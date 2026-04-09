@@ -294,6 +294,8 @@ pub(crate) enum MacroExport {
 pub(crate) enum UnusedNote {
     #[note("attribute `{$name}` with an empty list has no effect")]
     EmptyList { name: Symbol },
+    #[note("attribute `{$name}` without any lints has no effect")]
+    NoLints { name: Symbol },
     #[note("`default_method_body_is_const` has been replaced with `const` on traits")]
     DefaultMethodBodyConst,
     #[note(
@@ -324,6 +326,30 @@ pub(crate) struct NonExportedMacroInvalidAttrs {
 pub(crate) struct InvalidMayDangle {
     #[primary_span]
     pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("unused attribute")]
+pub(crate) struct UnusedDuplicate {
+    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    pub this: Span,
+    #[note("attribute also specified here")]
+    pub other: Span,
+    #[warning(
+        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+    )]
+    pub warning: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag("multiple `{$name}` attributes")]
+pub(crate) struct UnusedMultiple {
+    #[primary_span]
+    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    pub this: Span,
+    #[note("attribute also specified here")]
+    pub other: Span,
+    pub name: Symbol,
 }
 
 #[derive(Diagnostic)]

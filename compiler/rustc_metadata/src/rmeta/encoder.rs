@@ -864,6 +864,10 @@ fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState<'_>) -> bool
         && p.encode_cross_crate() == EncodeCrossCrate::No
     {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
+    } else if let Some(name) = attr.name()
+        && !rustc_feature::encode_cross_crate(name)
+    {
+        // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
     } else if let hir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into

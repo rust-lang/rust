@@ -1238,11 +1238,11 @@ pub(crate) struct OverruledAttributeLint<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint name `{$name}` is deprecated and may not have an effect in the future")]
-pub(crate) struct DeprecatedLintName {
-    pub name: Symbol,
+pub(crate) struct DeprecatedLintName<'a> {
+    pub name: String,
     #[suggestion("change it to", code = "{replace}", applicability = "machine-applicable")]
     pub suggestion: Span,
-    pub replace: Symbol,
+    pub replace: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -1257,32 +1257,32 @@ pub(crate) struct DeprecatedLintNameFromCommandLine<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been renamed to `{$replace}`")]
-pub(crate) struct RenamedLint {
-    pub name: Symbol,
-    pub replace: Symbol,
+pub(crate) struct RenamedLint<'a> {
+    pub name: &'a str,
+    pub replace: &'a str,
     #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion,
+    pub suggestion: RenamedLintSuggestion<'a>,
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum RenamedLintSuggestion {
+pub(crate) enum RenamedLintSuggestion<'a> {
     #[suggestion("use the new name", code = "{replace}", applicability = "machine-applicable")]
     WithSpan {
         #[primary_span]
         suggestion: Span,
-        replace: Symbol,
+        replace: &'a str,
     },
     #[help("use the new name `{$replace}`")]
-    WithoutSpan { replace: Symbol },
+    WithoutSpan { replace: &'a str },
 }
 
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been renamed to `{$replace}`")]
 pub(crate) struct RenamedLintFromCommandLine<'a> {
     pub name: &'a str,
-    pub replace: Symbol,
+    pub replace: &'a str,
     #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion,
+    pub suggestion: RenamedLintSuggestion<'a>,
     #[subdiagnostic]
     pub requested_level: RequestedLevel<'a>,
 }
@@ -1290,7 +1290,7 @@ pub(crate) struct RenamedLintFromCommandLine<'a> {
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been removed: {$reason}")]
 pub(crate) struct RemovedLint<'a> {
-    pub name: Symbol,
+    pub name: &'a str,
     pub reason: &'a str,
 }
 
@@ -1306,7 +1306,7 @@ pub(crate) struct RemovedLintFromCommandLine<'a> {
 #[derive(Diagnostic)]
 #[diag("unknown lint: `{$name}`")]
 pub(crate) struct UnknownLint {
-    pub name: Symbol,
+    pub name: String,
     #[subdiagnostic]
     pub suggestion: Option<UnknownLintSuggestion>,
 }
@@ -1348,8 +1348,8 @@ pub(crate) struct UnknownLintFromCommandLine<'a> {
 
 #[derive(Diagnostic)]
 #[diag("{$level}({$name}) is ignored unless specified at crate level")]
-pub(crate) struct IgnoredUnlessCrateSpecified {
-    pub level: Symbol,
+pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
+    pub level: &'a str,
     pub name: Symbol,
 }
 

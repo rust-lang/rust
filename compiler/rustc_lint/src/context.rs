@@ -25,9 +25,7 @@ use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
 use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode};
-use rustc_session::lint::{
-    CheckLintNameResult, FutureIncompatibleInfo, Lint, LintExpectationId, LintId, TargetLint,
-};
+use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintExpectationId, LintId};
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -71,19 +69,26 @@ impl DynLintStore for LintStore {
             rustc_session::LintGroup { name, lints, is_externally_loaded }
         }))
     }
+}
 
-    fn check_lint_name(
-        &self,
-        lint_name: &str,
-        tool_name: Option<Symbol>,
-        registered_tools: &RegisteredTools,
-    ) -> CheckLintNameResult<'_> {
-        self.check_lint_name(lint_name, tool_name, registered_tools)
-    }
+/// The target of the `by_name` map, which accounts for renaming/deprecation.
+#[derive(Debug)]
+enum TargetLint {
+    /// A direct lint target
+    Id(LintId),
 
-    fn find_lints(&self, lint_name: &str) -> Option<&[LintId]> {
-        self.find_lints(lint_name)
-    }
+    /// Temporary renaming, used for easing migration pain; see #16545
+    Renamed(String, LintId),
+
+    /// Lint with this name existed previously, but has been removed/deprecated.
+    /// The string argument is the reason for removal.
+    Removed(String),
+
+    /// A lint name that should give no warnings and have no effect.
+    ///
+    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers
+    /// them as tool lints.
+    Ignored,
 }
 
 struct LintAlias {
@@ -96,6 +101,29 @@ struct LintGroup {
     lint_ids: Vec<LintId>,
     is_externally_loaded: bool,
     depr: Option<LintAlias>,
+}
+
+#[derive(Debug)]
+pub enum CheckLintNameResult<'a> {
+    Ok(&'a [LintId]),
+    /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
+    NoLint(Option<(Symbol, bool)>),
+    /// The lint refers to a tool that has not been registered.
+    NoTool,
+    /// The lint has been renamed to a new name.
+    Renamed(String),
+    /// The lint has been removed due to the given reason.
+    Removed(String),
+
+    /// The lint is from a tool. The `LintId` will be returned as if it were a
+    /// rustc lint. The `Option<String>` indicates if the lint has been
+    /// renamed.
+    Tool(&'a [LintId], Option<String>),
+
+    /// The lint is from a tool. Either the lint does not exist in the tool or
+    /// the code was not compiled with the tool and therefore the lint was
+    /// never added to the `LintStore`.
+    MissingTool,
 }
 
 impl LintStore {
@@ -276,10 +304,6 @@ impl LintStore {
         self.by_name.insert(name.into(), Removed(reason.into()));
     }
 
-    pub fn get_lint_by_name(&self, lint_name: &str) -> Option<&TargetLint> {
-        self.by_name.get(lint_name)
-    }
-
     pub fn find_lints(&self, lint_name: &str) -> Option<&[LintId]> {
         match self.by_name.get(lint_name) {
             Some(Id(lint_id)) => Some(slice::from_ref(lint_id)),
@@ -369,7 +393,7 @@ impl LintStore {
             }
         }
         match self.by_name.get(&complete_name) {
-            Some(Renamed(new_name, _)) => CheckLintNameResult::Renamed(Symbol::intern(new_name)),
+            Some(Renamed(new_name, _)) => CheckLintNameResult::Renamed(new_name.to_string()),
             Some(Removed(reason)) => CheckLintNameResult::Removed(reason.to_string()),
             None => match self.lint_groups.get(&*complete_name) {
                 // If neither the lint, nor the lint group exists check if there is a `clippy::`
@@ -578,8 +602,6 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         }
     }
 
-    /// Only appropriate for use inside of the compiler
-    /// since the compiler doesn't track levels of tool lints
     fn get_lint_level(&self, lint: &'static Lint) -> LevelAndSource {
         self.tcx.lint_level_at_node(lint, self.last_node_with_lint_attrs)
     }
@@ -820,7 +842,12 @@ impl<'tcx> LateContext<'tcx> {
     /// be used for pretty-printing HIR by rustc_hir_pretty.
     pub fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
         let has_attr = |id: hir::HirId| -> bool {
-            self.tcx.hir_attrs(id).iter().any(hir::Attribute::has_span_without_desugaring_kind)
+            for attr in self.tcx.hir_attrs(id) {
+                if attr.span().desugaring_kind().is_none() {
+                    return true;
+                }
+            }
+            false
         };
         expr.precedence(&has_attr)
     }
