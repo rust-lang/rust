@@ -162,7 +162,8 @@ fn visit_implementation_of_unpin(checker: &Checker<'_>) -> Result<(), ErrorGuara
                     adt_name: tcx.item_name(adt.did()),
                 }));
             }
-            ty::Adt(_, _) => {}
+            // `extern type`s do not have Rust-visible fields that `#[pin_v2]` could project.
+            ty::Adt(_, _) | ty::Foreign(_) => {}
             _ => {
                 return Err(tcx.dcx().span_delayed_bug(span, "impl of `Unpin` for a non-adt type"));
             }
