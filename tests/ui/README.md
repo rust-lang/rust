@@ -1558,7 +1558,7 @@ Exercises the `unused_crate_dependencies` lint.
 
 ## `tests/ui/use/`
 
-**FIXME**: merge with `ui/imports`
+**FIXME**: merge with `ui/imports`.
 
 ## `tests/ui/variance/`: Covariants, invariants and contravariants
 
