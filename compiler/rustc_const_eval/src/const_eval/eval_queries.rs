@@ -373,7 +373,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     assert!(key.value.promoted.is_some() || !tcx.is_static(key.value.instance.def_id()));
 
     if cfg!(debug_assertions) {
-        match key.typing_env.typing_mode.0 {
+        match key.typing_env.typing_mode() {
             ty::TypingMode::PostAnalysis => {}
             ty::TypingMode::Coherence
             | ty::TypingMode::Analysis { .. }

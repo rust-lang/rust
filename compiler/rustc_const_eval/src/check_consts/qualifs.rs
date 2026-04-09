@@ -9,7 +9,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, AdtDef, Ty, TypingModeEqWrapper};
+use rustc_middle::ty::{self, AdtDef, Ty};
 use rustc_middle::{bug, mir};
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::instrument;
@@ -103,13 +103,10 @@ impl Qualif for HasMutInterior {
         // FIXME(#132279): Once we've got a typing mode which reveals opaque types using the HIR
         // typeck results without causing query cycles, we should use this here instead of defining
         // opaque types.
-        let typing_env = ty::TypingEnv {
-            typing_mode: TypingModeEqWrapper(ty::TypingMode::analysis_in_body(
-                cx.tcx,
-                cx.body.source.def_id().expect_local(),
-            )),
-            param_env: cx.typing_env.param_env,
-        };
+        let typing_env = ty::TypingEnv::new(
+            cx.typing_env.param_env,
+            ty::TypingMode::analysis_in_body(cx.tcx, cx.body.source.def_id().expect_local()),
+        );
         let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(typing_env);
         let ocx = ObligationCtxt::new(&infcx);
         let obligation = Obligation::new(

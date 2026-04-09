@@ -236,16 +236,17 @@ pub(crate) fn eval_to_valtree<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
     cid: GlobalId<'tcx>,
 ) -> EvalToValTreeResult<'tcx> {
-    #[cfg(debug_assertions)]
-    match typing_env.typing_mode.0 {
-        ty::TypingMode::PostAnalysis => {}
-        ty::TypingMode::Coherence
-        | ty::TypingMode::Analysis { .. }
-        | ty::TypingMode::Borrowck { .. }
-        | ty::TypingMode::PostBorrowckAnalysis { .. } => {
-            bug!(
-                "Const eval should always happens in PostAnalysis mode. See the comment in `InterpCx::new` for more details."
-            )
+    if cfg!(debug_assertions) {
+        match typing_env.typing_mode() {
+            ty::TypingMode::PostAnalysis => {}
+            ty::TypingMode::Coherence
+            | ty::TypingMode::Analysis { .. }
+            | ty::TypingMode::Borrowck { .. }
+            | ty::TypingMode::PostBorrowckAnalysis { .. } => {
+                bug!(
+                    "Const eval should always happens in PostAnalysis mode. See the comment in `InterpCx::new` for more details."
+                )
+            }
         }
     }
     let const_alloc = tcx.eval_to_allocation_raw(typing_env.as_query_input(cid))?;

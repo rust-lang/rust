@@ -33,7 +33,6 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_type_ir::TypingModeEqWrapper;
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
@@ -572,9 +571,9 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 
     pub fn build_with_typing_env(
         mut self,
-        TypingEnv { typing_mode, param_env }: TypingEnv<'tcx>,
+        typing_env: TypingEnv<'tcx>,
     ) -> (InferCtxt<'tcx>, ty::ParamEnv<'tcx>) {
-        (self.build(typing_mode.0), param_env)
+        (self.build(typing_env.typing_mode()), typing_env.param_env)
     }
 
     pub fn build(&mut self, typing_mode: TypingMode<'tcx>) -> InferCtxt<'tcx> {
@@ -1377,7 +1376,7 @@ impl<'tcx> InferCtxt<'tcx> {
             | ty::TypingMode::PostBorrowckAnalysis { .. }
             | ty::TypingMode::PostAnalysis) => mode,
         };
-        ty::TypingEnv { typing_mode: TypingModeEqWrapper(typing_mode), param_env }
+        ty::TypingEnv::new(param_env, typing_mode)
     }
 
     /// Similar to [`Self::canonicalize_query`], except that it returns

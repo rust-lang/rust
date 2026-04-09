@@ -144,7 +144,14 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
                 TypingMode::PostBorrowckAnalysis { defined_opaque_types: r },
             ) => l == r,
             (TypingMode::PostAnalysis, TypingMode::PostAnalysis) => true,
-            _ => false,
+            (
+                TypingMode::Coherence
+                | TypingMode::Analysis { .. }
+                | TypingMode::Borrowck { .. }
+                | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::PostAnalysis,
+                _,
+            ) => false,
         }
     }
 }
@@ -201,7 +208,6 @@ impl<I: Interner> TypingMode<I> {
 
     pub fn post_borrowck_analysis(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
         let defined_opaque_types = cx.opaque_types_defined_by(body_def_id);
-
         if defined_opaque_types.is_empty() {
             TypingMode::non_body_analysis()
         } else {
