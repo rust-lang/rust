@@ -602,6 +602,8 @@ declare_features! (
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "1.79.0", Some(123076)),
+    /// Allows `move(expr)` in closures.
+    (incomplete, move_expr, "CURRENT_RUSTC_VERSION", None),
     /// Allows using `#[naked]` on `extern "Rust"` functions.
     (unstable, naked_functions_rustic_abi, "1.88.0", Some(138997)),
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.

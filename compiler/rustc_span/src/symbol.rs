@@ -1310,6 +1310,7 @@ symbols! {
         more_qualified_paths,
         more_struct_aliases,
         movbe_target_feature,
+        move_expr,
         move_ref_pattern,
         move_size_limit,
         movrs_target_feature,
