@@ -1558,7 +1558,7 @@ Exercises the `unused_crate_dependencies` lint.
 
 ## `tests/ui/use/`
 
-**FIXME**: merge with `ui/imports`.
+**FIXME**: merge with `ui/imports`
 
 ## `tests/ui/variance/`: Covariants, invariants and contravariants
 
@@ -1600,6 +1600,10 @@ See: https://github.com/rustfoundation/interop-initiative/issues/53
 ## `tests/ui/windows-subsystem/`: `#![windows_subsystem = ""]`
 
 See [the `windows_subsystem` attribute](https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute).
+
+## `whitespace`
+Contains tests for ASCII whitespace handling, excluding vertical tab, and ensures correct lexer behavior.
+
 
 ## `tests/ui/zero-sized/`: Zero-sized types
 
