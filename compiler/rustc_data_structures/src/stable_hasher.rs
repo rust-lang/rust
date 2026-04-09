@@ -34,11 +34,9 @@ pub trait HashStableContext {
     fn assert_default_hashing_controls(&self, msg: &str);
 }
 
-// A type used to work around `Span` not being visible in this crate. It is the same size as
+// A type used to work around `Span` not being visible in this crate. It is the same layout as
 // `Span`.
-pub struct RawSpan {
-    _data: u64,
-}
+pub struct RawSpan(pub u32, pub u16, pub u16);
 
 // A type used to work around `DefId` not being visible in this crate. It is the same size as
 // `DefId`.

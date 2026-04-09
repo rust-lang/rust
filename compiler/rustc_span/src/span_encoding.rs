@@ -445,15 +445,12 @@ impl Span {
 
     #[inline]
     pub(crate) fn to_raw_span(self) -> RawSpan {
-        // SAFETY: we call `to_raw_span` and then `from_raw_span` immediately after, only when
-        // calling `HashStableContext::span_hash_stable`.
-        unsafe { std::mem::transmute::<Span, RawSpan>(self) }
+        RawSpan(self.lo_or_index, self.len_with_tag_or_marker, self.ctxt_or_parent_or_marker)
     }
 
     #[inline]
-    pub fn from_raw_span(raw_span: RawSpan) -> Span {
-        // SAFETY: see the comment in `to_raw_span`.
-        unsafe { std::mem::transmute::<RawSpan, Span>(raw_span) }
+    pub fn from_raw_span(RawSpan(x, y, z): RawSpan) -> Span {
+        Span { lo_or_index: x, len_with_tag_or_marker: y, ctxt_or_parent_or_marker: z }
     }
 }
 
