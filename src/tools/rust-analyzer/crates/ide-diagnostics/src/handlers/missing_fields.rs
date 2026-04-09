@@ -120,7 +120,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                 let field_expr = if let Some(local_candidate) = locals.get(&f.name(ctx.sema.db)) {
                     cov_mark::hit!(field_shorthand);
                     let candidate_ty = local_candidate.ty(ctx.sema.db);
-                    if ty.could_unify_with(ctx.sema.db, &candidate_ty) {
+                    if candidate_ty.could_coerce_to(ctx.sema.db, ty) {
                         None
                     } else {
                         Some(generate_fill_expr(ty))
@@ -932,6 +932,32 @@ fn main() {
     let Point { x, .. } = Point { z: 5, .. };
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn coerce_existing_local() {
+        check_fix(
+            r#"
+struct A {
+    v: f64,
+}
+
+fn f() -> A {
+    let v = loop {};
+    A {$0}
+}
+        "#,
+            r#"
+struct A {
+    v: f64,
+}
+
+fn f() -> A {
+    let v = loop {};
+    A { v }
+}
+        "#,
         );
     }
 }
