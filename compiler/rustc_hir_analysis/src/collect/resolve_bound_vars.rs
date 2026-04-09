@@ -1862,7 +1862,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // Resolve lifetimes found in the bindings, so either in the type `XX` in `Item = XX` or
         // in the trait ref `YY<...>` in `Item: YY<...>`.
         for constraint in generic_args.constraints {
-            let lifetime = |_: &mut _| if has_lifetime_parameter { None } else { Some(ResolvedArg::StaticLifetime) };
+            let lifetime = |_: &mut _| {
+                if has_lifetime_parameter { None } else { Some(ResolvedArg::StaticLifetime) }
+            };
             // If the args are parenthesized, then this must be `feature(return_type_notation)`.
             // In that case, introduce a binder over all of the function's early and late bound vars.
             //
