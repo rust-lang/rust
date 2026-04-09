@@ -4,7 +4,7 @@ use std::iter;
 
 use hir::crate_def_map;
 use hir::{InFile, ModuleSource};
-use ide_db::base_db::RootQueryDb;
+use ide_db::base_db;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     FileId, FileRange, LineIndexDatabase, base_db::SourceDatabase, source_change::SourceChange,
@@ -101,8 +101,8 @@ fn fixes(
     };
 
     // check crate roots, i.e. main.rs, lib.rs, ...
-    let relevant_crates = db.relevant_crates(file_id);
-    'crates: for &krate in &*relevant_crates {
+    let relevant_crates = base_db::relevant_crates(db, file_id);
+    'crates: for &krate in relevant_crates {
         // FIXME: This shouldnt need to access the crate def map directly
         let crate_def_map = crate_def_map(ctx.sema.db, krate);
 
@@ -157,7 +157,7 @@ fn fixes(
             paths.into_iter().find_map(|path| source_root.file_for_path(&path))
         })?;
     stack.pop();
-    let relevant_crates = db.relevant_crates(parent_id);
+    let relevant_crates = base_db::relevant_crates(db, parent_id);
     'crates: for &krate in relevant_crates.iter() {
         let crate_def_map = crate_def_map(ctx.sema.db, krate);
         let Some((_, module)) = crate_def_map.modules().find(|(_, module)| {

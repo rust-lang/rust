@@ -121,8 +121,7 @@ fn find_extracted_variable(ctx: &AssistContext<'_>, arm: &ast::MatchArm) -> Opti
 
 // Rename `extracted` with `binding` in `pat`.
 fn rename_variable(pat: &ast::Pat, extracted: &[Name], binding: ast::Pat) -> SyntaxNode {
-    let syntax = pat.syntax().clone_subtree();
-    let mut editor = SyntaxEditor::new(syntax.clone());
+    let (mut editor, syntax) = SyntaxEditor::new(pat.syntax().clone());
     let make = SyntaxFactory::with_mappings();
     let extracted = extracted
         .iter()
@@ -138,15 +137,12 @@ fn rename_variable(pat: &ast::Pat, extracted: &[Name], binding: ast::Pat) -> Syn
             if let Some(name_ref) = record_pat_field.field_name() {
                 editor.replace(
                     record_pat_field.syntax(),
-                    make.record_pat_field(
-                        make.name_ref(&name_ref.text()),
-                        binding.clone_for_update(),
-                    )
-                    .syntax(),
+                    make.record_pat_field(make.name_ref(&name_ref.text()), binding.clone())
+                        .syntax(),
                 );
             }
         } else {
-            editor.replace(extracted_syntax, binding.syntax().clone_for_update());
+            editor.replace(extracted_syntax, binding.syntax());
         }
     }
     editor.add_mappings(make.finish_with_mappings());

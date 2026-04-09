@@ -236,7 +236,7 @@ fn main() {
 ```
 
 The primary goal of `onEnter` is to handle automatic indentation when opening a new line.
-This is not yet implemented.
+This is partially implemented for single-line brace-delimited contents, in addition to comment continuation.
 The secondary goal is to handle fixing up syntax, like continuing doc strings and comments, and escaping `\n` in string literals.
 
 As proper cursor positioning is raison d'être for `onEnter`, it uses `SnippetTextEdit`.

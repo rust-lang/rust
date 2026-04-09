@@ -2,13 +2,13 @@
 use hir::DisplayTarget;
 use ide_db::famous_defs::FamousDefs;
 use syntax::{
-    Direction, NodeOrToken, SyntaxKind, T,
+    Direction, NodeOrToken, SyntaxKind, T, TextRange,
     ast::{self, AstNode},
 };
 
 use crate::{InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind};
 
-use super::label_of_ty;
+use super::{TypeHintsPlacement, label_of_ty};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -40,13 +40,14 @@ pub(super) fn hints(
 
     // Chaining can be defined as an expression whose next sibling tokens are newline and dot
     // Ignoring extra whitespace and comments
-    let next = tokens.next()?.kind();
-    if next == SyntaxKind::WHITESPACE {
-        let mut next_next = tokens.next()?.kind();
-        while next_next == SyntaxKind::WHITESPACE {
-            next_next = tokens.next()?.kind();
+    let next_token = tokens.next()?;
+    if next_token.kind() == SyntaxKind::WHITESPACE {
+        let newline_token = next_token;
+        let mut next_next = tokens.next()?;
+        while next_next.kind() == SyntaxKind::WHITESPACE {
+            next_next = tokens.next()?;
         }
-        if next_next == T![.] {
+        if next_next.kind() == T![.] {
             let ty = sema.type_of_expr(desc_expr)?.original;
             if ty.is_unknown() {
                 return None;
@@ -58,8 +59,18 @@ pub(super) fn hints(
                 return None;
             }
             let label = label_of_ty(famous_defs, config, &ty, display_target)?;
+            let range = {
+                let mut range = expr.syntax().text_range();
+                if config.type_hints_placement == TypeHintsPlacement::EndOfLine {
+                    range = TextRange::new(
+                        range.start(),
+                        newline_token.text_range().start().max(range.end()),
+                    );
+                }
+                range
+            };
             acc.push(InlayHint {
-                range: expr.syntax().text_range(),
+                range,
                 kind: InlayKind::Chaining,
                 label,
                 text_edit: None,
@@ -79,7 +90,7 @@ mod tests {
     use ide_db::text_edit::{TextRange, TextSize};
 
     use crate::{
-        InlayHintsConfig, fixture,
+        InlayHintsConfig, TypeHintsPlacement, fixture,
         inlay_hints::{
             LazyProperty,
             tests::{DISABLED_CONFIG, TEST_CONFIG, check_expect, check_with_config},
@@ -675,6 +686,82 @@ fn main() {
                                                 0,
                                             ),
                                             range: 42..46,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                        ],
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn chaining_hints_end_of_line_placement() {
+        check_expect(
+            InlayHintsConfig {
+                chaining_hints: true,
+                type_hints_placement: TypeHintsPlacement::EndOfLine,
+                ..DISABLED_CONFIG
+            },
+            r#"
+fn main() {
+    let baz = make()
+        .into_bar()
+        .into_baz();
+}
+
+struct Foo;
+struct Bar;
+struct Baz;
+
+impl Foo {
+    fn into_bar(self) -> Bar { Bar }
+}
+
+impl Bar {
+    fn into_baz(self) -> Baz { Baz }
+}
+
+fn make() -> Foo {
+    Foo
+}
+"#,
+            expect![[r#"
+                [
+                    (
+                        26..52,
+                        [
+                            InlayHintLabelPart {
+                                text: "Bar",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 96..99,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                        ],
+                    ),
+                    (
+                        26..32,
+                        [
+                            InlayHintLabelPart {
+                                text: "Foo",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 84..87,
                                         },
                                     ),
                                 ),

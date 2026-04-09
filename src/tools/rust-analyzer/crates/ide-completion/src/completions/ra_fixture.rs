@@ -22,7 +22,7 @@ pub(crate) fn complete_ra_fixture(
         &ctx.sema,
         original.clone(),
         expanded,
-        ctx.config.minicore,
+        &ctx.config.ra_fixture,
         &mut |_| {},
     )?;
     let (virtual_file_id, virtual_offset) = analysis.map_offset_down(ctx.position.offset)?;

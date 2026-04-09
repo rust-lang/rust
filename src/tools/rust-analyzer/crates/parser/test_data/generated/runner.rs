@@ -793,6 +793,10 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/fn_ret_recovery.rs");
     }
     #[test]
+    fn function_ret_type_missing_arrow() {
+        run_and_expect_errors("test_data/parser/inline/err/function_ret_type_missing_arrow.rs");
+    }
+    #[test]
     fn gen_fn() {
         run_and_expect_errors_with_edition(
             "test_data/parser/inline/err/gen_fn.rs",

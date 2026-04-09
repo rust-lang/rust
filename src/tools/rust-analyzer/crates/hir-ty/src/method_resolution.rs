@@ -324,7 +324,7 @@ impl<'db> InferenceTable<'db> {
         // any late-bound regions appearing in its bounds.
         let bounds = GenericPredicates::query_all(self.db, method_item.into());
         let bounds = clauses_as_obligations(
-            bounds.iter_instantiated_copied(interner, args.as_slice()),
+            bounds.iter_instantiated(interner, args.as_slice()),
             ObligationCause::new(),
             self.param_env,
         );

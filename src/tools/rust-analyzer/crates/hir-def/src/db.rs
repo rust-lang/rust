@@ -1,5 +1,5 @@
 //! Defines database & queries for name resolution.
-use base_db::{Crate, RootQueryDb, SourceDatabase};
+use base_db::{Crate, SourceDatabase};
 use hir_expand::{
     EditionedFileId, HirFileId, InFile, Lookup, MacroCallId, MacroDefId, MacroDefKind,
     db::ExpandDatabase,
@@ -22,7 +22,7 @@ use crate::{
 use salsa::plumbing::AsId;
 
 #[query_group::query_group(InternDatabaseStorage)]
-pub trait InternDatabase: RootQueryDb {
+pub trait InternDatabase: SourceDatabase {
     // region: items
     #[salsa::interned]
     fn intern_use(&self, loc: UseLoc) -> UseId;

@@ -170,7 +170,7 @@ impl Replacement {
             Replacement::Generic { lifetime_map, const_and_type_map } => {
                 create_replacement(lifetime_map, const_and_type_map, concrete_type)
             }
-            Replacement::Plain => concrete_type.syntax().clone_subtree().clone_for_update(),
+            Replacement::Plain => concrete_type.syntax().clone(),
         }
     }
 }
@@ -312,8 +312,7 @@ fn create_replacement(
     const_and_type_map: &ConstAndTypeMap,
     concrete_type: &ast::Type,
 ) -> SyntaxNode {
-    let updated_concrete_type = concrete_type.syntax().clone_subtree();
-    let mut editor = SyntaxEditor::new(updated_concrete_type.clone());
+    let (mut editor, updated_concrete_type) = SyntaxEditor::new(concrete_type.syntax().clone());
 
     let mut replacements: Vec<(SyntaxNode, SyntaxNode)> = Vec::new();
     let mut removals: Vec<NodeOrToken<SyntaxNode, _>> = Vec::new();
@@ -361,7 +360,7 @@ fn create_replacement(
                     continue;
                 }
 
-                replacements.push((syntax.clone(), new_lifetime.syntax().clone_for_update()));
+                replacements.push((syntax.clone(), new_lifetime.syntax().clone()));
             }
         } else if let Some(name_ref) = ast::NameRef::cast(syntax.clone()) {
             let Some(replacement_syntax) = const_and_type_map.0.get(&name_ref.to_string()) else {
@@ -449,15 +448,12 @@ impl ConstOrTypeGeneric {
     }
 
     fn replacement_value(&self) -> Option<SyntaxNode> {
-        Some(
-            match self {
-                ConstOrTypeGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
-                ConstOrTypeGeneric::TypeArg(ta) => ta.syntax().clone(),
-                ConstOrTypeGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
-                ConstOrTypeGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
-            }
-            .clone_for_update(),
-        )
+        Some(match self {
+            ConstOrTypeGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
+            ConstOrTypeGeneric::TypeArg(ta) => ta.syntax().clone(),
+            ConstOrTypeGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
+            ConstOrTypeGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
+        })
     }
 }
 

@@ -8,8 +8,8 @@ use syntax::{
 use crate::{
     AssistContext, AssistId, Assists,
     utils::{
-        self, DefaultMethods, IgnoreAssocItems, generate_impl_with_factory,
-        generate_trait_impl_intransitive,
+        self, DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl,
+        generate_impl_with_factory, generate_trait_impl_intransitive,
     },
 };
 
@@ -212,7 +212,8 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 make_impl_(None)
             } else {
                 let impl_ = make_impl_(None);
-                let assoc_items = utils::add_trait_assoc_items_to_impl(
+                let assoc_items = add_trait_assoc_items_to_impl(
+                    &make,
                     &ctx.sema,
                     ctx.config,
                     &missing_items,
