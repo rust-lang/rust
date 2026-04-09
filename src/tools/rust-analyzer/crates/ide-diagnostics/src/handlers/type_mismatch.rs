@@ -8,7 +8,7 @@ use ide_db::{
 use syntax::{
     AstNode, AstPtr, TextSize,
     ast::{
-        self, BlockExpr, Expr, ExprStmt, HasArgList,
+        self, BlockExpr, Expr, ExprStmt, HasArgList, RefExpr,
         edit::{AstNodeEdit, IndentLevel},
     },
 };
@@ -69,7 +69,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::TypeMismatch<'_>) -> Option<
 
     if let Some(expr_ptr) = d.expr_or_pat.value.cast::<ast::Expr>() {
         let expr_ptr = &InFile { file_id: d.expr_or_pat.file_id, value: expr_ptr };
-        add_reference(ctx, d, expr_ptr, &mut fixes);
+        add_or_fix_reference(ctx, d, expr_ptr, &mut fixes);
         add_missing_ok_or_some(ctx, d, expr_ptr, &mut fixes);
         remove_unnecessary_wrapper(ctx, d, expr_ptr, &mut fixes);
         remove_semicolon(ctx, d, expr_ptr, &mut fixes);
@@ -79,7 +79,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::TypeMismatch<'_>) -> Option<
     if fixes.is_empty() { None } else { Some(fixes) }
 }
 
-fn add_reference(
+fn add_or_fix_reference(
     ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
@@ -87,13 +87,44 @@ fn add_reference(
 ) -> Option<()> {
     let range = ctx.sema.diagnostics_display_range((*expr_ptr).map(|it| it.into()));
 
-    let (_, mutability) = d.expected.as_reference()?;
-    let actual_with_ref = d.actual.add_reference(ctx.db(), mutability);
+    let (expected_with_ref_removed, expected_mutability) = d.expected.as_reference()?;
+
+    if let Some((actual_with_ref_removed, hir::Mutability::Shared)) = d.actual.as_reference()
+        && expected_mutability == hir::Mutability::Mut
+        && actual_with_ref_removed.could_coerce_to(ctx.db(), &expected_with_ref_removed)
+    {
+        // The actual type is `&T`, and the expected type is `&mut T`, (or `U` that `T` can be coerced to).
+        // It's likely that, instead of adding a reference, we should just change the mutability of
+        // the existing one.
+
+        let expr = expr_ptr.to_node(ctx.db());
+        // If the node comes from a macro expansion, then we shouldn't assist,
+        // as the suggestion would overwrite the macro _definition_ position
+        let expr = ctx.sema.original_ast_node(expr)?;
+        let expr_without_ref = RefExpr::cast(expr.syntax().clone())?.expr()?;
+
+        let file_id = expr_ptr.file_id.original_file(ctx.db());
+        let mut builder = SourceChangeBuilder::new(file_id.file_id(ctx.db()));
+        let editor = builder.make_editor(expr.syntax());
+        let make = editor.make();
+        let new_expr = make.expr_ref(expr_without_ref, true);
+        builder.replace_ast(expr, new_expr);
+        let source_change = builder.finish();
+        acc.push(fix(
+            "make_reference_mutable",
+            "Make reference mutable",
+            source_change,
+            range.range,
+        ));
+        return Some(());
+    }
+
+    let actual_with_ref = d.actual.add_reference(ctx.db(), expected_mutability);
     if !actual_with_ref.could_coerce_to(ctx.db(), &d.expected) {
         return None;
     }
 
-    let ampersands = format!("&{}", mutability.as_keyword_for_ref());
+    let ampersands = format!("&{}", expected_mutability.as_keyword_for_ref());
 
     let edit = TextEdit::insert(range.range.start(), ampersands);
     let source_change = SourceChange::from_text_edit(range.file_id, edit);
@@ -391,6 +422,96 @@ fn test(_arg: &mut i32) {}
     }
 
     #[test]
+    fn fix_reference_to_int() {
+        check_fix(
+            r#"
+fn main() {
+    test($0&123);
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test(&mut 123);
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_reference_to_parenthesized_int() {
+        check_fix(
+            r#"
+fn main() {
+    test(($0123));
+}
+fn test(_arg: &i32) {}
+            "#,
+            r#"
+fn main() {
+    test((&123));
+}
+fn test(_arg: &i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_mutable_reference_to_parenthesized_int() {
+        check_fix(
+            r#"
+fn main() {
+    test(($0123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test((&mut 123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_to_parenthesized_int_paren_inside_ref() {
+        check_fix(
+            r#"
+fn main() {
+    test(&$0(123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test(&mut (123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_to_parenthesized_int_ref_inside_paren() {
+        check_fix(
+            r#"
+fn main() {
+    test(($0&123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test((&mut 123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
     fn add_reference_to_array() {
         check_fix(
             r#"
@@ -405,6 +526,19 @@ fn main() {
     test(&[1, 2, 3]);
 }
 fn test(_arg: &[i32]) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_to_array() {
+        check_no_fix(
+            r#"
+//- minicore: coerce_unsized
+fn main() {
+    test($0&[1, 2, 3]);
+}
+fn test(_arg: &mut [i32]) {}
             "#,
         );
     }
@@ -438,6 +572,49 @@ fn main() {
     test(&Foo);
 }
 fn test(_arg: &Bar) {}
+            "#,
+        );
+    }
+
+    #[test]
+    // FIXME: this should suggest making the reference mutable instead: `&Foo -> &mut Foo`.
+    // Currently it doesn't, as the logic for that assist strips away references, and thus checks
+    // whether `Foo` can be coerced to `Bar` (which it can't), instead of checking `&mut Foo` to
+    // `&mut Bar` (which it can)
+    fn fix_reference_with_autoderef() {
+        check_fix(
+            r#"
+//- minicore: coerce_unsized, deref_mut
+struct Foo;
+struct Bar;
+impl core::ops::Deref for Foo {
+    type Target = Bar;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut Self::Target { loop {} }
+}
+
+fn main() {
+    test($0&Foo);
+}
+fn test(_arg: &mut Bar) {}
+            "#,
+            r#"
+struct Foo;
+struct Bar;
+impl core::ops::Deref for Foo {
+    type Target = Bar;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut Self::Target { loop {} }
+}
+
+fn main() {
+    test(&mut &Foo);
+}
+fn test(_arg: &mut Bar) {}
             "#,
         );
     }
@@ -499,6 +676,22 @@ fn main() {
     }
 
     #[test]
+    fn fix_reference_to_let_stmt() {
+        check_fix(
+            r#"
+fn main() {
+    let _test: &mut i32 = $0&123;
+}
+            "#,
+            r#"
+fn main() {
+    let _test: &mut i32 = &mut 123;
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn add_reference_to_macro_call() {
         check_fix(
             r#"
@@ -521,6 +714,56 @@ macro_rules! thousand {
 fn test(_foo: &u64) {}
 fn main() {
     test(&thousand!());
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_to_macro_call() {
+        check_fix(
+            r#"
+macro_rules! thousand {
+    () => {
+        1000_u64
+    };
+}
+
+fn test(_foo: &mut u64) {}
+fn main() {
+    test($0&thousand!());
+}
+            "#,
+            r#"
+macro_rules! thousand {
+    () => {
+        1000_u64
+    };
+}
+
+fn test(_foo: &mut u64) {}
+fn main() {
+    test(&mut thousand!());
+}
+            "#,
+        );
+    }
+
+    #[test]
+    // If the immutable reference comes from a macro expansion,
+    // we can't do anything to change it to a mutable one.
+    fn dont_fix_reference_inside_macro_call() {
+        check_no_fix(
+            r#"
+macro_rules! thousand {
+    () => {
+        &1000_u64
+    };
+}
+
+fn test(_foo: &mut u64) {}
+fn main() {
+    test($0thousand!());
 }
             "#,
         );
