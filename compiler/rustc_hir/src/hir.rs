@@ -1304,19 +1304,6 @@ impl Attribute {
             Attribute::Unparsed(_) => false,
         }
     }
-
-    pub fn has_span_without_desugaring_kind(&self) -> bool {
-        let span = match self {
-            Attribute::Unparsed(attr) => attr.span,
-            Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::LintAttributes(sub_attrs)) => {
-                return sub_attrs.iter().any(|attr| attr.attr_span.desugaring_kind().is_none());
-            }
-            Attribute::Parsed(attr) => panic!("can't get span of parsed attr: {:?}", attr),
-        };
-
-        span.desugaring_kind().is_none()
-    }
 }
 
 impl AttributeExt for Attribute {
@@ -1391,7 +1378,6 @@ impl AttributeExt for Attribute {
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) => cfgs[0].1,
-            Attribute::Parsed(AttributeKind::LintAttributes(sub_attrs)) => sub_attrs[0].attr_span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }

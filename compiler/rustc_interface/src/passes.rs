@@ -119,10 +119,11 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         features: &Features,
         registered_tools: &RegisteredTools,
         node_id: ast::NodeId,
+        attrs: &[ast::Attribute],
         items: &[Box<ast::Item>],
         name: Symbol,
     ) {
-        pre_expansion_lint(sess, features, self.0, registered_tools, (node_id, items), name);
+        pre_expansion_lint(sess, features, self.0, registered_tools, (node_id, attrs, items), name);
     }
 }
 
