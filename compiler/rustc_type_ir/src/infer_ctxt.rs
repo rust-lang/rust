@@ -41,7 +41,7 @@ use crate::{self as ty, Interner, TyVid};
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[cfg_attr(not(bootstrap), rustc_must_match_exhaustively)]
+#[cfg_attr(feature = "nightly", cfg_attr(not(bootstrap), rustc_must_match_exhaustively))]
 pub enum TypingMode<I: Interner> {
     /// When checking whether impls overlap, we check whether any obligations
     /// are guaranteed to never hold when unifying the impls. This requires us

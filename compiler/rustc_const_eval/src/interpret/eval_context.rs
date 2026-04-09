@@ -2,6 +2,7 @@ use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -249,7 +250,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. } => {
-                    use rustc_middle::bug;
                     bug!("Const eval should always happens in PostAnalysis mode.");
                 }
             }
