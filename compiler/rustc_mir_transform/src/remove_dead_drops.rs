@@ -4,6 +4,8 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData};
 use rustc_mir_dataflow::{Analysis, MaybeReachable};
 
+use super::simplify::simplify_cfg;
+
 pub(crate) struct RemoveDeadDrops;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveDeadDrops {
@@ -42,10 +44,15 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveDeadDrops {
             }
         }
 
-        for (block, target) in dead_drops {
-            if let Some(terminator) = &mut body.basic_blocks.as_mut()[block].terminator {
-                terminator.kind = TerminatorKind::Goto { target };
+        if !dead_drops.is_empty() {
+            for (block, target) in dead_drops {
+                if let Some(terminator) = &mut body.basic_blocks.as_mut()[block].terminator {
+                    terminator.kind = TerminatorKind::Goto { target };
+                }
             }
+
+            // Removing drop terminators may simplify the CFG, so run cleanup.
+            simplify_cfg(tcx, body);
         }
     }
 }
