@@ -977,6 +977,7 @@ pub(crate) fn should_refresh_for_change(
     change_kind: ChangeKind,
     additional_paths: &[&str],
 ) -> bool {
+    // Note: build scripts are retriggered on file save, no refresh is necessary
     const IMPLICIT_TARGET_FILES: &[&str] = &["build.rs", "src/main.rs", "src/lib.rs"];
     const IMPLICIT_TARGET_DIRS: &[&str] = &["src/bin", "examples", "tests", "benches"];
 
@@ -993,15 +994,20 @@ pub(crate) fn should_refresh_for_change(
         return true;
     }
 
+    // .cargo/config{.toml}
+    if matches!(file_name, "config.toml" | "config")
+        && path.parent().map(|parent| parent.as_str().ends_with(".cargo")).unwrap_or(false)
+    {
+        return true;
+    }
+
+    // Everything below only matters when files are created or deleted
     if change_kind == ChangeKind::Modify {
         return false;
     }
 
-    // .cargo/config{.toml}
     if path.extension().unwrap_or_default() != "rs" {
-        let is_cargo_config = matches!(file_name, "config.toml" | "config")
-            && path.parent().map(|parent| parent.as_str().ends_with(".cargo")).unwrap_or(false);
-        return is_cargo_config;
+        return false;
     }
 
     if IMPLICIT_TARGET_FILES.iter().any(|it| path.as_str().ends_with(it)) {
