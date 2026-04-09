@@ -63,6 +63,7 @@ mod manual_inspect;
 mod manual_is_variant_and;
 mod manual_next_back;
 mod manual_ok_or;
+mod manual_option_zip;
 mod manual_repeat_n;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
@@ -1948,6 +1949,34 @@ declare_clippy_lint! {
     pub MANUAL_OK_OR,
     style,
     "finds patterns that can be encoded more concisely with `Option::ok_or`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `a.and_then(|a| b.map(|b| (a, b)))` which can be
+    /// more concisely expressed as `a.zip(b)`.
+    ///
+    /// ### Why is this bad?
+    /// `Option::zip` is more concise and directly expresses the intent of
+    /// combining two `Option` values into a tuple.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let a: Option<i32> = Some(1);
+    /// let b: Option<i32> = Some(2);
+    /// let _ = a.and_then(|x| b.map(|y| (x, y)));
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let a: Option<i32> = Some(1);
+    /// let b: Option<i32> = Some(2);
+    /// let _ = a.zip(b);
+    /// ```
+    #[clippy::version = "1.95.0"]
+    pub MANUAL_OPTION_ZIP,
+    complexity,
+    "manual reimplementation of `Option::zip`"
 }
 
 declare_clippy_lint! {
@@ -4814,6 +4843,7 @@ impl_lint_pass!(Methods => [
     MANUAL_IS_VARIANT_AND,
     MANUAL_NEXT_BACK,
     MANUAL_OK_OR,
+    MANUAL_OPTION_ZIP,
     MANUAL_REPEAT_N,
     MANUAL_SATURATING_ARITHMETIC,
     MANUAL_SPLIT_ONCE,
@@ -5115,6 +5145,7 @@ impl Methods {
                     }
                 },
                 (sym::and_then, [arg]) => {
+                    manual_option_zip::check(cx, expr, recv, arg, self.msrv);
                     let biom_option_linted = bind_instead_of_map::check_and_then_some(cx, expr, recv, arg);
                     let biom_result_linted = bind_instead_of_map::check_and_then_ok(cx, expr, recv, arg);
                     if !biom_option_linted && !biom_result_linted {

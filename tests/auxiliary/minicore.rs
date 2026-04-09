@@ -63,7 +63,7 @@ pub trait MetaSized: PointeeSized {}
 pub trait Sized: MetaSized {}
 
 #[lang = "destruct"]
-#[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+#[diagnostic::on_unimplemented(message = "can't drop `{Self}`")]
 pub trait Destruct: PointeeSized {}
 
 #[lang = "legacy_receiver"]

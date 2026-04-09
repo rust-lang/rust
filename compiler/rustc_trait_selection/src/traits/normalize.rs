@@ -366,10 +366,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             return ty;
         }
 
-        let (kind, data) = match *ty.kind() {
-            ty::Alias(kind, data) => (kind, data),
-            _ => return ty.super_fold_with(self),
-        };
+        let ty::Alias(data) = *ty.kind() else { return ty.super_fold_with(self) };
 
         // We try to be a little clever here as a performance optimization in
         // cases where there are nested projections under binders.
@@ -394,8 +391,8 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         // replace bound vars if the current type is a `Projection` and we need
         // to make sure we don't forget to fold the args regardless.
 
-        match kind {
-            ty::Opaque => {
+        match data.kind {
+            ty::Opaque { def_id } => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.selcx.infcx.typing_mode() {
                     // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
@@ -415,7 +412,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         }
 
                         let args = data.args.fold_with(self);
-                        let generic_ty = self.cx().type_of(data.def_id);
+                        let generic_ty = self.cx().type_of(def_id);
                         let concrete_ty = generic_ty.instantiate(self.cx(), args);
                         self.depth += 1;
                         let folded_ty = self.fold_ty(concrete_ty);
@@ -425,9 +422,9 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 }
             }
 
-            ty::Projection => self.normalize_trait_projection(data.into()).expect_type(),
-            ty::Inherent => self.normalize_inherent_projection(data.into()).expect_type(),
-            ty::Free => self.normalize_free_alias(data.into()).expect_type(),
+            ty::Projection { .. } => self.normalize_trait_projection(data.into()).expect_type(),
+            ty::Inherent { .. } => self.normalize_inherent_projection(data.into()).expect_type(),
+            ty::Free { .. } => self.normalize_free_alias(data.into()).expect_type(),
         }
     }
 

@@ -119,6 +119,11 @@ pub struct InherentAssocCandidate {
     pub scope: DefId,
 }
 
+pub struct ResolvedStructPath<'tcx> {
+    pub res: Result<Res, ErrorGuaranteed>,
+    pub ty: Ty<'tcx>,
+}
+
 /// A context which can lower type-system entities from the [HIR][hir] to
 /// the [`rustc_middle::ty`] representation.
 ///
@@ -387,7 +392,7 @@ impl<'tcx> ForbidMCGParamUsesFolder<'tcx> {
     fn error(&self) -> ErrorGuaranteed {
         let msg = if self.is_self_alias {
             "generic `Self` types are currently not permitted in anonymous constants"
-        } else if self.tcx.features().opaque_generic_const_args() {
+        } else if self.tcx.features().generic_const_args() {
             "generic parameters in const blocks are only allowed as the direct value of a `type const`"
         } else {
             "generic parameters may not be used in const operations"
@@ -408,8 +413,8 @@ impl<'tcx> ForbidMCGParamUsesFolder<'tcx> {
             }
         }
         if self.tcx.features().min_generic_const_args() {
-            if !self.tcx.features().opaque_generic_const_args() {
-                diag.help("add `#![feature(opaque_generic_const_args)]` to allow generic expressions as the RHS of const items");
+            if !self.tcx.features().generic_const_args() {
+                diag.help("add `#![feature(generic_const_args)]` to allow generic expressions as the RHS of const items");
             } else {
                 diag.help("consider factoring the expression into a `type const` item and use it as the const argument instead");
             }
@@ -1157,8 +1162,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Type aliases defined in crates that have the
             // feature `lazy_type_alias` enabled get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
-            let alias_ty = ty::AliasTy::new_from_args(tcx, did, args);
-            Ty::new_alias(tcx, ty::Free, alias_ty)
+            let alias_ty = ty::AliasTy::new_from_args(tcx, ty::Free { def_id: did }, args);
+            Ty::new_alias(tcx, alias_ty)
         } else {
             tcx.at(span).type_of(did).instantiate(tcx, args)
         }
@@ -1412,8 +1417,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             LowerTypeRelativePathMode::Type(permit_variants),
         )? {
             TypeRelativePath::AssocItem(def_id, args) => {
-                let alias_ty = ty::AliasTy::new_from_args(tcx, def_id, args);
-                let ty = Ty::new_alias(tcx, alias_ty.kind(tcx), alias_ty);
+                let alias_ty = ty::AliasTy::new_from_args(
+                    tcx,
+                    ty::AliasTyKind::new_from_def_id(tcx, def_id),
+                    args,
+                );
+                let ty = Ty::new_alias(tcx, alias_ty);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
                 Ok((ty, tcx.def_kind(def_id), def_id))
             }
@@ -2614,38 +2623,36 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::Const::new_error(tcx, e)
         };
 
-        let (ty, variant_did) = match qpath {
+        let ResolvedStructPath { res: opt_res, ty } =
+            self.lower_path_for_struct_expr(qpath, span, hir_id);
+
+        let variant_did = match qpath {
             hir::QPath::Resolved(maybe_qself, path) => {
                 debug!(?maybe_qself, ?path);
-                let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
-                let ty =
-                    self.lower_resolved_ty_path(opt_self_ty, path, hir_id, PermitVariants::Yes);
                 let variant_did = match path.res {
                     Res::Def(DefKind::Variant | DefKind::Struct, did) => did,
                     _ => return non_adt_or_variant_res(),
                 };
 
-                (ty, variant_did)
+                variant_did
             }
             hir::QPath::TypeRelative(hir_self_ty, segment) => {
                 debug!(?hir_self_ty, ?segment);
-                let self_ty = self.lower_ty(hir_self_ty);
-                let opt_res = self.lower_type_relative_ty_path(
-                    self_ty,
-                    hir_self_ty,
-                    segment,
-                    hir_id,
-                    span,
-                    PermitVariants::Yes,
-                );
 
-                let (ty, _, res_def_id) = match opt_res {
-                    Ok(r @ (_, DefKind::Variant | DefKind::Struct, _)) => r,
+                let res_def_id = match opt_res {
+                    Ok(r)
+                        if matches!(
+                            tcx.def_kind(r.def_id()),
+                            DefKind::Variant | DefKind::Struct
+                        ) =>
+                    {
+                        r.def_id()
+                    }
                     Ok(_) => return non_adt_or_variant_res(),
                     Err(e) => return ty::Const::new_error(tcx, e),
                 };
 
-                (ty, res_def_id)
+                res_def_id
             }
         };
 
@@ -2704,6 +2711,41 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let valtree = ty::ValTree::from_branches(tcx, opt_discr_const.into_iter().chain(fields));
         ty::Const::new_value(tcx, valtree, ty)
+    }
+
+    pub fn lower_path_for_struct_expr(
+        &self,
+        qpath: hir::QPath<'tcx>,
+        path_span: Span,
+        hir_id: HirId,
+    ) -> ResolvedStructPath<'tcx> {
+        match qpath {
+            hir::QPath::Resolved(ref maybe_qself, path) => {
+                let self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
+                let ty = self.lower_resolved_ty_path(self_ty, path, hir_id, PermitVariants::Yes);
+                ResolvedStructPath { res: Ok(path.res), ty }
+            }
+            hir::QPath::TypeRelative(hir_self_ty, segment) => {
+                let self_ty = self.lower_ty(hir_self_ty);
+
+                let result = self.lower_type_relative_ty_path(
+                    self_ty,
+                    hir_self_ty,
+                    segment,
+                    hir_id,
+                    path_span,
+                    PermitVariants::Yes,
+                );
+                let ty = result
+                    .map(|(ty, _, _)| ty)
+                    .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));
+
+                ResolvedStructPath {
+                    res: result.map(|(_, kind, def_id)| Res::Def(kind, def_id)),
+                    ty,
+                }
+            }
+        }
     }
 
     /// Lower a [resolved][hir::QPath::Resolved] path to a (type-level) constant.

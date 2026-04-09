@@ -130,20 +130,25 @@ where
     A: Allocator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let peek = if self.idx < self.end {
-            // This has to use pointer arithmetic as `self.vec[self.idx]` or
-            // `self.vec.get_unchecked(self.idx)` wouldn't work since we
-            // temporarily set the length of `self.vec` to zero.
-            //
-            // SAFETY:
-            // Since `self.idx` is smaller than `self.end` and `self.end` is
-            // smaller than `self.old_len`, `idx` is valid for indexing the
-            // buffer. Also, per the invariant of `self.idx`, this element
-            // has not been inspected/moved out yet.
-            Some(unsafe { &*self.vec.as_ptr().add(self.idx) })
-        } else {
-            None
-        };
-        f.debug_struct("ExtractIf").field("peek", &peek).finish_non_exhaustive()
+        // We have to use pointer arithmetics here,
+        // because the length of `self.vec` is temporarily set to 0.
+        let start = self.vec.as_ptr();
+
+        // SAFETY: we always keep first `self.idx - self.del` elements valid.
+        let retained = unsafe { slice::from_raw_parts(start, self.idx - self.del) };
+
+        // SAFETY: we have not yet touched elements starting at `self.idx`.
+        let valid_tail =
+            unsafe { slice::from_raw_parts(start.add(self.idx), self.old_len - self.idx) };
+
+        // SAFETY: `end - idx <= old_len - idx`, because `end <= old_len`. Also `idx <= end` by invariant.
+        let (remainder, skipped_tail) =
+            unsafe { valid_tail.split_at_unchecked(self.end - self.idx) };
+
+        f.debug_struct("ExtractIf")
+            .field("retained", &retained)
+            .field("remainder", &remainder)
+            .field("skipped_tail", &skipped_tail)
+            .finish_non_exhaustive()
     }
 }

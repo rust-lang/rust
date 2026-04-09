@@ -66,7 +66,7 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
                 }
                 ArgParser::List(list) => {
                     if list.is_empty() {
-                        cx.warn_empty_attribute(list.span);
+                        cx.adcx().warn_empty_attribute(list.span);
                         return;
                     }
 
@@ -83,15 +83,15 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
 
                             for item in list.mixed() {
                                 let Some(item) = item.meta_item() else {
-                                    cx.expected_identifier(item.span());
+                                    cx.adcx().expected_identifier(item.span());
                                     continue;
                                 };
                                 if let Err(err_span) = item.args().no_args() {
-                                    cx.expected_no_args(err_span);
+                                    cx.adcx().expected_no_args(err_span);
                                     continue;
                                 }
                                 let Some(item) = item.path().word() else {
-                                    cx.expected_identifier(item.span());
+                                    cx.adcx().expected_identifier(item.span());
                                     continue;
                                 };
                                 arguments.push(item);
@@ -100,7 +100,7 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
                     }
                 }
                 ArgParser::NameValue(nv) => {
-                    cx.expected_list_or_no_args(nv.args_span());
+                    cx.adcx().expected_list_or_no_args(nv.args_span());
                 }
             }
         },
@@ -143,19 +143,19 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
             ArgParser::NoArgs => false,
             ArgParser::List(list) => {
                 let Some(l) = list.single() else {
-                    cx.warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
+                    cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
                     return None;
                 };
                 match l.meta_item().and_then(|i| i.path().word_sym()) {
                     Some(sym::local_inner_macros) => true,
                     _ => {
-                        cx.warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
+                        cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
                         return None;
                     }
                 }
             }
             ArgParser::NameValue(nv) => {
-                cx.expected_list_or_no_args(nv.args_span());
+                cx.adcx().expected_list_or_no_args(nv.args_span());
                 return None;
             }
         };
@@ -176,19 +176,20 @@ impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return None;
         };
         let Some(single) = list.single() else {
-            cx.expected_single_argument(list.span);
+            cx.adcx().expected_single_argument(list.span);
             return None;
         };
         let Some(mi) = single.meta_item() else {
-            cx.unexpected_literal(single.span());
+            cx.adcx().expected_not_literal(single.span());
             return None;
         };
         if let Err(err) = mi.args().no_args() {
-            cx.expected_no_args(err);
+            cx.adcx().expected_no_args(err);
         }
         let path = mi.path().word_sym();
         let info = match path {
@@ -196,7 +197,8 @@ impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
             Some(sym::no) => CollapseMacroDebuginfo::No,
             Some(sym::external) => CollapseMacroDebuginfo::External,
             _ => {
-                cx.expected_specific_argument(mi.span(), &[sym::yes, sym::no, sym::external]);
+                cx.adcx()
+                    .expected_specific_argument(mi.span(), &[sym::yes, sym::no, sym::external]);
                 return None;
             }
         };

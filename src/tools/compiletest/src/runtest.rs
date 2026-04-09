@@ -106,7 +106,7 @@ fn dylib_name(name: &str) -> String {
     format!("{}{name}.{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_EXTENSION)
 }
 
-pub fn run(
+pub(crate) fn run(
     config: &Config,
     stdout: &dyn ConsoleOut,
     stderr: &dyn ConsoleOut,
@@ -181,7 +181,7 @@ pub fn run(
     cx.create_stamp();
 }
 
-pub fn compute_stamp_hash(config: &Config) -> String {
+pub(crate) fn compute_stamp_hash(config: &Config) -> String {
     let mut hash = DefaultHasher::new();
     config.stage_id.hash(&mut hash);
     config.run.hash(&mut hash);
@@ -333,15 +333,12 @@ impl<'test> TestCx<'test> {
             TestMode::Incremental => {
                 let revision =
                     self.revision.expect("incremental tests require a list of revisions");
-                if revision.starts_with("cpass")
-                    || revision.starts_with("rpass")
-                    || revision.starts_with("rfail")
-                {
+                if revision.starts_with("cpass") || revision.starts_with("rpass") {
                     true
                 } else if revision.starts_with("cfail") {
                     pm.is_some()
                 } else {
-                    panic!("revision name must begin with cpass, rpass, rfail, or cfail");
+                    panic!("revision name must begin with `cfail`, `cpass`, or `rpass`");
                 }
             }
             mode => panic!("unimplemented for mode {:?}", mode),
@@ -2985,7 +2982,7 @@ struct ProcArgs {
 }
 
 #[derive(Debug)]
-pub struct ProcRes {
+pub(crate) struct ProcRes {
     status: ExitStatus,
     stdout: String,
     stderr: String,
@@ -2995,7 +2992,7 @@ pub struct ProcRes {
 
 impl ProcRes {
     #[must_use]
-    pub fn format_info(&self) -> String {
+    pub(crate) fn format_info(&self) -> String {
         fn render(name: &str, contents: &str) -> String {
             let contents = json::extract_rendered(contents);
             let contents = contents.trim_end();

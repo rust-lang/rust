@@ -6,17 +6,19 @@ use crate::range::{Range, RangeFrom, RangeInclusive, legacy};
 use crate::{intrinsics, mem};
 
 /// By-value [`Range`] iterator.
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug, Clone)]
 pub struct RangeIter<A>(legacy::Range<A>);
 
 impl<A> RangeIter<A> {
-    #[unstable(feature = "new_range_api", issue = "125687")]
+    #[unstable(feature = "new_range_remainder", issue = "154458")]
     /// Returns the remainder of the range being iterated over.
     ///
     /// # Examples
+    ///
     /// ```
-    /// #![feature(new_range_api)]
+    /// #![feature(new_range_remainder)]
+    ///
     /// let range = core::range::Range::from(3..11);
     /// let mut iter = range.into_iter();
     /// assert_eq!(iter.clone().remainder(), range);
@@ -62,7 +64,7 @@ unsafe_range_trusted_random_access_impl! {
     u64 i64
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Step> Iterator for RangeIter<A> {
     type Item = A;
 
@@ -130,7 +132,7 @@ impl<A: Step> Iterator for RangeIter<A> {
     }
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Step> DoubleEndedIterator for RangeIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -151,10 +153,10 @@ impl<A: Step> DoubleEndedIterator for RangeIter<A> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: TrustedStep> TrustedLen for RangeIter<A> {}
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Step> FusedIterator for RangeIter<A> {}
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Step> IntoIterator for Range<A> {
     type Item = A;
     type IntoIter = RangeIter<A>;
@@ -175,7 +177,10 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// If the iterator is exhausted or empty, returns `None`.
     ///
     /// # Examples
+    ///
     /// ```
+    /// #![feature(new_range_remainder)]
+    ///
     /// let range = core::range::RangeInclusive::from(3..=11);
     /// let mut iter = range.into_iter();
     /// assert_eq!(iter.clone().remainder().unwrap(), range);
@@ -184,7 +189,7 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// iter.by_ref().for_each(drop);
     /// assert!(iter.remainder().is_none());
     /// ```
-    #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
+    #[unstable(feature = "new_range_remainder", issue = "154458")]
     pub fn remainder(self) -> Option<RangeInclusive<A>> {
         if self.0.is_empty() {
             return None;
@@ -294,7 +299,7 @@ impl<A: Step> IntoIterator for RangeInclusive<A> {
 //   since e.g. `(0..=u64::MAX).len()` would be `u64::MAX + 1`.
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
-        #[unstable(feature = "new_range_api", issue = "125687")]
+        #[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
         impl ExactSizeIterator for RangeIter<$t> { }
     )*)
 }
@@ -330,8 +335,10 @@ impl<A: Step> RangeFromIter<A> {
     /// Returns the remainder of the range being iterated over.
     ///
     /// # Examples
+    ///
     /// ```
-    /// #![feature(new_range_api)]
+    /// #![feature(new_range_remainder)]
+    ///
     /// let range = core::range::RangeFrom::from(3..);
     /// let mut iter = range.into_iter();
     /// assert_eq!(iter.clone().remainder(), range);
@@ -340,7 +347,7 @@ impl<A: Step> RangeFromIter<A> {
     /// ```
     #[inline]
     #[rustc_inherit_overflow_checks]
-    #[unstable(feature = "new_range_api", issue = "125687")]
+    #[unstable(feature = "new_range_remainder", issue = "154458")]
     pub fn remainder(self) -> RangeFrom<A> {
         // Need to handle this case even if overflow-checks are disabled,
         // because a `RangeFromIter` could be exhausted in a crate with

@@ -695,6 +695,15 @@ impl<T, A: Allocator> Box<T, A> {
     /// does the same as <code>[Box::into_pin]\([Box::new_in]\(x, alloc))</code>. Consider using
     /// [`into_pin`](Box::into_pin) if you already have a `Box<T, A>`, or if you want to
     /// construct a (pinned) `Box` in a different way than with [`Box::new_in`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// use std::alloc::System;
+    ///
+    /// let x = Box::pin_in(1, System);
+    /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]

@@ -246,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.may_coerce(arm_ty, ret_ty)
                     && prior_arm.is_none_or(|(_, ty, _)| self.may_coerce(ty, ret_ty))
                     // The match arms need to unify for the case of `impl Trait`.
-                    && !matches!(ret_ty.kind(), ty::Alias(ty::Opaque, ..))
+                    && !matches!(ret_ty.kind(), ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }))
             }
             _ => false,
         };
@@ -533,7 +533,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected_ty = expectation.to_option(self)?;
         let (def_id, args) = match *expected_ty.kind() {
             // FIXME: Could also check that the RPIT is not defined
-            ty::Alias(ty::Opaque, alias_ty) => (alias_ty.def_id.as_local()?, alias_ty.args),
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+                (def_id.as_local()?, args)
+            }
             // FIXME(-Znext-solver=no): Remove this branch once `replace_opaque_types_with_infer` is gone.
             ty::Infer(ty::TyVar(_)) => self
                 .inner

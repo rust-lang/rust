@@ -1,5 +1,5 @@
 use clippy_utils::macros::{is_panic, macro_backtrace};
-use rustc_ast::{AttrId, MetaItemInner};
+use rustc_ast::{MetaItemInner};
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
 };
@@ -16,8 +16,8 @@ pub(super) fn is_word(nmi: &MetaItemInner, expected: Symbol) -> bool {
     }
 }
 
-pub(super) fn is_lint_level(symbol: Symbol, attr_id: AttrId) -> bool {
-    Level::from_symbol(symbol, || Some(attr_id)).is_some()
+pub(super) fn is_lint_level(symbol: Symbol) -> bool {
+    Level::from_symbol(symbol).is_some()
 }
 
 pub(super) fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {

@@ -375,12 +375,12 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn eval_closure_size(&mut self) {
-        self.tcx().with_stable_hashing_context(|ref hcx| {
+        self.tcx().with_stable_hashing_context(|mut hcx| {
             let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
             self.typeck_results.closure_size_eval = fcx_typeck_results
                 .closure_size_eval
-                .to_sorted(hcx, false)
+                .to_sorted(&mut hcx, false)
                 .into_iter()
                 .map(|(&closure_def_id, data)| {
                     let closure_hir_id = self.tcx().local_def_id_to_hir_id(closure_def_id);
@@ -392,12 +392,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_min_capture_map(&mut self) {
-        self.tcx().with_stable_hashing_context(|ref hcx| {
+        self.tcx().with_stable_hashing_context(|mut hcx| {
             let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
             self.typeck_results.closure_min_captures = fcx_typeck_results
                 .closure_min_captures
-                .to_sorted(hcx, false)
+                .to_sorted(&mut hcx, false)
                 .into_iter()
                 .map(|(&closure_def_id, root_min_captures)| {
                     let root_var_map_wb = root_min_captures
@@ -423,12 +423,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_fake_reads_map(&mut self) {
-        self.tcx().with_stable_hashing_context(move |ref hcx| {
+        self.tcx().with_stable_hashing_context(move |mut hcx| {
             let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
             self.typeck_results.closure_fake_reads = fcx_typeck_results
                 .closure_fake_reads
-                .to_sorted(hcx, true)
+                .to_sorted(&mut hcx, true)
                 .into_iter()
                 .map(|(&closure_def_id, fake_reads)| {
                     let resolved_fake_reads = fake_reads
@@ -567,9 +567,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for (opaque_type_key, hidden_type) in opaque_types {
             let hidden_type = self.resolve(hidden_type, &hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &hidden_type.span);
-            if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
-                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
-                && alias_ty.args == opaque_type_key.args
+            if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+                hidden_type.ty.kind()
+                && def_id == opaque_type_key.def_id.to_def_id()
+                && args == opaque_type_key.args
             {
                 continue;
             }
@@ -1049,8 +1050,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasRecursiveOpaque<'_, 'tcx> {
     type Result = ControlFlow<()>;
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
-        if let ty::Alias(ty::Opaque, alias_ty) = *t.kind()
-            && let Some(def_id) = alias_ty.def_id.as_local()
+        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *t.kind()
+            && let Some(def_id) = def_id.as_local()
         {
             if self.def_id == def_id {
                 return ControlFlow::Break(());
@@ -1059,7 +1060,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasRecursiveOpaque<'_, 'tcx> {
             if self.seen.insert(def_id)
                 && let Some(hidden_ty) = self.opaques.get(&def_id)
             {
-                hidden_ty.ty.instantiate(self.tcx, alias_ty.args).visit_with(self)?;
+                hidden_ty.ty.instantiate(self.tcx, args).visit_with(self)?;
             }
         }
 

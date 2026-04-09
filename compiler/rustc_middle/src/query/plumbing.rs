@@ -7,14 +7,15 @@ use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_errors::Diag;
+use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{QueryCache, QueryJob, QueryStackFrame};
-use crate::ty::TyCtxt;
+use crate::query::{IntoQueryKey, QueryCache, QueryJob, QueryStackFrame};
+use crate::ty::{self, TyCtxt};
 
 /// For a particular query, keeps track of "active" keys, i.e. keys whose
 /// evaluation has started but has not yet finished successfully.
@@ -96,7 +97,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// This should be the only code that calls the provider function.
     pub invoke_provider_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
 
-    pub will_cache_on_disk_for_key_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> bool,
+    pub will_cache_on_disk_for_key_fn: fn(key: C::Key) -> bool,
 
     pub try_load_from_disk_fn: fn(
         tcx: TyCtxt<'tcx>,
@@ -200,7 +201,21 @@ pub struct TyCtxtEnsureDone<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
+impl<'tcx> TyCtxtEnsureOk<'tcx> {
+    pub fn typeck(self, def_id: impl IntoQueryKey<LocalDefId>) {
+        self.typeck_root(
+            self.tcx.typeck_root_def_id(def_id.into_query_key().to_def_id()).expect_local(),
+        )
+    }
+}
+
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn typeck(self, def_id: impl IntoQueryKey<LocalDefId>) -> &'tcx ty::TypeckResults<'tcx> {
+        self.typeck_root(
+            self.typeck_root_def_id(def_id.into_query_key().to_def_id()).expect_local(),
+        )
+    }
+
     /// Returns a transparent wrapper for `TyCtxt` which uses
     /// `span` as the location of queries performed through it.
     #[inline(always)]
@@ -286,8 +301,10 @@ macro_rules! define_callbacks {
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
                     depth_limit: $depth_limit:literal,
+                    desc: $desc:expr,
                     eval_always: $eval_always:literal,
                     feedable: $feedable:literal,
+                    handle_cycle_error: $handle_cycle_error:literal,
                     no_force: $no_force:literal,
                     no_hash: $no_hash:literal,
                     returns_error_guaranteed: $returns_error_guaranteed:literal,
@@ -420,8 +437,7 @@ macro_rules! define_callbacks {
             pub fn description(&self, tcx: TyCtxt<'tcx>) -> String {
                 let (name, description) = ty::print::with_no_queries!(match self {
                     $(
-                        TaggedQueryKey::$name(key) =>
-                            (stringify!($name), _description_fns::$name(tcx, *key)),
+                        TaggedQueryKey::$name(key) => (stringify!($name), ($desc)(tcx, *key)),
                     )*
                 });
                 if tcx.sess.verbose_internals() {
@@ -445,30 +461,6 @@ macro_rules! define_callbacks {
                     $(
                         TaggedQueryKey::$name(key) =>
                             $crate::query::QueryKey::default_span(key, tcx),
-                    )*
-                }
-            }
-
-            pub fn def_kind(&self, tcx: TyCtxt<'tcx>) -> Option<DefKind> {
-                // This is used to reduce code generation as it
-                // can be reused for queries with the same key type.
-                fn inner<'tcx>(key: &impl $crate::query::QueryKey, tcx: TyCtxt<'tcx>)
-                    -> Option<DefKind>
-                {
-                    key
-                        .key_as_def_id()
-                        .and_then(|def_id| def_id.as_local())
-                        .map(|def_id| tcx.def_kind(def_id))
-                }
-
-                if let TaggedQueryKey::def_kind(..) = self {
-                    // Try to avoid infinite recursion.
-                    return None
-                }
-
-                match self {
-                    $(
-                        TaggedQueryKey::$name(key) => inner(key, tcx),
                     )*
                 }
             }

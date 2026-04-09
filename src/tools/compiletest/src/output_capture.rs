@@ -2,7 +2,7 @@ use std::fmt;
 use std::panic::RefUnwindSafe;
 use std::sync::Mutex;
 
-pub trait ConsoleOut: fmt::Debug + RefUnwindSafe {
+pub(crate) trait ConsoleOut: fmt::Debug + RefUnwindSafe {
     fn write_fmt(&self, args: fmt::Arguments<'_>);
 }
 

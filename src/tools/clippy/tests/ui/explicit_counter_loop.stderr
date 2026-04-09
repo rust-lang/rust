@@ -81,5 +81,29 @@ error: the variable `j` is used as a loop counter
 LL |     for item in &v {
    |     ^^^^^^^^^^^^^^ help: consider using: `for (j, item) in (s + 1..).zip(v.iter())`
 
-error: aborting due to 13 previous errors
+error: the variable `base` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:339:5
+   |
+LL |     for _ in 0..MAX {
+   |     ^^^^^^^^^^^^^^^ help: consider using: `for base in (100..).take(MAX)`
+
+error: the variable `base` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:347:5
+   |
+LL |     for _ in nums {
+   |     ^^^^^^^^^^^^^ help: consider using: `for (base, _) in (100..).zip(nums.into_iter())`
+
+error: the variable `base` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:354:5
+   |
+LL |     for _ in 0..=MAX {
+   |     ^^^^^^^^^^^^^^^^ help: consider using: `for (base, _) in (100..).zip((0..=MAX))`
+
+error: the variable `base` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:361:5
+   |
+LL |     for _ in 5..MAX {
+   |     ^^^^^^^^^^^^^^^ help: consider using: `for (base, _) in (100..).zip((5..MAX))`
+
+error: aborting due to 17 previous errors
 

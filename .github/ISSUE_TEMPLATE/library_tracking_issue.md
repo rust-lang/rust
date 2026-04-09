@@ -83,6 +83,6 @@ It's useful to link any relevant discussions and conclusions (whether on GitHub,
 Zulip, or the internals forum) here.
 -->
 
-- None yet.
+- [ ] None yet.
 
 [^1]: https://std-dev-guide.rust-lang.org/feature-lifecycle/stabilization.html

@@ -1657,7 +1657,7 @@ class DocSearch {
             traitParent: raw[5] === 0 ? null : raw[5] - 1,
             deprecated: raw[6] === 1 ? true : false,
             unstable: raw[7] === 1 ? true : false,
-            associatedItemDisambiguator: raw.length === 8 ? null : raw[8],
+            associatedItemDisambiguatorOrExternCrateUrl: raw.length === 8 ? null : raw[8],
         };
     }
 
@@ -2176,7 +2176,12 @@ class DocSearch {
                     "/" + type + "." + name + ".html";
             } else if (type === "externcrate") {
                 displayPath = "";
-                href = this.rootPath + name + "/index.html";
+                let base = this.rootPath + name;
+                if (item.entry && item.entry.associatedItemDisambiguatorOrExternCrateUrl) {
+                    base = item.entry.associatedItemDisambiguatorOrExternCrateUrl;
+                }
+
+                href = base + "/index.html";
             } else if (item.parent) {
                 const myparent = item.parent;
                 let anchor = type + "." + name;
@@ -2201,8 +2206,8 @@ class DocSearch {
                 } else {
                     displayPath = path + "::" + myparent.name + "::";
                 }
-                if (item.entry && item.entry.associatedItemDisambiguator !== null) {
-                    anchor = item.entry.associatedItemDisambiguator + "/" + anchor;
+                if (item.entry && item.entry.associatedItemDisambiguatorOrExternCrateUrl !== null) {
+                    anchor = item.entry.associatedItemDisambiguatorOrExternCrateUrl + "/" + anchor;
                 }
                 href = this.rootPath + path.replace(/::/g, "/") +
                     "/" + pageType +
@@ -2794,6 +2799,8 @@ class DocSearch {
                 result_list.sort((aaa, bbb) => {
                     const aai = aaa.item;
                     const bbi = bbb.item;
+                    const ap = aai.modulePath !== undefined ? aai.modulePath : "";
+                    const bp = bbi.modulePath !== undefined ? bbi.modulePath : "";
                     /** @type {number} */
                     let a;
                     /** @type {number} */
@@ -2824,14 +2831,25 @@ class DocSearch {
                         if (a !== b) {
                             return a - b;
                         }
-                    }
 
-                    // Sort by distance in the path part, if specified
-                    // (less changes required to match means higher rankings)
-                    a = Number(aaa.path_dist);
-                    b = Number(bbb.path_dist);
-                    if (a !== b) {
-                        return a - b;
+                        if (parsedQuery.elems[0] &&
+                            parsedQuery.elems[0].pathWithoutLast.length !== 0
+                        ) {
+                            // Sort by distance in the path part, if specified
+                            // (less changes required to match means higher rankings)
+                            a = Number(aaa.path_dist);
+                            b = Number(bbb.path_dist);
+                            if (a !== b) {
+                                return a - b;
+                            }
+
+                            // sort by path (longer goes later)
+                            a = ap.length + (aai.parent ? aai.parent.name.length + 2 : 0);
+                            b = bp.length + (bbi.parent ? bbi.parent.name.length + 2 : 0);
+                            if (a !== b) {
+                                return a - b;
+                            }
+                        }
                     }
 
                     // (later literal occurrence, if any, goes later)
@@ -2885,8 +2903,8 @@ class DocSearch {
                     }
 
                     // sort by item name (lexicographically larger goes later)
-                    let aw = aai.normalizedName;
-                    let bw = bbi.normalizedName;
+                    const aw = aai.normalizedName;
+                    const bw = bbi.normalizedName;
                     if (aw !== bw) {
                         return (aw > bw ? +1 : -1);
                     }
@@ -2909,12 +2927,8 @@ class DocSearch {
                     }
 
                     // sort by path (lexicographically larger goes later)
-                    const ap = aai.modulePath;
-                    const bp = bbi.modulePath;
-                    aw = ap === undefined ? "" : ap;
-                    bw = bp === undefined ? "" : bp;
-                    if (aw !== bw) {
-                        return (aw > bw ? +1 : -1);
+                    if (ap !== bp) {
+                        return (ap > bp ? +1 : -1);
                     }
 
                     // que sera, sera
@@ -3843,13 +3857,19 @@ class DocSearch {
                 let dist_total = 0;
                 for (let x = 0; x < clength; ++x) {
                     const [p, c] = [path[i + x], contains[x]];
+                    const indexOf = p.indexOf(c);
                     if (parsedQuery.literalSearch && p !== c) {
                         continue pathiter;
-                    } else if (Math.floor((p.length - c.length) / 3) <= maxPathEditDistance &&
-                        p.indexOf(c) !== -1
-                    ) {
+                    } else if (indexOf !== -1) {
                         // discount distance on substring match
-                        dist_total += Math.floor((p.length - c.length) / 3);
+                        // if component is surrounded by underscores or edges,
+                        // count the distance as zero
+                        if (
+                            (indexOf !== 0 && p[indexOf - 1] !== "_") ||
+                            (indexOf + c.length !== p.length && p[indexOf + c.length] !== "_")
+                        ) {
+                            dist_total += Math.floor((p.length - c.length) / 3);
+                        }
                     } else {
                         const dist = editDistance(p, c, maxPathEditDistance);
                         if (dist > maxPathEditDistance) {
@@ -4729,11 +4749,16 @@ class DocSearch {
                 })(),
                 "query": parsedQuery,
             };
-        } else if (parsedQuery.error !== null) {
+        } else if (parsedQuery.error !== null || parsedQuery.foundElems === 0) {
+            // Symbol-only queries like `==` do not parse into type elements,
+            // but can still match exact item names or doc aliases.
+            const others = parsedQuery.userQuery.length === 0 ?
+                (async function*() {})() :
+                innerRunNameQuery(currentCrate);
             return {
                 "in_args": (async function*() {})(),
                 "returned": (async function*() {})(),
-                "others": innerRunNameQuery(currentCrate),
+                "others": others,
                 "query": parsedQuery,
             };
         } else {
@@ -4744,14 +4769,12 @@ class DocSearch {
             return {
                 "in_args": (async function*() {})(),
                 "returned": (async function*() {})(),
-                "others": parsedQuery.foundElems === 0 ?
-                    (async function*() {})() :
-                    innerRunTypeQuery(
-                        parsedQuery.elems,
-                        parsedQuery.returned,
-                        typeInfo,
-                        currentCrate,
-                    ),
+                "others": innerRunTypeQuery(
+                    parsedQuery.elems,
+                    parsedQuery.returned,
+                    typeInfo,
+                    currentCrate,
+                ),
                 "query": parsedQuery,
             };
         }

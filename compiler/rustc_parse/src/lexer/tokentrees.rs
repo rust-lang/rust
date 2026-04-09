@@ -72,12 +72,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let close_spacing = if let Some(close_delim) = self.token.kind.close_delim() {
             if close_delim == open_delim {
                 // Correct delimiter.
-                let (open_delimiter, open_delimiter_span) =
-                    self.diag_info.open_delimiters.pop().unwrap();
+                self.diag_info.open_delimiters.pop().unwrap();
                 let close_delimiter_span = self.token.span;
 
                 if tts.is_empty() && close_delim == Delimiter::Brace {
-                    let empty_block_span = open_delimiter_span.to(close_delimiter_span);
+                    let empty_block_span = pre_span.to(close_delimiter_span);
                     if !sm.is_multiline(empty_block_span) {
                         // Only track if the block is in the form of `{}`, otherwise it is
                         // likely that it was written on purpose.
@@ -86,11 +85,9 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 }
 
                 // only add braces
-                if let (Delimiter::Brace, Delimiter::Brace) = (open_delimiter, open_delim) {
+                if Delimiter::Brace == open_delim {
                     // Add all the matching spans, we will sort by span later
-                    self.diag_info
-                        .matching_block_spans
-                        .push((open_delimiter_span, close_delimiter_span));
+                    self.diag_info.matching_block_spans.push((pre_span, close_delimiter_span));
                 }
 
                 // Move past the closing delimiter.

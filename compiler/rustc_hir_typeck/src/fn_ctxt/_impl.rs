@@ -119,6 +119,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => {}
         }
 
+        // Don't emit the lint if we are in an impl marked as `#[automatically_derive]`.
+        // This is relevant for deriving `Clone` and `PartialEq` on types containing `!`.
+        if self.tcx.is_automatically_derived(self.tcx.parent(id.owner.def_id.into())) {
+            return;
+        }
+
         // Don't warn twice.
         self.diverges.set(Diverges::WarnedAlways);
 
@@ -336,10 +342,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 Adjust::Pointer(_pointer_coercion) => {
                     // FIXME(const_trait_impl): We should probably enforce these.
-                }
-                Adjust::ReborrowPin(_mutability) => {
-                    // FIXME(const_trait_impl): We could enforce these; they correspond to
-                    // `&mut T: DerefMut` tho, so it's kinda moot.
                 }
                 Adjust::Borrow(_) => {
                     // No effects to enforce here.

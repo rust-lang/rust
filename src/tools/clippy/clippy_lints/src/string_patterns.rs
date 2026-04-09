@@ -166,9 +166,9 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
                 },
                 ExprKind::Binary(op, _, _) if op.node == BinOpKind::Or => ControlFlow::Continue(Descend::Yes),
                 ExprKind::Match(match_value, [arm, _], _) => {
-                    if matching_root_macro_call(cx, sub_expr.span, sym::matches_macro).is_none()
-                        || arm.guard.is_some()
+                    if arm.guard.is_some()
                         || match_value.res_local_id() != Some(binding)
+                        || matching_root_macro_call(cx, sub_expr.span, sym::matches_macro).is_none()
                     {
                         return ControlFlow::Break(());
                     }

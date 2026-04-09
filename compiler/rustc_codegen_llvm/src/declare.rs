@@ -14,7 +14,7 @@
 use std::borrow::Borrow;
 
 use itertools::Itertools;
-use rustc_codegen_ssa::traits::TypeMembershipCodegenMethods;
+use rustc_codegen_ssa::traits::{MiscCodegenMethods, TypeMembershipCodegenMethods};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
@@ -69,6 +69,13 @@ pub(crate) fn declare_raw_fn<'ll, 'tcx>(
     let llfn = declare_simple_fn(cx, name, callconv, unnamed, visibility, ty);
 
     let mut attrs = SmallVec::<[_; 4]>::new();
+
+    if cx.sess().target.is_like_gpu {
+        // Conservatively apply convergent to all functions in case they may call
+        // a convergent function. Rely on LLVM to optimize away the unnecessary
+        // convergent attributes.
+        attrs.push(llvm::AttributeKind::Convergent.create_attr(cx.llcx));
+    }
 
     if cx.tcx.sess.opts.cg.no_redzone.unwrap_or(cx.tcx.sess.target.disable_redzone) {
         attrs.push(llvm::AttributeKind::NoRedZone.create_attr(cx.llcx));

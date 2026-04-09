@@ -260,8 +260,6 @@ pub enum LayoutError<'tcx> {
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
     /// A non-layout error is reported elsewhere.
     ReferencesError(ErrorGuaranteed),
-    /// A type has cyclic layout, i.e. the type contains itself without indirection.
-    Cycle(ErrorGuaranteed),
 }
 
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
@@ -286,7 +284,6 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
                 t,
                 e.get_type_for_failure()
             ),
-            LayoutError::Cycle(_) => write!(f, "a cycle occurred during layout computation"),
             LayoutError::ReferencesError(_) => write!(f, "the type has an unknown layout"),
         }
     }
@@ -358,8 +355,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
             Err(err @ LayoutError::TooGeneric(_)) => err,
             // We can't extract SizeSkeleton info from other layout errors
             Err(
-                e @ LayoutError::Cycle(_)
-                | e @ LayoutError::Unknown(_)
+                e @ LayoutError::Unknown(_)
                 | e @ LayoutError::SizeOverflow(_)
                 | e @ LayoutError::InvalidSimd { .. }
                 | e @ LayoutError::NormalizationFailure(..)
@@ -389,7 +385,11 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 );
 
                 match tail.kind() {
-                    ty::Param(_) | ty::Alias(ty::Projection | ty::Inherent, _) => {
+                    ty::Param(_)
+                    | ty::Alias(ty::AliasTy {
+                        kind: ty::Projection { .. } | ty::Inherent { .. },
+                        ..
+                    }) => {
                         debug_assert!(tail.has_non_region_param());
                         Ok(SizeSkeleton::Pointer {
                             non_zero,

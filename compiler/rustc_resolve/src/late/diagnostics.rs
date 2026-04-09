@@ -14,7 +14,7 @@ use rustc_ast_pretty::pprust::{path_to_string, where_bound_predicate_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, SuggestionStyle, pluralize,
+    Applicability, Diag, Diagnostic, ErrorGuaranteed, MultiSpan, SuggestionStyle, pluralize,
     struct_span_code_err,
 };
 use rustc_hir as hir;
@@ -1535,9 +1535,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let [segment] = path else { return };
         let None = following_seg else { return };
         for rib in self.ribs[ValueNS].iter().rev() {
-            let patterns_with_skipped_bindings = self.r.tcx.with_stable_hashing_context(|hcx| {
-                rib.patterns_with_skipped_bindings.to_sorted(&hcx, true)
-            });
+            let patterns_with_skipped_bindings =
+                self.r.tcx.with_stable_hashing_context(|mut hcx| {
+                    rib.patterns_with_skipped_bindings.to_sorted(&mut hcx, true)
+                });
             for (def_id, spans) in patterns_with_skipped_bindings {
                 if let DefKind::Struct | DefKind::Variant = self.r.tcx.def_kind(*def_id)
                     && let Some(fields) = self.r.field_idents(*def_id)
@@ -1773,7 +1774,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             // const generics. Of course, `Struct` and `Enum` may contain ty params, too, but the
             // benefits of including them here outweighs the small number of false positives.
             Some(Res::Def(DefKind::Struct | DefKind::Enum, _))
-                if self.r.tcx.features().adt_const_params() =>
+                if self.r.tcx.features().adt_const_params()
+                    || self.r.tcx.features().min_adt_const_params() =>
             {
                 Applicability::MaybeIncorrect
             }
@@ -1987,10 +1989,25 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         // where a brace being opened means a block is being started. Look
         // ahead for the next text to see if `span` is followed by a `{`.
         let sm = self.r.tcx.sess.source_map();
-        if let Some(followed_brace_span) = sm.span_look_ahead(span, "{", Some(50)) {
+        if let Some(open_brace_span) = sm.span_followed_by(span, "{") {
             // In case this could be a struct literal that needs to be surrounded
             // by parentheses, find the appropriate span.
-            let close_brace_span = sm.span_look_ahead(followed_brace_span, "}", Some(50));
+            let close_brace_span =
+                sm.span_to_next_source(open_brace_span).ok().and_then(|next_source| {
+                    // Find the matching `}` accounting for nested braces.
+                    let mut depth: u32 = 1;
+                    let offset = next_source.char_indices().find_map(|(i, c)| {
+                        match c {
+                            '{' => depth += 1,
+                            '}' if depth == 1 => return Some(i),
+                            '}' => depth -= 1,
+                            _ => {}
+                        }
+                        None
+                    })?;
+                    let start = open_brace_span.hi() + rustc_span::BytePos(offset as u32);
+                    Some(open_brace_span.with_lo(start).with_hi(start + rustc_span::BytePos(1)))
+                });
             let closing_brace = close_brace_span.map(|sp| span.to(sp));
             (true, closing_brace)
         } else {
@@ -3641,22 +3658,52 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             match use_set {
                 Some(LifetimeUseSet::Many) => {}
                 Some(LifetimeUseSet::One { use_span, use_ctxt }) => {
-                    debug!(?param.ident, ?param.ident.span, ?use_span);
-
-                    let elidable = matches!(use_ctxt, LifetimeCtxt::Ref);
+                    let param_ident = param.ident;
                     let deletion_span =
                         if param.bounds.is_empty() { deletion_span() } else { None };
-
-                    self.r.lint_buffer.buffer_lint(
+                    self.r.lint_buffer.dyn_buffer_lint_any(
                         lint::builtin::SINGLE_USE_LIFETIMES,
                         param.id,
-                        param.ident.span,
-                        lint::BuiltinLintDiag::SingleUseLifetime {
-                            param_span: param.ident.span,
-                            use_span,
-                            elidable,
-                            deletion_span,
-                            ident: param.ident,
+                        param_ident.span,
+                        move |dcx, level, sess| {
+                            debug!(?param_ident, ?param_ident.span, ?use_span);
+
+                            let elidable = matches!(use_ctxt, LifetimeCtxt::Ref);
+                            let suggestion = if let Some(deletion_span) = deletion_span {
+                                let (use_span, replace_lt) = if elidable {
+                                    let use_span = sess
+                                        .downcast_ref::<Session>()
+                                        .expect("expected a `Session`")
+                                        .source_map()
+                                        .span_extend_while_whitespace(use_span);
+                                    (use_span, String::new())
+                                } else {
+                                    (use_span, "'_".to_owned())
+                                };
+                                debug!(?deletion_span, ?use_span);
+
+                                // issue 107998 for the case such as a wrong function pointer type
+                                // `deletion_span` is empty and there is no need to report lifetime uses here
+                                let deletion_span = if deletion_span.is_empty() {
+                                    None
+                                } else {
+                                    Some(deletion_span)
+                                };
+                                Some(errors::SingleUseLifetimeSugg {
+                                    deletion_span,
+                                    use_span,
+                                    replace_lt,
+                                })
+                            } else {
+                                None
+                            };
+                            errors::SingleUseLifetime {
+                                suggestion,
+                                param_span: param_ident.span,
+                                use_span,
+                                ident: param_ident,
+                            }
+                            .into_diag(dcx, level)
                         },
                     );
                 }
@@ -3921,8 +3968,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         name: lifetime_ref.ident.name,
                         param_kind: errors::ParamKindInNonTrivialAnonConst::Lifetime,
                         help: self.r.tcx.sess.is_nightly_build(),
-                        is_ogca: self.r.tcx.features().opaque_generic_const_args(),
-                        help_ogca: self.r.tcx.features().opaque_generic_const_args(),
+                        is_gca: self.r.tcx.features().generic_const_args(),
+                        help_gca: self.r.tcx.features().generic_const_args(),
                     })
                     .emit()
             }
@@ -4064,6 +4111,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         };
 
         let mut spans_suggs: Vec<_> = Vec::new();
+        let source_map = self.r.tcx.sess.source_map();
         let build_sugg = |lt: MissingLifetime| match lt.kind {
             MissingLifetimeKind::Underscore => {
                 debug_assert_eq!(lt.count, 1);
@@ -4074,9 +4122,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 (lt.span.shrink_to_hi(), format!("{existing_name} "))
             }
             MissingLifetimeKind::Comma => {
-                let sugg: String = std::iter::repeat_n([existing_name.as_str(), ", "], lt.count)
-                    .flatten()
+                let sugg: String = std::iter::repeat_n(existing_name.as_str(), lt.count)
+                    .intersperse(", ")
                     .collect();
+                let is_empty_brackets = source_map.span_followed_by(lt.span, ">").is_some();
+                let sugg = if is_empty_brackets { sugg } else { format!("{sugg}, ") };
                 (lt.span.shrink_to_hi(), sugg)
             }
             MissingLifetimeKind::Brackets => {

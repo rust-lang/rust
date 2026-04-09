@@ -576,7 +576,7 @@ fn ensure_can_skip_execution<'tcx, C: QueryCache>(
                 // needed, which guarantees the query provider will never run
                 // for this key.
                 EnsureMode::Done => {
-                    (query.will_cache_on_disk_for_key_fn)(tcx, key)
+                    (query.will_cache_on_disk_for_key_fn)(key)
                         && loadable_from_disk(tcx, serialized_dep_node_index)
                 }
             }

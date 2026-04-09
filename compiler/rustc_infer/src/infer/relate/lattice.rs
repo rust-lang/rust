@@ -161,12 +161,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
             }
 
             (
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+                &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
+                &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
             ) if a_def_id == b_def_id => super_combine_tys(infcx, self, a, b),
 
-            (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
-            | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
+            (&ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
+            | (_, &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
                 if def_id.is_local() && !infcx.next_trait_solver() =>
             {
                 self.register_goals(infcx.handle_opaque_type(

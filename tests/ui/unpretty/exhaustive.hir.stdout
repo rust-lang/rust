@@ -1,3 +1,14 @@
+#![attr = Feature([auto_traits#0, box_patterns#0, builtin_syntax#0,
+const_trait_impl#0, coroutines#0, decl_macro#0, deref_patterns#0,
+explicit_tail_calls#0, gen_blocks#0, more_qualified_paths#0, never_patterns#0,
+never_type#0, pattern_types#0, pattern_type_macro#0, prelude_import#0,
+specialization#0, trace_macros#0, trait_alias#0, try_blocks#0,
+try_blocks_heterogeneous#0, yeet_expr#0])]
+#![attr = LintAttributes([LintAttribute {kind: Allow, attr_style: Inner,
+lint_instances: [incomplete_features]}])]
+extern crate std;
+#[attr = PreludeImport]
+use std::prelude::rust_2024::*;
 //@ revisions: expanded hir
 //@[expanded]compile-flags: -Zunpretty=expanded
 //@[expanded]check-pass
@@ -8,16 +19,6 @@
 // Note: the HIR revision includes a `.stderr` file because there are some
 // errors that only occur once we get past the AST.
 
-#![allow(incomplete_features)]
-#![attr = Feature([auto_traits#0, box_patterns#0, builtin_syntax#0,
-const_trait_impl#0, coroutines#0, decl_macro#0, deref_patterns#0,
-explicit_tail_calls#0, gen_blocks#0, more_qualified_paths#0, never_patterns#0,
-never_type#0, pattern_types#0, pattern_type_macro#0, prelude_import#0,
-specialization#0, trace_macros#0, trait_alias#0, try_blocks#0,
-try_blocks_heterogeneous#0, yeet_expr#0])]
-extern crate std;
-#[attr = PreludeImport]
-use std::prelude::rust_2024::*;
 
 mod prelude {
     use std::prelude::rust_2024::*;
@@ -39,7 +40,8 @@ use self::prelude::*;
      * inner multi-line doc comment
      */
 #[doc = "inner doc attribute"]
-#[allow(dead_code, unused_variables)]
+#[attr = LintAttributes([LintAttribute {kind: Allow, attr_style: Inner,
+lint_instances: [dead_code, unused_variables]}])]
 #[attr = NoStd]
 mod attributes {
 
@@ -49,7 +51,9 @@ mod attributes {
      */
     #[doc = "outer doc attribute"]
     #[doc = "macro"]
-    #[allow()]
+    #[attr = LintAttributes([LintAttribute {kind: Allow,
+    attr_style: Outer,
+    lint_instances: []}])]
     #[attr = Repr {reprs: [ReprC]}]
     struct Struct;
 }
@@ -212,9 +216,13 @@ mod expressions {
         { }
         unsafe { }
         'a: { }
-        #[allow()]
+        #[attr = LintAttributes([LintAttribute {kind: Allow,
+        attr_style: Outer,
+        lint_instances: []}])]
         { }
-        #[allow()]
+        #[attr = LintAttributes([LintAttribute {kind: Allow,
+        attr_style: Inner,
+        lint_instances: []}])]
         { }
     }
 
@@ -244,9 +252,15 @@ mod expressions {
         type_ascribe!({ from_output(()) }, Option<_>);
         type_ascribe!({
                 from_output(match branch(None) {
-                        Break {  0: residual } => #[allow(unreachable_code)]
+                        Break {  0: residual } =>
+                            #[attr = LintAttributes([LintAttribute {kind: Allow,
+                            attr_style: Outer,
+                            lint_instances: [unreachable_code]}])]
                             break from_residual(residual),
-                        Continue {  0: val } => #[allow(unreachable_code)]
+                        Continue {  0: val } =>
+                            #[attr = LintAttributes([LintAttribute {kind: Allow,
+                            attr_style: Outer,
+                            lint_instances: [unreachable_code]}])]
                             val,
                     })
             }, Option<String>)
@@ -368,9 +382,15 @@ mod expressions {
     fn expr_try() {
         let expr;
         match branch(expr) {
-            Break {  0: residual } => #[allow(unreachable_code)]
+            Break {  0: residual } =>
+                #[attr = LintAttributes([LintAttribute {kind: Allow,
+                attr_style: Outer,
+                lint_instances: [unreachable_code]}])]
                 return from_residual(residual),
-            Continue {  0: val } => #[allow(unreachable_code)]
+            Continue {  0: val } =>
+                #[attr = LintAttributes([LintAttribute {kind: Allow,
+                attr_style: Outer,
+                lint_instances: [unreachable_code]}])]
                 val,
         };
     }

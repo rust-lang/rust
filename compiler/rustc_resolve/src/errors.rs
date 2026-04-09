@@ -1,7 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, ElidedLifetimeInPathSubdiag,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, ElidedLifetimeInPathSubdiag,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -407,7 +407,7 @@ pub(crate) struct SelfInConstGenericTy {
 
 #[derive(Diagnostic)]
 #[diag(
-    "{$is_ogca ->
+    "{$is_gca ->
     [true] generic parameters in const blocks are only allowed as the direct value of a `type const`
     *[false] generic parameters may not be used in const operations
 }"
@@ -421,11 +421,11 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[help("add `#![feature(generic_const_exprs)]` to allow generic const expressions")]
     pub(crate) help: bool,
-    pub(crate) is_ogca: bool,
+    pub(crate) is_gca: bool,
     #[help(
         "consider factoring the expression into a `type const` item and use it as the const argument instead"
     )]
-    pub(crate) help_ogca: bool,
+    pub(crate) help_gca: bool,
 }
 
 #[derive(Debug)]
@@ -1199,6 +1199,15 @@ pub(crate) struct AttributesStartingWithRustcAreReserved {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "attributes containing a segment starting with `rustc` are reserved for use by the `rustc` compiler"
+)]
+pub(crate) struct AttributesContainingRustcAreReserved {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("cannot use {$article} {$descr} through an import")]
 pub(crate) struct CannotUseThroughAnImport {
     #[primary_span]
@@ -1687,4 +1696,98 @@ pub(crate) struct AssociatedConstElidedLifetime {
     pub elided: bool,
     #[note("cannot automatically infer `'static` because of other lifetimes in scope")]
     pub lifetimes_in_scope: MultiSpan,
+}
+
+#[derive(Diagnostic)]
+#[diag("lifetime parameter `{$ident}` only used once")]
+pub(crate) struct SingleUseLifetime {
+    #[label("this lifetime...")]
+    pub param_span: Span,
+    #[label("...is used only here")]
+    pub use_span: Span,
+    #[subdiagnostic]
+    pub suggestion: Option<SingleUseLifetimeSugg>,
+
+    pub ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("elide the single-use lifetime", applicability = "machine-applicable")]
+pub(crate) struct SingleUseLifetimeSugg {
+    #[suggestion_part(code = "")]
+    pub deletion_span: Option<Span>,
+    #[suggestion_part(code = "{replace_lt}")]
+    pub use_span: Span,
+
+    pub replace_lt: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition"
+)]
+pub(crate) struct AbsPathWithModule {
+    #[subdiagnostic]
+    pub sugg: AbsPathWithModuleSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion("use `crate`", code = "{replacement}")]
+pub(crate) struct AbsPathWithModuleSugg {
+    #[primary_span]
+    pub span: Span,
+    #[applicability]
+    pub applicability: Applicability,
+    pub replacement: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("hidden lifetime parameters in types are deprecated")]
+pub(crate) struct ElidedLifetimesInPaths {
+    #[subdiagnostic]
+    pub subdiag: rustc_errors::ElidedLifetimeInPathSubdiag,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "{$num_snippets ->
+        [one] unused import: {$span_snippets}
+        *[other] unused imports: {$span_snippets}
+    }"
+)]
+pub(crate) struct UnusedImports {
+    #[subdiagnostic]
+    pub sugg: UnusedImportsSugg,
+    #[help("if this is a test module, consider adding a `#[cfg(test)]` to the containing module")]
+    pub test_module_span: Option<Span>,
+
+    pub span_snippets: DiagArgValue,
+    pub num_snippets: usize,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum UnusedImportsSugg {
+    #[suggestion(
+        "remove the whole `use` item",
+        applicability = "machine-applicable",
+        code = "",
+        style = "tool-only"
+    )]
+    RemoveWholeUse {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(
+        "{$num_to_remove ->
+            [one] remove the unused import
+            *[other] remove the unused imports
+        }",
+        applicability = "machine-applicable",
+        style = "tool-only"
+    )]
+    RemoveImports {
+        #[suggestion_part(code = "")]
+        remove_spans: Vec<Span>,
+        num_to_remove: usize,
+    },
 }

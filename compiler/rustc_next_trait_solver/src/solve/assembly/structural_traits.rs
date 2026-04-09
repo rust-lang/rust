@@ -8,7 +8,7 @@ use rustc_type_ir::lang_items::{SolverLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{
-    self as ty, FallibleTypeFolder, Interner, Movability, Mutability, TypeFoldable,
+    self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, TypeFoldable,
     TypeSuperFoldable, Upcast as _, elaborate,
 };
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
@@ -49,7 +49,10 @@ where
 
         ty::Dynamic(..)
         | ty::Param(..)
-        | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)
+        | ty::Alias(ty::AliasTy {
+            kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+            ..
+        })
         | ty::Placeholder(..)
         | ty::Bound(..)
         | ty::Infer(_) => {
@@ -95,7 +98,7 @@ where
             Ok(ty::Binder::dummy(def.all_field_tys(cx).iter_instantiated(cx, args).collect()))
         }
 
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
+        ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
@@ -218,7 +221,7 @@ where
         | ty::Foreign(..)
         | ty::Ref(_, _, Mutability::Mut)
         | ty::Adt(_, _)
-        | ty::Alias(_, _)
+        | ty::Alias(_)
         | ty::Param(_)
         | ty::Placeholder(..) => Err(NoSolution),
 
@@ -390,7 +393,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Tuple(_)
         | ty::Pat(_, _)
         | ty::UnsafeBinder(_)
-        | ty::Alias(_, _)
+        | ty::Alias(_)
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -563,7 +566,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Never
         | ty::UnsafeBinder(_)
         | ty::Tuple(_)
-        | ty::Alias(_, _)
+        | ty::Alias(_)
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -724,7 +727,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Never
         | ty::Tuple(_)
         | ty::Pat(_, _)
-        | ty::Alias(_, _)
+        | ty::Alias(_)
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -860,7 +863,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
 pub(in crate::solve) fn predicates_for_object_candidate<D, I>(
     ecx: &mut EvalCtxt<'_, D>,
     param_env: I::ParamEnv,
-    trait_ref: ty::TraitRef<I>,
+    trait_ref: Binder<I, ty::TraitRef<I>>,
     object_bounds: I::BoundExistentialPredicates,
 ) -> Result<Vec<Goal<I, I::Predicate>>, Ambiguous>
 where
@@ -868,6 +871,7 @@ where
     I: Interner,
 {
     let cx = ecx.cx();
+    let trait_ref = ecx.instantiate_binder_with_infer(trait_ref);
     let mut requirements = vec![];
     // Elaborating all supertrait outlives obligations here is not soundness critical,
     // since if we just used the unelaborated set, then the transitive supertraits would
@@ -946,7 +950,7 @@ where
             && self
                 .ecx
                 .probe(|_| ProbeKind::ProjectionCompatibility)
-                .enter(|ecx| -> Result<_, NoSolution> {
+                .enter_without_propagated_nested_goals(|ecx| -> Result<_, NoSolution> {
                     let source_projection = ecx.instantiate_binder_with_infer(source_projection);
                     ecx.eq(self.param_env, source_projection.projection_term, target_projection)?;
                     ecx.try_evaluate_added_goals()
@@ -1014,7 +1018,7 @@ where
     }
 
     fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Ambiguous> {
-        if let ty::Alias(ty::Projection, alias_ty) = ty.kind()
+        if let ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Projection { .. }, .. }) = ty.kind()
             && let Some(term) = self.try_eagerly_replace_alias(alias_ty.into())?
         {
             Ok(term.expect_ty())

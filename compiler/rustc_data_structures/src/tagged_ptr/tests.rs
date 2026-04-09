@@ -32,8 +32,8 @@ unsafe impl Tag for Tag2 {
     }
 }
 
-impl<HCX> crate::stable_hasher::HashStable<HCX> for Tag2 {
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut crate::stable_hasher::StableHasher) {
+impl<Hcx> crate::stable_hasher::HashStable<Hcx> for Tag2 {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut crate::stable_hasher::StableHasher) {
         (*self as u8).hash_stable(hcx, hasher);
     }
 }

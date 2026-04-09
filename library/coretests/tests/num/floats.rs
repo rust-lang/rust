@@ -2,6 +2,9 @@ use std::hint::black_box;
 use std::num::FpCategory as Fp;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
+/// i586 has issues with floating point precision.
+const I586: bool = cfg!(target_arch = "x86") && cfg!(not(target_feature = "sse2"));
+
 pub(crate) trait TestableFloat: Sized {
     const BITS: u32;
     /// Unsigned int with the same size, for converting to/from bits.
@@ -59,6 +62,7 @@ pub(crate) trait TestableFloat: Sized {
     const NEG_MUL_ADD_RESULT: Self;
     /// Reciprocal of the maximum val
     const MAX_RECIP: Self;
+    const ASINH_ACOSH_MAX: Self;
 }
 
 impl TestableFloat for f16 {
@@ -103,6 +107,7 @@ impl TestableFloat for f16 {
     const MUL_ADD_RESULT: Self = 62.031;
     const NEG_MUL_ADD_RESULT: Self = 48.625;
     const MAX_RECIP: Self = 1.526624e-5;
+    const ASINH_ACOSH_MAX: Self = 11.781;
 }
 
 impl TestableFloat for f32 {
@@ -120,8 +125,20 @@ impl TestableFloat for f32 {
     const LOG_APPROX: Self = if cfg!(miri) { 1e-3 } else { Self::APPROX };
     const LOG2_APPROX: Self = if cfg!(miri) { 1e-3 } else { Self::APPROX };
     const LOG10_APPROX: Self = if cfg!(miri) { 1e-3 } else { Self::APPROX };
-    const ASINH_APPROX: Self = if cfg!(miri) { 1e-3 } else { Self::APPROX };
-    const ACOSH_APPROX: Self = if cfg!(miri) { 1e-3 } else { Self::APPROX };
+    const ASINH_APPROX: Self = if cfg!(miri) {
+        1e-3
+    } else if I586 {
+        1e-5
+    } else {
+        Self::APPROX
+    };
+    const ACOSH_APPROX: Self = if cfg!(miri) {
+        1e-3
+    } else if I586 {
+        1e-5
+    } else {
+        Self::APPROX
+    };
     const ATANH_APPROX: Self = if cfg!(miri) { 1e-3 } else { Self::APPROX };
     const GAMMA_APPROX: Self = if cfg!(miri) { 1e-3 } else { Self::APPROX };
     const GAMMA_APPROX_LOOSE: Self = if cfg!(miri) { 1e-2 } else { 1e-4 };
@@ -149,6 +166,7 @@ impl TestableFloat for f32 {
     const MUL_ADD_RESULT: Self = 62.05;
     const NEG_MUL_ADD_RESULT: Self = 48.65;
     const MAX_RECIP: Self = 2.938736e-39;
+    const ASINH_ACOSH_MAX: Self = 89.4159851;
 }
 
 impl TestableFloat for f64 {
@@ -180,6 +198,7 @@ impl TestableFloat for f64 {
     const MUL_ADD_RESULT: Self = 62.050000000000004;
     const NEG_MUL_ADD_RESULT: Self = 48.650000000000006;
     const MAX_RECIP: Self = 5.562684646268003e-309;
+    const ASINH_ACOSH_MAX: Self = 710.47586007394398;
 }
 
 impl TestableFloat for f128 {
@@ -221,6 +240,7 @@ impl TestableFloat for f128 {
     const MUL_ADD_RESULT: Self = 62.0500000000000000000000000000000037;
     const NEG_MUL_ADD_RESULT: Self = 48.6500000000000000000000000000000049;
     const MAX_RECIP: Self = 8.40525785778023376565669454330438228902076605e-4933;
+    const ASINH_ACOSH_MAX: Self = 11357.216553474703894801348310092223;
 }
 
 /// Determine the tolerance for values of the argument type.
@@ -1705,6 +1725,9 @@ float_test! {
 
         assert_approx_eq!(flt(-200.0).asinh(), -5.991470797049389, Float::ASINH_APPROX);
 
+        // issue 153878: large values were rounding to infinity
+        assert_approx_eq!(Float::MAX.asinh(), Float::ASINH_ACOSH_MAX, Float::ASINH_APPROX);
+
         #[allow(overflowing_literals)]
         if Float::MAX > flt(66000.0) {
              // regression test for the catastrophic cancellation fixed in 72486
@@ -1732,6 +1755,9 @@ float_test! {
         assert!(nan.acosh().is_nan());
         assert_approx_eq!(flt(2.0).acosh(), 1.31695789692481670862504634730796844, Float::ACOSH_APPROX);
         assert_approx_eq!(flt(3.0).acosh(), 1.76274717403908605046521864995958461, Float::ACOSH_APPROX);
+
+        // issue 153878: large values were rounding to infinity
+        assert_approx_eq!(Float::MAX.acosh(), Float::ASINH_ACOSH_MAX, Float::ACOSH_APPROX);
 
         #[allow(overflowing_literals)]
         if Float::MAX > flt(66000.0) {

@@ -5,10 +5,40 @@ LL |     reuse Trait::foo { &self.0 }
    |                  ^^^
 
 error: failed to resolve delegation callee
-  --> $DIR/ice-issue-124347.rs:9:7
+  --> $DIR/ice-issue-124347.rs:10:7
    |
 LL | reuse foo;
    |       ^^^
 
-error: aborting due to 2 previous errors
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/ice-issue-124347.rs:5:18
+   |
+LL |     reuse Trait::foo { &self.0 }
+   |                  ^^^   ------- unexpected argument
+   |
+note: associated function defined here
+  --> $DIR/ice-issue-124347.rs:5:18
+   |
+LL |     reuse Trait::foo { &self.0 }
+   |                  ^^^
+help: remove the extra argument
+   |
+LL -     reuse Trait::foo { &self.0 }
+LL +     reuse Trait::fo&self.0 }
+   |
 
+warning: function cannot return without recursing
+  --> $DIR/ice-issue-124347.rs:10:7
+   |
+LL | reuse foo;
+   |       ^^^
+   |       |
+   |       cannot return without recursing
+   |       recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0061`.

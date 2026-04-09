@@ -109,7 +109,7 @@ use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
-use rustc_middle::mir::mono::{
+use rustc_middle::mono::{
     CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, MonoItem, MonoItemData,
     MonoItemPartitions, Visibility,
 };
@@ -286,8 +286,8 @@ where
         codegen_units.insert(cgu_name, CodegenUnit::new(cgu_name));
     }
 
-    let mut codegen_units: Vec<_> = cx.tcx.with_stable_hashing_context(|ref hcx| {
-        codegen_units.into_items().map(|(_, cgu)| cgu).collect_sorted(hcx, true)
+    let mut codegen_units: Vec<_> = cx.tcx.with_stable_hashing_context(|mut hcx| {
+        codegen_units.into_items().map(|(_, cgu)| cgu).collect_sorted(&mut hcx, true)
     });
 
     for cgu in codegen_units.iter_mut() {

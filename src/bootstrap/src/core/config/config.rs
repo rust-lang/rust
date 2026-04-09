@@ -78,6 +78,7 @@ pub const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
     ":!src/rustdoc-json-types",
     ":!tests",
     ":!triagebot.toml",
+    ":!src/bootstrap/defaults",
 ];
 
 /// Global configuration for the entire build and/or bootstrap.
@@ -2237,17 +2238,31 @@ pub fn download_ci_rustc_commit<'a>(
         });
         match freshness {
             PathFreshness::LastModifiedUpstream { upstream } => upstream,
-            PathFreshness::HasLocalModifications { upstream } => {
-                if if_unchanged {
-                    return None;
-                }
-
+            PathFreshness::HasLocalModifications { upstream, modifications } => {
                 if dwn_ctx.is_running_on_ci() {
                     eprintln!("CI rustc commit matches with HEAD and we are in CI.");
                     eprintln!(
                         "`rustc.download-ci` functionality will be skipped as artifacts are not available."
                     );
                     return None;
+                }
+
+                eprintln!(
+                    "NOTE: detected {} modifications that could affect a build of rustc",
+                    modifications.len()
+                );
+                for file in modifications.iter().take(10) {
+                    eprintln!("- {}", file.display());
+                }
+                if modifications.len() > 10 {
+                    eprintln!("- ... and {} more", modifications.len() - 10);
+                }
+
+                if if_unchanged {
+                    eprintln!("skipping rustc download due to `download-rustc = 'if-unchanged'`");
+                    return None;
+                } else {
+                    eprintln!("downloading unconditionally due to `download-rustc = true`");
                 }
 
                 upstream

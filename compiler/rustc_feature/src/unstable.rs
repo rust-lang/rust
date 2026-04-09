@@ -520,6 +520,8 @@ declare_features! (
     (unstable, frontmatter, "1.88.0", Some(136889)),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
+    /// Allows using generics in more complex const expressions, based on definitional equality.
+    (unstable, generic_const_args, "1.95.0", Some(151972)),
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
     /// Allows generic parameters and where-clauses on free & associated const items.
@@ -579,6 +581,9 @@ declare_features! (
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Enable mgca `type const` syntax before expansion.
     (incomplete, mgca_type_const_syntax, "1.95.0", Some(132980)),
+    /// Allows additional const parameter types, such as [u8; 10] or user defined types.
+    /// User defined types must not have fields more private than the type itself.
+    (unstable, min_adt_const_params, "CURRENT_RUSTC_VERSION", Some(154042)),
     /// Enables the generic const args MVP (only bare paths, not arbitrary computation).
     (incomplete, min_generic_const_args, "1.84.0", Some(132980)),
     /// A minimal, sound subset of specialization intended to be used by the
@@ -623,8 +628,6 @@ declare_features! (
     (unstable, offset_of_enum, "1.75.0", Some(120141)),
     /// Allows using fields with slice type in offset_of!
     (unstable, offset_of_slice, "1.81.0", Some(126151)),
-    /// Allows using generics in more complex const expressions, based on definitional equality.
-    (unstable, opaque_generic_const_args, "1.95.0", Some(151972)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows specifying nop padding on functions for dynamic patching.
@@ -806,6 +809,6 @@ pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
 
 /// Some features require one or more other features to be enabled.
 pub const DEPENDENT_FEATURES: &[(Symbol, &[Symbol])] = &[
-    (sym::opaque_generic_const_args, &[sym::min_generic_const_args]),
+    (sym::generic_const_args, &[sym::min_generic_const_args]),
     (sym::unsized_const_params, &[sym::adt_const_params]),
 ];
