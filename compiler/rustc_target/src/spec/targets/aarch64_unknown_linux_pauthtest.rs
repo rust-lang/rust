@@ -29,7 +29,7 @@ pub(crate) fn target() -> Target {
             frame_pointer: FramePointer::NonLeaf,
             link_self_contained: LinkSelfContainedDefault::False,
             mcount: "\u{1}_mcount".into(),
-            ..base::linux_musl::opts()
+            ..base::linux::opts()
          },
     }
 }
