@@ -39,8 +39,11 @@ pub(crate) fn expand(
     };
 
     // Forbid `#[thread_local]` attributes on the item
-    if let Some(_) = item.attrs.iter().find(|x| { x.has_name(sym::thread_local) }) {
-        ecx.dcx().emit_err(errors::AllocCannotThreadLocal { span: item.span_with_attributes() });
+    if let Some(attr) = item.attrs.iter().find(|x| { x.has_name(sym::thread_local) }) {
+        ecx.dcx().emit_err(errors::AllocCannotThreadLocal {
+            span: item.span,
+            attr: attr.span
+        });
         return vec![orig_item];
     }
 
