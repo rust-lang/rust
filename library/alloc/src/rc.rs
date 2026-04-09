@@ -3501,7 +3501,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// Attempts to upgrade the `Weak` pointer to an [`Rc`], delaying
     /// dropping of the inner value if successful.
     ///
-    /// Returns [`None`] if the inner value has since been dropped.
+    /// Returns [`None`] if the inner value has since been dropped or moved out.
     ///
     /// # Examples
     ///
