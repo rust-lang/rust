@@ -364,3 +364,16 @@ fn test_snake_case() {
     let res = entrypoint(SNAKE_CASE);
     assert_eq!(res, expected);
 }
+
+#[test]
+fn test_codeblock_trailing_whitespace() {
+    let buf = "```rust\ncode\n```	\nrest";
+    let (t, r) = parse_codeblock(buf.as_bytes());
+    assert_eq!(t, MdTree::CodeBlock { txt: "code", lang: Some("rust") });
+    assert_eq!(r, b"\nrest");
+
+    let buf = "```rust\ncode\n```abc\nrest";
+    let (t, r) = parse_codeblock(buf.as_bytes());
+    assert_eq!(t, MdTree::CodeBlock { txt: "code\n```abc\nrest", lang: Some("rust") });
+    assert_eq!(r, b"");
+}
