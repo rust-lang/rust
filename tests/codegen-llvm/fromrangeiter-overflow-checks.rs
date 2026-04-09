@@ -11,6 +11,7 @@
 
 #![crate_type = "lib"]
 #![feature(new_range_api)]
+#![feature(new_range_remainder)]
 
 use std::range::RangeFrom;
 

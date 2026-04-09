@@ -7,7 +7,7 @@
 
 extern crate a;
 
-#[rustc_clean(except="typeck", cfg="rpass2")]
+#[rustc_clean(except="typeck_root", cfg="rpass2")]
 pub fn call_function0() {
     a::function0(77);
 }

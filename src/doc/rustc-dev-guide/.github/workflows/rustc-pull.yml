@@ -12,6 +12,7 @@ jobs:
     uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@main
     with:
       github-app-id: ${{ vars.APP_CLIENT_ID }}
+      pr-author: "workflows-rustc-dev-guide[bot]"
       zulip-stream-id: 196385
       zulip-bot-email:  "rustc-dev-guide-gha-notif-bot@rust-lang.zulipchat.com"
       pr-base-branch: main

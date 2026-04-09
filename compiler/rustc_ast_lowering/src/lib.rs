@@ -154,7 +154,7 @@ struct LoweringContext<'a, 'hir, R> {
 
 impl<'a, 'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'a, 'hir, R> {
     fn new(tcx: TyCtxt<'hir>, resolver: &'a mut R) -> Self {
-        let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
+        let registered_tools = tcx.registered_tools(());
         Self {
             tcx,
             resolver,
@@ -2683,7 +2683,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 overly_complex_const(self)
             }
             ExprKind::Lit(literal) => {
-                let span = expr.span;
+                let span = self.lower_span(expr.span);
                 let literal = self.lower_lit(literal, span);
 
                 ConstArg {
@@ -2695,7 +2695,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             ExprKind::Unary(UnOp::Neg, inner_expr)
                 if let ExprKind::Lit(literal) = &inner_expr.kind =>
             {
-                let span = expr.span;
+                let span = self.lower_span(expr.span);
                 let literal = self.lower_lit(literal, span);
 
                 if !matches!(literal.node, LitKind::Int(..)) {

@@ -67,12 +67,6 @@ pub use layout::{FIRST_VARIANT, FieldIdx, LayoutCalculator, LayoutCalculatorErro
 #[cfg(feature = "nightly")]
 pub use layout::{Layout, TyAbiInterface, TyAndLayout};
 
-/// Requirements for a `StableHashingContext` to be used in this crate.
-/// This is a hack to allow using the `HashStable_Generic` derive macro
-/// instead of implementing everything in `rustc_middle`.
-#[cfg(feature = "nightly")]
-pub trait HashStableContext {}
-
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
     feature = "nightly",
@@ -1702,6 +1696,28 @@ impl AddressSpace {
     pub const ZERO: Self = AddressSpace(0);
 }
 
+/// How many scalable vectors are in a `BackendRepr::ScalableVector`?
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+pub struct NumScalableVectors(pub u8);
+
+impl NumScalableVectors {
+    /// Returns a `NumScalableVector` for a non-tuple scalable vector (e.g. a single vector).
+    pub fn for_non_tuple() -> Self {
+        NumScalableVectors(1)
+    }
+
+    // Returns `NumScalableVectors` for values of two through eight, which are a valid number of
+    // fields for a tuple of scalable vectors to have. `1` is a valid value of `NumScalableVectors`
+    // but not for a tuple which would have a field count.
+    pub fn from_field_count(count: usize) -> Option<Self> {
+        match count {
+            2..8 => Some(NumScalableVectors(count as u8)),
+            _ => None,
+        }
+    }
+}
+
 /// The way we represent values to the backend
 ///
 /// Previously this was conflated with the "ABI" a type is given, as in the platform-specific ABI.
@@ -1720,6 +1736,7 @@ pub enum BackendRepr {
     SimdScalableVector {
         element: Scalar,
         count: u64,
+        number_of_vectors: NumScalableVectors,
     },
     SimdVector {
         element: Scalar,
@@ -1826,8 +1843,12 @@ impl BackendRepr {
                 BackendRepr::SimdVector { element: element.to_union(), count }
             }
             BackendRepr::Memory { .. } => BackendRepr::Memory { sized: true },
-            BackendRepr::SimdScalableVector { element, count } => {
-                BackendRepr::SimdScalableVector { element: element.to_union(), count }
+            BackendRepr::SimdScalableVector { element, count, number_of_vectors } => {
+                BackendRepr::SimdScalableVector {
+                    element: element.to_union(),
+                    count,
+                    number_of_vectors,
+                }
             }
         }
     }
@@ -2167,7 +2188,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     }
 
     /// Returns `true` if the size of the type is only known at runtime.
-    pub fn is_runtime_sized(&self) -> bool {
+    pub fn is_scalable_vector(&self) -> bool {
         matches!(self.backend_repr, BackendRepr::SimdScalableVector { .. })
     }
 

@@ -14,7 +14,7 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions, msg,
     pluralize, struct_span_code_err,
 };
-use rustc_hir::attrs::diagnostic::{AppendConstMessage, OnUnimplementedNote};
+use rustc_hir::attrs::diagnostic::CustomDiagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem, Node, find_attr};
@@ -188,15 +188,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             })
                             .unwrap_or_default();
 
-                        let OnUnimplementedNote {
+                        let CustomDiagnostic {
                             message,
                             label,
                             notes,
                             parent_label,
-                            append_const_msg,
                         } = self.on_unimplemented_note(main_trait_predicate, main_obligation, &mut long_ty_file);
 
                         let have_alt_message = message.is_some() || label.is_some();
+
+                        let message = message.unwrap_or_else(|| self.get_standard_error_message(
+                            main_trait_predicate,
+                            None,
+                            post_message,
+                            &mut long_ty_file,
+                        ));
                         let is_try_conversion = self.is_try_conversion(span, main_trait_predicate.def_id());
                         let is_question_mark = matches!(
                             root_obligation.cause.code().peel_derives(),
@@ -210,16 +216,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let question_mark_message = "the question mark operation (`?`) implicitly \
                                                      performs a conversion on the error value \
                                                      using the `From` trait";
-                        let (message, notes, append_const_msg) = if is_try_conversion {
+                        let (message, notes) = if is_try_conversion {
                             let ty = self.tcx.short_string(
                                 main_trait_predicate.skip_binder().self_ty(),
                                 &mut long_ty_file,
                             );
                             // We have a `-> Result<_, E1>` and `gives_E2()?`.
                             (
-                                Some(format!("`?` couldn't convert the error to `{ty}`")),
+                                format!("`?` couldn't convert the error to `{ty}`"),
                                 vec![question_mark_message.to_owned()],
-                                Some(AppendConstMessage::Default),
                             )
                         } else if is_question_mark {
                             let main_trait_predicate =
@@ -228,25 +233,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             // trait object: `-> Result<_, Box<dyn Error>` and `gives_E()?` when
                             // `E: Error` isn't met.
                             (
-                                Some(format!(
+                                format!(
                                     "`?` couldn't convert the error: `{main_trait_predicate}` is \
                                      not satisfied",
-                                )),
+                                ),
                                 vec![question_mark_message.to_owned()],
-                                Some(AppendConstMessage::Default),
                             )
                         } else {
-                            (message, notes, append_const_msg)
+                            (message, notes)
                         };
-
-                        let default_err_msg = || self.get_standard_error_message(
-                            main_trait_predicate,
-                            message,
-                            None,
-                            append_const_msg,
-                            post_message,
-                            &mut long_ty_file,
-                        );
 
                         let (err_msg, safe_transmute_explanation) = if self.tcx.is_lang_item(
                             main_trait_predicate.def_id(),
@@ -271,7 +266,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     );
                                 }
                                 GetSafeTransmuteErrorAndReason::Default => {
-                                    (default_err_msg(), None)
+                                    (message, None)
                                 }
                                 GetSafeTransmuteErrorAndReason::Error {
                                     err_msg,
@@ -279,7 +274,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 } => (err_msg, safe_transmute_explanation),
                             }
                         } else {
-                            (default_err_msg(), None)
+                            (message, None)
                         };
 
                         let mut err = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
@@ -393,7 +388,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let Some(s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
-                            err.span_label(span, s.as_str().to_owned());
+                            err.span_label(span, s);
                             if !matches!(leaf_trait_predicate.skip_binder().self_ty().kind(), ty::Param(_))
                                 // When the self type is a type param We don't need to "the trait
                                 // `std::marker::Sized` is not implemented for `T`" as we will point
@@ -464,7 +459,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 (cand.self_ty().kind(), main_trait_predicate.self_ty().skip_binder().kind())
                             {
                                 // Wrap method receivers and `&`-references in parens
-                                let suggestion = if self.tcx.sess.source_map().span_look_ahead(span, ".", Some(50)).is_some() {
+                                let suggestion = if self.tcx.sess.source_map().span_followed_by(span, ".").is_some() {
                                     vec![
                                         (span.shrink_to_lo(), format!("(")),
                                         (span.shrink_to_hi(), format!(" as {})", cand.self_ty())),
@@ -559,6 +554,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             );
                         }
 
+                        self.note_field_shadowed_by_private_candidate_in_cause(
+                            &mut err,
+                            &obligation.cause,
+                            obligation.param_env,
+                        );
                         self.try_to_add_help_message(
                             &root_obligation,
                             &obligation,
@@ -857,9 +857,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let err_msg = self.get_standard_error_message(
             trait_ref,
-            None,
             Some(predicate.constness()),
-            None,
             String::new(),
             &mut file,
         );
@@ -884,7 +882,35 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let trait_name = self.tcx.item_name(trait_did);
 
             if self.tcx.is_const_trait(trait_did) && !self.tcx.is_const_trait_impl(impl_did) {
-                if let Some(impl_did) = impl_did.as_local()
+                if !impl_did.is_local() {
+                    diag.span_note(
+                        impl_span,
+                        format!("trait `{trait_name}` is implemented but not `const`"),
+                    );
+                }
+
+                if let Some(command) =
+                    find_attr!(self.tcx, impl_did, OnConst {directive, ..} => directive.as_deref())
+                        .flatten()
+                {
+                    let (_, format_args) = self.on_unimplemented_components(
+                        trait_ref,
+                        main_obligation,
+                        diag.long_ty_path(),
+                    );
+                    let CustomDiagnostic { message, label, notes, parent_label: _ } =
+                        command.eval(None, &format_args);
+
+                    if let Some(message) = message {
+                        diag.primary_message(message);
+                    }
+                    if let Some(label) = label {
+                        diag.span_label(span, label);
+                    }
+                    for note in notes {
+                        diag.note(note);
+                    }
+                } else if let Some(impl_did) = impl_did.as_local()
                     && let item = self.tcx.hir_expect_item(impl_did)
                     && let hir::ItemKind::Impl(item) = item.kind
                     && let Some(of_trait) = item.of_trait
@@ -896,45 +922,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         "const ".to_string(),
                         Applicability::MaybeIncorrect,
                     );
-                } else {
-                    diag.span_note(
-                        impl_span,
-                        format!("trait `{trait_name}` is implemented but not `const`"),
-                    );
-
-                    let (condition_options, format_args) = self.on_unimplemented_components(
-                        trait_ref,
-                        main_obligation,
-                        diag.long_ty_path(),
-                    );
-
-                    if let Some(command) = find_attr!(self.tcx, impl_did, OnConst {directive, ..} => directive.as_deref()).flatten(){
-                        let note = command.evaluate_directive(
-                             predicate.skip_binder().trait_ref,
-                            &condition_options,
-                            &format_args,
-                        );
-                        let OnUnimplementedNote {
-                            message,
-                            label,
-                            notes,
-                            parent_label,
-                            append_const_msg: _,
-                        } = note;
-
-                        if let Some(message) = message {
-                            diag.primary_message(message);
-                        }
-                        if let Some(label) = label {
-                            diag.span_label(impl_span, label);
-                        }
-                        for note in notes {
-                            diag.note(note);
-                        }
-                        if let Some(parent_label) = parent_label {
-                            diag.span_label(impl_span, parent_label);
-                        }
-                    }
                 }
             }
         }
@@ -1880,10 +1867,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Closure(..) => Some(9),
                 ty::Tuple(..) => Some(10),
                 ty::Param(..) => Some(11),
-                ty::Alias(ty::Projection, ..) => Some(12),
-                ty::Alias(ty::Inherent, ..) => Some(13),
-                ty::Alias(ty::Opaque, ..) => Some(14),
-                ty::Alias(ty::Free, ..) => Some(15),
+                ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }) => Some(12),
+                ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => Some(13),
+                ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => Some(14),
+                ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) => Some(15),
                 ty::Never => Some(16),
                 ty::Adt(..) => Some(17),
                 ty::Coroutine(..) => Some(18),
@@ -2836,40 +2823,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn get_standard_error_message(
         &self,
         trait_predicate: ty::PolyTraitPredicate<'tcx>,
-        message: Option<String>,
         predicate_constness: Option<ty::BoundConstness>,
-        append_const_msg: Option<AppendConstMessage>,
         post_message: String,
         long_ty_path: &mut Option<PathBuf>,
     ) -> String {
-        message
-            .and_then(|cannot_do_this| {
-                match (predicate_constness, append_const_msg) {
-                    // do nothing if predicate is not const
-                    (None, _) => Some(cannot_do_this),
-                    // suggested using default post message
-                    (
-                        Some(ty::BoundConstness::Const | ty::BoundConstness::Maybe),
-                        Some(AppendConstMessage::Default),
-                    ) => Some(format!("{cannot_do_this} in const contexts")),
-                    // overridden post message
-                    (
-                        Some(ty::BoundConstness::Const | ty::BoundConstness::Maybe),
-                        Some(AppendConstMessage::Custom(custom_msg, _)),
-                    ) => Some(format!("{cannot_do_this}{custom_msg}")),
-                    // fallback to generic message
-                    (Some(ty::BoundConstness::Const | ty::BoundConstness::Maybe), None) => None,
-                }
-            })
-            .unwrap_or_else(|| {
-                format!(
-                    "the trait bound `{}` is not satisfied{post_message}",
-                    self.tcx.short_string(
-                        trait_predicate.print_with_bound_constness(predicate_constness),
-                        long_ty_path,
-                    ),
-                )
-            })
+        format!(
+            "the trait bound `{}` is not satisfied{post_message}",
+            self.tcx.short_string(
+                trait_predicate.print_with_bound_constness(predicate_constness),
+                long_ty_path,
+            ),
+        )
     }
 
     fn select_transmute_obligation_for_reporting(
@@ -2878,6 +2842,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_predicate: ty::PolyTraitPredicate<'tcx>,
         root_obligation: &PredicateObligation<'tcx>,
     ) -> (PredicateObligation<'tcx>, ty::PolyTraitPredicate<'tcx>) {
+        if obligation.predicate.has_non_region_param() || obligation.has_non_region_infer() {
+            return (obligation.clone(), trait_predicate);
+        }
+
         let ocx = ObligationCtxt::new(self);
         let normalized_predicate = self.tcx.erase_and_anonymize_regions(
             self.tcx.instantiate_bound_regions_with_erased(trait_predicate),

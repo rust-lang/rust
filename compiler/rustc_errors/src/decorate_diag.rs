@@ -1,24 +1,28 @@
+use std::any::Any;
+
 /// This module provides types and traits for buffering lints until later in compilation.
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::MultiSpan;
-use rustc_lint_defs::{BuiltinLintDiag, Lint, LintId};
+use rustc_lint_defs::{AttributeLintKind, Lint, LintId};
 
 use crate::{Diag, DiagCtxtHandle, Diagnostic, Level};
 
-/// We can't implement `Diagnostic` for `BuiltinLintDiag`, because decorating some of its
+/// We can't implement `Diagnostic` for `AttributeLintKind`, because decorating some of its
 /// variants requires types we don't have yet. So, handle that case separately.
 pub enum DecorateDiagCompat {
+    /// The third argument of the closure is a `Session`. However, due to the dependency tree,
+    /// we don't have access to `rustc_session` here, so we downcast it when needed.
     Dynamic(
         Box<
-            dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()>
+            dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &dyn Any) -> Diag<'a, ()>
                 + DynSync
                 + DynSend
                 + 'static,
         >,
     ),
-    Builtin(BuiltinLintDiag),
+    Builtin(AttributeLintKind),
 }
 
 impl std::fmt::Debug for DecorateDiagCompat {
@@ -30,13 +34,13 @@ impl std::fmt::Debug for DecorateDiagCompat {
 impl<D: for<'a> Diagnostic<'a, ()> + DynSync + DynSend + 'static> From<D> for DecorateDiagCompat {
     #[inline]
     fn from(d: D) -> Self {
-        Self::Dynamic(Box::new(|dcx, level| d.into_diag(dcx, level)))
+        Self::Dynamic(Box::new(|dcx, level, _| d.into_diag(dcx, level)))
     }
 }
 
-impl From<BuiltinLintDiag> for DecorateDiagCompat {
+impl From<AttributeLintKind> for DecorateDiagCompat {
     #[inline]
-    fn from(b: BuiltinLintDiag) -> Self {
+    fn from(b: AttributeLintKind) -> Self {
         Self::Builtin(b)
     }
 }
@@ -91,6 +95,26 @@ impl LintBuffer {
 
     pub fn dyn_buffer_lint<
         F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSync + DynSend + 'static,
+    >(
+        &mut self,
+        lint: &'static Lint,
+        node_id: NodeId,
+        span: impl Into<MultiSpan>,
+        callback: F,
+    ) {
+        self.add_early_lint(BufferedEarlyLint {
+            lint_id: LintId::of(lint),
+            node_id,
+            span: Some(span.into()),
+            diagnostic: DecorateDiagCompat::Dynamic(Box::new(|dcx, level, _| callback(dcx, level))),
+        });
+    }
+
+    pub fn dyn_buffer_lint_any<
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &dyn Any) -> Diag<'a, ()>
+            + DynSend
+            + DynSync
+            + 'static,
     >(
         &mut self,
         lint: &'static Lint,

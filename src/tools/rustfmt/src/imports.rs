@@ -429,9 +429,9 @@ impl UseTree {
         attrs: Option<ast::AttrVec>,
     ) -> UseTree {
         let span = if let Some(lo) = opt_lo {
-            mk_sp(lo, a.span.hi())
+            mk_sp(lo, a.hi_span().hi())
         } else {
-            a.span
+            a.span()
         };
         let mut result = UseTree {
             path: vec![],
@@ -456,7 +456,7 @@ impl UseTree {
         let style_edition = context.config.style_edition();
 
         match a.kind {
-            UseTreeKind::Glob => {
+            UseTreeKind::Glob(_) => {
                 // in case of a global path and the glob starts at the root, e.g., "::*"
                 if a.prefix.segments.len() == 1 && leading_modsep {
                     let kind = UseSegmentKind::Ident("".to_owned(), None);
@@ -480,11 +480,11 @@ impl UseTree {
                     list.iter().map(|(tree, _)| tree),
                     "}",
                     ",",
-                    |tree| tree.span.lo(),
-                    |tree| tree.span.hi(),
+                    |tree| tree.prefix.span.lo(),
+                    |tree| tree.hi_span().hi(),
                     |_| Ok("".to_owned()), // We only need comments for now.
-                    context.snippet_provider.span_after(a.span, "{"),
-                    a.span.hi(),
+                    context.snippet_provider.span_after(a.span(), "{"),
+                    a.hi_span().hi(),
                     false,
                 );
 

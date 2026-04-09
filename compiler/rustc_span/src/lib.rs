@@ -2796,10 +2796,10 @@ impl InnerSpan {
     }
 }
 
-/// Requirements for a `StableHashingContext` to be used in this crate.
-///
-/// This is a hack to allow using the [`HashStable_Generic`] derive macro
-/// instead of implementing everything in rustc_middle.
+/// This trait lets `HashStable` and `derive(HashStable_Generic)` be used in
+/// this crate (and other crates upstream of `rustc_middle`), while leaving
+/// certain operations to be defined in `rustc_middle` where more things are
+/// visible.
 pub trait HashStableContext {
     /// The main event: stable hashing of a span.
     fn span_hash_stable(&mut self, span: Span, hasher: &mut StableHasher);
@@ -2812,13 +2812,13 @@ pub trait HashStableContext {
     fn assert_default_hashing_controls(&self, msg: &str);
 }
 
-impl<CTX> HashStable<CTX> for Span
+impl<Hcx> HashStable<Hcx> for Span
 where
-    CTX: HashStableContext,
+    Hcx: HashStableContext,
 {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // `span_hash_stable` does all the work.
-        ctx.span_hash_stable(*self, hasher)
+        hcx.span_hash_stable(*self, hasher)
     }
 }
 

@@ -2407,7 +2407,10 @@ fn is_late_bound_map(
                 ty::Param(param_ty) => {
                     self.arg_is_constrained[param_ty.index as usize] = true;
                 }
-                ty::Alias(ty::Projection | ty::Inherent, _) => return,
+                ty::Alias(ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. },
+                    ..
+                }) => return,
                 _ => (),
             }
             t.super_visit_with(self)

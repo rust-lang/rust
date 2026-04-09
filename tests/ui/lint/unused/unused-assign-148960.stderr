@@ -2,9 +2,10 @@ error: value assigned to `value` is never read
   --> $DIR/unused-assign-148960.rs:6:21
    |
 LL |     let mut value = b"0".to_vec();
-   |                     ^^^^^^^^^^^^^
+   |                     ^^^^^^^^^^^^^ this value is reassigned later and never used
+LL |     value = b"1".to_vec();
+   |     ----- `value` is overwritten here before the previous value is read
    |
-   = help: maybe it is overwritten before being read?
 note: the lint level is defined here
   --> $DIR/unused-assign-148960.rs:2:9
    |
@@ -16,25 +17,25 @@ error: value assigned to `x` is never read
   --> $DIR/unused-assign-148960.rs:12:17
    |
 LL |     let mut x = 1;
-   |                 ^
-   |
-   = help: maybe it is overwritten before being read?
+   |                 ^ this value is reassigned later and never used
+LL |     x = 2;
+   |     ----- `x` is overwritten here before the previous value is read
 
 error: value assigned to `x` is never read
   --> $DIR/unused-assign-148960.rs:13:5
    |
 LL |     x = 2;
-   |     ^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |     ^^^^^ this value is reassigned later and never used
+LL |     x = 3;
+   |     ----- `x` is overwritten here before the previous value is read
 
 error: value assigned to `p` is never read
   --> $DIR/unused-assign-148960.rs:24:17
    |
 LL |     let mut p = Point { x: 1, y: 1 };
-   |                 ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |                 ^^^^^^^^^^^^^^^^^^^^ this value is reassigned later and never used
+LL |     p = Point { x: 2, y: 2 };
+   |     ------------------------ `p` is overwritten here before the previous value is read
 
 error: variable `foo` is assigned to, but never used
   --> $DIR/unused-assign-148960.rs:38:9

@@ -22,6 +22,7 @@ pub(crate) fn target() -> Target {
             linker: Some("rust-lld".into()),
             llvm_abiname: LlvmAbi::Ilp32d,
             max_atomic_width: Some(32),
+            mcount: "_mcount".into(),
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
             ..Default::default()

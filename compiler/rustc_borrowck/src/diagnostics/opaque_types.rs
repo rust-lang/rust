@@ -219,11 +219,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindOpaqueRegion<'_, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         // If we find an opaque in a local ty, then for each of its captured regions,
         // try to find a path between that captured regions and our borrow region...
-        if let ty::Alias(ty::Opaque, opaque) = *ty.kind()
+        if let ty::Alias(opaque @ ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *ty.kind()
             && let hir::OpaqueTyOrigin::FnReturn { parent, in_trait_or_impl: None } =
-                self.tcx.opaque_ty_origin(opaque.def_id)
+                self.tcx.opaque_ty_origin(def_id)
         {
-            let variances = self.tcx.variances_of(opaque.def_id);
+            let variances = self.tcx.variances_of(def_id);
             for (idx, (arg, variance)) in std::iter::zip(opaque.args, variances).enumerate() {
                 // Skip uncaptured args.
                 if *variance == ty::Bivariant {
@@ -252,7 +252,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindOpaqueRegion<'_, 'tcx> {
                             && call_def_id == parent
                             && let Locations::Single(location) = constraint.locations
                         {
-                            return ControlFlow::Break((opaque.def_id, idx, location));
+                            return ControlFlow::Break((def_id, idx, location));
                         }
                     }
                 }
@@ -276,11 +276,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CheckExplicitRegionMentionAndCollectGen
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         match *ty.kind() {
-            ty::Alias(ty::Opaque, opaque) => {
-                if self.seen_opaques.insert(opaque.def_id) {
+            ty::Alias(opaque @ ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
+                if self.seen_opaques.insert(def_id) {
                     for (bound, _) in self
                         .tcx
-                        .explicit_item_bounds(opaque.def_id)
+                        .explicit_item_bounds(def_id)
                         .iter_instantiated_copied(self.tcx, opaque.args)
                     {
                         bound.visit_with(self)?;

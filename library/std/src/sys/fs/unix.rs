@@ -1872,7 +1872,12 @@ fn file_time_to_timespec(time: Option<SystemTime>) -> io::Result<libc::timespec>
             io::ErrorKind::InvalidInput,
             "timestamp is too small to set as a file time",
         )),
-        None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
+        None => Ok({
+            let mut ts = libc::timespec::default();
+            ts.tv_sec = 0;
+            ts.tv_nsec = libc::UTIME_OMIT as _;
+            ts
+        }),
     }
 }
 

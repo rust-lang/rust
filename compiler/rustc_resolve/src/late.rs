@@ -21,8 +21,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, ErrorGuaranteed, IntoDiagArg, MultiSpan, StashKey,
-    Suggestions, pluralize,
+    Applicability, Diag, DiagArgValue, Diagnostic, ErrorGuaranteed, IntoDiagArg, MultiSpan,
+    StashKey, Suggestions, elided_lifetime_in_path_suggestion, pluralize,
 };
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
@@ -2248,7 +2248,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. }
                     | LifetimeRibKind::StaticIfNoLifetimeInScope { .. } => {
                         let sess = self.r.tcx.sess;
-                        let subdiag = rustc_errors::elided_lifetime_in_path_suggestion(
+                        let subdiag = elided_lifetime_in_path_suggestion(
                             sess.source_map(),
                             expected_lifetimes,
                             path_span,
@@ -2329,16 +2329,27 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             if should_lint {
-                self.r.lint_buffer.buffer_lint(
+                let include_angle_bracket = !segment.has_generic_args;
+                self.r.lint_buffer.dyn_buffer_lint_any(
                     lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
                     segment_id,
                     elided_lifetime_span,
-                    lint::BuiltinLintDiag::ElidedLifetimesInPaths(
-                        expected_lifetimes,
-                        path_span,
-                        !segment.has_generic_args,
-                        elided_lifetime_span,
-                    ),
+                    move |dcx, level, sess| {
+                        let source_map = sess
+                            .downcast_ref::<rustc_session::Session>()
+                            .expect("expected a `Session`")
+                            .source_map();
+                        errors::ElidedLifetimesInPaths {
+                            subdiag: elided_lifetime_in_path_suggestion(
+                                source_map,
+                                expected_lifetimes,
+                                path_span,
+                                include_angle_bracket,
+                                elided_lifetime_span,
+                            ),
+                        }
+                        .into_diag(dcx, level)
+                    },
                 );
             }
         }
@@ -2970,7 +2981,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
             ItemKind::Use(use_tree) => {
                 let maybe_exported = match use_tree.kind {
-                    UseTreeKind::Simple(_) | UseTreeKind::Glob => MaybeExported::Ok(item.id),
+                    UseTreeKind::Simple(_) | UseTreeKind::Glob(_) => MaybeExported::Ok(item.id),
                     UseTreeKind::Nested { .. } => MaybeExported::NestedUse(&item.vis),
                 };
                 self.resolve_doc_links(&item.attrs, maybe_exported);

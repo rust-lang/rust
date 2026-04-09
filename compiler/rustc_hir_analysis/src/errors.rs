@@ -318,6 +318,14 @@ pub(crate) struct ConstParamTyImplOnNonAdt {
 }
 
 #[derive(Diagnostic)]
+#[diag("the trait `ConstParamTy` may not be implemented for this struct")]
+pub(crate) struct ConstParamTyFieldVisMismatch {
+    #[primary_span]
+    #[label("struct fields are less visible than the struct")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("at least one trait is required for an object type", code = E0224)]
 pub(crate) struct TraitObjectDeclaredWithNoTraits {
     #[primary_span]

@@ -332,3 +332,34 @@ fn issue16640(x: &[u8]) {
         priority += 1;
     }
 }
+
+pub fn issue_16642() {
+    let mut base = 100;
+    const MAX: usize = 10;
+    for _ in 0..MAX {
+        //~^ explicit_counter_loop
+        base += 1;
+    }
+
+    let mut base = 100;
+
+    let nums = vec![1, 2, 3, 4];
+    for _ in nums {
+        //~^ explicit_counter_loop
+        base += 1;
+    }
+
+    // inclusive range: should not suggest .take()
+    let mut base = 100;
+    for _ in 0..=MAX {
+        //~^ explicit_counter_loop
+        base += 1;
+    }
+
+    // non-zero start: should not suggest .take(), falls through to zip
+    let mut base = 100;
+    for _ in 5..MAX {
+        //~^ explicit_counter_loop
+        base += 1;
+    }
+}

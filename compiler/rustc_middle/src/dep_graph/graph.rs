@@ -115,8 +115,6 @@ pub struct DepGraphData {
     /// this map. We can later look for and extract that data.
     previous_work_products: WorkProductMap,
 
-    dep_node_debug: Lock<FxHashMap<DepNode, String>>,
-
     /// Used by incremental compilation tests to assert that
     /// a particular query result was decoded from disk
     /// (not just marked green)
@@ -173,7 +171,6 @@ impl DepGraph {
         DepGraph {
             data: Some(Arc::new(DepGraphData {
                 previous_work_products: prev_work_products,
-                dep_node_debug: Default::default(),
                 current,
                 previous: prev_graph,
                 colors,
@@ -848,31 +845,6 @@ impl DepGraph {
             .lock()
             .iter()
             .any(|node| node.kind == dep_kind)
-    }
-
-    #[cfg(debug_assertions)]
-    #[inline(always)]
-    pub(crate) fn register_dep_node_debug_str<F>(&self, dep_node: DepNode, debug_str_gen: F)
-    where
-        F: FnOnce() -> String,
-    {
-        // Early queries (e.g., `-Z query-dep-graph` on empty crates) can reach here
-        // before the graph is initialized. Return early to prevent an ICE.
-        let data = match &self.data {
-            Some(d) => d,
-            None => return,
-        };
-        let dep_node_debug = &data.dep_node_debug;
-
-        if dep_node_debug.borrow().contains_key(&dep_node) {
-            return;
-        }
-        let debug_str = self.with_ignore(debug_str_gen);
-        dep_node_debug.borrow_mut().insert(dep_node, debug_str);
-    }
-
-    pub(crate) fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
-        self.data.as_ref()?.dep_node_debug.borrow().get(&dep_node).cloned()
     }
 
     fn node_color(&self, dep_node: &DepNode) -> DepNodeColor {

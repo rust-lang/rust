@@ -478,11 +478,21 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     // If there was a private module in the current path then don't bother inlining
                     // anything as it will probably be stripped anyway.
                     if is_pub && self.inside_public_path {
-                        let please_inline = find_attr!(
-                            attrs,
-                            Doc(d)
-                            if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
-                        );
+                        let please_inline = if let Some(res_did) = res.opt_def_id()
+                            && matches!(tcx.def_kind(res_did), DefKind::Macro(MacroKinds::BANG))
+                        {
+                            crate::clean::macro_reexport_is_inline(
+                                tcx,
+                                item.owner_id.def_id,
+                                res_did,
+                            )
+                        } else {
+                            find_attr!(
+                                attrs,
+                                Doc(d)
+                                if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+                            )
+                        };
                         let ident = match kind {
                             hir::UseKind::Single(ident) => Some(ident.name),
                             hir::UseKind::Glob => None,

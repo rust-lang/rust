@@ -209,7 +209,15 @@ where
                     try_visit!(tcx.type_of(impl_def_id).instantiate_identity().visit_with(self));
                 }
             }
-            ty::Alias(kind @ (ty::Inherent | ty::Free | ty::Projection), data) => {
+            ty::Alias(
+                data @ ty::AliasTy {
+                    kind:
+                        kind @ (ty::Inherent { def_id }
+                        | ty::Free { def_id }
+                        | ty::Projection { def_id }),
+                    ..
+                },
+            ) => {
                 if self.def_id_visitor.skip_assoc_tys() {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
@@ -226,19 +234,19 @@ where
                 }
 
                 try_visit!(self.def_id_visitor.visit_def_id(
-                    data.def_id,
+                    def_id,
                     match kind {
-                        ty::Inherent | ty::Projection => "associated type",
-                        ty::Free => "type alias",
-                        ty::Opaque => unreachable!(),
+                        ty::Inherent { .. } | ty::Projection { .. } => "associated type",
+                        ty::Free { .. } => "type alias",
+                        ty::Opaque { .. } => unreachable!(),
                     },
-                    &LazyDefPathStr { def_id: data.def_id, tcx },
+                    &LazyDefPathStr { def_id, tcx },
                 ));
 
                 // This will also visit args if necessary, so we don't need to recurse.
                 return if V::SHALLOW {
                     V::Result::output()
-                } else if kind == ty::Projection {
+                } else if matches!(kind, ty::Projection { .. }) {
                     self.visit_projection_term(data.into())
                 } else {
                     V::Result::from_branch(
@@ -261,7 +269,7 @@ where
                     try_visit!(self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref));
                 }
             }
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
                 // Skip repeated `Opaque`s to avoid infinite recursion.
                 if self.visited_tys.insert(ty) {
                     // The intent is to treat `impl Trait1 + Trait2` identically to

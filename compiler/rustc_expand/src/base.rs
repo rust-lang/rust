@@ -9,7 +9,7 @@ use std::sync::Arc;
 use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind, Safety};
+use rustc_ast::{self as ast, AttrVec, HasAttrs, Item, NodeId, PatKind, Safety};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync;
 use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
@@ -1188,7 +1188,6 @@ pub trait LintStoreExpand {
         features: &Features,
         registered_tools: &RegisteredTools,
         node_id: NodeId,
-        attrs: &[Attribute],
         items: &[Box<Item>],
         name: Symbol,
     );

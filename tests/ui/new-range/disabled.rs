@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(new_range_api)]
+#![feature(new_range_api_legacy)]
 
 fn main() {
     // Unchanged

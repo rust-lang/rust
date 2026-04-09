@@ -4107,5 +4107,83 @@ macro_rules! uint_impl {
         #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_max_value")]
         pub const fn max_value() -> Self { Self::MAX }
+
+        /// Truncate an integer to an integer of the same size or smaller, preserving the least
+        /// significant bits.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_extend_truncate)]
+        #[doc = concat!("assert_eq!(120u8, 120", stringify!($SelfT), ".truncate());")]
+        /// assert_eq!(120u8, 376u32.truncate());
+        /// ```
+        #[must_use = "this returns the truncated value and does not modify the original"]
+        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[inline]
+        pub const fn truncate<Target>(self) -> Target
+            where Self: [const] traits::TruncateTarget<Target>
+        {
+            traits::TruncateTarget::internal_truncate(self)
+        }
+
+        /// Truncate an integer to an integer of the same size or smaller, saturating at numeric bounds
+        /// instead of truncating.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_extend_truncate)]
+        #[doc = concat!("assert_eq!(120u8, 120", stringify!($SelfT), ".saturating_truncate());")]
+        /// assert_eq!(255u8, 376u32.saturating_truncate());
+        /// ```
+        #[must_use = "this returns the truncated value and does not modify the original"]
+        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[inline]
+        pub const fn saturating_truncate<Target>(self) -> Target
+            where Self: [const] traits::TruncateTarget<Target>
+        {
+            traits::TruncateTarget::internal_saturating_truncate(self)
+        }
+
+        /// Truncate an integer to an integer of the same size or smaller, returning `None` if the value
+        /// is outside the bounds of the smaller type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_extend_truncate)]
+        #[doc = concat!("assert_eq!(Some(120u8), 120", stringify!($SelfT), ".checked_truncate());")]
+        /// assert_eq!(None, 376u32.checked_truncate::<u8>());
+        /// ```
+        #[must_use = "this returns the truncated value and does not modify the original"]
+        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[inline]
+        pub const fn checked_truncate<Target>(self) -> Option<Target>
+            where Self: [const] traits::TruncateTarget<Target>
+        {
+            traits::TruncateTarget::internal_checked_truncate(self)
+        }
+
+        /// Extend to an integer of the same size or larger, preserving its value.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_extend_truncate)]
+        #[doc = concat!("assert_eq!(120u128, 120u8.extend());")]
+        /// ```
+        #[must_use = "this returns the extended value and does not modify the original"]
+        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[inline]
+        pub const fn extend<Target>(self) -> Target
+            where Self: [const] traits::ExtendTarget<Target>
+        {
+            traits::ExtendTarget::internal_extend(self)
+        }
     }
 }

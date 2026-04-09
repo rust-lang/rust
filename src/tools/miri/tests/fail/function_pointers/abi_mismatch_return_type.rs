@@ -1,5 +1,6 @@
 fn main() {
-    fn f() -> u32 { //~ ERROR: type u32 passing return place of type ()
+    fn f() -> u32 {
+        //~^ERROR: type u32 passing return place of type ()
         42
     }
 

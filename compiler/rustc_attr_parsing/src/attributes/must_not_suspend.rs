@@ -18,13 +18,13 @@ impl<S: Stage> SingleAttributeParser<S> for MustNotSuspendParser {
             ArgParser::NameValue(reason) => match reason.value_as_str() {
                 Some(val) => Some(val),
                 None => {
-                    cx.expected_nv_or_no_args(reason.value_span);
+                    cx.adcx().expected_nv_or_no_args(reason.value_span);
                     return None;
                 }
             },
             ArgParser::NoArgs => None,
             ArgParser::List(list) => {
-                cx.expected_nv_or_no_args(list.span);
+                cx.adcx().expected_nv_or_no_args(list.span);
                 return None;
             }
         };

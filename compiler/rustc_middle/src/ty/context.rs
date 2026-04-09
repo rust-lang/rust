@@ -607,7 +607,7 @@ pub struct TyCtxtFeed<'tcx, KEY: Copy> {
 
 /// Never return a `Feed` from a query. Only queries that create a `DefId` are
 /// allowed to feed queries for that `DefId`.
-impl<KEY: Copy, CTX> !HashStable<CTX> for TyCtxtFeed<'_, KEY> {}
+impl<KEY: Copy, Hcx> !HashStable<Hcx> for TyCtxtFeed<'_, KEY> {}
 
 /// The same as `TyCtxtFeed`, but does not contain a `TyCtxt`.
 /// Use this to pass around when you have a `TyCtxt` elsewhere.
@@ -622,7 +622,7 @@ pub struct Feed<'tcx, KEY: Copy> {
 
 /// Never return a `Feed` from a query. Only queries that create a `DefId` are
 /// allowed to feed queries for that `DefId`.
-impl<KEY: Copy, CTX> !HashStable<CTX> for Feed<'_, KEY> {}
+impl<KEY: Copy, Hcx> !HashStable<Hcx> for Feed<'_, KEY> {}
 
 impl<T: fmt::Debug + Copy> fmt::Debug for Feed<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2115,7 +2115,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
-        let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *ty.kind() else { return false };
+        let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *ty.kind() else {
+            return false;
+        };
         let future_trait = self.require_lang_item(LangItem::Future, DUMMY_SP);
 
         self.explicit_item_self_bounds(def_id).skip_binder().iter().any(|&(predicate, _)| {

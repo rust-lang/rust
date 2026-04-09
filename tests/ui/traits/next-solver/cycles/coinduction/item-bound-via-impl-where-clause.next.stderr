@@ -30,7 +30,7 @@ LL |     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);
    |
    = note: the return type of a function must have a statically known size
 
-error[E0275]: overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof well-formed`
+error[E0275]: overflow evaluating whether `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof` is well-formed
   --> $DIR/item-bound-via-impl-where-clause.rs:31:21
    |
 LL |     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);

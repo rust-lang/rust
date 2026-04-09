@@ -43,14 +43,11 @@ mod generic_graph;
 pub mod generic_graphviz;
 pub mod graphviz;
 pub mod interpret;
-pub mod mono;
 pub mod pretty;
 mod query;
 mod statement;
 mod syntax;
 mod terminator;
-
-pub mod loops;
 pub mod traversal;
 pub mod visit;
 

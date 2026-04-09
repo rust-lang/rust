@@ -603,6 +603,9 @@ fn receiver_for_self_ty<'tcx>(
 /// contained by the trait object, because the object that needs to be coerced is behind
 /// a pointer.
 ///
+/// If lowering already produced an error in the receiver type, we conservatively treat it as
+/// undispatchable instead of asking the solver.
+///
 /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result in
 /// a new check that `Trait` is dyn-compatible, creating a cycle.
 /// Instead, we emulate a placeholder by introducing a new type parameter `U` such that
@@ -629,6 +632,10 @@ fn receiver_is_dispatchable<'tcx>(
     receiver_ty: Ty<'tcx>,
 ) -> bool {
     debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
+
+    if receiver_ty.references_error() {
+        return false;
+    }
 
     let (Some(unsize_did), Some(dispatch_from_dyn_did)) =
         (tcx.lang_items().unsize_trait(), tcx.lang_items().dispatch_from_dyn_trait())
@@ -811,11 +818,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
                     ControlFlow::Continue(())
                 }
             }
-            ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => {
+            ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, .. })
+                if self.tcx.is_impl_trait_in_trait(*def_id) =>
+            {
                 // We'll deny these later in their own pass
                 ControlFlow::Continue(())
             }
-            ty::Alias(ty::Projection, proj) => {
+            ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
                         // Only walk contained types if the parent trait is not a supertrait.
@@ -914,12 +923,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalRpititVisitor<'tcx> {
     type Result = ControlFlow<MethodViolation>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-        if let ty::Alias(ty::Projection, proj) = *ty.kind()
+        if let ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) = *ty.kind()
             && Some(proj) != self.allowed
-            && self.tcx.is_impl_trait_in_trait(proj.def_id)
+            && self.tcx.is_impl_trait_in_trait(def_id)
         {
             ControlFlow::Break(MethodViolation::ReferencesImplTraitInTrait(
-                self.tcx.def_span(proj.def_id),
+                self.tcx.def_span(def_id),
             ))
         } else {
             ty.super_visit_with(self)

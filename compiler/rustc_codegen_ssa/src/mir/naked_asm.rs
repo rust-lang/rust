@@ -1,8 +1,8 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_hir::attrs::{InstructionSetAttr, Linkage};
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::mir::mono::{MonoItemData, Visibility};
 use rustc_middle::mir::{InlineAsmOperand, START_BLOCK};
+use rustc_middle::mono::{MonoItemData, Visibility};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, ty};
@@ -141,8 +141,14 @@ fn prefix_and_suffix<'tcx>(
     let attrs = tcx.codegen_instance_attrs(instance.def);
     let link_section = attrs.link_section.map(|symbol| symbol.as_str().to_string());
 
-    // If no alignment is specified, an alignment of 4 bytes is used.
-    let align_bytes = attrs.alignment.map(|a| a.bytes()).unwrap_or(4);
+    // Pick a default alignment when the alignment is not explicitly specified.
+    let align_bytes = match attrs.alignment {
+        Some(align) => align.bytes(),
+        None => match asm_binary_format {
+            BinaryFormat::Coff => 16,
+            _ => 4,
+        },
+    };
 
     // In particular, `.arm` can also be written `.code 32` and `.thumb` as `.code 16`.
     let (arch_prefix, arch_suffix) = if is_arm {
@@ -267,19 +273,18 @@ fn prefix_and_suffix<'tcx>(
             }
         }
         BinaryFormat::Coff => {
-            let section = link_section.unwrap_or_else(|| format!(".text.{asm_name}"));
-            writeln!(begin, ".pushsection {},\"xr\"", section).unwrap();
-            writeln!(begin, ".balign {align_bytes}").unwrap();
-            write_linkage(&mut begin).unwrap();
             writeln!(begin, ".def {asm_name}").unwrap();
             writeln!(begin, ".scl 2").unwrap();
             writeln!(begin, ".type 32").unwrap();
             writeln!(begin, ".endef").unwrap();
+
+            let section = link_section.unwrap_or_else(|| format!(".text.{asm_name}"));
+            writeln!(begin, ".pushsection {},\"xr\"", section).unwrap();
+            write_linkage(&mut begin).unwrap();
+            writeln!(begin, ".balign {align_bytes}").unwrap();
             writeln!(begin, "{asm_name}:").unwrap();
 
             writeln!(end).unwrap();
-            writeln!(end, ".Lfunc_end_{asm_name}:").unwrap();
-            writeln!(end, ".popsection").unwrap();
             if !arch_suffix.is_empty() {
                 writeln!(end, "{}", arch_suffix).unwrap();
             }

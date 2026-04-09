@@ -180,6 +180,10 @@ impl Step for Miri {
         // Forward arguments. This may contain further arguments to the program
         // after another --, so this must be at the end.
         miri.args(builder.config.args());
+        // Add default edition for Miri tests (2021); defaulting to 2015 is often confusing.
+        if !builder.config.args().iter().any(|arg| arg.starts_with("--edition")) {
+            miri.arg("--edition=2021");
+        }
 
         miri.into_cmd().run(builder);
     }

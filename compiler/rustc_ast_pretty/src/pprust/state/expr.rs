@@ -235,7 +235,15 @@ impl<'a> State<'a> {
             // In order to call a named field, needs parens: `(self.fun)()`
             // But not for an unnamed field: `self.0()`
             ast::ExprKind::Field(_, name) => !name.is_numeric(),
-            _ => func_fixup.precedence(func) < ExprPrecedence::Unambiguous,
+            // Block-like expressions (block, match, if, loop, ...) never
+            // parse as the callee of a call, regardless of context: the
+            // closing brace ends the expression and `(args)` becomes a
+            // separate tuple. Parenthesize them so the call survives a
+            // pretty-print round trip.
+            _ => {
+                func_fixup.precedence(func) < ExprPrecedence::Unambiguous
+                    || classify::expr_is_complete(func)
+            }
         };
 
         self.print_expr_cond_paren(func, needs_paren, func_fixup);
@@ -677,7 +685,8 @@ impl<'a> State<'a> {
                 let expr_fixup = fixup.leftmost_subexpression_with_operator(true);
                 self.print_expr_cond_paren(
                     expr,
-                    expr_fixup.precedence(expr) < ExprPrecedence::Unambiguous,
+                    expr_fixup.precedence(expr) < ExprPrecedence::Unambiguous
+                        || classify::expr_is_complete(expr),
                     expr_fixup,
                 );
                 self.word("[");

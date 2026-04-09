@@ -24,7 +24,7 @@ use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::BinOp;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
+use rustc_middle::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};

@@ -1,0 +1,40 @@
+error[E0428]: the name `foo` is defined multiple times
+  --> $DIR/unlowered-path-ice-154820.rs:7:5
+   |
+LL |     fn foo() {}
+   |     -------- previous definition of the value `foo` here
+LL |     reuse foo;
+   |     ^^^^^^^^^^ `foo` redefined here
+   |
+   = note: `foo` must be defined only once in the value namespace of this block
+
+error: failed to resolve delegation callee
+  --> $DIR/unlowered-path-ice-154820.rs:4:7
+   |
+LL | reuse foo:: < {
+   |       ^^^
+
+error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/unlowered-path-ice-154820.rs:4:7
+   |
+LL |   reuse foo:: < {
+   |  _______^^^-
+   | |       |
+   | |       expected 0 generic arguments
+LL | |
+LL | |     fn foo() {}
+LL | |     reuse foo;
+...  |
+LL | |   >;
+   | |___- help: remove the unnecessary generics
+   |
+note: function defined here, with 0 generic parameters
+  --> $DIR/unlowered-path-ice-154820.rs:4:7
+   |
+LL | reuse foo:: < {
+   |       ^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0428.
+For more information about an error, try `rustc --explain E0107`.

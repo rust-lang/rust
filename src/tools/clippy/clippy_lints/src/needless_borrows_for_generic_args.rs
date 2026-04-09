@@ -331,7 +331,12 @@ fn is_mixed_projection_predicate<'tcx>(
         let mut projection_term = projection_predicate.projection_term;
         loop {
             match *projection_term.self_ty().kind() {
-                ty::Alias(ty::Projection, inner_projection_ty) => {
+                ty::Alias(
+                    inner_projection_ty @ ty::AliasTy {
+                        kind: ty::Projection { .. },
+                        ..
+                    },
+                ) => {
                     projection_term = inner_projection_ty.into();
                 },
                 ty::Param(param_ty) => {

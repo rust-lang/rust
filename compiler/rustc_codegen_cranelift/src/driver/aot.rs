@@ -19,7 +19,7 @@ use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_hir::attrs::Linkage as RLinkage;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::mono::{CodegenUnit, MonoItem, MonoItemData, Visibility};
+use rustc_middle::mono::{CodegenUnit, MonoItem, MonoItemData, Visibility};
 use rustc_session::Session;
 use rustc_session::config::{OutputFilenames, OutputType};
 
@@ -45,8 +45,8 @@ enum OngoingModuleCodegen {
     Async(JoinHandle<Result<ModuleCodegenResult, String>>),
 }
 
-impl<HCX> HashStable<HCX> for OngoingModuleCodegen {
-    fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
+impl<Hcx> HashStable<Hcx> for OngoingModuleCodegen {
+    fn hash_stable(&self, _: &mut Hcx, _: &mut StableHasher) {
         // do nothing
     }
 }

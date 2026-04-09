@@ -1,3 +1,6 @@
+//@ revisions: llvm-current llvm-next
+//@[llvm-current] ignore-llvm-version: 23-99
+//@[llvm-next] min-llvm-version: 23
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
 //@ only-x86_64
 #![crate_type = "lib"]
@@ -26,9 +29,18 @@ pub fn array_eq_ref(a: &[u16; 3], b: &[u16; 3]) -> bool {
 #[no_mangle]
 pub fn array_eq_value_still_passed_by_pointer(a: [u16; 9], b: [u16; 9]) -> bool {
     // CHECK-NEXT: start:
-    // CHECK: %[[CMP:.+]] = tail call i32 @{{bcmp|memcmp}}(ptr {{.*}} dereferenceable(18) %{{.+}}, ptr {{.*}} dereferenceable(18) %{{.+}}, i64 18)
-    // CHECK-NEXT: %[[EQ:.+]] = icmp eq i32 %[[CMP]], 0
-    // CHECK-NEXT: ret i1 %[[EQ]]
+    // CHECK-NOT: alloca
+    // llvm-current-NEXT: %[[CMP:.+]] = tail call i32 @{{bcmp|memcmp}}(ptr
+    // llvm-current-SAME: {{.*}} dereferenceable(18) %{{.+}}, ptr {{.*}} dereferenceable(18)
+    // llvm-current-SAME: %{{.+}}, i64 18)
+    // llvm-current-NEXT: %[[EQ:.+]] = icmp eq i32 %[[CMP]], 0
+    // llvm-current-NEXT: ret i1 %[[EQ]]
+    // CHECK-NOT: call
+    // New LLVM expands the bcmp earlier, so this becomes wide reads + icmp
+    // No allocas or calls, and at least one icmp
+    // llvm-next: icmp
+    // CHECK-NOT: alloca
+    // CHECK-NOT: call
     a == b
 }
 

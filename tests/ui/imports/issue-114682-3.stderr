@@ -5,13 +5,17 @@ LL |         fn ext(&self) {}
    |            --- the method is available for `u8` here
 ...
 LL |     a.ext();
-   |       ^^^ method not found in `u8`
+   |       ^^^
    |
    = help: items from traits can only be used if the trait is in scope
 help: trait `SettingsExt` which provides `ext` is implemented but not in scope; perhaps you want to import it
    |
 LL + use auto::SettingsExt;
    |
+help: there is a method `extend` with a similar name
+   |
+LL |     a.extend();
+   |          +++
 
 error: aborting due to 1 previous error
 

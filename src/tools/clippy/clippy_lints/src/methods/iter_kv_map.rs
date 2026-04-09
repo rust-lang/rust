@@ -48,14 +48,20 @@ pub(super) fn check<'tcx>(
         if let ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) = body_expr.kind
             && let [local_ident] = path.segments
             && local_ident.ident.name == bound_ident.name
+            && [sym::map, sym::flat_map].contains(&method_name)
         {
+            let identity_map_equivalent = match method_name {
+                sym::map => "",
+                sym::flat_map => ".flatten()",
+                _ => unreachable!(),
+            };
             span_lint_and_sugg(
                 cx,
                 ITER_KV_MAP,
                 expr.span,
                 format!("iterating on a map's {replacement_kind}s"),
                 "try",
-                format!("{recv_snippet}.{into_prefix}{replacement_kind}s()"),
+                format!("{recv_snippet}.{into_prefix}{replacement_kind}s(){identity_map_equivalent}"),
                 applicability,
             );
         } else {

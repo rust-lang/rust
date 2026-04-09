@@ -50,14 +50,17 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
         self.rebase_onto(tcx, source_ancestor, target_args)
     }
 
+    #[track_caller]
     fn type_at(self, i: usize) -> Ty<'tcx> {
         self.type_at(i)
     }
 
+    #[track_caller]
     fn region_at(self, i: usize) -> ty::Region<'tcx> {
         self.region_at(i)
     }
 
+    #[track_caller]
     fn const_at(self, i: usize) -> ty::Const<'tcx> {
         self.const_at(i)
     }

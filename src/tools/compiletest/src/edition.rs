@@ -1,7 +1,7 @@
 use crate::fatal;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Edition {
+pub(crate) enum Edition {
     // Note that the ordering here is load-bearing, as we want the future edition to be greater than
     // any year-based edition.
     Year(u32),
@@ -23,7 +23,7 @@ impl From<u32> for Edition {
     }
 }
 
-pub fn parse_edition(mut input: &str) -> Edition {
+pub(crate) fn parse_edition(mut input: &str) -> Edition {
     input = input.trim();
     if input == "future" {
         Edition::Future

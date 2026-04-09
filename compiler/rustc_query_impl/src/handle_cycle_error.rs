@@ -9,49 +9,29 @@ use rustc_errors::{Applicability, Diag, MultiSpan, pluralize, struct_span_code_e
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::bug;
-use rustc_middle::queries::{QueryVTables, TaggedQueryKey};
+use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::Cycle;
-use rustc_middle::query::erase::erase_val;
-use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::job::create_cycle_error;
 
-pub(crate) fn specialize_query_vtables<'tcx>(vtables: &mut QueryVTables<'tcx>) {
-    vtables.fn_sig.handle_cycle_error_fn = |tcx, key, _, err| {
-        let guar = err.delay_as_bug();
-        erase_val(fn_sig(tcx, key, guar))
-    };
-
-    vtables.check_representability.handle_cycle_error_fn =
-        |tcx, _, cycle, _err| check_representability(tcx, cycle);
-
-    vtables.check_representability_adt_ty.handle_cycle_error_fn =
-        |tcx, _, cycle, _err| check_representability(tcx, cycle);
-
-    vtables.variances_of.handle_cycle_error_fn = |tcx, key, _, err| {
-        let _guar = err.delay_as_bug();
-        erase_val(variances_of(tcx, key))
-    };
-
-    vtables.layout_of.handle_cycle_error_fn = |tcx, _, cycle, err| {
-        let _guar = err.delay_as_bug();
-        erase_val(Err(layout_of(tcx, cycle)))
-    }
-}
-
+// Default cycle handler used for all queries that don't use the `handle_cycle_error` query
+// modifier.
 pub(crate) fn default(err: Diag<'_>) -> ! {
     let guar = err.emit();
     guar.raise_fatal()
 }
 
-fn fn_sig<'tcx>(
+pub(crate) fn fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    guar: ErrorGuaranteed,
+    _: Cycle<'tcx>,
+    err: Diag<'_>,
 ) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
+    let guar = err.delay_as_bug();
+
     let err = Ty::new_error(tcx, guar);
 
     let arity = if let Some(node) = tcx.hir_get_if_local(def_id)
@@ -72,7 +52,25 @@ fn fn_sig<'tcx>(
     )))
 }
 
-fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> ! {
+pub(crate) fn check_representability<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    _key: LocalDefId,
+    cycle: Cycle<'tcx>,
+    _err: Diag<'_>,
+) {
+    check_representability_inner(tcx, cycle);
+}
+
+pub(crate) fn check_representability_adt_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    _key: Ty<'tcx>,
+    cycle: Cycle<'tcx>,
+    _err: Diag<'_>,
+) {
+    check_representability_inner(tcx, cycle);
+}
+
+fn check_representability_inner<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> ! {
     let mut item_and_field_ids = Vec::new();
     let mut representable_ids = FxHashSet::default();
     for frame in &cycle.frames {
@@ -103,7 +101,13 @@ fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> ! {
     guar.raise_fatal()
 }
 
-fn variances_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx [ty::Variance] {
+pub(crate) fn variances_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    _cycle: Cycle<'tcx>,
+    err: Diag<'_>,
+) -> &'tcx [ty::Variance] {
+    let _guar = err.delay_as_bug();
     let n = tcx.generics_of(def_id).own_params.len();
     tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n))
 }
@@ -127,7 +131,13 @@ fn search_for_cycle_permutation<Q, T>(
     otherwise()
 }
 
-fn layout_of<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> &'tcx ty::layout::LayoutError<'tcx> {
+pub(crate) fn layout_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    _key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
+    cycle: Cycle<'tcx>,
+    err: Diag<'_>,
+) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
+    let _guar = err.delay_as_bug();
     let diag = search_for_cycle_permutation(
         &cycle.frames,
         |frames| {
@@ -203,8 +213,7 @@ fn layout_of<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> &'tcx ty::layout::L
         || create_cycle_error(tcx, &cycle),
     );
 
-    let guar = diag.emit();
-    tcx.arena.alloc(LayoutError::Cycle(guar))
+    diag.emit().raise_fatal()
 }
 
 // item_and_field_ids should form a cycle where each field contains the
