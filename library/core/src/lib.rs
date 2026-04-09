@@ -205,7 +205,7 @@ use prelude::rust_2024::*;
 #[macro_use]
 mod macros;
 
-#[stable(feature = "assert_matches", since = "1.95.0")]
+#[unstable(feature = "assert_matches", issue = "82775")]
 pub use crate::macros::{assert_matches, debug_assert_matches};
 
 #[unstable(feature = "derive_from", issue = "144889")]

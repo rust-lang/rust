@@ -4,6 +4,8 @@
 //@ error-pattern: right: 3
 //@ needs-subprocess
 
+#![feature(assert_matches)]
+
 use std::assert_matches;
 
 fn main() {

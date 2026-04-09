@@ -8,6 +8,7 @@
 //@ edition: 2021
 
 #![feature(rustc_private)]
+#![feature(assert_matches)]
 
 extern crate rustc_driver;
 extern crate rustc_interface;

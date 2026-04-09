@@ -4,6 +4,7 @@
 #![feature(const_heap)]
 #![feature(deque_extend_front)]
 #![feature(iter_array_chunks)]
+#![feature(assert_matches)]
 #![feature(cow_is_borrowed)]
 #![feature(core_intrinsics)]
 #![feature(downcast_unchecked)]

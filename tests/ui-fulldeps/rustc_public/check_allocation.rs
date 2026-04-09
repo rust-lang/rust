@@ -8,6 +8,7 @@
 //@ edition: 2021
 
 #![feature(rustc_private)]
+#![feature(assert_matches)]
 #![feature(ascii_char, ascii_char_variants)]
 
 extern crate rustc_hir;
