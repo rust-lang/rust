@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 use std::num::NonZero;
 
+use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use decoder::LazyDecoder;
 pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, TargetModifiers};
 use def_path_hash_map::DefPathHashMapRef;
@@ -35,8 +36,6 @@ use rustc_middle::mir::ConstValue;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_serialize::opaque::FileEncoder;
-use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
@@ -47,6 +46,7 @@ use table::TableBuilder;
 
 use crate::creader::CrateMetadataRef;
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::encoder::ContextEncoder;
 
 mod decoder;
 mod def_path_hash_map;
@@ -369,7 +369,7 @@ macro_rules! define_tables {
         }
 
         impl TableBuilders {
-            fn encode(&self, buf: &mut FileEncoder) -> LazyTables {
+            fn encode(&self, buf: &mut ContextEncoder<'_>) -> LazyTables {
                 LazyTables {
                     $($name1: self.$name1.encode(buf),)+
                     $($name2: self.$name2.encode(buf),)+

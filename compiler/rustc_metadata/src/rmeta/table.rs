@@ -2,6 +2,7 @@ use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
 
 use crate::rmeta::decoder::Metadata;
+use crate::rmeta::encoder::ContextEncoder;
 use crate::rmeta::*;
 
 pub(super) trait IsDefault: Default {
@@ -486,15 +487,12 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
         }
     }
 
-    pub(crate) fn encode(&self, buf: &mut FileEncoder) -> LazyTable<I, T> {
+    pub(crate) fn encode(&self, buf: &mut ContextEncoder<'_>) -> LazyTable<I, T> {
         let pos = buf.position();
 
         let width = self.width;
         for block in &self.blocks {
-            buf.write_with(|dest| {
-                *dest = *block;
-                width
-            });
+            buf.write_m_with(block, width);
         }
 
         LazyTable::from_position_and_encoded_size(

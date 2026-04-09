@@ -470,7 +470,6 @@ pub struct Hashes {
 
 pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
-    providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
     providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.hir_crate(()).owner(tcx, def_id) {
         MaybeOwner::Owner(_) => HirId::make_owner(def_id),

@@ -54,7 +54,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
         None
     };
 
-    if tcx.needs_metadata() {
+    if tcx.needs_metadata() || tcx.needs_crate_hash() {
         encode_metadata(tcx, &metadata_filename, metadata_stub_filename.as_deref());
     } else {
         // Always create a file at `metadata_filename`, even if we have nothing to write to it.
