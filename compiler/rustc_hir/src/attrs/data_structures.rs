@@ -1371,6 +1371,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_def_parents]`
     RustcDumpDefParents,
 
+    /// Represents `#[rustc_dump_hidden_type_of_opaques]`
+    RustcDumpHiddenTypeOfOpaques,
+
     /// Represents `#[rustc_dump_inferred_outlives]`
     RustcDumpInferredOutlives,
 
@@ -1411,9 +1414,6 @@ pub enum AttributeKind {
     RustcEvaluateWhereClauses,
 
     RustcHasIncoherentInherentImpls,
-
-    /// Represents `#[rustc_hidden_type_of_opaques]`
-    RustcHiddenTypeOfOpaques,
 
     /// Represents `#[rustc_if_this_changed]`
     RustcIfThisChanged(Span, Option<Symbol>),

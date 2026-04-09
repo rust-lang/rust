@@ -311,6 +311,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDocPrimitive(..)
                     | AttributeKind::RustcDummy
                     | AttributeKind::RustcDumpDefParents
+                    | AttributeKind::RustcDumpHiddenTypeOfOpaques
                     | AttributeKind::RustcDumpInferredOutlives
                     | AttributeKind::RustcDumpItemBounds
                     | AttributeKind::RustcDumpLayout(..)
@@ -324,7 +325,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcEiiForeignItem
                     | AttributeKind::RustcEvaluateWhereClauses
                     | AttributeKind::RustcHasIncoherentInherentImpls
-                    | AttributeKind::RustcHiddenTypeOfOpaques
                     | AttributeKind::RustcIfThisChanged(..)
                     | AttributeKind::RustcInheritOverflowChecks
                     | AttributeKind::RustcInsignificantDtor

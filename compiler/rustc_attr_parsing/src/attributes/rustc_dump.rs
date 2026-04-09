@@ -24,6 +24,15 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpDefParentsParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpDefParents;
 }
 
+pub(crate) struct RustcDumpHiddenTypeOfOpaquesParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpHiddenTypeOfOpaquesParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_hidden_type_of_opaques];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpHiddenTypeOfOpaques;
+}
+
 pub(crate) struct RustcDumpInferredOutlivesParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpInferredOutlivesParser {
