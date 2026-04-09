@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/4972>
 #![feature(box_patterns)]
 
 trait MyTrait {
