@@ -1,9 +1,13 @@
 #![crate_name = "compiletest"]
+#![warn(unreachable_pub)]
 
 #[cfg(test)]
 mod tests;
 
+// Public modules needed by the compiletest binary or by `rustdoc-gui-test`.
 pub mod cli;
+pub mod rustdoc_gui_test;
+
 mod common;
 mod debuggers;
 mod diagnostics;
@@ -17,7 +21,6 @@ mod panic_hook;
 mod raise_fd_limit;
 mod read2;
 mod runtest;
-pub mod rustdoc_gui_test;
 mod util;
 
 use core::panic;

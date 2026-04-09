@@ -44,7 +44,7 @@ pub enum VarianceDiagInfo<I: Interner> {
     Invariant {
         /// The generic type containing the generic parameter
         /// that changes the variance (e.g. `*mut T`, `MyStruct<T>`)
-        ty: ty::Ty<I>,
+        ty: I::Ty,
         /// The index of the generic parameter being used
         /// (e.g. `0` for `*mut T`, `1` for `MyStruct<'CovariantParam, 'InvariantParam>`)
         param_index: u32,
@@ -75,13 +75,13 @@ pub trait TypeRelation<I: Interner>: Sized {
 
     fn relate_ty_args(
         &mut self,
-        a_ty: ty::Ty<I>,
-        b_ty: ty::Ty<I>,
+        a_ty: I::Ty,
+        b_ty: I::Ty,
         ty_def_id: I::DefId,
         a_arg: I::GenericArgs,
         b_arg: I::GenericArgs,
-        mk: impl FnOnce(I::GenericArgs) -> ty::Ty<I>,
-    ) -> RelateResult<I, ty::Ty<I>>;
+        mk: impl FnOnce(I::GenericArgs) -> I::Ty,
+    ) -> RelateResult<I, I::Ty>;
 
     /// Switch variance for the purpose of relating `a` and `b`.
     fn relate_with_variance<T: Relate<I>>(
@@ -98,7 +98,7 @@ pub trait TypeRelation<I: Interner>: Sized {
     // additional hooks for other types in the future if needed
     // without making older code, which called `relate`, obsolete.
 
-    fn tys(&mut self, a: ty::Ty<I>, b: ty::Ty<I>) -> RelateResult<I, ty::Ty<I>>;
+    fn tys(&mut self, a: I::Ty, b: I::Ty) -> RelateResult<I, I::Ty>;
 
     fn regions(&mut self, a: I::Region, b: I::Region) -> RelateResult<I, I::Region>;
 
@@ -215,16 +215,19 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
         a: ty::AliasTy<I>,
         b: ty::AliasTy<I>,
     ) -> RelateResult<I, ty::AliasTy<I>> {
-        if a.def_id != b.def_id {
-            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.def_id, b.def_id)))
+        if a.kind.def_id() != b.kind.def_id() {
+            Err(TypeError::ProjectionMismatched(ExpectedFound::new(
+                a.kind.def_id(),
+                b.kind.def_id(),
+            )))
         } else {
             let cx = relation.cx();
-            let args = if let Some(variances) = cx.opt_alias_variances(a.kind(cx), a.def_id) {
+            let args = if let Some(variances) = cx.opt_alias_variances(a.kind, a.kind.def_id()) {
                 relate_args_with_variances(relation, variances, a.args, b.args)?
             } else {
                 relate_args_invariantly(relation, a.args, b.args)?
             };
-            Ok(ty::AliasTy::new_from_args(relation.cx(), a.def_id, args))
+            Ok(ty::AliasTy::new_from_args(relation.cx(), a.kind, args))
         }
     }
 }
@@ -332,9 +335,9 @@ impl<I: Interner> Relate<I> for ty::ExistentialTraitRef<I> {
 #[instrument(level = "trace", skip(relation), ret)]
 pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
     relation: &mut R,
-    a: ty::Ty<I>,
-    b: ty::Ty<I>,
-) -> RelateResult<I, ty::Ty<I>> {
+    a: I::Ty,
+    b: I::Ty,
+) -> RelateResult<I, I::Ty> {
     let cx = relation.cx();
     match (a.kind(), b.kind()) {
         (ty::Infer(_), _) | (_, ty::Infer(_)) => {
@@ -499,10 +502,9 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
         }
 
         // Alias tend to mostly already be handled downstream due to normalization.
-        (ty::Alias(a_kind, a_data), ty::Alias(b_kind, b_data)) => {
-            let alias_ty = relation.relate(a_data, b_data)?;
-            assert_eq!(a_kind, b_kind);
-            Ok(Ty::new_alias(cx, a_kind, alias_ty))
+        (ty::Alias(a), ty::Alias(b)) => {
+            let alias_ty = relation.relate(a, b)?;
+            Ok(Ty::new_alias(cx, alias_ty))
         }
 
         (ty::Pat(a_ty, a_pat), ty::Pat(b_ty, b_pat)) => {

@@ -110,6 +110,7 @@
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(pattern_type_macro)]
+#![feature(sealed)]
 #![feature(ub_checks)]
 // tidy-alphabetical-end
 //
@@ -216,9 +217,17 @@ pub mod from {
     pub use crate::macros::builtin::From;
 }
 
+mod sealed {
+    /// This trait being unreachable from outside the crate
+    /// prevents outside implementations of our extension traits.
+    /// This allows adding more trait methods in the future.
+    #[unstable(feature = "sealed", issue = "none")]
+    pub trait Sealed {}
+}
+
 // We don't export this through #[macro_export] for now, to avoid breakage.
 #[unstable(feature = "autodiff", issue = "124509")]
-/// Unstable module containing the unstable `autodiff` macro.
+#[doc = include_str!("../../core/src/autodiff.md")]
 pub mod autodiff {
     #[unstable(feature = "autodiff", issue = "124509")]
     pub use crate::macros::builtin::{autodiff_forward, autodiff_reverse};
@@ -227,6 +236,8 @@ pub mod autodiff {
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 
+#[unstable(feature = "derive_macro_global_path", issue = "154645")]
+pub use crate::macros::builtin::derive;
 #[stable(feature = "cfg_select", since = "1.95.0")]
 pub use crate::macros::cfg_select;
 

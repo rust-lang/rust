@@ -12,6 +12,8 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::TargetTuple;
 
+use crate::context::Suggestion;
+
 #[derive(Diagnostic)]
 #[diag("invalid predicate `{$predicate}`", code = E0537)]
 pub(crate) struct InvalidPredicate {
@@ -563,7 +565,7 @@ pub(crate) enum AttributeParseErrorReason<'a> {
     },
     ExpectedNameValueOrNoArgs,
     ExpectedNonEmptyStringLiteral,
-    UnexpectedLiteral,
+    ExpectedNotLiteral,
     ExpectedNameValue(Option<Symbol>),
     DuplicateKey(Symbol),
     ExpectedSpecificArgument {
@@ -573,6 +575,10 @@ pub(crate) enum AttributeParseErrorReason<'a> {
         list: bool,
     },
     ExpectedIdentifier,
+    ExpectedNameValueAsLastArgument {
+        span: Span,
+        name_value_key: Symbol,
+    },
 }
 
 /// A description of a thing that can be parsed using an attribute parser.
@@ -591,7 +597,12 @@ pub(crate) struct AttributeParseError<'a> {
     pub(crate) path: AttrPath,
     pub(crate) description: ParsedDescription,
     pub(crate) reason: AttributeParseErrorReason<'a>,
-    pub(crate) suggestions: Vec<String>,
+    pub(crate) suggestions: AttributeParseErrorSuggestions,
+}
+
+pub(crate) enum AttributeParseErrorSuggestions {
+    CreatedByTemplate(Vec<String>),
+    CreatedByParser(Vec<Suggestion>),
 }
 
 impl<'a> AttributeParseError<'a> {
@@ -666,10 +677,54 @@ impl<'a> AttributeParseError<'a> {
         }
     }
 
+    fn render_suggestions<G>(&self, diag: &mut Diag<'_, G>)
+    where
+        G: EmissionGuarantee,
+    {
+        let description = self.description();
+
+        match &self.suggestions {
+            AttributeParseErrorSuggestions::CreatedByTemplate(suggestions) => {
+                diag.span_suggestions(
+                        self.attr_span,
+                        if suggestions.len() == 1 {
+                            "must be of the form".to_string()
+                        } else {
+                            format!(
+                                "try changing it to one of the following valid forms of the {description}"
+                            )
+                        },
+                        suggestions.iter().cloned(),
+                        Applicability::HasPlaceholders,
+                    );
+            }
+
+            AttributeParseErrorSuggestions::CreatedByParser(suggestions) => {
+                for Suggestion { msg, sp, code } in suggestions {
+                    diag.span_suggestion_verbose(
+                        *sp,
+                        msg.to_string(),
+                        code.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        }
+    }
+
     fn description(&self) -> &'static str {
         match self.description {
             ParsedDescription::Attribute => "attribute",
             ParsedDescription::Macro => "macro",
+        }
+    }
+}
+
+impl AttributeParseErrorSuggestions {
+    fn len(&self) -> usize {
+        match self {
+            AttributeParseErrorSuggestions::CreatedByTemplate(items) => items.len(),
+            AttributeParseErrorSuggestions::CreatedByParser(items) => items.len(),
         }
     }
 }
@@ -744,7 +799,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 diag.span_label(self.span, format!("found `{key}` used as a key more than once"));
                 diag.code(E0538);
             }
-            AttributeParseErrorReason::UnexpectedLiteral => {
+            AttributeParseErrorReason::ExpectedNotLiteral => {
                 diag.span_label(self.span, "didn't expect a literal here");
                 diag.code(E0565);
             }
@@ -784,6 +839,12 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             AttributeParseErrorReason::ExpectedIdentifier => {
                 diag.span_label(self.span, "expected a valid identifier here");
             }
+            AttributeParseErrorReason::ExpectedNameValueAsLastArgument { span, name_value_key } => {
+                diag.span_label(
+                    *span,
+                    format!("expected {name_value_key} = \"...\" to be the last argument"),
+                );
+            }
         }
 
         if let Some(link) = self.template.docs {
@@ -791,18 +852,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
         }
 
         if self.suggestions.len() < 4 {
-            diag.span_suggestions(
-                self.attr_span,
-                if self.suggestions.len() == 1 {
-                    "must be of the form".to_string()
-                } else {
-                    format!(
-                        "try changing it to one of the following valid forms of the {description}"
-                    )
-                },
-                self.suggestions,
-                Applicability::HasPlaceholders,
-            );
+            self.render_suggestions(&mut diag);
         }
 
         diag
@@ -1087,4 +1137,15 @@ pub(crate) struct UnstableAttrForAlreadyStableFeature {
     pub attr_span: Span,
     #[label("the stability attribute annotates this item")]
     pub item_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown tool name `{$tool_name}` found in scoped lint: `{$full_lint_name}`", code = E0710)]
+pub(crate) struct UnknownToolInScopedLint {
+    #[primary_span]
+    pub span: Option<Span>,
+    pub tool_name: Symbol,
+    pub full_lint_name: Symbol,
+    #[help("add `#![register_tool({$tool_name})]` to the crate root")]
+    pub is_nightly_build: bool,
 }

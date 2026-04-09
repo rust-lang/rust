@@ -21,38 +21,68 @@ use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
 
 mod closure;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(GenericTypeVisitable)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-pub enum AliasTyKind {
+pub enum AliasTyKind<I: Interner> {
     /// A projection `<Type as Trait>::AssocType`.
     ///
     /// Can get normalized away if monomorphic enough.
-    Projection,
+    ///
+    /// The `def_id` is the `DefId` of the `TraitItem` for the associated type.
+    ///
+    /// Note that the `def_id` is not the `DefId` of the `TraitRef` containing this
+    /// associated type, which is in `interner.associated_item(def_id).container`,
+    /// aka. `interner.parent(def_id)`.
+    Projection { def_id: I::DefId },
+
     /// An associated type in an inherent `impl`
-    Inherent,
+    ///
+    /// The `def_id` is the `DefId` of the `ImplItem` for the associated type.
+    Inherent { def_id: I::DefId },
+
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
     ///
-    /// Can only be normalized away in PostAnalysis mode or its defining scope.
-    Opaque,
+    /// `def_id` is the `DefId` of the `OpaqueType` item.
+    ///
+    ///
+    /// Can only be normalized away in `PostAnalysis` mode or its defining scope.
+    ///
+    /// During codegen, `interner.type_of(def_id)` can be used to get the type of the
+    /// underlying type if the type is an opaque.
+    Opaque { def_id: I::DefId },
+
     /// A type alias that actually checks its trait bounds.
     ///
     /// Currently only used if the type alias references opaque types.
     /// Can always be normalized away.
-    Free,
+    Free { def_id: I::DefId },
 }
 
-impl AliasTyKind {
+impl<I: Interner> AliasTyKind<I> {
+    pub fn new_from_def_id(interner: I, def_id: I::DefId) -> Self {
+        interner.alias_ty_kind_from_def_id(def_id)
+    }
+
     pub fn descr(self) -> &'static str {
         match self {
-            AliasTyKind::Projection => "associated type",
-            AliasTyKind::Inherent => "inherent associated type",
-            AliasTyKind::Opaque => "opaque type",
-            AliasTyKind::Free => "type alias",
+            AliasTyKind::Projection { .. } => "associated type",
+            AliasTyKind::Inherent { .. } => "inherent associated type",
+            AliasTyKind::Opaque { .. } => "opaque type",
+            AliasTyKind::Free { .. } => "type alias",
         }
+    }
+
+    pub fn def_id(self) -> I::DefId {
+        let (AliasTyKind::Projection { def_id }
+        | AliasTyKind::Inherent { def_id }
+        | AliasTyKind::Opaque { def_id }
+        | AliasTyKind::Free { def_id }) = self;
+
+        def_id
     }
 }
 
@@ -100,7 +130,7 @@ pub enum TyKind<I: Interner> {
     Str,
 
     /// An array with the given length. Written as `[T; N]`.
-    Array(ty::Ty<I>, I::Const),
+    Array(I::Ty, I::Const),
 
     /// A pattern newtype.
     ///
@@ -109,17 +139,17 @@ pub enum TyKind<I: Interner> {
     /// Only `Copy` and `Clone` will automatically get implemented for pattern types.
     /// Auto-traits treat this as if it were an aggregate with a single nested type.
     /// Only supports integer range patterns for now.
-    Pat(ty::Ty<I>, I::Pat),
+    Pat(I::Ty, I::Pat),
 
     /// The pointee of an array slice. Written as `[T]`.
-    Slice(ty::Ty<I>),
+    Slice(I::Ty),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
-    RawPtr(ty::Ty<I>, Mutability),
+    RawPtr(I::Ty, Mutability),
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
-    Ref(I::Region, ty::Ty<I>, Mutability),
+    Ref(I::Region, I::Ty, Mutability),
 
     /// The anonymous type of a function declaration/definition.
     ///
@@ -222,7 +252,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// All of these types are represented as pairs of def-id and args, and can
     /// be normalized, so they are grouped conceptually.
-    Alias(AliasTyKind, AliasTy<I>),
+    Alias(AliasTy<I>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(I::ParamTy),
@@ -327,7 +357,7 @@ impl<I: Interner> TyKind<I> {
 
             ty::Error(_)
             | ty::Infer(_)
-            | ty::Alias(_, _)
+            | ty::Alias(_)
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Placeholder(_) => false,
@@ -392,7 +422,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
                 }
                 write!(f, ")")
             }
-            Alias(i, a) => f.debug_tuple("Alias").field(i).field(&a).finish(),
+            Alias(a) => f.debug_tuple("Alias").field(&a).finish(),
             Param(p) => write!(f, "{p:?}"),
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
@@ -426,17 +456,9 @@ pub struct AliasTy<I: Interner> {
     /// while for TAIT it is used for the generic parameters of the alias.
     pub args: I::GenericArgs,
 
-    /// The `DefId` of the `TraitItem` or `ImplItem` for the associated type `N` depending on whether
-    /// this is a projection or an inherent projection or the `DefId` of the `OpaqueType` item if
-    /// this is an opaque.
-    ///
-    /// During codegen, `interner.type_of(def_id)` can be used to get the type of the
-    /// underlying type if the type is an opaque.
-    ///
-    /// Note that if this is an associated type, this is not the `DefId` of the
-    /// `TraitRef` containing this associated type, which is in `interner.associated_item(def_id).container`,
-    /// aka. `interner.parent(def_id)`.
-    pub def_id: I::DefId,
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub kind: AliasTyKind<I>,
 
     /// This field exists to prevent the creation of `AliasTy` without using [`AliasTy::new_from_args`].
     #[derive_where(skip(Debug))]
@@ -446,51 +468,49 @@ pub struct AliasTy<I: Interner> {
 impl<I: Interner> Eq for AliasTy<I> {}
 
 impl<I: Interner> AliasTy<I> {
-    pub fn new_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> AliasTy<I> {
-        interner.debug_assert_args_compatible(def_id, args);
-        AliasTy { def_id, args, _use_alias_ty_new_instead: () }
+    pub fn new_from_args(interner: I, kind: AliasTyKind<I>, args: I::GenericArgs) -> AliasTy<I> {
+        interner.debug_assert_args_compatible(kind.def_id(), args);
+        AliasTy { kind, args, _use_alias_ty_new_instead: () }
     }
 
     pub fn new(
         interner: I,
-        def_id: I::DefId,
+        kind: AliasTyKind<I>,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> AliasTy<I> {
         let args = interner.mk_args_from_iter(args.into_iter().map(Into::into));
-        Self::new_from_args(interner, def_id, args)
-    }
-
-    pub fn kind(self, interner: I) -> AliasTyKind {
-        interner.alias_ty_kind(self)
+        Self::new_from_args(interner, kind, args)
     }
 
     /// Whether this alias type is an opaque.
-    pub fn is_opaque(self, interner: I) -> bool {
-        matches!(self.kind(interner), AliasTyKind::Opaque)
+    pub fn is_opaque(self) -> bool {
+        matches!(self.kind, AliasTyKind::Opaque { .. })
     }
 
-    pub fn to_ty(self, interner: I) -> ty::Ty<I> {
-        Ty::new_alias(interner, self.kind(interner), self)
+    pub fn to_ty(self, interner: I) -> I::Ty {
+        Ty::new_alias(interner, self)
     }
 }
 
 /// The following methods work only with (trait) associated type projections.
 impl<I: Interner> AliasTy<I> {
-    pub fn self_ty(self) -> ty::Ty<I> {
+    #[track_caller]
+    pub fn self_ty(self) -> I::Ty {
         self.args.type_at(0)
     }
 
-    pub fn with_replaced_self_ty(self, interner: I, self_ty: ty::Ty<I>) -> Self {
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
         AliasTy::new(
             interner,
-            self.def_id,
+            self.kind,
             [self_ty.into()].into_iter().chain(self.args.iter().skip(1)),
         )
     }
 
     pub fn trait_def_id(self, interner: I) -> I::DefId {
-        assert_eq!(self.kind(interner), AliasTyKind::Projection, "expected a projection");
-        interner.parent(self.def_id)
+        let AliasTyKind::Projection { def_id } = self.kind else { panic!("expected a projection") };
+
+        interner.parent(def_id)
     }
 
     /// Extracts the underlying trait reference and own args from this projection.
@@ -499,8 +519,9 @@ impl<I: Interner> AliasTy<I> {
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
     pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::GenericArgsSlice) {
-        debug_assert_eq!(self.kind(interner), AliasTyKind::Projection);
-        interner.trait_ref_and_own_args_for_alias(self.def_id, self.args)
+        let AliasTyKind::Projection { def_id } = self.kind else { panic!("expected a projection") };
+
+        interner.trait_ref_and_own_args_for_alias(def_id, self.args)
     }
 
     /// Extracts the underlying trait reference from this projection.
@@ -735,7 +756,7 @@ impl fmt::Debug for InferTy {
 )]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 pub struct TypeAndMut<I: Interner> {
-    pub ty: ty::Ty<I>,
+    pub ty: I::Ty,
     pub mutbl: Mutability,
 }
 
@@ -765,7 +786,7 @@ impl<I: Interner> FnSig<I> {
         self.inputs_and_output.inputs()
     }
 
-    pub fn output(self) -> ty::Ty<I> {
+    pub fn output(self) -> I::Ty {
         self.inputs_and_output.output()
     }
 
@@ -783,7 +804,7 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
 
     #[inline]
     #[track_caller]
-    pub fn input(self, index: usize) -> ty::Binder<I, ty::Ty<I>> {
+    pub fn input(self, index: usize) -> ty::Binder<I, I::Ty> {
         self.map_bound(|fn_sig| fn_sig.inputs().get(index).unwrap())
     }
 
@@ -792,7 +813,7 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
     }
 
     #[inline]
-    pub fn output(self) -> ty::Binder<I, ty::Ty<I>> {
+    pub fn output(self) -> ty::Binder<I, I::Ty> {
         self.map_bound(|fn_sig| fn_sig.output())
     }
 
@@ -856,21 +877,21 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
 }
 
 // FIXME: this is a distinct type because we need to define `Encode`/`Decode`
-// impls in this crate for `Binder<I, ty::Ty<I>>`.
+// impls in this crate for `Binder<I, I::Ty>`.
 #[derive_where(Clone, Copy, PartialEq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
-pub struct UnsafeBinderInner<I: Interner>(ty::Binder<I, ty::Ty<I>>);
+pub struct UnsafeBinderInner<I: Interner>(ty::Binder<I, I::Ty>);
 
 impl<I: Interner> Eq for UnsafeBinderInner<I> {}
 
-impl<I: Interner> From<ty::Binder<I, ty::Ty<I>>> for UnsafeBinderInner<I> {
-    fn from(value: ty::Binder<I, ty::Ty<I>>) -> Self {
+impl<I: Interner> From<ty::Binder<I, I::Ty>> for UnsafeBinderInner<I> {
+    fn from(value: ty::Binder<I, I::Ty>) -> Self {
         UnsafeBinderInner(value)
     }
 }
 
-impl<I: Interner> From<UnsafeBinderInner<I>> for ty::Binder<I, ty::Ty<I>> {
+impl<I: Interner> From<UnsafeBinderInner<I>> for ty::Binder<I, I::Ty> {
     fn from(value: UnsafeBinderInner<I>) -> Self {
         value.0
     }
@@ -883,7 +904,7 @@ impl<I: Interner> fmt::Debug for UnsafeBinderInner<I> {
 }
 
 impl<I: Interner> Deref for UnsafeBinderInner<I> {
-    type Target = ty::Binder<I, ty::Ty<I>>;
+    type Target = ty::Binder<I, I::Ty>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -894,7 +915,7 @@ impl<I: Interner> Deref for UnsafeBinderInner<I> {
 impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E>
     for UnsafeBinderInner<I>
 where
-    ty::Ty<I>: rustc_serialize::Encodable<E>,
+    I::Ty: rustc_serialize::Encodable<E>,
     I::BoundVarKinds: rustc_serialize::Encodable<E>,
 {
     fn encode(&self, e: &mut E) {
@@ -907,7 +928,7 @@ where
 impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D>
     for UnsafeBinderInner<I>
 where
-    ty::Ty<I>: TypeVisitable<I> + rustc_serialize::Decodable<D>,
+    I::Ty: TypeVisitable<I> + rustc_serialize::Decodable<D>,
     I::BoundVarKinds: rustc_serialize::Decodable<D>,
 {
     fn decode(decoder: &mut D) -> Self {
@@ -937,7 +958,7 @@ impl<I: Interner> FnSigTys<I> {
         self.inputs_and_output.inputs()
     }
 
-    pub fn output(self) -> ty::Ty<I> {
+    pub fn output(self) -> I::Ty {
         self.inputs_and_output.output()
     }
 }
@@ -960,7 +981,7 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
 
     #[inline]
     #[track_caller]
-    pub fn input(self, index: usize) -> ty::Binder<I, ty::Ty<I>> {
+    pub fn input(self, index: usize) -> ty::Binder<I, I::Ty> {
         self.map_bound(|sig_tys| sig_tys.inputs().get(index).unwrap())
     }
 
@@ -969,7 +990,7 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
     }
 
     #[inline]
-    pub fn output(self) -> ty::Binder<I, ty::Ty<I>> {
+    pub fn output(self) -> ty::Binder<I, I::Ty> {
         self.map_bound(|sig_tys| sig_tys.output())
     }
 }

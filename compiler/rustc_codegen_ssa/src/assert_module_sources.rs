@@ -31,7 +31,7 @@ use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::attrs::{CguFields, CguKind};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, find_attr};
-use rustc_middle::mir::mono::CodegenUnitNameBuilder;
+use rustc_middle::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::{Span, Symbol};

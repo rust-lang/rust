@@ -1,16 +1,18 @@
 use std::cell::{Cell, RefCell};
+use std::io::Read;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::{io, iter};
 
 use mio::Interest;
 use mio::event::Source;
 use mio::net::{TcpListener, TcpStream};
+use rand::Rng;
 use rustc_abi::Size;
 use rustc_const_eval::interpret::{InterpResult, interp_ok};
 use rustc_middle::throw_unsup_format;
 use rustc_target::spec::Os;
 
-use crate::shims::files::{FdId, FileDescription, FileDescriptionRef};
+use crate::shims::files::{EvalContextExt as _, FdId, FileDescription, FileDescriptionRef};
 use crate::{OpTy, Scalar, *};
 
 #[derive(Debug, PartialEq)]
@@ -131,13 +133,63 @@ impl FileDescription for Socket {
     fn destroy<'tcx>(
         self,
         _self_id: FdId,
-        _communicate_allowed: bool,
+        communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, std::io::Result<()>>
-    where
-        Self: Sized,
-    {
+    ) -> InterpResult<'tcx, std::io::Result<()>> {
+        assert!(communicate_allowed, "cannot have `Socket` with isolation enabled!");
+
         interp_ok(Ok(()))
+    }
+
+    fn read<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ptr: Pointer,
+        len: usize,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        assert!(communicate_allowed, "cannot have `Socket` with isolation enabled!");
+
+        if !matches!(&*self.state.borrow(), SocketState::Connected(_)) {
+            // We can only receive from connected sockets. For all other
+            // states we return a not connected error.
+            return finish.call(ecx, Err(LibcError("ENOTCONN")));
+        }
+
+        // Since `read` is the same as `recv` with no flags, we just treat
+        // the `read` as a `recv` here.
+        ecx.block_for_recv(self, ptr, len, /* should_peek */ false, finish);
+
+        interp_ok(())
+    }
+
+    fn write<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ptr: Pointer,
+        len: usize,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        assert!(communicate_allowed, "cannot have `Socket` with isolation enabled!");
+
+        if !matches!(&*self.state.borrow(), SocketState::Connected(_)) {
+            // We can only send with connected sockets. For all other
+            // states we return a not connected error.
+            return finish.call(ecx, Err(LibcError("ENOTCONN")));
+        }
+
+        // Since `write` is the same as `send` with no flags, we just treat
+        // the `write` as a `send` here.
+        ecx.block_for_send(self, ptr, len, finish);
+
+        interp_ok(())
+    }
+
+    fn short_fd_operations(&self) -> bool {
+        // Short accesses on TCP sockets are realistic and expected to happen.
+        true
     }
 
     fn get_flags<'tcx>(&self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
@@ -190,7 +242,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
         ) {
             // SOCK_NONBLOCK and SOCK_CLOEXEC only exist on Linux, Android, FreeBSD,
-            // Solaris, and Illumos targets
+            // Solaris, and Illumos targets.
             let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
             let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");
             if flags & sock_nonblock == sock_nonblock {
@@ -396,7 +448,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
         ) {
             // SOCK_NONBLOCK and SOCK_CLOEXEC only exist on Linux, Android, FreeBSD,
-            // Solaris, and Illumos targets
+            // Solaris, and Illumos targets.
             let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
             let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");
             if flags & sock_nonblock == sock_nonblock {
@@ -493,6 +545,199 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // The socket is in blocking mode and thus the connect call should block
         // until the connection with the server is established.
         this.block_for_connect(socket, dest.clone());
+        interp_ok(())
+    }
+
+    fn send(
+        &mut self,
+        socket: &OpTy<'tcx>,
+        buffer: &OpTy<'tcx>,
+        length: &OpTy<'tcx>,
+        flags: &OpTy<'tcx>,
+        // Location where the output scalar is written to.
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let buffer_ptr = this.read_pointer(buffer)?;
+        let size_layout = this.libc_ty_layout("size_t");
+        let length: usize =
+            this.read_scalar(length)?.to_uint(size_layout.size)?.try_into().unwrap();
+        let mut flags = this.read_scalar(flags)?.to_i32()?;
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+        };
+
+        let Some(socket) = fd.downcast::<Socket>() else {
+            // Man page specifies to return ENOTSOCK if `fd` is not a socket
+            return this.set_last_error_and_return(LibcError("ENOTSOCK"), dest);
+        };
+
+        if !matches!(&*socket.state.borrow(), SocketState::Connected(_)) {
+            // We can only send with connected sockets. For all other
+            // states we return a not connected error.
+            return this.set_last_error_and_return(LibcError("ENOTCONN"), dest);
+        }
+
+        // Non-deterministically decide to further reduce the length, simulating a partial send.
+        // We avoid reducing the write size to 0: the docs seem to be entirely fine with that,
+        // but the standard library is not (https://github.com/rust-lang/rust/issues/145959).
+        let length = if this.machine.short_fd_operations
+            && length >= 2
+            && this.machine.rng.get_mut().random()
+        {
+            length / 2
+        } else {
+            length
+        };
+
+        // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
+        // if there is anything left at the end, that's an unsupported flag.
+        if matches!(
+            this.tcx.sess.target.os,
+            Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
+        ) {
+            // MSG_NOSIGNAL only exists on Linux, Android, FreeBSD,
+            // Solaris, and Illumos targets.
+            let msg_nosignal = this.eval_libc_i32("MSG_NOSIGNAL");
+            if flags & msg_nosignal == msg_nosignal {
+                // This is only needed to ensure that no EPIPE signal is sent when
+                // trying to send into a stream which is no longer connected.
+                // Since we don't support signals, we can ignore this.
+                flags &= !msg_nosignal;
+            }
+        }
+
+        if flags != 0 {
+            throw_unsup_format!(
+                "send: flag {flags:#x} is unsupported, only MSG_NOSIGNAL is allowed",
+            );
+        }
+
+        let dest = dest.clone();
+
+        this.block_for_send(
+            socket,
+            buffer_ptr,
+            length,
+            callback!(@capture<'tcx> {
+                dest: MPlaceTy<'tcx>
+            } |this, result: Result<usize, IoError>| {
+                match result {
+                    Ok(read_size) => {
+                        let read_size: u64 = read_size.try_into().unwrap();
+                        let ssize_layout = this.libc_ty_layout("ssize_t");
+                        this.write_scalar(Scalar::from_int(read_size, ssize_layout.size), &dest)
+                    }
+                    Err(e) => this.set_last_error_and_return(e, &dest)
+                }
+            }),
+        );
+
+        interp_ok(())
+    }
+
+    fn recv(
+        &mut self,
+        socket: &OpTy<'tcx>,
+        buffer: &OpTy<'tcx>,
+        length: &OpTy<'tcx>,
+        flags: &OpTy<'tcx>,
+        // Location where the output scalar is written to.
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let buffer_ptr = this.read_pointer(buffer)?;
+        let size_layout = this.libc_ty_layout("size_t");
+        let length: usize =
+            this.read_scalar(length)?.to_uint(size_layout.size)?.try_into().unwrap();
+        let mut flags = this.read_scalar(flags)?.to_i32()?;
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+        };
+
+        let Some(socket) = fd.downcast::<Socket>() else {
+            // Man page specifies to return ENOTSOCK if `fd` is not a socket
+            return this.set_last_error_and_return(LibcError("ENOTSOCK"), dest);
+        };
+
+        if !matches!(&*socket.state.borrow(), SocketState::Connected(_)) {
+            // We can only receive from connected sockets. For all other
+            // states we return a not connected error.
+            return this.set_last_error_and_return(LibcError("ENOTCONN"), dest);
+        }
+
+        // Non-deterministically decide to further reduce the length, simulating a partial receive.
+        // We don't simulate partial receives for lengths < 2 because the man page states that a
+        // return value of zero can only be returned in some special cases:
+        // "When a stream socket peer has performed an orderly shutdown, the return value will be 0
+        // (the traditional "end-of-file" return). [...] The value 0 may also be returned if the
+        // requested number of bytes to receive from a stream socket was 0."
+        let length = if this.machine.short_fd_operations
+            && length >= 2
+            && this.machine.rng.get_mut().random()
+        {
+            length / 2 // since `length` is at least 2, the result is still at least 1
+        } else {
+            length
+        };
+
+        let mut should_peek = false;
+
+        // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
+        // if there is anything left at the end, that's an unsupported flag.
+
+        let msg_peek = this.eval_libc_i32("MSG_PEEK");
+        if flags & msg_peek == msg_peek {
+            should_peek = true;
+            flags &= !msg_peek;
+        }
+
+        if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android | Os::FreeBsd | Os::Illumos) {
+            // MSG_CMSG_CLOEXEC only exists on Linux, Android, FreeBSD,
+            // and Illumos targets.
+            let msg_cmsg_cloexec = this.eval_libc_i32("MSG_CMSG_CLOEXEC");
+            if flags & msg_cmsg_cloexec == msg_cmsg_cloexec {
+                // We don't support `exec` so we can ignore this.
+                flags &= !msg_cmsg_cloexec;
+            }
+        }
+
+        if flags != 0 {
+            throw_unsup_format!(
+                "recv: flag {flags:#x} is unsupported, only MSG_PEEK \
+                and MSG_CMSG_CLOEXEC are allowed",
+            );
+        }
+
+        let dest = dest.clone();
+
+        this.block_for_recv(
+            socket,
+            buffer_ptr,
+            length,
+            should_peek,
+            callback!(@capture<'tcx> {
+                dest: MPlaceTy<'tcx>
+            } |this, result: Result<usize, IoError>| {
+                match result {
+                    Ok(read_size) => {
+                        let read_size: u64 = read_size.try_into().unwrap();
+                        let ssize_layout = this.libc_ty_layout("ssize_t");
+                        this.write_scalar(Scalar::from_int(read_size, ssize_layout.size), &dest)
+                    }
+                    Err(e) => this.set_last_error_and_return(e, &dest)
+                }
+            }),
+        );
+
         interp_ok(())
     }
 
@@ -1033,6 +1278,104 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         return interp_ok(())
                     },
                     Err(SocketIoError::Other(e)) => return this.set_last_error_and_return(e, &dest)
+                }
+            }),
+        );
+    }
+
+    /// Block the thread until we can send bytes into the connected socket
+    /// or an error occurred.
+    ///
+    /// This recursively calls itself should the operation still block for some reason.
+    fn block_for_send(
+        &mut self,
+        socket: FileDescriptionRef<Socket>,
+        buffer_ptr: Pointer,
+        length: usize,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) {
+        let this = self.eval_context_mut();
+        this.block_thread_for_io(
+            socket.clone(),
+            Interest::WRITABLE,
+            None,
+            callback!(@capture<'tcx> {
+                socket: FileDescriptionRef<Socket>,
+                buffer_ptr: Pointer,
+                length: usize,
+                finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+            } |this, kind: UnblockKind| {
+                assert_eq!(kind, UnblockKind::Ready);
+
+                let mut state = socket.state.borrow_mut();
+                let SocketState::Connected(stream) = &mut*state else {
+                    // We ensured that the socket is connected before blocking.
+                    unreachable!()
+                };
+
+                // This is a *non-blocking* write.
+                let result = this.write_to_host(stream, length, buffer_ptr)?;
+                match result {
+                    Err(IoError::HostError(e)) if e.kind() == io::ErrorKind::WouldBlock => {
+                        // We need to block the thread again as it would still block.
+                        drop(state);
+                        this.block_for_send(socket, buffer_ptr, length, finish);
+                        interp_ok(())
+                    },
+                    result => finish.call(this, result)
+                }
+            }),
+        );
+    }
+
+    /// Block the thread until we can receive bytes from the connected socket
+    /// or an error occurred.
+    ///
+    /// This recursively calls itself should the operation still block for some reason.
+    fn block_for_recv(
+        &mut self,
+        socket: FileDescriptionRef<Socket>,
+        buffer_ptr: Pointer,
+        length: usize,
+        should_peek: bool,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) {
+        let this = self.eval_context_mut();
+        this.block_thread_for_io(
+            socket.clone(),
+            Interest::READABLE,
+            None,
+            callback!(@capture<'tcx> {
+                socket: FileDescriptionRef<Socket>,
+                buffer_ptr: Pointer,
+                length: usize,
+                should_peek: bool,
+                finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+            } |this, kind: UnblockKind| {
+                assert_eq!(kind, UnblockKind::Ready);
+
+                let mut state = socket.state.borrow_mut();
+                let SocketState::Connected(stream) = &mut*state else {
+                    // We ensured that the socket is connected before blocking.
+                    unreachable!()
+                };
+
+                // This is a *non-blocking* read/peek.
+                let result = this.read_from_host(|buf| {
+                    if should_peek {
+                        stream.peek(buf)
+                    } else {
+                        stream.read(buf)
+                    }
+                }, length, buffer_ptr)?;
+                match result {
+                    Err(IoError::HostError(e)) if e.kind() == io::ErrorKind::WouldBlock => {
+                        // We need to block the thread again as it would still block.
+                        drop(state);
+                        this.block_for_recv(socket, buffer_ptr, length, should_peek, finish);
+                        interp_ok(())
+                    },
+                    result => finish.call(this, result)
                 }
             }),
         );

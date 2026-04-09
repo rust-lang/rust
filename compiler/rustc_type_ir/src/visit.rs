@@ -52,7 +52,7 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::inherent::*;
-use crate::{self as ty, Interner, Ty, TypeFlags};
+use crate::{self as ty, Interner, TypeFlags};
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
@@ -98,7 +98,7 @@ pub trait TypeVisitor<I: Interner>: Sized {
         t.super_visit_with(self)
     }
 
-    fn visit_ty(&mut self, t: Ty<I>) -> Self::Result {
+    fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
         t.super_visit_with(self)
     }
 
@@ -279,6 +279,8 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
 
     fn error_reported(&self) -> Result<(), I::ErrorGuaranteed>;
 
+    fn non_region_error_reported(&self) -> Result<(), I::ErrorGuaranteed>;
+
     fn has_non_region_param(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PARAM - TypeFlags::HAS_RE_PARAM)
     }
@@ -352,6 +354,11 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
     fn still_further_specializable(&self) -> bool {
         self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
     }
+
+    /// True if a type or const error is reachable
+    fn has_non_region_error(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_NON_REGION_ERROR)
+    }
 }
 
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitableExt<I> for T {
@@ -371,6 +378,18 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitableExt<I> for T {
                 Err(guar)
             } else {
                 panic!("type flags said there was an error, but now there is not")
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    fn non_region_error_reported(&self) -> Result<(), I::ErrorGuaranteed> {
+        if self.has_non_region_error() {
+            if let ControlFlow::Break(guar) = self.visit_with(&mut HasErrorVisitor) {
+                Err(guar)
+            } else {
+                panic!("type flags said there was an non region error, but now there is not")
             }
         } else {
             Ok(())
@@ -417,7 +436,7 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
     }
 
     #[inline]
-    fn visit_ty(&mut self, t: Ty<I>) -> Self::Result {
+    fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
         // Note: no `super_visit_with` call.
         let flags = t.flags();
         if flags.intersects(self.flags) {
@@ -522,7 +541,7 @@ impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
     }
 
     #[inline]
-    fn visit_ty(&mut self, t: Ty<I>) -> Self::Result {
+    fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
         // If the outer-exclusive-binder is *strictly greater* than
         // `outer_index`, that means that `t` contains some content
         // bound at `outer_index` or above (because

@@ -125,7 +125,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn self_ty(self) -> ty::Ty<I> {
+    fn self_ty(self) -> I::Ty {
         self.self_ty()
     }
 
@@ -133,7 +133,7 @@ where
         self.alias.trait_ref(cx)
     }
 
-    fn with_replaced_self_ty(self, cx: I, self_ty: ty::Ty<I>) -> Self {
+    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
         self.with_replaced_self_ty(cx, self_ty)
     }
 
@@ -653,7 +653,7 @@ where
                     .instantiate(cx, &[I::GenericArg::from(goal.predicate.self_ty())])
             }
 
-            ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
+            ty::Alias(_) | ty::Param(_) | ty::Placeholder(..) => {
                 // This is the "fallback impl" for type parameters, unnormalizable projections
                 // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
                 // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
@@ -910,7 +910,7 @@ where
             // Given an alias, parameter, or placeholder we add an impl candidate normalizing to a rigid
             // alias. In case there's a where-bound further constraining this alias it is preferred over
             // this impl candidate anyways. It's still a bit scuffed.
-            ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
+            ty::Alias(_) | ty::Param(_) | ty::Placeholder(..) => {
                 return ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
                     ecx.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

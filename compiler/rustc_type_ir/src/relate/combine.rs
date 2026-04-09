@@ -39,15 +39,15 @@ where
     );
 
     /// Register `AliasRelate` obligation(s) that both types must be related to each other.
-    fn register_alias_relate_predicate(&mut self, a: ty::Ty<I>, b: ty::Ty<I>);
+    fn register_alias_relate_predicate(&mut self, a: I::Ty, b: I::Ty);
 }
 
 pub fn super_combine_tys<Infcx, I, R>(
     infcx: &Infcx,
     relation: &mut R,
-    a: ty::Ty<I>,
-    b: ty::Ty<I>,
-) -> RelateResult<I, ty::Ty<I>>
+    a: I::Ty,
+    b: I::Ty,
+) -> RelateResult<I, I::Ty>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -128,7 +128,8 @@ where
         // All other cases of inference are errors
         (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
 
-        (ty::Alias(ty::Opaque, _), _) | (_, ty::Alias(ty::Opaque, _)) => {
+        (ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }), _)
+        | (_, ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
             assert!(!infcx.next_trait_solver());
             match infcx.typing_mode() {
                 // During coherence, opaque types should be treated as *possibly*
@@ -226,13 +227,13 @@ where
 pub fn combine_ty_args<Infcx, I, R>(
     infcx: &Infcx,
     relation: &mut R,
-    a_ty: ty::Ty<I>,
-    b_ty: ty::Ty<I>,
+    a_ty: I::Ty,
+    b_ty: I::Ty,
     variances: I::VariancesOf,
     a_args: I::GenericArgs,
     b_args: I::GenericArgs,
-    mk: impl FnOnce(I::GenericArgs) -> ty::Ty<I>,
-) -> RelateResult<I, ty::Ty<I>>
+    mk: impl FnOnce(I::GenericArgs) -> I::Ty,
+) -> RelateResult<I, I::Ty>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,

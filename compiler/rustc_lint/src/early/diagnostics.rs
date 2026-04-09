@@ -1,163 +1,26 @@
+use std::any::Any;
 use std::borrow::Cow;
 
-use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, Level,
-    elided_lifetime_in_path_suggestion,
-};
+use rustc_data_structures::sync::DynSend;
+use rustc_errors::{Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_session::lint::BuiltinLintDiag;
-use tracing::debug;
 
 use crate::lints;
 
 mod check_cfg;
 
-/// This is a diagnostic struct that will decorate a `BuiltinLintDiag`
-/// Directly creating the lint structs is expensive, using this will only decorate the lint structs when needed.
-pub struct DecorateBuiltinLint<'sess, 'tcx> {
+pub struct DiagAndSess<'sess> {
+    pub callback: Box<
+        dyn for<'b> FnOnce(DiagCtxtHandle<'b>, Level, &dyn Any) -> Diag<'b, ()> + DynSend + 'static,
+    >,
     pub sess: &'sess Session,
-    pub tcx: Option<TyCtxt<'tcx>>,
-    pub diagnostic: BuiltinLintDiag,
 }
 
-impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
+impl<'a> Diagnostic<'a, ()> for DiagAndSess<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        match self.diagnostic {
-            BuiltinLintDiag::AbsPathWithModule(mod_span) => {
-                let (replacement, applicability) =
-                    match self.sess.source_map().span_to_snippet(mod_span) {
-                        Ok(ref s) => {
-                            // FIXME(Manishearth) ideally the emitting code
-                            // can tell us whether or not this is global
-                            let opt_colon =
-                                if s.trim_start().starts_with("::") { "" } else { "::" };
-
-                            (format!("crate{opt_colon}{s}"), Applicability::MachineApplicable)
-                        }
-                        Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
-                    };
-                lints::AbsPathWithModule {
-                    sugg: lints::AbsPathWithModuleSugg {
-                        span: mod_span,
-                        applicability,
-                        replacement,
-                    },
-                }
-                .into_diag(dcx, level)
-            }
-            BuiltinLintDiag::ElidedLifetimesInPaths(
-                n,
-                path_span,
-                incl_angl_brckt,
-                insertion_span,
-            ) => lints::ElidedLifetimesInPaths {
-                subdiag: elided_lifetime_in_path_suggestion(
-                    self.sess.source_map(),
-                    n,
-                    path_span,
-                    incl_angl_brckt,
-                    insertion_span,
-                ),
-            }
-            .into_diag(dcx, level),
-            BuiltinLintDiag::UnusedImports {
-                remove_whole_use,
-                num_to_remove,
-                remove_spans,
-                test_module_span,
-                span_snippets,
-            } => {
-                let sugg = if remove_whole_use {
-                    lints::UnusedImportsSugg::RemoveWholeUse { span: remove_spans[0] }
-                } else {
-                    lints::UnusedImportsSugg::RemoveImports { remove_spans, num_to_remove }
-                };
-                let test_module_span =
-                    test_module_span.map(|span| self.sess.source_map().guess_head_span(span));
-
-                lints::UnusedImports {
-                    sugg,
-                    test_module_span,
-                    num_snippets: span_snippets.len(),
-                    span_snippets: DiagArgValue::StrListSepByAnd(
-                        span_snippets.into_iter().map(Cow::Owned).collect(),
-                    ),
-                }
-                .into_diag(dcx, level)
-            }
-            BuiltinLintDiag::SingleUseLifetime {
-                param_span,
-                use_span,
-                elidable,
-                deletion_span,
-                ident,
-            } => {
-                debug!(?param_span, ?use_span, ?deletion_span);
-                let suggestion = if let Some(deletion_span) = deletion_span {
-                    let (use_span, replace_lt) = if elidable {
-                        let use_span =
-                            self.sess.source_map().span_extend_while_whitespace(use_span);
-                        (use_span, String::new())
-                    } else {
-                        (use_span, "'_".to_owned())
-                    };
-                    debug!(?deletion_span, ?use_span);
-
-                    // issue 107998 for the case such as a wrong function pointer type
-                    // `deletion_span` is empty and there is no need to report lifetime uses here
-                    let deletion_span =
-                        if deletion_span.is_empty() { None } else { Some(deletion_span) };
-                    Some(lints::SingleUseLifetimeSugg { deletion_span, use_span, replace_lt })
-                } else {
-                    None
-                };
-
-                lints::SingleUseLifetime { suggestion, param_span, use_span, ident }
-                    .into_diag(dcx, level)
-            }
-            BuiltinLintDiag::NamedArgumentUsedPositionally {
-                position_sp_to_replace,
-                position_sp_for_msg,
-                named_arg_sp,
-                named_arg_name,
-                is_formatting_arg,
-            } => {
-                let (suggestion, name) =
-                    if let Some(positional_arg_to_replace) = position_sp_to_replace {
-                        let mut name = named_arg_name.clone();
-                        if is_formatting_arg {
-                            name.push('$')
-                        };
-                        let span_to_replace = if let Ok(positional_arg_content) =
-                            self.sess.source_map().span_to_snippet(positional_arg_to_replace)
-                            && positional_arg_content.starts_with(':')
-                        {
-                            positional_arg_to_replace.shrink_to_lo()
-                        } else {
-                            positional_arg_to_replace
-                        };
-                        (Some(span_to_replace), name)
-                    } else {
-                        (None, String::new())
-                    };
-
-                lints::NamedArgumentUsedPositionally {
-                    named_arg_sp,
-                    position_label_sp: position_sp_for_msg,
-                    suggestion,
-                    name,
-                    named_arg_name,
-                }
-                .into_diag(dcx, level)
-            }
-
-            BuiltinLintDiag::AttributeLint(kind) => {
-                DecorateAttrLint { sess: self.sess, tcx: self.tcx, diagnostic: &kind }
-                    .into_diag(dcx, level)
-            }
-        }
+        (self.callback)(dcx, level, self.sess)
     }
 }
 
@@ -175,7 +38,7 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::UnusedDuplicate { this, other, warning } => {
                 lints::UnusedDuplicate { this, other, warning }.into_diag(dcx, level)
             }
-            AttributeLintKind::IllFormedAttributeInput { suggestions, docs } => {
+            AttributeLintKind::IllFormedAttributeInput { suggestions, docs, help } => {
                 lints::IllFormedAttributeInput {
                     num_suggestions: suggestions.len(),
                     suggestions: DiagArgValue::StrListSepByAnd(
@@ -183,6 +46,7 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     ),
                     has_docs: docs.is_some(),
                     docs: docs.unwrap_or(""),
+                    help: help.clone().map(|h| lints::IllFormedAttributeInputHelp { lint: h }),
                 }
                 .into_diag(dcx, level)
             }
@@ -350,6 +214,28 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             }
             &AttributeLintKind::MissingOptionsForOnMove => {
                 lints::MissingOptionsForOnMoveAttr.into_diag(dcx, level)
+            }
+            &AttributeLintKind::RenamedLint { name, replace, suggestion } => lints::RenamedLint {
+                name,
+                replace,
+                suggestion: lints::RenamedLintSuggestion::WithSpan { suggestion, replace },
+            }
+            .into_diag(dcx, level),
+            &AttributeLintKind::DeprecatedLintName { name, suggestion, replace } => {
+                lints::DeprecatedLintName { name, suggestion, replace }.into_diag(dcx, level)
+            }
+            &AttributeLintKind::RemovedLint { name, ref reason } => {
+                lints::RemovedLint { name, reason }.into_diag(dcx, level)
+            }
+            &AttributeLintKind::UnknownLint { name, span, suggestion } => lints::UnknownLint {
+                name,
+                suggestion: suggestion.map(|(replace, from_rustc)| {
+                    lints::UnknownLintSuggestion::WithSpan { suggestion: span, replace, from_rustc }
+                }),
+            }
+            .into_diag(dcx, level),
+            &AttributeLintKind::IgnoredUnlessCrateSpecified { level: attr_level, name } => {
+                lints::IgnoredUnlessCrateSpecified { level: attr_level, name }.into_diag(dcx, level)
             }
         }
     }

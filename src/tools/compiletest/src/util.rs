@@ -6,7 +6,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 #[cfg(test)]
 mod tests;
 
-pub fn make_new_path(path: &str) -> String {
+pub(crate) fn make_new_path(path: &str) -> String {
     assert!(cfg!(windows));
     // Windows just uses PATH as the library search path, so we have to
     // maintain the current value while adding our own
@@ -16,14 +16,14 @@ pub fn make_new_path(path: &str) -> String {
     }
 }
 
-pub fn lib_path_env_var() -> &'static str {
+pub(crate) fn lib_path_env_var() -> &'static str {
     "PATH"
 }
 fn path_div() -> &'static str {
     ";"
 }
 
-pub trait Utf8PathBufExt {
+pub(crate) trait Utf8PathBufExt {
     /// Append an extension to the path, even if it already has one.
     fn with_extra_extension(&self, extension: &str) -> Utf8PathBuf;
 }
@@ -44,7 +44,7 @@ impl Utf8PathBufExt for Utf8PathBuf {
 }
 
 /// The name of the environment variable that holds dynamic library locations.
-pub fn dylib_env_var() -> &'static str {
+pub(crate) fn dylib_env_var() -> &'static str {
     if cfg!(any(windows, target_os = "cygwin")) {
         "PATH"
     } else if cfg!(target_vendor = "apple") {
@@ -60,7 +60,7 @@ pub fn dylib_env_var() -> &'static str {
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
 /// If the dylib_path_var is already set for this cmd, the old value will be overwritten!
-pub fn add_dylib_path(
+pub(crate) fn add_dylib_path(
     cmd: &mut Command,
     paths: impl Iterator<Item = impl Into<std::path::PathBuf>>,
 ) {
@@ -70,7 +70,7 @@ pub fn add_dylib_path(
     cmd.env(dylib_env_var(), env::join_paths(new_paths).unwrap());
 }
 
-pub fn copy_dir_all(src: &Utf8Path, dst: &Utf8Path) -> std::io::Result<()> {
+pub(crate) fn copy_dir_all(src: &Utf8Path, dst: &Utf8Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dst.as_std_path())?;
     for entry in std::fs::read_dir(src.as_std_path())? {
         let entry = entry?;

@@ -8,7 +8,7 @@ use smallvec::{SmallVec, smallvec};
 use crate::data_structures::SsoHashSet;
 use crate::inherent::*;
 use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _, TypeVisitor};
-use crate::{self as ty, Interner, Ty};
+use crate::{self as ty, Interner};
 
 #[derive_where(Debug; I: Interner)]
 pub enum Component<I: Interner> {
@@ -55,7 +55,7 @@ pub enum Component<I: Interner> {
 /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
 pub fn push_outlives_components<I: Interner>(
     cx: I,
-    ty: Ty<I>,
+    ty: I::Ty,
     out: &mut SmallVec<[Component<I>; 4]>,
 ) {
     ty.visit_with(&mut OutlivesCollector { cx, out, visited: Default::default() });
@@ -64,14 +64,14 @@ pub fn push_outlives_components<I: Interner>(
 struct OutlivesCollector<'a, I: Interner> {
     cx: I,
     out: &'a mut SmallVec<[Component<I>; 4]>,
-    visited: SsoHashSet<Ty<I>>,
+    visited: SsoHashSet<I::Ty>,
 }
 
 impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
     #[cfg(not(feature = "nightly"))]
     type Result = ();
 
-    fn visit_ty(&mut self, ty: Ty<I>) -> Self::Result {
+    fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
         if !self.visited.insert(ty) {
             return;
         }
@@ -148,7 +148,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::Alias(kind, alias_ty) => {
+            ty::Alias(alias_ty) => {
                 if !alias_ty.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
@@ -162,7 +162,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
                     // OutlivesProjectionComponents. Continue walking
                     // through and constrain Pi.
                     let mut subcomponents = smallvec![];
-                    compute_alias_components_recursive(self.cx, kind, alias_ty, &mut subcomponents);
+                    compute_alias_components_recursive(self.cx, alias_ty, &mut subcomponents);
                     self.out.push(Component::EscapingAlias(subcomponents.into_iter().collect()));
                 }
             }
@@ -223,11 +223,10 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
 /// Use [push_outlives_components] instead.
 pub fn compute_alias_components_recursive<I: Interner>(
     cx: I,
-    kind: ty::AliasTyKind,
     alias_ty: ty::AliasTy<I>,
     out: &mut SmallVec<[Component<I>; 4]>,
 ) {
-    let opt_variances = cx.opt_alias_variances(kind, alias_ty.def_id);
+    let opt_variances = cx.opt_alias_variances(alias_ty.kind, alias_ty.kind.def_id());
 
     let mut visitor = OutlivesCollector { cx, out, visited: Default::default() };
 

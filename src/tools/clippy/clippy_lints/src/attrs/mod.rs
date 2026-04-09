@@ -583,7 +583,7 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
             if matches!(name, sym::allow | sym::expect) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
                 allow_attributes_without_reason::check(cx, name, items, attr);
             }
-            if is_lint_level(name, attr.id) {
+            if is_lint_level(name) {
                 blanket_clippy_restriction_lints::check(cx, name, items);
             }
             if items.is_empty() || !attr.has_name(sym::deprecated) {

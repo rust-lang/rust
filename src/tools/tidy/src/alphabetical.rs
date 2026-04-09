@@ -215,7 +215,11 @@ fn check_lines<'a>(path: &Path, content: &'a str, tidy_ctx: &TidyCtx, check: &mu
                 // oh nyooo :(
                 if sorted != section {
                     if !tidy_ctx.is_bless_enabled() {
-                        let base_line_number = content[..offset + start_nl_end].lines().count();
+                        let pre = &content[..offset + start_nl_end];
+                        assert_eq!(pre.chars().rev().next(), Some('\n'));
+                        // start_nl_end spans right after the ␤, so it gets ignored by `lines()`,
+                        // but we do want to count it! so we add 1 to the result.
+                        let base_line_number = pre.lines().count() + 1;
                         let line_offset = sorted
                             .lines()
                             .zip(section.lines())

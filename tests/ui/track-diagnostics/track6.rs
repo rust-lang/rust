@@ -12,7 +12,7 @@ pub trait Foo {
 
 impl<T> Foo for T {
     default fn bar() {}
-    //~^ ERROR specialization is unstable
+    //~^ ERROR specialization is experimental
     //~| NOTE created at
 }
 

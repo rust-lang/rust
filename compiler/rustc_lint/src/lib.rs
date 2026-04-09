@@ -128,15 +128,17 @@ use unused::*;
 
 #[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
-pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
-pub use early::diagnostics::{DecorateAttrLint, DecorateBuiltinLint};
+pub use context::{EarlyContext, LateContext, LintContext, LintStore};
+pub use early::diagnostics::{DecorateAttrLint, DiagAndSess};
 pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use levels::LintLevelsBuilder;
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_errors::BufferedEarlyLint;
 pub use rustc_session::lint::Level::{self, *};
-pub use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec};
+pub use rustc_session::lint::{
+    CheckLintNameResult, FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec,
+};
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);

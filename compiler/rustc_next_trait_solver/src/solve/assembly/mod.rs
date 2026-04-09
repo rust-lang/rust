@@ -9,10 +9,9 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
-use rustc_type_ir::solve::Certainty::Maybe;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{
-    self as ty, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    self as ty, AliasTy, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
     elaborate,
 };
@@ -46,11 +45,11 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn self_ty(self) -> ty::Ty<I>;
+    fn self_ty(self) -> I::Ty;
 
     fn trait_ref(self, cx: I) -> ty::TraitRef<I>;
 
-    fn with_replaced_self_ty(self, cx: I, self_ty: ty::Ty<I>) -> Self;
+    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self;
 
     fn trait_def_id(self, cx: I) -> I::TraitId;
 
@@ -683,12 +682,12 @@ where
     // hitting another overflow error something. Add a depth parameter needed later.
     fn assemble_alias_bound_candidates_recur<G: GoalKind<D>>(
         &mut self,
-        self_ty: ty::Ty<I>,
+        self_ty: I::Ty,
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
         consider_self_bounds: AliasBoundKind,
     ) {
-        let (kind, alias_ty) = match self_ty.kind() {
+        let alias_ty = match self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -736,8 +735,10 @@ where
                 return;
             }
 
-            ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
-            ty::Alias(ty::Inherent | ty::Free, _) => {
+            ty::Alias(
+                alias_ty @ AliasTy { kind: ty::Projection { .. } | ty::Opaque { .. }, .. },
+            ) => alias_ty,
+            ty::Alias(AliasTy { kind: ty::Inherent { .. } | ty::Free { .. }, .. }) => {
                 self.cx().delay_bug(format!("could not normalize {self_ty:?}, it is not WF"));
                 return;
             }
@@ -747,7 +748,7 @@ where
             AliasBoundKind::SelfBounds => {
                 for assumption in self
                     .cx()
-                    .item_self_bounds(alias_ty.def_id)
+                    .item_self_bounds(alias_ty.kind.def_id())
                     .iter_instantiated(self.cx(), alias_ty.args)
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
@@ -762,7 +763,7 @@ where
             AliasBoundKind::NonSelfBounds => {
                 for assumption in self
                     .cx()
-                    .item_non_self_bounds(alias_ty.def_id)
+                    .item_non_self_bounds(alias_ty.kind.def_id())
                     .iter_instantiated(self.cx(), alias_ty.args)
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
@@ -778,7 +779,7 @@ where
 
         candidates.extend(G::consider_additional_alias_assumptions(self, goal, alias_ty));
 
-        if kind != ty::Projection {
+        if !matches!(alias_ty.kind, ty::Projection { .. }) {
             return;
         }
 
@@ -1017,14 +1018,14 @@ where
             struct ReplaceOpaque<I: Interner> {
                 cx: I,
                 alias_ty: ty::AliasTy<I>,
-                self_ty: ty::Ty<I>,
+                self_ty: I::Ty,
             }
             impl<I: Interner> TypeFolder<I> for ReplaceOpaque<I> {
                 fn cx(&self) -> I {
                     self.cx
                 }
-                fn fold_ty(&mut self, ty: ty::Ty<I>) -> ty::Ty<I> {
-                    if let ty::Alias(ty::Opaque, alias_ty) = ty.kind() {
+                fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+                    if let ty::Alias(alias_ty) = ty.kind() {
                         if alias_ty == self.alias_ty {
                             return self.self_ty;
                         }
@@ -1042,7 +1043,7 @@ where
             // in a `?x: Trait<u32>` alias-bound candidate.
             for item_bound in self
                 .cx()
-                .item_self_bounds(alias_ty.def_id)
+                .item_self_bounds(alias_ty.kind.def_id())
                 .iter_instantiated(self.cx(), alias_ty.args)
             {
                 let assumption =
@@ -1280,34 +1281,40 @@ where
         ControlFlow::Continue(())
     }
 
-    fn visit_ty(&mut self, ty: ty::Ty<I>) -> Self::Result {
+    fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
         let ty = self.ecx.replace_bound_vars(ty, &mut self.universes);
         let Ok(ty) = self.ecx.structurally_normalize_ty(self.param_env, ty) else {
             return ControlFlow::Break(Err(NoSolution));
         };
 
-        if let ty::Placeholder(p) = ty.kind() {
-            if p.universe() == ty::UniverseIndex::ROOT {
-                ControlFlow::Break(Ok(Certainty::Yes))
-            } else {
-                ControlFlow::Continue(())
+        match ty.kind() {
+            ty::Placeholder(p) => {
+                if p.universe() == ty::UniverseIndex::ROOT {
+                    ControlFlow::Break(Ok(Certainty::Yes))
+                } else {
+                    ControlFlow::Continue(())
+                }
             }
-        } else if ty.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_RE_INFER) {
-            self.recursion_depth += 1;
-            if self.recursion_depth > self.ecx.cx().recursion_limit() {
-                return ControlFlow::Break(Ok(Maybe {
-                    cause: MaybeCause::Overflow {
-                        suggest_increasing_limit: true,
-                        keep_constraints: false,
-                    },
-                    opaque_types_jank: OpaqueTypesJank::AllGood,
-                }));
+            ty::Infer(_) => ControlFlow::Break(Ok(Certainty::AMBIGUOUS)),
+            _ if ty.has_type_flags(
+                TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_INFER | TypeFlags::HAS_ALIAS,
+            ) =>
+            {
+                self.recursion_depth += 1;
+                if self.recursion_depth > self.ecx.cx().recursion_limit() {
+                    return ControlFlow::Break(Ok(Certainty::Maybe {
+                        cause: MaybeCause::Overflow {
+                            suggest_increasing_limit: true,
+                            keep_constraints: false,
+                        },
+                        opaque_types_jank: OpaqueTypesJank::AllGood,
+                    }));
+                }
+                let result = ty.super_visit_with(self);
+                self.recursion_depth -= 1;
+                result
             }
-            let result = ty.super_visit_with(self);
-            self.recursion_depth -= 1;
-            result
-        } else {
-            ControlFlow::Continue(())
+            _ => ControlFlow::Continue(()),
         }
     }
 
@@ -1317,16 +1324,23 @@ where
             return ControlFlow::Break(Err(NoSolution));
         };
 
-        if let ty::ConstKind::Placeholder(p) = ct.kind() {
-            if p.universe() == ty::UniverseIndex::ROOT {
-                ControlFlow::Break(Ok(Certainty::Yes))
-            } else {
-                ControlFlow::Continue(())
+        match ct.kind() {
+            ty::ConstKind::Placeholder(p) => {
+                if p.universe() == ty::UniverseIndex::ROOT {
+                    ControlFlow::Break(Ok(Certainty::Yes))
+                } else {
+                    ControlFlow::Continue(())
+                }
             }
-        } else if ct.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_RE_INFER) {
-            ct.super_visit_with(self)
-        } else {
-            ControlFlow::Continue(())
+            ty::ConstKind::Infer(_) => ControlFlow::Break(Ok(Certainty::AMBIGUOUS)),
+            _ if ct.has_type_flags(
+                TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_INFER | TypeFlags::HAS_ALIAS,
+            ) =>
+            {
+                // FIXME(mgca): we should also check the recursion limit here
+                ct.super_visit_with(self)
+            }
+            _ => ControlFlow::Continue(()),
         }
     }
 

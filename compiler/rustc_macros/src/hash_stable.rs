@@ -84,7 +84,7 @@ fn hash_stable_derive_with_mode(
     match mode {
         HashStableMode::Normal => {}
         HashStableMode::Generic => {
-            s.add_where_predicate(parse_quote! { __CTX: crate::HashStableContext });
+            s.add_where_predicate(parse_quote! { __CTX: ::rustc_span::HashStableContext });
         }
         HashStableMode::NoContext => {}
     }

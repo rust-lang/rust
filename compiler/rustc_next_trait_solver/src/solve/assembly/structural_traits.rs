@@ -21,8 +21,8 @@ use crate::solve::{AdtDestructorKind, EvalCtxt, Goal, NoSolution};
 #[instrument(level = "trace", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<D, I>(
     ecx: &EvalCtxt<'_, D>,
-    ty: ty::Ty<I>,
-) -> Result<ty::Binder<I, Vec<ty::Ty<I>>>, NoSolution>
+    ty: I::Ty,
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -49,7 +49,10 @@ where
 
         ty::Dynamic(..)
         | ty::Param(..)
-        | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)
+        | ty::Alias(ty::AliasTy {
+            kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+            ..
+        })
         | ty::Placeholder(..)
         | ty::Bound(..)
         | ty::Infer(_) => {
@@ -95,7 +98,7 @@ where
             Ok(ty::Binder::dummy(def.all_field_tys(cx).iter_instantiated(cx, args).collect()))
         }
 
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
+        ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
@@ -108,8 +111,8 @@ where
 pub(in crate::solve) fn instantiate_constituent_tys_for_sizedness_trait<D, I>(
     ecx: &EvalCtxt<'_, D>,
     sizedness: SizedTraitKind,
-    ty: ty::Ty<I>,
-) -> Result<ty::Binder<I, Vec<ty::Ty<I>>>, NoSolution>
+    ty: I::Ty,
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -186,8 +189,8 @@ where
 #[instrument(level = "trace", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<D, I>(
     ecx: &EvalCtxt<'_, D>,
-    ty: ty::Ty<I>,
-) -> Result<ty::Binder<I, Vec<ty::Ty<I>>>, NoSolution>
+    ty: I::Ty,
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -218,7 +221,7 @@ where
         | ty::Foreign(..)
         | ty::Ref(_, _, Mutability::Mut)
         | ty::Adt(_, _)
-        | ty::Alias(_, _)
+        | ty::Alias(_)
         | ty::Param(_)
         | ty::Placeholder(..) => Err(NoSolution),
 
@@ -268,9 +271,9 @@ where
 // Returns a binder of the tupled inputs types and output type from a builtin callable type.
 pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Interner>(
     cx: I,
-    self_ty: ty::Ty<I>,
+    self_ty: I::Ty,
     goal_kind: ty::ClosureKind,
-) -> Result<Option<ty::Binder<I, (ty::Ty<I>, ty::Ty<I>)>>, NoSolution> {
+) -> Result<Option<ty::Binder<I, (I::Ty, I::Ty)>>, NoSolution> {
     match self_ty.kind() {
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnDef(def_id, args) => {
@@ -390,7 +393,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Tuple(_)
         | ty::Pat(_, _)
         | ty::UnsafeBinder(_)
-        | ty::Alias(_, _)
+        | ty::Alias(_)
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -408,13 +411,13 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
 #[derive_where(Clone, Copy, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub(in crate::solve) struct AsyncCallableRelevantTypes<I: Interner> {
-    pub tupled_inputs_ty: ty::Ty<I>,
+    pub tupled_inputs_ty: I::Ty,
     /// Type returned by calling the closure
     /// i.e. `f()`.
-    pub output_coroutine_ty: ty::Ty<I>,
+    pub output_coroutine_ty: I::Ty,
     /// Type returned by `await`ing the output
     /// i.e. `f().await`.
-    pub coroutine_return_ty: ty::Ty<I>,
+    pub coroutine_return_ty: I::Ty,
 }
 
 // Returns a binder of the tupled inputs types, output type, and coroutine type
@@ -424,7 +427,7 @@ pub(in crate::solve) struct AsyncCallableRelevantTypes<I: Interner> {
 // know the kind already, we can short-circuit this check.
 pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: Interner>(
     cx: I,
-    self_ty: ty::Ty<I>,
+    self_ty: I::Ty,
     goal_kind: ty::ClosureKind,
     env_region: I::Region,
 ) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<I::Predicate>), NoSolution> {
@@ -563,7 +566,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Never
         | ty::UnsafeBinder(_)
         | ty::Tuple(_)
-        | ty::Alias(_, _)
+        | ty::Alias(_)
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -608,7 +611,7 @@ fn coroutine_closure_to_certain_coroutine<I: Interner>(
     def_id: I::CoroutineClosureId,
     args: ty::CoroutineClosureArgs<I>,
     sig: ty::CoroutineClosureSignature<I>,
-) -> ty::Ty<I> {
+) -> I::Ty {
     sig.to_coroutine_given_kind_and_upvars(
         cx,
         args.parent_args(),
@@ -632,7 +635,7 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
     def_id: I::CoroutineClosureId,
     args: ty::CoroutineClosureArgs<I>,
     sig: ty::CoroutineClosureSignature<I>,
-) -> ty::Ty<I> {
+) -> I::Ty {
     let upvars_projection_def_id = cx.require_lang_item(SolverLangItem::AsyncFnKindUpvars);
     let tupled_upvars_ty = Ty::new_projection(
         cx,
@@ -664,8 +667,8 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
 #[instrument(level = "trace", skip(cx), ret)]
 pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
     cx: I,
-    self_ty: ty::Ty<I>,
-) -> Result<(ty::Binder<I, (ty::Ty<I>, ty::Ty<I>)>, I::DefId, I::GenericArgs), NoSolution> {
+    self_ty: I::Ty,
+) -> Result<(ty::Binder<I, (I::Ty, I::Ty)>, I::DefId, I::GenericArgs), NoSolution> {
     match self_ty.kind() {
         ty::FnDef(def_id, args) => {
             let sig = cx.fn_sig(def_id);
@@ -724,7 +727,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Never
         | ty::Tuple(_)
         | ty::Pat(_, _)
-        | ty::Alias(_, _)
+        | ty::Alias(_)
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -742,7 +745,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
 // the old solver, for as long as that exists.
 pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
     cx: I,
-    self_ty: ty::Ty<I>,
+    self_ty: I::Ty,
 ) -> Result<Vec<ty::TraitRef<I>>, NoSolution> {
     let destruct_def_id = cx.require_trait_lang_item(SolverTraitLangItem::Destruct);
 
@@ -927,7 +930,7 @@ where
 struct ReplaceProjectionWith<'a, 'b, I: Interner, D: SolverDelegate<Interner = I>> {
     ecx: &'a mut EvalCtxt<'b, D>,
     param_env: I::ParamEnv,
-    self_ty: ty::Ty<I>,
+    self_ty: I::Ty,
     mapping: &'a HashMap<I::DefId, Vec<ty::Binder<I, ty::ProjectionPredicate<I>>>>,
     nested: Vec<Goal<I, I::Predicate>>,
 }
@@ -1013,8 +1016,8 @@ where
         self.ecx.cx()
     }
 
-    fn try_fold_ty(&mut self, ty: ty::Ty<I>) -> Result<ty::Ty<I>, Ambiguous> {
-        if let ty::Alias(ty::Projection, alias_ty) = ty.kind()
+    fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Ambiguous> {
+        if let ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Projection { .. }, .. }) = ty.kind()
             && let Some(term) = self.try_eagerly_replace_alias(alias_ty.into())?
         {
             Ok(term.expect_ty())

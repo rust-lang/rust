@@ -427,7 +427,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for DefId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
         hcx.def_path_hash(*self)
     }
 }
@@ -436,7 +436,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for LocalDefId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
         hcx.def_path_hash(self.to_def_id())
     }
 }
@@ -445,7 +445,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for CrateNum {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
         self.as_def_id().to_stable_hash_key(hcx)
     }
 }
@@ -454,7 +454,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for DefPathHash {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &Hcx) -> DefPathHash {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> DefPathHash {
         *self
     }
 }

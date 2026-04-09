@@ -36,7 +36,7 @@ mod needs;
 #[cfg(test)]
 mod tests;
 
-pub struct DirectivesCache {
+pub(crate) struct DirectivesCache {
     /// "Conditions" used by `ignore-*` and `only-*` directives, prepared in
     /// advance so that they don't have to be evaluated repeatedly.
     cfg_conditions: cfg::PreparedConditions,
@@ -44,7 +44,7 @@ pub struct DirectivesCache {
 }
 
 impl DirectivesCache {
-    pub fn load(config: &Config) -> Self {
+    pub(crate) fn load(config: &Config) -> Self {
         Self {
             cfg_conditions: cfg::prepare_conditions(config),
             needs: CachedNeedsConditions::load(config),
@@ -82,68 +82,68 @@ impl EarlyProps {
 #[derive(Clone, Debug)]
 pub(crate) struct TestProps {
     // Lines that should be expected, in order, on standard out
-    pub error_patterns: Vec<String>,
+    pub(crate) error_patterns: Vec<String>,
     // Regexes that should be expected, in order, on standard out
-    pub regex_error_patterns: Vec<String>,
+    pub(crate) regex_error_patterns: Vec<String>,
     /// Edition selected by an `//@ edition` directive, if any.
     ///
     /// Automatically added to `compile_flags` during directive processing.
-    pub edition: Option<Edition>,
+    pub(crate) edition: Option<Edition>,
     // Extra flags to pass to the compiler
-    pub compile_flags: Vec<String>,
+    pub(crate) compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
-    pub run_flags: Vec<String>,
+    pub(crate) run_flags: Vec<String>,
     /// Extra flags to pass to rustdoc but not the compiler.
-    pub doc_flags: Vec<String>,
+    pub(crate) doc_flags: Vec<String>,
     // If present, the name of a file that this test should match when
     // pretty-printed
-    pub pp_exact: Option<Utf8PathBuf>,
+    pub(crate) pp_exact: Option<Utf8PathBuf>,
     /// Auxiliary crates that should be built and made available to this test.
     pub(crate) aux: AuxProps,
     // Environment settings to use for compiling
-    pub rustc_env: Vec<(String, String)>,
+    pub(crate) rustc_env: Vec<(String, String)>,
     // Environment variables to unset prior to compiling.
     // Variables are unset before applying 'rustc_env'.
-    pub unset_rustc_env: Vec<String>,
+    pub(crate) unset_rustc_env: Vec<String>,
     // Environment settings to use during execution
-    pub exec_env: Vec<(String, String)>,
+    pub(crate) exec_env: Vec<(String, String)>,
     // Environment variables to unset prior to execution.
     // Variables are unset before applying 'exec_env'
-    pub unset_exec_env: Vec<String>,
+    pub(crate) unset_exec_env: Vec<String>,
     // Build documentation for all specified aux-builds as well
-    pub build_aux_docs: bool,
+    pub(crate) build_aux_docs: bool,
     /// Build the documentation for each crate in a unique output directory.
     /// Uses `<root output directory>/docs/<test name>/doc`.
-    pub unique_doc_out_dir: bool,
+    pub(crate) unique_doc_out_dir: bool,
     // Flag to force a crate to be built with the host architecture
-    pub force_host: bool,
+    pub(crate) force_host: bool,
     // Check stdout for error-pattern output as well as stderr
-    pub check_stdout: bool,
+    pub(crate) check_stdout: bool,
     // Check stdout & stderr for output of run-pass test
-    pub check_run_results: bool,
+    pub(crate) check_run_results: bool,
     // For UI tests, allows compiler to generate arbitrary output to stdout
-    pub dont_check_compiler_stdout: bool,
+    pub(crate) dont_check_compiler_stdout: bool,
     // For UI tests, allows compiler to generate arbitrary output to stderr
-    pub dont_check_compiler_stderr: bool,
+    pub(crate) dont_check_compiler_stderr: bool,
     // Don't force a --crate-type=dylib flag on the command line
     //
     // Set this for example if you have an auxiliary test file that contains
     // a proc-macro and needs `#![crate_type = "proc-macro"]`. This ensures
     // that the aux file is compiled as a `proc-macro` and not as a `dylib`.
-    pub no_prefer_dynamic: bool,
+    pub(crate) no_prefer_dynamic: bool,
     // Which pretty mode are we testing with, default to 'normal'
-    pub pretty_mode: String,
+    pub(crate) pretty_mode: String,
     // Only compare pretty output and don't try compiling
-    pub pretty_compare_only: bool,
+    pub(crate) pretty_compare_only: bool,
     // Patterns which must not appear in the output of a cfail test.
-    pub forbid_output: Vec<String>,
+    pub(crate) forbid_output: Vec<String>,
     // Revisions to test for incremental compilation.
-    pub revisions: Vec<String>,
+    pub(crate) revisions: Vec<String>,
     // Directory (if any) to use for incremental compilation.  This is
     // not set by end-users; rather it is set by the incremental
     // testing harness and used when generating compilation
     // arguments. (In particular, it propagates to the aux-builds.)
-    pub incremental_dir: Option<Utf8PathBuf>,
+    pub(crate) incremental_dir: Option<Utf8PathBuf>,
     // If `true`, this test will use incremental compilation.
     //
     // This can be set manually with the `incremental` directive, or implicitly
@@ -158,113 +158,113 @@ pub(crate) struct TestProps {
     // Compiletest will create the incremental directory, and ensure it is
     // empty before the test starts. Incremental mode tests will reuse the
     // incremental directory between passes in the same test.
-    pub incremental: bool,
+    pub(crate) incremental: bool,
     // If `true`, this test is a known bug.
     //
     // When set, some requirements are relaxed. Currently, this only means no
     // error annotations are needed, but this may be updated in the future to
     // include other relaxations.
-    pub known_bug: bool,
+    pub(crate) known_bug: bool,
     // How far should the test proceed while still passing.
     pass_mode: Option<PassMode>,
     // Ignore `--pass` overrides from the command line for this test.
     ignore_pass: bool,
     // How far this test should proceed to start failing.
-    pub fail_mode: Option<FailMode>,
+    pub(crate) fail_mode: Option<FailMode>,
     // rustdoc will test the output of the `--test` option
-    pub check_test_line_numbers_match: bool,
+    pub(crate) check_test_line_numbers_match: bool,
     // customized normalization rules
-    pub normalize_stdout: Vec<(String, String)>,
-    pub normalize_stderr: Vec<(String, String)>,
-    pub failure_status: Option<i32>,
+    pub(crate) normalize_stdout: Vec<(String, String)>,
+    pub(crate) normalize_stderr: Vec<(String, String)>,
+    pub(crate) failure_status: Option<i32>,
     // For UI tests, allows compiler to exit with arbitrary failure status
-    pub dont_check_failure_status: bool,
+    pub(crate) dont_check_failure_status: bool,
     // Whether or not `rustfix` should apply the `CodeSuggestion`s of this test and compile the
     // resulting Rust code.
-    pub run_rustfix: bool,
+    pub(crate) run_rustfix: bool,
     // If true, `rustfix` will only apply `MachineApplicable` suggestions.
-    pub rustfix_only_machine_applicable: bool,
-    pub assembly_output: Option<String>,
+    pub(crate) rustfix_only_machine_applicable: bool,
+    pub(crate) assembly_output: Option<String>,
     // If true, the test is expected to ICE
-    pub should_ice: bool,
+    pub(crate) should_ice: bool,
     // If true, the stderr is expected to be different across bit-widths.
-    pub stderr_per_bitwidth: bool,
+    pub(crate) stderr_per_bitwidth: bool,
     // The MIR opt to unit test, if any
-    pub mir_unit_test: Option<String>,
+    pub(crate) mir_unit_test: Option<String>,
     // Whether to tell `rustc` to remap the "src base" directory to a fake
     // directory.
-    pub remap_src_base: bool,
+    pub(crate) remap_src_base: bool,
     /// Extra flags to pass to `llvm-cov` when producing coverage reports.
     /// Only used by the "coverage-run" test mode.
-    pub llvm_cov_flags: Vec<String>,
+    pub(crate) llvm_cov_flags: Vec<String>,
     /// Extra flags to pass to LLVM's `filecheck` tool, in tests that use it.
-    pub filecheck_flags: Vec<String>,
+    pub(crate) filecheck_flags: Vec<String>,
     /// Don't automatically insert any `--check-cfg` args
-    pub no_auto_check_cfg: bool,
+    pub(crate) no_auto_check_cfg: bool,
     /// Build and use `minicore` as `core` stub for `no_core` tests in cross-compilation scenarios
     /// that don't otherwise want/need `-Z build-std`.
-    pub add_minicore: bool,
+    pub(crate) add_minicore: bool,
     /// Add these flags to the build of `minicore`.
-    pub minicore_compile_flags: Vec<String>,
+    pub(crate) minicore_compile_flags: Vec<String>,
     /// Whether line annotations are required for the given error kind.
-    pub dont_require_annotations: HashSet<ErrorKind>,
+    pub(crate) dont_require_annotations: HashSet<ErrorKind>,
     /// Whether pretty printers should be disabled in gdb.
-    pub disable_gdb_pretty_printers: bool,
+    pub(crate) disable_gdb_pretty_printers: bool,
     /// Compare the output by lines, rather than as a single string.
-    pub compare_output_by_lines: bool,
+    pub(crate) compare_output_by_lines: bool,
 }
 
 mod directives {
-    pub const ERROR_PATTERN: &'static str = "error-pattern";
-    pub const REGEX_ERROR_PATTERN: &'static str = "regex-error-pattern";
-    pub const COMPILE_FLAGS: &'static str = "compile-flags";
-    pub const RUN_FLAGS: &'static str = "run-flags";
-    pub const DOC_FLAGS: &'static str = "doc-flags";
-    pub const SHOULD_ICE: &'static str = "should-ice";
-    pub const BUILD_AUX_DOCS: &'static str = "build-aux-docs";
-    pub const UNIQUE_DOC_OUT_DIR: &'static str = "unique-doc-out-dir";
-    pub const FORCE_HOST: &'static str = "force-host";
-    pub const CHECK_STDOUT: &'static str = "check-stdout";
-    pub const CHECK_RUN_RESULTS: &'static str = "check-run-results";
-    pub const DONT_CHECK_COMPILER_STDOUT: &'static str = "dont-check-compiler-stdout";
-    pub const DONT_CHECK_COMPILER_STDERR: &'static str = "dont-check-compiler-stderr";
-    pub const DONT_REQUIRE_ANNOTATIONS: &'static str = "dont-require-annotations";
-    pub const NO_PREFER_DYNAMIC: &'static str = "no-prefer-dynamic";
-    pub const PRETTY_MODE: &'static str = "pretty-mode";
-    pub const PRETTY_COMPARE_ONLY: &'static str = "pretty-compare-only";
-    pub const AUX_BIN: &'static str = "aux-bin";
-    pub const AUX_BUILD: &'static str = "aux-build";
-    pub const AUX_CRATE: &'static str = "aux-crate";
-    pub const PROC_MACRO: &'static str = "proc-macro";
-    pub const AUX_CODEGEN_BACKEND: &'static str = "aux-codegen-backend";
-    pub const EXEC_ENV: &'static str = "exec-env";
-    pub const RUSTC_ENV: &'static str = "rustc-env";
-    pub const UNSET_EXEC_ENV: &'static str = "unset-exec-env";
-    pub const UNSET_RUSTC_ENV: &'static str = "unset-rustc-env";
-    pub const FORBID_OUTPUT: &'static str = "forbid-output";
-    pub const CHECK_TEST_LINE_NUMBERS_MATCH: &'static str = "check-test-line-numbers-match";
-    pub const IGNORE_PASS: &'static str = "ignore-pass";
-    pub const FAILURE_STATUS: &'static str = "failure-status";
-    pub const DONT_CHECK_FAILURE_STATUS: &'static str = "dont-check-failure-status";
-    pub const RUN_RUSTFIX: &'static str = "run-rustfix";
-    pub const RUSTFIX_ONLY_MACHINE_APPLICABLE: &'static str = "rustfix-only-machine-applicable";
-    pub const ASSEMBLY_OUTPUT: &'static str = "assembly-output";
-    pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
-    pub const INCREMENTAL: &'static str = "incremental";
-    pub const KNOWN_BUG: &'static str = "known-bug";
-    pub const TEST_MIR_PASS: &'static str = "test-mir-pass";
-    pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
-    pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
-    pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
-    pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
-    pub const ADD_MINICORE: &'static str = "add-minicore";
-    pub const MINICORE_COMPILE_FLAGS: &'static str = "minicore-compile-flags";
-    pub const DISABLE_GDB_PRETTY_PRINTERS: &'static str = "disable-gdb-pretty-printers";
-    pub const COMPARE_OUTPUT_BY_LINES: &'static str = "compare-output-by-lines";
+    pub(crate) const ERROR_PATTERN: &str = "error-pattern";
+    pub(crate) const REGEX_ERROR_PATTERN: &str = "regex-error-pattern";
+    pub(crate) const COMPILE_FLAGS: &str = "compile-flags";
+    pub(crate) const RUN_FLAGS: &str = "run-flags";
+    pub(crate) const DOC_FLAGS: &str = "doc-flags";
+    pub(crate) const SHOULD_ICE: &str = "should-ice";
+    pub(crate) const BUILD_AUX_DOCS: &str = "build-aux-docs";
+    pub(crate) const UNIQUE_DOC_OUT_DIR: &str = "unique-doc-out-dir";
+    pub(crate) const FORCE_HOST: &str = "force-host";
+    pub(crate) const CHECK_STDOUT: &str = "check-stdout";
+    pub(crate) const CHECK_RUN_RESULTS: &str = "check-run-results";
+    pub(crate) const DONT_CHECK_COMPILER_STDOUT: &str = "dont-check-compiler-stdout";
+    pub(crate) const DONT_CHECK_COMPILER_STDERR: &str = "dont-check-compiler-stderr";
+    pub(crate) const DONT_REQUIRE_ANNOTATIONS: &str = "dont-require-annotations";
+    pub(crate) const NO_PREFER_DYNAMIC: &str = "no-prefer-dynamic";
+    pub(crate) const PRETTY_MODE: &str = "pretty-mode";
+    pub(crate) const PRETTY_COMPARE_ONLY: &str = "pretty-compare-only";
+    pub(crate) const AUX_BIN: &str = "aux-bin";
+    pub(crate) const AUX_BUILD: &str = "aux-build";
+    pub(crate) const AUX_CRATE: &str = "aux-crate";
+    pub(crate) const PROC_MACRO: &str = "proc-macro";
+    pub(crate) const AUX_CODEGEN_BACKEND: &str = "aux-codegen-backend";
+    pub(crate) const EXEC_ENV: &str = "exec-env";
+    pub(crate) const RUSTC_ENV: &str = "rustc-env";
+    pub(crate) const UNSET_EXEC_ENV: &str = "unset-exec-env";
+    pub(crate) const UNSET_RUSTC_ENV: &str = "unset-rustc-env";
+    pub(crate) const FORBID_OUTPUT: &str = "forbid-output";
+    pub(crate) const CHECK_TEST_LINE_NUMBERS_MATCH: &str = "check-test-line-numbers-match";
+    pub(crate) const IGNORE_PASS: &str = "ignore-pass";
+    pub(crate) const FAILURE_STATUS: &str = "failure-status";
+    pub(crate) const DONT_CHECK_FAILURE_STATUS: &str = "dont-check-failure-status";
+    pub(crate) const RUN_RUSTFIX: &str = "run-rustfix";
+    pub(crate) const RUSTFIX_ONLY_MACHINE_APPLICABLE: &str = "rustfix-only-machine-applicable";
+    pub(crate) const ASSEMBLY_OUTPUT: &str = "assembly-output";
+    pub(crate) const STDERR_PER_BITWIDTH: &str = "stderr-per-bitwidth";
+    pub(crate) const INCREMENTAL: &str = "incremental";
+    pub(crate) const KNOWN_BUG: &str = "known-bug";
+    pub(crate) const TEST_MIR_PASS: &str = "test-mir-pass";
+    pub(crate) const REMAP_SRC_BASE: &str = "remap-src-base";
+    pub(crate) const LLVM_COV_FLAGS: &str = "llvm-cov-flags";
+    pub(crate) const FILECHECK_FLAGS: &str = "filecheck-flags";
+    pub(crate) const NO_AUTO_CHECK_CFG: &str = "no-auto-check-cfg";
+    pub(crate) const ADD_MINICORE: &str = "add-minicore";
+    pub(crate) const MINICORE_COMPILE_FLAGS: &str = "minicore-compile-flags";
+    pub(crate) const DISABLE_GDB_PRETTY_PRINTERS: &str = "disable-gdb-pretty-printers";
+    pub(crate) const COMPARE_OUTPUT_BY_LINES: &str = "compare-output-by-lines";
 }
 
 impl TestProps {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         TestProps {
             error_patterns: vec![],
             regex_error_patterns: vec![],
@@ -322,7 +322,7 @@ impl TestProps {
         }
     }
 
-    pub fn from_aux_file(
+    pub(crate) fn from_aux_file(
         &self,
         testfile: &Utf8Path,
         revision: Option<&str>,
@@ -338,7 +338,7 @@ impl TestProps {
         props
     }
 
-    pub fn from_file(testfile: &Utf8Path, revision: Option<&str>, config: &Config) -> Self {
+    pub(crate) fn from_file(testfile: &Utf8Path, revision: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
         props.load_from(testfile, revision, config);
         props.exec_env.push(("RUSTC".to_string(), config.rustc_path.to_string()));
@@ -475,7 +475,7 @@ impl TestProps {
         }
     }
 
-    pub fn pass_mode(&self, config: &Config) -> Option<PassMode> {
+    pub(crate) fn pass_mode(&self, config: &Config) -> Option<PassMode> {
         if !self.ignore_pass && self.fail_mode.is_none() {
             if let mode @ Some(_) = config.force_pass_mode {
                 return mode;
@@ -485,7 +485,7 @@ impl TestProps {
     }
 
     // does not consider CLI override for pass mode
-    pub fn local_pass_mode(&self) -> Option<PassMode> {
+    pub(crate) fn local_pass_mode(&self) -> Option<PassMode> {
         self.pass_mode
     }
 
@@ -872,7 +872,7 @@ fn parse_normalize_rule(raw_value: &str) -> Option<(String, String)> {
 /// error handling strategy.
 ///
 /// FIXME(jieyouxu): improve error handling
-pub fn extract_llvm_version(version: &str) -> Version {
+pub(crate) fn extract_llvm_version(version: &str) -> Version {
     // The version substring we're interested in usually looks like the `1.2.3`, without any of the
     // fancy suffix like `-rc1` or `meow`.
     let version = version.trim();
@@ -895,7 +895,7 @@ pub fn extract_llvm_version(version: &str) -> Version {
     }
 }
 
-pub fn extract_llvm_version_from_binary(binary_path: &str) -> Option<Version> {
+pub(crate) fn extract_llvm_version_from_binary(binary_path: &str) -> Option<Version> {
     let output = Command::new(binary_path).arg("--version").output().ok()?;
     if !output.status.success() {
         return None;

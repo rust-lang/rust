@@ -2,11 +2,12 @@
 
 use std::num::NonZero;
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
-    ElidedLifetimeInPathSubdiag, EmissionGuarantee, Level, Subdiagnostic, SuggestionStyle, msg,
+    EmissionGuarantee, Level, Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -1237,11 +1238,11 @@ pub(crate) struct OverruledAttributeLint<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint name `{$name}` is deprecated and may not have an effect in the future")]
-pub(crate) struct DeprecatedLintName<'a> {
-    pub name: String,
+pub(crate) struct DeprecatedLintName {
+    pub name: Symbol,
     #[suggestion("change it to", code = "{replace}", applicability = "machine-applicable")]
     pub suggestion: Span,
-    pub replace: &'a str,
+    pub replace: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -1256,32 +1257,32 @@ pub(crate) struct DeprecatedLintNameFromCommandLine<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been renamed to `{$replace}`")]
-pub(crate) struct RenamedLint<'a> {
-    pub name: &'a str,
-    pub replace: &'a str,
+pub(crate) struct RenamedLint {
+    pub name: Symbol,
+    pub replace: Symbol,
     #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion<'a>,
+    pub suggestion: RenamedLintSuggestion,
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum RenamedLintSuggestion<'a> {
+pub(crate) enum RenamedLintSuggestion {
     #[suggestion("use the new name", code = "{replace}", applicability = "machine-applicable")]
     WithSpan {
         #[primary_span]
         suggestion: Span,
-        replace: &'a str,
+        replace: Symbol,
     },
     #[help("use the new name `{$replace}`")]
-    WithoutSpan { replace: &'a str },
+    WithoutSpan { replace: Symbol },
 }
 
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been renamed to `{$replace}`")]
 pub(crate) struct RenamedLintFromCommandLine<'a> {
     pub name: &'a str,
-    pub replace: &'a str,
+    pub replace: Symbol,
     #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion<'a>,
+    pub suggestion: RenamedLintSuggestion,
     #[subdiagnostic]
     pub requested_level: RequestedLevel<'a>,
 }
@@ -1289,7 +1290,7 @@ pub(crate) struct RenamedLintFromCommandLine<'a> {
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been removed: {$reason}")]
 pub(crate) struct RemovedLint<'a> {
-    pub name: &'a str,
+    pub name: Symbol,
     pub reason: &'a str,
 }
 
@@ -1305,7 +1306,7 @@ pub(crate) struct RemovedLintFromCommandLine<'a> {
 #[derive(Diagnostic)]
 #[diag("unknown lint: `{$name}`")]
 pub(crate) struct UnknownLint {
-    pub name: String,
+    pub name: Symbol,
     #[subdiagnostic]
     pub suggestion: Option<UnknownLintSuggestion>,
 }
@@ -1347,8 +1348,8 @@ pub(crate) struct UnknownLintFromCommandLine<'a> {
 
 #[derive(Diagnostic)]
 #[diag("{$level}({$name}) is ignored unless specified at crate level")]
-pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
-    pub level: &'a str,
+pub(crate) struct IgnoredUnlessCrateSpecified {
+    pub level: Symbol,
     pub name: Symbol,
 }
 
@@ -2903,6 +2904,10 @@ pub(crate) mod unexpected_cfg_value {
 
             name: Symbol,
         },
+        ChangeName {
+            #[subdiagnostic]
+            suggestions: Vec<ChangeNameSuggestion>,
+        },
     }
 
     #[derive(Subdiagnostic)]
@@ -2961,6 +2966,20 @@ pub(crate) mod unexpected_cfg_value {
     }
 
     #[derive(Subdiagnostic)]
+    #[suggestion(
+        "`{$value}` is an expected value for `{$name}`",
+        code = "{name}",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    pub(crate) struct ChangeNameSuggestion {
+        #[primary_span]
+        pub span: Span,
+        pub name: Symbol,
+        pub value: Symbol,
+    }
+
+    #[derive(Subdiagnostic)]
     pub(crate) enum InvocationHelp {
         #[note(
             "see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration"
@@ -3008,119 +3027,16 @@ pub(crate) struct IllFormedAttributeInput {
     #[note("for more information, visit <{$docs}>")]
     pub has_docs: bool,
     pub docs: &'static str,
+    #[subdiagnostic]
+    pub help: Option<IllFormedAttributeInputHelp>,
 }
 
-#[derive(Diagnostic)]
-#[diag(
-    "absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition"
+#[derive(Subdiagnostic)]
+#[help(
+    "if you meant to silence a warning, consider using #![allow({$lint})] or #![expect({$lint})]"
 )]
-pub(crate) struct AbsPathWithModule {
-    #[subdiagnostic]
-    pub sugg: AbsPathWithModuleSugg,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion("use `crate`", code = "{replacement}")]
-pub(crate) struct AbsPathWithModuleSugg {
-    #[primary_span]
-    pub span: Span,
-    #[applicability]
-    pub applicability: Applicability,
-    pub replacement: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("hidden lifetime parameters in types are deprecated")]
-pub(crate) struct ElidedLifetimesInPaths {
-    #[subdiagnostic]
-    pub subdiag: ElidedLifetimeInPathSubdiag,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "{$num_snippets ->
-        [one] unused import: {$span_snippets}
-        *[other] unused imports: {$span_snippets}
-    }"
-)]
-pub(crate) struct UnusedImports {
-    #[subdiagnostic]
-    pub sugg: UnusedImportsSugg,
-    #[help("if this is a test module, consider adding a `#[cfg(test)]` to the containing module")]
-    pub test_module_span: Option<Span>,
-
-    pub span_snippets: DiagArgValue,
-    pub num_snippets: usize,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum UnusedImportsSugg {
-    #[suggestion(
-        "remove the whole `use` item",
-        applicability = "machine-applicable",
-        code = "",
-        style = "tool-only"
-    )]
-    RemoveWholeUse {
-        #[primary_span]
-        span: Span,
-    },
-    #[multipart_suggestion(
-        "{$num_to_remove ->
-            [one] remove the unused import
-            *[other] remove the unused imports
-        }",
-        applicability = "machine-applicable",
-        style = "tool-only"
-    )]
-    RemoveImports {
-        #[suggestion_part(code = "")]
-        remove_spans: Vec<Span>,
-        num_to_remove: usize,
-    },
-}
-
-#[derive(Diagnostic)]
-#[diag("lifetime parameter `{$ident}` only used once")]
-pub(crate) struct SingleUseLifetime {
-    #[label("this lifetime...")]
-    pub param_span: Span,
-    #[label("...is used only here")]
-    pub use_span: Span,
-    #[subdiagnostic]
-    pub suggestion: Option<SingleUseLifetimeSugg>,
-
-    pub ident: Ident,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion("elide the single-use lifetime", applicability = "machine-applicable")]
-pub(crate) struct SingleUseLifetimeSugg {
-    #[suggestion_part(code = "")]
-    pub deletion_span: Option<Span>,
-    #[suggestion_part(code = "{replace_lt}")]
-    pub use_span: Span,
-
-    pub replace_lt: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("named argument `{$named_arg_name}` is not used by name")]
-pub(crate) struct NamedArgumentUsedPositionally {
-    #[label("this named argument is referred to by position in formatting string")]
-    pub named_arg_sp: Span,
-    #[label("this formatting argument uses named argument `{$named_arg_name}` by position")]
-    pub position_label_sp: Option<Span>,
-    #[suggestion(
-        "use the named argument by name to avoid ambiguity",
-        style = "verbose",
-        code = "{name}",
-        applicability = "maybe-incorrect"
-    )]
-    pub suggestion: Option<Span>,
-
-    pub name: String,
-    pub named_arg_name: String,
+pub(crate) struct IllFormedAttributeInputHelp {
+    pub lint: String,
 }
 
 #[derive(Diagnostic)]
@@ -3231,8 +3147,23 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MismatchedLifetimeSyntaxes 
             diag.span_label(s, msg!("the lifetime is named here"));
         }
 
+        let mut hidden_output_counts: FxIndexMap<Span, usize> = FxIndexMap::default();
         for s in self.outputs.hidden {
-            diag.span_label(s, msg!("the same lifetime is hidden here"));
+            *hidden_output_counts.entry(s).or_insert(0) += 1;
+        }
+        for (span, count) in hidden_output_counts {
+            let label = msg!(
+                "the same {$count ->
+                    [one] lifetime
+                    *[other] lifetimes
+                } {$count ->
+                    [one] is
+                    *[other] are
+                } hidden here"
+            )
+            .arg("count", count)
+            .format();
+            diag.span_label(span, label);
         }
         for s in self.outputs.elided {
             diag.span_label(s, msg!("the same lifetime is elided here"));

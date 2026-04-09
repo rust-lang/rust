@@ -455,6 +455,8 @@ impl TestCx<'_> {
         // Path containing `lldb_batchmode.py`, so that the `script` command can import it.
         let rust_pp_module_abs_path = self.config.src_root.join("src/etc");
         let pythonpath = with_pythonpath_prepended(&rust_pp_module_abs_path);
+        // make sure `PATH` points to all the dlls necessary to run the debugee
+        let path = prepend_to_path(&self.config.target_run_lib_path);
 
         let mut cmd = Command::new(lldb);
         cmd.arg("--one-line")
@@ -462,7 +464,8 @@ impl TestCx<'_> {
             .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
             .env("LLDB_BATCHMODE_SCRIPT_PATH", debugger_script)
             .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
-            .env("PYTHONPATH", pythonpath);
+            .env("PYTHONPATH", pythonpath)
+            .env("PATH", path);
 
         self.run_command_to_procres(&mut cmd)
     }
@@ -471,7 +474,29 @@ impl TestCx<'_> {
 fn with_pythonpath_prepended(some_path: &Utf8Path) -> String {
     // FIXME: we are propagating `PYTHONPATH` from the environment, not a compiletest flag!
     if let Ok(pp) = std::env::var("PYTHONPATH") {
-        format!("{pp}:{some_path}")
+        #[cfg(target_os = "windows")]
+        {
+            format!("{pp};{some_path}")
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            format!("{pp}:{some_path}")
+        }
+    } else {
+        some_path.to_string()
+    }
+}
+
+fn prepend_to_path(some_path: &Utf8Path) -> String {
+    if let Ok(path) = std::env::var("PATH") {
+        #[cfg(target_os = "windows")]
+        {
+            format!("{some_path};{path}")
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            format!("{some_path}:{path}")
+        }
     } else {
         some_path.to_string()
     }

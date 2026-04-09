@@ -42,5 +42,5 @@ pub fn unsupported_err() -> io::Error {
 }
 
 pub fn abort_internal() -> ! {
-    core::intrinsics::abort();
+    moto_rt::process::exit(-1)
 }

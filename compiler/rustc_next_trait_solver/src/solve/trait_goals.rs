@@ -29,7 +29,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn self_ty(self) -> ty::Ty<I> {
+    fn self_ty(self) -> I::Ty {
         self.self_ty()
     }
 
@@ -37,7 +37,7 @@ where
         self.trait_ref
     }
 
-    fn with_replaced_self_ty(self, cx: I, self_ty: ty::Ty<I>) -> Self {
+    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
         self.with_replaced_self_ty(cx, self_ty)
     }
 
@@ -230,9 +230,11 @@ where
         // when merging candidates anyways.
         //
         // See tests/ui/impl-trait/auto-trait-leakage/avoid-query-cycle-via-item-bound.rs.
-        if let ty::Alias(ty::Opaque, opaque_ty) = goal.predicate.self_ty().kind() {
-            debug_assert!(ecx.opaque_type_is_rigid(opaque_ty.def_id));
-            for item_bound in cx.item_self_bounds(opaque_ty.def_id).skip_binder() {
+        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
+            goal.predicate.self_ty().kind()
+        {
+            debug_assert!(ecx.opaque_type_is_rigid(def_id));
+            for item_bound in cx.item_self_bounds(def_id).skip_binder() {
                 if item_bound
                     .as_trait_clause()
                     .is_some_and(|b| b.def_id() == goal.predicate.def_id())
@@ -929,7 +931,7 @@ where
     /// ```
     fn consider_builtin_dyn_upcast_candidates(
         &mut self,
-        goal: Goal<I, (ty::Ty<I>, ty::Ty<I>)>,
+        goal: Goal<I, (I::Ty, I::Ty)>,
         a_data: I::BoundExistentialPredicates,
         a_region: I::Region,
         b_data: I::BoundExistentialPredicates,
@@ -977,7 +979,7 @@ where
 
     fn consider_builtin_unsize_to_dyn_candidate(
         &mut self,
-        goal: Goal<I, (ty::Ty<I>, ty::Ty<I>)>,
+        goal: Goal<I, (I::Ty, I::Ty)>,
         b_data: I::BoundExistentialPredicates,
         b_region: I::Region,
     ) -> Result<Candidate<I>, NoSolution> {
@@ -1018,7 +1020,7 @@ where
 
     fn consider_builtin_upcast_to_principal(
         &mut self,
-        goal: Goal<I, (ty::Ty<I>, ty::Ty<I>)>,
+        goal: Goal<I, (I::Ty, I::Ty)>,
         source: CandidateSource<I>,
         a_data: I::BoundExistentialPredicates,
         a_region: I::Region,
@@ -1132,9 +1134,9 @@ where
     /// `#[rustc_deny_explicit_impl]` in this case.
     fn consider_builtin_array_unsize(
         &mut self,
-        goal: Goal<I, (ty::Ty<I>, ty::Ty<I>)>,
-        a_elem_ty: ty::Ty<I>,
-        b_elem_ty: ty::Ty<I>,
+        goal: Goal<I, (I::Ty, I::Ty)>,
+        a_elem_ty: I::Ty,
+        b_elem_ty: I::Ty,
     ) -> Result<Candidate<I>, NoSolution> {
         self.eq(goal.param_env, a_elem_ty, b_elem_ty)?;
         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
@@ -1156,7 +1158,7 @@ where
     /// ```
     fn consider_builtin_struct_unsize(
         &mut self,
-        goal: Goal<I, (ty::Ty<I>, ty::Ty<I>)>,
+        goal: Goal<I, (I::Ty, I::Ty)>,
         def: I::AdtDef,
         a_args: I::GenericArgs,
         b_args: I::GenericArgs,
@@ -1249,7 +1251,10 @@ where
             ty::Dynamic(..)
             | ty::Param(..)
             | ty::Foreign(..)
-            | ty::Alias(ty::Projection | ty::Free | ty::Inherent, ..)
+            | ty::Alias(ty::AliasTy {
+                kind: ty::Projection { .. } | ty::Free { .. } | ty::Inherent { .. },
+                ..
+            })
             | ty::Placeholder(..) => Some(Err(NoSolution)),
 
             ty::Infer(_) | ty::Bound(_, _) => panic!("unexpected type `{self_ty:?}`"),
@@ -1319,8 +1324,8 @@ where
         goal: Goal<I, TraitPredicate<I>>,
         constituent_tys: impl Fn(
             &EvalCtxt<'_, D>,
-            ty::Ty<I>,
-        ) -> Result<ty::Binder<I, Vec<ty::Ty<I>>>, NoSolution>,
+            I::Ty,
+        ) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>,
     ) -> Result<Candidate<I>, NoSolution> {
         self.probe_trait_candidate(source).enter(|ecx| {
             let goals =
@@ -1542,10 +1547,7 @@ where
         self.merge_trait_candidates(candidate_preference_mode, candidates, failed_candidate_info)
     }
 
-    fn try_stall_coroutine(
-        &mut self,
-        self_ty: ty::Ty<I>,
-    ) -> Option<Result<Candidate<I>, NoSolution>> {
+    fn try_stall_coroutine(&mut self, self_ty: I::Ty) -> Option<Result<Candidate<I>, NoSolution>> {
         if let ty::Coroutine(def_id, _) = self_ty.kind() {
             match self.typing_mode() {
                 TypingMode::Analysis {

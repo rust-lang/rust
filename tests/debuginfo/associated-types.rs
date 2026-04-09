@@ -53,7 +53,7 @@
 //@ lldb-command:continue
 
 //@ lldb-command:v arg
-//@ lldb-check:[...] { 0 = 4 1 = 5 }
+//@ lldb-check:[...] (4, 5)
 //@ lldb-command:continue
 
 //@ lldb-command:v a

@@ -7,7 +7,7 @@ use std::sync::{
     Arc, MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
     TryLockError,
 };
-use std::{hint, mem, thread};
+use std::{hint, mem, thread, u32};
 
 use rand::Rng;
 
@@ -882,4 +882,67 @@ fn test_rwlock_with_mut() {
 
     assert_eq!(*rwlock.read(), 5);
     assert_eq!(result, 10);
+}
+
+// To note: there are (currently) four different implementations of Rwlock:
+// - On Windows (but not Win 7), Linux, Android, FreeBSD, OpenBSD, DragonFly,
+//   Fuchsia, WASM, Hermit, and Motor OSs, it relies on rwlock/futex.rs, which has
+//   a max reader of 1 << 30 - 2 (or 1073741822). A "too many active reader" error
+//   is displayed after it exceeds the max number of readers.
+// - On Unix, Win 7, Fortranix (target env of sgx), Xous, and TeeOS, it leans
+//   on rwlock/queue.rs, which uses a linked list under the hood stored on the stack
+//   to hold a queue of waiters. Assuming no stack overflow, the max number of readers
+//   that can be queued up at one time is limited to usize::MAX - (1 << 4) as the first
+//   four bits are reserved for LOCKED, QUEUED, QUEUE_LOCKED, and DOWNGRADED flags. Any
+//   pending readers after that max count, parks the thread and tries to acquire a read lock
+//   again when the thread wakes up.
+// - On SolidASP3, it leans on rwlock/solid.rs, which utilizes rwl_loc_rdl, so the max
+//   number of readers depends on the internal implementation of rwl_loc_rdl.
+// - Every other platforms utilizes rwlock/no_threads.rs, which has a max reader of
+//   isize::MAX. An arithmetic overflow error occurs if it exceeds the max reader count.
+#[test]
+fn test_rwlock_max_readers() {
+    let mut read_lock_ctr: u32 = 0;
+    let rwlock: RwLock<i32> = RwLock::new(0);
+
+    const MAX_READERS: u32 = cfg_select! {
+        miri => 100,
+        any(
+            all(target_os = "windows", not(target_vendor = "win7")),
+            target_os = "linux",
+            target_os = "android",
+            target_os = "freebsd",
+            target_os = "openbsd",
+            target_os = "dragonfly",
+            target_os = "fuchsia",
+            all(target_family = "wasm", target_feature = "atomics"),
+            target_os = "hermit",
+        target_os = "motor",
+        ) => {
+            (1 << 30) - 2
+        },
+        any(
+            target_family = "unix",
+            all(target_os = "windows", target_vendor = "win7"),
+            all(target_vendor = "fortanix", target_env = "sgx"),
+            target_os = "xous",
+            target_os = "teeos",
+        ) => {
+            u32::MAX
+        },
+        target_os = "solid_asp3" => {
+            (1 << 30)
+        },
+        _ => {
+            u32::MAX
+        }
+    };
+
+    while read_lock_ctr < MAX_READERS {
+        let lock = rwlock.read();
+        mem::forget(lock);
+        read_lock_ctr += 1;
+    }
+
+    assert_eq!(read_lock_ctr, MAX_READERS);
 }

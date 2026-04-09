@@ -50,14 +50,13 @@ pub enum SimplifiedType<DefId> {
 }
 
 #[cfg(feature = "nightly")]
-impl<Hcx: Clone, DefId: HashStable<Hcx>> ToStableHashKey<Hcx> for SimplifiedType<DefId> {
+impl<Hcx, DefId: HashStable<Hcx>> ToStableHashKey<Hcx> for SimplifiedType<DefId> {
     type KeyType = Fingerprint;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &Hcx) -> Fingerprint {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> Fingerprint {
         let mut hasher = StableHasher::new();
-        let mut hcx: Hcx = hcx.clone();
-        self.hash_stable(&mut hcx, &mut hasher);
+        self.hash_stable(hcx, &mut hasher);
         hasher.finish()
     }
 }
@@ -113,7 +112,7 @@ pub enum TreatParams {
 /// ¹ meaning that if the outermost layers are different, then the whole types are also different.
 pub fn simplify_type<I: Interner>(
     cx: I,
-    ty: ty::Ty<I>,
+    ty: I::Ty,
     treat_params: TreatParams,
 ) -> Option<SimplifiedType<I::DefId>> {
     match ty.kind() {
@@ -236,16 +235,11 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         self.args_may_unify_inner(obligation_args, impl_args, Self::STARTING_DEPTH)
     }
 
-    pub fn types_may_unify(self, lhs: ty::Ty<I>, rhs: ty::Ty<I>) -> bool {
+    pub fn types_may_unify(self, lhs: I::Ty, rhs: I::Ty) -> bool {
         self.types_may_unify_inner(lhs, rhs, Self::STARTING_DEPTH)
     }
 
-    pub fn types_may_unify_with_depth(
-        self,
-        lhs: ty::Ty<I>,
-        rhs: ty::Ty<I>,
-        depth_limit: usize,
-    ) -> bool {
+    pub fn types_may_unify_with_depth(self, lhs: I::Ty, rhs: I::Ty, depth_limit: usize) -> bool {
         self.types_may_unify_inner(lhs, rhs, depth_limit)
     }
 
@@ -273,7 +267,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         })
     }
 
-    fn types_may_unify_inner(self, lhs: ty::Ty<I>, rhs: ty::Ty<I>, depth: usize) -> bool {
+    fn types_may_unify_inner(self, lhs: I::Ty, rhs: I::Ty, depth: usize) -> bool {
         if lhs == rhs {
             return true;
         }
@@ -532,7 +526,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         }
     }
 
-    fn var_and_ty_may_unify(self, var: ty::InferTy, ty: ty::Ty<I>) -> bool {
+    fn var_and_ty_may_unify(self, var: ty::InferTy, ty: I::Ty) -> bool {
         if !ty.is_known_rigid() {
             return true;
         }

@@ -98,7 +98,7 @@ use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
     EvalToValTreeResult, GlobalId,
 };
-use crate::mir::mono::{
+use crate::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
 use crate::query::describe_as_module;
@@ -583,6 +583,7 @@ rustc_queries! {
     // messages about cycles that then abort.)
     query check_representability(key: LocalDefId) {
         desc { "checking if `{}` is representable", tcx.def_path_str(key) }
+        handle_cycle_error
         // We don't want recursive representability calls to be forced with
         // incremental compilation because, if a cycle occurs, we need the
         // entire cycle to be in memory for diagnostics.
@@ -593,6 +594,7 @@ rustc_queries! {
     /// details, particularly on the modifiers.
     query check_representability_adt_ty(key: Ty<'tcx>) {
         desc { "checking if `{}` is representable", key }
+        handle_cycle_error
         no_force
     }
 
@@ -1032,6 +1034,7 @@ rustc_queries! {
     query variances_of(def_id: DefId) -> &'tcx [ty::Variance] {
         desc { "computing the variances of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk
+        handle_cycle_error
         separate_provide_extern
     }
 
@@ -1164,6 +1167,7 @@ rustc_queries! {
     query fn_sig(key: DefId) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
         desc { "computing function signature of `{}`", tcx.def_path_str(key) }
         cache_on_disk
+        handle_cycle_error
         separate_provide_extern
     }
 
@@ -1436,8 +1440,10 @@ rustc_queries! {
 
     query def_kind(def_id: DefId) -> DefKind {
         desc { "looking up definition kind of `{}`", tcx.def_path_str(def_id) }
-        cache_on_disk
         separate_provide_extern
+        // This query has no local provider. For defs in the current crate,
+        // its value is always set by feeding when the `DefId` is created,
+        // usually in `TyCtxt::create_def`.
         feedable
     }
 
@@ -1754,6 +1760,7 @@ rustc_queries! {
     ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
         depth_limit
         desc { "computing layout of `{}`", key.value }
+        handle_cycle_error
     }
 
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.

@@ -172,7 +172,7 @@
 //@ lldb-command:v a
 //@ lldb-check:[...] 5
 //@ lldb-command:v b
-//@ lldb-check:[...] { 0 = 6 1 = 7 }
+//@ lldb-check:[...] (6, 7)
 //@ lldb-command:continue
 
 //@ lldb-command:v h
@@ -234,11 +234,11 @@
 //@ lldb-command:continue
 
 //@ lldb-command:v aa
-//@ lldb-check:[...] { 0 = 34 1 = 35 }
+//@ lldb-check:[...] (34, 35)
 //@ lldb-command:continue
 
 //@ lldb-command:v bb
-//@ lldb-check:[...] { 0 = 36 1 = 37 }
+//@ lldb-check:[...] (36, 37)
 //@ lldb-command:continue
 
 //@ lldb-command:v cc
@@ -246,17 +246,17 @@
 //@ lldb-command:continue
 
 //@ lldb-command:v dd
-//@ lldb-check:[...] { 0 = 40 1 = 41 2 = 42 }
+//@ lldb-check:[...] (40, 41, 42)
 //@ lldb-command:continue
 
 //@ lldb-command:v *ee
-//@ lldb-check:[...] { 0 = 43 1 = 44 2 = 45 }
+//@ lldb-check:[...] (43, 44, 45)
 //@ lldb-command:continue
 
 //@ lldb-command:v *ff
 //@ lldb-check:[...] 46
 //@ lldb-command:v gg
-//@ lldb-check:[...] { 0 = 47 1 = 48 }
+//@ lldb-check:[...] (47, 48)
 //@ lldb-command:continue
 
 //@ lldb-command:v *hh

@@ -926,9 +926,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 /// heads from the stack. This may not necessarily mean that we've actually
 /// reached a fixpoint for that cycle head, which impacts the way we rebase
 /// provisional cache entries.
-#[derive(Debug)]
-enum RebaseReason {
+#[derive_where(Debug; X: Cx)]
+enum RebaseReason<X: Cx> {
     NoCycleUsages,
+    Ambiguity(X::AmbiguityInfo),
     Overflow,
     /// We've actually reached a fixpoint.
     ///
@@ -965,7 +966,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         &mut self,
         cx: X,
         stack_entry: &StackEntry<X>,
-        rebase_reason: RebaseReason,
+        rebase_reason: RebaseReason<X>,
     ) {
         let popped_head_index = self.stack.next_index();
         // Rebasing decisions depend only on each provisional entry and the current stack state,
@@ -1046,6 +1047,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                         // is not actually equal to the final provisional result. We
                         // need to discard the provisional cache entry in this case.
                         RebaseReason::NoCycleUsages => return false,
+                        RebaseReason::Ambiguity(info) => {
+                            *result = D::propagate_ambiguity(cx, input, info);
+                        }
                         RebaseReason::Overflow => *result = D::fixpoint_overflow_result(cx, input),
                         RebaseReason::ReachedFixpoint(None) => {}
                         RebaseReason::ReachedFixpoint(Some(path_kind)) => {
@@ -1361,6 +1365,27 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 );
                 return EvaluationResult::finalize(stack_entry, encountered_overflow, result);
             }
+
+            // If computing this goal results in ambiguity with no constraints,
+            // we do not rerun it. It's incredibly difficult to get a different
+            // response in the next iteration in this case. These changes would
+            // likely either be caused by incompleteness or can change the maybe
+            // cause from ambiguity to overflow. Returning ambiguity always
+            // preserves soundness and completeness even if the goal is be known
+            // to succeed or fail.
+            //
+            // This prevents exponential blowup affecting multiple major crates.
+            // As we only get to this branch if we haven't yet reached a fixpoint,
+            // we also taint all provisional cache entries which depend on the
+            // current goal.
+            if let Some(info) = D::is_ambiguous_result(result) {
+                self.rebase_provisional_cache_entries(
+                    cx,
+                    &stack_entry,
+                    RebaseReason::Ambiguity(info),
+                );
+                return EvaluationResult::finalize(stack_entry, encountered_overflow, result);
+            };
 
             // If we've reached the fixpoint step limit, we bail with overflow and taint all
             // provisional cache entries which depend on the current goal.

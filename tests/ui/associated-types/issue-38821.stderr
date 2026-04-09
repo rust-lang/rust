@@ -272,6 +272,7 @@ LL | impl<T: NotNull> IntoNullable for T {
    |         -------  ^^^^^^^^^^^^     ^
    |         |
    |         unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
   --> $DIR/issue-38821.rs:23:23
@@ -301,6 +302,7 @@ LL | impl<T: NotNull> IntoNullable for T {
    |         -------  ^^^^^^^^^^^^     ^
    |         |
    |         unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
   --> $DIR/issue-38821.rs:23:10

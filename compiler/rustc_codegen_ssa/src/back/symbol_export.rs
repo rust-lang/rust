@@ -175,8 +175,8 @@ fn exported_non_generic_symbols_provider_local<'tcx>(
 
     // FIXME: Sorting this is unnecessary since we are sorting later anyway.
     //        Can we skip the later sorting?
-    let sorted = tcx.with_stable_hashing_context(|hcx| {
-        tcx.reachable_non_generics(LOCAL_CRATE).to_sorted(&hcx, true)
+    let sorted = tcx.with_stable_hashing_context(|mut hcx| {
+        tcx.reachable_non_generics(LOCAL_CRATE).to_sorted(&mut hcx, true)
     });
 
     let mut symbols: Vec<_> =
@@ -240,7 +240,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
 
     if tcx.local_crate_exports_generics() {
         use rustc_hir::attrs::Linkage;
-        use rustc_middle::mir::mono::{MonoItem, Visibility};
+        use rustc_middle::mono::{MonoItem, Visibility};
         use rustc_middle::ty::InstanceKind;
 
         // Normally, we require that shared monomorphizations are not hidden,

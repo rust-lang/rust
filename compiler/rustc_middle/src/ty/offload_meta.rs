@@ -89,7 +89,7 @@ impl MappingFlags {
                 MappingFlags::LITERAL | MappingFlags::IMPLICIT
             }
 
-            ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Alias(_, _) | ty::Param(_) => {
+            ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Alias(_) | ty::Param(_) => {
                 MappingFlags::TO
             }
 

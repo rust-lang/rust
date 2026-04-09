@@ -1,3 +1,5 @@
+use std::ops::Deref as _;
+
 use rustc_abi::{
     Align, BackendRepr, FieldIdx, FieldsShape, Size, TagEncoding, VariantIdx, Variants,
 };
@@ -109,8 +111,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        if layout.is_runtime_sized() {
-            Self::alloca_runtime_sized(bx, layout)
+        if layout.deref().is_scalable_vector() {
+            Self::alloca_scalable(bx, layout)
         } else {
             Self::alloca_size(bx, layout.size, layout)
         }
@@ -151,16 +153,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         }
     }
 
-    fn alloca_runtime_sized<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    fn alloca_scalable<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        let (element_count, ty) = layout.ty.scalable_vector_element_count_and_type(bx.tcx());
-        PlaceValue::new_sized(
-            bx.scalable_alloca(element_count as u64, layout.align.abi, ty),
-            layout.align.abi,
-        )
-        .with_type(layout)
+        PlaceValue::new_sized(bx.alloca_with_ty(layout), layout.align.abi).with_type(layout)
     }
 }
 

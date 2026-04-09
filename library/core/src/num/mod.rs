@@ -46,6 +46,7 @@ mod error;
 mod float_parse;
 mod nonzero;
 mod saturating;
+mod traits;
 mod wrapping;
 
 /// 100% perma-unstable
@@ -1795,3 +1796,12 @@ macro_rules! from_str_int_impl {
 
 from_str_int_impl! { signed isize i8 i16 i32 i64 i128 }
 from_str_int_impl! { unsigned usize u8 u16 u32 u64 u128 }
+
+macro_rules! impl_sealed {
+    ($($t:ty)*) => {$(
+        /// Allows extension traits within `core`.
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}
+    )*}
+}
+impl_sealed! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }

@@ -20,7 +20,7 @@ which boils down to a static with type [`&rustc_lint_defs::Lint`]
 as the macro is somewhat unwieldy to add new fields to,
 like all macros).
 
-we lint against direct declarations without the use of the macro.
+We lint against direct declarations without the use of the macro.
 
 Lint declarations don't carry any "state" - they are merely global identifiers
 and descriptions of lints.

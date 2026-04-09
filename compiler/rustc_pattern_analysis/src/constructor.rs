@@ -495,6 +495,15 @@ impl Slice {
         other.kind.covers_length(self.arity())
     }
 
+    // Getters. They are used by rust-analyzer.
+    pub fn array_len(self) -> Option<usize> {
+        self.array_len
+    }
+
+    pub fn kind(self) -> SliceKind {
+        self.kind
+    }
+
     /// This computes constructor splitting for variable-length slices, as explained at the top of
     /// the file.
     ///

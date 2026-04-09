@@ -1901,9 +1901,10 @@ impl KeywordIdents {
             return;
         }
 
-        cx.emit_span_lint(
+        cx.sess().psess.buffer_lint(
             lint,
             ident.span,
+            CRATE_NODE_ID,
             BuiltinKeywordIdents { kw: ident, next: edition, suggestion: ident.span, prefix },
         );
     }

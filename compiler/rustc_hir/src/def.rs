@@ -8,9 +8,9 @@ use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
+use rustc_span::{HashStableContext, Symbol};
 
 use crate::definitions::DefPathData;
 use crate::hir;
@@ -712,11 +712,11 @@ impl IntoDiagArg for Namespace {
     }
 }
 
-impl<Hcx: crate::HashStableContext> ToStableHashKey<Hcx> for Namespace {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for Namespace {
     type KeyType = Namespace;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &Hcx) -> Namespace {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> Namespace {
         *self
     }
 }
