@@ -5,11 +5,11 @@ use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::MultiSpan;
-use rustc_lint_defs::{BuiltinLintDiag, Lint, LintId};
+use rustc_lint_defs::{AttributeLintKind, Lint, LintId};
 
 use crate::{Diag, DiagCtxtHandle, Diagnostic, Level};
 
-/// We can't implement `Diagnostic` for `BuiltinLintDiag`, because decorating some of its
+/// We can't implement `Diagnostic` for `AttributeLintKind`, because decorating some of its
 /// variants requires types we don't have yet. So, handle that case separately.
 pub enum DecorateDiagCompat {
     /// The third argument of the closure is a `Session`. However, due to the dependency tree,
@@ -22,7 +22,7 @@ pub enum DecorateDiagCompat {
                 + 'static,
         >,
     ),
-    Builtin(BuiltinLintDiag),
+    Builtin(AttributeLintKind),
 }
 
 impl std::fmt::Debug for DecorateDiagCompat {
@@ -38,9 +38,9 @@ impl<D: for<'a> Diagnostic<'a, ()> + DynSync + DynSend + 'static> From<D> for De
     }
 }
 
-impl From<BuiltinLintDiag> for DecorateDiagCompat {
+impl From<AttributeLintKind> for DecorateDiagCompat {
     #[inline]
-    fn from(b: BuiltinLintDiag) -> Self {
+    fn from(b: AttributeLintKind) -> Self {
         Self::Builtin(b)
     }
 }

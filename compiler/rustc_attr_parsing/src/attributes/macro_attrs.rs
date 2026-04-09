@@ -185,7 +185,7 @@ impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
             return None;
         };
         let Some(mi) = single.meta_item() else {
-            cx.adcx().unexpected_literal(single.span());
+            cx.adcx().expected_not_literal(single.span());
             return None;
         };
         if let Err(err) = mi.args().no_args() {

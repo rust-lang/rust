@@ -1467,11 +1467,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         // `const name: Ty = expr;`. This is a heuristic, it will
                                         // break down in the presence of macros.
                                         let sm = self.tcx.sess.source_map();
-                                        let type_span = match sm.span_look_ahead(
-                                            original_rib_ident_def.span,
-                                            ":",
-                                            None,
-                                        ) {
+                                        let type_span = match sm
+                                            .span_followed_by(original_rib_ident_def.span, ":")
+                                        {
                                             None => {
                                                 Some(original_rib_ident_def.span.shrink_to_hi())
                                             }

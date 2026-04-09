@@ -687,7 +687,13 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::wreg) => "w",
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg_pair) => "r",
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::preg) => {
+            unreachable!("clobber-only")
+        }
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::vreg) => "v",
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::vreg_pair) => "v",
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::qreg) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => "r",
@@ -779,7 +785,17 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
             cx.type_vector(cx.type_i64(), 2)
         }
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg_pair) => cx.type_i64(),
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::preg) => {
+            unreachable!("clobber-only")
+        }
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::vreg) => {
+            cx.type_vector(cx.type_i32(), 16)
+        }
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::vreg_pair) => {
+            cx.type_vector(cx.type_i32(), 32)
+        }
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::qreg) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => cx.type_i32(),

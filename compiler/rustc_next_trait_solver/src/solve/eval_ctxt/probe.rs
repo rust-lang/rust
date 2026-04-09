@@ -7,7 +7,8 @@ use tracing::instrument;
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::Candidate;
 use crate::solve::{
-    BuiltinImplSource, CandidateSource, EvalCtxt, NoSolution, QueryResult, inspect,
+    BuiltinImplSource, CandidateSource, EvalCtxt, Goal, GoalSource, GoalStalledOn, NoSolution,
+    QueryResult, inspect,
 };
 
 pub(in crate::solve) struct ProbeCtxt<'me, 'a, D, I, F, T>
@@ -41,6 +42,22 @@ where
     }
 
     pub(in crate::solve) fn enter(self, f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T) -> T {
+        let nested_goals = self.ecx.nested_goals.clone();
+        self.enter_inner(f, nested_goals)
+    }
+
+    pub(in crate::solve) fn enter_without_propagated_nested_goals(
+        self,
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T,
+    ) -> T {
+        self.enter_inner(f, Default::default())
+    }
+
+    fn enter_inner(
+        self,
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T,
+        propagated_nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>, Option<GoalStalledOn<I>>)>,
+    ) -> T {
         let ProbeCtxt { ecx: outer, probe_kind, _result } = self;
 
         let delegate = outer.delegate;
@@ -54,7 +71,7 @@ where
             initial_opaque_types_storage_num_entries: outer
                 .initial_opaque_types_storage_num_entries,
             search_graph: outer.search_graph,
-            nested_goals: outer.nested_goals.clone(),
+            nested_goals: propagated_nested_goals,
             origin_span: outer.origin_span,
             tainted: outer.tainted,
             inspect: outer.inspect.take_and_enter_probe(),

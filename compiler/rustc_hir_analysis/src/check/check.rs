@@ -2167,7 +2167,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
                 for def_id in visitor.opaques {
                     let ty_span = tcx.def_span(def_id);
                     if !seen.contains(&ty_span) {
-                        let descr = if ty.is_impl_trait() { "opaque " } else { "" };
+                        let descr = if ty.is_opaque() { "opaque " } else { "" };
                         err.span_label(ty_span, format!("returning this {descr}type `{ty}`"));
                         seen.insert(ty_span);
                     }
