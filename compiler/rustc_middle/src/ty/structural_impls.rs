@@ -169,12 +169,6 @@ impl<'tcx> fmt::Debug for GenericArg<'tcx> {
     }
 }
 
-// impl<'tcx> fmt::Debug for Region<'tcx> {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "{:?}", self.kind())
-//     }
-// }
-
 ///////////////////////////////////////////////////////////////////////////
 // Atomic structs
 //
