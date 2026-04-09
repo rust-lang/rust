@@ -443,12 +443,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let existential_predicates = tcx.mk_poly_existential_predicates(&v);
 
         // Use explicitly-specified region bound, unless the bound is missing.
+        // FIXME(fmease): Simplify logic
         let region_bound = if !lifetime.is_elided() {
             self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
+        } else if self.infcx().is_some() {
+            self.re_infer(span, RegionInferReason::ExplicitObjectLifetime)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
                 // Curiously, we prefer object lifetime default for `+ '_`...
                 if tcx.named_bound_var(lifetime.hir_id).is_some() {
+                    // FIXME: This reason is wrong, it should be ObjectLifetimeDefault if the
+                    //        lifetime kind is ImplicitObjectLifetimeDefault
                     self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
                 } else {
                     let reason =
