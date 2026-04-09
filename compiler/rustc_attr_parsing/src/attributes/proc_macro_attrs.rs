@@ -78,7 +78,7 @@ fn parse_derive_like<S: Stage>(
         return None;
     };
     let Some(trait_attr) = trait_attr.meta_item() else {
-        cx.adcx().unexpected_literal(trait_attr.span());
+        cx.adcx().expected_not_literal(trait_attr.span());
         return None;
     };
     let Some(trait_ident) = trait_attr.path().word() else {
@@ -98,7 +98,7 @@ fn parse_derive_like<S: Stage>(
     let mut attributes = ThinVec::new();
     if let Some(attrs) = items.next() {
         let Some(attr_list) = attrs.meta_item() else {
-            cx.adcx().unexpected_literal(attrs.span());
+            cx.adcx().expected_not_literal(attrs.span());
             return None;
         };
         if !attr_list.path().word_is(sym::attributes) {

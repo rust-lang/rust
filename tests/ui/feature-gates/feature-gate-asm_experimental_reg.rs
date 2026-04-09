@@ -1,6 +1,6 @@
 //@ add-minicore
-//@ compile-flags: --target s390x-unknown-linux-gnu
-//@ needs-llvm-components: systemz
+//@ compile-flags: --target x86_64-unknown-linux-gnu
+//@ needs-llvm-components: x86
 //@ ignore-backends: gcc
 
 #![feature(no_core, lang_items, rustc_attrs)]
@@ -11,7 +11,6 @@ extern crate minicore;
 use minicore::*;
 
 unsafe fn main() {
-    asm!("", in("v0") 0);
-    //~^ ERROR register class `vreg` can only be used as a clobber in stable
-    //~| ERROR type `i32` cannot be used with this register class
+    asm!("{:x}", in(xmm_reg) 0u128);
+    //~^ ERROR type `u128` cannot be used with this register class in stable
 }
