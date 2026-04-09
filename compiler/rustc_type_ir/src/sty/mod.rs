@@ -9,7 +9,6 @@ use rustc_serialize::{Decodable, Encodable};
 use tracing::debug;
 
 use crate::inherent::*;
-use crate::lift::Lift;
 use crate::relate::{Relate, RelateResult, TypeRelation};
 use crate::{
     BoundRegion, BoundRegionKind, BoundVar, BoundVarIndexKind, DebruijnIndex, FallibleTypeFolder,
@@ -185,17 +184,6 @@ impl<I: Interner> TypeFoldable<I> for Region<I> {
 
     fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         folder.fold_region(self)
-    }
-}
-
-impl<I: Interner, U: Interner> Lift<U> for Region<I>
-where
-    RegionKind<I>: Lift<U, Lifted = RegionKind<U>>,
-{
-    type Lifted = Region<U>;
-
-    fn lift_to_interner(self, interner: U) -> Option<Self::Lifted> {
-        Some(interner.intern_region(self.kind().lift_to_interner(interner)?))
     }
 }
 

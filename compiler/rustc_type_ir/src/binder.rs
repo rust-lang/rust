@@ -1121,17 +1121,6 @@ pub struct BoundRegion<I: Interner> {
     pub kind: BoundRegionKind<I>,
 }
 
-impl<I: Interner, U: Interner> Lift<U> for BoundRegion<I>
-where
-    BoundRegionKind<I>: Lift<U, Lifted = BoundRegionKind<U>>,
-{
-    type Lifted = BoundRegion<U>;
-
-    fn lift_to_interner(self, interner: U) -> Option<Self::Lifted> {
-        Some(BoundRegion { var: self.var, kind: self.kind.lift_to_interner(interner)? })
-    }
-}
-
 impl<I: Interner> core::fmt::Debug for BoundRegion<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.kind {

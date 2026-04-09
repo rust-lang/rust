@@ -8,7 +8,6 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use rustc_type_ir_macros::GenericTypeVisitable;
 
 use self::RegionKind::*;
-use crate::lift::Lift;
 use crate::{BoundRegion, BoundVarIndexKind, Interner, PlaceholderRegion};
 
 rustc_index::newtype_index! {
@@ -187,33 +186,6 @@ pub enum RegionKind<I: Interner> {
 }
 
 impl<I: Interner> Eq for RegionKind<I> {}
-
-impl<I: Interner, U: Interner> Lift<U> for RegionKind<I>
-where
-    I::EarlyParamRegion: Lift<U, Lifted = U::EarlyParamRegion>,
-    BoundRegion<I>: Lift<U, Lifted = BoundRegion<U>>,
-    I::LateParamRegion: Lift<U, Lifted = U::LateParamRegion>,
-    PlaceholderRegion<I>: Lift<U, Lifted = PlaceholderRegion<U>>,
-    I::ErrorGuaranteed: Lift<U, Lifted = U::ErrorGuaranteed>,
-{
-    type Lifted = RegionKind<U>;
-
-    fn lift_to_interner(self, interner: U) -> Option<Self::Lifted> {
-        Some(match self {
-            ReEarlyParam(region) => ReEarlyParam(region.lift_to_interner(interner)?),
-            ReBound(index, region) => {
-                ReBound(index.lift_to_interner(interner)?, region.lift_to_interner(interner)?)
-            }
-            ReLateParam(region) => ReLateParam(region.lift_to_interner(interner)?),
-            ReStatic => ReStatic,
-            // Inference vars are local to the originating inference context.
-            ReVar(_) => return None,
-            RePlaceholder(placeholder) => RePlaceholder(placeholder.lift_to_interner(interner)?),
-            ReErased => ReErased,
-            ReError(reported) => ReError(reported.lift_to_interner(interner)?),
-        })
-    }
-}
 
 impl<I: Interner> fmt::Debug for RegionKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
