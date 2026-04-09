@@ -85,8 +85,8 @@ fn typing_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) ->
             .upcast(tcx)
         }),
     )));
-    ty::TypingEnv {
-        typing_mode: ty::TypingMode::non_body_analysis(),
+    ty::TypingEnv::new(
         param_env,
-    }
+         ty::TypingMode::non_body_analysis(),
+    )
 }

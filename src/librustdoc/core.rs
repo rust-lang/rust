@@ -87,10 +87,7 @@ impl<'tcx> DocContext<'tcx> {
     }
 
     pub(crate) fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        ty::TypingEnv {
-            typing_mode: ty::TypingMode::non_body_analysis(),
-            param_env: self.param_env,
-        }
+        ty::TypingEnv::new(self.param_env, ty::TypingMode::non_body_analysis())
     }
 
     /// Call the closure with the given parameters set as
