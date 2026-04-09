@@ -69,7 +69,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //     let y: u32 = (x?).try_into().unwrap();
         //                  +  +++++++++++++++++++++
         let has_attr = |id: HirId| -> bool {
-            self.tcx.hir_attrs(id).iter().any(Attribute::has_span_without_desugaring_kind)
+            self.tcx.hir_attrs(id).iter().any(Attribute::is_prefix_attr_for_suggestions)
         };
 
         // Special case: range expressions are desugared to struct literals in HIR,
