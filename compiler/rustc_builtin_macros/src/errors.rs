@@ -158,6 +158,13 @@ pub(crate) struct AllocMustStatics {
     pub(crate) span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag("allocators cannot be `#[thread_local]`")]
+pub(crate) struct AllocCannotThreadLocal {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
 pub(crate) use autodiff::*;
 
 mod autodiff {
