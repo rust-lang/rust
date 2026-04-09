@@ -414,7 +414,7 @@ impl Analysis {
     }
 
     /// Renders the crate graph to GraphViz "dot" syntax.
-    pub fn view_crate_graph(&self, full: bool) -> Cancellable<Result<String, String>> {
+    pub fn view_crate_graph(&self, full: bool) -> Cancellable<String> {
         self.with_db(|db| view_crate_graph::view_crate_graph(db, full))
     }
 
