@@ -2230,7 +2230,7 @@ Please disable assertions with `rust.debug-assertions = false`.
             ));
             let target_helpers = builder.test_helpers_out(target);
             targetflags.push(format!("-Lnative={}", target_helpers.display()));
-            if target.triple.contains("pauthtest") {
+            if target.is_pauthtest() {
                 // Embed rpath to the shared object
                 targetflags.push(format!("-Clink-arg=-Wl,-rpath,{}", target_helpers.display()));
             }
@@ -3885,20 +3885,16 @@ impl Step for TestHelpers {
                 .file(builder.src.join("tests/auxiliary/rust_test_helpers.c"))
                 .compile("rust_test_helpers");
         }
-        if target.triple.contains("pauthtest") {
+        if target.is_pauthtest() {
             let so = dst.join("librust_test_helpers.so");
             if up_to_date(&src, &so) {
                 return;
             }
 
-            let pauthtest_sysroot = std::env::var("PAUTHTEST_SYSROOT").unwrap_or_default();
-            let status = Command::new("clang")
+            let status = Command::new(builder.cc(target))
                 .arg("-target")
                 .arg(target.triple)
-                .arg("-fuse-ld=lld")
-                .arg(format!("--sysroot={}", pauthtest_sysroot))
-                .arg("-nostdlib")
-                .arg("-march=armv8.3-a")
+                .arg("-march=armv8.3-a+pauth")
                 .arg("-fPIC")
                 .arg("-shared")
                 .arg("-O0") // Use O0 to match what static library is compiled at.

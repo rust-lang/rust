@@ -1,10 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define NUM_ELEMS 5
 
 void quickSort(void *Base, size_t N, size_t Size,
@@ -47,7 +43,3 @@ int main() {
 
   return 0;
 }
-
-#ifdef __cplusplus
-}
-#endif

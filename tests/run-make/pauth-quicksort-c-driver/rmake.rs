@@ -7,47 +7,33 @@
 
 //@ only-aarch64-unknown-linux-pauthtest
 
-use run_make_support::{cc, rfs, run, run_fail, rustc};
+use run_make_support::{cc, env_var, rfs, run, run_fail, rustc};
 
 fn main() {
-    unsafe {
-        std::env::set_var("CC", "clang");
-    }
-    let pauthtest_sysroot = std::env::var("PAUTHTEST_SYSROOT").unwrap_or_default();
-    let dynamic_linker = format!("-Wl,--dynamic-linker={}/usr/lib/libc.so", pauthtest_sysroot);
-    let rpath = format!("-Wl,--rpath={}/usr/lib", pauthtest_sysroot);
-
+    // Use CC and CC_DEFAULT_FLAGS env variables to set up linker for rustc. This results in the
+    // same command as cc(). The CC env variable corresponds to cc field in the config toml file.
+    // This field is required to point to a clang family compiler on aarch64-unknown-linux-pauthtest
+    // target.
     let rust_lib_name = "rust_quicksort";
     rustc()
         .target("aarch64-unknown-linux-pauthtest")
         .crate_type("cdylib")
         .input("quicksort.rs")
+        .linker(&env_var("CC"))
+        .link_args(&env_var("CC_DEFAULT_FLAGS"))
         .crate_name(rust_lib_name)
-        .args(&[&dynamic_linker, &rpath])
         .run();
 
     let exe_name = "main";
     cc().out_exe(exe_name)
         .input("main.c")
         .args(&[
-            "-march=armv8.3-a",
-            "-lc",
-            "-nostdlib",
+            "-march=armv8.3-a+pauth",
             "-target",
             "aarch64-unknown-linux-pauthtest",
-            "-fuse-ld=lld".into(),
-            &format!("--sysroot={}", pauthtest_sysroot),
-            "-I",
-            &format!("{}/usr/include", pauthtest_sysroot),
-            &format!("-Wl,--rpath={}/usr/lib", pauthtest_sysroot),
-            &format!("-Wl,{}/usr/lib/crt1.o", pauthtest_sysroot),
-            &format!("-Wl,{}/usr/lib/crti.o", pauthtest_sysroot),
-            &format!("-Wl,{}/usr/lib/crtn.o", pauthtest_sysroot),
-            "-L.",
             &format!("-l{}", rust_lib_name),
-            &dynamic_linker,
-            &rpath,
         ])
+        .library_search_path(".")
         .run();
 
     run(exe_name);

@@ -6,31 +6,27 @@
 
 //@ only-aarch64-unknown-linux-pauthtest
 
-use run_make_support::{cc, rfs, run, run_fail, rustc};
+use run_make_support::{cc, env_var, rfs, run, run_fail, rustc};
 
 fn main() {
-    unsafe {
-        std::env::set_var("CC", "clang");
-    }
-
-    let pauthtest_sysroot = std::env::var("PAUTHTEST_SYSROOT").unwrap_or_default();
     let input = "quicksort";
     let input_name = format!("{input}.c");
     let lib_name = format!("{}{input}.{}", "lib", "so");
     cc().out_exe(&lib_name)
         .input(&input_name)
-        .args(&[
-            &format!("--sysroot={}", pauthtest_sysroot),
-            "-lc",
-            "-nostdlib",
-            "-target",
-            "aarch64-linux-pauthtest",
-            "-fPIC",
-            "-shared",
-        ])
+        .args(&["-target", "aarch64-unknown-linux-pauthtest", "-march=armv8.3-a+pauth", "-shared"])
         .run();
 
-    rustc().target("aarch64-unknown-linux-pauthtest").input("main.rs").run();
+    // Use CC and CC_DEFAULT_FLAGS env variables to set up linker for rustc. This results in the
+    // same command as cc(). The CC env variable corresponds to cc field in the config toml file.
+    // This field is required to point to a clang family compiler on aarch64-unknown-linux-pauthtest
+    // target.
+    rustc()
+        .target("aarch64-unknown-linux-pauthtest")
+        .input("main.rs")
+        .linker(&env_var("CC"))
+        .link_args(&env_var("CC_DEFAULT_FLAGS"))
+        .run();
     run("main");
 
     rfs::remove_file(&lib_name);

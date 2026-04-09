@@ -21,7 +21,7 @@ use crate::builder::Kind;
 use crate::core::build_steps::tool;
 use crate::core::config::{CompilerBuiltins, Target};
 use crate::utils::exec::command;
-use crate::{Build, Subcommand};
+use crate::{Build, Subcommand, t};
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
@@ -413,6 +413,50 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             && !build.tool_enabled("wasm-component-ld")
         {
             cmd_finder.must_have("wasm-component-ld");
+        }
+
+        // aarch64-unknown-linux-pauthtest must use clang
+        if !skip_tools_checks && target.is_pauthtest() {
+            let cc_tool = build.cc_tool(*target);
+            let linker_path = build
+                .linker(*target)
+                .expect("aarch64-unknown-linux-pauthtest requires an explicit clang linker");
+
+            if !cc_tool.is_like_clang() || !linker_path.to_string_lossy().contains("clang") {
+                panic!(
+                    "Clang is required to build C code for aarch64-unknown-linux-pauthtest target, got:\n\
+                     cc tool: `{}`,\n\
+                     linker: `{}`\n",
+                    cc_tool.path().display(),
+                    linker_path.display(),
+                );
+            }
+            let cc_canon = t!(fs::canonicalize(cc_tool.path()));
+            let linker_canon = t!(fs::canonicalize(&linker_path));
+            if cc_canon != linker_canon {
+                panic!(
+                    "CC and Linker are expected to be the same for aarch64-unknown-linux-pauthtest target, got:\n\
+                     CC: `{}`,\n\
+                     Linker: `{}`\n",
+                    cc_canon.display(),
+                    linker_canon.display(),
+                );
+            }
+
+            let output =
+                command(cc_tool.path()).arg("-dumpversion").run_capture_stdout(&build).stdout();
+            let version_str = output.trim();
+            let mut parts = version_str.split('.').map(|s| s.parse::<u32>().unwrap_or(0));
+            let major = parts.next().unwrap_or(0);
+            let minor = parts.next().unwrap_or(0);
+            let patch = parts.next().unwrap_or(0);
+            if (major, minor, patch) < (22, 1, 0) {
+                panic!(
+                    "clang version too old: {} (aarch64-unknown-linux-pauthtest target trequires >= 22.1.0), path: {}",
+                    version_str,
+                    cc_tool.path().display()
+                );
+            }
         }
     }
 
