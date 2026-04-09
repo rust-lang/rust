@@ -709,7 +709,11 @@ fn insert_use_with_editor_(
             Some(b) => {
                 cov_mark::hit!(insert_empty_module);
                 syntax_editor.insert(Position::after(&b), syntax_factory.whitespace("\n"));
-                syntax_editor.insert(Position::after(&b), use_item.syntax());
+                syntax_editor.insert_with_whitespace(
+                    Position::after(&b),
+                    use_item.syntax(),
+                    syntax_factory,
+                );
             }
             None => {
                 cov_mark::hit!(insert_empty_file);
