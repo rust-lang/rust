@@ -16,7 +16,6 @@ mod proc_macros;
 
 use std::{any::TypeId, iter, ops::Range, sync};
 
-use base_db::RootQueryDb;
 use expect_test::Expect;
 use hir_expand::{
     AstId, ExpansionInfo, InFile, MacroCallId, MacroCallKind, MacroKind,
@@ -75,7 +74,7 @@ fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect)
             let editioned_file_id =
                 ast_id.file_id.file_id().expect("macros inside macros are not supported");
 
-            let ast = db.parse(editioned_file_id).syntax_node();
+            let ast = editioned_file_id.parse(&db).syntax_node();
             let ast_id_map = db.ast_id_map(ast_id.file_id);
             let node = ast_id_map.get_erased(ast_id.value).to_node(&ast);
             Some((node.text_range(), errors))

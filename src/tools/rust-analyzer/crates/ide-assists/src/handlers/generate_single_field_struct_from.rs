@@ -1,14 +1,16 @@
-use ast::make;
 use hir::next_solver::{DbInterner, TypingMode};
 use hir::{HasCrate, ModuleDef, Semantics};
 use ide_db::{
     RootDatabase, famous_defs::FamousDefs, helpers::mod_path_to_ast,
     imports::import_assets::item_for_path_search, use_trivial_constructor::use_trivial_constructor,
 };
-use syntax::syntax_editor::{Element, Position};
+use syntax::syntax_editor::{Position, SyntaxEditor};
 use syntax::{
     TokenText,
-    ast::{self, AstNode, HasAttrs, HasGenericParams, HasName, edit::AstNodeEdit},
+    ast::{
+        self, AstNode, HasAttrs, HasGenericParams, HasName, edit::AstNodeEdit,
+        syntax_factory::SyntaxFactory,
+    },
 };
 
 use crate::{
@@ -78,47 +80,52 @@ pub(crate) fn generate_single_field_struct_from(
         "Generate single field `From`",
         strukt.syntax().text_range(),
         |builder| {
+            let make = SyntaxFactory::with_mappings();
+            let mut editor = builder.make_editor(strukt.syntax());
+
             let indent = strukt.indent_level();
             let ty_where_clause = strukt.where_clause();
             let type_gen_params = strukt.generic_param_list();
             let type_gen_args = type_gen_params.as_ref().map(|params| params.to_generic_args());
-            let trait_gen_args = Some(make::generic_arg_list([ast::GenericArg::TypeArg(
-                make::type_arg(main_field_ty.clone()),
-            )]));
+            let trait_gen_args = Some(make.generic_arg_list(
+                [ast::GenericArg::TypeArg(make.type_arg(main_field_ty.clone()))],
+                false,
+            ));
 
-            let ty = make::ty(&strukt_name.text());
+            let ty = make.ty(&strukt_name.text());
 
             let constructor =
-                make_adt_constructor(names.as_deref(), constructors, &main_field_name);
-            let body = make::block_expr([], Some(constructor));
+                make_adt_constructor(names.as_deref(), constructors, &main_field_name, &make);
+            let body = make.block_expr([], Some(constructor));
 
-            let fn_ = make::fn_(
-                None,
-                None,
-                make::name("from"),
-                None,
-                None,
-                make::param_list(
+            let fn_ = make
+                .fn_(
+                    [],
                     None,
-                    [make::param(
-                        make::path_pat(make::path_from_text(&main_field_name)),
-                        main_field_ty,
-                    )],
-                ),
-                body,
-                Some(make::ret_type(make::ty("Self"))),
-                false,
-                false,
-                false,
-                false,
-            )
-            .indent(1.into());
+                    make.name("from"),
+                    None,
+                    None,
+                    make.param_list(
+                        None,
+                        [make.param(
+                            make.path_pat(make.path_from_text(&main_field_name)),
+                            main_field_ty,
+                        )],
+                    ),
+                    body,
+                    Some(make.ret_type(make.ty("Self"))),
+                    false,
+                    false,
+                    false,
+                    false,
+                )
+                .indent_with_mapping(1.into(), &make);
 
             let cfg_attrs = strukt
                 .attrs()
                 .filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
 
-            let impl_ = make::impl_trait(
+            let impl_ = make.impl_trait(
                 cfg_attrs,
                 false,
                 None,
@@ -126,28 +133,31 @@ pub(crate) fn generate_single_field_struct_from(
                 type_gen_params,
                 type_gen_args,
                 false,
-                make::ty("From"),
+                make.ty("From"),
                 ty.clone(),
                 None,
                 ty_where_clause.map(|wc| wc.reset_indent()),
                 None,
-            )
-            .clone_for_update();
+            );
 
-            impl_.get_or_create_assoc_item_list().add_item(fn_.into());
-            let impl_ = impl_.indent(indent);
+            let (mut impl_editor, impl_root) = SyntaxEditor::with_ast_node(&impl_);
+            let assoc_list =
+                impl_root.get_or_create_assoc_item_list_with_editor(&mut impl_editor, &make);
+            assoc_list.add_items(&mut impl_editor, vec![fn_.into()]);
+            let impl_ = ast::Impl::cast(impl_editor.finish().new_root().clone())
+                .unwrap()
+                .indent_with_mapping(indent, &make);
 
-            let mut edit = builder.make_editor(strukt.syntax());
-
-            edit.insert_all(
+            editor.insert_all(
                 Position::after(strukt.syntax()),
                 vec![
-                    make::tokens::whitespace(&format!("\n\n{indent}")).syntax_element(),
-                    impl_.syntax().syntax_element(),
+                    make.whitespace(&format!("\n\n{indent}")).into(),
+                    impl_.syntax().clone().into(),
                 ],
             );
 
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -156,19 +166,18 @@ fn make_adt_constructor(
     names: Option<&[ast::Name]>,
     constructors: Vec<Option<ast::Expr>>,
     main_field_name: &TokenText<'_>,
+    make: &SyntaxFactory,
 ) -> ast::Expr {
     if let Some(names) = names {
-        let fields = make::record_expr_field_list(names.iter().zip(constructors).map(
-            |(name, initializer)| {
-                make::record_expr_field(make::name_ref(&name.text()), initializer)
-            },
+        let fields = make.record_expr_field_list(names.iter().zip(constructors).map(
+            |(name, initializer)| make.record_expr_field(make.name_ref(&name.text()), initializer),
         ));
-        make::record_expr(make::path_from_text("Self"), fields).into()
+        make.record_expr(make.path_from_text("Self"), fields).into()
     } else {
-        let arg_list = make::arg_list(constructors.into_iter().map(|expr| {
-            expr.unwrap_or_else(|| make::expr_path(make::path_from_text(main_field_name)))
+        let arg_list = make.arg_list(constructors.into_iter().map(|expr| {
+            expr.unwrap_or_else(|| make.expr_path(make.path_from_text(main_field_name)))
         }));
-        make::expr_call(make::expr_path(make::path_from_text("Self")), arg_list).into()
+        make.expr_call(make.expr_path(make.path_from_text("Self")), arg_list).into()
     }
 }
 
@@ -177,6 +186,7 @@ fn make_constructors(
     module: hir::Module,
     types: &[ast::Type],
 ) -> Vec<Option<ast::Expr>> {
+    let make = SyntaxFactory::without_mappings();
     let (db, sema) = (ctx.db(), &ctx.sema);
     let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(module.krate(ctx.sema.db)));
     types
@@ -184,7 +194,7 @@ fn make_constructors(
         .map(|ty| {
             let ty = sema.resolve_type(ty)?;
             if ty.is_unit() {
-                return Some(make::expr_tuple([]).into());
+                return Some(make.expr_tuple([]).into());
             }
             let item_in_ns = ModuleDef::Adt(ty.as_adt()?).into();
             let edition = module.krate(db).edition(db);

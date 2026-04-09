@@ -2841,3 +2841,18 @@ fn wrapped_abs<T: SelfAbs<Output = T>>(v: T) -> T {
     "#,
     );
 }
+
+#[test]
+fn regression_21899() {
+    check_no_mismatches(
+        r#"
+trait B where
+    Self::T: B,
+{
+    type T;
+}
+
+fn foo<T: B>(v: T::T) {}
+    "#,
+    );
+}

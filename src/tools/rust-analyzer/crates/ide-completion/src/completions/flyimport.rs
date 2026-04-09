@@ -135,7 +135,12 @@ pub(crate) fn import_on_the_fly_path(
         Qualified::With { path, .. } => Some(path.clone()),
         _ => None,
     };
-    let import_assets = import_assets_for_path(ctx, &potential_import_name, qualifier.clone())?;
+    let import_assets = import_assets_for_path(
+        ctx,
+        Some(&path_ctx.path),
+        &potential_import_name,
+        qualifier.clone(),
+    )?;
 
     import_on_the_fly(
         acc,
@@ -160,7 +165,7 @@ pub(crate) fn import_on_the_fly_pat(
     }
 
     let potential_import_name = import_name(ctx);
-    let import_assets = import_assets_for_path(ctx, &potential_import_name, None)?;
+    let import_assets = import_assets_for_path(ctx, None, &potential_import_name, None)?;
 
     import_on_the_fly_pat_(
         acc,
@@ -402,6 +407,7 @@ fn import_name(ctx: &CompletionContext<'_>) -> String {
 
 fn import_assets_for_path<'db>(
     ctx: &CompletionContext<'db>,
+    path: Option<&ast::Path>,
     potential_import_name: &str,
     qualifier: Option<ast::Path>,
 ) -> Option<ImportAssets<'db>> {
@@ -411,6 +417,7 @@ fn import_assets_for_path<'db>(
     let fuzzy_name_length = potential_import_name.len();
     let mut assets_for_path = ImportAssets::for_fuzzy_path(
         ctx.module,
+        path,
         qualifier,
         potential_import_name.to_owned(),
         &ctx.sema,

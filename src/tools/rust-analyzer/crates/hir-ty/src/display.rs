@@ -640,7 +640,7 @@ fn write_projection<'db>(
         // FIXME: We shouldn't use `param.id`, it should be removed. We should know the
         // `GenericDefId` from the formatted type (store it inside the `HirFormatter`).
         let bounds = GenericPredicates::query_all(f.db, param.id.parent())
-            .iter_identity_copied()
+            .iter_identity()
             .filter(|wc| {
                 let ty = match wc.kind().skip_binder() {
                     ClauseKind::Trait(tr) => tr.self_ty(),
@@ -1466,7 +1466,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                         }
                         TypeParamProvenance::ArgumentImplTrait => {
                             let bounds = GenericPredicates::query_all(f.db, param.id.parent())
-                                .iter_identity_copied()
+                                .iter_identity()
                                 .filter(|wc| match wc.kind().skip_binder() {
                                     ClauseKind::Trait(tr) => tr.self_ty() == *self,
                                     ClauseKind::Projection(proj) => proj.self_ty() == *self,

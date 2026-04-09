@@ -429,7 +429,7 @@ fn build_source_change(
                     generate_getter_from_info(ctx, &assist_info, record_field_info, &syntax_factory)
                 }
             };
-            let new_fn = method.clone_for_update();
+            let new_fn = method;
             let new_fn = new_fn.indent(1.into());
             new_fn.into()
         })

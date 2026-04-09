@@ -2016,17 +2016,21 @@ fn type_alias_bounds_with_diagnostics<'db>(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericPredicates {
-    // The order is the following: first, if `parent_is_trait == true`, comes the implicit trait
-    // predicate for the parent. Then come the bounds of the associated types of the parents,
-    // then the explicit, self-only predicates for the parent, then the explicit, self-only trait
-    // predicate for the child, then the bounds of the associated types of the child,
-    // then the implicit trait predicate for the child, if `is_trait` is `true`.
+    // The order is the following:
+    //
+    // 1. If `has_trait_implied_predicate == true`, the implicit trait predicate.
+    // 2. The bounds of the associated types of the parents, coming from `Trait<Assoc: Trait>`.
+    //    Note: associated type bounds from `Self::Assoc: Trait` on traits *won't* be included
+    //    here, they are in 3.
+    // 3. The explicit, self-only predicates for the parent.
+    // 4. The explicit, self-only trait predicate for the child,
+    // 5. The bounds of the associated types of the child.
     predicates: StoredEarlyBinder<StoredClauses>,
+    // Keep this ordered according to the above.
+    has_trait_implied_predicate: bool,
     parent_explicit_self_predicates_start: u32,
     own_predicates_start: u32,
     own_assoc_ty_bounds_start: u32,
-    is_trait: bool,
-    parent_is_trait: bool,
 }
 
 #[salsa::tracked]
@@ -2065,11 +2069,10 @@ impl GenericPredicates {
         let len = predicates.get().skip_binder().len() as u32;
         Self {
             predicates,
+            has_trait_implied_predicate: false,
             parent_explicit_self_predicates_start: 0,
             own_predicates_start: 0,
             own_assoc_ty_bounds_start: len,
-            is_trait: false,
-            parent_is_trait: false,
         }
     }
 
@@ -2082,58 +2085,68 @@ impl GenericPredicates {
     pub fn query_all<'db>(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
-    ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+    ) -> EarlyBinder<'db, impl Iterator<Item = Clause<'db>>> {
         Self::query(db, def).all_predicates()
     }
 
     #[inline]
-    pub fn query_own<'db>(
+    pub fn query_own_explicit<'db>(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
-    ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-        Self::query(db, def).own_predicates()
+    ) -> EarlyBinder<'db, impl Iterator<Item = Clause<'db>>> {
+        Self::query(db, def).own_explicit_predicates()
     }
 
     #[inline]
     pub fn query_explicit<'db>(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
-    ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+    ) -> EarlyBinder<'db, impl Iterator<Item = Clause<'db>>> {
         Self::query(db, def).explicit_predicates()
     }
 
     #[inline]
-    pub fn query_explicit_implied<'db>(
-        db: &'db dyn HirDatabase,
-        def: GenericDefId,
-    ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-        Self::query(db, def).explicit_implied_predicates()
+    pub fn all_predicates(&self) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
+        self.predicates.get().map_bound(|it| it.as_slice().iter().copied())
     }
 
     #[inline]
-    pub fn all_predicates(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
-        self.predicates.get().map_bound(|it| it.as_slice())
+    pub fn own_explicit_predicates(&self) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
+        self.predicates
+            .get()
+            .map_bound(|it| it.as_slice()[self.own_predicates_start as usize..].iter().copied())
     }
 
     #[inline]
-    pub fn own_predicates(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
-        self.predicates.get().map_bound(|it| &it.as_slice()[self.own_predicates_start as usize..])
-    }
-
-    /// Returns the predicates, minus the implicit `Self: Trait` predicate and bounds of the
-    /// associated types for a trait.
-    #[inline]
-    pub fn explicit_predicates(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
+    pub fn explicit_predicates(&self) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
         self.predicates.get().map_bound(|it| {
-            &it.as_slice()[self.parent_explicit_self_predicates_start as usize
-                ..self.own_assoc_ty_bounds_start as usize]
+            it.as_slice()[usize::from(self.has_trait_implied_predicate)..].iter().copied()
         })
     }
 
     #[inline]
-    pub fn explicit_implied_predicates(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
+    pub fn explicit_non_assoc_types_predicates(
+        &self,
+    ) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
         self.predicates.get().map_bound(|it| {
-            &it.as_slice()[usize::from(self.parent_is_trait)..it.len() - usize::from(self.is_trait)]
+            it.as_slice()[self.parent_explicit_self_predicates_start as usize
+                ..self.own_assoc_ty_bounds_start as usize]
+                .iter()
+                .copied()
+        })
+    }
+
+    #[inline]
+    pub fn explicit_assoc_types_predicates(
+        &self,
+    ) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
+        self.predicates.get().map_bound(|predicates| {
+            let predicates = predicates.as_slice();
+            predicates[usize::from(self.has_trait_implied_predicate)
+                ..self.parent_explicit_self_predicates_start as usize]
+                .iter()
+                .copied()
+                .chain(predicates[self.own_assoc_ty_bounds_start as usize..].iter().copied())
         })
     }
 }
@@ -2142,10 +2155,8 @@ pub(crate) fn param_env_from_predicates<'db>(
     interner: DbInterner<'db>,
     predicates: &'db GenericPredicates,
 ) -> ParamEnv<'db> {
-    let clauses = rustc_type_ir::elaborate::elaborate(
-        interner,
-        predicates.all_predicates().iter_identity_copied(),
-    );
+    let clauses =
+        rustc_type_ir::elaborate::elaborate(interner, predicates.all_predicates().iter_identity());
     let clauses = Clauses::new_from_iter(interner, clauses);
 
     // FIXME: We should normalize projections here, like rustc does.
@@ -2290,42 +2301,28 @@ fn generic_predicates(db: &dyn HirDatabase, def: GenericDefId) -> (GenericPredic
 
     let diagnostics = create_diagnostics(ctx.diagnostics);
 
-    // The order is:
-    //
-    // 1. parent implicit trait pred
-    // 2. parent assoc bounds
-    // 3. parent self only preds
-    // 4. own self only preds
-    // 5. own assoc ty bounds
-    // 6. own implicit trait pred
-    //
-    // The purpose of this is to index the slice of the followings, without making extra `Vec`s or
-    // iterators:
-    // - explicit self only predicates, of own or own + self
-    // - explicit predicates, of own or own + self
     let predicates = parent_implicit_trait_predicate
         .iter()
+        .chain(own_implicit_trait_predicate.iter())
         .chain(parent_assoc_ty_bounds.iter())
         .chain(parent_predicates.iter())
         .chain(own_predicates.iter())
         .chain(own_assoc_ty_bounds.iter())
-        .chain(own_implicit_trait_predicate.iter())
         .copied()
         .collect::<Vec<_>>();
-    let parent_is_trait = parent_implicit_trait_predicate.is_some();
-    let is_trait = own_implicit_trait_predicate.is_some();
+    let has_trait_implied_predicate =
+        parent_implicit_trait_predicate.is_some() || own_implicit_trait_predicate.is_some();
     let parent_explicit_self_predicates_start =
-        parent_is_trait as u32 + parent_assoc_ty_bounds.len() as u32;
+        has_trait_implied_predicate as u32 + parent_assoc_ty_bounds.len() as u32;
     let own_predicates_start =
         parent_explicit_self_predicates_start + parent_predicates.len() as u32;
     let own_assoc_ty_bounds_start = own_predicates_start + own_predicates.len() as u32;
 
     let predicates = GenericPredicates {
+        has_trait_implied_predicate,
         parent_explicit_self_predicates_start,
         own_predicates_start,
         own_assoc_ty_bounds_start,
-        is_trait,
-        parent_is_trait,
         predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store()),
     };
     return (predicates, diagnostics);

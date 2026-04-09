@@ -220,13 +220,15 @@ pub(crate) fn render_tuple_field(
 pub(crate) fn render_type_inference(
     ty_string: String,
     ctx: &CompletionContext<'_>,
+    path_ctx: &PathCompletionCtx<'_>,
 ) -> CompletionItem {
     let mut builder = CompletionItem::new(
         CompletionItemKind::InferredType,
         ctx.source_range(),
-        ty_string,
+        &ty_string,
         ctx.edition,
     );
+    adds_ret_type_arrow(ctx, path_ctx, &mut builder, ty_string);
     builder.set_relevance(CompletionRelevance {
         type_match: Some(CompletionRelevanceTypeMatch::Exact),
         exact_name_match: true,
@@ -425,11 +427,10 @@ fn render_resolution_path(
     let config = completion.config;
     let requires_import = import_to_add.is_some();
 
-    let name = local_name.display_no_db(ctx.completion.edition).to_smolstr();
+    let name = local_name.display(db, completion.edition).to_smolstr();
     let mut item = render_resolution_simple_(ctx, &local_name, import_to_add, resolution);
-    if local_name.needs_escape(completion.edition) {
-        item.insert_text(local_name.display_no_db(completion.edition).to_smolstr());
-    }
+    let mut insert_text = name.clone();
+
     // Add `<>` for generic types
     let type_path_no_ty_args = matches!(
         path_ctx,
@@ -446,12 +447,14 @@ fn render_resolution_path(
 
         if has_non_default_type_params {
             cov_mark::hit!(inserts_angle_brackets_for_generics);
+            insert_text = format_smolstr!("{insert_text}<$0>");
             item.lookup_by(name.clone())
                 .label(SmolStr::from_iter([&name, "<…>"]))
                 .trigger_call_info()
-                .insert_snippet(cap, format!("{}<$0>", local_name.display(db, completion.edition)));
+                .insert_snippet(cap, ""); // set is snippet
         }
     }
+    adds_ret_type_arrow(completion, path_ctx, &mut item, insert_text.into());
 
     let mut set_item_relevance = |ty: Type<'_>| {
         if !ty.is_unknown() {
@@ -574,6 +577,48 @@ fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> boo
         ScopeDef::GenericParam(it) => ctx.is_deprecated(it),
         ScopeDef::AdtSelfType(it) => ctx.is_deprecated(it),
         _ => false,
+    }
+}
+
+pub(crate) fn render_type_keyword_snippet(
+    ctx: &CompletionContext<'_>,
+    path_ctx: &PathCompletionCtx<'_>,
+    label: &str,
+    snippet: &str,
+) -> Builder {
+    let source_range = ctx.source_range();
+    let mut item =
+        CompletionItem::new(CompletionItemKind::Keyword, source_range, label, ctx.edition);
+
+    let insert_text = if !snippet.contains('$') {
+        item.insert_text(snippet);
+        snippet
+    } else if let Some(cap) = ctx.config.snippet_cap {
+        item.insert_snippet(cap, snippet);
+        snippet
+    } else {
+        label
+    };
+
+    adds_ret_type_arrow(ctx, path_ctx, &mut item, insert_text.to_owned());
+    item
+}
+
+fn adds_ret_type_arrow(
+    ctx: &CompletionContext<'_>,
+    path_ctx: &PathCompletionCtx<'_>,
+    item: &mut Builder,
+    insert_text: String,
+) {
+    if let Some((arrow, at)) = path_ctx.required_thin_arrow() {
+        let mut edit = TextEdit::builder();
+
+        edit.insert(at, arrow.to_owned());
+        edit.replace(ctx.source_range(), insert_text);
+
+        item.text_edit(edit.finish()).adds_text(SmolStr::new_static(arrow));
+    } else {
+        item.insert_text(insert_text);
     }
 }
 
@@ -3040,6 +3085,57 @@ fn main() {
                 sn unsafe unsafe {} []
                 sn while while expr {} []
                 me not() fn(self) -> <Self as Not>::Output [requires_import]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn enum_variant_name_exact_match_is_high_priority() {
+        check_relevance(
+            r#"
+struct Other;
+struct String;
+enum Foo {
+    String($0)
+}
+    "#,
+            expect![[r#"
+                st String String [name]
+                en Foo Foo []
+                st Other Other []
+                sp Self Foo []
+            "#]],
+        );
+
+        check_relevance(
+            r#"
+struct Other;
+struct String;
+enum Foo {
+    String(String, $0)
+}
+    "#,
+            expect![[r#"
+                en Foo Foo []
+                st Other Other []
+                sp Self Foo []
+                st String String []
+            "#]],
+        );
+
+        check_relevance(
+            r#"
+struct Other;
+struct Vec<T>(T);
+enum Foo {
+    Vec(Vec<$0>)
+}
+    "#,
+            expect![[r#"
+                en Foo Foo []
+                st Other Other []
+                sp Self Foo []
+                st Vec<…> Vec<{unknown}> []
             "#]],
         );
     }

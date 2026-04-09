@@ -10,7 +10,7 @@ use std::{
     ops::{self, ControlFlow, Not},
 };
 
-use base_db::FxIndexSet;
+use base_db::{FxIndexSet, all_crates, toolchain_channel};
 use either::Either;
 use hir_def::{
     BuiltinDeriveImplId, DefWithBodyId, ExpressionStoreOwnerId, HasModule, MacroId, StructId,
@@ -392,7 +392,7 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
     }
 
     pub fn is_nightly(&self, krate: Crate) -> bool {
-        let toolchain = self.db.toolchain_channel(krate.into());
+        let toolchain = toolchain_channel(self.db.as_dyn_database(), krate.into());
         // `toolchain == None` means we're in some detached files. Since we have no information on
         // the toolchain being used, let's just allow unstable items to be listed.
         matches!(toolchain, Some(base_db::ReleaseChannel::Nightly) | None)
@@ -458,7 +458,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn parse(&self, file_id: EditionedFileId) -> ast::SourceFile {
         let hir_file_id = file_id.into();
-        let tree = self.db.parse(file_id).tree();
+        let tree = file_id.parse(self.db).tree();
         self.cache(tree.syntax().clone(), hir_file_id);
         tree
     }
@@ -467,7 +467,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn first_crate(&self, file: FileId) -> Option<Crate> {
         match self.file_to_module_defs(file).next() {
             Some(module) => Some(module.krate(self.db)),
-            None => self.db.all_crates().last().copied().map(Into::into),
+            None => all_crates(self.db).last().copied().map(Into::into),
         }
     }
 
@@ -484,7 +484,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn parse_guess_edition(&self, file_id: FileId) -> ast::SourceFile {
         let file_id = self.attach_first_edition(file_id);
 
-        let tree = self.db.parse(file_id).tree();
+        let tree = file_id.parse(self.db).tree();
         self.cache(tree.syntax().clone(), file_id.into());
         tree
     }
@@ -2461,7 +2461,7 @@ fn macro_call_to_macro_id(
         Either::Left(it) => {
             let node = match it.file_id {
                 HirFileId::FileId(file_id) => {
-                    it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
+                    it.to_ptr(db).to_node(&file_id.parse(db).syntax_node())
                 }
                 HirFileId::MacroFile(macro_file) => {
                     let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
@@ -2473,7 +2473,7 @@ fn macro_call_to_macro_id(
         Either::Right(it) => {
             let node = match it.file_id {
                 HirFileId::FileId(file_id) => {
-                    it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
+                    it.to_ptr(db).to_node(&file_id.parse(db).syntax_node())
                 }
                 HirFileId::MacroFile(macro_file) => {
                     let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);

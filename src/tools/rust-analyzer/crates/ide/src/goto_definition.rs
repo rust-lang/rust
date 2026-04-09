@@ -9,7 +9,7 @@ use crate::{
 use hir::{
     AsAssocItem, AssocItem, CallableKind, FileRange, HasCrate, InFile, ModuleDef, Semantics, sym,
 };
-use ide_db::{MiniCore, ra_fixture::UpmapFromRaFixture};
+use ide_db::ra_fixture::{RaFixtureConfig, UpmapFromRaFixture};
 use ide_db::{
     RootDatabase, SymbolKind,
     base_db::{AnchoredPath, SourceDatabase},
@@ -26,7 +26,7 @@ use syntax::{
 
 #[derive(Debug)]
 pub struct GotoDefinitionConfig<'a> {
-    pub minicore: MiniCore<'a>,
+    pub ra_fixture: RaFixtureConfig<'a>,
 }
 
 // Feature: Go to Definition
@@ -105,7 +105,7 @@ pub(crate) fn goto_definition(
         if let Some(token) = ast::String::cast(token.value.clone())
             && let Some(original_token) = ast::String::cast(original_token.clone())
             && let Some((analysis, fixture_analysis)) =
-                Analysis::from_ra_fixture(sema, original_token, &token, config.minicore)
+                Analysis::from_ra_fixture(sema, original_token, &token, &config.ra_fixture)
             && let Some((virtual_file_id, file_offset)) = fixture_analysis.map_offset_down(offset)
         {
             return hir::attach_db_allow_change(&analysis.db, || {
@@ -605,11 +605,11 @@ fn expr_to_nav(
 #[cfg(test)]
 mod tests {
     use crate::{GotoDefinitionConfig, fixture};
-    use ide_db::{FileRange, MiniCore};
+    use ide_db::{FileRange, ra_fixture::RaFixtureConfig};
     use itertools::Itertools;
 
     const TEST_CONFIG: GotoDefinitionConfig<'_> =
-        GotoDefinitionConfig { minicore: MiniCore::default() };
+        GotoDefinitionConfig { ra_fixture: RaFixtureConfig::default() };
 
     #[track_caller]
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
