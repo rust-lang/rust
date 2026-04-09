@@ -17,7 +17,7 @@ use rustc_middle::ty::TyCtxt;
 
 pub use crate::dep_kind_vtables::make_dep_kind_vtables;
 pub use crate::execution::{CollectActiveJobsKind, collect_active_query_jobs};
-pub use crate::job::{QueryJobMap, break_query_cycles, print_query_stack};
+pub use crate::job::{QueryJobMap, break_query_cycle, print_query_stack};
 
 mod dep_kind_vtables;
 mod error;
