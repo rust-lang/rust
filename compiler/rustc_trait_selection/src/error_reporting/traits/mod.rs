@@ -8,6 +8,7 @@ pub mod suggestions;
 use std::{fmt, iter};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -74,18 +75,20 @@ impl<'v> Visitor<'v> for FindExprBySpan<'v> {
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-        if self.span == ex.span {
-            self.result = Some(ex);
-        } else {
-            if let hir::ExprKind::Closure(..) = ex.kind
-                && self.include_closures
-                && let closure_header_sp = self.span.with_hi(ex.span.hi())
-                && closure_header_sp == ex.span
-            {
+        ensure_sufficient_stack(|| {
+            if self.span == ex.span {
                 self.result = Some(ex);
+            } else {
+                if let hir::ExprKind::Closure(..) = ex.kind
+                    && self.include_closures
+                    && let closure_header_sp = self.span.with_hi(ex.span.hi())
+                    && closure_header_sp == ex.span
+                {
+                    self.result = Some(ex);
+                }
+                hir::intravisit::walk_expr(self, ex);
             }
-            hir::intravisit::walk_expr(self, ex);
-        }
+        });
     }
 
     fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
