@@ -4,12 +4,9 @@
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::find_attr;
+use rustc_hir::{CRATE_OWNER_ID, find_attr};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{GenericArgs, Instance, TyCtxt};
-
-use crate::errors::{Kind, TestOutput};
 
 pub fn dump_symbol_names_and_def_paths(tcx: TyCtxt<'_>) {
     // if the `rustc_attrs` feature is not enabled, then the
@@ -20,73 +17,33 @@ pub fn dump_symbol_names_and_def_paths(tcx: TyCtxt<'_>) {
     }
 
     tcx.dep_graph.with_ignore(|| {
-        let mut symbol_names = SymbolNamesTest { tcx };
-        let crate_items = tcx.hir_crate_items(());
+        for id in tcx.hir_crate_items(()).owners() {
+            if id == CRATE_OWNER_ID {
+                continue;
+            }
 
-        for id in crate_items.free_items() {
-            symbol_names.process_attrs(id.owner_id.def_id);
-        }
+            // The format `$tag($value)` is chosen so that tests can elect to test the
+            // entirety of the string, if they choose, or else just some subset.
 
-        for id in crate_items.trait_items() {
-            symbol_names.process_attrs(id.owner_id.def_id);
-        }
+            if let Some(&span) = find_attr!(tcx, id.def_id, RustcDumpSymbolName(span) => span) {
+                let def_id = id.def_id.to_def_id();
+                let args = GenericArgs::identity_for_item(tcx, id.def_id);
+                let args = tcx.erase_and_anonymize_regions(args);
+                let instance = Instance::new_raw(def_id, args);
+                let mangled = tcx.symbol_name(instance);
 
-        for id in crate_items.impl_items() {
-            symbol_names.process_attrs(id.owner_id.def_id);
-        }
+                tcx.dcx().span_err(span, format!("symbol-name({mangled})"));
 
-        for id in crate_items.foreign_items() {
-            symbol_names.process_attrs(id.owner_id.def_id);
-        }
-    })
-}
+                if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
+                    tcx.dcx().span_err(span, format!("demangling({demangling})"));
+                    tcx.dcx().span_err(span, format!("demangling-alt({demangling:#})"));
+                }
+            }
 
-struct SymbolNamesTest<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-impl SymbolNamesTest<'_> {
-    fn process_attrs(&mut self, def_id: LocalDefId) {
-        let tcx = self.tcx;
-        // The formatting of `tag({})` is chosen so that tests can elect
-        // to test the entirety of the string, if they choose, or else just
-        // some subset.
-
-        if let Some(attr_span) = find_attr!(tcx, def_id, RustcDumpSymbolName(span) => span) {
-            let def_id = def_id.to_def_id();
-            let instance = Instance::new_raw(
-                def_id,
-                tcx.erase_and_anonymize_regions(GenericArgs::identity_for_item(tcx, def_id)),
-            );
-            let mangled = tcx.symbol_name(instance);
-            tcx.dcx().emit_err(TestOutput {
-                span: *attr_span,
-                kind: Kind::SymbolName,
-                content: format!("{mangled}"),
-            });
-            if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
-                tcx.dcx().emit_err(TestOutput {
-                    span: *attr_span,
-                    kind: Kind::Demangling,
-                    content: format!("{demangling}"),
-                });
-                tcx.dcx().emit_err(TestOutput {
-                    span: *attr_span,
-                    kind: Kind::DemanglingAlt,
-                    content: format!("{demangling:#}"),
-                });
+            if let Some(&span) = find_attr!(tcx, id.def_id, RustcDumpDefPath(span) => span) {
+                let def_path = with_no_trimmed_paths!(tcx.def_path_str(id.def_id));
+                tcx.dcx().span_err(span, format!("def-path({def_path})"));
             }
         }
-
-        if let Some(attr_span) = find_attr!(
-            tcx, def_id,
-            RustcDumpDefPath(span) => span
-        ) {
-            tcx.dcx().emit_err(TestOutput {
-                span: *attr_span,
-                kind: Kind::DefPath,
-                content: with_no_trimmed_paths!(tcx.def_path_str(def_id)),
-            });
-        }
-    }
+    })
 }
