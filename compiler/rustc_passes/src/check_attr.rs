@@ -316,6 +316,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpItemBounds
                     | AttributeKind::RustcDumpLayout(..)
                     | AttributeKind::RustcDumpPredicates
+                    | AttributeKind::RustcDumpSymbolName(..)
                     | AttributeKind::RustcDumpUserArgs
                     | AttributeKind::RustcDumpVariances
                     | AttributeKind::RustcDumpVariancesOfOpaques
@@ -365,7 +366,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcSpecializationTrait(..)
                     | AttributeKind::RustcStdInternalSymbol (..)
                     | AttributeKind::RustcStrictCoherence(..)
-                    | AttributeKind::RustcSymbolName(..)
                     | AttributeKind::RustcTestMarker(..)
                     | AttributeKind::RustcThenThisWouldNeed(..)
                     | AttributeKind::RustcTrivialFieldReads

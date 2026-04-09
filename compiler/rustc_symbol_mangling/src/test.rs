@@ -1,5 +1,5 @@
 //! Walks the crate looking for items/impl-items/trait-items that have
-//! either a `rustc_symbol_name` or `rustc_dump_def_path` attribute and
+//! either a `rustc_dump_symbol_name` or `rustc_dump_def_path` attribute and
 //! generates an error giving, respectively, the symbol name or
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
@@ -11,7 +11,7 @@ use rustc_middle::ty::{GenericArgs, Instance, TyCtxt};
 
 use crate::errors::{Kind, TestOutput};
 
-pub fn report_symbol_names(tcx: TyCtxt<'_>) {
+pub fn dump_symbol_names_and_def_paths(tcx: TyCtxt<'_>) {
     // if the `rustc_attrs` feature is not enabled, then the
     // attributes we are interested in cannot be present anyway, so
     // skip the walk.
@@ -52,7 +52,7 @@ impl SymbolNamesTest<'_> {
         // to test the entirety of the string, if they choose, or else just
         // some subset.
 
-        if let Some(attr_span) = find_attr!(tcx, def_id, RustcSymbolName(span) => span) {
+        if let Some(attr_span) = find_attr!(tcx, def_id, RustcDumpSymbolName(span) => span) {
             let def_id = def_id.to_def_id();
             let instance = Instance::new_raw(
                 def_id,

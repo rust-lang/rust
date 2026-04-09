@@ -1389,6 +1389,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_predicates]`
     RustcDumpPredicates,
 
+    /// Represents `#[rustc_dump_symbol_name]`
+    RustcDumpSymbolName(Span),
+
     /// Represents `#[rustc_dump_user_args]`
     RustcDumpUserArgs,
 
@@ -1569,9 +1572,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_strict_coherence]`.
     RustcStrictCoherence(Span),
-
-    /// Represents `#[rustc_symbol_name]`
-    RustcSymbolName(Span),
 
     /// Represents `#[rustc_test_marker]`
     RustcTestMarker(Symbol),

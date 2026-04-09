@@ -5,7 +5,7 @@
 
 #![feature(rustc_attrs)]
 
-#[rustc_symbol_name]
+#[rustc_dump_symbol_name]
 //[legacy]~^ ERROR symbol-name(_ZN5basic4main
 //[legacy]~| ERROR demangling(basic::main
 //[legacy]~| ERROR demangling-alt(basic::main)

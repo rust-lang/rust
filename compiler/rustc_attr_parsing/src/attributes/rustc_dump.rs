@@ -199,6 +199,30 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpPredicatesParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpPredicates;
 }
 
+pub(crate) struct RustcDumpSymbolNameParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcDumpSymbolNameParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_symbol_name];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Allow(Target::Impl { of_trait: false }),
+    ]);
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const TEMPLATE: AttributeTemplate = template!(Word);
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        if let Err(span) = args.no_args() {
+            cx.adcx().expected_no_args(span);
+            return None;
+        }
+        Some(AttributeKind::RustcDumpSymbolName(cx.attr_span))
+    }
+}
+
 pub(crate) struct RustcDumpVariancesParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpVariancesParser {
